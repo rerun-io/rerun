@@ -120,7 +120,7 @@ async fn get_assets_for_segment_returns_no_segments_before_any_asset_is_register
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
 
     let assets = client
-        .get_assets_for_segment(dataset_id())
+        .get_assets_for_segment(dataset_id(), None)
         .await
         .expect("Failed to get assets");
 
@@ -154,7 +154,7 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
     expected_segments.sort();
 
     let (entry, mut segments) = client
-        .get_assets_for_segment(dataset_id())
+        .get_assets_for_segment(dataset_id(), None)
         .await
         .expect("Failed to get assets")
         .expect("the dataset should have assets");
@@ -187,7 +187,7 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
         .expect("Failed to register asset");
 
     let assets = client
-        .get_assets_for_segment(dataset_id())
+        .get_assets_for_segment(dataset_id(), None)
         .await
         .expect("Failed to get assets");
 
@@ -224,7 +224,7 @@ async fn register_asset_replaces_an_already_registered_asset() {
     assert_eq!(first, second);
 
     let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id())
+        .get_assets_for_segment(dataset_id(), None)
         .await
         .expect("Failed to get assets")
         .expect("the dataset should have assets");
@@ -265,7 +265,7 @@ async fn unregister_asset_drops_the_asset() {
         .expect("Failed to unregister asset");
 
     let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id())
+        .get_assets_for_segment(dataset_id(), None)
         .await
         .expect("Failed to get assets")
         .expect("the dataset keeps its asset dataset after its last asset is dropped");

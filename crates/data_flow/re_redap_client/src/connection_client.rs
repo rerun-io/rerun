@@ -25,12 +25,13 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
 };
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
-    FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentResponse,
-    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest,
-    GetRrdManifestResponse, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
-    QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-    ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest,
-    ScanSegmentTableResponse, VersionRequest, WriteTableRequest,
+    FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentRequest,
+    GetAssetsForSegmentResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentPropertiesRequest,
+    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
+    ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    SetSegmentPropertiesRequest, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -1100,6 +1101,85 @@ where
         Ok(segment_count)
     }
 
+    /// Read one segment's mutable properties, and the revision that gates writes to them.
+    ///
+    /// `None` means the segment has no properties. See
+    /// [`Self::set_segment_properties`].
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_segment_properties(
+        &mut self,
+        entry_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<Option<(RecordBatch, u64)>> {
+        let (mut stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_segment_properties(
+                    tonic::Request::new(GetSegmentPropertiesRequest {
+                        segment_ids: vec![segment_id.clone().into()],
+                    })
+                    .with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| {
+                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
+                })?,
+        );
+
+        while let Some(response) = stream.next().await.transpose().map_err(|err| {
+            ApiError::tonic(&self.origin, err, "/GetSegmentProperties stream error")
+        })? {
+            for segment in response.segments {
+                let Some(properties) = segment.properties else {
+                    continue;
+                };
+                let batch = RecordBatch::try_from(&properties).map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "failed parsing /GetSegmentProperties response",
+                    )
+                })?;
+                return Ok(Some((batch, segment.revision)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Replace one segment's mutable properties, returning the new revision.
+    ///
+    /// `properties` must be a single-row `RecordBatch` whose columns are named
+    /// `property:<key>:<component>`, and it replaces every property on the segment without merging
+    /// into the stored ones.
+    ///
+    /// With `expected_revision` set the write only lands if the stored revision matches, and fails
+    /// with `FailedPrecondition` otherwise, leaving the stored properties untouched. `0` means "only
+    /// if the segment has no properties yet". Without it the write overwrites whatever is stored.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn set_segment_properties(
+        &mut self,
+        entry_id: EntryId,
+        segment_id: SegmentId,
+        properties: &RecordBatch,
+        expected_revision: Option<u64>,
+    ) -> ApiResult<u64> {
+        let response = self
+            .inner()
+            .set_segment_properties(
+                tonic::Request::new(SetSegmentPropertiesRequest {
+                    segment_id: Some(segment_id.into()),
+                    properties: Some(properties.into()),
+                    expected_revision,
+                })
+                .with_entry_id(entry_id),
+            )
+            .await
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/SetSegmentProperties failed"))?;
+
+        Ok(response.into_inner().revision)
+    }
+
     //TODO(ab): accept entry name
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_manifest_schema(
@@ -1217,18 +1297,25 @@ where
 
     /// Get the asset dataset that applies to a dataset, and the asset segments within it.
     ///
+    /// `segment_id` narrows the result to the assets that apply to that segment, honoring each
+    /// asset's mode and segment list. When it is `None`, the per-asset defaults apply with no
+    /// segment-specific opt-out/opt-in overrides.
+    ///
     /// Returns `None` if the dataset has no asset dataset, which means no assets were ever
     /// registered for it.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_assets_for_segment(
         &mut self,
         dataset_id: EntryId,
+        segment_id: Option<SegmentId>,
     ) -> ApiResult<Option<(EntryId, Vec<SegmentId>)>> {
         let response = self
             .inner()
             .get_assets_for_segment(
-                tonic::Request::new(re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest {})
-                    .with_entry_id(dataset_id),
+                tonic::Request::new(GetAssetsForSegmentRequest {
+                    segment_id: segment_id.clone().map(Into::into),
+                })
+                .with_entry_id(dataset_id),
             )
             .await
             .map_err(|err| ApiError::tonic(&self.origin, err, "/GetAssetsForSegment failed"))?;
@@ -1287,7 +1374,38 @@ where
             asset_segment_ids.extend(segment_ids);
         }
 
-        Ok(assets_entry.map(|assets_entry| (assets_entry, asset_segment_ids)))
+        let Some(assets_entry) = assets_entry else {
+            return Ok(None);
+        };
+        if !asset_segment_ids.is_empty() {
+            let response = self
+                .inner()
+                .get_segment_properties(
+                    tonic::Request::new(GetSegmentPropertiesRequest {
+                        segment_ids: asset_segment_ids.iter().cloned().map(Into::into).collect(),
+                    })
+                    .with_entry_id(assets_entry),
+                )
+                .await
+                .map_err(|err| {
+                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
+                })?;
+            let mut properties = ApiResponseStream::from_tonic_response(
+                self.origin.clone(),
+                response,
+                "/GetSegmentProperties",
+            );
+            while let Some(response) = properties.next().await {
+                crate::asset::filter_asset_segments(
+                    &self.origin,
+                    &mut asset_segment_ids,
+                    segment_id.as_ref(),
+                    response?,
+                )?;
+            }
+        }
+
+        Ok(Some((assets_entry, asset_segment_ids)))
     }
 
     /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.

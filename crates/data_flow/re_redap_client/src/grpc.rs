@@ -949,9 +949,9 @@ async fn stream_segment_from_server(
         && let Some(AssetSegments {
             dataset_id: asset_dataset_id,
             segment_ids: asset_segment_ids,
-        }) = asset_segments(client, dataset_id).await
+        }) = asset_segments(client, dataset_id, &segment_id).await
     {
-        // All of the dataset's assets are streamed for each segment that is opened.
+        // Only assets that apply to the opened segment are streamed.
         for asset_segment_id in asset_segment_ids {
             // TODO(RR-5399): Cache asset manifests?
             // We don't support assets without manifests.

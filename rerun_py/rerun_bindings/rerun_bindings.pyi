@@ -1087,6 +1087,17 @@ class DatasetEntryInternal:
 
     # ---
 
+    def assets_for_segment(self, segment_id: str) -> list[str]: ...
+    def _get_segment_properties(self, segment_id: str) -> tuple[pa.RecordBatch, int] | None: ...
+    def _set_segment_properties(
+        self,
+        segment_id: str,
+        properties: pa.RecordBatch,
+        expected_revision: int | None = None,
+    ) -> int: ...
+
+    # ---
+
     def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStoreInternal: ...
 
     # ---
@@ -1359,6 +1370,13 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+# The `asset` property layout, shared with the servers that read it.
+ASSET_PROPERTY: str
+ASSET_MODE_COMPONENT: str
+ASSET_SEGMENTS_COMPONENT: str
+ASSET_MODE_OPT_IN: str
+ASSET_MODE_OPT_OUT: str
 
 class SelectorInternal:
     def __init__(self, query: str) -> None: ...

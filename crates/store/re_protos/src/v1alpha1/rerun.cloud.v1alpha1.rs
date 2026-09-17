@@ -959,9 +959,14 @@ impl ::prost::Name for GetRrdManifestResponse {
 }
 /// Request for `GetAssetsForSegment`.
 ///
-/// Empty: the dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetAssetsForSegmentRequest {}
+/// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetAssetsForSegmentRequest {
+    /// The segment whose applicable assets to return. When unset, only the assets that apply to
+    /// every segment are returned, i.e. the opt-out ones.
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+}
 impl ::prost::Name for GetAssetsForSegmentRequest {
     const NAME: &'static str = "GetAssetsForSegmentRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -990,6 +995,110 @@ impl ::prost::Name for GetAssetsForSegmentResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.GetAssetsForSegmentResponse".into()
+    }
+}
+/// Request for `GetSegmentProperties`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSegmentPropertiesRequest {
+    /// The segments whose properties to read. Naming no segment fails with `INVALID_ARGUMENT`.
+    #[prost(message, repeated, tag = "1")]
+    pub segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for GetSegmentPropertiesRequest {
+    const NAME: &'static str = "GetSegmentPropertiesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSegmentPropertiesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSegmentPropertiesRequest".into()
+    }
+}
+/// Response for `GetSegmentProperties`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSegmentPropertiesResponse {
+    /// Concatenate across all responses in the stream.
+    #[prost(message, repeated, tag = "1")]
+    pub segments: ::prost::alloc::vec::Vec<SegmentProperties>,
+}
+impl ::prost::Name for GetSegmentPropertiesResponse {
+    const NAME: &'static str = "GetSegmentPropertiesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSegmentPropertiesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSegmentPropertiesResponse".into()
+    }
+}
+/// The mutable properties of a single segment.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentProperties {
+    /// The segment the properties belong to.
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// A single-row record batch whose columns are named `property:<key>:<component>`, the same
+    /// naming the dataset's segment table uses.
+    #[prost(message, optional, tag = "2")]
+    pub properties: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Bumped on every write, starting at 1. Pass it back to `SetSegmentProperties` to make the
+    /// next write conditional.
+    #[prost(uint64, tag = "3")]
+    pub revision: u64,
+}
+impl ::prost::Name for SegmentProperties {
+    const NAME: &'static str = "SegmentProperties";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentProperties".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentProperties".into()
+    }
+}
+/// Request for `SetSegmentProperties`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSegmentPropertiesRequest {
+    /// The segment whose properties to replace.
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// A single-row record batch whose columns are named `property:<key>:<component>`. The write
+    /// replaces every property on the segment and does not merge into the stored ones.
+    #[prost(message, optional, tag = "2")]
+    pub properties: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// When set, the write only lands if the stored revision matches, and fails with
+    /// `FAILED_PRECONDITION` otherwise, leaving the stored properties untouched. `0` means "only if
+    /// the segment has no properties yet". Read the current revision from `GetSegmentProperties`.
+    ///
+    /// When unset, the write overwrites whatever is stored.
+    #[prost(uint64, optional, tag = "3")]
+    pub expected_revision: ::core::option::Option<u64>,
+}
+impl ::prost::Name for SetSegmentPropertiesRequest {
+    const NAME: &'static str = "SetSegmentPropertiesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SetSegmentPropertiesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SetSegmentPropertiesRequest".into()
+    }
+}
+/// Response for `SetSegmentProperties`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSegmentPropertiesResponse {
+    /// The revision the write produced.
+    #[prost(uint64, tag = "1")]
+    pub revision: u64,
+}
+impl ::prost::Name for SetSegmentPropertiesResponse {
+    const NAME: &'static str = "SetSegmentPropertiesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SetSegmentPropertiesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SetSegmentPropertiesResponse".into()
     }
 }
 /// Request for `QueryDataset`.
@@ -3232,9 +3341,10 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Get the assets that apply to this dataset.
+        /// Get the assets that apply to a given segment of this dataset.
         ///
-        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// Returns the dataset's asset dataset and the asset segments within it that apply
+        /// to the requested segment.
         /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -3258,6 +3368,58 @@ pub mod rerun_cloud_service_client {
                 "GetAssetsForSegment",
             ));
             self.inner.server_streaming(req, path, codec).await
+        }
+        /// Read the mutable properties of the named segments in this dataset.
+        ///
+        /// These properties live outside the segments' layers, so they can be rewritten often without
+        /// registering anything. Segments that have no properties are absent from the response.
+        ///
+        /// The segments are spread over multiple responses, at the discretion of the server. Each
+        /// response is sent as soon as the segments it carries have been read.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn get_segment_properties(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSegmentPropertiesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetSegmentPropertiesResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSegmentProperties",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetSegmentProperties",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Replace the mutable properties of one segment in this dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn set_segment_properties(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SetSegmentPropertiesRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetSegmentPropertiesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/SetSegmentProperties",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "SetSegmentProperties",
+            ));
+            self.inner.unary(req, path, codec).await
         }
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
         /// as information that can be sent back to the catalog server to fetch the actual chunks as part
@@ -3823,9 +3985,10 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::GetAssetsForSegmentResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Get the assets that apply to this dataset.
+        /// Get the assets that apply to a given segment of this dataset.
         ///
-        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// Returns the dataset's asset dataset and the asset segments within it that apply
+        /// to the requested segment.
         /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -3833,6 +3996,31 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetAssetsForSegmentRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetAssetsForSegmentStream>, tonic::Status>;
+        /// Server streaming response type for the GetSegmentProperties method.
+        type GetSegmentPropertiesStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetSegmentPropertiesResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Read the mutable properties of the named segments in this dataset.
+        ///
+        /// These properties live outside the segments' layers, so they can be rewritten often without
+        /// registering anything. Segments that have no properties are absent from the response.
+        ///
+        /// The segments are spread over multiple responses, at the discretion of the server. Each
+        /// response is sent as soon as the segments it carries have been read.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn get_segment_properties(
+            &self,
+            request: tonic::Request<super::GetSegmentPropertiesRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetSegmentPropertiesStream>, tonic::Status>;
+        /// Replace the mutable properties of one segment in this dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn set_segment_properties(
+            &self,
+            request: tonic::Request<super::SetSegmentPropertiesRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetSegmentPropertiesResponse>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -5066,6 +5254,94 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSegmentProperties" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSegmentPropertiesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::GetSegmentPropertiesRequest>
+                        for GetSegmentPropertiesSvc<T>
+                    {
+                        type Response = super::GetSegmentPropertiesResponse;
+                        type ResponseStream = T::GetSegmentPropertiesStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSegmentPropertiesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_segment_properties(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetSegmentPropertiesSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/SetSegmentProperties" => {
+                    #[allow(non_camel_case_types)]
+                    struct SetSegmentPropertiesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::SetSegmentPropertiesRequest>
+                        for SetSegmentPropertiesSvc<T>
+                    {
+                        type Response = super::SetSegmentPropertiesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SetSegmentPropertiesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::set_segment_properties(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SetSegmentPropertiesSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

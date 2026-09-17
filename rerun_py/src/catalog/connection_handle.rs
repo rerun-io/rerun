@@ -1,3 +1,4 @@
+use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
@@ -172,6 +173,73 @@ impl PyConnectionHandle {
                 .iter()
                 .map(|id| id.to_string())
                 .collect::<Vec<_>>())
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_assets_for_segment(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        segment_id: String,
+    ) -> PyResult<Vec<String>> {
+        wait_for_future(py, async {
+            Ok(self
+                .client()
+                .await?
+                .get_assets_for_segment(entry_id, Some(SegmentId::from(segment_id)))
+                .await
+                .map_err(to_py_err)?
+                .map(|(_asset_dataset_id, segment_ids)| {
+                    segment_ids.iter().map(|id| id.to_string()).collect()
+                })
+                .unwrap_or_default())
+        })
+    }
+
+    /// Read one segment's mutable properties as a single-row record batch, plus its revision.
+    ///
+    /// `None` means the segment has no properties.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_segment_properties(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        segment_id: String,
+    ) -> PyResult<Option<(RecordBatch, u64)>> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .get_segment_properties(entry_id, SegmentId::from(segment_id))
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    /// Replace one segment's mutable properties, returning the new revision.
+    ///
+    /// With `expected_revision` set the write only lands if the stored revision matches. `0` means
+    /// "only if the segment has no properties yet".
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn set_segment_properties(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        segment_id: String,
+        properties: &RecordBatch,
+        expected_revision: Option<u64>,
+    ) -> PyResult<u64> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .set_segment_properties(
+                    entry_id,
+                    SegmentId::from(segment_id),
+                    properties,
+                    expected_revision,
+                )
+                .await
+                .map_err(to_py_err)
         })
     }
 

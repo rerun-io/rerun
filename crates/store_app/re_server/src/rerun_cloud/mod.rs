@@ -17,12 +17,13 @@ use re_chunk_store::{
 };
 use re_log_encoding::{ChunkProvider as _, ToTransport as _};
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
+use re_protos::cloud::v1alpha1::ext::{
+    AssetMode, QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
+    ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
+    read_asset_mode, read_asset_segments,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};
-use re_protos::cloud::v1alpha1::ext::{
-    QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
-    ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
-};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
@@ -59,7 +60,8 @@ use crate::NamedPath;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
 use crate::store::{
-    ChunkKey, Dataset, InMemoryStore, ResolvedStore, StoreSlotId, Table, TaskResult,
+    ChunkKey, Dataset, InMemoryStore, ResolvedStore, SegmentProperties, StoreSlotId, Table,
+    TaskResult,
 };
 use crate::store::{LayerInfo, TASK_ID_SUCCESS};
 
@@ -407,6 +409,7 @@ decl_stream!(DoBandwidthTestResponseStream<rerun_cloud:DoBandwidthTestResponse>)
 decl_stream!(WatchEventsResponseStream<rerun_cloud:WatchEventsResponse>);
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(GetAssetsForSegmentResponseStream<rerun_cloud:GetAssetsForSegmentResponse>);
+decl_stream!(GetSegmentPropertiesResponseStream<rerun_cloud:GetSegmentPropertiesResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
@@ -1426,6 +1429,7 @@ impl RerunCloudService for RerunCloudHandler {
         let store = self.store.read().await;
 
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let request = request.into_inner();
 
         let dataset = store.dataset(dataset_id)?;
 
@@ -1445,14 +1449,31 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         };
 
-        // TODO(RR-4979): Filter by properties here.
-        let asset_segment_ids = store
-            .dataset(asset_dataset)?
-            .segments()
-            .keys()
-            .cloned()
-            .map(Into::into)
-            .collect();
+        // Each asset carries its own mode and segment list, so resolving a segment's assets is a
+        // filter over the asset dataset alone. Recordings hold no asset properties.
+        let requested_segment_id = request
+            .segment_id
+            .map(SegmentId::try_from)
+            .transpose()?
+            .map(|segment_id| segment_id.into_inner());
+
+        // Which asset segments exist comes from the dataset, and how each one applies comes from its
+        // mutable properties. An asset with no properties resolves to the opt-out default, so it
+        // applies to every segment.
+        let assets = store.dataset(asset_dataset)?;
+        let mut asset_segment_ids = Vec::new();
+        for segment_id in assets.segments().keys() {
+            let (mode, segments) = match assets.segment_properties(segment_id) {
+                Some(stored) => (
+                    read_asset_mode(&stored.properties, 0),
+                    read_asset_segments(&stored.properties, 0),
+                ),
+                None => (AssetMode::default(), HashSet::new()),
+            };
+            if asset_applies_to_segment(mode, requested_segment_id.as_deref(), &segments) {
+                asset_segment_ids.push(segment_id.clone().into());
+            }
+        }
 
         let response = futures::stream::once(futures::future::ok(
             re_protos::cloud::v1alpha1::GetAssetsForSegmentResponse {
@@ -1463,6 +1484,95 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(response) as Self::GetAssetsForSegmentStream
+        ))
+    }
+
+    /* Segment properties */
+
+    type GetSegmentPropertiesStream = GetSegmentPropertiesResponseStream;
+
+    async fn get_segment_properties(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetSegmentPropertiesRequest>,
+    ) -> tonic::Result<tonic::Response<Self::GetSegmentPropertiesStream>> {
+        let store = self.store.read().await;
+
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let request = request.into_inner();
+
+        let dataset = store.dataset(dataset_id)?;
+
+        let requested: Vec<SegmentId> = request
+            .segment_ids
+            .into_iter()
+            .map(SegmentId::try_from)
+            .collect::<Result<_, _>>()?;
+
+        if requested.is_empty() {
+            return Err(tonic::Status::invalid_argument(
+                "segment_ids must name at least one segment",
+            ));
+        }
+
+        // Named segments that have no properties are absent from the response.
+        let responses: Vec<_> = requested
+            .chunks(SEGMENTS_PER_PROPERTIES_RESPONSE)
+            .map(|chunk| {
+                let segments = chunk
+                    .iter()
+                    .filter_map(|segment_id| {
+                        let stored = dataset.segment_properties(segment_id)?;
+                        Some(segment_properties_response(segment_id, stored))
+                    })
+                    .collect();
+                Ok(re_protos::cloud::v1alpha1::GetSegmentPropertiesResponse { segments })
+            })
+            .collect();
+
+        let response = futures::stream::iter(responses);
+
+        Ok(tonic::Response::new(
+            Box::pin(response) as Self::GetSegmentPropertiesStream
+        ))
+    }
+
+    async fn set_segment_properties(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::SetSegmentPropertiesRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::SetSegmentPropertiesResponse>>
+    {
+        let mut store = self.store.write().await;
+
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let request = request.into_inner();
+
+        let segment_id: SegmentId = request
+            .segment_id
+            .ok_or_else(|| tonic::Status::invalid_argument("segment_id is required"))?
+            .try_into()?;
+
+        let properties: RecordBatch = request
+            .properties
+            .ok_or_else(|| tonic::Status::invalid_argument("properties are required"))?
+            .try_into()
+            .map_err(|err| {
+                tonic::Status::invalid_argument(format!("Failed to decode properties: {err:#}"))
+            })?;
+        if properties.num_rows() != 1 {
+            return Err(tonic::Status::invalid_argument(format!(
+                "segment properties must be a single row, got {} rows",
+                properties.num_rows()
+            )));
+        }
+
+        let revision = store.dataset_mut(dataset_id)?.set_segment_properties(
+            segment_id,
+            properties,
+            request.expected_revision,
+        )?;
+
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::SetSegmentPropertiesResponse { revision },
         ))
     }
 
@@ -2161,6 +2271,21 @@ impl RerunCloudService for RerunCloudHandler {
     }
 }
 
+/// How many segments one `GetSegmentProperties` response carries.
+const SEGMENTS_PER_PROPERTIES_RESPONSE: usize = 100;
+
+/// One segment's stored properties, in wire form.
+fn segment_properties_response(
+    segment_id: &SegmentId,
+    stored: &SegmentProperties,
+) -> re_protos::cloud::v1alpha1::SegmentProperties {
+    re_protos::cloud::v1alpha1::SegmentProperties {
+        segment_id: Some(segment_id.clone().into()),
+        properties: Some((&stored.properties).into()),
+        revision: stored.revision,
+    }
+}
+
 /// Retrieves the entry ID based on HTTP headers.
 fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
@@ -2363,7 +2488,8 @@ mod tests {
 
         let responses: Vec<_> = handler
             .get_assets_for_segment(
-                tonic::Request::new(GetAssetsForSegmentRequest {}).with_entry_id(dataset_id),
+                tonic::Request::new(GetAssetsForSegmentRequest::default())
+                    .with_entry_id(dataset_id),
             )
             .await
             .expect("querying assets should succeed without an asset dataset")

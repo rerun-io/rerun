@@ -245,7 +245,7 @@ impl DatasetKind {
 
 /// Limits enforced when registering segments into a dataset.
 ///
-/// Which limits apply depends on the dataset's [`DatasetKind`]; see [`DatasetKind::limits`].
+/// Which limits apply depends on the dataset's [`DatasetKind`]. See [`DatasetKind::limits`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DatasetLimits {
     /// Reject any segment that contains temporal chunks.

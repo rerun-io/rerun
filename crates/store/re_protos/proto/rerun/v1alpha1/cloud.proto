@@ -241,13 +241,32 @@ service RerunCloudService {
   // However, all the items in a stream will either send inline manifest or urls, uniformly.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
-  // Get the assets that apply to this dataset.
+  // Get the assets that apply to a given segment of this dataset.
   //
-  // Returns the dataset's asset dataset and the asset segments within it.
+  // Returns the dataset's asset dataset and the asset segments within it that apply
+  // to the requested segment.
   // The asset segment ids may be spread over multiple responses, at the discretion of the server.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
   rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {}
+
+  /* Segment properties */
+
+  // Read the mutable properties of the named segments in this dataset.
+  //
+  // These properties live outside the segments' layers, so they can be rewritten often without
+  // registering anything. Segments that have no properties are absent from the response.
+  //
+  // The segments are spread over multiple responses, at the discretion of the server. Each
+  // response is sent as soon as the segments it carries have been read.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetSegmentProperties(GetSegmentPropertiesRequest) returns (stream GetSegmentPropertiesResponse) {}
+
+  // Replace the mutable properties of one segment in this dataset.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc SetSegmentProperties(SetSegmentPropertiesRequest) returns (SetSegmentPropertiesResponse) {}
 
   /* Indexing */
 
@@ -864,8 +883,12 @@ message GetRrdManifestResponse {
 
 // Request for `GetAssetsForSegment`.
 //
-// Empty: the dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
-message GetAssetsForSegmentRequest {}
+// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
+message GetAssetsForSegmentRequest {
+  // The segment whose applicable assets to return. When unset, only the assets that apply to
+  // every segment are returned, i.e. the opt-out ones.
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+}
 
 // One part of the asset listing, yielded by `GetAssetsForSegment`.
 message GetAssetsForSegmentResponse {
@@ -874,6 +897,57 @@ message GetAssetsForSegmentResponse {
 
   // The segments of the asset dataset. Concatenate across all responses in the stream.
   repeated rerun.common.v1alpha1.SegmentId asset_segment_ids = 2;
+}
+
+/* Segment properties */
+
+// Request for `GetSegmentProperties`.
+message GetSegmentPropertiesRequest {
+  // The segments whose properties to read. Naming no segment fails with `INVALID_ARGUMENT`.
+  repeated rerun.common.v1alpha1.SegmentId segment_ids = 1;
+}
+
+// Response for `GetSegmentProperties`.
+message GetSegmentPropertiesResponse {
+  // Concatenate across all responses in the stream.
+  repeated SegmentProperties segments = 1;
+}
+
+// The mutable properties of a single segment.
+message SegmentProperties {
+  // The segment the properties belong to.
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+
+  // A single-row record batch whose columns are named `property:<key>:<component>`, the same
+  // naming the dataset's segment table uses.
+  rerun.common.v1alpha1.DataframePart properties = 2;
+
+  // Bumped on every write, starting at 1. Pass it back to `SetSegmentProperties` to make the
+  // next write conditional.
+  uint64 revision = 3;
+}
+
+// Request for `SetSegmentProperties`.
+message SetSegmentPropertiesRequest {
+  // The segment whose properties to replace.
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+
+  // A single-row record batch whose columns are named `property:<key>:<component>`. The write
+  // replaces every property on the segment and does not merge into the stored ones.
+  rerun.common.v1alpha1.DataframePart properties = 2;
+
+  // When set, the write only lands if the stored revision matches, and fails with
+  // `FAILED_PRECONDITION` otherwise, leaving the stored properties untouched. `0` means "only if
+  // the segment has no properties yet". Read the current revision from `GetSegmentProperties`.
+  //
+  // When unset, the write overwrites whatever is stored.
+  optional uint64 expected_revision = 3;
+}
+
+// Response for `SetSegmentProperties`.
+message SetSegmentPropertiesResponse {
+  // The revision the write produced.
+  uint64 revision = 1;
 }
 
 /* Indexing */

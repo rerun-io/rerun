@@ -57,7 +57,7 @@ impl SegmentChunkProvider {
         })?);
 
         let asset_manifests = if include_assets {
-            fetch_asset_manifests(&mut client, dataset_id).await
+            fetch_asset_manifests(&mut client, dataset_id, &segment_id).await
         } else {
             Vec::new()
         };
@@ -100,18 +100,19 @@ impl SegmentChunkProvider {
     }
 }
 
-/// Fetches the manifest of every asset registered for the dataset.
+/// Fetches the manifest of every asset that applies to the segment.
 ///
 /// Failing to load an asset only costs the data of that asset, so the failure is logged and the
 /// remaining assets are still loaded.
 async fn fetch_asset_manifests(
     client: &mut ConnectionClient,
     dataset_id: EntryId,
+    segment_id: &SegmentId,
 ) -> Vec<Arc<RrdManifest>> {
     let Some(AssetSegments {
         dataset_id: asset_dataset_id,
         segment_ids: asset_segment_ids,
-    }) = asset_segments(client, dataset_id).await
+    }) = asset_segments(client, dataset_id, segment_id).await
     else {
         return Vec::new();
     };

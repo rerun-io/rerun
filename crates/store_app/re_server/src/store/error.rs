@@ -84,6 +84,17 @@ pub enum Error {
     #[error("{0}")]
     SegmentLimitReached(String),
 
+    /// A conditional properties write lost to a concurrent one. The caller has to re-read,
+    /// recompute its properties, and try again.
+    #[error(
+        "Properties of segment '{segment_id}' were modified concurrently: expected revision {expected}, found {found}"
+    )]
+    PropertiesRevisionMismatch {
+        segment_id: SegmentId,
+        expected: u64,
+        found: u64,
+    },
+
     #[error("Table storage already exists at location: {0}")]
     TableStorageAlreadyExists(String),
 }
@@ -128,7 +139,9 @@ impl From<Error> for tonic::Status {
 
             Error::SchemaConflict(_) => Self::invalid_argument(format!("{err:#}")),
 
-            Error::SegmentRejected(_) | Error::SegmentLimitReached(_) => {
+            Error::SegmentRejected(_)
+            | Error::SegmentLimitReached(_)
+            | Error::PropertiesRevisionMismatch { .. } => {
                 Self::failed_precondition(format!("{err:#}"))
             }
         }

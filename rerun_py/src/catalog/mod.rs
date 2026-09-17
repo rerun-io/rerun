@@ -21,6 +21,9 @@ mod unregistration_handle;
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
+use re_protos::cloud::v1alpha1::ext::{
+    ASSET_MODE_COMPONENT, ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT, AssetMode,
+};
 
 pub use self::catalog_client::PyCatalogClientInternal;
 pub use self::component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector};
@@ -70,6 +73,13 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     // register exceptions generated with the [`pyo3::create_exception!`] macro
     m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
     m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
+
+    // The `asset` property layout, so the SDK writes what `GetAssetsForSegment` reads.
+    m.add("ASSET_PROPERTY", ASSET_PROPERTY)?;
+    m.add("ASSET_MODE_COMPONENT", ASSET_MODE_COMPONENT)?;
+    m.add("ASSET_SEGMENTS_COMPONENT", ASSET_SEGMENTS_COMPONENT)?;
+    m.add("ASSET_MODE_OPT_IN", AssetMode::OptIn.as_str())?;
+    m.add("ASSET_MODE_OPT_OUT", AssetMode::OptOut.as_str())?;
 
     Ok(())
 }

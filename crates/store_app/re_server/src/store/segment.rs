@@ -1,5 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Fields, Schema};
 use itertools::Itertools as _;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_types_core::LayerName;
@@ -120,6 +125,36 @@ impl Segment {
             .modify()
             .sources
             .retain(|name, source| f(name, source.as_ref()));
+    }
+
+    /// Compute this segment's merged properties as a one-row [`RecordBatch`].
+    ///
+    /// Properties are accumulated across the segment's layers in registration order, so the
+    /// last registered layer wins on conflicts.
+    pub async fn compute_properties(&self) -> Result<RecordBatch, Error> {
+        let mut properties = BTreeMap::default();
+
+        for (_layer_name, layer) in self.iter_sources() {
+            let layer_properties = layer.compute_properties().await?;
+            for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
+                properties.insert(
+                    Arc::clone(field),
+                    Arc::clone(layer_properties.column(col_idx)),
+                );
+            }
+        }
+
+        RecordBatch::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(
+                properties.keys().map(Arc::clone).collect::<Fields>(),
+                Default::default(),
+            )),
+            properties.into_values().collect(),
+            // Exactly one row per segment. We must state it explicitly so Arrow can infer the
+            // row count even when the segment has no properties at all.
+            &RecordBatchOptions::default().with_row_count(Some(1)),
+        )
+        .map_err(Error::failed_to_extract_properties)
     }
 
     pub fn num_chunks(&self) -> u64 {

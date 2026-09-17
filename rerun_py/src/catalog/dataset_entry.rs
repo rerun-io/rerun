@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
@@ -149,6 +150,60 @@ impl PyDatasetEntryInternal {
         self_.dataset_details = result.dataset_details;
 
         Ok(())
+    }
+
+    /// The asset segments that apply to `segment_id`, from this dataset's asset dataset.
+    fn assets_for_segment(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_id: String,
+    ) -> PyResult<Vec<String>> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.assets_for_segment").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        connection.get_assets_for_segment(py, self_.entry_details.id, segment_id)
+    }
+
+    /// One segment's mutable properties as a single-row `RecordBatch`, plus its revision.
+    ///
+    /// `None` means the segment has no properties.
+    fn _get_segment_properties(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_id: String,
+    ) -> PyResult<Option<(PyArrowType<RecordBatch>, u64)>> {
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry._get_segment_properties").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        Ok(connection
+            .get_segment_properties(py, self_.entry_details.id, segment_id)?
+            .map(|(batch, revision)| (PyArrowType(batch), revision)))
+    }
+
+    /// Replace one segment's mutable properties, returning the new revision.
+    ///
+    /// With `expected_revision` set the write only lands if the stored revision matches, and raises
+    /// otherwise. `0` means "only if the segment has no properties yet".
+    #[pyo3(signature = (segment_id, properties, expected_revision = None))]
+    fn _set_segment_properties(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_id: String,
+        properties: PyArrowType<RecordBatch>,
+        expected_revision: Option<u64>,
+    ) -> PyResult<u64> {
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry._set_segment_properties").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        connection.set_segment_properties(
+            py,
+            self_.entry_details.id,
+            segment_id,
+            &properties.0,
+            expected_revision,
+        )
     }
 
     /// The default blueprint segment ID for this dataset, if any.

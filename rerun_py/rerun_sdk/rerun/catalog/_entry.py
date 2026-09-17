@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import pyarrow as pa
 from pyarrow import RecordBatchReader
@@ -11,6 +11,11 @@ from typing_extensions import deprecated
 
 from rerun._tracing import with_tracing
 from rerun_bindings import (
+    ASSET_MODE_COMPONENT,
+    ASSET_MODE_OPT_IN,
+    ASSET_MODE_OPT_OUT,
+    ASSET_PROPERTY,
+    ASSET_SEGMENTS_COMPONENT,
     DatasetEntryInternal,
     DatasetViewInternal,
     TableEntryInternal,
@@ -57,6 +62,36 @@ class OnDuplicateSegmentLayer(str, Enum):
     ERROR = "error"
     SKIP = "skip"
     REPLACE = "replace"
+
+
+#: Maps the user-facing asset mode to the string stored in the `asset` property's `mode` component.
+_ASSET_MODE_STR = {"opt_out": ASSET_MODE_OPT_OUT, "opt_in": ASSET_MODE_OPT_IN}
+
+#: How many times a read-modify-write of an asset's segment list retries after losing a race.
+_ASSET_PROPERTY_WRITE_ATTEMPTS = 5
+
+
+def _property_column(key: str, component: str) -> str:
+    """The column a property's component occupies, matching the segment table's naming."""
+    return f"property:{key}:{component}"
+
+
+def _first_str(cell: Any) -> str | None:
+    """The first string of a list-wrapped property cell, or the value itself if not wrapped."""
+    if cell is None:
+        return None
+    if isinstance(cell, (list, tuple)):
+        return str(cell[0]) if cell else None
+    return str(cell)
+
+
+def _str_list(cell: Any) -> list[str]:
+    """The strings of a list-wrapped property cell, dropping nulls."""
+    if cell is None:
+        return []
+    if isinstance(cell, (list, tuple)):
+        return [str(x) for x in cell if x is not None]
+    return [str(cell)]
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -264,7 +299,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             return asset_dataset.segment_ids()
 
-    def register_asset(self, uri: str) -> str:
+    def register_asset(
+        self,
+        uri: str,
+        *,
+        mode: Literal["opt_out", "opt_in"] = "opt_out",
+        segments: Sequence[str] | None = None,
+    ) -> str:
         """
         Register an existing .rrd visible to the server as an asset.
 
@@ -275,10 +316,26 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         * each asset segment must stay under a per-segment size limit,
         * the asset dataset may only hold a limited number of segments.
 
+        An asset defines which segments it applies to. The default `mode="opt_out"` applies the asset
+        to every segment except those in `segments`. `mode="opt_in"` applies it only to the segments
+        in `segments`.
+
+        Change which segments an asset applies to later with
+        [`add_segments_to_asset`][rerun.catalog.DatasetEntry.add_segments_to_asset] and
+        [`remove_segments_from_asset`][rerun.catalog.DatasetEntry.remove_segments_from_asset].
+
         Parameters
         ----------
         uri:
             The URI of the .rrd file to register. It must be visible to the server.
+
+        mode:
+            The default `"opt_out"` applies the asset to every segment except those in `segments`.
+            `"opt_in"` applies it only to the segments in `segments`.
+
+        segments:
+            The segment ids the mode applies to. Defaults to empty, so an `"opt_out"` asset applies
+            to every segment and an `"opt_in"` asset applies to none.
 
         Returns
         -------
@@ -298,7 +355,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if asset_dataset is None:
             raise LookupError("an asset dataset is not configured for this dataset")
 
-        return asset_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        segment_id = asset_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+
+        asset_dataset._write_asset_property(segment_id, mode=_ASSET_MODE_STR[mode], segments=list(segments or []))
+
+        return segment_id
 
     def unregister_asset(self, segment_id: str) -> None:
         """
@@ -306,9 +367,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Blocks until the unregistration completes, mirroring
         [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
-
-        Since assets are shared across all of a dataset's segments, there is no way to scope
-        an asset to a subset of them, so removing one means unregistering it here.
 
         Unregistering an asset that doesn't exist is a no-op.
 
@@ -326,6 +384,164 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             return
 
         asset_dataset.unregister(segments_to_drop=[segment_id], layers_to_drop=[]).wait()
+
+    def add_segments_to_asset(self, asset_segment_id: str, segments: Sequence[str]) -> None:
+        """
+        Make an asset apply to `segments`, on top of the segments it already applies to.
+
+        The asset keeps its mode, which decides how this is stored: an `"opt_in"` asset lists the
+        segments it applies to, so they are added to its list, while an `"opt_out"` asset lists the
+        ones it skips, so they are dropped from its list.
+        See [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
+        Parameters
+        ----------
+        asset_segment_id:
+            The segment id of the asset, as returned by [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
+        segments:
+            The segment ids the asset should apply to. Naming one it already applies to is a no-op.
+
+        """
+
+        self._set_asset_applies_to(asset_segment_id, segments, applies=True)
+
+    def remove_segments_from_asset(self, asset_segment_id: str, segments: Sequence[str]) -> None:
+        """
+        Stop an asset from applying to `segments`, leaving the rest of its coverage alone.
+
+        The inverse of [`add_segments_to_asset`][rerun.catalog.DatasetEntry.add_segments_to_asset].
+        Naming a segment the asset already skips is a no-op.
+
+        Parameters
+        ----------
+        asset_segment_id:
+            The segment id of the asset, as returned by [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
+        segments:
+            The segment ids the asset should no longer apply to.
+
+        """
+
+        self._set_asset_applies_to(asset_segment_id, segments, applies=False)
+
+    @with_tracing("DatasetEntry.assets_for_segment")
+    def assets_for_segment(self, segment_id: str) -> list[str]:
+        """
+        Return the asset segments that apply to `segment_id`.
+
+        Filters this dataset's asset dataset by each asset's mode and segment list. An `"opt_out"`
+        asset applies to every segment except those in its list, while an `"opt_in"` asset applies
+        only to the segments in its list.
+        See [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
+        Parameters
+        ----------
+        segment_id:
+            The segment to resolve assets for.
+
+        Returns
+        -------
+        list[str]
+            The segment ids of the applicable assets, within this dataset's asset dataset.
+
+        """
+
+        return self._internal.assets_for_segment(segment_id)
+
+    def _set_asset_applies_to(self, asset_segment_id: str, segments: Sequence[str], *, applies: bool) -> None:
+        """
+        Edit an asset's segment list so it applies, or stops applying, to `segments`.
+
+        A read-modify-write: the stored list is read, the edit applied, and the result written back
+        gated on the revision that was read. A concurrent edit invalidates that revision, so the
+        write is retried from the read.
+        """
+
+        asset_dataset = self.asset_dataset()
+        if asset_dataset is None:
+            raise LookupError("an asset dataset is not configured for this dataset")
+
+        for attempt in range(_ASSET_PROPERTY_WRITE_ATTEMPTS):
+            mode, current, revision = asset_dataset._read_asset_property(asset_segment_id)
+
+            # An `"opt_in"` asset lists the segments it applies to and an `"opt_out"` asset lists the
+            # ones it skips, so the mode decides which way the list moves.
+            if applies == (mode == ASSET_MODE_OPT_IN):
+                updated = list(dict.fromkeys([*current, *segments]))
+            else:
+                drop = set(segments)
+                updated = [segment for segment in current if segment not in drop]
+
+            if updated == current:
+                return
+
+            try:
+                asset_dataset._write_asset_property(
+                    asset_segment_id, mode=mode, segments=updated, expected_revision=revision
+                )
+                return
+            except RuntimeError:
+                # The bindings report a lost revision gate and a plain server failure as the same
+                # `RuntimeError`, so the stored revision is what tells them apart. A moved revision
+                # means someone else wrote first, so the list this was computed from is stale and the
+                # edit can be redone on top of theirs. An unchanged revision means the write itself
+                # failed, and the error is raised.
+                _, _, stored_revision = asset_dataset._read_asset_property(asset_segment_id)
+                if stored_revision == revision or attempt == _ASSET_PROPERTY_WRITE_ATTEMPTS - 1:
+                    raise
+
+    def _read_asset_property(self, asset_segment_id: str) -> tuple[str, list[str], int]:
+        """
+        Read an asset's mode, segment list, and property revision.
+
+        Returns opt-out with an empty list at revision `0` when the asset holds no `asset` property,
+        so an asset registered without one resolves to applying to every segment.
+        """
+
+        stored = self._internal._get_segment_properties(asset_segment_id)
+        if stored is None:
+            return ASSET_MODE_OPT_OUT, [], 0
+
+        batch, revision = stored
+        names = set(batch.schema.names)
+        mode_column = _property_column(ASSET_PROPERTY, ASSET_MODE_COMPONENT)
+        segments_column = _property_column(ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT)
+
+        mode = _first_str(batch.column(mode_column).to_pylist()[0]) if mode_column in names else None
+        segments = _str_list(batch.column(segments_column).to_pylist()[0]) if segments_column in names else []
+        return (mode or ASSET_MODE_OPT_OUT), segments, revision
+
+    def _write_asset_property(
+        self,
+        asset_segment_id: str,
+        *,
+        mode: str,
+        segments: Sequence[str],
+        expected_revision: int | None = None,
+    ) -> None:
+        """
+        Write the `asset` property of one of this asset dataset's segments.
+
+        This says which segments the asset applies to without touching the asset's data. Properties
+        live outside the segment's layers, so the write is a single request.
+
+        With `expected_revision` set the write only lands if the stored revision matches, and raises
+        otherwise. `0` means "only if the asset has no properties yet".
+        """
+
+        properties = pa.RecordBatch.from_arrays(
+            [
+                pa.array([[mode]], type=pa.list_(pa.utf8())),
+                pa.array([list(segments)], type=pa.list_(pa.utf8())),
+            ],
+            names=[
+                _property_column(ASSET_PROPERTY, ASSET_MODE_COMPONENT),
+                _property_column(ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT),
+            ],
+        )
+
+        self._internal._set_segment_properties(asset_segment_id, properties, expected_revision)
 
     def asset_dataset(self) -> DatasetEntry | None:
         """

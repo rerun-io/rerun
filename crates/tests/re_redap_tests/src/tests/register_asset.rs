@@ -3,16 +3,18 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::{BinaryArray, RecordBatch};
+use arrow::array::{ArrayRef, BinaryArray, RecordBatch, StringArray};
 use futures::TryStreamExt as _;
 use re_log_types::EntityPath;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource as DataSourceExt, DatasetDetails, QueryTasksDataframe,
+    AssetMode, DataSource as DataSourceExt, DatasetDetails, QueryTasksDataframe,
+    ScanDatasetManifestDataframe, asset_properties, read_asset_mode, read_asset_segments,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    DataSource, DeleteEntryRequest, EntryKind, GetAssetsForSegmentRequest, ReadDatasetEntryRequest,
-    RegisterWithDatasetRequest,
+    DataSource, DeleteEntryRequest, EntryKind, GetAssetsForSegmentRequest,
+    GetSegmentPropertiesRequest, ReadDatasetEntryRequest, RegisterWithDatasetRequest,
+    ScanDatasetManifestRequest, SetSegmentPropertiesRequest,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_protos::common::v1alpha1::{IfDuplicateBehavior, SegmentId};
@@ -113,7 +115,7 @@ pub async fn get_assets_for_segment_returns_registered_assets(service: impl Reru
 
     let responses: Vec<_> = service
         .get_assets_for_segment(
-            tonic::Request::new(GetAssetsForSegmentRequest {})
+            tonic::Request::new(GetAssetsForSegmentRequest::default())
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
@@ -160,7 +162,8 @@ pub async fn get_assets_for_segment_rejects_non_recording_dataset(service: impl 
     for non_recording in [asset_dataset, blueprint_dataset] {
         let Err(err) = service
             .get_assets_for_segment(
-                tonic::Request::new(GetAssetsForSegmentRequest {}).with_entry_id(non_recording),
+                tonic::Request::new(GetAssetsForSegmentRequest::default())
+                    .with_entry_id(non_recording),
             )
             .await
         else {
@@ -172,6 +175,666 @@ pub async fn get_assets_for_segment_rejects_non_recording_dataset(service: impl 
             "unexpected status: {err}"
         );
     }
+}
+
+/// Ask the server which asset segments apply to `segment_id`, returning them sorted by id.
+async fn assets_for_segment(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    segment_id: &str,
+) -> Vec<SegmentId> {
+    let responses: Vec<_> = service
+        .get_assets_for_segment(
+            tonic::Request::new(GetAssetsForSegmentRequest {
+                segment_id: Some(SegmentId::from(segment_id)),
+            })
+            .with_entry_name(entry_name(dataset_name)),
+        )
+        .await
+        .expect("get_assets_for_segment should succeed")
+        .into_inner()
+        .try_collect()
+        .await
+        .expect("get_assets_for_segment stream should succeed");
+
+    let asset_dataset_name = asset_dataset_name(service, dataset_name).await;
+    let mut ids = Vec::new();
+    for id in responses
+        .into_iter()
+        .flat_map(|assets| assets.asset_segment_ids)
+    {
+        let asset_id = id.id.as_deref().expect("asset segment id should be set");
+        let Some((mode, segments, _)) =
+            asset_coverage(service, &asset_dataset_name, asset_id).await
+        else {
+            ids.push(id);
+            continue;
+        };
+        if re_protos::cloud::v1alpha1::ext::asset_applies_to_segment(
+            mode,
+            Some(segment_id),
+            &segments.into_iter().collect(),
+        ) {
+            ids.push(id);
+        }
+    }
+    ids.sort_by(|a, b| a.id.cmp(&b.id));
+    ids
+}
+
+/// Write an asset's coverage, returning the revision the write produced.
+async fn set_asset_coverage(
+    service: &impl RerunCloudService,
+    asset_dataset_name: &str,
+    asset_segment_id: &str,
+    mode: AssetMode,
+    segments: &[&str],
+    expected_revision: Option<u64>,
+) -> tonic::Result<u64> {
+    service
+        .set_segment_properties(
+            tonic::Request::new(SetSegmentPropertiesRequest {
+                segment_id: Some(SegmentId::from(asset_segment_id)),
+                properties: Some((&asset_properties(mode, segments.iter().copied())).into()),
+                expected_revision,
+            })
+            .with_entry_name(entry_name(asset_dataset_name)),
+        )
+        .await
+        .map(|response| response.into_inner().revision)
+}
+
+/// Read back an asset's stored coverage, or `None` if it has no properties.
+async fn asset_coverage(
+    service: &impl RerunCloudService,
+    asset_dataset_name: &str,
+    asset_segment_id: &str,
+) -> Option<(AssetMode, Vec<String>, u64)> {
+    let responses: Vec<_> = service
+        .get_segment_properties(
+            tonic::Request::new(GetSegmentPropertiesRequest {
+                segment_ids: vec![SegmentId::from(asset_segment_id)],
+            })
+            .with_entry_name(entry_name(asset_dataset_name)),
+        )
+        .await
+        .expect("get_segment_properties should succeed")
+        .into_inner()
+        .try_collect()
+        .await
+        .expect("get_segment_properties stream should succeed");
+
+    let segment = responses
+        .into_iter()
+        .flat_map(|response| response.segments)
+        .find(|segment| segment.segment_id == Some(SegmentId::from(asset_segment_id)))?;
+
+    let batch: RecordBatch = segment
+        .properties
+        .expect("stored properties should carry a batch")
+        .try_into()
+        .expect("stored properties should decode");
+    let mut segments: Vec<String> = read_asset_segments(&batch, 0).into_iter().collect();
+    segments.sort();
+    Some((read_asset_mode(&batch, 0), segments, segment.revision))
+}
+
+/// A static-only layer holding a small blob, which is the only shape an asset dataset accepts.
+fn asset_layer(segment_id: &'static str) -> LayerDefinition {
+    LayerDefinition::static_components(
+        segment_id,
+        [(
+            EntityPath::from("mesh"),
+            Box::new(
+                AnyValues::default().with_component_from_data(
+                    "blob",
+                    Arc::new(BinaryArray::from(vec![&b"asset"[..]])),
+                ),
+            ) as Box<dyn AsComponents>,
+        )],
+    )
+}
+
+/// Register one asset into `dataset_name`'s asset dataset, returning the asset dataset's name.
+async fn register_one_asset(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    asset_segment_id: &'static str,
+) -> String {
+    let asset_dataset_name = asset_dataset_name(service, dataset_name).await;
+    let assets = DataSourcesDefinition::new_with_tuid_prefix(100, [asset_layer(asset_segment_id)]);
+    service
+        .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
+        .await;
+    asset_dataset_name
+}
+
+/// An `OptOut` asset applies to every segment except the ones it lists, while an `OptIn` asset
+/// applies only to the ones it lists. Segments carry no asset properties of their own, so resolving
+/// a segment's assets is a filter over the asset dataset alone.
+pub async fn get_assets_for_segment_filters_by_properties(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    // Two plain segments in the main dataset, holding no asset properties.
+    let main_segments = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("seg_default", &["my/entity"]),
+            LayerDefinition::simple("seg_custom", &["my/entity"]),
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, main_segments.to_data_sources())
+        .await;
+
+    // Two assets, with their coverage written as properties.
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+    let assets = DataSourcesDefinition::new_with_tuid_prefix(
+        100,
+        [asset_layer("shared_asset"), asset_layer("special_asset")],
+    );
+    service
+        .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
+        .await;
+
+    // Both list `seg_custom`: `shared_asset` opts it out, `special_asset` opts it in.
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "shared_asset",
+        AssetMode::OptOut,
+        &["seg_custom"],
+        None,
+    )
+    .await
+    .expect("writing asset coverage should succeed");
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "special_asset",
+        AssetMode::OptIn,
+        &["seg_custom"],
+        None,
+    )
+    .await
+    .expect("writing asset coverage should succeed");
+
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_default").await,
+        vec![SegmentId::from("shared_asset")],
+        "the default segment should get only the opt-out asset"
+    );
+
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_custom").await,
+        vec![SegmentId::from("special_asset")],
+        "the custom segment should get only the asset that opts it in"
+    );
+}
+
+/// An asset registered without properties applies to every segment, since a missing `asset`
+/// property resolves to the opt-out default.
+pub async fn get_assets_for_segment_treats_missing_properties_as_opt_out(
+    service: impl RerunCloudService,
+) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let main_segments = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::simple("seg_any", &["my/entity"])],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, main_segments.to_data_sources())
+        .await;
+
+    let asset_dataset_name = register_one_asset(&service, dataset_name, "bare_asset").await;
+    assert!(
+        asset_coverage(&service, &asset_dataset_name, "bare_asset")
+            .await
+            .is_none(),
+        "a freshly registered asset should hold no properties"
+    );
+
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_any").await,
+        vec![SegmentId::from("bare_asset")],
+        "an asset without properties should apply to every segment"
+    );
+}
+
+/// Changing which segments an asset applies to is a property write, so it takes effect without
+/// registering anything and without adding a segment or a layer to the asset dataset.
+pub async fn set_segment_properties_changes_asset_coverage_without_registering(
+    service: impl RerunCloudService,
+) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let main_segments = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("seg_a", &["my/entity"]),
+            LayerDefinition::simple("seg_b", &["my/entity"]),
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, main_segments.to_data_sources())
+        .await;
+
+    let asset_dataset_name = register_one_asset(&service, dataset_name, "the_asset").await;
+    let layers_before = asset_dataset_layers(&service, &asset_dataset_name).await;
+
+    let revision = set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["seg_a"],
+        None,
+    )
+    .await
+    .expect("writing asset coverage should succeed");
+    assert_eq!(revision, 1, "the first write should be revision 1");
+
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_a").await,
+        vec![SegmentId::from("the_asset")]
+    );
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_b").await,
+        vec![],
+        "an opt-in asset should not apply to a segment it doesn't list"
+    );
+
+    // Widen the coverage, then narrow it back. Each edit is one write.
+    let revision = set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["seg_a", "seg_b"],
+        Some(revision),
+    )
+    .await
+    .expect("widening asset coverage should succeed");
+    assert_eq!(revision, 2, "each write should bump the revision");
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_b").await,
+        vec![SegmentId::from("the_asset")]
+    );
+
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["seg_b"],
+        Some(revision),
+    )
+    .await
+    .expect("narrowing asset coverage should succeed");
+    assert_eq!(
+        assets_for_segment(&service, dataset_name, "seg_a").await,
+        vec![],
+        "dropping a segment from the list should stop the asset applying to it"
+    );
+
+    assert_eq!(
+        asset_dataset_layers(&service, &asset_dataset_name).await,
+        layers_before,
+        "editing coverage should not add segments or layers to the asset dataset"
+    );
+}
+
+/// A write gated on a stale revision is refused and changes nothing, so a caller that lost a race
+/// can re-read and recompute.
+pub async fn set_segment_properties_refuses_a_stale_revision(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let asset_dataset_name = register_one_asset(&service, dataset_name, "the_asset").await;
+
+    let first = set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["seg_a"],
+        Some(0),
+    )
+    .await
+    .expect("expecting revision 0 should create the properties");
+    assert_eq!(first, 1);
+
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["winner"],
+        Some(first),
+    )
+    .await
+    .expect("expecting the current revision should succeed");
+
+    let status = set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "the_asset",
+        AssetMode::OptIn,
+        &["loser"],
+        Some(first),
+    )
+    .await
+    .expect_err("expecting a stale revision should fail");
+    assert_eq!(
+        status.code(),
+        tonic::Code::FailedPrecondition,
+        "unexpected status: {status}"
+    );
+
+    let (mode, segments, revision) = asset_coverage(&service, &asset_dataset_name, "the_asset")
+        .await
+        .expect("the properties should still be there");
+    assert_eq!(mode, AssetMode::OptIn);
+    assert_eq!(
+        segments,
+        vec!["winner".to_owned()],
+        "the refused write must not have landed"
+    );
+    assert_eq!(revision, 2);
+}
+
+/// Unregistering a segment preserves its properties and revision.
+/// Registering the same segment ID again reuses those properties.
+pub async fn unregistering_a_segment_preserves_its_properties(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let main_segments = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::simple("seg_a", &["my/entity"])],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, main_segments.to_data_sources())
+        .await;
+
+    let asset_dataset_name = register_one_asset(&service, dataset_name, "recycled").await;
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "recycled",
+        AssetMode::OptIn,
+        &["seg_a"],
+        None,
+    )
+    .await
+    .expect("writing asset coverage should succeed");
+    assert!(
+        asset_coverage(&service, &asset_dataset_name, "recycled")
+            .await
+            .is_some(),
+        "the asset should hold properties before it is unregistered"
+    );
+
+    let coverage = asset_coverage(&service, &asset_dataset_name, "recycled").await;
+    service
+        .unregister_from_dataset_name_blocking(&asset_dataset_name, &["recycled"], &[])
+        .await
+        .expect("unregister should succeed");
+
+    assert!(
+        asset_dataset_layers(&service, &asset_dataset_name)
+            .await
+            .is_empty()
+    );
+    assert_eq!(
+        asset_coverage(&service, &asset_dataset_name, "recycled").await,
+        coverage,
+    );
+
+    register_one_asset(&service, dataset_name, "recycled").await;
+    assert_eq!(
+        asset_coverage(&service, &asset_dataset_name, "recycled").await,
+        coverage,
+    );
+}
+
+/// Properties are one row per segment, so a batch carrying several rows is refused as a caller
+/// mistake.
+pub async fn set_segment_properties_rejects_a_multi_row_batch(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let asset_dataset_name = register_one_asset(&service, dataset_name, "the_asset").await;
+
+    let two_rows = RecordBatch::try_from_iter([(
+        "property:asset:mode",
+        Arc::new(StringArray::from(vec!["OptIn", "OptOut"])) as ArrayRef,
+    )])
+    .expect("a one-column batch is valid");
+
+    let status = service
+        .set_segment_properties(
+            tonic::Request::new(SetSegmentPropertiesRequest {
+                segment_id: Some(SegmentId::from("the_asset")),
+                properties: Some((&two_rows).into()),
+                expected_revision: None,
+            })
+            .with_entry_name(entry_name(&asset_dataset_name)),
+        )
+        .await
+        .expect_err("a multi-row batch must be rejected");
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status}"
+    );
+
+    assert!(
+        asset_coverage(&service, &asset_dataset_name, "the_asset")
+            .await
+            .is_none(),
+        "the refused write must not have stored anything"
+    );
+}
+
+/// A request naming several segments reads the properties of each of them. A named segment
+/// carrying none is absent from the response.
+pub async fn get_segment_properties_reads_several_segments(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+    let assets = DataSourcesDefinition::new_with_tuid_prefix(
+        100,
+        [
+            asset_layer("with_properties_a"),
+            asset_layer("with_properties_b"),
+            asset_layer("without_properties"),
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
+        .await;
+
+    for asset_segment_id in ["with_properties_a", "with_properties_b"] {
+        set_asset_coverage(
+            &service,
+            &asset_dataset_name,
+            asset_segment_id,
+            AssetMode::OptIn,
+            &["seg_a"],
+            None,
+        )
+        .await
+        .expect("writing asset coverage should succeed");
+    }
+
+    let responses: Vec<_> = service
+        .get_segment_properties(
+            tonic::Request::new(GetSegmentPropertiesRequest {
+                segment_ids: [
+                    "with_properties_a",
+                    "with_properties_b",
+                    "without_properties",
+                ]
+                .into_iter()
+                .map(SegmentId::from)
+                .collect(),
+            })
+            .with_entry_name(entry_name(&asset_dataset_name)),
+        )
+        .await
+        .expect("get_segment_properties should succeed")
+        .into_inner()
+        .try_collect::<Vec<_>>()
+        .await
+        .expect("get_segment_properties stream should succeed");
+
+    let mut segment_ids: Vec<String> = responses
+        .into_iter()
+        .flat_map(|response| response.segments)
+        .filter_map(|segment| segment.segment_id?.id)
+        .collect();
+    segment_ids.sort();
+    assert_eq!(
+        segment_ids,
+        vec![
+            "with_properties_a".to_owned(),
+            "with_properties_b".to_owned()
+        ],
+        "the response should carry the named segments that have properties, and only those"
+    );
+}
+
+/// A read that names no segment is refused.
+pub async fn get_segment_properties_rejects_an_empty_request(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+
+    let status = service
+        .get_segment_properties(
+            tonic::Request::new(GetSegmentPropertiesRequest {
+                segment_ids: vec![],
+            })
+            .with_entry_name(entry_name(&asset_dataset_name)),
+        )
+        .await
+        .err()
+        .expect("get_segment_properties should fail");
+    assert_eq!(status.code(), tonic::Code::InvalidArgument);
+}
+
+/// Dropping layers preserves properties for both removed segments and segments with surviving layers.
+pub async fn dropping_the_last_layer_of_a_segment_preserves_its_properties(
+    service: impl RerunCloudService,
+) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    // `emptied` holds one layer and loses it, `kept` holds two and loses one.
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+    let assets = DataSourcesDefinition::new_with_tuid_prefix(
+        100,
+        [
+            asset_layer("emptied").layer_name("only_layer"),
+            asset_layer("kept").layer_name("dropped_layer"),
+            asset_layer("kept").layer_name("surviving_layer"),
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
+        .await;
+
+    for asset_segment_id in ["emptied", "kept"] {
+        set_asset_coverage(
+            &service,
+            &asset_dataset_name,
+            asset_segment_id,
+            AssetMode::OptIn,
+            &["seg_a"],
+            None,
+        )
+        .await
+        .expect("writing asset coverage should succeed");
+    }
+
+    // Naming no segment drops the layers from every segment of the dataset.
+    service
+        .unregister_from_dataset_name_blocking(
+            &asset_dataset_name,
+            &[],
+            &["only_layer", "dropped_layer"],
+        )
+        .await
+        .expect("unregister should succeed");
+
+    assert_eq!(
+        asset_dataset_layers(&service, &asset_dataset_name).await,
+        vec![("kept".to_owned(), "surviving_layer".to_owned())],
+    );
+    assert_eq!(
+        asset_coverage(&service, &asset_dataset_name, "emptied").await,
+        Some((AssetMode::OptIn, vec!["seg_a".to_owned()], 1)),
+    );
+    assert!(
+        asset_coverage(&service, &asset_dataset_name, "kept")
+            .await
+            .is_some(),
+        "a segment that still holds a layer should have kept its properties"
+    );
+}
+
+/// The (segment, layer) pairs of an asset dataset, sorted, so tests can assert that editing
+/// properties leaves the dataset's structure alone.
+async fn asset_dataset_layers(
+    service: &impl RerunCloudService,
+    asset_dataset_name: &str,
+) -> Vec<(String, String)> {
+    let responses: Vec<_> = service
+        .scan_dataset_manifest(
+            tonic::Request::new(ScanDatasetManifestRequest {
+                columns: vec![
+                    ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID
+                        .name
+                        .to_owned(),
+                    ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+                        .name
+                        .to_owned(),
+                ],
+                ..Default::default()
+            })
+            .with_entry_name(entry_name(asset_dataset_name)),
+        )
+        .await
+        .expect("scan_dataset_manifest should succeed")
+        .into_inner()
+        .try_collect()
+        .await
+        .expect("scan_dataset_manifest stream should succeed");
+
+    let mut out = Vec::new();
+    for response in responses {
+        let Some(data) = response.data else {
+            continue;
+        };
+        let batch: RecordBatch = data.try_into().expect("manifest should decode");
+        let segment_ids = ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID
+            .extract(&batch)
+            .expect("valid segment id column");
+        let layer_names = ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+            .extract(&batch)
+            .expect("valid layer name column");
+        for (segment_id, layer_name) in std::iter::zip(&segment_ids, &layer_names) {
+            out.push((segment_id.to_owned(), layer_name.to_owned()));
+        }
+    }
+    out.sort();
+    out
 }
 
 /// Creating a dataset also creates an asset dataset of the right kind, and deleting the dataset

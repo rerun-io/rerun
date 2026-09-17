@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, create_array};
-use arrow::datatypes::{Field, Fields, Schema};
+use arrow::datatypes::{Field, Schema};
 use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
@@ -38,11 +38,30 @@ pub struct DatasetInner {
     segments: HashMap<SegmentId, Segment>,
 }
 
+/// One segment's mutable properties, outside the layer model.
+#[derive(Debug, Clone)]
+pub struct SegmentProperties {
+    /// One row, with `property:<key>:<component>` columns.
+    pub properties: RecordBatch,
+
+    /// Bumped on every write, starting at 1. Gates conditional writes.
+    pub revision: u64,
+}
+
 pub struct Dataset {
     id: EntryId,
     dataset_kind: DatasetKind,
     created_at: jiff::Timestamp,
     inner: Tracked<DatasetInner>,
+
+    /// Mutable per-segment properties, written and read without registering anything.
+    ///
+    /// Kept outside `inner`: these are not part of the layer model, and rewriting them must not
+    /// bump the dataset's `updated_at` or invalidate its cached schema. The cloud server keeps them
+    /// in their own table for the same reason.
+    ///
+    /// Ordered by `SegmentId` so a whole-dataset read answers in the same order as the cloud server.
+    segment_properties: BTreeMap<SegmentId, SegmentProperties>,
 
     /// Cached schema with the timestamp when it was computed.
     /// Invalidated when `updated_at` changes.
@@ -65,6 +84,7 @@ impl Dataset {
                 details,
                 segments: Default::default(),
             }),
+            segment_properties: Default::default(),
             cached_schema: Mutex::new(None),
         }
     }
@@ -148,6 +168,49 @@ impl Dataset {
         } else {
             Either::Right(self.inner.segments.iter())
         }
+    }
+
+    /// One segment's mutable properties, or `None` if none were ever written.
+    pub fn segment_properties(&self, segment_id: &SegmentId) -> Option<&SegmentProperties> {
+        self.segment_properties.get(segment_id)
+    }
+
+    /// Replace one segment's mutable properties, returning the new revision.
+    ///
+    /// Properties remain stored when the segment is unregistered and are reused if its ID is registered again.
+    /// Replaces every property on the segment and does not merge into the stored ones. With
+    /// `expected_revision` set the write only lands if the stored revision matches, where `0` means
+    /// "no properties yet". Without it the write overwrites whatever is stored.
+    pub fn set_segment_properties(
+        &mut self,
+        segment_id: SegmentId,
+        properties: RecordBatch,
+        expected_revision: Option<u64>,
+    ) -> Result<u64, Error> {
+        let current = self
+            .segment_properties
+            .get(&segment_id)
+            .map_or(0, |stored| stored.revision);
+
+        if let Some(expected) = expected_revision
+            && expected != current
+        {
+            return Err(Error::PropertiesRevisionMismatch {
+                segment_id,
+                expected,
+                found: current,
+            });
+        }
+
+        let revision = current + 1;
+        self.segment_properties.insert(
+            segment_id,
+            SegmentProperties {
+                properties,
+                revision,
+            },
+        );
+        Ok(revision)
     }
 
     pub fn dataset_details(&self) -> &DatasetDetails {
@@ -244,26 +307,11 @@ impl Dataset {
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
-            let mut current_segment_properties = BTreeMap::default();
             let mut current_segment_indexes = BTreeMap::default();
 
             for (layer_name, layer) in segment.iter_sources() {
                 layer_names_row.push(layer_name.clone());
                 storage_urls_row.push(layer.storage_url().to_string());
-
-                let layer_properties = layer.compute_properties().await?;
-
-                // Accumulate properties.
-                //
-                // The semantics for the layer to segment property propagation is that the
-                // last registered layer wins. The code below achieves this by virtual of the
-                // layers being iterated in registration order.
-                for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
-                    current_segment_properties.insert(
-                        Arc::clone(field),
-                        Arc::clone(layer_properties.column(col_idx)),
-                    );
-                }
 
                 for (time_name, range) in layer.index_ranges() {
                     let entry = current_segment_indexes.entry(time_name).or_insert(range);
@@ -271,21 +319,7 @@ impl Dataset {
                 }
             }
 
-            let properties_batch = RecordBatch::try_new_with_options(
-                Arc::new(Schema::new_with_metadata(
-                    current_segment_properties
-                        .keys()
-                        .map(Arc::clone)
-                        .collect::<Fields>(),
-                    Default::default(),
-                )),
-                current_segment_properties.into_values().collect(),
-                // There should always be exactly one row, one per segment. Also, we must specify
-                // it anyway for the cases where there are no properties at all (so arrow is unable
-                // to infer the row count).
-                &RecordBatchOptions::default().with_row_count(Some(1)),
-            )
-            .map_err(Error::failed_to_extract_properties)?;
+            let properties_batch = segment.compute_properties().await?;
 
             let indexes_batch = RecordBatch::try_new_with_options(
                 Arc::new(Schema::new_with_metadata(

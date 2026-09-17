@@ -12,7 +12,7 @@ mod task_registry;
 mod tracked;
 
 pub use self::chunk_key::ChunkKey;
-pub use self::dataset::Dataset;
+pub use self::dataset::{Dataset, SegmentProperties};
 pub use self::error::Error;
 pub use self::in_memory_store::InMemoryStore;
 pub use self::layer_info::LayerInfo;
