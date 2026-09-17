@@ -87,6 +87,16 @@ jobs:
       release-commit: ${{ steps.commit.outputs.version_bump_commit_sha || github.sha }}
 
     steps:
+      - name: Check alpha release branch
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          if [[ "$RELEASE_TYPE" == "alpha" && "$BRANCH_NAME" != *"-alpha."* ]]; then
+            echo "::error::Alpha releases must run from a branch whose name contains '-alpha.'. Current branch: $BRANCH_NAME"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
