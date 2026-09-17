@@ -100,9 +100,6 @@
 #### 🤷‍ Other
 - Make `tracing-subscriber` an optional dependency of `re_log` [#12909](https://github.com/rerun-io/rerun/pull/12909) (thanks [@CattleProdigy](https://github.com/CattleProdigy)!)
 - --asset flag to register asset to the viewer catalog [96d4950](https://github.com/rerun-io/rerun/commit/96d49503c712a831f8267a0a5195fa64dee432a5)
-- Bump versions to 0.38.0 [aff9f69](https://github.com/rerun-io/rerun/commit/aff9f692550e2fa3ca7e97db8e82683c0d6304a5)
-- Prepare changeset for `0.38` release [#12934](https://github.com/rerun-io/rerun/pull/12934)
-- remove speculative links [f1f7ebc](https://github.com/rerun-io/rerun/commit/f1f7ebca9d5f51b4e9d503b7b0cf3d195f9d18bc)
 
 ## [0.37.2](https://github.com/rerun-io/rerun/compare/0.37.1...0.37.2) - 2026-09-10
 
