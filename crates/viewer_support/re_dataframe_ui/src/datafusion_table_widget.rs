@@ -152,8 +152,15 @@ pub enum TableStatus {
     Error(String),
 }
 
+/// Completes a column's configuration with the defaults of the table it belongs to.
+///
+/// Defaults can differ per layout, so the `TableLayoutKind` the column is resolved for is passed in.
 pub type TableColumnHeuristic<'a> = Box<
-    dyn for<'column> Fn(&ColumnDescriptorRef<'column>, TableColumn<'column>) -> TableColumn<'column>
+    dyn for<'column> Fn(
+            TableLayoutKind,
+            &ColumnDescriptorRef<'column>,
+            TableColumn<'column>,
+        ) -> TableColumn<'column>
         + 'a,
 >;
 
@@ -240,7 +247,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             toolbar_summary_fn: None,
-            additional_column_heuristics: Box::new(|_, column| column),
+            additional_column_heuristics: Box::new(|_, _, column| column),
             initial_query_data: Default::default(),
         }
     }
@@ -264,6 +271,7 @@ impl<'a> DataFusionTableWidget<'a> {
     pub fn additional_column_heuristics(
         mut self,
         heuristic: impl for<'column> Fn(
+            TableLayoutKind,
             &ColumnDescriptorRef<'column>,
             TableColumn<'column>,
         ) -> TableColumn<'column>

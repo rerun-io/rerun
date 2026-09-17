@@ -265,7 +265,7 @@ impl Server {
             },
         )
         .title(self.origin().host.to_string())
-        .additional_column_heuristics(|desc, mut column| {
+        .additional_column_heuristics(|_layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
             // TODO(andreas): Most of these heuristics could just be always applied so all tables profit from then.
 

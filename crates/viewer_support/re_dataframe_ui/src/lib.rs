@@ -30,4 +30,4 @@ pub use self::re_table_utils::{
 };
 pub use self::streaming_cache::StreamingCacheTableProvider;
 pub use self::table_blueprints::{TableBlueprintError, TableBlueprints};
-pub use re_sdk_types::blueprint::components::TableCellKind;
+pub use re_sdk_types::blueprint::components::{TableCellKind, TableLayoutKind};

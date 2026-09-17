@@ -64,7 +64,7 @@ pub fn resolve_columns<'a>(
         };
 
         column.sorbet_column_descriptor = Some(data_column.desc.clone());
-        *column = additional_column_heuristics(&data_column.desc, column.clone());
+        *column = additional_column_heuristics(layout_kind, &data_column.desc, column.clone());
         true
     });
 
@@ -83,7 +83,7 @@ pub fn resolve_columns<'a>(
         let mut column =
             TableColumn::load(data_column.physical_name().clone(), blueprint, layout_kind);
         column.sorbet_column_descriptor = Some(data_column.desc.clone()); // TODO(andreas): odd to fill this after the fact.
-        column = additional_column_heuristics(&data_column.desc, column);
+        column = additional_column_heuristics(layout_kind, &data_column.desc, column);
 
         let default_visibility = match layout_kind {
             TableLayoutKind::Table => true,

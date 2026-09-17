@@ -1,6 +1,6 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
-use re_dataframe_ui::TableCellKind;
+use re_dataframe_ui::{TableCellKind, TableLayoutKind};
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
@@ -230,7 +230,7 @@ impl Server {
             },
         )
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
-        .additional_column_heuristics(|desc, mut column| {
+        .additional_column_heuristics(|layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
             // TODO(andreas): Most of these heuristics could just be always applied so all tables profit from then.
 
@@ -242,17 +242,22 @@ impl Server {
                 .map(|name| name.replace('_', " "))
                 .unwrap_or(name);
 
-            let default_visible = if desc.entity_path().is_some_and(|entity_path| {
-                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
-            }) {
-                true
-            } else {
-                desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
-            };
+            column = column.with_default_display_name(name);
 
-            column = column
-                .with_default_display_name(name)
-                .with_default_visibility(default_visible);
+            // Only the table layout gets its visibility default from here, a card shows the
+            // fields its own layout lists.
+            if layout == TableLayoutKind::Table {
+                let default_visible = if desc.entity_path().is_some_and(|entity_path| {
+                    entity_path
+                        .starts_with(&std::iter::once(EntityPathPart::properties()).collect())
+                }) {
+                    true
+                } else {
+                    desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
+                };
+
+                column = column.with_default_visibility(default_visible);
+            }
 
             if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
                 column = column.with_default_cell_kind(TableCellKind::Link);

@@ -11,7 +11,7 @@ use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
 use re_chunk_store::external::re_chunk::Chunk;
-use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
+use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints, TableLayoutKind};
 use re_log_types::{StoreId, StoreKind};
 use re_sdk_types::blueprint::archetypes::CardLayout;
 use re_test_context::TestContext;
@@ -118,6 +118,60 @@ async fn test_cards_view_non_uniform_cards() {
     run_async_harness(&test_context, &mut harness).await;
 
     harness.snapshot("cards_view_non_uniform_cards");
+}
+
+/// A card shows only the fields its layout lists.
+/// Columns that the table heuristics default to visible stay off the card.
+#[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
+async fn test_cards_view_hides_fields_outside_the_layout() {
+    let (session_context, table_ref) = setup_test_table();
+    let test_context = TestContext::new();
+    let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+    let table_blueprints = setup_table_blueprint(
+        &test_context,
+        TableReference::local("test_table"),
+        &["score"],
+        "category",
+    );
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([800.0, 600.0])
+        .build_ui(|ui| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Card field visibility")
+                // Make every column visible by default in the table layout.
+                .additional_column_heuristics(|layout, _desc, column| {
+                    if layout == TableLayoutKind::Table {
+                        column.with_default_visibility(true)
+                    } else {
+                        column
+                    }
+                })
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &table_blueprints,
+                    &mut test_context.view_states.lock(),
+                );
+            });
+        });
+
+    run_async_harness(&test_context, &mut harness).await;
+
+    // Switch to card layout.
+    harness.get_by_label("Cards view").click();
+    run_async_harness(&test_context, &mut harness).await;
+
+    // The listed field has a label on each card, the other columns have none.
+    assert!(harness.query_all_by_label("score").count() > 0);
+    assert_eq!(harness.query_all_by_label("flagged").count(), 0);
+    assert_eq!(harness.query_all_by_label("notes").count(), 0);
 }
 
 // ---
