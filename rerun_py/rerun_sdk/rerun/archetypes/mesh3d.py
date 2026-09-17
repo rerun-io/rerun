@@ -149,6 +149,15 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
         ),
     )
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1200w.png">
+      <img src="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

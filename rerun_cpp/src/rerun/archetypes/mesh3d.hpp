@@ -116,6 +116,8 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Image as a 3D quad
+    /// ![image](https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/full.png)
+    ///
     /// ```cpp
     /// #include <rerun.hpp>
     ///
