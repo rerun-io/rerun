@@ -352,8 +352,7 @@ fn arrow_msg_transport_to_app(
     //     .try_from()?;
 
     // This also ensures that we perform all required migrations from `re_sorbet`.
-    // TODO(#10343): Would it make sense to change `re_types_core::ArrowMsg` to contain the
-    // `ChunkBatch` directly?
+    // TODO(RR-1390): we should change `re_types_core::ArrowMsg` to contain the `ChunkBatch` directly.
     let chunk_batch = re_sorbet::ChunkBatch::try_from(&batch)?;
 
     // TODO(emilk): it would actually be nicer if we could postpone the migration,
@@ -362,9 +361,44 @@ fn arrow_msg_transport_to_app(
 
     Ok(re_log_types::ArrowMsg {
         chunk_id,
+        // TODO(RR-1390): this right here is wasteful: some of the schema-related work necessary to
+        // create the `ChunkBatch` will have to be re-done to re-create a `ChunkBatch` later.
         batch: chunk_batch.into(),
         on_release: None,
     })
+}
+
+/// Decodes a transport-level `ArrowMsg` straight into a [`re_chunk::Chunk`].
+///
+/// This is a workaround until RR-1390 is addressed. Going through [`re_log_types::ArrowMsg`] parses
+/// the Sorbet schema twice — once to migrate the batch, once more in
+/// [`re_chunk::Chunk::from_chunk_record_batch`] — and that parse dominates the cost of decoding a
+/// small chunk.
+/// Kept private to this crate: it duplicates the decode in [`arrow_msg_transport_to_app`].
+// TODO(RR-1390): this duplicates `arrow_msg_transport_to_app`, remove it once `ArrowMsg` carries
+// the parsed `ChunkBatch`.
+#[cfg(feature = "decoder")]
+pub fn arrow_msg_transport_to_chunk(
+    arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
+) -> Result<re_chunk::Chunk, CodecError> {
+    re_tracing::profile_function!();
+
+    use re_protos::log_msg::v1alpha1::Encoding;
+
+    if arrow_msg.encoding() != Encoding::ArrowIpc {
+        return Err(CodecError::UnsupportedEncoding);
+    }
+
+    let compression = re_protos::common::v1alpha1::Compression::try_from(arrow_msg.compression)
+        .map_err(re_protos::TypeConversionError::from)?;
+
+    let batch = decode_arrow(
+        &arrow_msg.payload,
+        arrow_msg.uncompressed_size as usize,
+        compression.into(),
+    )?;
+
+    Ok(re_chunk::Chunk::from_chunk_record_batch(&batch)?)
 }
 
 /// Converts an application-level `LogMsg` to its transport-level counterpart.

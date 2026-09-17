@@ -98,7 +98,7 @@ impl PrintCommand {
         if migrate {
             println!("Showing data after migration to latest Rerun version");
         } else {
-            // TODO(#10343): implement this. Requires changing `ArrowMsg` to contain the unmigrated record batch
+            // TODO(RR-1390): implement this. Requires changing `ArrowMsg` to contain the unmigrated record batch
             panic!(
                 "Not implemented - see https://github.com/rerun-io/rerun/issues/10343#issuecomment-3182422629"
             );

@@ -79,7 +79,7 @@ pub enum BatchType {
 /// * `Ok`
 /// * [`SorbetError::MissingChunkId`]
 /// * [`SorbetError::ChunkIdDeserializationError`]
-// TODO(#10343): remove this
+// TODO(RR-1390): remove this
 pub fn chunk_id_of_schema(
     schema: &arrow::datatypes::Schema,
 ) -> Result<re_types_core::ChunkId, SorbetError> {
@@ -99,7 +99,7 @@ pub fn chunk_id_of_schema(
 }
 
 /// If this is a [`ChunkBatch`]: does it contain static data?
-// TODO(#10343): remove this
+// TODO(RR-1390): remove this
 pub fn is_static_chunk(batch: &RecordBatch) -> Option<bool> {
     re_tracing::profile_function!();
     ChunkBatch::try_from(batch)
