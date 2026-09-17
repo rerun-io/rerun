@@ -25,7 +25,7 @@ __all__ = ["TimeAxis"]
 @define(str=False, repr=False, init=False)
 class TimeAxis(Archetype):
     """
-    **Archetype**: Configuration for the time (X) axis of a plot.
+    **Archetype**: Configuration for the horizontal time axis of time series and state timeline views.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -45,9 +45,9 @@ class TimeAxis(Archetype):
         Parameters
         ----------
         link:
-            How should the horizontal/X/time axis be linked across multiple plots?
+            How should the horizontal time axis be linked across multiple views?
 
-            Linking with global will ignore `view_range`.
+            Linking with global uses the shared global view range instead of this view's `view_range`.
         view_range:
             The view range of the horizontal/X/time axis.
         zoom_lock:
@@ -93,9 +93,9 @@ class TimeAxis(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         link:
-            How should the horizontal/X/time axis be linked across multiple plots?
+            How should the horizontal time axis be linked across multiple views?
 
-            Linking with global will ignore `view_range`.
+            Linking with global uses the shared global view range instead of this view's `view_range`.
         view_range:
             The view range of the horizontal/X/time axis.
         zoom_lock:
@@ -154,9 +154,9 @@ class TimeAxis(Archetype):
         default=None,
         converter=blueprint_components.LinkAxisBatch._converter,  # type: ignore[misc]
     )
-    # How should the horizontal/X/time axis be linked across multiple plots?
+    # How should the horizontal time axis be linked across multiple views?
     #
-    # Linking with global will ignore `view_range`.
+    # Linking with global uses the shared global view range instead of this view's `view_range`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

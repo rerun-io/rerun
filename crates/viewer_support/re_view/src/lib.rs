@@ -58,7 +58,7 @@ pub use system_execution::{execute_systems_for_view, new_view_query};
 pub use time_axis::{
     cursor_centered_default_range, recover_relative_boundaries_after_zoom_or_pan,
     resolve_time_axis_range, set_time_cursor, time_axis_range_after_cursor_move,
-    time_axis_time_from_plot,
+    time_axis_time_from_plot, time_axis_view_range,
 };
 pub use view_highlights::highlights_for_view;
 pub use view_loading_indicator::paint_view_loading_indicator;

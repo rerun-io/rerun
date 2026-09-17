@@ -9,9 +9,13 @@
 #[rerun(view_identifier = "StateTimeline")]
 #[rerun(state = "unstable")]
 pub struct StateTimelineView {
-    /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    /// Configures the horizontal time axis of the state timeline.
+    pub time_view: rerun::blueprint::archetypes::TimeAxis,
+
+    /// Configures which range of states on each timeline is displayed, unless specified differently per entity.
     ///
-    /// If not specified, the default is to show the entire timeline.
+    /// This filters the displayed states without changing the axis window configured by `time_view`.
+    /// If not specified, states are not filtered by time range.
     /// If a timeline is specified more than once, the first entry will be used.
     pub time_ranges: rerun::blueprint::archetypes::VisibleTimeRanges,
 }

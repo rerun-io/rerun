@@ -25,15 +25,15 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
-/// **Component**: How should the horizontal/X/time axis be linked across multiple plots
+/// **Component**: Controls how the horizontal time axis is linked across time series and state timeline views.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum LinkAxis {
-    /// The axis is independent from all other plots.
+    /// The axis is independent from all other views.
     #[default]
     Independent = 1,
 
-    /// Link to all other plots that also have this options set.
+    /// Link to all other views that also have this option set.
     LinkToGlobal = 2,
 }
 
@@ -131,8 +131,8 @@ impl ::re_types_core::reflection::Enum for LinkAxis {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Independent => "The axis is independent from all other plots.",
-            Self::LinkToGlobal => "Link to all other plots that also have this options set.",
+            Self::Independent => "The axis is independent from all other views.",
+            Self::LinkToGlobal => "Link to all other views that also have this option set.",
         }
     }
 

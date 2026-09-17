@@ -22,13 +22,13 @@ from enum import Enum
 
 
 class LinkAxis(Enum):
-    """**Component**: How should the horizontal/X/time axis be linked across multiple plots."""
+    """**Component**: Controls how the horizontal time axis is linked across time series and state timeline views."""
 
     Independent = 1
-    """The axis is independent from all other plots."""
+    """The axis is independent from all other views."""
 
     LinkToGlobal = 2
-    """Link to all other plots that also have this options set."""
+    """Link to all other views that also have this option set."""
 
     @classmethod
     def auto(cls, val: str | int | LinkAxis) -> LinkAxis:

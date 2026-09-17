@@ -11,5 +11,5 @@ pub use data::{
     StateLane, StateLaneGroup, StateLanePhase, StateLanePhaseContent, StateLanesOutput,
     StateValueKind,
 };
-pub use view_class::{StateTimelineView, StateTimelineViewState};
+pub use view_class::{StateTimelineView, TimeViewProperty};
 pub use visualizer::StateVisualizer;

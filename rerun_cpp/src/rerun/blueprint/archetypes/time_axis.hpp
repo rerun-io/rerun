@@ -17,14 +17,14 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the time (X) axis of a plot.
+    /// **Archetype**: Configuration for the horizontal time axis of time series and state timeline views.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct TimeAxis {
-        /// How should the horizontal/X/time axis be linked across multiple plots?
+        /// How should the horizontal time axis be linked across multiple views?
         ///
-        /// Linking with global will ignore `view_range`.
+        /// Linking with global uses the shared global view range instead of this view's `view_range`.
         std::optional<ComponentBatch> link;
 
         /// The view range of the horizontal/X/time axis.
@@ -68,9 +68,9 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `TimeAxis`.
         static TimeAxis clear_fields();
 
-        /// How should the horizontal/X/time axis be linked across multiple plots?
+        /// How should the horizontal time axis be linked across multiple views?
         ///
-        /// Linking with global will ignore `view_range`.
+        /// Linking with global uses the shared global view range instead of this view's `view_range`.
         TimeAxis with_link(const rerun::blueprint::components::LinkAxis& _link) && {
             link = ComponentBatch::from_loggable(_link, Descriptor_link).value_or_throw();
             return std::move(*this);

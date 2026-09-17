@@ -388,7 +388,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LinkAxis as Component>::name(),
             ComponentReflection {
-                docstring_md: "How should the horizontal/X/time axis be linked across multiple plots",
+                docstring_md: "Controls how the horizontal time axis is linked across time series and state timeline views.",
                 deprecation_summary: None,
                 custom_placeholder: Some(LinkAxis::default().to_arrow()?),
                 datatype: LinkAxis::arrow_data_type(),
@@ -5318,7 +5318,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "link",
                         display_name: "Link",
                         component_type: "rerun.blueprint.components.LinkAxis".into(),
-                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore `view_range`.",
+                        docstring_md: "How should the horizontal time axis be linked across multiple views?\n\nLinking with global uses the shared global view range instead of this view's `view_range`.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

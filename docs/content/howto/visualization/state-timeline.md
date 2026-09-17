@@ -23,7 +23,8 @@ snippet: howto/state_timeline[log_changes]
 ### Notes
 - The view groups state changes by entity path, so logging to `/door` and `/window` produces two separate lanes.
 - Logging the same state value twice in a row is a no-op for visualization, only transitions to a different value start a new phase.
-- Each phase runs from its `StateChange` time to the next `StateChange` time on the same entity. The final phase extends indefinitely.
+- Each phase runs from its `StateChange` time to the next `StateChange` time on the same entity.
+The final phase is drawn up to the end of the recording's timeline or the configured visible time range, whichever comes first.
 
 ## Customizing labels, colors, and visibility
 
@@ -70,6 +71,13 @@ You can set up the same mapping interactively: drag a component from the streams
 The State Timeline view is also created automatically when `StateChange` data is present, but you can also configure it explicitly via the blueprint API:
 
 snippet: howto/state_timeline[blueprint]
+
+Use the view's `time_view` property to configure its horizontal axis with a `TimeAxis`.
+It supports a view range, zoom locking, and linking the axis to other state timeline or time series views.
+Pan and zoom changes are saved to the blueprint.
+
+The separate `time_ranges` property filters which states are displayed, without changing the axis window.
+By default, no such filter is applied, and long recordings open with a window centered on the time cursor.
 
 <picture>
   <img src="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/full.png" alt="">

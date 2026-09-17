@@ -11,7 +11,7 @@ A time series view for scalars over time, for use with [`archetypes.Scalars`](ht
 ### `axis_x`
 Configures the horizontal axis of the plot.
 
-* `link`: How should the horizontal/X/time axis be linked across multiple plots?
+* `link`: How should the horizontal time axis be linked across multiple views?
 * `view_range`: The view range of the horizontal/X/time axis.
 * `zoom_lock`: If enabled, the X axis range will remain locked to the specified range when zooming.
 ### `axis_y`

@@ -88,6 +88,13 @@ impl ViewClass for TestView {
                 MyPoint::new(0.0, 0.0)
             });
 
+        system_registry.register_fallback_provider(
+            re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
+            |_ctx| -> re_sdk_types::blueprint::components::TimeRange {
+                re_sdk_types::encodings::TimeRange::EVERYTHING.into()
+            },
+        );
+
         Ok(())
     }
 

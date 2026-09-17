@@ -24,14 +24,14 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
-/// **Archetype**: Configuration for the time (X) axis of a plot.
+/// **Archetype**: Configuration for the horizontal time axis of time series and state timeline views.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TimeAxis {
-    /// How should the horizontal/X/time axis be linked across multiple plots?
+    /// How should the horizontal time axis be linked across multiple views?
     ///
-    /// Linking with global will ignore `view_range`.
+    /// Linking with global uses the shared global view range instead of this view's `view_range`.
     pub link: Option<SerializedComponentBatch>,
 
     /// The view range of the horizontal/X/time axis.
@@ -232,9 +232,9 @@ impl TimeAxis {
         }
     }
 
-    /// How should the horizontal/X/time axis be linked across multiple plots?
+    /// How should the horizontal time axis be linked across multiple views?
     ///
-    /// Linking with global will ignore `view_range`.
+    /// Linking with global uses the shared global view range instead of this view's `view_range`.
     #[inline]
     pub fn with_link(mut self, link: impl Into<crate::blueprint::components::LinkAxis>) -> Self {
         self.link = try_serialize_field(Self::descriptor_link(), [link]);

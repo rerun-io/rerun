@@ -62,8 +62,6 @@ use re_log_types::TimeInt;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::{StateChange, StateConfiguration};
-use re_sdk_types::blueprint::archetypes::TimeAxis;
-use re_sdk_types::blueprint::components::LinkAxis;
 use re_sdk_types::components::Text;
 use re_view::{ComponentCastRule, collect_recursive_clears};
 use re_viewer_context::{
@@ -71,7 +69,6 @@ use re_viewer_context::{
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
-use re_viewport_blueprint::ViewProperty;
 
 use crate::data::{
     StateLane, StateLaneGroup, StateLanePhase, StateLanePhaseContent, StateLanesOutput,
@@ -323,7 +320,7 @@ impl VisualizerSystem for StateVisualizer {
 
         let output = VisualizerExecutionOutput::default();
 
-        // The pan/zoom window the view is about to draw — see `view_class::view_window`. Deriving it
+        // The pan/zoom window the view is about to draw. Deriving it
         // here rather than reading back what was drawn last frame keeps the query in step with a
         // window that follows the time cursor, and keeps the first frame of a long recording from
         // querying all of it.
@@ -334,24 +331,19 @@ impl VisualizerSystem for StateVisualizer {
             .viewer_ctx
             .recording()
             .time_range_for(&view_query.timeline)
-            && let Some(state) = ctx
-                .view_state
-                .as_any()
-                .downcast_ref::<crate::view_class::StateTimelineViewState>()
         {
-            let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
-            let link = time_axis
-                .component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
+            let (data_min, data_max) = crate::view_class::data_time_range_of(timeline_range);
 
-            let (_, time_view) = crate::view_class::view_window(
-                ctx.viewer_ctx,
-                state,
-                link,
-                view_query.timeline,
+            let crate::TimeViewProperty {
+                window: time_view, ..
+            } = crate::view_class::view_window(
+                ctx,
                 Some(timeline_range),
                 view_query.latest_at,
-                crate::view_class::data_time_range_of(timeline_range),
-            );
+                data_min,
+                data_max,
+            )?;
+
             crate::view_class::window_time_range(time_view)
         } else {
             AbsoluteTimeRange::EVERYTHING

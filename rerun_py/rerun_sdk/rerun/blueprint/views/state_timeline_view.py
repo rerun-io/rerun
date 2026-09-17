@@ -81,6 +81,7 @@ class StateTimelineView(View):
         visible: encodings.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
+        time_view: blueprint_archetypes.TimeAxis | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | encodings.VisibleTimeRangeLike
         | Sequence[encodings.VisibleTimeRangeLike]
@@ -123,15 +124,23 @@ class StateTimelineView(View):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
+        time_view:
+            Configures the horizontal time axis of the state timeline.
         time_ranges:
-            Configures which range on each timeline is shown by this view (unless specified differently per entity).
+            Configures which range of states on each timeline is displayed, unless specified differently per entity.
 
-            If not specified, the default is to show the entire timeline.
+            This filters the displayed states without changing the axis window configured by `time_view`.
+            If not specified, states are not filtered by time range.
             If a timeline is specified more than once, the first entry will be used.
 
         """
 
         properties: dict[str, AsComponents] = {}
+        if time_view is not None:
+            if not isinstance(time_view, blueprint_archetypes.TimeAxis):
+                time_view = blueprint_archetypes.TimeAxis(time_view)
+            properties["TimeAxis"] = time_view
+
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):
                 time_ranges = blueprint_archetypes.VisibleTimeRanges(time_ranges)

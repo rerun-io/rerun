@@ -652,33 +652,13 @@ impl ViewClass for TimeSeriesView {
 
         let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
 
-        let link_x_axis = time_axis
-            .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
-
         let view_current_time = re_sdk_types::encodings::TimeInt(
             current_time
                 .unwrap_or_default()
                 .at_least(timeline_range.min.as_i64()),
         );
 
-        // If we globally link the x-axis it will ignore this view's time range property and use
-        // `GLOBAL_VIEW_ID's` time range property instead.
-        let (time_range_property, time_range_ctx) = match link_x_axis {
-            LinkAxis::Independent => (&time_axis, &view_ctx),
-            LinkAxis::LinkToGlobal => (
-                &ViewProperty::from_archetype_for_view::<TimeAxis>(
-                    ctx,
-                    re_viewer_context::GLOBAL_VIEW_ID,
-                ),
-                &view_ctx.with_view_id(re_viewer_context::GLOBAL_VIEW_ID),
-            ),
-        };
-
-        let view_time_range = time_range_property
-            .component_or_fallback::<re_sdk_types::blueprint::components::TimeRange>(
-                time_range_ctx,
-                TimeAxis::descriptor_view_range().component,
-            )?;
+        let (time_range_property, view_time_range) = re_view::time_axis_view_range(&view_ctx)?;
 
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
@@ -901,7 +881,7 @@ impl ViewClass for TimeSeriesView {
             let is_resetting = plot_double_clicked && hovered_data_result.is_none();
 
             if is_resetting {
-                reset_view(ctx, time_range_property, &scalar_axis);
+                reset_view(ctx, &time_range_property, &scalar_axis);
 
                 ui.request_repaint(); // Make sure we get another frame with the view reset.
             } else {

@@ -788,6 +788,10 @@ impl TestContext {
     /// Run the given function once with a [`ViewerContext`] produced by the [`Self`], in the
     /// context of an [`egui::CentralPanel`].
     ///
+    /// To read or write blueprint components, use [`Self::with_blueprint_ctx`] instead. This method
+    /// is for tests that need the full [`ViewerContext`], for instance to build a `ViewContext` or
+    /// to resolve component fallbacks.
+    ///
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
     /// relies on system commands.
     ///

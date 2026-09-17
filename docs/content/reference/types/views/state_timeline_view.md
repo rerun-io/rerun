@@ -8,10 +8,17 @@ A view for displaying state transitions over time, for use with [`archetypes.Sta
 
 ## Properties
 
-### `time_ranges`
-Configures which range on each timeline is shown by this view (unless specified differently per entity).
+### `time_view`
+Configures the horizontal time axis of the state timeline.
 
-If not specified, the default is to show the entire timeline.
+* `link`: How should the horizontal time axis be linked across multiple views?
+* `view_range`: The view range of the horizontal/X/time axis.
+* `zoom_lock`: If enabled, the X axis range will remain locked to the specified range when zooming.
+### `time_ranges`
+Configures which range of states on each timeline is displayed, unless specified differently per entity.
+
+This filters the displayed states without changing the axis window configured by `time_view`.
+If not specified, states are not filtered by time range.
 If a timeline is specified more than once, the first entry will be used.
 
 ## API reference links

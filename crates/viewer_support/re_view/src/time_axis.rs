@@ -6,8 +6,33 @@
 //! component maps to a window and back.
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType};
+use re_sdk_types::blueprint::{archetypes::TimeAxis, components::LinkAxis};
 use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
-use re_viewer_context::{TimeControlCommand, ViewerContext};
+use re_viewer_context::{TimeControlCommand, ViewContext, ViewSystemExecutionError, ViewerContext};
+use re_viewport_blueprint::ViewProperty;
+
+/// Read the time range from this view or the global view according to `TimeAxis:link`.
+/// The returned property is the destination for range updates and resets.
+pub fn time_axis_view_range(
+    ctx: &ViewContext<'_>,
+) -> Result<(ViewProperty, re_sdk_types::blueprint::components::TimeRange), ViewSystemExecutionError>
+{
+    let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
+    let link =
+        time_axis.component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
+    // If we globally link the x-axis it will ignore this view's time range property and use
+    // `GLOBAL_VIEW_ID's` time range property instead.
+    let range_ctx = ctx.with_view_id(match link {
+        LinkAxis::Independent => ctx.view_id,
+        LinkAxis::LinkToGlobal => re_viewer_context::GLOBAL_VIEW_ID,
+    });
+    let property = ViewProperty::from_archetype::<TimeAxis>(&range_ctx);
+    let range = property.component_or_fallback::<re_sdk_types::blueprint::components::TimeRange>(
+        &range_ctx,
+        TimeAxis::descriptor_view_range().component,
+    )?;
+    Ok((property, range))
+}
 
 /// Resolve a `TimeAxis:view_range` into the absolute pan/zoom window it denotes.
 ///

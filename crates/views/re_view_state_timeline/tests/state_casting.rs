@@ -21,7 +21,7 @@ use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
 use re_view::execute_systems_for_view;
 use re_view_state_timeline::{
-    StateLanesOutput, StateTimelineView, StateTimelineViewState, StateValueKind, StateVisualizer,
+    StateLanesOutput, StateTimelineView, StateValueKind, StateVisualizer,
 };
 use re_viewer_context::{IdentifiedViewSystem as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
@@ -101,6 +101,37 @@ fn run_visualizer_impl(
     view_id: ViewId,
     window: Option<(f64, f64)>,
 ) -> Vec<StateLanesOutput> {
+    if let Some((min, time_spanned)) = window {
+        test_context.with_blueprint_ctx(|ctx, _store_hub| {
+            use re_sdk_types::blueprint::{archetypes::TimeAxis, components::LinkAxis};
+            use re_sdk_types::encodings::TimeRangeBoundary;
+            let property = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<TimeAxis>(
+                &ctx, view_id,
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &TimeAxis::descriptor_link(),
+                &LinkAxis::Independent,
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &TimeAxis::descriptor_view_range(),
+                &re_sdk_types::blueprint::components::TimeRange(
+                    re_sdk_types::encodings::TimeRange {
+                        start: TimeRangeBoundary::Absolute(re_view::time_axis_time_from_plot(
+                            min.into(),
+                            0,
+                        )),
+                        end: TimeRangeBoundary::Absolute(re_view::time_axis_time_from_plot(
+                            (min + time_spanned).into(),
+                            0,
+                        )),
+                    },
+                ),
+            );
+        });
+        test_context.handle_system_commands(&egui::Context::default());
+    }
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let viewport_blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, &test_context.blueprint_query);
@@ -110,21 +141,7 @@ fn run_visualizer_impl(
 
         let class_registry = ctx.view_class_registry();
         let view_class = class_registry.get_class_or_log_error(view_blueprint.class_identifier());
-        let mut view_state = view_class.new_state();
-
-        if let Some((min, time_spanned)) = window {
-            view_state
-                .as_any_mut()
-                .downcast_mut::<StateTimelineViewState>()
-                .expect("state timeline view state")
-                .set_window(
-                    *Timeline::log_tick().name(),
-                    re_viewer_context::TimeView {
-                        min: min.into(),
-                        time_spanned,
-                    },
-                );
-        }
+        let view_state = view_class.new_state();
 
         let once_per_frame = class_registry.run_once_per_frame_context_systems(
             ctx,

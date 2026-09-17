@@ -1,15 +1,15 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// Configuration for the time (X) axis of a plot.
+/// Configuration for the horizontal time axis of time series and state timeline views.
 #[rerun::rerun_type]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default))]
 #[rerun(state = "unstable")]
 pub struct TimeAxis {
-    /// How should the horizontal/X/time axis be linked across multiple plots?
+    /// How should the horizontal time axis be linked across multiple views?
     ///
-    /// Linking with global will ignore `view_range`.
+    /// Linking with global uses the shared global view range instead of this view's `view_range`.
     #[rerun(optional)]
     pub link: Option<rerun::blueprint::components::LinkAxis>,
 

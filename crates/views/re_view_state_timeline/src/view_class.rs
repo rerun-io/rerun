@@ -1,10 +1,10 @@
 use egui::emath::GuiRounding as _;
 use re_log_types::{
     AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeInt, TimeReal, TimeType,
-    TimelineName, TimestampFormat,
+    TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
-use re_sdk_types::blueprint::components::LinkAxis;
+use re_sdk_types::blueprint::components::{LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -68,32 +68,6 @@ impl RenderItem<'_> {
     }
 }
 
-/// The pan/zoom window of a view with an independent time axis.
-#[derive(Clone, Copy, PartialEq, re_byte_size::SizeBytes)]
-pub(crate) enum ViewWindow {
-    /// Where the user panned/zoomed to. Absolute, so the time cursor moves through it.
-    Fixed(TimeView),
-
-    /// A window given as a `TimeAxis:view_range`, resolved every frame. Possibly cursor-relative.
-    Range(TimeRange),
-}
-
-/// View state for pan/zoom.
-#[derive(Default, re_byte_size::SizeBytes)]
-pub struct StateTimelineViewState {
-    /// The pan/zoom window of a view with an independent time axis, per timeline, for as long as it
-    /// differs from the default one. (A view linked to the global time axis keeps its window in the
-    /// blueprint instead, shared with every other linked view.)
-    pub(crate) windows: std::collections::BTreeMap<TimelineName, ViewWindow>,
-}
-
-impl StateTimelineViewState {
-    /// Pan/zoom `timeline` to an absolute window.
-    pub fn set_window(&mut self, timeline: TimelineName, time_view: TimeView) {
-        self.windows.insert(timeline, ViewWindow::Fixed(time_view));
-    }
-}
-
 /// The time range a pan/zoom window covers.
 pub(crate) fn window_time_range(time_view: TimeView) -> AbsoluteTimeRange {
     let min = time_view.min;
@@ -101,38 +75,8 @@ pub(crate) fn window_time_range(time_view: TimeView) -> AbsoluteTimeRange {
     AbsoluteTimeRange::new(min.floor(), max.ceil())
 }
 
-impl ViewState for StateTimelineViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn heap_size_bytes(&self) -> u64 {
-        re_byte_size::SizeBytes::heap_size_bytes(self)
-    }
-}
-
 #[derive(Default)]
 pub struct StateTimelineView;
-
-impl StateTimelineView {
-    /// Read the configured time-axis link mode for this view.
-    fn time_axis_link(
-        &self,
-        ctx: &ViewerContext<'_>,
-        state: &dyn ViewState,
-        view_id: ViewId,
-        space_origin: &EntityPath,
-    ) -> Result<LinkAxis, ViewSystemExecutionError> {
-        let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
-        Ok(time_axis
-            .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?)
-    }
-}
 
 impl ViewClass for StateTimelineView {
     fn identifier() -> re_sdk_types::ViewClassIdentifier {
@@ -148,7 +92,7 @@ impl ViewClass for StateTimelineView {
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<StateTimelineViewState>::default()
+        Box::new(())
     }
 
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
@@ -180,6 +124,21 @@ impl ViewClass for StateTimelineView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            TimeAxis::descriptor_view_range().component,
+            |ctx| -> re_sdk_types::blueprint::components::TimeRange {
+                let viewer_ctx = ctx.viewer_ctx();
+                viewer_ctx
+                    .time_ctrl
+                    .timeline()
+                    .and_then(|timeline| {
+                        let range = viewer_ctx.recording().time_range_for(timeline.name())?;
+                        re_view::cursor_centered_default_range(timeline.typ(), range.abs_length())
+                    })
+                    .unwrap_or(TimeRange::EVERYTHING)
+                    .into()
+            },
+        );
         system_registry.register_visualizer::<crate::StateVisualizer>()
     }
 
@@ -232,42 +191,15 @@ impl ViewClass for StateTimelineView {
             let link = time_axis
                 .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
-            // Only the link mode is editable per-view. The view range is driven by pan/zoom.
-            let query_ctx = time_axis.query_context(&ctx);
-            if let Some(field) = ctx
-                .viewer_ctx
-                .reflection()
-                .field_reflection(&TimeAxis::descriptor_link())
-            {
-                re_view::view_property_component_ui(
-                    &query_ctx,
+            match link {
+                LinkAxis::Independent => re_view::view_property_ui::<TimeAxis>(&ctx, ui),
+                // When linked to global, expose the shared view range stored on the global view.
+                LinkAxis::LinkToGlobal => re_view::view_property_ui_with_redirect::<TimeAxis>(
+                    &ctx,
                     ui,
-                    &time_axis,
-                    field.display_name,
-                    field,
-                );
-            }
-
-            // When linked to global, expose the shared view range (stored on the global view).
-            if link == LinkAxis::LinkToGlobal
-                && let Some(field) = ctx
-                    .viewer_ctx
-                    .reflection()
-                    .field_reflection(&TimeAxis::descriptor_view_range())
-            {
-                let global_time_axis = ViewProperty::from_archetype_for_view::<TimeAxis>(
-                    ctx.viewer_ctx,
+                    TimeAxis::descriptor_view_range().component,
                     GLOBAL_VIEW_ID,
-                );
-                let global_ctx = ctx.with_view_id(GLOBAL_VIEW_ID);
-                let global_query_ctx = global_time_axis.query_context(&global_ctx);
-                re_view::view_property_component_ui(
-                    &global_query_ctx,
-                    ui,
-                    &global_time_axis,
-                    field.display_name,
-                    field,
-                );
+                ),
             }
 
             Ok::<(), ViewSystemExecutionError>(())
@@ -329,7 +261,7 @@ impl ViewClass for StateTimelineView {
     ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<StateTimelineViewState>()?;
+        let state = state.downcast_mut::<()>()?;
 
         // Collect all lane groups from all visualizers.
         let all_groups: Vec<&StateLaneGroup> = system_output
@@ -354,24 +286,25 @@ impl ViewClass for StateTimelineView {
         let timeline_range = ctx.recording().time_range_for(&query.timeline);
         let (data_min, data_max) = data_time_range(&all_groups, timeline_range);
 
-        // How is the time (X) axis linked? When linked to global, the pan/zoom window is
-        // shared with all other plots (e.g. time series views) via the global blueprint view,
-        // rather than kept local to this view.
-        let link = self.time_axis_link(ctx, state, query.view_id, query.space_origin)?;
-        let global_time_axis = (link == LinkAxis::LinkToGlobal)
-            .then(|| ViewProperty::from_archetype_for_view::<TimeAxis>(ctx, GLOBAL_VIEW_ID));
-
-        // The window we show, and the range it is configured with (`None` when that range doesn't
-        // refer to the time cursor). Derived exactly like the one the visualizer queried.
-        let (view_range, mut time_view) = view_window(
-            ctx,
-            state,
-            link,
-            query.timeline,
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        // The visualizer queries the same blueprint window that the view draws.
+        let TimeViewProperty {
+            property: time_range_property,
+            range: view_range,
+            window: mut time_view,
+        } = view_window(
+            &view_ctx,
             timeline_range,
             query.latest_at,
-            (data_min, data_max),
-        );
+            data_min,
+            data_max,
+        )?;
+
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
+        let zoom_lock = time_axis.component_or_fallback::<LockRangeDuringZoom>(
+            &view_ctx,
+            TimeAxis::descriptor_zoom_lock().component,
+        )?;
         let original_time_view = time_view;
 
         // Allocate the full available rect.
@@ -566,7 +499,7 @@ impl ViewClass for StateTimelineView {
             re_view::set_time_cursor(
                 ctx,
                 Some(query.latest_at.as_i64()),
-                view_range.as_ref(),
+                Some(&view_range.0),
                 time,
             )
         });
@@ -591,7 +524,8 @@ impl ViewClass for StateTimelineView {
 
         // Ctrl/Cmd + scroll to zoom.
         let zoom_delta = ui.input(|i| i.zoom_delta());
-        if zoom_delta != 1.0
+        if !**zoom_lock
+            && zoom_delta != 1.0
             && response.contains_pointer()
             && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
             && let Some(new_view) = time_ranges_ui.zoom_at(pointer_pos.x, zoom_delta)
@@ -602,48 +536,28 @@ impl ViewClass for StateTimelineView {
         // Double click anywhere in the view to reset zoom.
         // Doesn't reset global time cursor.
         if response.double_clicked() {
-            if let Some(global_time_axis) = &global_time_axis {
-                global_time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
-            } else {
-                state.windows.remove(&query.timeline);
-            }
+            time_range_property.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
             ui.request_repaint();
         } else if let Some(new_view_range) = new_view_range {
             // The time cursor moved and we kept the window it denotes in place.
-            if let Some(global_time_axis) = &global_time_axis {
-                save_linked_view_range(ctx, global_time_axis, new_view_range);
-            } else {
-                state
-                    .windows
-                    .insert(query.timeline, ViewWindow::Range(new_view_range));
-            }
+            save_view_range(ctx, &time_range_property, new_view_range);
             ui.request_repaint();
         } else if time_view != original_time_view {
-            let min = re_view::time_axis_time_from_plot(time_view.min, 0);
-            let max = re_view::time_axis_time_from_plot(
-                time_view.min + TimeReal::from(time_view.time_spanned),
-                0,
-            );
-            let window = if let Some(view_range) = &view_range {
-                re_view::recover_relative_boundaries_after_zoom_or_pan(
-                    min,
-                    max,
-                    view_range,
+            // Panned or zoomed: the window stays where the user left it, which also means it stops
+            // following the time cursor.
+            let stored_range = time_range_property
+                .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+                    TimeAxis::descriptor_view_range().component,
+                )?;
+            save_view_range(
+                ctx,
+                &time_range_property,
+                view_range_from_time_view(
+                    time_view,
+                    stored_range.as_ref().map(|range| &range.0),
                     query.latest_at.into(),
-                )
-            } else {
-                TimeRange {
-                    start: TimeRangeBoundary::Absolute(min),
-                    end: TimeRangeBoundary::Absolute(max),
-                }
-            };
-            if let Some(global_time_axis) = &global_time_axis {
-                save_linked_view_range(ctx, global_time_axis, window);
-            } else {
-                state
-                    .windows
-                    .insert(query.timeline, ViewWindow::Range(window));
-            }
+                ),
+            );
             ui.request_repaint();
         }
 
@@ -861,8 +775,8 @@ fn compute_render_items<'a>(
     items
 }
 
-/// Compute the (min, max) time range the view spans — its auto-fit window and the position of the
-/// zig-zag "end of timeline" bands.
+/// Compute the (min, max) time range the view spans, which places the zig-zag "end of timeline"
+/// bands.
 ///
 /// This is the extent of the logged data, and deliberately *independent* of any configured visible
 /// time range: restricting the visible range says which states to draw, not where the timeline
@@ -912,71 +826,28 @@ fn ensure_visualizable_width(min: f64, max: f64) -> (f64, f64) {
     }
 }
 
-/// The window a view shows until the user moves it, for data spanning `data_min..=data_max`.
-///
-/// Data spanning more than we want to show at once gets a window around the time cursor instead,
-/// which pins the cursor to the center of the view (see [`re_view::cursor_centered_default_range`]).
-/// Anything else is fit to the data, with a small margin on each side.
-fn default_window(time_type: TimeType, data_min: f64, data_max: f64, data_span: f64) -> ViewWindow {
-    if let Some(centered) = re_view::cursor_centered_default_range(time_type, data_span as u64) {
-        return ViewWindow::Range(centered);
-    }
-
-    let min = data_min - data_span * 0.05;
-    let max = data_max + data_span * 0.05;
-    ViewWindow::Fixed(TimeView {
-        min: TimeReal::from(min),
-        time_spanned: max - min,
-    })
+pub struct TimeViewProperty {
+    pub property: ViewProperty,
+    pub range: re_sdk_types::blueprint::components::TimeRange,
+    pub window: TimeView,
 }
 
-/// The pan/zoom window this view shows on `timeline`: the range it is configured with, and the window
-/// that range resolves to.
-pub(crate) fn view_window(
-    ctx: &ViewerContext<'_>,
-    state: &StateTimelineViewState,
-    link: LinkAxis,
-    timeline: TimelineName,
+/// The blueprint range and window used for both querying and drawing states.
+pub fn view_window(
+    ctx: &re_viewer_context::ViewContext<'_>,
     timeline_range: Option<AbsoluteTimeRange>,
     latest_at: TimeInt,
-    (data_min, data_max): (f64, f64),
-) -> (Option<TimeRange>, TimeView) {
-    // Where the window is kept: shared with every other linked view, or local to this one.
-    let configured = match link {
-        LinkAxis::LinkToGlobal => linked_view_range(&ViewProperty::from_archetype_for_view::<
-            TimeAxis,
-        >(ctx, GLOBAL_VIEW_ID))
-        .map(ViewWindow::Range),
+    data_min: f64,
+    data_max: f64,
+) -> Result<TimeViewProperty, ViewSystemExecutionError> {
+    let (property, range) = re_view::time_axis_view_range(ctx)?;
+    let window = resolve_time_view(&range, timeline_range, latest_at, data_min, data_max);
 
-        LinkAxis::Independent => state.windows.get(&timeline).copied(),
-    };
-
-    let time_type = ctx
-        .time_ctrl
-        .timeline()
-        .map_or(TimeType::Sequence, |tl| tl.typ());
-    let data_span = (data_max - data_min).max(1.0);
-
-    match configured.unwrap_or_else(|| default_window(time_type, data_min, data_max, data_span)) {
-        ViewWindow::Range(view_range) => {
-            let time_view =
-                resolve_time_view(&view_range, timeline_range, latest_at, data_min, data_max);
-            (Some(view_range), time_view)
-        }
-
-        ViewWindow::Fixed(time_view) => (None, time_view),
-    }
-}
-
-/// The pan/zoom window shared via the global blueprint view range, if it is set.
-fn linked_view_range(global_time_axis: &ViewProperty) -> Option<TimeRange> {
-    global_time_axis
-        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
-            TimeAxis::descriptor_view_range().component,
-        )
-        .ok()
-        .flatten()
-        .map(|range| range.0)
+    Ok(TimeViewProperty {
+        property,
+        range,
+        window,
+    })
 }
 
 /// Resolve a view range into the pan/zoom window it denotes.
@@ -991,20 +862,43 @@ fn resolve_time_view(
         .unwrap_or_else(|| AbsoluteTimeRange::new(data_min as i64, data_max.ceil() as i64));
     let range = re_view::resolve_time_axis_range(view_range, timeline_range, latest_at.into());
 
-    let span = ((range.max.as_i64() - range.min.as_i64()) as f64).max(1.0);
+    let span = (range.max.as_i64().saturating_sub(range.min.as_i64()) as f64).max(1.0);
     TimeView {
         min: TimeReal::from(range.min.as_i64() as f64),
         time_spanned: span,
     }
 }
 
-/// Persist the pan/zoom window to the shared global blueprint view range.
-fn save_linked_view_range(
-    ctx: &ViewerContext<'_>,
-    global_time_axis: &ViewProperty,
-    view_range: TimeRange,
-) {
-    global_time_axis.save_blueprint_component(
+/// The view range denoting a pan/zoom window, i.e. the inverse of [`resolve_time_view`].
+///
+/// Boundaries that are cursor-relative or infinite in `previous` keep that form. Both boundaries
+/// are absolute when the blueprint holds no range yet, i.e. `previous` is `None`.
+fn view_range_from_time_view(
+    time_view: TimeView,
+    previous: Option<&TimeRange>,
+    cursor: re_sdk_types::encodings::TimeInt,
+) -> TimeRange {
+    // We pan/zoom in timeline units already, so there is no plot-space offset to undo.
+    let min = re_view::time_axis_time_from_plot(time_view.min, 0);
+    let max = re_view::time_axis_time_from_plot(
+        time_view.min + TimeReal::from(time_view.time_spanned),
+        0,
+    );
+
+    previous.map_or(
+        TimeRange {
+            start: TimeRangeBoundary::Absolute(min),
+            end: TimeRangeBoundary::Absolute(max),
+        },
+        |previous| {
+            re_view::recover_relative_boundaries_after_zoom_or_pan(min, max, previous, cursor)
+        },
+    )
+}
+
+/// Persist the pan/zoom window to the blueprint view range.
+fn save_view_range(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, view_range: TimeRange) {
+    time_axis.save_blueprint_component(
         ctx,
         &TimeAxis::descriptor_view_range(),
         &re_sdk_types::blueprint::components::TimeRange(view_range),
