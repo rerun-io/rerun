@@ -23,6 +23,8 @@
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
 "DataframeQuery" = ["howto/visualization/save_blueprint"]
+"GridMap" = ["archetypes/mesh3d_image"] # snippet only references `GridMap` in the docstring
+"Pinhole" = ["archetypes/mesh3d_image"] # snippet only references `Pinhole` in the docstring
 "Tensor" = ["howto/dataloader"] # snippet uses `torch.Tensor`, not Rerun's `Tensor` archetype
 
 # These components will ignore the associated snippets in the snippet index.
