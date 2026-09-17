@@ -20,7 +20,6 @@
 /// \example archetypes/measurements_simple title="Pressure with variance" image="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/1024w.png"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
-#[docs(unreleased)]
 #[docs(view_types = "TimeSeriesView")]
 #[rerun(state = "unstable")]
 #[rerun(visualizer = "MeasurementsSeries")]

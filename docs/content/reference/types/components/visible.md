@@ -22,7 +22,7 @@ Boolean
 
 ## Used by
 
-* [`Measurements`](../archetypes/measurements.md?speculative-link)
+* [`Measurements`](../archetypes/measurements.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)
 * [`StateConfiguration`](../archetypes/state_configuration.md)

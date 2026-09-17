@@ -18,11 +18,11 @@ Float64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Variance`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Variance.html?speculative-link)
- * 🐍 [Python API docs for `Variance`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Variance)
- * 🦀 [Rust API docs for `Variance`](https://docs.rs/rerun/latest/rerun/components/struct.Variance.html?speculative-link)
+ * 🌊 [C++ API docs for `Variance`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Variance.html)
+ * 🐍 [Python API docs for `Variance`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Variance)
+ * 🦀 [Rust API docs for `Variance`](https://docs.rs/rerun/latest/rerun/components/struct.Variance.html)
 
 
 ## Used by
 
-* [`Measurements`](../archetypes/measurements.md?speculative-link)
+* [`Measurements`](../archetypes/measurements.md)

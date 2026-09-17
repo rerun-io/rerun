@@ -33,7 +33,7 @@ snippet: howto/load_mcap
 
 ### Python `McapReader`
 
-For custom ingestion or processing pipelines, use the Python [`McapReader`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.McapReader) to read an MCAP file into a [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyChunkStream) that can be used to build custom data wrangling pipelines.
+For custom ingestion or processing pipelines, use the Python [`McapReader`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.McapReader) to read an MCAP file into a [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyChunkStream) that can be used to build custom data wrangling pipelines.
 For example, you can inspect file metadata with `reader.info()`, select decoders, filter topics or time ranges, transform chunks using [Lenses](../../concepts/query-and-transform/lenses.md), and write the result to RRD:
 
 snippet: howto/process_mcap[example]

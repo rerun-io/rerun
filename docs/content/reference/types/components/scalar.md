@@ -24,5 +24,5 @@ Float64
 
 ## Used by
 
-* [`Measurements`](../archetypes/measurements.md?speculative-link)
+* [`Measurements`](../archetypes/measurements.md)
 * [`Scalars`](../archetypes/scalars.md)

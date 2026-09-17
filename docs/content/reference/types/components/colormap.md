@@ -106,5 +106,5 @@ UInt8
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`GridMap`](../archetypes/grid_map.md)
-* [`Volume3D`](../archetypes/volume3d.md?speculative-link)
+* [`Volume3D`](../archetypes/volume3d.md)
 * [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

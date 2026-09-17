@@ -25,7 +25,7 @@ Utf8
 
 ## Used by
 
-* [`Measurements`](../archetypes/measurements.md?speculative-link)
+* [`Measurements`](../archetypes/measurements.md)
 * [`RecordingInfo`](../archetypes/recording_info.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)

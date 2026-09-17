@@ -23,7 +23,6 @@
 /// \example archetypes/volume3d_simple title="Simple volume"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
-#[docs(unreleased)]
 #[docs(view_types = "Spatial3DView")]
 #[rerun(state = "unstable")]
 #[rerun(visualizer = "Volume3D")]

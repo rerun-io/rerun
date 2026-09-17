@@ -6,7 +6,6 @@
 /// Used for display only. It does not convert or scale the value.
 #[rerun::rerun_type]
 #[arrow(transparent)]
-#[docs(unreleased)]
 #[python(aliases = "str")]
 #[python(array_aliases = "str | Sequence[str]")]
 #[rerun(state = "unstable")]
