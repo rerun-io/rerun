@@ -1,9 +1,9 @@
 <!--[metadata]
 title = "Plots"
-description = "A tour of Rerun's plotting primitives: bar charts, line plots, time-varying scalars, and styled series, each built from a few lines of code."
+description = "A tour of Rerun's plotting primitives: bar charts, line plots, time-varying scalars, styled series, and measurements with uncertainty bands, each built from a few lines of code."
 tags = ["2D", "Plots", "API example"]
-thumbnail = "https://static.rerun.io/plots/e8e51071f6409f61dc04a655d6b9e1caf8179226/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/480w.png"
+thumbnail_dimensions = [480, 240]
 channel = "main"
 include_in_manifest = true
 -->
@@ -11,16 +11,16 @@ include_in_manifest = true
 This example demonstrates how to log simple plots with the Rerun SDK. Charts can be created from 1-dimensional tensors, or from time-varying scalars.
 
 <picture data-inline-viewer="examples/plots">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/1200w.png">
-  <img src="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/full.png" alt="Plots example screenshot">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/1200w.png">
+  <img src="https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/full.png" alt="Plots example screenshot">
 </picture>
 
 ## Used Rerun types
 
-[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_points), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_points), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines), [`Measurements`](https://www.rerun.io/docs/reference/types/archetypes/measurements), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Logging and visualizing with Rerun
 
@@ -114,6 +114,24 @@ def log_classification() -> None:
         # … existing code …
         rr.log("classification/samples", rr.Scalars(g_of_t), rr.SeriesPoints(colors=color, marker_sizes=marker_size))
  ```
+
+### Measurements
+
+The `log_measurements` function simulates a noisy temperature sensor and logs each reading together with a variance value using the [`Measurements`](https://www.rerun.io/docs/reference/types/archetypes/measurements) archetype.
+The viewer draws the series as a line with a band one standard deviation wide, and shows the unit in the legend.
+
+```python
+def log_measurements() -> None:
+    for t in range(0, 1000, 10):
+        rr.set_time("frame_nr", sequence=t)
+
+        # … existing code …
+
+        rr.log(
+            "measurements/temperature",
+            rr.Measurements(reading, variances=std**2, units="°C", names="sensor temperature"),
+        )
+```
 
 
 ## Run the code

@@ -118,6 +118,23 @@ def log_classification() -> None:
         )
 
 
+def log_measurements() -> None:
+    # Simulate a temperature sensor calibrated at 20 °C: its reported uncertainty grows the further the
+    # temperature drifts from that point. `Measurements` carries its own styling and draws an uncertainty
+    # band from the variance, so no `SeriesLines` hint is needed.
+    for t in range(0, 1000, 10):
+        rr.set_time("frame_nr", sequence=t)
+
+        temperature = 20.0 + 5.0 * sin(t / 200.0)
+        reading = temperature + random.gauss(0.0, 0.15)
+        std = 0.5 + 0.2 * abs(temperature - 20.0)
+
+        rr.log(
+            "measurements/temperature",
+            rr.Measurements(reading, variances=std**2, units="°C", names="sensor temperature"),
+        )
+
+
 def log_states() -> None:
     # Configure how each raw state value is displayed (label, color). This is
     # time-independent, so we log it as static.
@@ -204,6 +221,7 @@ def main() -> None:
                             "spiral": rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])
                         },  # type: ignore[arg-type]
                     ),
+                    rrb.TimeSeriesView(name="Measurements", origin="/measurements"),
                     rrb.StateTimelineView(name="States", origin="/states"),
                 ),
                 row_shares=[2, 1],
@@ -223,6 +241,7 @@ def main() -> None:
     log_trig()
     log_spiral()
     log_classification()
+    log_measurements()
     log_states()
 
     rr.script_teardown(args)
