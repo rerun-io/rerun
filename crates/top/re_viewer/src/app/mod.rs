@@ -339,6 +339,10 @@ impl App {
             });
         }
 
+        if let Some(check_for_updates_on_startup) = startup_options.check_for_updates_on_startup {
+            state.app_options.check_for_updates_on_startup = check_for_updates_on_startup;
+        }
+
         if state.app_options.check_for_updates_on_startup {
             crate::version_check::check_for_new_version(build_info.version, &app_env, ehttp::fetch);
         }

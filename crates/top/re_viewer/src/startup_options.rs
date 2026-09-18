@@ -22,6 +22,9 @@ pub struct LoginOptions {
 pub struct StartupOptions {
     pub persist_state: bool,
 
+    /// Overrides the saved startup update-check preference when set.
+    pub check_for_updates_on_startup: Option<bool>,
+
     /// Whether or not the app is running in the context of a Jupyter Notebook.
     pub is_in_notebook: bool,
 
@@ -161,6 +164,7 @@ impl Default for StartupOptions {
     fn default() -> Self {
         Self {
             persist_state: true,
+            check_for_updates_on_startup: None,
             is_in_notebook: false,
 
             #[cfg(target_arch = "wasm32")]

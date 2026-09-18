@@ -195,6 +195,13 @@ export interface WebViewerOptions {
   hide_welcome_screen?: boolean;
 
   /**
+   * Override whether the viewer checks for newer Rerun releases on startup.
+   * Set to `false` to disable these checks.
+   * If not set, uses the saved user preference (enabled by default).
+   */
+  check_for_updates_on_startup?: boolean;
+
+  /**
    * Allow the viewer to handle fullscreen mode.
    * This option sets canvas style so is not recommended if you are doing anything custom,
    * or are embedding the viewer in an iframe.

@@ -742,6 +742,7 @@ pub struct AppOptions {
     render_backend: Option<String>,
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
+    check_for_updates_on_startup: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
     enable_history: Option<bool>,
     // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
@@ -815,6 +816,7 @@ fn create_app(
         render_backend,
         video_decoder,
         hide_welcome_screen,
+        check_for_updates_on_startup,
         panel_state_overrides,
         on_viewer_event,
         fullscreen,
@@ -850,6 +852,7 @@ fn create_app(
         location: Some(cc.integration_info.web_info.location.clone()),
         // Don't persist state in integration-test mode.
         persist_state: !integration_test,
+        check_for_updates_on_startup,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: render_backend.clone(),

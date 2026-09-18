@@ -52,6 +52,7 @@ export default class WebViewer extends React.Component {
     if (
       keysChanged(prevProps, this.props, [
         "hide_welcome_screen",
+        "check_for_updates_on_startup",
         "manifest_url",
         "render_backend",
       ])
@@ -130,6 +131,7 @@ function startViewer(handle, parent, getProps) {
       manifest_url: props.manifest_url,
       render_backend: props.render_backend,
       hide_welcome_screen: props.hide_welcome_screen,
+      check_for_updates_on_startup: props.check_for_updates_on_startup,
       theme: props.theme,
 
       // NOTE: `width`, `height` intentionally ignored, they will
