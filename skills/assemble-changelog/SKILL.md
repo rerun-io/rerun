@@ -40,16 +40,17 @@ from `Cargo.toml` (`version = "0.x.y-…"`) and confirm with the user.
 ### 1. Assemble `upcoming/` → the release changeset
 
 The curated entries live one-file-per-PR in `docs/content/changelog/upcoming/*.md`
-(skip `_template.md`). Each declares `type: highlight|breaking|feature` in its
+(skip `_template.md`). Each declares `type: highlight|misc|breaking|feature` in its
 frontmatter. Merge them into `docs/content/changelog/changeset-0-XX.md`, creating that file from
 `docs/content/changelog/_template.md` if it does not exist yet (set `title` to the version — keep it
 quoted, e.g. `title: "0.36"`, so YAML keeps it a string — and `order` one lower than the previous release):
 
 - `highlight` → one `### ` subsection each under `## Highlights`.
 - `feature`   → one `### ` subsection each under `## New features`.
+- `misc`      → exactly one `- ` list item each under `## Other`. Fold its `### ` heading and body into the item, preserving links. Do not use headings or prose outside the list items.
 - `breaking`  → one `### ` subsection each under `## Breaking changes`. If none, write `None.`.
 
-Keep the sections in that order and omit `Highlights` if there are no highlight entries.
+Keep the sections in that order and omit `Highlights` and `Other` if they have no entries.
 The changelog is user-facing (it's part of the website), so it leads with what's new;
 the verbose, developer-only breaking-change migration guides go last so most readers
 don't have to scroll past them.
@@ -57,12 +58,12 @@ don't have to scroll past them.
 Tailor the output to the release type:
 
 - Patch release (`0.x.Y`, Y > 0) → typically only bug fixes. Skip `Highlights` and
-  `New features` (there usually won't be `upcoming/` entries anyway); keep `Breaking
-  changes` only if there are any.
-- Minor release (`0.X.0`) → the full template: highlights, new features, breaking changes.
+  `New features` (there usually won't be `upcoming/` entries anyway); include `Other`
+  only if there are miscellaneous entries, and keep `Breaking changes` only if there are any.
+- Minor release (`0.X.0`) → the full template: highlights, new features, other items, breaking changes.
 
 Preserve each entry's prose and structure (migration guides, tables, `snippet:` directives,
-screenshots, links).
+screenshots, links), except that each miscellaneous entry becomes its single list item.
 De-duplicate overlapping entries and order breaking changes most-impactful first.
 Drop the per-entry frontmatter.
 

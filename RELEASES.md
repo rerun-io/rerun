@@ -104,8 +104,8 @@ After cherry-picking a commit into the patch, please make sure to remove the `co
 
 ⚠️ Skip this step when preparing an alpha release.
 
-The curated part of the release notes — highlights, breaking changes & migration guides, and new
-features, including any screenshots/GIFs — is written incrementally **during the cycle, per PR**:
+The curated part of the release notes — highlights, new features, other items, and breaking changes &
+migration guides, including any screenshots/GIFs — is written incrementally **during the cycle, per PR**:
 every `include in changelog` PR drops one file in [`docs/content/changelog/upcoming/`](./docs/content/changelog/upcoming)
 (one file per PR avoids merge conflicts).
 At release, assemble those entries into the release's changeset:
@@ -114,7 +114,7 @@ This whole step is an agent-friendly task — run the `/assemble-changelog` skil
 does it end to end:
 
 -   Assembles `upcoming/*.md` into `docs/content/changelog/changeset-0-xx.md`, grouping each entry by
-    its `type:` hint (`highlight` / `breaking` / `feature`), merging and de-duplicating the entries.
+    its `type:` hint (`highlight` / `misc` / `breaking` / `feature`), merging and de-duplicating the entries.
 -   Checks that the assembled changeset has no unresolved `TODO(name)` placeholders.
 -   Generates the detail sections (bug fixes + the full list of changes) into `CHANGELOG.md`,
     via `pixi run uvpy scripts/generate_changelog.py --version 0.x.y` — edit PR titles/labels to
@@ -130,6 +130,7 @@ Then review the result:
     **The release is blocked until all of these are resolved.**
 -   Sanity-check the `## Highlights` section reads well as a whole. (Feature leads write their own items per PR;
     here you just make sure the one-line and multi-line summary of the release hang together.)
+-   Check that `## Other`, if present, contains exactly one list item per miscellaneous entry, with no headings or prose outside the list.
 
 The changeset is *not* copied into `CHANGELOG.md`. The script summarizes it instead — the section
 headings plus links to the changeset on the website — so the full prose lives in exactly one place.

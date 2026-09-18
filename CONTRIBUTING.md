@@ -102,7 +102,8 @@ In addition:
 #### What goes in the changeset?
 
 A changeset entry should link to docs and/or an example, and include a migration guide (breaking changes) or screenshot/GIF (visual features).
-Set `type: highlight|breaking|feature` in the entry's frontmatter so the release merge knows which section it belongs in.
+Set `type: highlight|misc|breaking|feature` in the entry's frontmatter so the release merge knows which section it belongs in.
+A `misc` entry becomes one list item under `Other`, with no headings or prose outside those items in the release changeset.
 A `TODO(name): add link` placeholder is fine while iterating, but the release is **blocked** until it is resolved.
 If a user-facing change is not in the changeset, it should stay behind a feature flag.
 

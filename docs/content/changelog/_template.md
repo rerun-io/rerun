@@ -10,7 +10,7 @@ hidden: true
 
  This file is NOT edited per PR. Instead, it is ASSEMBLED AT RELEASE TIME by an
  agent that merges every entry in `upcoming/` into the sections below, grouped by
- each entry's `type:` hint (`highlight` / `breaking` / `feature`). See
+ each entry's `type:` hint (`highlight` / `misc` / `breaking` / `feature`). See
  `upcoming/_template.md` for the per-PR entry format.
 
  When a release is assembled: copy this file to `changeset-0-XX.md`, set `title`
@@ -51,6 +51,13 @@ Short description.
 
 Docs: TODO(name): add docs link
 Example: TODO(name): add example link
+-->
+
+## Other
+
+<!--
+Each miscellaneous entry is exactly one list item.
+Do not add `###` headings or prose outside the list items.
 -->
 
 ## Breaking changes
