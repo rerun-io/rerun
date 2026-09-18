@@ -5,7 +5,7 @@ use std::time::Duration;
 use re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_encoding::ToTransport as _;
 use re_log_encoding::rrd::Compression;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;

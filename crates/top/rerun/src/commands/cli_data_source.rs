@@ -15,7 +15,7 @@ pub fn local_recordings_for_assets(
         .filter(|url_or_path| !url_or_path.starts_with("file://"))
         .filter_map(|url_or_path| {
             if let Some(LogDataSource::File { path, .. }) = LogDataSource::from_uri(
-                re_log_types::FileSource::Cli,
+                re_log_msg::FileSource::Cli,
                 url_or_path,
                 &Default::default(),
             ) && path
@@ -45,7 +45,7 @@ pub fn take_asset_load_request(
     let path = std::path::absolute(url_or_path).ok()?;
     recordings.remove(&path).then(|| {
         re_viewer::external::re_viewer_context::SystemCommand::LoadDataSource(LogDataSource::File {
-            file_source: re_log_types::FileSource::Cli,
+            file_source: re_log_msg::FileSource::Cli,
             path,
             assets: assets.to_vec(),
         })
@@ -84,7 +84,7 @@ mod tests {
                 panic!("expected a file load request with assets");
             };
             assert_eq!(path, std::path::absolute(recording).unwrap());
-            assert_eq!(file_source, re_log_types::FileSource::Cli);
+            assert_eq!(file_source, re_log_msg::FileSource::Cli);
             assert_eq!(recording_assets, assets);
             assert!(take_asset_load_request(recording, &mut recordings, &assets).is_none());
         }

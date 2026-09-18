@@ -1971,7 +1971,7 @@ impl ReceiversFromUrlParams {
 
         for url in input_urls {
             if let Some(data_source) = LogDataSource::from_uri(
-                re_log_types::FileSource::Cli,
+                re_log_msg::FileSource::Cli,
                 &url,
                 &re_data_source::FromUriOptions {
                     accept_extensionless_http: true,

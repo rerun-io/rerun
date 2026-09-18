@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use re_log::ResultExt as _;
 use re_log_encoding::Encoder;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 
 use crate::RecordingStream;
 use crate::log_sink::SinkFlushError;
@@ -103,7 +103,7 @@ impl BinaryStreamSink {
 
 impl LogSink for BinaryStreamSink {
     #[inline]
-    fn send(&self, msg: re_log_types::LogMsg) {
+    fn send(&self, msg: re_log_msg::LogMsg) {
         self.buffer.lock().push(msg);
     }
 

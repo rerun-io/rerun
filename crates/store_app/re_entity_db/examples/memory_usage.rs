@@ -61,7 +61,8 @@ fn main() {
 }
 
 fn log_messages() {
-    use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline, build_frame_nr};
+    use re_log_msg::LogMsg;
+    use re_log_types::{TimeInt, TimePoint, Timeline, build_frame_nr};
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.

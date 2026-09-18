@@ -1,7 +1,8 @@
 use anyhow::Context as _;
 use re_chunk::TimelineName;
 use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreKind};
+use re_log_msg::LogMsg;
+use re_log_types::{ApplicationId, RecordingId, StoreKind};
 use re_viewer_context::BlueprintUndoState;
 #[cfg(not(target_arch = "wasm32"))]
 use re_viewer_context::store_hub::BlueprintPersistenceKey;
@@ -182,7 +183,7 @@ pub fn delete_blueprint(key: &BlueprintPersistenceKey) -> anyhow::Result<()> {
 pub fn encode_to_file(
     version: re_build_info::CrateVersion<'static>,
     path: &std::path::Path,
-    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
+    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_msg::LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 

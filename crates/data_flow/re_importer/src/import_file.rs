@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
 use re_log_channel::LogSender;
-use re_log_types::{ApplicationId, FileSource, LogMsg};
+use re_log_msg::{FileSource, LogMsg};
+use re_log_types::ApplicationId;
 
 use crate::{ImportedData, Importer as _, ImporterError, RrdImporter};
 
@@ -108,17 +109,17 @@ fn application_id_from_path(path: &std::path::Path) -> Option<ApplicationId> {
     ApplicationId::try_new(name).ok()
 }
 
-/// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
+/// Prepares an adequate [`re_log_msg::StoreInfo`] [`LogMsg`] given the input.
 pub fn prepare_store_info(store_id: &re_log_types::StoreId, file_source: FileSource) -> LogMsg {
     re_tracing::profile_function!();
 
-    use re_log_types::SetStoreInfo;
+    use re_log_msg::SetStoreInfo;
 
-    let store_source = re_log_types::StoreSource::File { file_source };
+    let store_source = re_log_msg::StoreSource::File { file_source };
 
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
-        info: re_log_types::StoreInfo::new(store_id.clone(), store_source),
+        info: re_log_msg::StoreInfo::new(store_id.clone(), store_source),
     })
 }
 

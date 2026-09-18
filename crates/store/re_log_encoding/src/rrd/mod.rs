@@ -125,7 +125,7 @@ pub trait Encodable {
 /// * etc
 ///
 /// All it does is map RRD bytes to transport-level types. If you're interested into turning these
-/// transport-level types into higher-level objects (such as [`re_log_types::LogMsg`] with all kinds
+/// transport-level types into higher-level objects (such as [`re_log_msg::LogMsg`] with all kinds
 /// of application-level transformations applied (such as the one mentioned above), then have a look at the
 /// [`ToApplication`] trait.
 ///

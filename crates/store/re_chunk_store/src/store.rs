@@ -1216,7 +1216,7 @@ impl ChunkStore {
     /// * [`ChunkStore::new`]
     pub fn from_log_msgs(
         store_config: &ChunkStoreConfig,
-        log_msgs: impl IntoIterator<Item = re_log_types::LogMsg>,
+        log_msgs: impl IntoIterator<Item = re_log_msg::LogMsg>,
     ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
         re_tracing::profile_function!();
 
@@ -1233,18 +1233,18 @@ impl ChunkStore {
     fn insert_log_msg(
         store_config: &ChunkStoreConfig,
         stores: &mut BTreeMap<StoreId, Self>,
-        msg: re_log_types::LogMsg,
+        msg: re_log_msg::LogMsg,
     ) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
         match msg {
-            re_log_types::LogMsg::SetStoreInfo(info) => {
+            re_log_msg::LogMsg::SetStoreInfo(info) => {
                 stores
                     .entry(info.info.store_id.clone())
                     .or_insert_with(|| Self::new(info.info.store_id.clone(), store_config.clone()));
             }
 
-            re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
+            re_log_msg::LogMsg::ArrowMsg(store_id, msg) => {
                 let Some(store) = stores.get_mut(&store_id) else {
                     anyhow::bail!("unknown store ID: {store_id:?}");
                 };
@@ -1257,7 +1257,7 @@ impl ChunkStore {
                     .with_context(|| "couldn't insert chunk".to_owned())?;
             }
 
-            re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
+            re_log_msg::LogMsg::BlueprintActivationCommand(_) => {}
         }
 
         Ok(())

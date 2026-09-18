@@ -97,7 +97,7 @@ fn forward_chunks(
     tx: &Sender<ImportedData>,
     store_id: &StoreId,
 ) {
-    let store_info_msg = crate::prepare_store_info(store_id, re_log_types::FileSource::Sdk);
+    let store_info_msg = crate::prepare_store_info(store_id, re_log_msg::FileSource::Sdk);
     if send_crossbeam(
         tx,
         ImportedData::LogMsg(PARQUET_IMPORTER_NAME.to_owned(), store_info_msg),

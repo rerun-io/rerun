@@ -42,6 +42,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+re_log_msg.workspace = true
 criterion.workspace = true
 insta.workspace = true
 mimalloc.workspace = true

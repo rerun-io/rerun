@@ -12,7 +12,8 @@ use std::sync::{Arc, LazyLock};
 
 use itertools::chain;
 use re_chunk::{Chunk, ChunkResult};
-use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
+use re_log_msg::{ArrowMsg, LogMsg};
+use re_log_types::{EntityPath, RecordingId, StoreId, TimePoint};
 
 // ----------------------------------------------------------------------------
 

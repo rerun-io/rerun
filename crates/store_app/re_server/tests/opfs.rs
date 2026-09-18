@@ -7,10 +7,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyPoint, MyPoints};
-use re_log_types::{
-    EntityPath, EntryName, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-};
+use re_log_types::{EntityPath, EntryName, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::VersionRequest;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;

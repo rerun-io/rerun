@@ -11,11 +11,9 @@ use parking_lot::{Mutex, RwLock};
 use re_chunk::{Chunk, ChunkBuilder, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
+use re_log_msg::{SetStoreInfo, StoreInfo};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{
-    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    TimeReal,
-};
+use re_log_types::{ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind, TimeReal};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;

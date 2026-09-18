@@ -7,7 +7,8 @@ use std::sync::Arc;
 use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_lenses::Lenses;
-use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
+use re_log_msg::{SetStoreInfo, StoreInfo};
+use re_log_types::StoreId;
 use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders, TopicFilter};
 use re_quota_channel::send_crossbeam;
 use re_span::Span;
@@ -338,7 +339,7 @@ impl McapImporter {
             tx,
             ImportedData::LogMsg(
                 MCAP_IMPORTER_NAME.to_owned(),
-                re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
+                re_log_msg::LogMsg::SetStoreInfo(store_info(store_id.clone())),
             ),
         )
         .is_err()
@@ -394,7 +395,7 @@ fn store_info(store_id: StoreId) -> SetStoreInfo {
         row_id: *RowId::new(),
         info: StoreInfo::new(
             store_id,
-            re_log_types::StoreSource::Other(MCAP_IMPORTER_NAME.to_owned()),
+            re_log_msg::StoreSource::Other(MCAP_IMPORTER_NAME.to_owned()),
         ),
     }
 }

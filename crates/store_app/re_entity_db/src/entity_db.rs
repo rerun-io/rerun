@@ -19,9 +19,10 @@ use re_chunk_store::{
 use re_log::{debug_assert, debug_assert_eq};
 use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo};
 use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
-    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType, TimelinePoint,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, RecordingId,
+    StoreId, StoreKind, TimeType, TimelinePoint,
 };
 use re_mutex::Mutex;
 use re_query::{
@@ -1094,7 +1095,7 @@ impl EntityDb {
         // at all.
         let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
             let activate_cmd =
-                re_log_types::BlueprintActivationCommand::make_active(self.store_id().clone());
+                re_log_msg::BlueprintActivationCommand::make_active(self.store_id().clone());
 
             itertools::Either::Left(std::iter::once(Ok(activate_cmd.into())))
         } else {

@@ -164,7 +164,7 @@ impl crate::Importer for RrdImporter {
 fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &crossbeam::channel::Sender<crate::ImportedData>,
-    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
+    msgs: impl Iterator<Item = Result<re_log_msg::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
 ) {
@@ -181,7 +181,7 @@ fn decode_and_stream(
 
         let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
             match msg {
-                re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                re_log_msg::LogMsg::SetStoreInfo(set_store_info) => {
                     let mut store_id = set_store_info.info.store_id.clone();
                     if let Some(forced_application_id) = forced_application_id {
                         store_id = store_id.with_application_id(forced_application_id.clone());
@@ -190,8 +190,8 @@ fn decode_and_stream(
                         store_id = store_id.with_recording_id(forced_recording_id.clone());
                     }
 
-                    re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-                        info: re_log_types::StoreInfo {
+                    re_log_msg::LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
+                        info: re_log_msg::StoreInfo {
                             store_id,
                             ..set_store_info.info
                         },
@@ -199,7 +199,7 @@ fn decode_and_stream(
                     })
                 }
 
-                re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
+                re_log_msg::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
                     if let Some(forced_application_id) = forced_application_id {
                         store_id = store_id.with_application_id(forced_application_id.clone());
                     }
@@ -207,17 +207,17 @@ fn decode_and_stream(
                         store_id = store_id.with_recording_id(forced_recording_id.clone());
                     }
 
-                    re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
+                    re_log_msg::LogMsg::ArrowMsg(store_id, arrow_msg)
                 }
 
-                re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+                re_log_msg::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
                     let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
                     if let Some(forced_application_id) = forced_application_id {
                         blueprint_id =
                             blueprint_id.with_application_id(forced_application_id.clone());
                     }
-                    re_log_types::LogMsg::BlueprintActivationCommand(
-                        re_log_types::BlueprintActivationCommand {
+                    re_log_msg::LogMsg::BlueprintActivationCommand(
+                        re_log_msg::BlueprintActivationCommand {
                             blueprint_id,
                             ..blueprint_activation_command
                         },
@@ -241,10 +241,8 @@ mod tests {
 
     use re_chunk::RowId;
     use re_log_encoding::Encoder;
-    use re_log_types::{
-        BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-        StoreSource, TimePoint,
-    };
+    use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+    use re_log_types::{StoreId, StoreKind, TimePoint};
     use re_sdk_types::archetypes::TextDocument;
 
     use super::*;

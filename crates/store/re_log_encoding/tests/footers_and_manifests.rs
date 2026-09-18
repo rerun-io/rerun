@@ -11,8 +11,9 @@ use re_log_encoding::{
     Decodable as _, DecoderApp, Encoder, RawRrdManifest, RrdManifest, RrdManifestBuilder,
     StreamFooter, StreamFooterEntry, ToApplication as _, ToTransport as _,
 };
+use re_log_msg::{ArrowMsg, LogMsg};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
+use re_log_types::{StoreId, StoreKind, build_log_time};
 use re_protos::external::prost::Message as _;
 
 #[test]
@@ -430,11 +431,11 @@ fn footer_interleaved_stores_without_set_store_info() {
     // blueprint chunks — with NO `SetStoreInfo` for the blueprint. This is what the Python SDK
     // produces today when a `RecordingStream` writes both data and a blueprint to one file sink.
     let msgs = chain!(
-        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        std::iter::once(LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
             row_id: *RowId::ZERO,
-            info: re_log_types::StoreInfo {
+            info: re_log_msg::StoreInfo {
                 store_id: store_id_recording.clone(),
-                store_source: re_log_types::StoreSource::Unknown,
+                store_source: re_log_msg::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
         })),
@@ -518,11 +519,11 @@ fn footer_empty() {
     fn generate_recording() -> impl Iterator<Item = LogMsg> {
         let store_id = generate_store_id();
 
-        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        std::iter::once(LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
             row_id: *RowId::ZERO,
-            info: re_log_types::StoreInfo {
+            info: re_log_msg::StoreInfo {
                 store_id: store_id.clone(),
-                store_source: re_log_types::StoreSource::Unknown,
+                store_source: re_log_msg::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
         }))
@@ -578,16 +579,16 @@ fn generate_recording_store_id() -> StoreId {
 }
 
 fn generate_recording(
-    chunks: impl Iterator<Item = re_log_types::ArrowMsg>,
+    chunks: impl Iterator<Item = re_log_msg::ArrowMsg>,
 ) -> impl Iterator<Item = LogMsg> {
     let store_id = generate_recording_store_id();
 
     std::iter::chain(
-        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        std::iter::once(LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
             row_id: *RowId::ZERO,
-            info: re_log_types::StoreInfo {
+            info: re_log_msg::StoreInfo {
                 store_id: store_id.clone(),
-                store_source: re_log_types::StoreSource::Unknown,
+                store_source: re_log_msg::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
         })),
@@ -595,7 +596,7 @@ fn generate_recording(
     )
 }
 
-fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
+fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_msg::ArrowMsg> {
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{TimeInt, TimeType, Timeline, build_frame_nr};
 
@@ -715,16 +716,16 @@ fn generate_blueprint_store_id() -> StoreId {
 }
 
 fn generate_blueprint(
-    chunks: impl Iterator<Item = re_log_types::ArrowMsg>,
+    chunks: impl Iterator<Item = re_log_msg::ArrowMsg>,
 ) -> impl Iterator<Item = LogMsg> {
     let store_id = generate_blueprint_store_id();
 
     std::iter::chain(
-        std::iter::once(LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        std::iter::once(LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
             row_id: *RowId::ZERO,
-            info: re_log_types::StoreInfo {
+            info: re_log_msg::StoreInfo {
                 store_id: store_id.clone(),
-                store_source: re_log_types::StoreSource::Unknown,
+                store_source: re_log_msg::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
             },
         })),
@@ -732,7 +733,7 @@ fn generate_blueprint(
     )
 }
 
-fn generate_blueprint_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
+fn generate_blueprint_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_msg::ArrowMsg> {
     use re_log_types::{EntityPath, TimeInt, build_frame_nr};
     use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 

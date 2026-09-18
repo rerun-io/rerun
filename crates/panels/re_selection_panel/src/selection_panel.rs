@@ -1478,7 +1478,7 @@ mod tests {
 
     fn get_test_context() -> TestContext {
         let mut test_context = TestContext::new_with_store_info(
-            re_log_types::StoreInfo::testing_with_recording_id("test_recording"),
+            re_log_msg::StoreInfo::testing_with_recording_id("test_recording"),
         );
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);

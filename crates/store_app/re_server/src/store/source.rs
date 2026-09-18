@@ -299,9 +299,9 @@ mod tests {
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
     use re_log_encoding::EncodingOptions;
     use re_log_encoding::RrdChunkProvider;
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::{
-        EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, TimePoint,
-        Timeline,
+        EntityPath, StoreId, StoreKind, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;

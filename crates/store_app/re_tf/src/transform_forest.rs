@@ -804,7 +804,8 @@ mod tests {
     use itertools::Itertools as _;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
-    use re_log_types::{EntityPath, StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
+    use re_log_msg::StoreInfo;
+    use re_log_types::{EntityPath, TimeCell, TimePoint, Timeline, TimelineName};
     use re_sdk_types::components::TransformFrameId;
     use re_sdk_types::{RowId, archetypes, components};
 

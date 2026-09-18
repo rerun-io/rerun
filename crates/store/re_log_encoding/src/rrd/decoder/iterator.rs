@@ -132,7 +132,8 @@ mod tests {
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+    use re_log_types::{StoreId, StoreKind};
     use re_protos::log_msg::v1alpha1 as proto;
     use re_protos::log_msg::v1alpha1::log_msg::Msg as LogMsgProto;
 
@@ -171,7 +172,7 @@ mod tests {
                 ),
             }),
             LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
-            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+            LogMsg::BlueprintActivationCommand(re_log_msg::BlueprintActivationCommand {
                 blueprint_id: store_id,
                 make_active: true,
                 make_default: true,

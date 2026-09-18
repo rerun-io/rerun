@@ -1,7 +1,8 @@
 use egui::{Atoms, WidgetText};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDbClass;
-use re_log_types::{ComponentPath, EntityPath, TableId};
+use re_log_types::TableId;
+use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::LabelContent;

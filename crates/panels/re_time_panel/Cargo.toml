@@ -50,6 +50,7 @@ vec1.workspace = true
 [dev-dependencies]
 re_chunk.workspace = true
 re_log_encoding.workspace = true
+re_log_msg.workspace = true
 re_test_context.workspace = true
 
 anyhow.workspace = true

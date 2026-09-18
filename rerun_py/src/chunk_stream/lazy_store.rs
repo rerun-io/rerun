@@ -390,10 +390,9 @@ mod pushdown_tests {
 
     use re_chunk::{Chunk, RowId, TimePoint, Timeline};
     use re_log_encoding::{EncodingOptions, RrdChunkProvider};
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-    use re_log_types::{
-        EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_types::{EntityPath, StoreId, StoreKind};
     use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};
 
     use super::*;

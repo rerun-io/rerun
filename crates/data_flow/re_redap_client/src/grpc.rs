@@ -12,10 +12,8 @@ use re_chunk::{Chunk, ChunkId};
 use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
-use re_log_types::{
-    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    StoreSource,
-};
+use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::DatasetKind;

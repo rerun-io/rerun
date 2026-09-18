@@ -4,7 +4,7 @@ use arrow::array::AsArray as _;
 use itertools::Itertools as _;
 
 use re_log_encoding::{Decodable as _, RawRrdManifest, RrdFooter};
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
 
 use crate::commands::{read_rrd_streams_from_file_or_stdin, stdio::InputSource};

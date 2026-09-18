@@ -1934,7 +1934,7 @@ impl RerunCloudService for RerunCloudHandler {
             .await?;
 
         let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
-            let arrow_msg = re_log_types::ArrowMsg {
+            let arrow_msg = re_log_msg::ArrowMsg {
                 chunk_id: *chunk.id(),
                 batch: chunk.to_record_batch().map_err(|err| {
                     tonic::Status::internal(format!(

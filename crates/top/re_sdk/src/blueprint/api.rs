@@ -1,6 +1,6 @@
 //! Blueprint API for configuring viewer layouts.
 
-use re_log_types::{BlueprintActivationCommand, LogMsg};
+use re_log_msg::{BlueprintActivationCommand, LogMsg};
 use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
 use re_sdk_types::blueprint::components::{AutoLayout, AutoViews, RootContainer};
 use re_sdk_types::encodings::Bool;

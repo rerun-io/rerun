@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
-use re_log_types::{LogMsg, StoreId};
+use re_log_msg::LogMsg;
+use re_log_types::StoreId;
 use re_sorbet::SorbetError;
 use re_span::Span;
 
@@ -113,7 +114,7 @@ struct ManifestState {
 impl FooterState {
     fn append(
         &mut self,
-        msg: &re_log_types::LogMsg,
+        msg: &re_log_msg::LogMsg,
         byte_span_excluding_header: Span<u64>,
         byte_size_uncompressed: u64,
     ) -> Result<(), EncodeError> {
@@ -228,7 +229,7 @@ impl<W: std::io::Write> Encoder<W> {
     }
 
     /// Returns the size in bytes of the encoded data.
-    pub fn append(&mut self, message: &re_log_types::LogMsg) -> Result<u64, EncodeError> {
+    pub fn append(&mut self, message: &re_log_msg::LogMsg) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
 
         let transport = message.to_transport(self.compression)?;

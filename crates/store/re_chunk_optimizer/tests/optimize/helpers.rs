@@ -14,8 +14,9 @@ use re_chunk_optimizer::{
     ColumnSelector, Error, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
 };
 use re_log_encoding::{EncodingOptions, InMemoryChunkProvider, RrdChunkProvider};
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline};
+use re_log_types::{StoreId, StoreKind, Timeline};
 use re_types_core::{Component as _, ComponentBatch as _, ComponentIdentifier};
 
 pub fn temporal_point_chunk(

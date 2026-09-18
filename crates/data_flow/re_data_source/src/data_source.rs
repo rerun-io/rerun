@@ -30,7 +30,7 @@ pub enum LogDataSource {
     /// A local file.
     File {
         /// How we got to know about the file.
-        file_source: re_log_types::FileSource,
+        file_source: re_log_msg::FileSource,
 
         /// The file's path or, on web, its display name.
         path: std::path::PathBuf,
@@ -84,7 +84,7 @@ impl LogDataSource {
     /// Note that not all URLs are log data sources!
     /// For instance a pure server or entry url is not a source of log data.
     pub fn from_uri(
-        _file_source: re_log_types::FileSource,
+        _file_source: re_log_msg::FileSource,
         url: &str,
         options: &FromUriOptions,
     ) -> Option<Self> {
@@ -419,8 +419,8 @@ impl LogDataSource {
         }
     }
 
-    fn file_source_to_analytics_str(file_source: &re_log_types::FileSource) -> &'static str {
-        use re_log_types::FileSource;
+    fn file_source_to_analytics_str(file_source: &re_log_msg::FileSource) -> &'static str {
+        use re_log_msg::FileSource;
         match file_source {
             FileSource::Cli => "cli",
             FileSource::Uri => "uri",
@@ -493,7 +493,7 @@ fn file_url_to_path(url: &str) -> Option<std::path::PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::FileSource;
+    use re_log_msg::FileSource;
 
     use super::*;
 

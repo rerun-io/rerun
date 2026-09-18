@@ -598,7 +598,7 @@ fn rr_recording_stream_new_impl(
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-        .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
+        .store_source(re_sdk::external::re_log_msg::StoreSource::CSdk)
         .default_enabled(default_enabled)
         .send_properties(send_properties);
 

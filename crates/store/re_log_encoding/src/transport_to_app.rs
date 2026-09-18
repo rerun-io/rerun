@@ -11,7 +11,7 @@
 
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
-use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
+use re_log_msg::{BlueprintActivationCommand, SetStoreInfo};
 
 use crate::ApplicationIdInjector;
 use crate::rrd::CodecError;
@@ -19,7 +19,7 @@ use crate::rrd::CodecError;
 // TODO(cmc): I'd really like a nice centralized way of communicating this.
 //
 // pub type LogMsgTransport = re_protos::log_msg::v1alpha1::log_msg::Msg;
-// pub type LogMsgApp = re_log_types::LogMsg;
+// pub type LogMsgApp = re_log_msg::LogMsg;
 
 // ---
 
@@ -31,7 +31,7 @@ pub trait ToTransport {
     fn to_transport(&self, context: Self::Context<'_>) -> Result<Self::Output, CodecError>;
 }
 
-impl ToTransport for re_log_types::LogMsg {
+impl ToTransport for re_log_msg::LogMsg {
     type Output = re_protos::log_msg::v1alpha1::log_msg::Msg;
     type Context<'a> = crate::rrd::Compression;
 
@@ -40,7 +40,7 @@ impl ToTransport for re_log_types::LogMsg {
     }
 }
 
-impl ToTransport for re_log_types::ArrowMsg {
+impl ToTransport for re_log_msg::ArrowMsg {
     type Output = re_protos::log_msg::v1alpha1::ArrowMsg;
     type Context<'a> = (re_log_types::StoreId, crate::rrd::Compression);
 
@@ -101,7 +101,7 @@ pub trait ToApplication {
 }
 
 impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
-    type Output = re_log_types::LogMsg;
+    type Output = re_log_msg::LogMsg;
     type Context<'a> = (
         &'a mut dyn ApplicationIdInjector,
         Option<CrateVersion<'static>>,
@@ -114,7 +114,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
         let mut log_msg = log_msg_transport_to_app(app_id_injector, self)?;
 
         if let Some(patched_version) = patched_version
-            && let re_log_types::LogMsg::SetStoreInfo(msg) = &mut log_msg
+            && let re_log_msg::LogMsg::SetStoreInfo(msg) = &mut log_msg
         {
             // In the context of a native RRD stream (files, stdio, etc), this is used to patch the
             // version advertised by the application-level object so that it matches the one advertised
@@ -128,7 +128,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
 }
 
 impl ToApplication for re_protos::log_msg::v1alpha1::LogMsg {
-    type Output = re_log_types::LogMsg;
+    type Output = re_log_msg::LogMsg;
     type Context<'a> = (
         &'a mut dyn ApplicationIdInjector,
         Option<CrateVersion<'static>>,
@@ -147,7 +147,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::LogMsg {
 }
 
 impl ToApplication for re_protos::log_msg::v1alpha1::ArrowMsg {
-    type Output = re_log_types::ArrowMsg;
+    type Output = re_log_msg::ArrowMsg;
     type Context<'a> = ();
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
@@ -237,7 +237,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
 fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
     app_id_injector: &mut I,
     message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
-) -> Result<re_log_types::LogMsg, CodecError> {
+) -> Result<re_log_msg::LogMsg, CodecError> {
     re_tracing::profile_function!();
 
     use re_protos::common::v1alpha1::ext::StoreIdFromProtoError;
@@ -248,7 +248,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
         Msg::SetStoreInfo(set_store_info) => {
             let set_store_info: SetStoreInfo = set_store_info.clone().try_into()?;
             app_id_injector.store_info_received(&set_store_info.info);
-            Ok(re_log_types::LogMsg::SetStoreInfo(set_store_info))
+            Ok(re_log_msg::LogMsg::SetStoreInfo(set_store_info))
         }
 
         Msg::ArrowMsg(arrow_msg) => {
@@ -275,7 +275,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
-            Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
+            Ok(re_log_msg::LogMsg::ArrowMsg(store_id, encoded))
         }
 
         Msg::BlueprintActivationCommand(blueprint_activation_command) => {
@@ -305,7 +305,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
-            Ok(re_log_types::LogMsg::BlueprintActivationCommand(
+            Ok(re_log_msg::LogMsg::BlueprintActivationCommand(
                 BlueprintActivationCommand {
                     blueprint_id,
                     make_active: blueprint_activation_command.make_active,
@@ -320,7 +320,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 #[tracing::instrument(level = "debug", skip_all)]
 fn arrow_msg_transport_to_app(
     arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
-) -> Result<re_log_types::ArrowMsg, CodecError> {
+) -> Result<re_log_msg::ArrowMsg, CodecError> {
     re_tracing::profile_function!();
 
     use re_protos::log_msg::v1alpha1::Encoding;
@@ -359,7 +359,7 @@ fn arrow_msg_transport_to_app(
     // so that there is some way to get the original (unmigrated) data out of an .rrd,
     // which would be very useful for debugging, e.g. using the `print` command.
 
-    Ok(re_log_types::ArrowMsg {
+    Ok(re_log_msg::ArrowMsg {
         chunk_id,
         // TODO(RR-1390): this right here is wasteful: some of the schema-related work necessary to
         // create the `ChunkBatch` will have to be re-done to re-create a `ChunkBatch` later.
@@ -370,7 +370,7 @@ fn arrow_msg_transport_to_app(
 
 /// Decodes a transport-level `ArrowMsg` straight into a [`re_chunk::Chunk`].
 ///
-/// This is a workaround until RR-1390 is addressed. Going through [`re_log_types::ArrowMsg`] parses
+/// This is a workaround until RR-1390 is addressed. Going through [`re_log_msg::ArrowMsg`] parses
 /// the Sorbet schema twice — once to migrate the batch, once more in
 /// [`re_chunk::Chunk::from_chunk_record_batch`] — and that parse dominates the cost of decoding a
 /// small chunk.
@@ -404,22 +404,22 @@ pub fn arrow_msg_transport_to_chunk(
 /// Converts an application-level `LogMsg` to its transport-level counterpart.
 #[tracing::instrument(level = "trace", skip_all)]
 fn log_msg_app_to_transport(
-    message: &re_log_types::LogMsg,
+    message: &re_log_msg::LogMsg,
     compression: crate::rrd::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::log_msg::Msg, CodecError> {
     re_tracing::profile_function!();
 
     let proto_msg = match message {
-        re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+        re_log_msg::LogMsg::SetStoreInfo(set_store_info) => {
             re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(set_store_info.clone().into())
         }
 
-        re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
+        re_log_msg::LogMsg::ArrowMsg(store_id, arrow_msg) => {
             let arrow_msg = arrow_msg_app_to_transport(arrow_msg, store_id.clone(), compression)?;
             re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg)
         }
 
-        re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+        re_log_msg::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
             re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
                 blueprint_activation_command.clone().into(),
             )
@@ -432,13 +432,13 @@ fn log_msg_app_to_transport(
 /// Converts an application-level `ArrowMsg` to its transport-level counterpart.
 #[tracing::instrument(level = "trace", skip_all)]
 fn arrow_msg_app_to_transport(
-    arrow_msg: &re_log_types::ArrowMsg,
+    arrow_msg: &re_log_msg::ArrowMsg,
     store_id: re_log_types::StoreId,
     compression: crate::rrd::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::ArrowMsg, CodecError> {
     re_tracing::profile_function!();
 
-    let re_log_types::ArrowMsg {
+    let re_log_msg::ArrowMsg {
         chunk_id,
         batch,
         on_release: _,

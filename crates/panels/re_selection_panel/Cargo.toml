@@ -45,5 +45,6 @@ static_assertions.workspace = true
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_component_ui.workspace = true
+re_log_msg.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true

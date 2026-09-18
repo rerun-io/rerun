@@ -6,9 +6,8 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 use re_log::ResultExt as _;
-use re_log_types::{
-    EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-};
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+use re_log_types::{EntityPathFilter, StoreId, StoreKind};
 use re_types_core::ComponentIdentifier;
 
 use re_chunk_store::{

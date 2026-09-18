@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crossbeam::channel::{Receiver, RecvTimeoutError, SendError, Sender};
 use parking_lot::Mutex;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_quota_channel::send_crossbeam;
 
 /// An error that can occur when flushing.

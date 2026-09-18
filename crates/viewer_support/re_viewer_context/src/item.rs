@@ -1,5 +1,6 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
+use re_log_types::TableId;
+use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::{BlueprintId, ContainerId, Contents, ViewId};

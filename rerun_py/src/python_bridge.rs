@@ -19,10 +19,9 @@ use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::{ChunkBatcherConfig, TimelineName};
 use re_log::ResultExt as _;
+use re_log_msg::{BlueprintActivationCommand, LogMsg};
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{
-    ApplicationId, BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId,
-};
+use re_log_types::{ApplicationId, EntityPathPart, RecordingId};
 use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
@@ -81,7 +80,7 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 ///
 /// ## The garbage queue
 ///
-/// When a [`re_log_types::LogMsg`] that was logged from Python gets dropped on the Rust side, it will end up
+/// When a [`re_log_msg::LogMsg`] that was logged from Python gets dropped on the Rust side, it will end up
 /// in this queue.
 ///
 /// The mere fact that the data still exists in this queue prevents the underlying Arrow refcount
@@ -681,7 +680,7 @@ fn new_recording(
     let mut builder = RecordingStreamBuilder::new(application_id)
         .batcher_hooks(hooks)
         .recording_id(recording_id.clone())
-        .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
+        .store_source(re_log_msg::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .send_properties(send_properties);
 
@@ -743,7 +742,7 @@ fn new_blueprint(
         .recording_id(RecordingId::random())
         .blueprint()
         .batcher_hooks(hooks)
-        .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
+        .store_source(re_log_msg::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -2655,9 +2654,9 @@ fn send_recording_start_time_nanos(
 
 // --- Helpers ---
 
-pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+pub fn python_version(py: Python<'_>) -> re_log_msg::PythonVersion {
     let py_version = py.version_info();
-    re_log_types::PythonVersion {
+    re_log_msg::PythonVersion {
         major: py_version.major,
         minor: py_version.minor,
         patch: py_version.patch,

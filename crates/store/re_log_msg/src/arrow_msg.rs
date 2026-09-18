@@ -1,7 +1,4 @@
 //! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
-//!
-//! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
-//! the inner Arrow serialization of an [`ArrowRecordBatch`].
 
 use std::sync::Arc;
 

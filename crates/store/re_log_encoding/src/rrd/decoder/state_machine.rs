@@ -23,7 +23,7 @@ pub type DecoderTransport = Decoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
 /// application-level types (i.e. even Arrow layers are decoded).
 ///
 /// See also [`DecoderApp`].
-pub type DecoderApp = Decoder<re_log_types::LogMsg>;
+pub type DecoderApp = Decoder<re_log_msg::LogMsg>;
 
 /// A push-based state machine that ingests byte chunks and outputs messages once it has enough
 /// data to decode one.
@@ -541,7 +541,7 @@ fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo};
 
     use super::*;
     use crate::Encoder;

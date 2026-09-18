@@ -213,7 +213,7 @@ pub(crate) fn encode_entity_dbs(
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */))
         .inspect(|msg| {
-            num_chunks += matches!(msg, Ok(re_log_types::LogMsg::ArrowMsg(_, _))) as u64;
+            num_chunks += matches!(msg, Ok(re_log_msg::LogMsg::ArrowMsg(_, _))) as u64;
         });
 
     // TODO(cmc): encoding options should match the original.
@@ -241,10 +241,9 @@ pub(crate) fn encode_entity_dbs(
 mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::{Chunk, ChunkResult, RowId};
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{
-        EntityPath, LogMsg, SetStoreInfo, StoreInfo, StoreSource, TimePoint, Timeline,
-    };
+    use re_log_types::{EntityPath, TimePoint, Timeline};
 
     use super::*;
 

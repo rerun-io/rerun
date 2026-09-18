@@ -39,7 +39,7 @@ impl DownloadCommand {
 
         for url in &self.urls {
             let data_source = LogDataSource::from_uri(
-                re_log_types::FileSource::Cli,
+                re_log_msg::FileSource::Cli,
                 url,
                 &FromUriOptions {
                     accept_extensionless_http: true,

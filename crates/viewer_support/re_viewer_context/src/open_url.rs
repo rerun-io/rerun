@@ -193,7 +193,7 @@ impl ViewerOpenUrl {
             // Web event listener (legacy notebooks).
             Ok(Self::WebEventListener)
         } else if let Some(data_source) =
-            LogDataSource::from_uri(re_log_types::FileSource::Uri, url, from_uri_options)
+            LogDataSource::from_uri(re_log_msg::FileSource::Uri, url, from_uri_options)
         {
             match data_source {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
@@ -617,7 +617,7 @@ impl ViewerOpenUrl {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
-                    file_source: re_log_types::FileSource::Uri,
+                    file_source: re_log_msg::FileSource::Uri,
                     path,
                     assets: Vec::new(),
                 }));
@@ -953,7 +953,8 @@ mod tests {
     use re_chunk::ChunkId;
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::{LogSource, RecordingOpenBehavior};
-    use re_log_types::{EntryId, StoreId, StoreKind, TableId};
+    use re_log_types::TableId;
+    use re_log_types::{EntryId, StoreId, StoreKind};
     use re_uri::{CatalogUri, DatasetUri, Fragment, Scheme};
     use re_uri::{
         Origin,

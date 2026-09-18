@@ -111,7 +111,7 @@ fn prepare_episode_chunks(
         let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
         let set_store_info = ImportedData::LogMsg(
             loader_name.to_owned(),
-            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
+            prepare_store_info(&store_id, re_log_msg::FileSource::Sdk),
         );
 
         if send_crossbeam(tx, set_store_info).is_err() {
@@ -193,7 +193,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
 
-    use re_log_types::LogMsg;
+    use re_log_msg::LogMsg;
 
     use super::*;
 

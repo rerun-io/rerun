@@ -121,7 +121,7 @@ mod tests {
         for (app_env, expected_url) in [
             (AppEnvironment::Custom("test".to_owned()), INSTALL_RERUN_URL),
             (
-                AppEnvironment::PythonSdk(re_log_types::PythonVersion {
+                AppEnvironment::PythonSdk(re_log_msg::PythonVersion {
                     major: 3,
                     minor: 13,
                     patch: 0,

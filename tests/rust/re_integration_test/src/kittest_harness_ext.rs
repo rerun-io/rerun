@@ -5,7 +5,7 @@ use egui::accesskit::Role;
 use egui::{Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
-use re_sdk::external::re_log_types::{SetStoreInfo, StoreInfo};
+use re_sdk::external::re_log_msg::{SetStoreInfo, StoreInfo};
 use re_sdk::external::re_tuid::Tuid;
 use re_sdk::log::Chunk;
 use re_sdk::{
@@ -376,7 +376,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         );
         let store_info = StoreInfo::new_unversioned(
             recording_store_id.clone(),
-            re_sdk::external::re_log_types::StoreSource::Other("test".to_owned()),
+            re_sdk::external::re_log_msg::StoreSource::Other("test".to_owned()),
         );
         let mut recording_store = EntityDb::new(recording_store_id.clone());
 

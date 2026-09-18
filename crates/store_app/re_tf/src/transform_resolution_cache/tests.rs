@@ -7,8 +7,9 @@ use re_chunk_store::{
     LatestAtQuery, MissingChunkReporter, PerStoreChunkSubscriber,
 };
 use re_entity_db::EntityDb;
+use re_log_msg::StoreInfo;
 use re_log_types::{
-    EntityPath, StoreId, StoreInfo, TimeInt, TimePoint, Timeline, TimelineName,
+    EntityPath, StoreId, TimeInt, TimePoint, Timeline, TimelineName,
     example_components::{MyPoint, MyPoints},
 };
 use re_sdk_types::{

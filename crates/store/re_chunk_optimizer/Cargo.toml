@@ -36,6 +36,7 @@ thiserror.workspace = true
 [dev-dependencies]
 re_chunk_store.workspace = true # only for `OptimizationProfile::OBJECT_STORE` in tests
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_msg.workspace = true
 re_memory.workspace = true
 
 anyhow.workspace = true

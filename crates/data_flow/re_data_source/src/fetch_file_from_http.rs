@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use re_log::ResultExt as _;
 use re_log_channel::{LogReceiver, LogSource, url_display_name};
-use re_log_types::{FileSource, RecordingId};
+use re_log_msg::FileSource;
+use re_log_types::RecordingId;
 
 /// Fetch a file from an HTTP URL and load it using all available importers.
 ///

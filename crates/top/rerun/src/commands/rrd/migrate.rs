@@ -115,16 +115,16 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let messages = decoder.into_iter().filter_map(|result| match result {
         Ok(msg) => match msg {
-            re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
+            re_log_msg::LogMsg::ArrowMsg(store_id, arrow_msg) => {
                 match re_sorbet::SorbetBatch::try_from_record_batch(
                     &arrow_msg.batch,
                     re_sorbet::BatchType::Chunk,
                 ) {
                     Ok(batch) => {
                         let batch = arrow::array::RecordBatch::from(&batch);
-                        Some(Ok(re_log_types::LogMsg::ArrowMsg(
+                        Some(Ok(re_log_msg::LogMsg::ArrowMsg(
                             store_id,
-                            re_log_types::ArrowMsg {
+                            re_log_msg::ArrowMsg {
                                 chunk_id: arrow_msg.chunk_id,
                                 batch,
                                 on_release: None,
@@ -137,8 +137,8 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
                     }
                 }
             }
-            re_log_types::LogMsg::BlueprintActivationCommand(..)
-            | re_log_types::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
+            re_log_msg::LogMsg::BlueprintActivationCommand(..)
+            | re_log_msg::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
         },
         Err(err) => {
             errors.insert(err.to_string());

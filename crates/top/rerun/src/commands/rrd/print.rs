@@ -3,7 +3,7 @@ use arrow::array::RecordBatch;
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{LogMsg, SetStoreInfo};
+use re_log_msg::{LogMsg, SetStoreInfo};
 use re_sdk::EntityPath;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
@@ -287,7 +287,7 @@ fn print_msg(options: &Options, msg: LogMsg) -> anyhow::Result<()> {
             }
         }
 
-        LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+        LogMsg::BlueprintActivationCommand(re_log_msg::BlueprintActivationCommand {
             blueprint_id,
             make_active,
             make_default,

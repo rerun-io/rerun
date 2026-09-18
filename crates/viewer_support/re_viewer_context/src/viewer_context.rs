@@ -2,7 +2,8 @@ use ahash::HashMap;
 use re_chunk::EntityPath;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{EntryId, TableId};
+use re_log_types::EntryId;
+use re_log_types::TableId;
 use re_query::StorageEngineReadGuard;
 use re_sdk_types::ViewClassIdentifier;
 

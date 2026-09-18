@@ -125,7 +125,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     if let Some(store_info) = db.store_info()
         && ui_layout.is_selection_panel()
     {
-        let re_log_types::StoreInfo {
+        let re_log_msg::StoreInfo {
             store_id,
             store_source,
             store_version,

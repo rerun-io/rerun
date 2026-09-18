@@ -1,4 +1,4 @@
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_viewer::external::eframe;
 
 /// Starts a Rerun viewer to visualize the contents of a given array of messages.
@@ -14,7 +14,7 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
         return Ok(());
     }
 
-    let store_source = re_log_types::StoreSource::RustSdk {
+    let store_source = re_log_msg::StoreSource::RustSdk {
         rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
         llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
     };

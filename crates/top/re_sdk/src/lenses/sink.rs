@@ -1,6 +1,7 @@
 use re_chunk::Chunk;
 use re_lenses::Lenses;
-use re_log_types::{LogMsg, StoreId};
+use re_log_msg::LogMsg;
+use re_log_types::StoreId;
 
 use crate::sink::LogSink;
 
@@ -45,7 +46,7 @@ impl<S: LogSink> LensesSink<S> {
 }
 
 impl<S: LogSink> LogSink for LensesSink<S> {
-    fn send(&self, msg: re_log_types::LogMsg) {
+    fn send(&self, msg: re_log_msg::LogMsg) {
         match &msg {
             LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand(_) => {
                 self.sink.send(msg);

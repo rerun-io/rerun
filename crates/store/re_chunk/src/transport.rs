@@ -268,9 +268,9 @@ impl Chunk {
 
 impl Chunk {
     #[inline]
-    pub fn from_arrow_msg(msg: &re_log_types::ArrowMsg) -> ChunkResult<Self> {
+    pub fn from_arrow_msg(msg: &re_log_msg::ArrowMsg) -> ChunkResult<Self> {
         re_tracing::profile_function!();
-        let re_log_types::ArrowMsg {
+        let re_log_msg::ArrowMsg {
             chunk_id: _,
             batch,
             on_release: _,
@@ -280,11 +280,11 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn to_arrow_msg(&self) -> ChunkResult<re_log_types::ArrowMsg> {
+    pub fn to_arrow_msg(&self) -> ChunkResult<re_log_msg::ArrowMsg> {
         re_tracing::profile_function!();
         self.sanity_check()?;
 
-        Ok(re_log_types::ArrowMsg {
+        Ok(re_log_msg::ArrowMsg {
             chunk_id: self.id().as_tuid(),
             batch: self.to_record_batch()?,
             on_release: None,

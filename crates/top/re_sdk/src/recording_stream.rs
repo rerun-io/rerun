@@ -14,9 +14,11 @@ use re_chunk::{
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log::env_var_flag;
+use re_log_msg::{
+    ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, LogMsg, StoreInfo, StoreSource,
+};
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
+    ApplicationId, EntityPath, RecordingId, StoreId, StoreKind, TimeCell, TimeInt, TimePoint,
     Timeline, TimelineName,
 };
 use re_quota_channel::send_crossbeam;
@@ -978,7 +980,7 @@ impl RecordingStreamInner {
                 "Setting StoreInfo",
             );
             sink.send(
-                re_log_types::SetStoreInfo {
+                re_log_msg::SetStoreInfo {
                     row_id: *RowId::new(),
                     info: store_info.clone(),
                 }
@@ -1122,7 +1124,7 @@ impl RecordingStream {
     /// You can create a [`StoreInfo`] with [`crate::new_store_info`];
     ///
     /// The [`StoreInfo`] is immediately sent to the sink in the form of a
-    /// [`re_log_types::SetStoreInfo`].
+    /// [`re_log_msg::SetStoreInfo`].
     ///
     /// You can find sinks in [`crate::sink`].
     ///
@@ -1544,13 +1546,13 @@ impl RecordingStream {
         if let Some(contents) = contents {
             re_importer::import_from_file_contents(
                 &settings,
-                re_log_types::FileSource::Sdk,
+                re_log_msg::FileSource::Sdk,
                 filepath,
                 contents,
                 &tx,
             )?;
         } else {
-            re_importer::import_from_path(&settings, re_log_types::FileSource::Sdk, filepath, &tx)?;
+            re_importer::import_from_path(&settings, re_log_msg::FileSource::Sdk, filepath, &tx)?;
         }
         drop(tx);
 
@@ -1629,7 +1631,7 @@ fn forwarding_thread(
                         "Setting StoreInfo",
                     );
                     new_sink.send(
-                        re_log_types::SetStoreInfo {
+                        re_log_msg::SetStoreInfo {
                             row_id: *RowId::new(),
                             info: store_info.clone(),
                         }
@@ -1669,7 +1671,7 @@ fn forwarding_thread(
 
                     let new_sink: Box<dyn LogSink> = Box::new(crate::log_sink::BufferedSink::new());
                     new_sink.send(
-                        re_log_types::SetStoreInfo {
+                        re_log_msg::SetStoreInfo {
                             row_id: *RowId::new(),
                             info: store_info.clone(),
                         }

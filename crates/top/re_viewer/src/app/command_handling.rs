@@ -889,7 +889,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
                 use re_data_source::LogDataSource;
-                use re_log_types::FileSource;
+                use re_log_msg::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
@@ -922,7 +922,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Import => {
                 use re_data_source::LogDataSource;
-                use re_log_types::FileSource;
+                use re_log_msg::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
@@ -1938,7 +1938,7 @@ async fn async_save_dialog(
     rrd_version: re_build_info::CrateVersion<'static>,
     file_name: &str,
     title: &str,
-    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
+    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_msg::LogMsg>>,
 ) -> anyhow::Result<()> {
     use anyhow::Context as _;
 

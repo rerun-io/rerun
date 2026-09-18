@@ -140,7 +140,7 @@ pub enum AppEnvironment {
     CSdk,
 
     /// Created from the Rerun Python SDK.
-    PythonSdk(re_log_types::PythonVersion),
+    PythonSdk(re_log_msg::PythonVersion),
 
     /// Created from the Rerun Rust SDK.
     RustSdk {
@@ -165,8 +165,8 @@ pub enum AppEnvironment {
 }
 
 impl AppEnvironment {
-    pub fn from_store_source(source: &re_log_types::StoreSource) -> Self {
-        use re_log_types::StoreSource;
+    pub fn from_store_source(source: &re_log_msg::StoreSource) -> Self {
+        use re_log_msg::StoreSource;
         match source {
             StoreSource::CSdk => Self::CSdk,
 

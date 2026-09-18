@@ -66,7 +66,7 @@ pub fn open_recording(
     entity_db: &re_entity_db::EntityDb,
 ) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
-        let re_log_types::StoreInfo {
+        let re_log_msg::StoreInfo {
             store_id,
             store_source,
             store_version,
@@ -90,18 +90,18 @@ pub fn open_recording(
                 )
             };
 
-        use re_log_types::StoreSource as S;
+        use re_log_msg::StoreSource as S;
         let store_source_preprocessed = match &store_source {
             S::Unknown => "unknown".to_owned(),
             S::CSdk => "c_sdk".to_owned(),
             S::PythonSdk(_version) => "python_sdk".to_owned(),
             S::RustSdk { .. } => "rust_sdk".to_owned(),
             S::File { file_source } => match file_source {
-                re_log_types::FileSource::Cli => "file_cli".to_owned(),
-                re_log_types::FileSource::Uri => "file_uri".to_owned(),
-                re_log_types::FileSource::DragAndDrop { .. } => "file_drag_and_drop".to_owned(),
-                re_log_types::FileSource::FileDialog { .. } => "file_dialog".to_owned(),
-                re_log_types::FileSource::Sdk => "file_sdk".to_owned(),
+                re_log_msg::FileSource::Cli => "file_cli".to_owned(),
+                re_log_msg::FileSource::Uri => "file_uri".to_owned(),
+                re_log_msg::FileSource::DragAndDrop { .. } => "file_drag_and_drop".to_owned(),
+                re_log_msg::FileSource::FileDialog { .. } => "file_dialog".to_owned(),
+                re_log_msg::FileSource::Sdk => "file_sdk".to_owned(),
             },
             S::Viewer => "viewer".to_owned(),
             S::Other(other) => other.clone(),

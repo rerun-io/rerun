@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use re_chunk::ChunkBatcherConfig;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 
 use crate::sink::SinkFlushError;
 

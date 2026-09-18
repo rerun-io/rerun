@@ -331,7 +331,7 @@ fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &crossbeam::channel::Sender<crate::ImportedData>,
     is_sending_data: Arc<AtomicBool>,
-    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
+    msgs: impl Iterator<Item = Result<re_log_msg::LogMsg, re_log_encoding::DecodeError>>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 

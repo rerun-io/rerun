@@ -4,7 +4,8 @@
 use std::sync::Arc;
 
 use re_log_encoding::RrdManifest;
-use re_log_types::{ApplicationId, LogMsg, StoreId, TableMsg, impl_into_enum};
+use re_log_msg::{LogMsg, TableMsg};
+use re_log_types::{ApplicationId, StoreId, impl_into_enum};
 
 use crate::ViewerControlCommand;
 

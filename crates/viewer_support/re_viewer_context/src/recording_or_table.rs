@@ -1,4 +1,5 @@
-use re_log_types::{StoreId, TableId};
+use re_log_types::StoreId;
+use re_log_types::TableId;
 
 use crate::Route;
 

@@ -1,5 +1,6 @@
 use re_chunk::ChunkId;
-use re_log_types::{ApplicationId, EntryId, StoreId, TableId};
+use re_log_types::TableId;
+use re_log_types::{ApplicationId, EntryId, StoreId};
 
 use crate::{Item, RedapEntryKind, TableReference, open_url::EXAMPLES_ORIGIN};
 

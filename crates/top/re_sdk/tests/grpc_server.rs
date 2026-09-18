@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use re_chunk::Chunk;
 use re_log_channel::DataSourceMessage;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_sdk::RecordingStreamBuilder;
 
 const TIMEOUT: Duration = Duration::from_secs(10);

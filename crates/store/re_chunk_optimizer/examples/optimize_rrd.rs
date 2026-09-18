@@ -23,7 +23,8 @@ use parking_lot::Mutex;
 use re_chunk_optimizer::{MergeSplitSettings, OptimizationSettings, optimize};
 use re_chunk_store::OptimizationProfile;
 use re_log_encoding::{Encoder, EncodingOptions, RrdChunkProvider, read_rrd_footer};
-use re_log_types::{LogMsg, SetStoreInfo, StoreInfo, StoreSource, TimelineName};
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+use re_log_types::TimelineName;
 use re_tracing::reexports::puffin;
 
 /// Output chunks between two memory reports while streaming.

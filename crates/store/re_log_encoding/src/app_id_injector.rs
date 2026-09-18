@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use re_log_types::{ApplicationId, RecordingId, StoreId, StoreInfo, StoreKind};
+use re_log_msg::StoreInfo;
+
+use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError;
 
 /// Helper trait for injecting application ids to legacy `StoreId` protobuf messages which miss it.
@@ -14,7 +16,7 @@ use re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError;
 /// instead, see [`DummyApplicationIdInjector`], which is needed on redap side.
 //TODO(#10730): this should be entirely suppressed when removing 0.24 back compat
 pub trait ApplicationIdInjector {
-    /// Populate the cache based on a [`re_log_types::SetStoreInfo`] payload.
+    /// Populate the cache based on a [`StoreInfo`] payload.
     fn store_info_received(&mut self, store_info: &StoreInfo);
 
     /// Try to recover a `StoreId` from a `StoreIdMissingApplicationIdError`.

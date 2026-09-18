@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 
 /// An intermediate message when decoding an rrd file fetched over HTTP.
 pub enum HttpMessage {

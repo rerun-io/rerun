@@ -296,21 +296,21 @@ impl ViewerEventDispatcher {
         let source = db
             .store_info()
             .map(|info| info.store_source.clone())
-            .unwrap_or(re_log_types::StoreSource::Unknown);
+            .unwrap_or(re_log_msg::StoreSource::Unknown);
         self.dispatch(ViewerEvent::from_db_and_kind(
             db,
             ViewerEventKind::RecordingOpen {
                 source: match &source {
-                    re_log_types::StoreSource::Unknown => "unknown",
-                    re_log_types::StoreSource::CSdk => "cpp",
-                    re_log_types::StoreSource::PythonSdk(_python_version) => "python",
-                    re_log_types::StoreSource::RustSdk {
+                    re_log_msg::StoreSource::Unknown => "unknown",
+                    re_log_msg::StoreSource::CSdk => "cpp",
+                    re_log_msg::StoreSource::PythonSdk(_python_version) => "python",
+                    re_log_msg::StoreSource::RustSdk {
                         rustc_version: _,
                         llvm_version: _,
                     } => "rust",
-                    re_log_types::StoreSource::File { file_source: _ } => "file",
-                    re_log_types::StoreSource::Viewer => "viewer",
-                    re_log_types::StoreSource::Other(v) => v.as_str(),
+                    re_log_msg::StoreSource::File { file_source: _ } => "file",
+                    re_log_msg::StoreSource::Viewer => "viewer",
+                    re_log_msg::StoreSource::Other(v) => v.as_str(),
                 }
                 .into(),
                 version: db

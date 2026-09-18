@@ -34,7 +34,7 @@ use crate::{ApplicationIdInjector, MessageKind, ToApplication as _};
 /// Implemented for top-level types that can kickoff decoding.
 ///
 /// There are only two of them in this crate:
-/// * [`re_log_types::LogMsg`]: application-level root message
+/// * [`re_log_msg::LogMsg`]: application-level root message
 /// * [`re_protos::log_msg::v1alpha1::log_msg::Msg`]: transport-level root message
 ///
 /// This can be used to generically instantiate transport- and/or application-level decoders.
@@ -51,7 +51,7 @@ pub trait DecoderEntrypoint: Sized {
     ) -> Result<Option<Self>, crate::rrd::CodecError>;
 }
 
-impl DecoderEntrypoint for re_log_types::LogMsg {
+impl DecoderEntrypoint for re_log_msg::LogMsg {
     fn decode(
         data_excluding_headers: bytes::Bytes,
         byte_span_excluding_headers: re_chunk::Span<u64>,

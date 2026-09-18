@@ -598,7 +598,7 @@ mod tests {
     #[test]
     fn scene_view_coordinates_take_precedence_over_pinhole_fallback()
     -> Result<(), Box<dyn std::error::Error>> {
-        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+        let mut entity_db = EntityDb::new(re_log_msg::StoreInfo::testing().store_id);
         let timeline = Timeline::new_sequence("t");
         let query = LatestAtQuery::new(*timeline.name(), 1);
 
@@ -640,7 +640,7 @@ mod tests {
     #[test]
     fn invalid_instance_pose_quaternion_preserves_translation()
     -> Result<(), Box<dyn std::error::Error>> {
-        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+        let mut entity_db = EntityDb::new(re_log_msg::StoreInfo::testing().store_id);
 
         let timeline = Timeline::new_sequence("t");
         let entity_path = EntityPath::from("my_entity");
@@ -675,7 +675,7 @@ mod tests {
     /// Tests that `Transform3D` with multiple transform components per row are treated as error.
     #[test]
     fn non_mono_transform3d_component_errors() -> Result<(), Box<dyn std::error::Error>> {
-        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+        let mut entity_db = EntityDb::new(re_log_msg::StoreInfo::testing().store_id);
 
         let timeline = Timeline::new_sequence("t");
         let entity_path = EntityPath::from("my_entity");

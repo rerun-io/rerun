@@ -102,11 +102,11 @@ impl StoreBundle {
 
             re_log::trace!("Creating a new blueprint '{id:?}'");
 
-            blueprint_db.set_store_info(re_log_types::SetStoreInfo {
+            blueprint_db.set_store_info(re_log_msg::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
-                info: re_log_types::StoreInfo::new(
+                info: re_log_msg::StoreInfo::new(
                     id.clone(),
-                    re_log_types::StoreSource::Other("viewer".to_owned()),
+                    re_log_msg::StoreSource::Other("viewer".to_owned()),
                 ),
             });
 

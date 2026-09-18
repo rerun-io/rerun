@@ -6,7 +6,8 @@ use parking_lot::Mutex;
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::{EncodeError, Encoder};
-use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
+use re_log_msg::{BlueprintActivationCommand, LogMsg};
+use re_log_types::StoreId;
 
 use crate::RecordingStream;
 

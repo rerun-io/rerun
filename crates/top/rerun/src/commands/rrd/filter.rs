@@ -106,7 +106,7 @@ impl FilterCommand {
             match res {
                 Ok(msg) => {
                     let msg = match msg {
-                        re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
+                        re_log_msg::LogMsg::ArrowMsg(store_id, mut msg) => {
                             match re_sorbet::ChunkBatch::try_from(&msg.batch) {
                                 Ok(batch) => {
                                     if dropped_entity_paths.contains(batch.entity_path()) {
@@ -134,7 +134,7 @@ impl FilterCommand {
                                             )
                                         {
                                             msg.batch = new_batch;
-                                            Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                            Some(re_log_msg::LogMsg::ArrowMsg(store_id, msg))
                                         } else {
                                             None // Probably failed because we filtered out everything
                                         }

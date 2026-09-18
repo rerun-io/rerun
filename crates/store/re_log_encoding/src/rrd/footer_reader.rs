@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use re_async::AsyncReadAt;
-use re_log_types::{ApplicationId, LogMsg, StoreId};
+use re_log_msg::LogMsg;
+use re_log_types::{ApplicationId, StoreId};
 use re_span::Span;
 
 use crate::rrd::{
@@ -228,9 +229,9 @@ mod tests {
     use crate::rrd::test_util::{encode_test_rrd, encode_test_rrd_to_file, make_test_chunks};
 
     fn set_store_info(store_id: StoreId) -> LogMsg {
-        LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+        LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
             row_id: *re_chunk::RowId::ZERO,
-            info: re_log_types::StoreInfo::new(store_id, re_log_types::StoreSource::Unknown),
+            info: re_log_msg::StoreInfo::new(store_id, re_log_msg::StoreSource::Unknown),
         })
     }
 
@@ -329,7 +330,8 @@ mod tests {
     /// messages (can happen e.g. after a flush/reconnect). Enumeration must dedup.
     #[test]
     fn test_enumerate_rrd_stores_legacy_duplicate_set_store_info() {
-        use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+        use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+        use re_log_types::{StoreId, StoreKind};
 
         let chunks = make_test_chunks(2);
         let store_id = StoreId::random(StoreKind::Recording, "dup_test");
@@ -390,7 +392,8 @@ mod tests {
     /// return the same result.
     #[test]
     fn test_enumerate_rrd_stores_interleaved_footer_vs_legacy() {
-        use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+        use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+        use re_log_types::{StoreId, StoreKind};
 
         let chunks_a = make_test_chunks(2);
         let chunks_b = make_test_chunks(2);
@@ -466,7 +469,8 @@ mod tests {
 
     #[test]
     fn test_enumerate_legacy_metadata_default_blueprint_last_wins() {
-        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+        use re_log_msg::{BlueprintActivationCommand, LogMsg};
+        use re_log_types::{StoreId, StoreKind};
 
         let app_id = re_log_types::ApplicationId::from("metadata_app");
         let recording = StoreId::random(StoreKind::Recording, app_id.clone());
@@ -514,7 +518,8 @@ mod tests {
 
     #[test]
     fn test_enumerate_legacy_metadata_ignores_non_default_blueprint_activation() {
-        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+        use re_log_msg::{BlueprintActivationCommand, LogMsg};
+        use re_log_types::{StoreId, StoreKind};
 
         let app_id = re_log_types::ApplicationId::from("metadata_app");
         let recording = StoreId::random(StoreKind::Recording, app_id.clone());
@@ -551,7 +556,8 @@ mod tests {
 
     #[test]
     fn test_enumerate_legacy_metadata_omits_missing_default_blueprint() {
-        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+        use re_log_msg::{BlueprintActivationCommand, LogMsg};
+        use re_log_types::{StoreId, StoreKind};
 
         let app_id = re_log_types::ApplicationId::from("metadata_app");
         let recording = StoreId::random(StoreKind::Recording, app_id.clone());

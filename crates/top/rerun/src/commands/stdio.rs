@@ -42,10 +42,10 @@ impl std::fmt::Display for InputSource {
 pub fn read_rrd_streams_from_file_or_stdin(
     paths: &[String],
 ) -> (
-    channel::Receiver<(InputSource, anyhow::Result<re_log_types::LogMsg>)>,
+    channel::Receiver<(InputSource, anyhow::Result<re_log_msg::LogMsg>)>,
     channel::Receiver<(u64, Vec<(InputSource, anyhow::Result<RawRrdManifest>)>)>,
 ) {
-    read_any_rrd_streams_from_file_or_stdin::<re_log_types::LogMsg>(paths)
+    read_any_rrd_streams_from_file_or_stdin::<re_log_msg::LogMsg>(paths)
 }
 
 /// Asynchronously decodes potentially multiplexed RRD streams from the given `paths`, or standard

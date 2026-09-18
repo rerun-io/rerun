@@ -245,20 +245,21 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/store`](./crates/store) — the data model, and the in-memory store that holds it.
 
-| Crate              | Description                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------------- |
-| re_chunk           | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute.            |
-| re_chunk_optimizer | Analysis and memory-bounded optimization of Rerun chunk layouts                                          |
-| re_chunk_store     | A storage engine for Rerun's Chunks                                                                      |
-| re_lenses_core     | Core lens types and composable Arrow array transformations.                                              |
-| re_log_channel     | An in-memory channel of Rerun data messages.                                                             |
-| re_log_encoding    | Encode/decode and serialize/deserialize RRD streams                                                      |
-| re_log_types       | The basic building blocks of the Rerun log format: entity paths, timelines, store ids, and log messages. |
-| re_protos          | Rerun remote gRPC/protobuf API types                                                                     |
-| re_sdk_types       | The standard Rerun data types, component types, and archetypes.                                          |
-| re_sorbet          | Rerun arrow metadata definitions                                                                         |
-| re_types_core      | The core traits and types that power Rerun's data model.                                                 |
-| re_uri             | Parsing and constructing Rerun URIs                                                                      |
+| Crate              | Description                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| re_chunk           | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
+| re_chunk_optimizer | Analysis and memory-bounded optimization of Rerun chunk layouts                               |
+| re_chunk_store     | A storage engine for Rerun's Chunks                                                           |
+| re_lenses_core     | Core lens types and composable Arrow array transformations.                                   |
+| re_log_channel     | An in-memory channel of Rerun data messages.                                                  |
+| re_log_encoding    | Encode/decode and serialize/deserialize RRD streams                                           |
+| re_log_msg         | The messages that carry Rerun data between the SDK, `.rrd` files and the viewer.              |
+| re_log_types       | The basic building blocks of the Rerun log format: entity paths, timelines, and store ids.    |
+| re_protos          | Rerun remote gRPC/protobuf API types                                                          |
+| re_sdk_types       | The standard Rerun data types, component types, and archetypes.                               |
+| re_sorbet          | Rerun arrow metadata definitions                                                              |
+| re_types_core      | The core traits and types that power Rerun's data model.                                      |
+| re_uri             | Parsing and constructing Rerun URIs                                                           |
 
 ### Build support
 

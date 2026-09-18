@@ -6,7 +6,8 @@ use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, RecordingOpenBehavior,
     ViewerControlCommand,
 };
-use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg};
+use re_log_msg::{LogMsg, TableMsg};
+use re_log_types::{StoreId, StoreKind};
 use re_viewer_context::{
     Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
 };

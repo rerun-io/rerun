@@ -7,7 +7,8 @@ use pyo3::prelude::*;
 use re_chunk::Chunk;
 use re_chunk_store::LazyStore;
 use re_log_encoding::{RawRrdManifest, RrdChunkProvider, RrdFooter};
-use re_log_types::{LogMsg, StoreId, StoreKind};
+use re_log_msg::LogMsg;
+use re_log_types::{StoreId, StoreKind};
 
 use crate::utils::wait_for_future;
 

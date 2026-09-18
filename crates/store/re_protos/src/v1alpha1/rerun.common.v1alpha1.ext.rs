@@ -4,8 +4,9 @@ use arrow::datatypes::Schema as ArrowSchema;
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
+use re_log_types::RecordingId;
+use re_log_types::TableId;
 use re_log_types::external::re_types_core::ComponentDescriptor;
-use re_log_types::{RecordingId, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 

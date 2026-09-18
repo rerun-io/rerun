@@ -1,5 +1,5 @@
 use re_chunk::ChunkBatcherConfig;
-use re_log_types::LogMsg;
+use re_log_msg::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 use crate::log_sink::SinkFlushError;

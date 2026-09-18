@@ -2,8 +2,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::{
-    EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
+    EntityPath, StoreId, StoreKind,
     example_components::{MyPoint, MyPoints},
 };
 use tempfile::NamedTempFile;

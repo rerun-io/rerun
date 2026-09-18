@@ -146,6 +146,7 @@ re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.39.0-alph
 re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.39.0-alpha.1", default-features = false }
 re_log_channel = { path = "crates/store/re_log_channel", version = "=0.39.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.39.0-alpha.1", default-features = false }
+re_log_msg = { path = "crates/store/re_log_msg", version = "=0.39.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.39.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.39.0-alpha.1", default-features = false }
 re_sdk_types = { path = "crates/store/re_sdk_types", version = "=0.39.0-alpha.1", default-features = false }
@@ -593,6 +594,7 @@ debug = false
 "re_integration_test".debug = true
 "re_log_channel".debug = true
 "re_log_encoding".debug = true
+"re_log_msg".debug = true
 "re_log_types".debug = true
 "re_log".debug = true
 "re_mcap".debug = true

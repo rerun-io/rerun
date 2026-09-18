@@ -9,7 +9,7 @@ use std::pin::Pin;
 use re_byte_size::{MemUsageNode, MemUsageTree, SizeBytes};
 use re_log_channel::{DataSourceMessage, ViewerControlCommand};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
-use re_log_types::TableMsg;
+use re_log_msg::TableMsg;
 use re_protos::common::v1alpha1::{
     DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
 };
@@ -1398,7 +1398,8 @@ mod tests {
     use itertools::{Itertools as _, chain};
     use re_chunk::RowId;
     use re_log_encoding::rrd::Compression;
-    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
+    use re_log_types::{StoreId, StoreKind};
     use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
     use similar_asserts::assert_eq;
     use tokio::net::TcpListener;
@@ -1525,7 +1526,7 @@ mod tests {
             ));
         }
         messages.push(LogMsg::BlueprintActivationCommand(
-            re_log_types::BlueprintActivationCommand {
+            re_log_msg::BlueprintActivationCommand {
                 blueprint_id: store_id.clone(),
                 make_active: true,
                 make_default: true,

@@ -33,9 +33,7 @@ fn save_unrelated_blueprint(path: &std::path::Path) -> StoreId {
         .flush_blocking()
         .expect("blueprint stream should flush");
     blueprint.record_msg(LogMsg::BlueprintActivationCommand(
-        re_sdk::external::re_log_types::BlueprintActivationCommand::make_active(
-            blueprint_id.clone(),
-        ),
+        re_sdk::external::re_log_msg::BlueprintActivationCommand::make_active(blueprint_id.clone()),
     ));
 
     // Dropping the stream flushes it and finalizes the file.

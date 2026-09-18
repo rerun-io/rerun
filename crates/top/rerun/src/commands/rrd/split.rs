@@ -127,7 +127,7 @@ impl SplitCommand {
         // activations), so that we can properly rebuild the final RRD files.
         //
         // TODO(RR-1075): recordings should not contain anything but stateless data.
-        let mut meta_messages: HashMap<StoreId, Vec<re_log_types::LogMsg>> = HashMap::default();
+        let mut meta_messages: HashMap<StoreId, Vec<re_log_msg::LogMsg>> = HashMap::default();
 
         {
             // Load all the data & metadata for all the stores present in the file.
@@ -139,7 +139,7 @@ impl SplitCommand {
             for (msg_nr, (_source, res)) in rx_decoder.iter().enumerate() {
                 match res {
                     Ok(msg) => match &msg {
-                        re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                        re_log_msg::LogMsg::SetStoreInfo(set_store_info) => {
                             let store_id = set_store_info.info.store_id.clone();
                             current_store_id = Some(store_id.clone());
 
@@ -153,7 +153,7 @@ impl SplitCommand {
                             });
                         }
 
-                        re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
+                        re_log_msg::LogMsg::ArrowMsg(store_id, msg) => {
                             let Some(store) = stores.get_mut(store_id) else {
                                 anyhow::bail!("unknown store ID: {store_id:?}");
                             };
@@ -161,7 +161,7 @@ impl SplitCommand {
                             store.insert_chunk(&Arc::new(chunk))?;
                         }
 
-                        re_log_types::LogMsg::BlueprintActivationCommand(_) => {
+                        re_log_msg::LogMsg::BlueprintActivationCommand(_) => {
                             let Some(current_store_id) = current_store_id.clone() else {
                                 re_log::warn!(
                                     "found BlueprintActivationCommand without an active store, discarding"
@@ -265,7 +265,7 @@ impl SplitCommand {
                 .take(path_to_output_rrds.len())
                 .unzip();
 
-        type Receiver = re_log::Receiver<(StoreId, Vec<re_log_types::LogMsg>)>;
+        type Receiver = re_log::Receiver<(StoreId, Vec<re_log_msg::LogMsg>)>;
         let spawn_encoding_thread = move |split_idx, path: String, msgs: Receiver| {
             std::thread::Builder::new()
                 .name(format!("rerun-rrd-split-out-{split_idx}"))
@@ -305,15 +305,15 @@ impl SplitCommand {
                             for mut msg in msgs {
                                 if new_store_id.kind() != StoreKind::Blueprint {
                                     match &mut msg {
-                                        re_log_types::LogMsg::SetStoreInfo(info) => {
+                                        re_log_msg::LogMsg::SetStoreInfo(info) => {
                                             info.info.store_id = new_store_id.clone();
                                         }
 
-                                        re_log_types::LogMsg::ArrowMsg(id, _) => {
+                                        re_log_msg::LogMsg::ArrowMsg(id, _) => {
                                             *id = new_store_id.clone();
                                         }
 
-                                        re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
+                                        re_log_msg::LogMsg::BlueprintActivationCommand(_) => {}
                                     }
                                 }
 
@@ -348,9 +348,9 @@ impl SplitCommand {
                 let chunks = store
                     .iter_physical_chunks()
                     .map(|chunk| {
-                        Ok(re_log_types::LogMsg::ArrowMsg(
+                        Ok(re_log_msg::LogMsg::ArrowMsg(
                             store_id.clone(),
-                            re_log_types::ArrowMsg {
+                            re_log_msg::ArrowMsg {
                                 chunk_id: *chunk.id(),
                                 batch: chunk.to_record_batch()?,
                                 on_release: None,
@@ -541,7 +541,7 @@ impl SplitCommand {
         cutoff_timeline: Timeline,
         cutoff_times: &[TimeInt],
         keyframes_per_entity: &IntMap<EntityPath, Vec<TimeInt>>,
-        txs_encoding: &[re_log::Sender<(StoreId, Vec<re_log_types::LogMsg>)>],
+        txs_encoding: &[re_log::Sender<(StoreId, Vec<re_log_msg::LogMsg>)>],
     ) -> anyhow::Result<()> {
         // `VideoStream`s must be split on a keyframe, always.
         //
@@ -772,9 +772,9 @@ impl SplitCommand {
                         .map(move |(original_chunk_id, chunk)| {
                             (
                                 original_chunk_id,
-                                re_log_types::LogMsg::ArrowMsg(
+                                re_log_msg::LogMsg::ArrowMsg(
                                     store.id(),
-                                    re_log_types::ArrowMsg {
+                                    re_log_msg::ArrowMsg {
                                         chunk_id: *chunk.id(),
                                         batch: chunk
                                             .to_record_batch()

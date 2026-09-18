@@ -34,6 +34,7 @@ re_format.workspace = true
 re_int.workspace = true
 re_log.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
+re_log_msg.workspace = true
 re_log_types.workspace = true
 re_sdk_types.workspace = true
 re_sorbet.workspace = true

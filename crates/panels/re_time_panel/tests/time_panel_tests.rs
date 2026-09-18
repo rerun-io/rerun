@@ -41,7 +41,7 @@ pub fn time_panel_two_sections() {
     TimePanel::ensure_registered_subscribers();
 
     let mut test_context = TestContext::new_with_store_info_and_config(
-        re_log_types::StoreInfo::testing(),
+        re_log_msg::StoreInfo::testing(),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -265,7 +265,7 @@ fn with_unloaded_chunks() {
 
     // Disable compaction so chunk IDs remain stable after insertion.
     let mut test_context = TestContext::new_with_store_info_and_config(
-        re_log_types::StoreInfo::testing(),
+        re_log_msg::StoreInfo::testing(),
         re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
