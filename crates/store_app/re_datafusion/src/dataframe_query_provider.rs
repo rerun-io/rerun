@@ -1,7 +1,7 @@
 mod cpu_worker;
-mod fetch_plan;
+pub(crate) mod fetch_plan;
 mod io_loop;
-mod segment_store;
+pub(crate) mod segment_store;
 #[cfg(test)]
 mod test_utils;
 

@@ -1,5 +1,5 @@
 //! Test-only chunk builders shared by the `segment_store` and `cpu_worker`
-//! test modules (and, once it lands, the `pipeline_v2` driver's).
+//! test modules (and, once it lands, the `pipeline` driver's).
 
 use re_dataframe::external::re_chunk::{Chunk, RowId};
 use re_log_types::Timeline;

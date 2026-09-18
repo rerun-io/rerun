@@ -20,6 +20,8 @@ mod grpc_streaming_provider;
 mod local_chunk_store_provider;
 mod metrics_capture;
 #[cfg(not(target_arch = "wasm32"))]
+mod pipeline;
+#[cfg(not(target_arch = "wasm32"))]
 mod pipeline_budget;
 pub(crate) mod pushdown_expressions;
 #[cfg(not(target_arch = "wasm32"))]
