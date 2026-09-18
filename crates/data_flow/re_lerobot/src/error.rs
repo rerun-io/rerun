@@ -28,6 +28,18 @@ pub enum LeRobotError {
         path: std::path::PathBuf,
     },
 
+    #[error("Failed to read data file footer: {source}\nFile path: {path}")]
+    DataFileFooter {
+        #[source]
+        source: parquet::errors::ParquetError,
+        path: std::path::PathBuf,
+    },
+
+    #[error(
+        "The data file has neither a `frame_index` nor a `timestamp` column\nFile path: {path}"
+    )]
+    MissingTimeline { path: std::path::PathBuf },
+
     #[error("Invalid feature key: {0}")]
     InvalidFeatureKey(FeatureKey),
 

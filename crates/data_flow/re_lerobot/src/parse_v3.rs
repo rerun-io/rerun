@@ -1,4 +1,4 @@
-//! Pure parser for v3 `LeRobot` datasets into the version-free [`LeRobotDataset`].
+//! Pure parser for v3 `LeRobot` datasets into the version-free [`DatasetData`].
 //!
 //! # `LeRobot` v3 dataset format
 //!
@@ -44,13 +44,14 @@
 //! time window within each video file.
 
 use crate::dataset::{
-    EpisodeAddress, EpisodeIndex, LeRobotDataset, SubtaskIndex, TaskIndex, Tasks, VideoSource,
+    DatasetData, EpisodeAddress, EpisodeIndex, SubtaskIndex, TaskIndex, Tasks, VideoSource,
 };
 use crate::emits::{FRAME_INDEX_COLUMN, LEROBOT_DATASET_IGNORED_COLUMNS, TIMESTAMP_COLUMN};
 use crate::error::LeRobotError;
 use crate::features::{DType, Feature, FeatureKey, normalize_string_array};
 use crate::language::timestamps_as_f64;
 use crate::version::LeRobotDatasetVersion;
+use crate::{LeRobotDiagnostic, LeRobotDiagnostics};
 
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -76,10 +77,14 @@ use re_chunk::ArrowArray as _;
 ///
 /// Defects are skipped at the finest scope they touch: a bad episode or feature is
 /// dropped with a warning; only dataset-wide defects fail the parse.
-pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
-    let mut metadata = LeRobotDatasetV3Metadata::load_from_directory(path.join("meta"))?;
+pub fn parse(
+    path: &Path,
+    diagnostics: &mut LeRobotDiagnostics,
+) -> Result<DatasetData, LeRobotError> {
+    let mut metadata =
+        LeRobotDatasetV3Metadata::load_from_directory(path.join("meta"), diagnostics)?;
     validate_dataset_info(&metadata.info)?;
-    validate_video_fps(&mut metadata.info.features);
+    validate_video_fps(&mut metadata.info.features, diagnostics);
 
     let video_features: Vec<(&FeatureKey, &Feature)> = metadata
         .info
@@ -88,10 +93,12 @@ pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
         .filter(|(_, feature)| feature.dtype == DType::Video)
         .collect();
     if !video_features.is_empty() && metadata.info.video_path.is_none() {
-        re_log::warn!(
-            "The dataset has video features but `meta/info.json` has no `video_path` \
-             template; skipping all video features"
-        );
+        for (key, _) in &video_features {
+            diagnostics.add(LeRobotDiagnostic::SkippedFeature {
+                feature: (*key).clone(),
+                err: LeRobotError::MissingDatasetInfo("`video_path` in `meta/info.json`".into()),
+            });
+        }
     }
 
     let file_starts = data_file_starts(path, &metadata.info, metadata.episodes.values());
@@ -104,20 +111,27 @@ pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
             episode_data,
             &video_features,
             &file_starts,
+            diagnostics,
         ) {
             Ok(address) => {
                 episodes.insert(index, address);
             }
-            Err(err) => re_log::warn!("Skipping episode {}: {err}", index.0),
+            Err(err) => {
+                diagnostics.add(LeRobotDiagnostic::SkippedEpisode {
+                    episode: index,
+                    err,
+                });
+            }
         }
     }
 
     let mut features = metadata.info.features;
-    let schema = validate_against_footers(&mut episodes, &mut features).ok_or_else(|| {
-        LeRobotError::NoEpisodes {
-            path: path.to_path_buf(),
-        }
-    })?;
+    let schema =
+        validate_against_footers(&mut episodes, &mut features, diagnostics).ok_or_else(|| {
+            LeRobotError::NoEpisodes {
+                path: path.to_path_buf(),
+            }
+        })?;
 
     // if no episodes are left after validating against footers
     if episodes.is_empty() {
@@ -130,18 +144,17 @@ pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
     // name a column the files lack.
     let has_frame_index = schema.index_of(FRAME_INDEX_COLUMN).is_ok();
 
-    Ok(LeRobotDataset::new(
-        path.to_path_buf(),
-        LeRobotDatasetVersion::V3,
+    Ok(DatasetData {
+        version: LeRobotDatasetVersion::V3,
         features,
         episodes,
-        Tasks {
+        tasks: Tasks {
             tasks: metadata.tasks,
             subtasks: metadata.subtasks,
         },
-        f64::from(metadata.info.fps),
+        fps: f64::from(metadata.info.fps),
         has_frame_index,
-    ))
+    })
 }
 
 /// Validate episodes and features against their data files' parquet footers (row count
@@ -151,39 +164,24 @@ pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
 fn validate_against_footers(
     episodes: &mut BTreeMap<EpisodeIndex, EpisodeAddress>,
     features: &mut BTreeMap<FeatureKey, Feature>,
+    diagnostics: &mut LeRobotDiagnostics,
 ) -> Option<SchemaRef> {
-    let mut missing: Vec<PathBuf> = Vec::new();
     // One footer read per unique data file; `None` marks a file whose episodes all drop.
     let mut footers: BTreeMap<PathBuf, Option<(u64, SchemaRef)>> = BTreeMap::new();
     for address in episodes.values() {
         if !footers.contains_key(&address.data_file) {
             let footer = match read_data_footer(&address.data_file) {
                 Ok(footer) => Some(footer),
-                Err(ReadFooterError::Io(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-                    missing.push(address.data_file.clone());
-                    None
-                }
-                // TODO(RR-5594): collect these into the dataset's open issues instead of
-                // warning per file.
                 Err(err) => {
-                    re_log::warn!(
-                        "Skipping every episode in an unusable data file: {err}\nFile path: {}",
-                        address.data_file.display()
-                    );
+                    diagnostics.add(LeRobotDiagnostic::SkippedDataFile {
+                        path: address.data_file.clone(),
+                        err,
+                    });
                     None
                 }
             };
             footers.insert(address.data_file.clone(), footer);
         }
-    }
-    if !missing.is_empty() {
-        re_log::warn!(
-            "Skipping {} of {} data files that are not on disk — likely a partially \
-             downloaded dataset\nFirst missing file: {}",
-            missing.len(),
-            footers.len(),
-            missing[0].display()
-        );
     }
 
     episodes.retain(|index, address| {
@@ -192,12 +190,13 @@ fn validate_against_footers(
         };
         let in_range = address.rows.is_none_or(|rows| rows.end() <= *num_rows);
         if !in_range {
-            re_log::warn!(
-                "Skipping episode {}: its row range ends beyond the {num_rows} rows of its \
-                 data file\nFile path: {}",
-                index.0,
-                address.data_file.display()
-            );
+            diagnostics.add(LeRobotDiagnostic::SkippedEpisode {
+                episode: *index,
+                err: LeRobotError::InvalidDatasetInfo(format!(
+                    "its row range ends beyond the {num_rows} rows of its data file\nFile path: {}",
+                    address.data_file.display()
+                )),
+            });
         }
         in_range
     });
@@ -212,18 +211,24 @@ fn validate_against_footers(
             return true;
         }
         let Ok(field) = schema.field_with_name(key.as_str()) else {
-            re_log::warn!("Dropping feature `{key}`: the data files have no such column");
+            diagnostics.add(LeRobotDiagnostic::SkippedFeature {
+                feature: key.clone(),
+                err: LeRobotError::MissingDatasetInfo(format!("column `{key}` in the data files")),
+            });
             return false;
         };
         // Image is the only dtype validated against its on-disk shape here: scalar
         // columns cast to Float64 at execute, so any numeric column fits, and the task
         // joins error at execute when their column is not `Int64`.
         if feature.dtype == DType::Image && !is_image_bytes_column(field) {
-            re_log::warn!(
-                "Dropping feature `{key}`: its column's type `{}` cannot feed a `{:?}` feature",
-                field.data_type(),
-                feature.dtype
-            );
+            diagnostics.add(LeRobotDiagnostic::SkippedFeature {
+                feature: key.clone(),
+                err: LeRobotError::InvalidDatasetInfo(format!(
+                    "column type `{}` cannot feed a `{:?}` feature",
+                    field.data_type(),
+                    feature.dtype
+                )),
+            });
             return false;
         }
         true
@@ -232,30 +237,20 @@ fn validate_against_footers(
     Some(schema.clone())
 }
 
-/// Why one data file cannot back its episodes.
-///
-/// Private to the footer pass: these conditions are warn-and-drop, never surfaced through
-/// [`LeRobotError`]. The caller owns the warning and appends the file path, so the
-/// variants carry none.
-#[derive(thiserror::Error, Debug)]
-enum ReadFooterError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    Parquet(#[from] parquet::errors::ParquetError),
-
-    #[error("the file has neither a `frame_index` nor a `timestamp` column")]
-    NoTimeline,
-}
-
 /// Read one data file's parquet footer: row count and schema.
-fn read_data_footer(path: &Path) -> Result<(u64, SchemaRef), ReadFooterError> {
-    let file = File::open(path)?;
-    let builder = ParquetRecordBatchReaderBuilder::try_new(file)?;
+fn read_data_footer(path: &Path) -> Result<(u64, SchemaRef), LeRobotError> {
+    let file = File::open(path).map_err(|err| LeRobotError::io(err, path))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|source| {
+        LeRobotError::DataFileFooter {
+            source,
+            path: path.to_path_buf(),
+        }
+    })?;
     let schema = builder.schema().clone();
     if schema.index_of(FRAME_INDEX_COLUMN).is_err() && schema.index_of(TIMESTAMP_COLUMN).is_err() {
-        return Err(ReadFooterError::NoTimeline);
+        return Err(LeRobotError::MissingTimeline {
+            path: path.to_path_buf(),
+        });
     }
     let num_rows = u64::try_from(builder.metadata().file_metadata().num_rows()).unwrap_or(0);
     Ok((num_rows, schema))
@@ -314,15 +309,20 @@ fn validate_dataset_info(info: &LeRobotDatasetV3Info) -> Result<(), LeRobotError
 
 /// Clear invalid per-feature `video.fps` values (with a warning), so episode resolution
 /// can trust the field.
-fn validate_video_fps(features: &mut BTreeMap<FeatureKey, Feature>) {
+fn validate_video_fps(
+    features: &mut BTreeMap<FeatureKey, Feature>,
+    diagnostics: &mut LeRobotDiagnostics,
+) {
     for (key, feature) in features.iter_mut() {
         if let Some(feature_info) = &mut feature.info
             && let Some(fps) = feature_info.video_fps
             && (!fps.is_finite() || fps <= 0.0)
         {
-            re_log::warn!(
-                "Ignoring invalid `video.fps` {fps} of feature `{key}`; using the dataset fps"
-            );
+            diagnostics.add(LeRobotDiagnostic::MetadataWarning {
+                reason: format!(
+                    "Ignoring invalid `video.fps` {fps} of feature `{key}`; using the dataset fps"
+                ),
+            });
             feature_info.video_fps = None;
         }
     }
@@ -366,6 +366,7 @@ fn resolve_episode(
     episode_data: &LeRobotEpisodeV3MetaData,
     video_features: &[(&FeatureKey, &Feature)],
     file_starts: &HashMap<PathBuf, u64>,
+    diagnostics: &mut LeRobotDiagnostics,
 ) -> Result<EpisodeAddress, LeRobotError> {
     // Existence is not checked here: the footer pass validates each unique data file
     // once, so a missing file warns once instead of once per episode.
@@ -393,10 +394,11 @@ fn resolve_episode(
             let file = match info.video_path(key, episode_data) {
                 Ok(file) => path.join(file),
                 Err(err) => {
-                    re_log::warn!(
-                        "Skipping video feature `{key}` of episode {}: {err}",
-                        episode_data.episode_index.0
-                    );
+                    diagnostics.add(LeRobotDiagnostic::FailedFeature {
+                        episode: episode_data.episode_index,
+                        feature: Some(key.clone()),
+                        err,
+                    });
                     continue;
                 }
             };
@@ -410,8 +412,15 @@ fn resolve_episode(
                 .as_ref()
                 .and_then(|feature_info| feature_info.video_fps)
                 .unwrap_or_else(|| f64::from(info.fps));
-            if let Some(source) = resolve_video(file, timestamps, fps) {
-                videos.insert(key.clone(), source);
+            match resolve_video(file, timestamps, fps) {
+                Ok(source) => {
+                    videos.insert(key.clone(), source);
+                }
+                Err(err) => diagnostics.add(LeRobotDiagnostic::FailedFeature {
+                    episode: episode_data.episode_index,
+                    feature: Some(key.clone()),
+                    err,
+                }),
             }
         }
     }
@@ -428,7 +437,11 @@ fn resolve_episode(
 /// `timestamps` is the episode's half-open `[from, to)` second range within the file, as
 /// recorded in `meta/episodes`; `None` streams the whole file. A degenerate (zero-length)
 /// or unusable range resolves nothing.
-fn resolve_video(file: PathBuf, timestamps: Option<(f64, f64)>, fps: f64) -> Option<VideoSource> {
+fn resolve_video(
+    file: PathBuf,
+    timestamps: Option<(f64, f64)>,
+    fps: f64,
+) -> Result<VideoSource, LeRobotError> {
     let window = match timestamps {
         Some((from, to)) => {
             let window = Option::zip(
@@ -437,18 +450,16 @@ fn resolve_video(file: PathBuf, timestamps: Option<(f64, f64)>, fps: f64) -> Opt
             )
             .and_then(|(from, to)| TimeWindow::new(from, to));
             let Some(window) = window else {
-                re_log::warn_once!(
-                    "Skipping a video feature with an empty or unusable time range \
-                     {from}..{to}\nFile path: {}",
+                return Err(LeRobotError::InvalidDatasetInfo(format!(
+                    "empty or unusable video time range {from}..{to}\nFile path: {}",
                     file.display()
-                );
-                return None;
+                )));
             };
             Some(window)
         }
         None => None,
     };
-    Some(VideoSource::Stream { file, window, fps })
+    Ok(VideoSource::Stream { file, window, fps })
 }
 
 /// Metadata for a v3 `LeRobot` dataset, as read from the files in its `meta` directory.
@@ -461,11 +472,14 @@ struct LeRobotDatasetV3Metadata {
 
 impl LeRobotDatasetV3Metadata {
     /// Loads all metadata files from the provided `meta/` directory.
-    fn load_from_directory(metadir: impl AsRef<Path>) -> Result<Self, LeRobotError> {
+    fn load_from_directory(
+        metadir: impl AsRef<Path>,
+        diagnostics: &mut LeRobotDiagnostics,
+    ) -> Result<Self, LeRobotError> {
         let metadir = metadir.as_ref();
 
         let episodes_metadata =
-            LeRobotEpisodeV3MetaData::load_from_directory(metadir.join("episodes"))?;
+            LeRobotEpisodeV3MetaData::load_from_directory(metadir.join("episodes"), diagnostics)?;
         let info = LeRobotDatasetV3Info::load_from_json_file(metadir.join("info.json"))?;
 
         // Feature-scoped: a missing or corrupt task table drops its text emits (there
@@ -477,11 +491,9 @@ impl LeRobotDatasetV3Metadata {
         ) {
             Ok(tasks) => {
                 if tasks.len() != info.total_tasks {
-                    re_log::warn_once!(
-                        "The dataset declares {} tasks in info.json, but tasks.parquet defines {}",
-                        info.total_tasks,
-                        tasks.len()
-                    );
+                    diagnostics.add(LeRobotDiagnostic::MetadataWarning {
+                        reason: format!("The dataset declares {} tasks in info.json, but tasks.parquet defines {}", info.total_tasks, tasks.len()),
+                    });
                 }
                 tasks
                     .into_iter()
@@ -489,9 +501,10 @@ impl LeRobotDatasetV3Metadata {
                     .collect()
             }
             Err(err) => {
-                re_log::warn_once!(
-                    "Dropping task text for all episodes, the tasks table failed to load: {err}"
-                );
+                diagnostics.add(LeRobotDiagnostic::SkippedFeature {
+                    feature: FeatureKey::from("task_index".to_owned()),
+                    err,
+                });
                 HashMap::default()
             }
         };
@@ -504,9 +517,10 @@ impl LeRobotDatasetV3Metadata {
                     .map(|(index, subtask)| (SubtaskIndex(index), subtask))
                     .collect(),
                 Err(err) => {
-                    re_log::warn_once!(
-                        "Dropping subtask text for all episodes, the subtasks table failed to load: {err}"
-                    );
+                    diagnostics.add(LeRobotDiagnostic::SkippedFeature {
+                        feature: FeatureKey::from("subtask_index".to_owned()),
+                        err,
+                    });
                     HashMap::default()
                 }
             }
@@ -668,7 +682,10 @@ struct LeRobotEpisodeV3MetaData {
 }
 
 impl LeRobotEpisodeV3MetaData {
-    fn load_from_directory(metadir: impl AsRef<Path>) -> Result<Vec<Self>, LeRobotError> {
+    fn load_from_directory(
+        metadir: impl AsRef<Path>,
+        diagnostics: &mut LeRobotDiagnostics,
+    ) -> Result<Vec<Self>, LeRobotError> {
         // Walk all subdirectories and load episode data files.
         let metadir = metadir.as_ref();
         let mut all_episodes = vec![];
@@ -729,6 +746,7 @@ impl LeRobotEpisodeV3MetaData {
                                     episode_index,
                                     data_chunk_index,
                                     data_file_index,
+                                    diagnostics,
                                 ))
                             })
                             .flatten()
@@ -748,6 +766,7 @@ impl LeRobotEpisodeV3MetaData {
         episode_index: &Int64Array,
         data_chunk_index: &Int64Array,
         data_file_index: &Int64Array,
+        diagnostics: &mut LeRobotDiagnostics,
     ) -> Vec<Self> {
         // Column pattern: "videos/{feature_name}/{field}" where field is chunk_index,
         // file_index, from_timestamp, to_timestamp.
@@ -802,11 +821,9 @@ impl LeRobotEpisodeV3MetaData {
                 ),
             );
             let Some((episode_index, (data_chunk_index, data_file_index))) = indices else {
-                re_log::warn!(
-                    "Skipping an episode metadata row with a negative episode, chunk, or \
-                     file index (episode_index: {})",
-                    episode_index.value(i)
-                );
+                diagnostics.add(LeRobotDiagnostic::SkippedMetadataRow {
+                    episode_index: episode_index.value(i),
+                });
                 continue;
             };
 
@@ -1026,6 +1043,61 @@ impl LeRobotDatasetV3Info {
 
 #[cfg(test)]
 mod tests {
+    use crate::LeRobotDataset;
+
+    #[test]
+    fn skipped_episodes_warn_once_on_success_and_failure() {
+        for has_valid_episode in [true, false] {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            let mut info = default_info(&scalar_features());
+            info["total_tasks"] = serde_json::json!(1);
+            write_info(root, &info);
+            write_episodes_meta(
+                root,
+                &[
+                    row(0, has_valid_episode.then_some(0), Some(10)),
+                    row(1, None, Some(10)),
+                    row(2, Some(10), Some(30)),
+                ],
+            );
+            write_tasks(root);
+            write_data(root, &[10], false);
+
+            let mut diagnostics = LeRobotDiagnostics::default();
+            let result = parse(root, &mut diagnostics);
+            if has_valid_episode {
+                let data = result.unwrap();
+                assert_eq!(
+                    data.episodes.keys().copied().collect::<Vec<_>>(),
+                    vec![EpisodeIndex(0)]
+                );
+                assert!(matches!(
+                    diagnostics.entries(),
+                    [
+                        LeRobotDiagnostic::SkippedEpisode {
+                            episode: EpisodeIndex(1),
+                            ..
+                        },
+                        LeRobotDiagnostic::SkippedEpisode {
+                            episode: EpisodeIndex(2),
+                            ..
+                        },
+                    ]
+                ));
+            } else {
+                assert!(matches!(result, Err(LeRobotError::NoEpisodes { .. })));
+            }
+
+            let warnings = diagnostics.summary_messages();
+            assert_eq!(warnings.len(), 1);
+            let count = if has_valid_episode { 2 } else { 3 };
+            assert!(warnings[0].starts_with(&format!("Skipping episodes ({count}x)")));
+            assert!(warnings[0].contains("\n- episode 1:"));
+            assert!(warnings[0].contains("\n- episode 2:"));
+        }
+    }
+
     use super::*;
 
     use arrow::array::{ArrayRef, BinaryArray, Float32Array, RecordBatchOptions, StructArray};
@@ -1084,10 +1156,50 @@ mod tests {
             batch.column(0).as_any().downcast_ref().unwrap(),
             batch.column(1).as_any().downcast_ref().unwrap(),
             batch.column(2).as_any().downcast_ref().unwrap(),
+            &mut LeRobotDiagnostics::default(),
         );
         let file = episodes[0].feature_files.get("cam").expect("cam parsed");
         assert_eq!(file.from_timestamp, Some(1.5));
         assert_eq!(file.to_timestamp, Some(3.0));
+    }
+
+    #[test]
+    fn invalid_video_window_is_collected_without_dropping_episode() {
+        let key = FeatureKey::from("camera".to_owned());
+        let mut features = scalar_features();
+        features["camera"] =
+            serde_json::json!({ "dtype": "video", "shape": [3, 4, 4], "names": null });
+        let mut json = default_info(&features);
+        json["video_path"] = "videos/camera.mp4".into();
+        let info: LeRobotDatasetV3Info = serde_json::from_value(json).unwrap();
+        let mut episode = synthetic_episode(7);
+        episode.dataset_from_index = Some(0);
+        episode.dataset_to_index = Some(10);
+        episode.feature_files.insert(
+            key.clone(),
+            FeatureV3FileMetadata {
+                chunk_index: 0,
+                file_index: 0,
+                from_timestamp: Some(2.0),
+                to_timestamp: Some(1.0),
+            },
+        );
+        let mut diagnostics = LeRobotDiagnostics::default();
+        let address = resolve_episode(
+            Path::new("dataset"),
+            &info,
+            &episode,
+            &[(&key, &info.features[&key])],
+            &HashMap::default(),
+            &mut diagnostics,
+        )
+        .unwrap();
+        assert!(address.videos.is_empty());
+        assert!(
+            matches!(diagnostics.entries(), [LeRobotDiagnostic::FailedFeature {
+            episode: EpisodeIndex(7), feature: Some(feature), err: LeRobotError::InvalidDatasetInfo(reason),
+        }] if feature == &key && reason.contains("2..1") && reason.contains("videos/camera.mp4"))
+        );
     }
 
     /// A camera's own `video.fps` wins over the dataset fps when present.
@@ -1111,12 +1223,12 @@ mod tests {
     fn video_windows_map_the_episode_range() {
         let file = || PathBuf::from("videos/observation.image/chunk-000/file-000.mp4");
 
-        assert!(resolve_video(file(), Some((1.0, 1.0)), 30.0).is_none());
-        assert!(resolve_video(file(), Some((2.0, 1.0)), 30.0).is_none());
-        assert!(resolve_video(file(), Some((-1.0, 1.0)), 30.0).is_none());
+        assert!(resolve_video(file(), Some((1.0, 1.0)), 30.0).is_err());
+        assert!(resolve_video(file(), Some((2.0, 1.0)), 30.0).is_err());
+        assert!(resolve_video(file(), Some((-1.0, 1.0)), 30.0).is_err());
 
         match resolve_video(file(), Some((1.0, 2.0)), 30.0) {
-            Some(VideoSource::Stream {
+            Ok(VideoSource::Stream {
                 window: Some(window),
                 ..
             }) => {
@@ -1128,7 +1240,7 @@ mod tests {
 
         assert!(matches!(
             resolve_video(file(), None, 30.0),
-            Some(VideoSource::Stream { window: None, .. })
+            Ok(VideoSource::Stream { window: None, .. })
         ));
     }
 
@@ -1139,7 +1251,7 @@ mod tests {
     fn v3_fixture_resolves_row_ranges_from_metadata() {
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../re_importer/tests/assets/lerobot/v30_apple_storage");
-        let dataset = parse(&fixture).expect("fixture parses");
+        let dataset = LeRobotDataset::open(&fixture).expect("fixture parses");
 
         let ranges: Vec<_> = dataset
             .episode_addresses()
@@ -1166,7 +1278,7 @@ mod tests {
     fn v3_fixture_video_windows_are_contiguous() {
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../re_importer/tests/assets/lerobot/v30_apple_storage");
-        let dataset = parse(&fixture).expect("fixture parses");
+        let dataset = LeRobotDataset::open(&fixture).expect("fixture parses");
 
         let windows: Vec<_> = dataset
             .episode_addresses()
@@ -1409,6 +1521,93 @@ mod tests {
     // -----------------------------------------------------------------------
     // Episode-scoped
 
+    #[test]
+    fn open_captures_recoverable_failures_by_scope() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let mut features = scalar_features();
+        features["observation.image"] = serde_json::json!({
+            "dtype": "video", "shape": [3, 4, 4], "names": null,
+            "info": { "video.fps": -1.0 }
+        });
+        features["observation.velocity"] = serde_json::json!({
+            "dtype": "float32", "shape": [1], "names": null
+        });
+        write_info(root, &default_info(&features));
+        write_episodes_meta(
+            root,
+            &[
+                row(0, Some(0), Some(10)),
+                row(1, None, None),
+                row(-1, Some(0), Some(10)),
+                EpisodeRow {
+                    index: 2,
+                    file_index: 1,
+                    from: Some(0),
+                    to: Some(10),
+                },
+                EpisodeRow {
+                    index: 3,
+                    file_index: 1,
+                    from: Some(10),
+                    to: Some(20),
+                },
+            ],
+        );
+        write_data(root, &[10], false);
+
+        let dataset = LeRobotDataset::open(root).unwrap();
+        assert_eq!(
+            dataset.episodes().collect::<Vec<_>>(),
+            vec![EpisodeIndex(0)]
+        );
+        let entries = dataset.diagnostics().entries();
+        let data_files: Vec<_> = entries
+            .iter()
+            .filter_map(|entry| match entry {
+                LeRobotDiagnostic::SkippedDataFile { path, .. } => Some(path),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            data_files,
+            vec![&root.join("data/chunk-000/file-001.parquet")]
+        );
+        assert!(entries.iter().any(|entry| matches!(entry,
+            LeRobotDiagnostic::SkippedDataFile { err: LeRobotError::IO { source, .. }, .. }
+                if source.kind() == std::io::ErrorKind::NotFound
+        )));
+        assert!(entries.iter().any(|entry| matches!(entry,
+            LeRobotDiagnostic::SkippedFeature { feature, err: LeRobotError::IO { path, source } }
+                if feature.as_str() == "task_index" && path == &root.join("meta/tasks.parquet")
+                    && source.kind() == std::io::ErrorKind::NotFound
+        )));
+        assert!(entries.iter().any(|entry| matches!(entry,
+            LeRobotDiagnostic::SkippedFeature { feature, .. } if feature.as_str() == "observation.velocity"
+        )));
+        assert!(entries.iter().any(|entry| matches!(entry,
+            LeRobotDiagnostic::SkippedFeature { feature, .. } if feature.as_str() == "observation.image"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            LeRobotDiagnostic::SkippedEpisode {
+                episode: EpisodeIndex(1),
+                ..
+            }
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            LeRobotDiagnostic::SkippedMetadataRow { episode_index: -1 }
+        )));
+        assert!(entries.iter().any(|entry| matches!(entry,
+            LeRobotDiagnostic::MetadataWarning { reason } if reason.contains("video.fps")
+        )));
+        let warnings = dataset.diagnostics().summary_messages();
+        assert_eq!(warnings.len(), 5);
+        assert!(warnings.iter().all(|warning| warning.contains("\n- ")));
+        assert!(!stream_entities(&dataset, EpisodeIndex(0)).is_empty());
+    }
+
     /// A bad episode metadata row (no usable row range) drops only that episode.
     #[test]
     fn corrupt_episode_row_is_skipped() {
@@ -1568,6 +1767,10 @@ mod tests {
         write_tasks(root);
         std::fs::create_dir_all(root.join("data/chunk-000")).unwrap();
         std::fs::write(root.join("data/chunk-000/file-000.parquet"), b"not parquet").unwrap();
+        assert!(matches!(
+            read_data_footer(&root.join("data/chunk-000/file-000.parquet")),
+            Err(LeRobotError::DataFileFooter { .. })
+        ));
 
         assert!(matches!(
             LeRobotDataset::open(root),
@@ -2001,6 +2204,10 @@ mod tests {
 
         let dataset = LeRobotDataset::open(root).expect("fixture opens");
         std::fs::write(root.join("data/chunk-000/file-000.parquet"), b"not parquet").unwrap();
+        assert!(matches!(
+            read_data_footer(&root.join("data/chunk-000/file-000.parquet")),
+            Err(LeRobotError::DataFileFooter { .. })
+        ));
 
         let result = dataset.stream(EpisodeIndex(0), &LeRobotConfig::default());
         assert!(

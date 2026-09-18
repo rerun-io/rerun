@@ -12,6 +12,7 @@
 mod config;
 mod convert;
 mod dataset;
+mod diagnostics;
 mod emits;
 mod error;
 mod features;
@@ -23,6 +24,7 @@ mod version;
 
 pub use self::config::{LeRobotConfig, VideoMode};
 pub use self::dataset::{EpisodeIndex, LeRobotDataset};
+pub use self::diagnostics::{LeRobotDiagnostic, LeRobotDiagnostics};
 pub use self::error::LeRobotError;
 pub use self::features::{DType, FeatureKey};
 pub use self::version::{LeRobotDatasetVersion, is_lerobot_dataset};

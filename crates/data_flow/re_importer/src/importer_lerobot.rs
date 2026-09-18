@@ -8,7 +8,8 @@ use re_quota_channel::send_crossbeam;
 
 use crate::{ImportedData, Importer, ImporterError, import_file::prepare_store_info};
 use re_lerobot::{
-    EpisodeIndex, LeRobotConfig, LeRobotDataset, LeRobotDatasetVersion, is_lerobot_dataset,
+    EpisodeIndex, LeRobotConfig, LeRobotDataset, LeRobotDatasetVersion, LeRobotDiagnostic,
+    LeRobotDiagnostics, is_lerobot_dataset,
 };
 
 /// An [`Importer`] for `LeRobot` datasets.
@@ -139,6 +140,7 @@ fn load_and_stream(
     loader_name: &str,
 ) {
     let store_ids = prepare_episode_chunks(dataset.episodes(), application_id, tx, loader_name);
+    let mut diagnostics = LeRobotDiagnostics::default();
 
     for (episode, store_id) in &store_ids {
         match dataset.stream(*episode, config) {
@@ -171,22 +173,24 @@ fn load_and_stream(
                             }
                         }
                         Err(err) => {
-                            re_log::warn!(
-                                "Failed to load a feature of episode {} from LeRobot dataset: {err}",
-                                episode.0
-                            );
+                            diagnostics.add(LeRobotDiagnostic::FailedFeature {
+                                episode: *episode,
+                                feature: None,
+                                err,
+                            });
                         }
                     }
                 }
             }
             Err(err) => {
-                re_log::warn!(
-                    "Failed to load episode {} from LeRobot dataset: {err}",
-                    episode.0
-                );
+                diagnostics.add(LeRobotDiagnostic::SkippedEpisode {
+                    episode: *episode,
+                    err,
+                });
             }
         }
     }
+    diagnostics.log_summaries();
 }
 #[cfg(test)]
 mod tests {

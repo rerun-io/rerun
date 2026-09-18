@@ -1,4 +1,4 @@
-//! Pure parser for v2 (and v2.1) `LeRobot` datasets into the version-free [`LeRobotDataset`].
+//! Pure parser for v2 (and v2.1) `LeRobot` datasets into the version-free [`DatasetData`].
 //!
 //! # `LeRobot` v2 dataset format
 //!
@@ -38,7 +38,7 @@
 //! Each episode is identified by a unique index and mapped to its corresponding chunk, based on the number of episodes
 //! per chunk (which can be found in `meta/info.json`).
 
-use crate::dataset::{EpisodeAddress, EpisodeIndex, LeRobotDataset, TaskIndex, Tasks, VideoSource};
+use crate::dataset::{DatasetData, EpisodeAddress, EpisodeIndex, TaskIndex, Tasks, VideoSource};
 use crate::error::LeRobotError;
 use crate::features::{DType, Feature, FeatureKey};
 use crate::version::LeRobotDatasetVersion;
@@ -57,7 +57,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Reads the `meta/` directory only, and eagerly resolves every episode's data and video
 /// file addresses, so every parsed episode streams under a valid config.
-pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
+pub fn parse(path: &Path) -> Result<DatasetData, LeRobotError> {
     let metadata = LeRobotDatasetV2Metadata::load_from_directory(path.join("meta"))?;
 
     if let Some(key) = metadata
@@ -112,15 +112,14 @@ pub fn parse(path: &Path) -> Result<LeRobotDataset, LeRobotError> {
             .collect(),
         subtasks: HashMap::default(),
     };
-    Ok(LeRobotDataset::new(
-        path.to_path_buf(),
-        LeRobotDatasetVersion::V2,
-        metadata.info.features,
+    Ok(DatasetData {
+        version: LeRobotDatasetVersion::V2,
+        features: metadata.info.features,
         episodes,
         tasks,
-        f64::from(metadata.info.fps),
+        fps: f64::from(metadata.info.fps),
         has_frame_index,
-    ))
+    })
 }
 
 /// Metadata for a v2 `LeRobot` dataset, as read from the files in its `meta` directory.

@@ -40,4 +40,5 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
 tempfile.workspace = true

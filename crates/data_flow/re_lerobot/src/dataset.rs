@@ -7,35 +7,43 @@ use re_mp4_reader::TimeWindow;
 use serde::{Deserialize, Serialize};
 
 use crate::config::LeRobotConfig;
+use crate::diagnostics::LeRobotDiagnostics;
 use crate::error::LeRobotError;
 use crate::features::{Feature, FeatureKey};
 use crate::version::LeRobotDatasetVersion;
 use crate::{convert, emits, parse_v2, parse_v3};
 
-/// An opened `LeRobot` dataset, with every episode's addresses resolved.
-pub struct LeRobotDataset {
-    path: PathBuf,
-    version: LeRobotDatasetVersion,
+/// Version-independent metadata and resolved episode addresses produced by the parsers.
+pub struct DatasetData {
+    pub version: LeRobotDatasetVersion,
 
     /// The dataset's feature definitions.
     ///
     /// Ordered so the emits — and with them the chunk output order — are deterministic
     /// across opens and processes.
-    features: BTreeMap<FeatureKey, Feature>,
+    pub features: BTreeMap<FeatureKey, Feature>,
 
     /// One resolved address per episode.
     ///
-    /// Ordered by index, so [`Self::episodes`] iterates ascending — the importer
+    /// Ordered by index, so [`LeRobotDataset::episodes`] iterates ascending — the importer
     /// announces one recording per episode in that order.
-    episodes: BTreeMap<EpisodeIndex, EpisodeAddress>,
-
-    tasks: Tasks,
+    pub episodes: BTreeMap<EpisodeIndex, EpisodeAddress>,
+    pub tasks: Tasks,
 
     /// The dataset's recording rate, from `info.json`; maps timestamps to frame positions.
-    fps: f64,
+    pub fps: f64,
 
-    /// Whether the data files carry a `frame_index` column, deciding the episode timeline.
-    has_frame_index: bool,
+    /// Whether the data files carry the episode frame timeline.
+    pub has_frame_index: bool,
+}
+
+/// An opened dataset with its parsed data and open-time diagnostics.
+pub struct LeRobotDataset {
+    path: PathBuf,
+
+    data: DatasetData,
+
+    diagnostics: LeRobotDiagnostics,
 }
 
 /// Fully resolved location of one episode's rows and videos.
@@ -77,27 +85,6 @@ pub struct Tasks {
 }
 
 impl LeRobotDataset {
-    /// Assemble a parsed dataset; only the version parsers construct one.
-    pub fn new(
-        path: PathBuf,
-        version: LeRobotDatasetVersion,
-        features: BTreeMap<FeatureKey, Feature>,
-        episodes: BTreeMap<EpisodeIndex, EpisodeAddress>,
-        tasks: Tasks,
-        fps: f64,
-        has_frame_index: bool,
-    ) -> Self {
-        Self {
-            path,
-            version,
-            features,
-            episodes,
-            tasks,
-            fps,
-            has_frame_index,
-        }
-    }
-
     /// Open the `LeRobot` dataset at `path`, detecting its format version.
     ///
     /// Only v2 and v3 are supported here; a v1 dataset (handled separately by the importer)
@@ -107,12 +94,22 @@ impl LeRobotDataset {
     /// pages are decoded until [`Self::stream`] is called.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let path = path.as_ref();
-        match LeRobotDatasetVersion::find_version(path) {
+        let mut diagnostics = LeRobotDiagnostics::default();
+        let result = match LeRobotDatasetVersion::find_version(path) {
             Some(LeRobotDatasetVersion::V2) => parse_v2::parse(path),
-            Some(LeRobotDatasetVersion::V3) => parse_v3::parse(path),
+            Some(LeRobotDatasetVersion::V3) => parse_v3::parse(path, &mut diagnostics),
             Some(LeRobotDatasetVersion::V1) | None => Err(LeRobotError::UnsupportedVersion {
                 path: path.to_path_buf(),
             }),
+        };
+        diagnostics.log_summaries();
+        match result {
+            Ok(data) => Ok(Self {
+                path: path.to_path_buf(),
+                data,
+                diagnostics,
+            }),
+            Err(err) => Err(err),
         }
     }
 
@@ -123,19 +120,24 @@ impl LeRobotDataset {
 
     /// The format version detected at [`Self::open`], as a label only.
     pub fn version(&self) -> LeRobotDatasetVersion {
-        self.version
+        self.data.version
+    }
+
+    /// Non-fatal defects collected while opening, also emitted as summary warnings.
+    pub fn diagnostics(&self) -> &LeRobotDiagnostics {
+        &self.diagnostics
     }
 
     /// Iterate the dataset's episode indices, in ascending order.
     pub fn episodes(&self) -> impl Iterator<Item = EpisodeIndex> + '_ {
-        self.episodes.keys().copied()
+        self.data.episodes.keys().copied()
     }
 
     /// The resolved episode addresses, in episode order. Exists only so the parser tests
     /// can assert row spans and video windows.
     #[cfg(test)]
     pub fn episode_addresses(&self) -> impl Iterator<Item = &EpisodeAddress> {
-        self.episodes.values()
+        self.data.episodes.values()
     }
 
     /// Stream one episode's chunks.
@@ -145,17 +147,23 @@ impl LeRobotDataset {
         config: &LeRobotConfig,
     ) -> Result<impl Iterator<Item = Result<Chunk, LeRobotError>> + use<>, LeRobotError> {
         let address = self
+            .data
             .episodes
             .get(&episode)
             .ok_or(LeRobotError::InvalidEpisodeIndex(episode))?;
-        let emits = emits::build_emits(&self.features, &address.videos, &self.tasks, config);
+        let emits = emits::build_emits(
+            &self.data.features,
+            &address.videos,
+            &self.data.tasks,
+            config,
+        );
         convert::execute(
             emits,
             address,
-            &self.tasks,
+            &self.data.tasks,
             config,
-            self.has_frame_index,
-            self.fps,
+            self.data.has_frame_index,
+            self.data.fps,
         )
     }
 }
@@ -174,3 +182,28 @@ pub struct TaskIndex(pub usize);
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct SubtaskIndex(pub usize);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn open_retains_both_versions_parsed_data() {
+        for (fixture, version) in [
+            ("v21_apple_storage", LeRobotDatasetVersion::V2),
+            ("v30_apple_storage", LeRobotDatasetVersion::V3),
+        ] {
+            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../re_importer/tests/assets/lerobot")
+                .join(fixture);
+            let dataset = LeRobotDataset::open(&path).unwrap();
+            assert_eq!(dataset.path(), path);
+            assert_eq!(dataset.version(), version);
+            assert_eq!(
+                dataset.episodes().collect::<Vec<_>>(),
+                vec![EpisodeIndex(0), EpisodeIndex(1), EpisodeIndex(2)]
+            );
+            assert!(dataset.diagnostics().entries().is_empty());
+        }
+    }
+}
