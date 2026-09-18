@@ -607,7 +607,7 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), D
         DirectFetchError::new(format!("ArrowMsg::to_application() failed: {err}"), false)
     })?;
 
-    let chunk = Chunk::from_chunk_record_batch(&app_msg.batch).map_err(|err| {
+    let chunk = Chunk::from_arrow_msg(&app_msg).map_err(|err| {
         DirectFetchError::new(format!("Chunk::from_record_batch failed: {err}"), false)
     })?;
 

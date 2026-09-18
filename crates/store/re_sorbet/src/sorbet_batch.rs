@@ -16,7 +16,7 @@ use crate::{
 /// Any rerun-compatible [`ArrowRecordBatch`].
 ///
 /// This is a wrapper around a [`SorbetSchema`] and a [`ArrowRecordBatch`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SorbetBatch {
     schema: SorbetSchema,
 
@@ -44,6 +44,22 @@ impl SorbetBatch {
         )?;
 
         Ok(Self { schema, batch })
+    }
+
+    /// Records the current time as the moment this batch passed `location`.
+    ///
+    /// Updates both the Arrow metadata and the parsed [`SorbetSchema`].
+    /// Does nothing for locations that are not carried in the batch metadata.
+    pub fn track_latency(&mut self, location: crate::TimestampLocation) {
+        let Some(key) = location.metadata_key() else {
+            return;
+        };
+        let now = web_time::SystemTime::now();
+        self.batch.schema_metadata_mut().insert(
+            key.to_owned(),
+            crate::timestamp_metadata::encode_timestamp(now),
+        );
+        self.schema.timestamps.insert(location, now);
     }
 
     /// Returns self but with all rows removed.
@@ -149,6 +165,18 @@ impl std::fmt::Display for SorbetBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         re_arrow_util::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
+    }
+}
+
+impl re_byte_size::SizeBytes for SorbetBatch {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            // TODO(RR-5743): count the parsed schema once it is no longer duplicated.
+            schema: _,
+            batch,
+        } = self;
+
+        batch.heap_size_bytes()
     }
 }
 

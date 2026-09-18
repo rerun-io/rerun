@@ -1087,7 +1087,7 @@ impl RerunCloudService for RerunCloudHandler {
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
 
-            let chunk_batch: RecordBatch = chunk_msg
+            let record_batch: RecordBatch = chunk_msg
                 .chunk
                 .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
                 .try_into()
@@ -1096,7 +1096,7 @@ impl RerunCloudService for RerunCloudHandler {
                 })?;
 
             // Support both new "rerun:segment_id" and legacy "rerun:partition_id" keys
-            let schema = chunk_batch.schema();
+            let schema = record_batch.schema();
             let metadata = schema.metadata();
             let segment_id: SegmentId = metadata
                 .get("rerun:segment_id")
@@ -1109,8 +1109,11 @@ impl RerunCloudService for RerunCloudHandler {
                 .clone()
                 .into();
 
-            let chunk = Arc::new(Chunk::from_chunk_record_batch(&chunk_batch).map_err(|err| {
-                tonic::Status::internal(format!("error decoding chunk from record batch: {err:#}"))
+            let chunk_batch = re_sorbet::ChunkBatch::try_from(&record_batch).map_err(|err| {
+                tonic::Status::internal(format!("error parsing chunk record batch: {err:#}"))
+            })?;
+            let chunk = Arc::new(Chunk::from_chunk_batch(&chunk_batch).map_err(|err| {
+                tonic::Status::internal(format!("error decoding chunk from chunk batch: {err:#}"))
             })?);
 
             chunk_stores
@@ -1935,12 +1938,11 @@ impl RerunCloudService for RerunCloudHandler {
 
         let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
             let arrow_msg = re_log_msg::ArrowMsg {
-                chunk_id: *chunk.id(),
-                batch: chunk.to_record_batch().map_err(|err| {
+                batch: std::sync::Arc::new(chunk.to_chunk_batch().map_err(|err| {
                     tonic::Status::internal(format!(
-                        "failed to convert chunk to record batch: {err:#}"
+                        "failed to convert chunk to chunk batch: {err:#}"
                     ))
-                })?,
+                })?),
                 on_release: None,
             };
 

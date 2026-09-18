@@ -63,11 +63,14 @@ impl std::fmt::Debug for ArrowRecordBatchReleaseCallback {
 #[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 #[must_use]
 pub struct ArrowMsg {
-    /// Unique identifier for the chunk in this message.
-    pub chunk_id: re_tuid::Tuid,
-
-    /// Schema and data for all control & data columns.
-    pub batch: ArrowRecordBatch, // TODO(RR-1390): make this a `re_sorbet::ChunkBatch`
+    /// The chunk, parsed and migrated to the current Sorbet version.
+    ///
+    /// Carrying the parsed batch means the schema is parsed once, where the message is decoded,
+    /// rather than by every consumer; the Arrow batch it wraps is one deref away.
+    ///
+    /// Shared rather than owned because a message fans out to several sinks and the parsed
+    /// schemas are expensive to clone, and because it keeps [`crate::LogMsg`] small.
+    pub batch: Arc<re_sorbet::ChunkBatch>,
 
     #[size_bytes(ignore)]
     pub on_release: Option<ArrowRecordBatchReleaseCallback>,
@@ -76,7 +79,9 @@ pub struct ArrowMsg {
 impl Drop for ArrowMsg {
     fn drop(&mut self) {
         if let Some(on_release) = self.on_release.take() {
-            (*on_release)(self.batch.clone() /* shallow */);
+            (*on_release)(
+                ArrowRecordBatch::from(self.batch.as_ref()), /* shallow */
+            );
         }
     }
 }

@@ -9770,6 +9770,7 @@ dependencies = [
  "re_log_types",
  "re_protos",
  "re_quota_channel",
+ "re_sorbet",
  "re_tracing",
  "re_uri",
  "serde",
@@ -9831,6 +9832,7 @@ dependencies = [
  "re_build_info",
  "re_byte_size",
  "re_log_types",
+ "re_sorbet",
  "re_tuid",
  "thiserror 2.0.19",
 ]

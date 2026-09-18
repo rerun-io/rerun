@@ -115,8 +115,8 @@ fn canonical_outer_list_field_survives_record_batch_roundtrip() {
     )
     .unwrap();
 
-    let batch = chunk.to_record_batch().unwrap();
-    let roundtripped = Chunk::from_chunk_record_batch(&batch).unwrap();
+    let batch = chunk.to_chunk_batch().unwrap();
+    let roundtripped = Chunk::from_chunk_batch(&batch).unwrap();
 
     assert_eq!(
         roundtripped

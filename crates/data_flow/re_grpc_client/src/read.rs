@@ -70,13 +70,8 @@ async fn stream_async(
             })) => {
                 let mut log_msg = log_msg_proto.to_application((&mut app_id_cache, None))?;
 
-                if let Some(metadata_key) = re_sorbet::TimestampLocation::IPCDecode.metadata_key() {
-                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                    log_msg.insert_arrow_record_batch_metadata(
-                        metadata_key.to_owned(),
-                        re_sorbet::timestamp_metadata::now_timestamp(),
-                    );
-                }
+                // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                log_msg.track_latency(re_sorbet::TimestampLocation::IPCDecode);
 
                 cfg_select! {
                     target_arch = "wasm32" => {

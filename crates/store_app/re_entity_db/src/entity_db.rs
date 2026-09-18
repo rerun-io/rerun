@@ -795,7 +795,7 @@ impl EntityDb {
                 Ok(vec![]) // no events
             }
 
-            LogMsg::ArrowMsg(_, arrow_msg) => self.add_record_batch(&arrow_msg.batch),
+            LogMsg::ArrowMsg(_, arrow_msg) => self.add_chunk_batch(&arrow_msg.batch),
 
             LogMsg::BlueprintActivationCommand(_) => {
                 // Not for us to handle
@@ -804,20 +804,18 @@ impl EntityDb {
         }
     }
 
-    /// Insert a chunk (encoded as a record batch) into the store.
-    pub fn add_record_batch(
+    /// Insert a chunk (parsed as a chunk batch) into the store.
+    pub fn add_chunk_batch(
         &mut self,
-        record_batch: &arrow::array::RecordBatch,
+        chunk_batch: &re_sorbet::ChunkBatch,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         re_tracing::profile_function!(format!(
             "{} rows",
-            re_format::format_uint(record_batch.num_rows())
+            re_format::format_uint(chunk_batch.num_rows())
         ));
 
         self.last_modified_at = web_time::Instant::now();
-        let chunk_batch =
-            re_sorbet::ChunkBatch::try_from(record_batch).map_err(re_chunk::ChunkError::from)?;
-        let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
+        let mut chunk = re_chunk::Chunk::from_chunk_batch(chunk_batch)?;
         chunk.sort_by_row_ids_if_needed();
         self.add_chunk_with_timestamp_metadata(
             &Arc::new(chunk),

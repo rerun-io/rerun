@@ -138,19 +138,6 @@ impl Chunk {
         )?)
     }
 
-    /// Convert a chunk record batch to a chunk.
-    ///
-    /// This is for well-formed chunk batches. For generic record-batch-to-chunks conversion, see
-    /// [`Self::from_record_batch`].
-    pub fn from_chunk_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
-        re_tracing::profile_function!(format!(
-            "num_columns={} num_rows={}",
-            batch.num_columns(),
-            batch.num_rows()
-        ));
-        Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
-    }
-
     /// Convert an arbitrary record batch to one or more [`Chunk`]s.
     ///
     /// See [`re_sorbet::chunk_batches_from_dataframe_record_batch`] for details.
@@ -271,22 +258,19 @@ impl Chunk {
     pub fn from_arrow_msg(msg: &re_log_msg::ArrowMsg) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let re_log_msg::ArrowMsg {
-            chunk_id: _,
             batch,
             on_release: _,
         } = msg;
 
-        Self::from_chunk_record_batch(batch)
+        Self::from_chunk_batch(batch)
     }
 
     #[inline]
     pub fn to_arrow_msg(&self) -> ChunkResult<re_log_msg::ArrowMsg> {
         re_tracing::profile_function!();
-        self.sanity_check()?;
 
         Ok(re_log_msg::ArrowMsg {
-            chunk_id: self.id().as_tuid(),
-            batch: self.to_record_batch()?,
+            batch: std::sync::Arc::new(self.to_chunk_batch()?),
             on_release: None,
         })
     }

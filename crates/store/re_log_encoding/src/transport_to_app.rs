@@ -341,64 +341,12 @@ fn arrow_msg_transport_to_app(
         compression.into(),
     )?;
 
-    let chunk_id = re_sorbet::chunk_id_of_schema(batch.schema_ref())?.as_tuid();
-
-    // TODO(grtlr): In the future, we should be able to rely on the `chunk_id` to be present in the
-    // protobuf definitions. For now we have to extract it from the `batch`.
-    //
-    // let chunk_id = arrow_msg
-    //     .chunk_id
-    //     .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "chunk_id"))?
-    //     .try_from()?;
-
-    // This also ensures that we perform all required migrations from `re_sorbet`.
-    // TODO(RR-1390): we should change `re_types_core::ArrowMsg` to contain the `ChunkBatch` directly.
-    let chunk_batch = re_sorbet::ChunkBatch::try_from(&batch)?;
-
-    // TODO(emilk): it would actually be nicer if we could postpone the migration,
-    // so that there is some way to get the original (unmigrated) data out of an .rrd,
-    // which would be very useful for debugging, e.g. using the `print` command.
+    let batch = re_sorbet::ChunkBatch::try_from(&batch)?;
 
     Ok(re_log_msg::ArrowMsg {
-        chunk_id,
-        // TODO(RR-1390): this right here is wasteful: some of the schema-related work necessary to
-        // create the `ChunkBatch` will have to be re-done to re-create a `ChunkBatch` later.
-        batch: chunk_batch.into(),
+        batch: std::sync::Arc::new(batch),
         on_release: None,
     })
-}
-
-/// Decodes a transport-level `ArrowMsg` straight into a [`re_chunk::Chunk`].
-///
-/// This is a workaround until RR-1390 is addressed. Going through [`re_log_msg::ArrowMsg`] parses
-/// the Sorbet schema twice — once to migrate the batch, once more in
-/// [`re_chunk::Chunk::from_chunk_record_batch`] — and that parse dominates the cost of decoding a
-/// small chunk.
-/// Kept private to this crate: it duplicates the decode in [`arrow_msg_transport_to_app`].
-// TODO(RR-1390): this duplicates `arrow_msg_transport_to_app`, remove it once `ArrowMsg` carries
-// the parsed `ChunkBatch`.
-#[cfg(feature = "decoder")]
-pub fn arrow_msg_transport_to_chunk(
-    arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
-) -> Result<re_chunk::Chunk, CodecError> {
-    re_tracing::profile_function!();
-
-    use re_protos::log_msg::v1alpha1::Encoding;
-
-    if arrow_msg.encoding() != Encoding::ArrowIpc {
-        return Err(CodecError::UnsupportedEncoding);
-    }
-
-    let compression = re_protos::common::v1alpha1::Compression::try_from(arrow_msg.compression)
-        .map_err(re_protos::TypeConversionError::from)?;
-
-    let batch = decode_arrow(
-        &arrow_msg.payload,
-        arrow_msg.uncompressed_size as usize,
-        compression.into(),
-    )?;
-
-    Ok(re_chunk::Chunk::from_chunk_record_batch(&batch)?)
 }
 
 /// Converts an application-level `LogMsg` to its transport-level counterpart.
@@ -439,7 +387,6 @@ fn arrow_msg_app_to_transport(
     re_tracing::profile_function!();
 
     let re_log_msg::ArrowMsg {
-        chunk_id,
         batch,
         on_release: _,
     } = arrow_msg;
@@ -448,12 +395,12 @@ fn arrow_msg_app_to_transport(
 
     Ok(re_protos::log_msg::v1alpha1::ArrowMsg {
         store_id: Some(store_id.into()),
-        chunk_id: Some((*chunk_id).into()),
+        chunk_id: Some(batch.chunk_id().as_tuid().into()),
         compression: re_protos::common::v1alpha1::Compression::from(compression) as i32,
         uncompressed_size: payload.uncompressed_size,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),
-        is_static: re_sorbet::is_static_chunk(batch),
+        is_static: Some(batch.is_static()),
     })
 }
 

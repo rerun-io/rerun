@@ -20,7 +20,13 @@ pub struct TableMsg {
 }
 
 impl TableMsg {
-    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
-        self.data.schema_metadata_mut().insert(key, value);
+    /// Records the current time as the moment this table passed `location`.
+    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
+        if let Some(key) = location.metadata_key() {
+            self.data.schema_metadata_mut().insert(
+                key.to_owned(),
+                re_sorbet::timestamp_metadata::now_timestamp(),
+            );
+        }
     }
 }

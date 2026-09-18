@@ -120,19 +120,7 @@ impl FooterState {
     ) -> Result<(), EncodeError> {
         match msg {
             LogMsg::ArrowMsg(store_id, msg) => {
-                // NOTE(1): The fact that this parses the `RecordBatch` back into an actual `Chunk`
-                // is a bit unfortunate, but really it's nowhere near as bad as one might think:
-                // the real costly work is to parse the IPC payload into a `RecordBatch` in the
-                // first place, but thankfully we don't have to repay that cost here.
-                // Not only that: keep in mind that this entire codepath is only taken when writing
-                // actual RRD files, so performance is generally IO bound anyway.
-                //
-                // NOTE(2): The fact that we also perform a Sorbet migration in the process is a
-                // bit weirder on the other hand, but then again this is generally not a new a
-                // problem: we tend to perform Sorbet migrations a bit too aggressively all over
-                // the place. We really need a layer that sits between the transport and
-                // application layer where one can accessed the parsed, unmigrated data.
-                let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch)?;
+                let chunk_batch = &msg.batch;
 
                 // This line is important: it implies that if a recording doesn't have any data
                 // chunks at all, we do not even reserve an RRD manifest for it in the footer.
@@ -140,7 +128,7 @@ impl FooterState {
                     self.manifests.entry(store_id.clone()).or_default();
 
                 manifest.append(
-                    &chunk_batch,
+                    chunk_batch,
                     byte_span_excluding_header,
                     byte_size_uncompressed,
                 )?;

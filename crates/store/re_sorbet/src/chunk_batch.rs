@@ -29,7 +29,9 @@ impl MismatchedChunkSchemaError {
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
 /// It always has a [`re_types_core::RowId`] column.
-#[derive(Debug, Clone)]
+// TODO(RR-5743): `schema` embeds a second copy of the `SorbetSchema` held by `sorbet_batch`;
+// every mutation must keep both in sync.
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChunkBatch {
     schema: ChunkSchema,
     sorbet_batch: SorbetBatch,
@@ -112,6 +114,27 @@ impl std::fmt::Display for ChunkBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         re_arrow_util::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
+    }
+}
+
+impl ChunkBatch {
+    /// See [`SorbetBatch::track_latency`].
+    pub fn track_latency(&mut self, location: crate::TimestampLocation) {
+        self.sorbet_batch.track_latency(location);
+        // TODO(RR-5743): remove once `ChunkSchema` no longer duplicates the `SorbetSchema`.
+        self.schema.timestamps = self.sorbet_batch.sorbet_schema().timestamps.clone();
+    }
+}
+
+impl re_byte_size::SizeBytes for ChunkBatch {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            // TODO(RR-5743): count the parsed schema once it is no longer duplicated.
+            schema: _,
+            sorbet_batch,
+        } = self;
+
+        sorbet_batch.heap_size_bytes()
     }
 }
 

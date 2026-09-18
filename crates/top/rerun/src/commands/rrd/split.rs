@@ -351,8 +351,7 @@ impl SplitCommand {
                         Ok(re_log_msg::LogMsg::ArrowMsg(
                             store_id.clone(),
                             re_log_msg::ArrowMsg {
-                                chunk_id: *chunk.id(),
-                                batch: chunk.to_record_batch()?,
+                                batch: std::sync::Arc::new(chunk.to_chunk_batch()?),
                                 on_release: None,
                             },
                         ))
@@ -775,10 +774,11 @@ impl SplitCommand {
                                 re_log_msg::LogMsg::ArrowMsg(
                                     store.id(),
                                     re_log_msg::ArrowMsg {
-                                        chunk_id: *chunk.id(),
-                                        batch: chunk
-                                            .to_record_batch()
-                                            .expect("we got it in, surely we can get it out"),
+                                        batch: std::sync::Arc::new(
+                                            chunk
+                                                .to_chunk_batch()
+                                                .expect("we got it in, surely we can get it out"),
+                                        ),
                                         on_release: None,
                                     },
                                 ),

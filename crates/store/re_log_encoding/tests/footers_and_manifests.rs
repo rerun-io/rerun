@@ -22,7 +22,7 @@ fn simple_manifest() {
         let mut builder = RrdManifestBuilder::default();
         let mut byte_offset_excluding_header = 0;
         for msg in generate_recording_chunks(1) {
-            let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch).unwrap();
+            let chunk_batch = &msg.batch;
 
             let transport_uncompressed = msg
                 .to_transport((
@@ -44,7 +44,7 @@ fn simple_manifest() {
                 re_span::Span::from_start_len(byte_offset_excluding_header, chunk_byte_size);
             builder
                 .append(
-                    &chunk_batch,
+                    chunk_batch,
                     chunk_byte_span_excluding_header,
                     chunk_byte_size_uncompressed,
                 )

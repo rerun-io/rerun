@@ -16,6 +16,7 @@ use crate::{
 /// It only contains the metadata used by Rerun.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkSchema {
+    // TODO(RR-5743): this duplicates the `SorbetSchema` of the owning `SorbetBatch`.
     sorbet: SorbetSchema,
 
     // Some things here are also in [`SorbetSchema]`, but are duplicated

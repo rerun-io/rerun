@@ -606,13 +606,8 @@ impl Default for GrpcSink {
 
 impl LogSink for GrpcSink {
     fn send(&self, mut log_msg: LogMsg) {
-        if let Some(metadata_key) = re_sorbet::TimestampLocation::GrpcSink.metadata_key() {
-            // Used for latency measurements:
-            log_msg.insert_arrow_record_batch_metadata(
-                metadata_key.to_owned(),
-                re_sorbet::timestamp_metadata::now_timestamp(),
-            );
-        }
+        // Used for latency measurements:
+        log_msg.track_latency(re_sorbet::TimestampLocation::GrpcSink);
 
         self.client.send_blocking(log_msg);
     }

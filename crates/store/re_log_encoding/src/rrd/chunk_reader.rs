@@ -6,6 +6,7 @@ use re_chunk::{Chunk, ChunkId};
 use re_span::Span;
 
 use crate::RrdManifest;
+use crate::ToApplication as _;
 use crate::rrd::CodecError;
 
 /// Maximum gap between two chunk spans that will still be merged into a single I/O read.
@@ -113,7 +114,8 @@ fn decode_chunk_from_bytes(buf: &[u8]) -> Result<Chunk, CodecError> {
     use crate::rrd::Decodable as _;
 
     let transport_arrow_msg = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(buf)?;
-    crate::transport_to_app::arrow_msg_transport_to_chunk(&transport_arrow_msg)
+    let app_arrow_msg = transport_arrow_msg.to_application(())?;
+    Ok(Chunk::from_arrow_msg(&app_arrow_msg)?)
 }
 
 #[cfg(test)]

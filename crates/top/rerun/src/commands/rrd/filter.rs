@@ -107,42 +107,39 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_msg::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            match re_sorbet::ChunkBatch::try_from(&msg.batch) {
-                                Ok(batch) => {
-                                    if dropped_entity_paths.contains(batch.entity_path()) {
-                                        None
-                                    } else {
-                                        let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
-                                            &batch.schema().fields,
-                                            batch.columns()
-                                        )
-                                        .filter(|(field, _col)| {
-                                            !is_field_timeline_of(field, &dropped_timelines)
-                                        })
-                                        .map(|(field, col)| (field.clone(), col.clone()))
-                                        .unzip();
+                            if dropped_entity_paths.contains(msg.batch.entity_path()) {
+                                None
+                            } else {
+                                let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
+                                    &msg.batch.schema().fields,
+                                    msg.batch.columns()
+                                )
+                                .filter(|(field, _col)| {
+                                    !is_field_timeline_of(field, &dropped_timelines)
+                                })
+                                .map(|(field, col)| (field.clone(), col.clone()))
+                                .unzip();
 
-                                        if let Ok(new_batch) =
-                                            ArrowRecordBatch::try_new_with_options(
-                                                ArrowSchema::new_with_metadata(
-                                                    fields,
-                                                    batch.schema().metadata().clone(),
-                                                )
-                                                .into(),
-                                                columns,
-                                                &RecordBatchOptions::default(),
-                                            )
-                                        {
-                                            msg.batch = new_batch;
-                                            Some(re_log_msg::LogMsg::ArrowMsg(store_id, msg))
-                                        } else {
-                                            None // Probably failed because we filtered out everything
-                                        }
-                                    }
-                                }
-                                Err(err) => {
-                                    re_log::warn_once!("Failed to parse chunk schema: {err}");
-                                    None
+                                // TODO(RR-5742): drop the index columns from the parsed
+                                // `ChunkBatch` directly instead of rebuilding and re-parsing
+                                // the Arrow batch for every chunk.
+                                let filtered = ArrowRecordBatch::try_new_with_options(
+                                    ArrowSchema::new_with_metadata(
+                                        fields,
+                                        msg.batch.schema().metadata().clone(),
+                                    )
+                                    .into(),
+                                    columns,
+                                    &RecordBatchOptions::default(),
+                                )
+                                .ok()
+                                .and_then(|batch| re_sorbet::ChunkBatch::try_from(&batch).ok());
+
+                                if let Some(new_batch) = filtered {
+                                    msg.batch = std::sync::Arc::new(new_batch);
+                                    Some(re_log_msg::LogMsg::ArrowMsg(store_id, msg))
+                                } else {
+                                    None // Probably failed because we filtered out everything
                                 }
                             }
                         }

@@ -64,17 +64,17 @@ impl DataSourceMessage {
         }
     }
 
-    // We sometimes inject meta-data for latency tracking etc
-    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+    /// Records the current time as the moment the carried data passed `location`.
+    ///
+    /// Only messages that carry Arrow data are stamped.
+    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
         match self {
-            Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
+            Self::LogMsg(log_msg) => log_msg.track_latency(location),
+            Self::TableMsg(table_msg) => table_msg.track_latency(location),
             Self::RrdManifest(..)
             | Self::RrdManifestComplete(_)
             | Self::DefaultBlueprintRegistration(_)
-            | Self::ViewerControl(_) => {
-                // Not everything needs latency tracking
-            }
+            | Self::ViewerControl(_) => {}
         }
     }
 }

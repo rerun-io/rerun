@@ -32,8 +32,6 @@ mod sorbet_columns;
 mod sorbet_schema;
 pub mod timestamp_metadata;
 
-use arrow::array::RecordBatch;
-
 pub use self::chunk_batch::{ChunkBatch, MismatchedChunkSchemaError};
 pub use self::chunk_columns::ChunkColumnDescriptors;
 pub use self::chunk_schema::ChunkSchema;
@@ -70,39 +68,4 @@ pub enum BatchType {
 
     /// Potentially multiple entities
     Dataframe,
-}
-
-/// Get the chunk ID from the metadata of the Arrow schema
-/// of a record batch containing a sorbet chunk.
-///
-/// Returns one of:
-/// * `Ok`
-/// * [`SorbetError::MissingChunkId`]
-/// * [`SorbetError::ChunkIdDeserializationError`]
-// TODO(RR-1390): remove this
-pub fn chunk_id_of_schema(
-    schema: &arrow::datatypes::Schema,
-) -> Result<re_types_core::ChunkId, SorbetError> {
-    let metadata = schema.metadata();
-    if let Some(chunk_id_str) = metadata
-        .get(crate::metadata::RERUN_CHUNK_ID)
-        .or_else(|| metadata.get("rerun.id"))
-    {
-        chunk_id_str.parse().map_err(|err| {
-            SorbetError::ChunkIdDeserializationError(format!(
-                "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
-            ))
-        })
-    } else {
-        Err(SorbetError::MissingChunkId)
-    }
-}
-
-/// If this is a [`ChunkBatch`]: does it contain static data?
-// TODO(RR-1390): remove this
-pub fn is_static_chunk(batch: &RecordBatch) -> Option<bool> {
-    re_tracing::profile_function!();
-    ChunkBatch::try_from(batch)
-        .ok()
-        .map(|chunk| chunk.is_static())
 }

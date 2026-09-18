@@ -127,17 +127,7 @@ impl Verifier {
             LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => {}
 
             LogMsg::ArrowMsg(_store_id, arrow_msg) => {
-                self.verify_record_batch(source, &arrow_msg.batch);
-            }
-        }
-    }
-
-    fn verify_record_batch(&mut self, source: &str, batch: &arrow::array::RecordBatch) {
-        match re_sorbet::ChunkBatch::try_from(batch) {
-            Ok(chunk_batch) => self.verify_chunk_batch(source, &chunk_batch),
-            Err(err) => {
-                self.errors
-                    .insert(format!("{source}: Failed to parse batch: {err}"));
+                self.verify_chunk_batch(source, &arrow_msg.batch);
             }
         }
     }

@@ -1,4 +1,4 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
+use std::sync::Arc;
 
 use re_log_types::{StoreId, impl_into_enum};
 
@@ -105,18 +105,11 @@ impl LogMsg {
         }
     }
 
-    /// If we are an [`ArrowMsg`], return a mutable reference to the underlying
-    /// [`ArrowRecordBatch`].
-    pub fn arrow_record_batch_mut(&mut self) -> Option<&mut ArrowRecordBatch> {
-        match self {
-            Self::ArrowMsg(_, arrow_msg) => Some(&mut arrow_msg.batch),
-            _ => None,
-        }
-    }
-
-    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
-        if let Some(record_batch) = self.arrow_record_batch_mut() {
-            record_batch.schema_metadata_mut().insert(key, value);
+    /// If we are an [`ArrowMsg`], records the current time as the moment the chunk passed
+    /// `location`.
+    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
+        if let Self::ArrowMsg(_, arrow_msg) = self {
+            Arc::make_mut(&mut arrow_msg.batch).track_latency(location);
         }
     }
 }
