@@ -48,6 +48,18 @@ pub struct SessionContext {
     /// Directories the agent may read besides the working directory.
     /// Claude Code loads skills from `.claude/skills/` inside these.
     pub additional_directories: Vec<PathBuf>,
+
+    /// Working directory for sessions where the user has not chosen one.
+    /// Unset means the directory the host process was started in.
+    pub default_cwd: Option<PathBuf>,
+
+    /// Directories the agent is asked, in its preamble, to stay out of.
+    ///
+    /// Nothing enforces this: the agent can still reach them, and the user is still asked to
+    /// approve. Paths that land inside them are counted in
+    /// [`crate::TurnReport::off_limits_paths`] so that the host can tell whether the agent
+    /// honored the request.
+    pub off_limits_directories: Vec<PathBuf>,
 }
 
 /// Everything needed to launch an agent. Serializable so the host app can persist it.
@@ -122,10 +134,12 @@ impl AgentSettings {
         // Resolve to an absolute path so that agents installed outside the app's PATH still work.
         let command = find_executable(&command).unwrap_or_else(|| PathBuf::from(&command));
 
-        let cwd = if self.cwd.trim().is_empty() {
-            std::env::current_dir().map_err(|err| format!("Failed to get current dir: {err}"))?
-        } else {
+        let cwd = if !self.cwd.trim().is_empty() {
             PathBuf::from(self.cwd.trim())
+        } else if let Some(cwd) = context.default_cwd.clone() {
+            cwd
+        } else {
+            std::env::current_dir().map_err(|err| format!("Failed to get current dir: {err}"))?
         };
         if !cwd.is_dir() {
             return Err(format!(
@@ -157,6 +171,7 @@ impl AgentSettings {
             env,
             cwd,
             additional_directories: context.additional_directories.clone(),
+            off_limits_directories: context.off_limits_directories.clone(),
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
@@ -232,7 +247,44 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AgentSettings, parse_env_vars, take_leading_env_vars};
+    use std::path::PathBuf;
+
+    use super::{AgentSettings, SessionContext, parse_env_vars, take_leading_env_vars};
+
+    #[test]
+    fn the_host_picks_the_working_directory_only_as_a_default() {
+        let cwd = |setting: &str, default_cwd: Option<&str>| {
+            let settings = AgentSettings {
+                profile_id: AgentSettings::CUSTOM_PROFILE_ID.to_owned(),
+                custom_command_line: "agent".to_owned(),
+                cwd: setting.to_owned(),
+                ..Default::default()
+            };
+            let context = SessionContext {
+                default_cwd: default_cwd.map(PathBuf::from),
+                ..Default::default()
+            };
+            settings
+                .launch_config(&[], &context)
+                .map(|config| config.cwd)
+        };
+
+        let here = std::env::current_dir().expect("a current directory");
+        let parent = here.parent().expect("a parent directory");
+        let parent_str = parent.to_str().expect("a printable parent directory");
+
+        // The host's default only applies when the user has not chosen a directory.
+        assert_eq!(cwd("", Some(parent_str)).as_deref(), Ok(parent));
+        assert_eq!(cwd(parent_str, None).as_deref(), Ok(parent));
+        assert_eq!(cwd("", None).as_deref(), Ok(here.as_path()));
+
+        // A user setting of only whitespace is no setting at all.
+        assert_eq!(cwd("  ", Some(parent_str)).as_deref(), Ok(parent));
+
+        // Neither source may name a directory that does not exist.
+        assert!(cwd(&here.join("nope").display().to_string(), None).is_err());
+        assert!(cwd("", Some(&here.join("nope").display().to_string())).is_err());
+    }
 
     #[test]
     fn old_settings_enable_redacted_prompt_sharing() {

@@ -182,6 +182,8 @@ impl App {
         panel.set_context(SessionContext {
             preamble: Some(PREAMBLE.to_owned()),
             additional_directories: Vec::new(),
+            default_cwd: None,
+            off_limits_directories: Vec::new(),
         });
         Self { panel }
     }

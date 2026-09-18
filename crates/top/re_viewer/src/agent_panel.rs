@@ -3,9 +3,10 @@
 
 use std::path::Path;
 
-use re_agent_ui::{AgentPanel, AgentSettings, McpServerConfig, SessionContext};
+use re_agent_ui::{AgentPanel, AgentSettings, HostButton, McpServerConfig, SessionContext};
 
 mod preamble;
+mod self_improve;
 
 /// The MCP server name the agent sees the viewer under. Tools show up as `mcp__rerun__<tool>`.
 const MCP_SERVER_NAME: &str = "rerun";
@@ -33,6 +34,24 @@ pub struct ViewerAgentPanel {
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
 
+    /// Empty working directory handed to the agent in our own development builds, kept alive
+    /// for as long as the panel is, since dropping it deletes the directory.
+    ///
+    /// One directory for the whole panel, so every conversation in it shares a working
+    /// directory — as they already do for a user who spawns several agents in one viewer.
+    scratch_cwd: Option<tempfile::TempDir>,
+
+    /// The Rerun checkout the viewer was started from, in our own development builds.
+    /// Hidden from the default chat agent, but used for self-improvement.
+    rerun_workspace: Option<std::path::PathBuf>,
+
+    /// Where the session transcripts handed to self-improvement conversations are written.
+    /// Kept alive for as long as the panel is, since dropping it deletes the directory.
+    transcript_dir: Option<tempfile::TempDir>,
+
+    /// Counts the self-improvement conversations started, so their transcripts get separate files.
+    self_improvements_started: usize,
+
     #[cfg(feature = "analytics")]
     analytics: crate::agent_analytics::TurnAnalytics,
 }
@@ -53,10 +72,16 @@ impl ViewerAgentPanel {
         settings: &mut AgentSettings,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
+        is_in_rerun_workspace: bool,
     ) {
         let was_open = *open;
         if *open && self.panel.is_none() {
-            self.initialize(settings.clone(), viewer_endpoint, cache_dir);
+            self.initialize(
+                settings.clone(),
+                viewer_endpoint,
+                cache_dir,
+                is_in_rerun_workspace,
+            );
         }
 
         let Self {
@@ -89,18 +114,91 @@ impl ViewerAgentPanel {
         // Dragging the collapsed panel open does not go through `toggle_agent_panel`:
         self.focus_input |= !was_open && *open;
 
+        if self
+            .panel
+            .as_ref()
+            .is_some_and(AgentPanel::host_button_clicked)
+        {
+            self.start_self_improvement();
+        }
+
         self.record_finished_turns();
+    }
+
+    /// Open a conversation that reviews the active session and improves what let it down.
+    ///
+    /// The reviewing agent works in the Rerun checkout, which the reviewed session was kept out
+    /// of, and reads the session as a transcript dumped to a file: the file is evidence the
+    /// reviewed agent cannot talk its way around, and it carries the tool calls and the timings
+    /// that the smells show up in.
+    fn start_self_improvement(&mut self) {
+        let Self {
+            panel,
+            rerun_workspace,
+            transcript_dir,
+            self_improvements_started,
+            ..
+        } = self;
+        let (Some(panel), Some(workspace)) = (panel.as_mut(), rerun_workspace.as_ref()) else {
+            return;
+        };
+
+        // The review preamble tells the second agent that the first one "just finished", and a
+        // dump taken mid-turn is missing the answer and the tool results still to come — which
+        // it can never gain, since the file is written once.
+        if panel.turn_in_progress() {
+            re_log::warn!("Wait for the agent to finish its turn before reviewing the session");
+            return;
+        }
+
+        let Some(transcript) = panel.transcript().map(re_agent_ui::Transcript::to_markdown) else {
+            return;
+        };
+        if transcript.trim().is_empty() {
+            re_log::warn!("There is no agent session to review yet");
+            return;
+        }
+
+        let dir = match transcript_dir {
+            Some(dir) => dir,
+            None => match tempfile::TempDir::with_prefix("rerun-agent-review-") {
+                Ok(dir) => transcript_dir.insert(dir),
+                Err(err) => {
+                    re_log::warn!("Failed to create a directory for the session transcript: {err}");
+                    return;
+                }
+            },
+        };
+        let transcript = match self_improve::write_transcript(
+            dir.path(),
+            *self_improvements_started,
+            &transcript,
+        ) {
+            Ok(path) => path,
+            Err(err) => {
+                re_log::warn!("Failed to write the session transcript: {err}");
+                return;
+            }
+        };
+        *self_improvements_started += 1;
+
+        panel.open_conversation(
+            self_improve::session_context(workspace, dir.path()),
+            self_improve::opening_prompt(&transcript),
+        );
     }
 
     /// Initialize the inner panel.
     ///
     /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun viewer-mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
+    /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     fn initialize(
         &mut self,
         mut settings: AgentSettings,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
+        is_in_rerun_workspace: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -134,10 +232,39 @@ impl ViewerAgentPanel {
                 }
             });
 
+        // Only applied when the user has not set a working directory of their own.
+        let rerun_workspace = is_in_rerun_workspace
+            .then(|| self.user_like_cwd())
+            .flatten();
+        self.rerun_workspace.clone_from(&rerun_workspace);
+        let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
+
         let mut panel = AgentPanel::new(settings);
+        panel.set_host_button(rerun_workspace.is_some().then(|| {
+            HostButton {
+                label: "Self-improve".to_owned(),
+                tooltip: "Rerun development builds only, never shown in a release build.\n\n\
+                      Opens a second agent in the Rerun checkout that reviews this session, \
+                      finds what the viewer's MCP tools, skills, docs, and instructions made \
+                      hard, and files the fixes."
+                    .into(),
+            }
+        }));
         panel.set_context(SessionContext {
-            preamble: Some(preamble::text(viewer_endpoint, agent_dir.as_deref())),
+            preamble: Some(
+                preamble::Preamble {
+                    viewer_endpoint,
+                    agent_dir: agent_dir.as_deref(),
+                    off_limits_directories: &off_limits_directories,
+                }
+                .text(),
+            ),
             additional_directories: agent_dir.iter().cloned().collect(),
+            default_cwd: self
+                .scratch_cwd
+                .as_ref()
+                .map(|scratch| scratch.path().to_owned()),
+            off_limits_directories,
         });
         self.panel = Some(panel);
     }
@@ -175,6 +302,36 @@ impl ViewerAgentPanel {
                 drop(turns);
             }
         }
+    }
+
+    /// Point the agent at an empty scratch directory instead of the Rerun checkout, and return
+    /// the checkout it was spared.
+    ///
+    /// A released viewer runs in the user's own directory, so the agent sees the user's project
+    /// and not ours. Started from the Rerun workspace, the same code hands the agent our source
+    /// tree, and it starts answering from code that a user's agent cannot read. This keeps our
+    /// development builds honest.
+    ///
+    /// Returns `None` when the viewer was not started from a Rerun checkout — a development
+    /// binary run from somewhere else has none of our source to hide, and the directory it did
+    /// start in belongs to whoever is running it — or when there is no scratch directory to use
+    /// instead.
+    fn user_like_cwd(&mut self) -> Option<std::path::PathBuf> {
+        let workspace = self_improve::rerun_checkout(&std::env::current_dir().ok()?)?;
+
+        if self.scratch_cwd.is_none() {
+            match tempfile::TempDir::with_prefix("rerun-agent-") {
+                Ok(dir) => self.scratch_cwd = Some(dir),
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Failed to create a scratch directory for the agent, \
+                         so it can read the Rerun source tree: {err}"
+                    );
+                    return None;
+                }
+            }
+        }
+        Some(workspace)
     }
 }
 
@@ -261,6 +418,68 @@ mod tests {
                     .is_some_and(|ext| ext == "rrd" || ext == "png")
             }),
             "binary assets must not be embedded"
+        );
+    }
+
+    #[test]
+    fn a_development_build_hides_the_rerun_checkout() {
+        let mut panel = ViewerAgentPanel::default();
+
+        // The checkout, not the directory the test happens to run in: `cargo` starts a test in
+        // its own crate directory, well inside the checkout.
+        let workspace = panel.user_like_cwd().expect("a working directory to hide");
+        assert!(
+            std::env::current_dir()
+                .expect("cwd")
+                .starts_with(&workspace),
+            "{workspace:?} must contain the directory the viewer was started from"
+        );
+        assert!(workspace.join("crates/top/re_viewer/Cargo.toml").is_file());
+
+        let scratch = panel
+            .scratch_cwd
+            .as_ref()
+            .expect("a scratch directory")
+            .path()
+            .to_owned();
+        assert!(scratch.is_dir());
+        assert!(!workspace.starts_with(&scratch));
+        assert_eq!(
+            std::fs::read_dir(&scratch).expect("read_dir").count(),
+            0,
+            "the agent must not start in a directory with anything to read"
+        );
+
+        // Asking twice keeps the same directory, so reopening the panel does not litter.
+        let again = panel.user_like_cwd().expect("a working directory to hide");
+        assert_eq!(again, workspace);
+        assert_eq!(
+            panel
+                .scratch_cwd
+                .as_ref()
+                .expect("a scratch directory")
+                .path(),
+            scratch
+        );
+    }
+
+    #[test]
+    fn only_a_development_build_is_told_to_hold_back() {
+        let checkout = std::path::PathBuf::from("/home/someone/rerun");
+        let directories = [checkout.clone()];
+        let text = preamble::Preamble {
+            off_limits_directories: &directories,
+            ..Default::default()
+        }
+        .text();
+        assert!(text.contains("Do NOT read the source code of Rerun"));
+        // The request names the directory the breach report is measured against:
+        assert!(text.contains(&checkout.display().to_string()));
+
+        assert!(
+            !preamble::Preamble::default()
+                .text()
+                .contains("Do NOT read the source code of Rerun")
         );
     }
 

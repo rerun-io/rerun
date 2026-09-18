@@ -1,5 +1,6 @@
 //! Reports describing completed agent turns.
 
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use agent_client_protocol::schema::v1::{ContentBlock, ToolCallContent};
@@ -92,6 +93,14 @@ pub struct TurnReport {
 
     /// Tool calls that failed, as `title: first line of the output`.
     pub failed_tool_calls: Vec<String>,
+
+    /// Paths the agent touched inside the directories it was asked to stay out of.
+    ///
+    /// Any touch counts, not only a read: a path an off-limits tool call executed in or wrote to
+    /// is listed the same way. The request is made in the preamble and nothing enforces it, so
+    /// this is how the host finds out whether it was honored. Empty whenever no such directory
+    /// was declared.
+    pub off_limits_paths: Vec<PathBuf>,
 
     /// Errors reported in the transcript during the turn.
     pub errors: Vec<String>,

@@ -49,6 +49,10 @@ pub struct LaunchConfig {
     /// Read-only tool calls that stay inside them are allowed without asking the user.
     pub additional_directories: Vec<PathBuf>,
 
+    /// Directories the preamble asks the agent to stay out of, only checked after the fact.
+    /// See [`crate::SessionContext::off_limits_directories`].
+    pub off_limits_directories: Vec<PathBuf>,
+
     /// MCP servers the agent spawns and connects to when the session opens.
     pub mcp_servers: Vec<McpStdioServer>,
 

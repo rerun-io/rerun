@@ -115,6 +115,13 @@ pub struct AgentSession {
     /// Read-only tool calls that stay inside these directories are allowed without asking.
     /// The host put them there for the agent to read, e.g. skills.
     readable_directories: Vec<PathBuf>,
+
+    /// Directories the preamble asked the agent to stay out of. Touching them is reported in
+    /// [`TurnReport::off_limits_paths`], never blocked.
+    off_limits_directories: Vec<PathBuf>,
+
+    /// Working directory the agent process was started in, which its relative paths are against.
+    cwd: PathBuf,
 }
 
 impl AgentSession {
@@ -128,6 +135,8 @@ impl AgentSession {
             auto_approve: self.auto_approve,
             preamble: config.preamble.clone(),
             readable_directories: config.additional_directories.clone(),
+            off_limits_directories: config.off_limits_directories.clone(),
+            cwd: config.cwd.clone(),
             finished_turns: std::mem::take(&mut self.finished_turns),
             ..Default::default()
         };
@@ -294,6 +303,7 @@ impl AgentSession {
             .map(|entry| &entry.item);
         let mut tool_calls = 0;
         let mut failed_tool_calls = Vec::new();
+        let mut off_limits_paths = Vec::new();
         let mut errors = Vec::new();
         let mut response = String::new();
         for item in items {
@@ -303,6 +313,11 @@ impl AgentSession {
                     if call.status == ToolCallStatus::Failed {
                         failed_tool_calls.push(describe_failed_tool_call(call));
                     }
+                    off_limits_paths.extend(paths_within(
+                        call,
+                        &self.cwd,
+                        &self.off_limits_directories,
+                    ));
                 }
                 TranscriptItem::Note { text, is_error } if *is_error => errors.push(text.clone()),
                 TranscriptItem::Agent { content, .. } => {
@@ -322,6 +337,14 @@ impl AgentSession {
             }
         }
 
+        if !off_limits_paths.is_empty() {
+            re_log::warn!(
+                "The agent was asked to stay out of {} but touched {}",
+                display_paths(&self.off_limits_directories),
+                display_paths(&off_limits_paths)
+            );
+        }
+
         self.finished_turns.push(TurnReport {
             agent: self.agent_name.clone(),
             prompt,
@@ -332,6 +355,7 @@ impl AgentSession {
             tokens_used: self.transcript.usage.as_ref().map(|usage| usage.used),
             token_limit: self.transcript.usage.as_ref().map(|usage| usage.size),
             failed_tool_calls,
+            off_limits_paths,
             errors,
             permissions_requested,
             permissions_rejected,
@@ -563,22 +587,123 @@ fn is_read_within(call: &ToolCallState, directories: &[PathBuf]) -> bool {
         return false;
     }
 
-    let input_paths = call
-        .raw_input
-        .as_ref()
-        .and_then(serde_json::Value::as_object)
-        .into_iter()
-        .flat_map(serde_json::Map::values)
-        .filter_map(serde_json::Value::as_str)
-        .filter(|value| looks_like_path(value))
-        .map(Path::new);
+    let mut paths = tool_call_paths(call).peekable();
+    paths.peek().is_some() && paths.all(|path| is_within(path, directories))
+}
+
+/// Every path the call names, from its reported locations and its path-shaped input strings.
+///
+/// The agent decides what it puts in either, so this is a best effort: a path the agent does not
+/// report, or one a shell assembles from a variable or a glob, is not seen here.
+fn tool_call_paths(call: &ToolCallState) -> impl Iterator<Item = &Path> {
+    let mut strings = Vec::new();
+    if let Some(input) = &call.raw_input {
+        collect_strings(input, &mut strings);
+    }
+    let input_paths = strings.into_iter().flat_map(path_like_words);
     let location_paths = call
         .locations
         .iter()
         .map(|location| location.path.as_path());
-    let mut paths = std::iter::chain(location_paths, input_paths).peekable();
 
-    paths.peek().is_some() && paths.all(|path| is_within(path, directories))
+    std::iter::chain(location_paths, input_paths)
+        .collect::<Vec<_>>()
+        .into_iter()
+}
+
+/// Every string anywhere in `value`, since a tool's arguments nest: an edit carries its path one
+/// object down, and an MCP tool decides its own shape.
+fn collect_strings<'a>(value: &'a serde_json::Value, out: &mut Vec<&'a str>) {
+    match value {
+        serde_json::Value::String(string) => out.push(string),
+        serde_json::Value::Array(values) => {
+            for value in values {
+                collect_strings(value, out);
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for value in map.values() {
+                collect_strings(value, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// `a, b, c`, for naming a set of paths in a log message.
+fn display_paths(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// `path` made absolute against `cwd` and lexically normalized.
+///
+/// Lexical only: nothing is read from disk, so a path that does not exist still resolves, and a
+/// symlink is left as written. `..` is popped rather than refused, because a caller reporting
+/// what already happened wants to know where the path landed.
+fn resolve_against(cwd: &Path, path: &Path) -> PathBuf {
+    let joined = if path.is_absolute() {
+        path.to_owned()
+    } else {
+        cwd.join(path)
+    };
+    let mut resolved = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            Component::ParentDir => {
+                resolved.pop();
+            }
+            Component::CurDir => {}
+            component => resolved.push(component),
+        }
+    }
+    resolved
+}
+
+/// Paths the call touched that lie inside `directories`, whatever kind of tool it is.
+///
+/// Unlike [`is_read_within`] this covers writes and shell commands too: the point is to notice
+/// that a directory was touched at all, not to decide whether it was harmless. For the same
+/// reason it resolves a path against `cwd` instead of refusing it for being relative: a report
+/// that silently drops `src/lib.rs` says the directory went untouched when it did not.
+fn paths_within<'a>(
+    call: &'a ToolCallState,
+    cwd: &Path,
+    directories: &'a [PathBuf],
+) -> Vec<PathBuf> {
+    if directories.is_empty() {
+        return Vec::new();
+    }
+    let mut hits: Vec<PathBuf> = tool_call_paths(call)
+        .map(|path| resolve_against(cwd, path))
+        .filter(|path| {
+            directories
+                .iter()
+                .any(|directory| path.starts_with(directory))
+        })
+        .collect();
+    hits.sort();
+    hits.dedup();
+    hits
+}
+
+/// Every path-shaped word in `value`.
+///
+/// A tool's input is not always one path per field: a shell command arrives as a single string,
+/// so `cat /home/me/rerun/src/lib.rs` has to be read word by word or the path in it is never
+/// seen. A one-word value yields itself, which is the ordinary `file_path` case.
+///
+/// Shell quoting and punctuation are trimmed off the ends, so a quoted path still matches. What
+/// this cannot see is a path the shell assembles, from a variable or a glob.
+fn path_like_words(value: &str) -> impl Iterator<Item = &Path> {
+    value
+        .split_whitespace()
+        .map(|word| word.trim_matches(|c| matches!(c, '\'' | '"' | '`' | ',' | ';' | '(' | ')')))
+        .filter(|word| looks_like_path(word))
+        .map(Path::new)
 }
 
 /// Whether `value` names a file or directory, rather than a search pattern, a flag, or a word.
@@ -762,6 +887,127 @@ mod tests {
             &[],
             Some(serde_json::json!({ "filepath": "." }))
         ));
+    }
+
+    #[test]
+    fn off_limits_paths_are_reported() {
+        let root = if cfg!(windows) { "C:/rerun" } else { "/rerun" };
+        let source = format!("{root}/crates/viewer/re_viewer/src/app/mod.rs");
+        let sibling = format!("{root}-scratch/notes.md");
+        let dirs = vec![PathBuf::from(root)];
+        let scratch = Path::new(if cfg!(windows) {
+            "C:/scratch"
+        } else {
+            "/scratch"
+        });
+
+        // Any kind of tool counts, not just reads: the point is that the directory was touched.
+        assert_eq!(
+            paths_within(&call(ToolKind::Execute, &[&source], None), scratch, &dirs),
+            vec![PathBuf::from(&source)]
+        );
+        // Both sources of paths are searched, and a path seen twice is reported once.
+        assert_eq!(
+            paths_within(
+                &call(
+                    ToolKind::Read,
+                    &[&source],
+                    Some(serde_json::json!({ "filepath": source })),
+                ),
+                scratch,
+                &dirs,
+            ),
+            vec![PathBuf::from(&source)]
+        );
+
+        // A shell command names its paths inside one string, which is how an agent that was told
+        // to keep out reaches the tree without ever filling in a path field.
+        assert_eq!(
+            paths_within(
+                &call(
+                    ToolKind::Execute,
+                    &[],
+                    Some(serde_json::json!({ "command": format!("grep -rn width '{source}'") })),
+                ),
+                scratch,
+                &dirs,
+            ),
+            vec![PathBuf::from(&source)]
+        );
+
+        // Arguments nest, and a path one level down counts the same.
+        assert_eq!(
+            paths_within(
+                &call(
+                    ToolKind::Edit,
+                    &[],
+                    Some(serde_json::json!({ "edits": [{ "file_path": source }] })),
+                ),
+                scratch,
+                &dirs,
+            ),
+            vec![PathBuf::from(&source)]
+        );
+
+        assert!(paths_within(&call(ToolKind::Read, &[&sibling], None), scratch, &dirs).is_empty());
+        // Nothing is off-limits unless the host said so:
+        assert!(paths_within(&call(ToolKind::Read, &[&source], None), scratch, &[]).is_empty());
+    }
+
+    /// A report that only understood absolute paths said "untouched" for a session whose working
+    /// directory was the checkout itself, which is the one case worth catching.
+    #[test]
+    fn a_relative_path_is_resolved_before_it_is_judged() {
+        let root = if cfg!(windows) { "C:/rerun" } else { "/rerun" };
+        let dirs = vec![PathBuf::from(root)];
+        let inside = Path::new(root).join("crates");
+
+        // Relative to a working directory inside the off-limits tree.
+        assert_eq!(
+            paths_within(
+                &call(
+                    ToolKind::Read,
+                    &[],
+                    Some(serde_json::json!({ "filepath": "top/re_viewer/src/app.rs" })),
+                ),
+                &inside,
+                &dirs,
+            ),
+            vec![Path::new(root).join("crates/top/re_viewer/src/app.rs")]
+        );
+
+        // `..` that climbs back into the tree counts too, rather than being waved through.
+        let scratch = Path::new(if cfg!(windows) {
+            "C:/rerun-scratch"
+        } else {
+            "/rerun-scratch"
+        });
+        assert_eq!(
+            paths_within(
+                &call(
+                    ToolKind::Read,
+                    &[],
+                    Some(serde_json::json!({ "filepath": "../rerun/Cargo.toml" })),
+                ),
+                scratch,
+                &dirs,
+            ),
+            vec![Path::new(root).join("Cargo.toml")]
+        );
+
+        // A relative path that stays outside is still not reported.
+        assert!(
+            paths_within(
+                &call(
+                    ToolKind::Read,
+                    &[],
+                    Some(serde_json::json!({ "filepath": "notes.md" })),
+                ),
+                scratch,
+                &dirs,
+            )
+            .is_empty()
+        );
     }
 
     #[test]

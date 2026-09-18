@@ -233,7 +233,10 @@ impl App {
         let cache_dir = self.app_options().cache_directory.clone();
 
         let Self {
-            agent_panel, state, ..
+            agent_panel,
+            state,
+            build_info,
+            ..
         } = self;
 
         agent_panel.show(
@@ -242,6 +245,7 @@ impl App {
             &mut state.agent_settings,
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
+            build_info.is_in_rerun_workspace,
         );
     }
 

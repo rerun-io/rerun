@@ -11,4 +11,4 @@ pub use re_agent::{
     PendingPermission, Phase, SessionContext, ToolCallState, Transcript, TranscriptEntry,
     TranscriptItem, TurnOutcome, TurnReport, acp, find_executable,
 };
-pub use ui::{AgentPanel, RECOMMENDED_WIDTH};
+pub use ui::{AgentPanel, HostButton, RECOMMENDED_WIDTH};

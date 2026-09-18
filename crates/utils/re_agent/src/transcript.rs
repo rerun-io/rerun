@@ -399,10 +399,161 @@ impl Transcript {
     }
 }
 
+/// Longest tool-call input or output kept by [`Transcript::to_markdown`], in bytes.
+///
+/// One screenshot or whole-file read would otherwise bury everything else in the dump.
+const MAX_TOOL_TEXT_BYTES: usize = 2000;
+
+impl Transcript {
+    /// Markdown dump of the whole session, for another agent to read.
+    ///
+    /// Unlike [`Self::to_plain_text`] this keeps the evidence of what each tool call did: its
+    /// arguments, its output, and how long into the session it happened. Tool evidence is cut to
+    /// a couple of thousand bytes and images are named rather than embedded, but what the agent
+    /// itself said is kept whole.
+    pub fn to_markdown(&self) -> String {
+        use std::fmt::Write as _;
+
+        let start = self.items.first().map(|entry| entry.created_at);
+        let mut out = String::new();
+        if let Some(title) = &self.title {
+            writeln!(out, "# {title}\n").ok();
+        }
+
+        for entry in &self.items {
+            let elapsed = start
+                .and_then(|start| entry.created_at.duration_since(start).ok())
+                .map_or_else(String::new, |elapsed| {
+                    format!(" `+{:.1}s`", elapsed.as_secs_f64())
+                });
+
+            match &entry.item {
+                TranscriptItem::User { text } => {
+                    writeln!(out, "## User{elapsed}\n\n{text}\n").ok();
+                }
+
+                TranscriptItem::Agent { content, thoughts } => {
+                    writeln!(out, "## Agent{elapsed}\n").ok();
+                    if !thoughts.is_empty() {
+                        writeln!(
+                            out,
+                            "<thinking>\n{}\n</thinking>\n",
+                            truncate_bytes(thoughts, MAX_TOOL_TEXT_BYTES)
+                        )
+                        .ok();
+                    }
+                    for block in content {
+                        writeln!(out, "{}\n", describe_agent_block(block)).ok();
+                    }
+                }
+
+                TranscriptItem::ToolCall(call) => {
+                    writeln!(
+                        out,
+                        "## Tool call{elapsed}: {} ({:?}, {:?})\n",
+                        call.title, call.kind, call.status
+                    )
+                    .ok();
+                    if let Some(raw_input) = &call.raw_input {
+                        writeln!(out, "Input:\n\n```json\n{}\n```\n", json_excerpt(raw_input)).ok();
+                    }
+                    for content in &call.content {
+                        writeln!(out, "{}\n", describe_tool_call_content(content)).ok();
+                    }
+                    if let Some(raw_output) = &call.raw_output {
+                        writeln!(
+                            out,
+                            "Output:\n\n```json\n{}\n```\n",
+                            json_excerpt(raw_output)
+                        )
+                        .ok();
+                    }
+                }
+
+                TranscriptItem::Note { text, is_error } => {
+                    let prefix = if *is_error { "Error" } else { "Note" };
+                    writeln!(out, "## {prefix}{elapsed}\n\n{text}\n").ok();
+                }
+            }
+        }
+        out
+    }
+}
+
+/// One block of what the agent itself said, kept whole.
+///
+/// The agent's own words are what the reading agent is here to judge, and a final answer can
+/// run well past what a tool call is allowed, so nothing is cut here.
+fn describe_agent_block(block: &ContentBlock) -> String {
+    match block {
+        ContentBlock::Text(text) => text.text.clone(),
+        _ => describe_content_block(block),
+    }
+}
+
+fn describe_content_block(block: &ContentBlock) -> String {
+    match block {
+        ContentBlock::Text(text) => truncate_bytes(&text.text, MAX_TOOL_TEXT_BYTES),
+        ContentBlock::Image(image) => format!("`[image {}]`", image.mime_type),
+        ContentBlock::Audio(audio) => format!("`[audio {}]`", audio.mime_type),
+        _ => "`[content]`".to_owned(),
+    }
+}
+
+fn describe_tool_call_content(content: &ToolCallContent) -> String {
+    match content {
+        ToolCallContent::Content(content) => describe_content_block(&content.content),
+        // Naming the file says an edit happened but not what it did, and an edit tool often
+        // carries no `raw_output` to fall back on, which leaves the reading agent unable to
+        // tell a one-line fix from a rewrite.
+        ToolCallContent::Diff(diff) => {
+            use std::fmt::Write as _;
+
+            let mut out = format!("`[diff of {}]`\n", diff.path.display());
+            if let Some(old_text) = &diff.old_text {
+                write!(
+                    out,
+                    "\nBefore:\n\n```\n{}\n```\n",
+                    truncate_bytes(old_text, MAX_TOOL_TEXT_BYTES)
+                )
+                .ok();
+            }
+            write!(
+                out,
+                "\nAfter:\n\n```\n{}\n```",
+                truncate_bytes(&diff.new_text, MAX_TOOL_TEXT_BYTES)
+            )
+            .ok();
+            out
+        }
+        ToolCallContent::Terminal(terminal) => format!("`[terminal {}]`", terminal.terminal_id.0),
+        _ => "`[content]`".to_owned(),
+    }
+}
+
+/// Pretty-printed JSON, cut to [`MAX_TOOL_TEXT_BYTES`].
+fn json_excerpt(value: &serde_json::Value) -> String {
+    let text = serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string());
+    truncate_bytes(&text, MAX_TOOL_TEXT_BYTES)
+}
+
+/// `text`, cut to `max_bytes` with a note saying how much was left out.
+///
+/// The cut lands on the nearest character boundary at or below `max_bytes`, so a multi-byte
+/// character is dropped whole rather than split.
+fn truncate_bytes(text: &str, max_bytes: usize) -> String {
+    if text.len() <= max_bytes {
+        return text.to_owned();
+    }
+    let kept = &text[..text.floor_char_boundary(max_bytes)];
+    format!("{kept}…\n[truncated: {} bytes in all]", text.len())
+}
+
 #[cfg(test)]
 mod tests {
     use agent_client_protocol::schema::v1::{
-        ConfigOptionUpdate, SessionConfigSelectGroup, SessionConfigSelectOption,
+        ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
+        SessionConfigSelectOption, ToolCall,
     };
 
     use super::*;
@@ -472,5 +623,105 @@ mod tests {
             .category(SessionConfigOptionCategory::Mode),
         ];
         assert_eq!(transcript(modes).current_model(), None);
+    }
+
+    #[test]
+    fn the_markdown_dump_keeps_the_evidence_of_a_tool_call() {
+        let mut transcript = Transcript::default();
+        transcript.push_user("plot the joint angles".to_owned());
+        transcript.apply(SessionUpdate::AgentMessageChunk(ContentChunk::new(
+            ContentBlock::Text(TextContent::new("Looking at the recording.".to_owned())),
+        )));
+        transcript.apply(SessionUpdate::ToolCall(
+            ToolCall::new("call-1", "Set the time cursor")
+                .status(ToolCallStatus::Failed)
+                .raw_input(serde_json::json!({ "time": 12 }))
+                .raw_output(serde_json::json!("no such timeline")),
+        ));
+        transcript.push_note("the agent gave up", true);
+
+        let markdown = transcript.to_markdown();
+        assert!(markdown.contains("## User"));
+        assert!(markdown.contains("plot the joint angles"));
+        assert!(markdown.contains("Looking at the recording."));
+        assert!(markdown.contains("Set the time cursor"));
+        assert!(markdown.contains("Failed"));
+        // Both the arguments and the result are there: the two things `to_plain_text` drops,
+        // and the only way a reviewer can see what a call actually did.
+        assert!(markdown.contains("\"time\": 12"));
+        assert!(markdown.contains("no such timeline"));
+        assert!(markdown.contains("## Error"));
+        assert!(markdown.contains("the agent gave up"));
+    }
+
+    /// The cut exists to stop one screenshot burying the dump, not to clip the answer the
+    /// reading agent is there to judge.
+    #[test]
+    fn a_long_agent_answer_survives_the_dump_whole() {
+        let mut transcript = Transcript::default();
+        let long = "word ".repeat(MAX_TOOL_TEXT_BYTES);
+        transcript.apply(SessionUpdate::AgentMessageChunk(ContentChunk::new(
+            ContentBlock::Text(TextContent::new(long.clone())),
+        )));
+
+        let markdown = transcript.to_markdown();
+        assert!(markdown.contains(long.trim_end()));
+        assert!(!markdown.contains("[truncated:"));
+    }
+
+    /// A tool call that edits a file often carries no `raw_output`, so the diff is the only
+    /// record of what changed.
+    #[test]
+    fn a_diff_reports_both_sides_not_just_the_path() {
+        let mut transcript = Transcript::default();
+        transcript.apply(SessionUpdate::ToolCall(
+            ToolCall::new("call-1", "Edit preamble.rs").content(vec![ToolCallContent::from(
+                Diff::new("preamble.rs", "the old line").old_text("the old line"),
+            )]),
+        ));
+
+        let markdown = transcript.to_markdown();
+        assert!(markdown.contains("preamble.rs"), "{markdown}");
+        assert!(markdown.contains("the old line"), "{markdown}");
+    }
+
+    #[test]
+    fn long_tool_output_is_cut_without_splitting_a_character() {
+        let mut transcript = Transcript::default();
+        let long = "å".repeat(MAX_TOOL_TEXT_BYTES + 1);
+        transcript.apply(SessionUpdate::ToolCall(
+            ToolCall::new("call-1", "Read a file").content(vec![ToolCallContent::from(
+                ContentBlock::Text(TextContent::new(long)),
+            )]),
+        ));
+
+        let markdown = transcript.to_markdown();
+        // The limit is a byte count, but it lands on a character boundary, so every `å` that
+        // survives is whole and the dump is still valid UTF-8.
+        assert_eq!(
+            markdown.matches('å').count(),
+            MAX_TOOL_TEXT_BYTES / 'å'.len_utf8()
+        );
+        assert!(markdown.contains("[truncated:"));
+    }
+
+    /// A limit landing mid-character is what `floor_char_boundary` is for: the cut moves down to
+    /// the boundary instead of panicking on a byte index inside a character.
+    #[test]
+    fn a_limit_inside_a_character_cuts_below_it() {
+        let text = "å".repeat(4);
+        assert_eq!(truncate_bytes(&text, 5).matches('å').count(), 2);
+    }
+
+    #[test]
+    fn text_of_exactly_the_limit_is_left_alone() {
+        let text = "x".repeat(MAX_TOOL_TEXT_BYTES);
+        assert_eq!(truncate_bytes(&text, MAX_TOOL_TEXT_BYTES), text);
+        assert!(truncate_bytes("", MAX_TOOL_TEXT_BYTES).is_empty());
+    }
+
+    #[test]
+    fn an_empty_transcript_dumps_to_nothing() {
+        assert!(Transcript::default().to_markdown().is_empty());
     }
 }

@@ -36,6 +36,13 @@ struct Conversation {
 
     /// [`Screen::Chat`] with an idle session means "start the agent on the next frame".
     screen: Screen,
+
+    /// Used instead of the panel's shared context, for a conversation the host started with a
+    /// job of its own: a different working directory, preamble, or set of readable directories.
+    context: Option<SessionContext>,
+
+    /// Sent as soon as the agent is ready, for a conversation the host started with a prompt.
+    opening_prompt: Option<String>,
 }
 
 impl Conversation {
@@ -51,6 +58,8 @@ impl Conversation {
             } else {
                 Screen::Setup
             },
+            context: None,
+            opening_prompt: None,
         }
     }
 
@@ -61,6 +70,7 @@ impl Conversation {
         context: &SessionContext,
         agents: &[AgentEntry],
     ) {
+        let context = self.context.as_ref().unwrap_or(context);
         match settings.launch_config(agents, context) {
             Ok(config) => {
                 let ctx = ctx.clone();
@@ -137,6 +147,22 @@ impl Conversation {
         );
     }
 
+    /// Sends the prompt the host opened this conversation with, once the agent can take it.
+    ///
+    /// Must be called repeatedly: the agent is not ready for some time after the conversation is
+    /// opened, and a send can still be refused after that, so the prompt is kept until one lands.
+    /// [`AgentPanel::poll_events`] does this every frame, including while the panel is collapsed.
+    fn send_opening_prompt(&mut self) {
+        if self.opening_prompt.is_none() || !self.session.is_ready() {
+            return;
+        }
+        if let Some(prompt) = self.opening_prompt.take()
+            && !self.session.send_prompt(prompt.clone())
+        {
+            self.opening_prompt = Some(prompt);
+        }
+    }
+
     fn setup_view(
         &mut self,
         ui: &mut egui::Ui,
@@ -160,6 +186,24 @@ impl Conversation {
     }
 }
 
+/// A button the host adds to the right end of the tab bar, for an action of its own.
+///
+/// Drawn as an orange badge rather than as one of the panel's own icon buttons: a host adds one
+/// for something the panel does not do, which is rarely something every user should see.
+/// Clicks come back from [`AgentPanel::host_button_clicked`]; the panel itself does nothing
+/// with them.
+#[derive(Clone)]
+pub struct HostButton {
+    /// Shown on the button. A word or two: the tab bar is narrow.
+    ///
+    /// Plain text, because the panel renders it as a badge in its own warning colors: anything a
+    /// host styled here would be overridden on the way in.
+    pub label: String,
+
+    /// Shown on hover. Say who the button is for, and what clicking it starts.
+    pub tooltip: egui::WidgetText,
+}
+
 /// What the buttons at the right end of the tab bar asked for.
 #[derive(Clone, Copy)]
 enum TabAction {
@@ -174,7 +218,9 @@ struct TabsBehavior<'a> {
     settings: &'a mut AgentSettings,
     context: &'a SessionContext,
     agents: &'a mut Vec<AgentEntry>,
+    host_button: Option<&'a HostButton>,
     add_requested: bool,
+    host_button_clicked: bool,
     tab_action: Option<(TileId, TabAction)>,
 }
 
@@ -244,6 +290,11 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         let has_agent = *conversation.session.phase() != Phase::Idle;
 
         ui.add_space(TAB_BAR_BUTTON_SPACING);
+        if let Some(button) = self.host_button
+            && host_button_ui(ui, button).clicked()
+        {
+            self.host_button_clicked = true;
+        }
         if conversation.screen == Screen::Setup {
             if has_agent
                 && ui
@@ -338,6 +389,17 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
     }
 }
 
+/// The host's own tab-bar button, in the warning colors the viewer marks debug-only UI with.
+fn host_button_ui(ui: &mut egui::Ui, button: &HostButton) -> egui::Response {
+    let tokens = ui.tokens();
+    let label = egui::RichText::new(format!(" {} ", button.label))
+        .small()
+        .color(tokens.alert_warning.icon)
+        .background_color(tokens.alert_warning.fill);
+    ui.add(re_ui::ReButton::new(label).ghost().small())
+        .on_hover_text(button.tooltip.clone())
+}
+
 /// The complete agent UI: a tab per conversation. Owns the sessions and the shared settings.
 pub struct AgentPanel {
     settings: AgentSettings,
@@ -345,6 +407,12 @@ pub struct AgentPanel {
     agents: Vec<AgentEntry>,
     tree: egui_tiles::Tree<Conversation>,
     auto_approve: bool,
+
+    /// Set by the host; drawn in the tab bar.
+    host_button: Option<HostButton>,
+
+    /// Whether [`Self::host_button`] was clicked during the last [`Self::ui`].
+    host_button_clicked: bool,
 }
 
 impl AgentPanel {
@@ -370,12 +438,24 @@ impl AgentPanel {
             agents,
             tree: new_tree(first),
             auto_approve: false,
+            host_button: None,
+            host_button_clicked: false,
         }
     }
 
     /// What every new session is told about the host. Applies to sessions started from now on.
     pub fn set_context(&mut self, context: SessionContext) {
         self.context = context;
+    }
+
+    /// Shows an extra button in the tab bar. `None` removes it.
+    pub fn set_host_button(&mut self, button: Option<HostButton>) {
+        self.host_button = button;
+    }
+
+    /// Whether the host's own tab-bar button was clicked during the last [`Self::ui`].
+    pub fn host_button_clicked(&self) -> bool {
+        self.host_button_clicked
     }
 
     pub fn settings(&self) -> &AgentSettings {
@@ -413,6 +493,13 @@ impl AgentPanel {
     /// The transcript of the active tab.
     pub fn transcript(&self) -> Option<&Transcript> {
         self.session().map(AgentSession::transcript)
+    }
+
+    /// Whether the active conversation's agent is in the middle of a turn.
+    ///
+    /// Its transcript is incomplete until the turn ends, so a host that dumps one wants to know.
+    pub fn turn_in_progress(&self) -> bool {
+        self.session().is_some_and(AgentSession::turn_in_progress)
     }
 
     /// See [`AgentSession::set_auto_approve`]. Applies to every conversation, current and future.
@@ -485,7 +572,27 @@ impl AgentPanel {
     /// Opens a new conversation tab and makes it active.
     pub fn new_conversation(&mut self) {
         let conversation = Conversation::new(&self.settings, self.auto_approve);
+        self.insert_conversation(conversation);
+    }
 
+    /// Opens a conversation that runs with `context` instead of the panel's shared one, and sends
+    /// `opening_prompt` as soon as its agent is ready.
+    ///
+    /// For work the host starts on the user's behalf in a session of its own: a different working
+    /// directory, preamble, or set of readable directories than the chat the user is having.
+    pub fn open_conversation(
+        &mut self,
+        context: SessionContext,
+        opening_prompt: impl Into<String>,
+    ) {
+        let mut conversation = Conversation::new(&self.settings, self.auto_approve);
+        conversation.context = Some(context);
+        conversation.opening_prompt = Some(opening_prompt.into());
+        self.insert_conversation(conversation);
+    }
+
+    /// Adds `conversation` as a tab and makes it active.
+    fn insert_conversation(&mut self, conversation: Conversation) {
         let root_tabs = self
             .tree
             .root()
@@ -513,6 +620,7 @@ impl AgentPanel {
     pub fn poll_events(&mut self) {
         for conversation in conversations_mut(&mut self.tree) {
             conversation.session.poll_events();
+            conversation.send_opening_prompt();
         }
     }
 
@@ -523,15 +631,19 @@ impl AgentPanel {
             settings: &mut self.settings,
             context: &self.context,
             agents: &mut self.agents,
+            host_button: self.host_button.as_ref(),
             add_requested: false,
+            host_button_clicked: false,
             tab_action: None,
         };
         self.tree.ui(&mut behavior, ui);
         let TabsBehavior {
             add_requested,
+            host_button_clicked,
             tab_action,
             ..
         } = behavior;
+        self.host_button_clicked = host_button_clicked;
 
         if let Some((tile_id, action)) = tab_action
             && let Some(Tile::Pane(conversation)) = self.tree.tiles.get_mut(tile_id)

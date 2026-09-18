@@ -369,6 +369,7 @@ mod tests {
             env: Vec::new(),
             cwd: std::env::current_dir().expect("cwd"),
             additional_directories: Vec::new(),
+            off_limits_directories: Vec::new(),
             mcp_servers: vec![re_agent_ui::McpStdioServer {
                 name: "rerun".to_owned(),
                 command: PathBuf::from("rerun"),
@@ -404,6 +405,7 @@ mod tests {
             tokens_used: Some(123),
             token_limit: Some(456),
             failed_tool_calls: Vec::new(),
+            off_limits_paths: Vec::new(),
             errors: vec!["boom".to_owned()],
             permissions_requested: 0,
             permissions_rejected: 0,
