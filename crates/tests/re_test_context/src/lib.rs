@@ -34,11 +34,14 @@ pub mod external {
 ///
 /// e.g. `asset_path("gaussian_splats/cactus.ply")`.
 pub fn asset_path(relative_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
-    // `crates/tests/re_test_context` → `crates/tests` → `crates` → repo-root.
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+        || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+        std::path::PathBuf::from,
+    );
+    manifest_dir
         .ancestors()
-        .nth(3)
-        .expect("workspace root is three ancestors up from crates/tests/re_test_context")
+        .find(|dir| dir.join("Cargo.lock").is_file())
+        .expect("no workspace root (directory containing Cargo.lock) above CARGO_MANIFEST_DIR")
         .join("tests/assets")
         .join(relative_path)
 }

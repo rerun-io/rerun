@@ -1,0 +1,5 @@
+---
+source: crates/top/re_viewer/tests/integration/all_component_fallbacks.rs
+expression: arch_display
+---
+scaling: [3]

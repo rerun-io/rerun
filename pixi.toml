@@ -397,6 +397,9 @@ check-large-files = "python scripts/ci/check_large_files.py"
 # Check whether there are `publish=true` crates which depend on `publish=false` crates in the repository.
 check-publish-flags = "python scripts/ci/crates.py check-publish-flags"
 
+# Check that each crate has at most one integration test binary (opt-out via `[package.metadata.rerun] test-binaries`).
+check-test-binaries = "python scripts/ci/check_test_binaries.py"
+
 # Download a specific artifact from gcloud.
 #
 # Requires that gcloud authentication has already been set up in your shell.

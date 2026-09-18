@@ -2277,6 +2277,8 @@ mod tests {
     const RAW_H264_DATA: &[u8] =
         include_bytes!("../../../../../tests/assets/video/gif_as_h264_nobframes.h264");
 
+    const GRINDA_JPEG: &[u8] = include_bytes!("../../../../../tests/assets/image/grinda.jpg");
+
     const NUM_FRAMES: usize = 44;
 
     /// Iter h264 frames of test data.
@@ -2723,11 +2725,7 @@ mod tests {
     /// video description.
     #[test]
     fn video_stream_cache_from_single_static_encoded_image() {
-        let jpeg_path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/assets/image/grinda.jpg"
-        );
-        let jpeg_data = std::fs::read(jpeg_path).unwrap();
+        let jpeg_data = GRINDA_JPEG.to_vec();
 
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::new(StoreId::random(
@@ -2784,11 +2782,7 @@ mod tests {
     /// `RowId`. The emitted sample should point at that row, not at an earlier shadowed one.
     #[test]
     fn video_stream_cache_static_picks_highest_row_id() {
-        let jpeg_path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/assets/image/grinda.jpg"
-        );
-        let jpeg_data = std::fs::read(jpeg_path).unwrap();
+        let jpeg_data = GRINDA_JPEG.to_vec();
         let image =
             re_sdk_types::archetypes::EncodedImage::new(jpeg_data).with_media_type("image/jpeg");
 

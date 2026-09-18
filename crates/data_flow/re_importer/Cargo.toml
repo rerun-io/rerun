@@ -50,36 +50,6 @@ urdf = ["dep:urdf-rs", "dep:ureq"]
 video = ["dep:re_mp4_reader", "re_sdk_types/video"]
 
 
-[[test]]
-name = "test_lerobot_importer"
-path = "tests/test_lerobot_importer.rs"
-required-features = ["lerobot"]
-
-[[test]]
-name = "test_mcap_importer"
-path = "tests/test_mcap_importer.rs"
-required-features = ["mcap"]
-
-[[test]]
-name = "test_mp4_importer"
-path = "tests/test_mp4_importer.rs"
-required-features = ["video"]
-
-[[test]]
-name = "test_ply_importer"
-path = "tests/test_ply_importer.rs"
-
-[[test]]
-name = "test_puffin_importer"
-path = "tests/test_puffin_importer.rs"
-required-features = ["puffin"]
-
-[[test]]
-name = "test_urdf_importer"
-path = "tests/test_urdf_importer.rs"
-required-features = ["urdf"]
-
-
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk.workspace = true

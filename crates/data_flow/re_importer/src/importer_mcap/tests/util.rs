@@ -10,7 +10,8 @@ use crate::{ImportedData, Importer as _, ImporterSettings};
 
 // Helper function to get the path to a test asset file.
 pub fn test_asset(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
         .join("src/importer_mcap/tests/assets")
         .join(name)
 }

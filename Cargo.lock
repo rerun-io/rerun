@@ -9969,6 +9969,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_video",
+ "tempfile",
  "thiserror 2.0.19",
 ]
 

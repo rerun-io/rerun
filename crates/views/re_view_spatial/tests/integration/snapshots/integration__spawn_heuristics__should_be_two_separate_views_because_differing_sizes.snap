@@ -1,0 +1,29 @@
+---
+source: crates/views/re_view_spatial/tests/integration/spawn_heuristics.rs
+expression: recommended_views
+---
+RecommendedViews {
+    views_2d: Some(
+        ViewSpawnHeuristics {
+            recommended_views: [
+                RecommendedView {
+                    origin: /image,
+                    query_filter: [
+                        "+ $origin",
+                    ],
+                },
+                RecommendedView {
+                    origin: /image/segmentation,
+                    query_filter: [
+                        "+ $origin/**",
+                    ],
+                },
+            ],
+        },
+    ),
+    views_3d: Some(
+        ViewSpawnHeuristics {
+            recommended_views: [],
+        },
+    ),
+}

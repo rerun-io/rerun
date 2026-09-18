@@ -1244,14 +1244,18 @@ mod tests {
         ));
     }
 
+    fn v3_fixture() -> PathBuf {
+        std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
+            .join("../re_importer/tests/assets/lerobot/v30_apple_storage")
+    }
+
     /// Episode addresses carry the `dataset_from_index..dataset_to_index` ranges from
     /// `meta/episodes`: exclusive ends, no overlap, and their union covers the shared
     /// file exactly.
     #[test]
     fn v3_fixture_resolves_row_ranges_from_metadata() {
-        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../re_importer/tests/assets/lerobot/v30_apple_storage");
-        let dataset = LeRobotDataset::open(&fixture).expect("fixture parses");
+        let dataset = LeRobotDataset::open(v3_fixture()).expect("fixture parses");
 
         let ranges: Vec<_> = dataset
             .episode_addresses()
@@ -1276,9 +1280,7 @@ mod tests {
     /// every boundary frame lands in exactly one episode.
     #[test]
     fn v3_fixture_video_windows_are_contiguous() {
-        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../re_importer/tests/assets/lerobot/v30_apple_storage");
-        let dataset = LeRobotDataset::open(&fixture).expect("fixture parses");
+        let dataset = LeRobotDataset::open(v3_fixture()).expect("fixture parses");
 
         let windows: Vec<_> = dataset
             .episode_addresses()

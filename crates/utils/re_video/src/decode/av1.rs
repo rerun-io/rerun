@@ -426,7 +426,11 @@ mod tests {
     /// through dav1d and come back out attached to the right picture.
     #[test]
     fn decoded_frames_report_the_sample_they_came_from() {
-        let video_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let video_path = std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(
+                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                std::path::PathBuf::from,
+            )
             .join("../../../tests/assets/video/Big_Buck_Bunny_1080_1s_av1.mp4");
         let data = std::fs::read(&video_path).unwrap();
         let video_descr =

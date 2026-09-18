@@ -59,7 +59,8 @@ fn collect_wgsl_files(root: &Path, out: &mut Vec<PathBuf>) {
 #[test]
 fn all_wgsl_shaders_are_valid() {
     // `CARGO_MANIFEST_DIR` points at the `re_renderer` crate directory.
-    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crate_dir = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from);
     let shader_dir = crate_dir.join("shader");
     // …/rerun (the workspace root that holds both `crates/` and `examples/`).
     let workspace_root = crate_dir
