@@ -32,8 +32,9 @@ impl ConnectionHandle {
     ///
     /// The source must return stable contents for the duration of the upload.
     ///
-    /// NOTE: `ehttp` sends the body from memory, so this reads the whole source first and is not
-    /// suitable for multi-GB uploads.
+    /// TODO(RR-5715): Stream the request body instead of buffering the whole source so large
+    /// uploads do not need equivalent memory.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn write_object(
         &self,
         key: ObjectKey,
@@ -60,12 +61,31 @@ impl ConnectionHandle {
             .await?;
 
         let Redemption::HttpRequest(http_request) = grant.redemption;
-        let mut request = ehttp::Request::post(http_request.url.as_str(), body.to_vec());
-        request.method = ehttp::Method::parse(http_request.method.as_str())
-            .map_err(WriteObjectError::Request)?;
+        let (method, url, headers) = match http_request {
+            re_protos::cloud::v1alpha1::ext::HttpRequest::External {
+                method,
+                url,
+                headers,
+            } => (method, url, headers),
+            re_protos::cloud::v1alpha1::ext::HttpRequest::SameOrigin {
+                method,
+                path_and_query,
+                headers,
+            } => {
+                let url = url::Url::parse(&self.origin().as_url())
+                    .and_then(|base_url| base_url.join(path_and_query.as_str()))
+                    .map_err(|err| WriteObjectError::Request(err.to_string()))?;
+                (method, url, headers)
+            }
+        };
+
+        // The whole object is in memory here, so take the buffer rather than copying it again:
+        // `Bytes` that uniquely owns its allocation converts back into a `Vec` for free.
+        let mut request = ehttp::Request::post(url.as_str(), Vec::from(body));
+        request.method =
+            ehttp::Method::parse(method.as_str()).map_err(WriteObjectError::Request)?;
         request.headers = ehttp::Headers {
-            headers: http_request
-                .headers
+            headers: headers
                 .iter()
                 .map(|(name, value)| {
                     (

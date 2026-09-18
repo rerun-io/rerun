@@ -20,15 +20,16 @@ use re_server::{RerunCloudHandlerBuilder, ServerBuilder};
 const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "TODO(grtlr): `GetWriteAccessGrant` is not implemented yet"]
 async fn write_and_register_roundtrip() -> anyhow::Result<()> {
     let rrd = bytes::Bytes::from(encode_rrd()?);
 
+    let listener = re_grpc_server::ServerListener::bind((std::net::Ipv4Addr::LOCALHOST, 0).into())?;
+    let (handler, write_upload_route) =
+        RerunCloudHandlerBuilder::new().build_with_write_access()?;
     let handle = ServerBuilder::default()
-        .with_address((std::net::Ipv4Addr::LOCALHOST, 0).into())
-        .with_service(RerunCloudServiceServer::new(
-            RerunCloudHandlerBuilder::new().build(),
-        ))
+        .with_listener(listener)
+        .with_service(RerunCloudServiceServer::new(handler))
+        .with_http_route("/upload/{grant}", write_upload_route)
         .build()
         .start(&re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?)
         .await?;

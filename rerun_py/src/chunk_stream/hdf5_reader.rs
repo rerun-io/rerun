@@ -163,20 +163,39 @@ impl PyHdf5ReaderInternal {
         let mut unsupported = Vec::new();
         for (name, value) in attrs {
             match value {
+                AttrValue::F32(value) => dict.set_item(name, value)?,
                 AttrValue::F64(value) => dict.set_item(name, value)?,
+                AttrValue::I8(value) => dict.set_item(name, value)?,
+                AttrValue::I16(value) => dict.set_item(name, value)?,
                 AttrValue::I32(value) => dict.set_item(name, value)?,
                 AttrValue::I64(value) => dict.set_item(name, value)?,
+                AttrValue::U8(value) => dict.set_item(name, value)?,
+                AttrValue::U16(value) => dict.set_item(name, value)?,
                 AttrValue::U32(value) => dict.set_item(name, value)?,
                 AttrValue::U64(value) => dict.set_item(name, value)?,
-                AttrValue::String(value) | AttrValue::AsciiString(value) => {
-                    dict.set_item(name, value)?;
-                }
+                AttrValue::String(value)
+                | AttrValue::StringSized { value, .. }
+                | AttrValue::AsciiString(value)
+                | AttrValue::AsciiStringSized { value, .. }
+                | AttrValue::VarLenString(value)
+                | AttrValue::VarLenAsciiString(value) => dict.set_item(name, value)?,
+                AttrValue::F32Array(values) => dict.set_item(name, values)?,
                 AttrValue::F64Array(values) => dict.set_item(name, values)?,
+                AttrValue::I8Array(values) => dict.set_item(name, values)?,
+                AttrValue::I16Array(values) => dict.set_item(name, values)?,
+                AttrValue::I32Array(values) => dict.set_item(name, values)?,
                 AttrValue::I64Array(values) => dict.set_item(name, values)?,
+                AttrValue::U8Array(values) => dict.set_item(name, values)?,
+                AttrValue::U16Array(values) => dict.set_item(name, values)?,
+                AttrValue::U32Array(values) => dict.set_item(name, values)?,
                 AttrValue::U64Array(values) => dict.set_item(name, values)?,
                 AttrValue::StringArray(values)
+                | AttrValue::StringArraySized { values, .. }
                 | AttrValue::AsciiStringArray(values)
-                | AttrValue::VarLenAsciiArray(values) => dict.set_item(name, values)?,
+                | AttrValue::AsciiStringArraySized { values, .. }
+                | AttrValue::VarLenAsciiCharArray(values)
+                | AttrValue::VarLenStringArray(values)
+                | AttrValue::VarLenAsciiStringArray(values) => dict.set_item(name, values)?,
 
                 _ => unsupported.push(format!("{name} ({})", value.type_name())),
             }

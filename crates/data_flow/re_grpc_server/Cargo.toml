@@ -49,6 +49,7 @@ re_uri.workspace = true
 # External
 anyhow.workspace = true
 async-stream.workspace = true
+axum.workspace = true
 futures.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true

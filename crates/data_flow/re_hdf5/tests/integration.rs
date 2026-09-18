@@ -7,8 +7,8 @@
 #![expect(clippy::unwrap_used)]
 
 use arrow::array::{
-    Array as _, FixedSizeListArray, Float32Array, Float64Array, Int64Array, ListArray, StringArray,
-    StructArray, UInt8Array, UInt64Array,
+    Array as _, FixedSizeListArray, Float32Array, Float64Array, Int8Array, Int64Array, ListArray,
+    StringArray, StructArray, UInt8Array, UInt16Array, UInt64Array,
 };
 use hdf5_pure::{
     AttrValue, CharacterSet, CompoundTypeBuilder, Datatype, FileBuilder, StringPadding,
@@ -749,6 +749,13 @@ fn ignore_group_subtree() {
 fn attributes_become_static_components() {
     let (_dir, path) = write_h5(|b| {
         b.set_attr("version", AttrValue::I64(1));
+        b.set_attr("gain", AttrValue::F32(1.5));
+        b.set_attr("offsets", AttrValue::I8Array(vec![-2, 3]));
+        b.set_attr("ids", AttrValue::U16Array(vec![1, u16::MAX]));
+        b.set_attr(
+            "labels",
+            AttrValue::VarLenAsciiStringArray(vec!["left".into(), "right".into()]),
+        );
         let mut g = b.create_group("g");
         g.set_attr("freq", AttrValue::F64(30.0));
         g.set_attr("vec", AttrValue::F64Array(vec![1.0, 2.0, 3.0]));
@@ -769,6 +776,44 @@ fn attributes_become_static_components() {
         .try_downcast_array_ref::<Int64Array>()
         .unwrap();
     assert_eq!(version_values.values(), &[1]);
+
+    let gain = root_props.components().get_array("gain".into()).unwrap();
+    let gain_values = gain
+        .values()
+        .try_downcast_array_ref::<Float32Array>()
+        .unwrap();
+    assert_eq!(gain_values.values(), &[1.5]);
+
+    let offsets = root_props.components().get_array("offsets".into()).unwrap();
+    let offsets_values = offsets
+        .values()
+        .try_downcast_array_ref::<FixedSizeListArray>()
+        .unwrap()
+        .values()
+        .try_downcast_array_ref::<Int8Array>()
+        .unwrap();
+    assert_eq!(offsets_values.values(), &[-2, 3]);
+
+    let ids = root_props.components().get_array("ids".into()).unwrap();
+    let ids_values = ids
+        .values()
+        .try_downcast_array_ref::<FixedSizeListArray>()
+        .unwrap()
+        .values()
+        .try_downcast_array_ref::<UInt16Array>()
+        .unwrap();
+    assert_eq!(ids_values.values(), &[1, u16::MAX]);
+
+    let labels = root_props.components().get_array("labels".into()).unwrap();
+    let labels_values = labels
+        .values()
+        .try_downcast_array_ref::<FixedSizeListArray>()
+        .unwrap()
+        .values()
+        .try_downcast_array_ref::<StringArray>()
+        .unwrap();
+    assert_eq!(labels_values.value(0), "left");
+    assert_eq!(labels_values.value(1), "right");
 
     // Attributes on `/g` mirror to `__hdf5_properties/g`, typed per the value.
     let g_props = find_chunk(&chunks, "/__hdf5_properties/g");
@@ -949,7 +994,7 @@ fn entity_path_prefix_is_applied() {
 
 #[test]
 fn unsupported_dtype_is_skipped_and_exempt_from_alignment() {
-    let compound_dtype = CompoundTypeBuilder::new().f64_field("x").build();
+    let compound_dtype = CompoundTypeBuilder::new().f64_field("x").build().unwrap();
 
     let (_dir, path) = write_h5(move |b| {
         // 7 compound elements vs 3 f64 rows: would fail alignment if the
@@ -1020,7 +1065,7 @@ fn list_groups_and_datasets() {
 /// hdf5-pure), matching community expectations.
 #[test]
 fn dtype_names_are_numpy_style() {
-    let compound_dtype = CompoundTypeBuilder::new().f64_field("x").build();
+    let compound_dtype = CompoundTypeBuilder::new().f64_field("x").build().unwrap();
     let (_dir, path) = write_h5(move |b| {
         b.create_dataset("bytes").with_u8_data(&[1, 2]);
         b.create_dataset("floats").with_f64_data(&[1.0, 2.0]);

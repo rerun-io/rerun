@@ -1,13 +1,12 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs as _};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use re_async::AsyncRuntimeHandle;
-use tokio::net::TcpListener;
+use re_grpc_server::{IncomingConnections, ServerListener};
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{mpsc, oneshot};
-use tokio_stream::StreamExt as _;
 use tonic::service::{Routes, RoutesBuilder};
 use tracing::{error, info};
 
@@ -25,7 +24,7 @@ pub enum ServerError {
 ///
 /// Use [`ServerBuilder`] to create a new instance.
 pub struct Server {
-    addr: SocketAddr,
+    listener: Option<ServerListener>,
     routes: Routes,
     artificial_latency: std::time::Duration,
     bandwidth_limit: Option<u64>,
@@ -79,7 +78,7 @@ impl Server {
         async_runtime: &AsyncRuntimeHandle,
     ) -> Result<ServerHandle, ServerError> {
         let Self {
-            addr,
+            listener,
             routes,
             artificial_latency,
             bandwidth_limit,
@@ -94,47 +93,44 @@ impl Server {
 
         let injected_errors_for_handle = injected_errors.clone();
         async_runtime.spawn_future(async move {
-            let listener = if let Ok(listener) = TcpListener::bind(addr).await {
-                #[expect(clippy::unwrap_used)]
-                let bind_addr = listener.local_addr().unwrap();
-
-                let mut connect_addr = bind_addr;
-
-                if connect_addr.ip().is_unspecified() {
-                    // We usually cannot connect to "0.0.0.0" so we swap it for 127.0.0.1:
-                    if connect_addr.is_ipv4() {
-                        connect_addr.set_ip(Ipv4Addr::LOCALHOST.into());
-                    } else {
-                        connect_addr.set_ip(Ipv6Addr::LOCALHOST.into());
+            let listener = match listener {
+                Some(listener) => listener,
+                None => match ServerListener::bind(DEFAULT_ADDRESS) {
+                    Ok(listener) => listener,
+                    Err(err) => {
+                        error!("Failed to bind to address {DEFAULT_ADDRESS}: {err}");
+                        _ = failed_tx
+                            .send(format!("Failed to bind to address {DEFAULT_ADDRESS}: {err}"))
+                            .await;
+                        return;
                     }
-                }
-
-                info!(
-                    "Listening on {bind_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{connect_addr}"
-                );
-
-                #[expect(clippy::unwrap_used)]
-                ready_tx.send(connect_addr).await.unwrap();
-                listener
-            } else {
-                error!("Failed to bind to address {addr}");
-                #[expect(clippy::unwrap_used)]
-                failed_tx
-                    .send(format!("Failed to bind to address {addr}"))
-                    .await
-                    .unwrap();
-                return;
+                },
             };
+            let bind_addr = listener.local_addr();
+            let connect_addr = make_connect_addr(bind_addr);
+
+            info!(
+                "Listening on {bind_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{connect_addr}"
+            );
+
+            if ready_tx.send(connect_addr).await.is_err() {
+                return;
+            }
 
             // NOTE: We already set NODELAY at the `tonic` layer just below, but that might
             // or might not be good enough depending on a bunch of external conditions: make
             // sure to disable Nagle's on every socket as soon as they're accepted, no
             // matter what.
-            let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener).map(|inc| {
-                let inc = inc?;
-                inc.set_nodelay(true)?;
-                Ok::<_, std::io::Error>(inc)
-            });
+            let incoming: IncomingConnections = match listener.into_incoming() {
+                Ok(incoming) => incoming,
+                Err(err) => {
+                    error!("Failed to accept connections: {err}");
+                    _ = failed_tx
+                        .send(format!("Failed to accept connections: {err}"))
+                        .await;
+                    return;
+                }
+            };
 
             let middlewares = tower::ServiceBuilder::new()
                 .layer({
@@ -216,12 +212,24 @@ impl Server {
     }
 }
 
-const DEFAULT_ADDRESS: &str = "127.0.0.1:51234";
+const DEFAULT_ADDRESS: SocketAddr =
+    SocketAddr::V4(std::net::SocketAddrV4::new(Ipv4Addr::LOCALHOST, 51234));
+
+fn make_connect_addr(mut addr: SocketAddr) -> SocketAddr {
+    if addr.ip().is_unspecified() {
+        if addr.is_ipv4() {
+            addr.set_ip(Ipv4Addr::LOCALHOST.into());
+        } else {
+            addr.set_ip(Ipv6Addr::LOCALHOST.into());
+        }
+    }
+    addr
+}
 
 /// Builder for the gRPC server instance.
 #[derive(Default)]
 pub struct ServerBuilder {
-    addr: Option<SocketAddr>,
+    listener: Option<ServerListener>,
     routes_builder: RoutesBuilder,
     service_names: Vec<&'static str>,
     axum_routes: axum::Router,
@@ -231,10 +239,26 @@ pub struct ServerBuilder {
 }
 
 impl ServerBuilder {
-    #[inline]
-    pub fn with_address(mut self, addr: SocketAddr) -> Self {
-        self.addr = Some(addr);
+    pub fn bind(addr: SocketAddr) -> Result<Self, ServerError> {
+        let listener =
+            ServerListener::bind(addr).map_err(|err| ServerError::ServerFailedToStart {
+                reason: format!("Failed to bind to address {addr}: {err}"),
+            })?;
+        Ok(Self::default().with_listener(listener))
+    }
+
+    pub fn with_listener(mut self, listener: ServerListener) -> Self {
+        self.listener = Some(listener);
         self
+    }
+
+    pub fn connect_addr(&self) -> Result<SocketAddr, ServerError> {
+        self.listener
+            .as_ref()
+            .map(|listener| make_connect_addr(listener.local_addr()))
+            .ok_or_else(|| ServerError::ServerFailedToStart {
+                reason: "server listener is not bound".into(),
+            })
     }
 
     pub fn with_service<S>(mut self, svc: S) -> Self
@@ -283,7 +307,7 @@ impl ServerBuilder {
 
     pub fn build(self) -> Server {
         let Self {
-            addr,
+            listener,
             routes_builder,
             service_names,
             axum_routes,
@@ -313,9 +337,7 @@ impl ServerBuilder {
                 });
 
         Server {
-            #[expect(clippy::unwrap_used)]
-            addr: addr
-                .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
+            listener,
             routes: routes.into(),
             artificial_latency,
             bandwidth_limit,

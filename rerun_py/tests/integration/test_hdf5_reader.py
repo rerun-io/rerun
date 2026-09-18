@@ -247,6 +247,10 @@ def test_attributes() -> None:
     assert reader.attributes() == {
         "description": "canonical re_hdf5 test fixture",
         "version": 1,
+        "gain": 1.5,
+        "offsets": [-2, 3],
+        "ids": [1, 65535],
+        "labels": ["left", "right"],
     }
     # Attribute order is not guaranteed by HDF5 — compare as a dict/set.
     assert reader.attributes("/observations") == {

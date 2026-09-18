@@ -305,7 +305,7 @@ impl Table {
         ))
     }
 
-    #[cfg(not(all(feature = "lance", not(target_arch = "wasm32"))))]
+    #[cfg(all(not(feature = "lance"), not(target_arch = "wasm32")))]
     #[expect(clippy::unused_async)]
     pub async fn create_table_entry(
         _id: EntryId,

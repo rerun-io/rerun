@@ -209,12 +209,31 @@ impl tonic::service::Interceptor for LoopbackOnly {
     }
 }
 
-/// gRPC services to serve alongside the proxy, each restricted to connections from the local machine.
+/// HTTP counterpart of [`LoopbackOnly`], which reject requests whose peer is not on the local machine.
+async fn loopback_only_http(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, axum::http::StatusCode> {
+    let is_loopback = request
+        .extensions()
+        .get::<tonic::transport::server::TcpConnectInfo>()
+        .and_then(tonic::transport::server::TcpConnectInfo::remote_addr)
+        .is_some_and(|addr| addr.ip().is_loopback());
+    if !is_loopback {
+        return Err(axum::http::StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(request).await)
+}
+
+/// Services to serve alongside the proxy, each restricted to connections from the local machine.
 ///
-/// Pass to [`spawn_with_recv_and_services`]. Every added service is wrapped with [`LoopbackOnly`].
+/// Pass to [`spawn_with_recv_and_services`]. Every added gRPC service is wrapped with
+/// [`LoopbackOnly`].
 #[derive(Default)]
 pub struct LoopbackServices {
     builder: tonic::service::RoutesBuilder,
+    http_routes: Vec<(String, axum::routing::MethodRouter)>,
     service_names: Vec<&'static str>,
 }
 
@@ -239,6 +258,16 @@ impl LoopbackServices {
                 LoopbackOnly,
             ));
         self.service_names.push(S::NAME);
+        self
+    }
+
+    /// Add an HTTP route that may only be reached from the local machine.
+    pub fn add_http_route(
+        &mut self,
+        path: impl Into<String>,
+        route: axum::routing::MethodRouter,
+    ) -> &mut Self {
+        self.http_routes.push((path.into(), route));
         self
     }
 }
@@ -293,7 +322,8 @@ struct WindowsIpv4Fallback {
     local_addr: SocketAddr,
 }
 
-type IncomingConnections =
+/// A stream of connections accepted from a [`ServerListener`].
+pub type IncomingConnections =
     Pin<Box<dyn Stream<Item = std::io::Result<tokio::net::TcpStream>> + Send>>;
 
 impl ServerListener {
@@ -331,7 +361,8 @@ impl ServerListener {
         self.local_addr
     }
 
-    fn into_incoming(self) -> std::io::Result<IncomingConnections> {
+    /// Returns streams of incoming connections from all reserved sockets.
+    pub fn into_incoming(self) -> std::io::Result<IncomingConnections> {
         fn incoming(listener: std::net::TcpListener) -> std::io::Result<TcpIncoming> {
             listener.set_nonblocking(true)?;
             Ok(TcpIncoming::from(TcpListener::from_std(listener)?).with_nodelay(Some(true)))
@@ -344,10 +375,11 @@ impl ServerListener {
         } = self;
 
         let incoming_primary = incoming(listener)?;
-        Ok(match ipv4_fallback {
+        let incoming: IncomingConnections = match ipv4_fallback {
             Some(fallback) => Box::pin(incoming_primary.merge(incoming(fallback.listener)?)),
             None => Box::pin(incoming_primary),
-        })
+        };
+        Ok(incoming)
     }
 }
 
@@ -388,6 +420,7 @@ async fn serve_impl(
 
     let LoopbackServices {
         mut builder,
+        http_routes,
         mut service_names,
     } = extra_services;
     builder.add_service(
@@ -396,7 +429,14 @@ async fn serve_impl(
             .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
     );
     service_names.push(MessageProxyServiceServer::<MessageProxy>::NAME);
-    let routes = re_protos::reflection::with_reflection(builder.routes(), service_names)?;
+    let mut routes = re_protos::reflection::with_reflection(builder.routes(), service_names)?;
+    for (path, route) in http_routes {
+        let router = std::mem::take(routes.axum_router_mut()).route(
+            &path,
+            route.layer(axum::middleware::from_fn(loopback_only_http)),
+        );
+        *routes.axum_router_mut() = router;
+    }
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients

@@ -378,19 +378,39 @@ pub(crate) fn supported_attr(value: &hdf5_pure::AttrValue) -> bool {
 
     matches!(
         value,
-        AttrValue::F64(_)
+        AttrValue::F32(_)
+            | AttrValue::F64(_)
+            | AttrValue::I8(_)
+            | AttrValue::I16(_)
             | AttrValue::I32(_)
             | AttrValue::I64(_)
+            | AttrValue::U8(_)
+            | AttrValue::U16(_)
             | AttrValue::U32(_)
             | AttrValue::U64(_)
             | AttrValue::String(_)
+            | AttrValue::StringSized { .. }
             | AttrValue::AsciiString(_)
+            | AttrValue::AsciiStringSized { .. }
+            | AttrValue::VarLenString(_)
+            | AttrValue::VarLenAsciiString(_)
+            | AttrValue::F32Array(_)
             | AttrValue::F64Array(_)
+            | AttrValue::I8Array(_)
+            | AttrValue::I16Array(_)
+            | AttrValue::I32Array(_)
             | AttrValue::I64Array(_)
+            | AttrValue::U8Array(_)
+            | AttrValue::U16Array(_)
+            | AttrValue::U32Array(_)
             | AttrValue::U64Array(_)
             | AttrValue::StringArray(_)
+            | AttrValue::StringArraySized { .. }
             | AttrValue::AsciiStringArray(_)
-            | AttrValue::VarLenAsciiArray(_)
+            | AttrValue::AsciiStringArraySized { .. }
+            | AttrValue::VarLenAsciiCharArray(_)
+            | AttrValue::VarLenStringArray(_)
+            | AttrValue::VarLenAsciiStringArray(_)
     )
 }
 
@@ -408,26 +428,59 @@ pub(crate) fn attr_to_component(
     use hdf5_pure::AttrValue;
 
     let values: ArrayRef = match value {
+        AttrValue::F32(value) => Arc::new(Float32Array::from(vec![*value])),
         AttrValue::F64(value) => Arc::new(Float64Array::from(vec![*value])),
+        AttrValue::I8(value) => Arc::new(Int8Array::from(vec![*value])),
+        AttrValue::I16(value) => Arc::new(Int16Array::from(vec![*value])),
         AttrValue::I32(value) => Arc::new(Int32Array::from(vec![*value])),
         AttrValue::I64(value) => Arc::new(Int64Array::from(vec![*value])),
+        AttrValue::U8(value) => Arc::new(UInt8Array::from(vec![*value])),
+        AttrValue::U16(value) => Arc::new(UInt16Array::from(vec![*value])),
         AttrValue::U32(value) => Arc::new(UInt32Array::from(vec![*value])),
         AttrValue::U64(value) => Arc::new(UInt64Array::from(vec![*value])),
-        AttrValue::String(value) | AttrValue::AsciiString(value) => {
-            Arc::new(StringArray::from(vec![value.as_str()]))
+        AttrValue::String(value)
+        | AttrValue::StringSized { value, .. }
+        | AttrValue::AsciiString(value)
+        | AttrValue::AsciiStringSized { value, .. }
+        | AttrValue::VarLenString(value)
+        | AttrValue::VarLenAsciiString(value) => Arc::new(StringArray::from(vec![value.as_str()])),
+        AttrValue::F32Array(values) => {
+            one_row_fixed_size_list(Arc::new(Float32Array::from(values.clone())))?
         }
         AttrValue::F64Array(values) => {
             one_row_fixed_size_list(Arc::new(Float64Array::from(values.clone())))?
         }
+        AttrValue::I8Array(values) => {
+            one_row_fixed_size_list(Arc::new(Int8Array::from(values.clone())))?
+        }
+        AttrValue::I16Array(values) => {
+            one_row_fixed_size_list(Arc::new(Int16Array::from(values.clone())))?
+        }
+        AttrValue::I32Array(values) => {
+            one_row_fixed_size_list(Arc::new(Int32Array::from(values.clone())))?
+        }
         AttrValue::I64Array(values) => {
             one_row_fixed_size_list(Arc::new(Int64Array::from(values.clone())))?
+        }
+        AttrValue::U8Array(values) => {
+            one_row_fixed_size_list(Arc::new(UInt8Array::from(values.clone())))?
+        }
+        AttrValue::U16Array(values) => {
+            one_row_fixed_size_list(Arc::new(UInt16Array::from(values.clone())))?
+        }
+        AttrValue::U32Array(values) => {
+            one_row_fixed_size_list(Arc::new(UInt32Array::from(values.clone())))?
         }
         AttrValue::U64Array(values) => {
             one_row_fixed_size_list(Arc::new(UInt64Array::from(values.clone())))?
         }
         AttrValue::StringArray(values)
+        | AttrValue::StringArraySized { values, .. }
         | AttrValue::AsciiStringArray(values)
-        | AttrValue::VarLenAsciiArray(values) => one_row_fixed_size_list(Arc::new(
+        | AttrValue::AsciiStringArraySized { values, .. }
+        | AttrValue::VarLenAsciiCharArray(values)
+        | AttrValue::VarLenStringArray(values)
+        | AttrValue::VarLenAsciiStringArray(values) => one_row_fixed_size_list(Arc::new(
             StringArray::from_iter_values(values.iter().map(String::as_str)),
         ))?,
 

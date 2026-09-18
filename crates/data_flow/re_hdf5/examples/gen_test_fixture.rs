@@ -31,6 +31,13 @@ fn write_canonical(path: &std::path::Path) {
         AttrValue::String("canonical re_hdf5 test fixture".into()),
     );
     builder.set_attr("version", AttrValue::I64(1));
+    builder.set_attr("gain", AttrValue::F32(1.5));
+    builder.set_attr("offsets", AttrValue::I8Array(vec![-2, 3]));
+    builder.set_attr("ids", AttrValue::U16Array(vec![1, u16::MAX]));
+    builder.set_attr(
+        "labels",
+        AttrValue::VarLenAsciiStringArray(vec!["left".into(), "right".into()]),
+    );
 
     // Float seconds with sub-second steps, so the Python tests can check
     // scale-before-round precision (0.5 s → 500_000_000 ns).

@@ -45,10 +45,6 @@ impl Segment {
         self.inner.sources.len()
     }
 
-    pub fn sources(&self) -> &HashMap<LayerName, Arc<Source>> {
-        &self.inner.sources
-    }
-
     /// Iterate over the layers in this segments.
     ///
     /// Layers are iterated in (registration time, layer name) order,
@@ -61,10 +57,6 @@ impl Segment {
                 (source_a.registration_time(), name_a).cmp(&(source_b.registration_time(), name_b))
             })
             .map(|(name, source)| (name, source.as_ref()))
-    }
-
-    pub fn source(&self, layer_name: &LayerName) -> Option<&Source> {
-        self.inner.sources.get(layer_name).map(|s| s.as_ref())
     }
 
     pub fn last_updated_at(&self) -> jiff::Timestamp {
@@ -106,11 +98,6 @@ impl Segment {
             self.inner.modify().sources.insert(layer_name, source);
             Ok(SourceInsertOutcome::Inserted)
         }
-    }
-
-    /// Returns the removed [`Source`], if any.
-    pub fn remove_source(&mut self, layer_name: &LayerName) -> Option<Arc<Source>> {
-        self.inner.modify().sources.remove(layer_name)
     }
 
     /// Retains only the sources specified by the predicate.

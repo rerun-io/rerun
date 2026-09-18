@@ -284,10 +284,6 @@ impl Dataset {
         Ok(schema)
     }
 
-    pub fn segment_ids(&self) -> impl Iterator<Item = SegmentId> {
-        self.inner.segments.keys().cloned()
-    }
-
     pub async fn segment_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.inner.segments.len();
 

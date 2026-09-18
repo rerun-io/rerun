@@ -10,6 +10,8 @@ mod layers;
 mod named_path;
 mod rerun_cloud;
 #[cfg(not(target_arch = "wasm32"))]
+mod routes;
+#[cfg(not(target_arch = "wasm32"))]
 mod server;
 mod store;
 
@@ -32,7 +34,10 @@ pub(crate) fn capability_names() -> Vec<String> {
     cfg_select! {
         target_arch = "wasm32" => Vec::new(),
         _ => {
-            vec![re_protos::capabilities::catalog_write_register("file")]
+            vec![
+                re_protos::capabilities::catalog_write_register("file"),
+                re_protos::capabilities::CATALOG_WRITE_STAGING.to_owned(),
+            ]
         }
     }
 }
@@ -54,11 +59,13 @@ pub enum OnError {
 
 #[cfg(test)]
 mod tests {
-    /// The native build reads `file://` sources from the filesystem it can see, so it advertises
-    /// registering that scheme.
+    /// The native build reads `file://` sources and provides staging storage for uploads.
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
-    fn the_native_build_advertises_registering_files() {
-        assert_eq!(super::capabilities().register_schemes(), vec!["file"]);
+    fn the_native_build_advertises_write_capabilities() {
+        let capabilities = super::capabilities();
+
+        assert_eq!(capabilities.register_schemes(), vec!["file"]);
+        assert!(capabilities.has(re_protos::capabilities::CATALOG_WRITE_STAGING));
     }
 }

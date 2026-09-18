@@ -188,6 +188,7 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum.workspace = true
 egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_agent_ui.workspace = true

@@ -204,8 +204,25 @@ impl RerunCloudHandlerBuilder {
         self
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn build(self) -> RerunCloudHandler {
+        RerunCloudHandler::new(self.settings, self.store, None)
+    }
+
+    #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
         RerunCloudHandler::new(self.settings, self.store)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn build_with_write_access(
+        self,
+    ) -> anyhow::Result<(RerunCloudHandler, axum::routing::MethodRouter)> {
+        let write_access_grants =
+            crate::routes::WriteAccessGrants::new(self.settings.storage_dir.path().to_owned())?;
+        let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
+        let handler = RerunCloudHandler::new(self.settings, self.store, Some(write_access_grants));
+        Ok((handler, write_upload_route))
     }
 }
 
@@ -214,13 +231,21 @@ impl RerunCloudHandlerBuilder {
 pub struct RerunCloudHandler {
     #[cfg(not(target_arch = "wasm32"))]
     settings: RerunCloudHandlerSettings,
+    #[cfg(not(target_arch = "wasm32"))]
+    write_access_grants: Option<crate::routes::WriteAccessGrants>,
     eager_chunk_store_config: re_chunk_store::ChunkStoreConfig,
     store: tokio::sync::RwLock<InMemoryStore>,
     events_tx: tokio::sync::broadcast::Sender<WatchEventsResponse>,
 }
 
 impl RerunCloudHandler {
-    pub fn new(settings: RerunCloudHandlerSettings, store: InMemoryStore) -> Self {
+    fn new(
+        settings: RerunCloudHandlerSettings,
+        store: InMemoryStore,
+        #[cfg(not(target_arch = "wasm32"))] write_access_grants: Option<
+            crate::routes::WriteAccessGrants,
+        >,
+    ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let _ = settings;
         let eager_chunk_store_config = store.eager_chunk_store_config();
@@ -228,6 +253,8 @@ impl RerunCloudHandler {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             settings,
+            #[cfg(not(target_arch = "wasm32"))]
+            write_access_grants,
             eager_chunk_store_config,
             store: tokio::sync::RwLock::new(store),
             events_tx,
@@ -968,14 +995,39 @@ impl RerunCloudService for RerunCloudHandler {
 
     // --- Grants ---
 
+    #[cfg(target_arch = "wasm32")]
     async fn get_write_access_grant(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
+        _: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
         Err(tonic::Status::unimplemented(
-            "write access grants are not implemented",
+            "write access grants are not implemented on wasm",
         ))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tracing::instrument(skip_all)]
+    async fn get_write_access_grant(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
+    {
+        let ext::GetWriteAccessGrantRequest {
+            size_bytes,
+            key,
+            location,
+        } = request.into_inner().try_into()?;
+        if location.is_some() {
+            return Err(tonic::Status::invalid_argument(
+                "explicit storage locations are not supported",
+            ));
+        }
+        let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
+            tonic::Status::unimplemented("write access grants are not configured")
+        })?;
+        let response = write_access_grants.issue(&key, size_bytes)?;
+        Ok(tonic::Response::new(response.try_into()?))
     }
 
     // --- Manifest Registry ---

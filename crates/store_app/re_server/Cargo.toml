@@ -23,7 +23,6 @@ all-features = true
 [package.metadata.cargo-shear]
 ignored = [
   "chrono", # enables wasm support for transitive chrono users
-  "getrandom", # enables the wasm backend selected by CI RUSTFLAGS
 ]
 
 
@@ -61,7 +60,7 @@ bincode.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 itertools.workspace = true
-jiff.workspace = true
+jiff = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
@@ -76,15 +75,20 @@ re_format.workspace = true
 re_grpc_server.workspace = true
 
 axum.workspace = true
+base64.workspace = true
 bytes.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+getrandom.workspace = true
+hmac.workspace = true
 http.workspace = true
 http-body.workspace = true
 lance = { workspace = true, optional = true }
 opentelemetry.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = [
   "fs",
+  "io-util",
   "macros",
   "net",
   "rt-multi-thread",
@@ -92,7 +96,6 @@ tokio = { workspace = true, features = [
   "sync",
   "time",
 ] }
-tokio-stream = { workspace = true, features = ["net"] }
 tonic-web.workspace = true
 tower.workspace = true
 tower-service.workspace = true
@@ -122,6 +125,7 @@ wasm-bindgen-test.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 re_redap_tests.workspace = true
 tempfile.workspace = true
+tokio-stream = { workspace = true, features = ["net"] }
 tonic = { workspace = true, features = ["channel"] }
 tonic-reflection.workspace = true
 

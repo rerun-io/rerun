@@ -2318,15 +2318,20 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
 
 /// An HTTP request the caller performs directly to redeem an [`AccessGrant`].
 #[derive(Debug, Clone)]
-pub struct HttpRequest {
-    /// One of [`HttpRequest::SUPPORTED_METHODS`].
-    pub method: http::Method,
+pub enum HttpRequest {
+    /// A request to an external HTTP(S) URL.
+    External {
+        method: http::Method,
+        url: url::Url,
+        headers: http::HeaderMap,
+    },
 
-    /// Absolute `http(s)` URL.
-    pub url: url::Url,
-
-    /// Headers the request must carry exactly as returned.
-    pub headers: http::HeaderMap,
+    /// A request to an absolute path on the catalog origin.
+    SameOrigin {
+        method: http::Method,
+        path_and_query: http::uri::PathAndQuery,
+        headers: http::HeaderMap,
+    },
 }
 
 impl HttpRequest {
@@ -2344,6 +2349,7 @@ impl TryFrom<crate::cloud::v1alpha1::HttpRequest> for HttpRequest {
             method,
             url,
             headers,
+            same_origin,
         } = value;
 
         let method = http::Method::from_bytes(method.as_bytes())
@@ -2359,17 +2365,6 @@ impl TryFrom<crate::cloud::v1alpha1::HttpRequest> for HttpRequest {
             ));
         }
 
-        let url: url::Url = url
-            .parse()
-            .map_err(|err: url::ParseError| invalid_field!(Proto, "url", err.to_string()))?;
-        if !matches!(url.scheme(), "http" | "https") {
-            return Err(invalid_field!(
-                Proto,
-                "url",
-                format!("expected an absolute http(s) URL, got `{url}`")
-            ));
-        }
-
         // `HeaderMap::with_capacity` and `append` panic once the map exceeds its maximum size.
         let mut header_map = http::HeaderMap::new();
         for crate::cloud::v1alpha1::HttpHeader { name, value } in headers {
@@ -2382,11 +2377,39 @@ impl TryFrom<crate::cloud::v1alpha1::HttpRequest> for HttpRequest {
                 .map_err(|err| invalid_field!(Proto, "headers", err.to_string()))?;
         }
 
-        Ok(Self {
-            method,
-            url,
-            headers: header_map,
-        })
+        if same_origin {
+            let path_and_query = url
+                .parse::<http::uri::PathAndQuery>()
+                .map_err(|err| invalid_field!(Proto, "url", err.to_string()))?;
+            if !path_and_query.as_str().starts_with('/') {
+                return Err(invalid_field!(
+                    Proto,
+                    "url",
+                    format!("expected an absolute path and query, got `{path_and_query}`")
+                ));
+            }
+            Ok(Self::SameOrigin {
+                method,
+                path_and_query,
+                headers: header_map,
+            })
+        } else {
+            let url: url::Url = url
+                .parse()
+                .map_err(|err: url::ParseError| invalid_field!(Proto, "url", err.to_string()))?;
+            if !matches!(url.scheme(), "http" | "https") {
+                return Err(invalid_field!(
+                    Proto,
+                    "url",
+                    format!("expected an absolute http(s) URL, got `{url}`")
+                ));
+            }
+            Ok(Self::External {
+                method,
+                url,
+                headers: header_map,
+            })
+        }
     }
 }
 
@@ -2396,12 +2419,18 @@ impl TryFrom<HttpRequest> for crate::cloud::v1alpha1::HttpRequest {
     fn try_from(value: HttpRequest) -> Result<Self, Self::Error> {
         use crate::cloud::v1alpha1::HttpRequest as Proto;
 
-        let HttpRequest {
-            method,
-            url,
-            headers,
-        } = value;
-
+        let (method, url, headers, same_origin) = match value {
+            HttpRequest::External {
+                method,
+                url,
+                headers,
+            } => (method, url.to_string(), headers, false),
+            HttpRequest::SameOrigin {
+                method,
+                path_and_query,
+                headers,
+            } => (method, path_and_query.to_string(), headers, true),
+        };
         let headers = headers
             .iter()
             .map(|(name, value)| {
@@ -2417,8 +2446,9 @@ impl TryFrom<HttpRequest> for crate::cloud::v1alpha1::HttpRequest {
 
         Ok(Self {
             method: method.to_string(),
-            url: url.to_string(),
+            url,
             headers,
+            same_origin,
         })
     }
 }
@@ -3232,11 +3262,20 @@ mod tests {
                     value: "über.rrd".to_owned(),
                 },
             ],
+            same_origin: false,
         };
 
         let request = HttpRequest::try_from(proto.clone()).unwrap();
-        assert_eq!(request.method, http::Method::PUT);
-        assert_eq!(request.headers.get_all("x-amz-meta-a").iter().count(), 2);
+        let HttpRequest::External {
+            ref method,
+            ref headers,
+            ..
+        } = request
+        else {
+            panic!("expected external request");
+        };
+        assert_eq!(method, http::Method::PUT);
+        assert_eq!(headers.get_all("x-amz-meta-a").iter().count(), 2);
         let round_tripped = crate::cloud::v1alpha1::HttpRequest::try_from(request).unwrap();
         let expected = crate::cloud::v1alpha1::HttpRequest {
             headers: proto
@@ -3278,6 +3317,30 @@ mod tests {
     }
 
     #[test]
+    fn http_request_conversion_validates_same_origin_url() {
+        let proto = crate::cloud::v1alpha1::HttpRequest {
+            method: "PUT".to_owned(),
+            url: "/upload/grant?part=1".to_owned(),
+            headers: vec![],
+            same_origin: true,
+        };
+
+        let request = HttpRequest::try_from(proto.clone()).unwrap();
+        let HttpRequest::SameOrigin { path_and_query, .. } = request else {
+            panic!("expected same-origin request");
+        };
+        assert_eq!(path_and_query.as_str(), "/upload/grant?part=1");
+
+        for bad_url in ["upload/grant", "https://bucket.example/key"] {
+            let proto = crate::cloud::v1alpha1::HttpRequest {
+                url: bad_url.to_owned(),
+                ..proto.clone()
+            };
+            assert!(HttpRequest::try_from(proto).is_err(), "{bad_url:?}");
+        }
+    }
+
+    #[test]
     fn http_request_conversion_rejects_too_many_headers() {
         // `http::HeaderMap` caps the number of distinct names, not the number of values.
         let proto = crate::cloud::v1alpha1::HttpRequest {
@@ -3289,6 +3352,7 @@ mod tests {
                     value: "1".to_owned(),
                 })
                 .collect(),
+            same_origin: false,
         };
         assert!(HttpRequest::try_from(proto).is_err());
     }
@@ -3300,7 +3364,7 @@ mod tests {
             http::HeaderName::from_static("x-amz-meta-a"),
             http::HeaderValue::from_bytes(&[0xff]).expect("valid opaque header value"),
         );
-        let request = HttpRequest {
+        let request = HttpRequest::External {
             method: http::Method::PUT,
             url: "https://bucket.example/key".parse().expect("valid url"),
             headers,

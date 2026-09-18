@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
 };
-use re_log_encoding::{ChunkProvider as _, RrdChunkProvider, RrdManifest};
+use re_log_encoding::RrdChunkProvider;
 use re_log_types::{EntityPath, StoreId, StoreKind};
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.
@@ -86,13 +86,6 @@ impl ResolvedStore {
                 entity_path,
                 include_static,
             ),
-        }
-    }
-
-    pub fn manifest(&self) -> Option<&Arc<RrdManifest>> {
-        match self {
-            Self::Eager(_) => None,
-            Self::Lazy(l) => Some(l.manifest()),
         }
     }
 

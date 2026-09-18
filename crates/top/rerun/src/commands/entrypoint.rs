@@ -1277,7 +1277,9 @@ fn start_native_viewer(
     #[cfg(feature = "server")]
     let grpc_server_handle = {
         let mut loopback_services = re_grpc_server::LoopbackServices::default();
-        loopback_services.add_service(internal_catalog.grpc_service());
+        loopback_services
+            .add_service(internal_catalog.grpc_service())
+            .add_http_route("/upload/{grant}", internal_catalog.write_upload_route());
 
         let (log_receiver, handle) = re_grpc_server::spawn_with_recv_and_services(
             viewer_server_listener,

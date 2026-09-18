@@ -24,6 +24,9 @@ const SEPARATOR: char = ':';
 /// Prefix for all catalog registering capabilities.
 pub const CATALOG_WRITE_REGISTER: &str = "catalog:write:register";
 
+/// The capability to write objects to catalog-managed staging storage.
+pub const CATALOG_WRITE_STAGING: &str = "catalog:write:staging";
+
 /// The capability a server advertises to register data sources with this URL scheme.
 ///
 /// A server builds one name per scheme it reads, so its config decides which names it advertises.
@@ -146,7 +149,7 @@ mod tests {
         let caps = caps(&[
             &catalog_write_register("s3"),
             &catalog_write_register("file"),
-            "catalog:write:staging",
+            CATALOG_WRITE_STAGING,
         ]);
 
         assert_eq!(caps.register_schemes(), vec!["file", "s3"]);
@@ -191,7 +194,7 @@ mod tests {
     /// affect queries for the names it does know.
     #[test]
     fn unknown_capability_names_are_ignored() {
-        let caps = caps(&["catalog:write:staging", &catalog_write_register("s3")]);
+        let caps = caps(&[CATALOG_WRITE_STAGING, &catalog_write_register("s3")]);
 
         assert!(caps.has(&catalog_write_register("s3")));
         assert!(!caps.has(&catalog_write_register("file")));

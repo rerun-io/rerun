@@ -406,13 +406,16 @@ pub struct HttpRequest {
     /// Uppercase HTTP method.
     #[prost(string, tag = "1")]
     pub method: ::prost::alloc::string::String,
-    /// Absolute HTTP(S) URL.
+    /// Absolute HTTP(S) URL, or an absolute path and query when `same_origin` is set.
     #[prost(string, tag = "2")]
     pub url: ::prost::alloc::string::String,
     /// Headers the caller must send exactly as returned.
     /// A name may appear more than once.
     #[prost(message, repeated, tag = "3")]
     pub headers: ::prost::alloc::vec::Vec<HttpHeader>,
+    /// Whether `url` is an absolute path and query relative to the catalog origin.
+    #[prost(bool, tag = "4")]
+    pub same_origin: bool,
 }
 impl ::prost::Name for HttpRequest {
     const NAME: &'static str = "HttpRequest";

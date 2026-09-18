@@ -98,7 +98,11 @@ impl Args {
             cors_allow_origin,
         } = self;
 
-        let handler = {
+        let ip = ip.parse().with_context(|| format!("IP: {ip:?}"))?;
+        let ip_port = SocketAddr::new(ip, port);
+        let server_builder = ServerBuilder::bind(ip_port)?;
+
+        let (handler, write_upload_route) = {
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for NamedPathCollection { name, paths } in datasets {
@@ -137,9 +141,8 @@ impl Args {
                 }
             }
 
-            builder.build()
+            builder.build_with_write_access()?
         };
-
         let rerun_cloud_server =
             re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer::new(
                 handler,
@@ -147,16 +150,10 @@ impl Args {
             .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
             .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE);
 
-        let ip = ip.parse().with_context(|| format!("IP: {ip:?}"))?;
-        let ip_port = SocketAddr::new(ip, port);
-
-        let server_builder = ServerBuilder::default()
-            .with_address(ip_port)
+        let server_builder = server_builder
             .with_service(rerun_cloud_server)
-            .with_http_route(
-                "/version",
-                axum::routing::get(async move || re_build_info::build_info!().to_string()),
-            )
+            .with_http_route("/version", axum::routing::get(crate::routes::get_version))
+            .with_http_route("/upload/{grant}", write_upload_route)
             .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _))
             .with_bandwidth_limit(bandwidth_limit)
             .with_cors_allowed_origins(cors_allow_origin);
@@ -165,9 +162,7 @@ impl Args {
         let async_runtime =
             re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?;
 
-        let server_handle = server.start(&async_runtime).await?;
-
-        Ok(server_handle)
+        server.start(&async_runtime).await.map_err(Into::into)
     }
 
     pub async fn run_async(self) -> anyhow::Result<()> {

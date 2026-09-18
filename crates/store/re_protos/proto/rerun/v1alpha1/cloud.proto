@@ -574,12 +574,15 @@ message HttpRequest {
   // Uppercase HTTP method.
   string method = 1;
 
-  // Absolute HTTP(S) URL.
+  // Absolute HTTP(S) URL, or an absolute path and query when `same_origin` is set.
   string url = 2;
 
   // Headers the caller must send exactly as returned.
   // A name may appear more than once.
   repeated HttpHeader headers = 3;
+
+  // Whether `url` is an absolute path and query relative to the catalog origin.
+  bool same_origin = 4;
 }
 
 // Describes one HTTP header field.

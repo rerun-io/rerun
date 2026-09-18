@@ -4,7 +4,9 @@ use ahash::HashMap;
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
+#[cfg(not(target_arch = "wasm32"))]
+use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
@@ -16,8 +18,10 @@ use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
 #[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
+#[cfg(not(target_arch = "wasm32"))]
+use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
+    DatasetDetails, EntryDetails, ProviderDetails, TableDetails,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 #[cfg(not(target_arch = "wasm32"))]
@@ -663,10 +667,6 @@ impl InMemoryStore {
         self.tables.values()
     }
 
-    pub fn id_by_name(&self, name: &EntryName) -> Option<&EntryId> {
-        self.id_by_name.get(name)
-    }
-
     pub fn id_exists(&self, id: &EntryId) -> bool {
         self.tables.contains_key(id) || self.datasets.contains_key(id)
     }
@@ -675,6 +675,7 @@ impl InMemoryStore {
         &self.task_registry
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn create_table_entry(
         &mut self,
         name: EntryName,
