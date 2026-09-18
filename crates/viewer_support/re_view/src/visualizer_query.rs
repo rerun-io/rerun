@@ -51,6 +51,14 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
             .is_none_or(|source| source.is_identity_mapping(component))
     }
 
+    /// Identifies the component and its source mapping, including any selector, for data caching.
+    pub fn component_source_hash(&self, component: ComponentIdentifier) -> Hash64 {
+        Hash64::hash((
+            component,
+            self.instruction.component_mappings.get(&component),
+        ))
+    }
+
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
     /// Reports an error if there's no chunks for the given component.

@@ -10,7 +10,7 @@ use crate::error_handling::ErrorTracker;
 use crate::global_bindings::GlobalBindings;
 use crate::renderer::Renderer;
 use crate::renderers::{RendererRegistrationError, Renderers};
-use crate::resource_managers::TextureManager2D;
+use crate::resource_managers::{TextureManager2D, TextureManager3D};
 use crate::wgpu_resources::WgpuResourcePools;
 use crate::{FileServer, RecommendedFileResolver};
 
@@ -107,6 +107,7 @@ pub struct RenderContext {
     pub(crate) resolver: RecommendedFileResolver,
 
     pub texture_manager_2d: TextureManager2D,
+    pub texture_manager_3d: TextureManager3D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
     pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
@@ -255,6 +256,7 @@ impl RenderContext {
             resolver,
             top_level_error_tracker,
             texture_manager_2d,
+            texture_manager_3d: Default::default(),
             cpu_write_gpu_read_belt,
             gpu_readback_belt,
             inflight_queue_submissions: Vec::new(),
@@ -360,6 +362,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         }
 
         self.texture_manager_2d.begin_frame(frame_index);
+        self.texture_manager_3d.begin_frame(frame_index);
         self.gpu_readback_belt.get_mut().begin_frame(frame_index);
 
         {

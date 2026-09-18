@@ -29,6 +29,7 @@ Float32
 * [`Length`](../components/length.md)
 * [`MarkerSize`](../components/marker_size.md)
 * [`Opacity`](../components/opacity.md)
+* [`OpticalDensity`](../components/optical_density.md?speculative-link)
 * [`Radius`](../components/radius.md)
 * [`StrokeWidth`](../components/stroke_width.md)
 * [`VoxelValue`](../components/voxel_value.md)

@@ -16,6 +16,16 @@ struct Ray {
     direction: vec3f,
 }
 
+// Reconstructs a world-space hit from a camera ray and reverse-Z depth at the same pixel.
+// The caller must exclude background depth and ensure the ray has a finite intersection.
+fn camera_ray_depth_hit(ray: Ray, depth_buffer_depth: f32) -> vec3f {
+    let clip_origin = frame.projection_from_world * vec4f(ray.origin, 1.0);
+    let clip_direction = frame.projection_from_world * vec4f(ray.direction, 0.0);
+    let denominator = depth_buffer_depth * clip_direction.w - clip_direction.z;
+    let t = (clip_origin.z - depth_buffer_depth * clip_origin.w) / denominator;
+    return ray.origin + t * ray.direction;
+}
+
 // Returns the ray from the camera to a given world position, assuming the camera is perspective
 fn camera_ray_to_world_pos_perspective(world_pos: vec3f) -> Ray {
     var ray: Ray;

@@ -1,15 +1,19 @@
 use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
 use crate::context::RenderContext;
 use crate::draw_phases::{
-    DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
-    ScreenshotProcessor,
+    DepthResolveProcessor, DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError,
+    PickingLayerProcessor, ScreenshotProcessor,
 };
 use crate::global_bindings::FrameUniformBuffer;
 use crate::queueable_draw_data::QueueableDrawData;
 use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
 use crate::transform::RectTransform;
-use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuTexture, PoolError, TextureDesc,
+};
 use crate::{DrawPhaseManager, Label, MsaaMode, RectInt, RenderConfig, Rgba};
+use smallvec::smallvec;
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ViewBuilderError {
@@ -33,6 +37,7 @@ pub struct ViewBuilder {
     outline_mask_processor: Option<OutlineMaskProcessor>,
     screenshot_processor: Option<ScreenshotProcessor>,
     picking_processor: Option<PickingLayerProcessor>,
+    depth_resolve_processor: DepthResolveProcessor,
 }
 
 /// Stable identity of a rendered view.
@@ -491,6 +496,8 @@ impl ViewBuilder {
             main_target_msaa.clone()
         };
 
+        let can_sample_main_depth =
+            !msaa_enabled || ctx.device_caps().tier.support_sampling_msaa_texture();
         let depth_buffer = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
@@ -500,10 +507,14 @@ impl ViewBuilder {
                 sample_count: render_cfg.msaa_mode.sample_count(),
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::MAIN_TARGET_DEPTH_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | if can_sample_main_depth {
+                        wgpu::TextureUsages::TEXTURE_BINDING
+                    } else {
+                        wgpu::TextureUsages::empty()
+                    },
             },
         );
-
         let projection_from_view = config
             .projection_from_view
             .projection_from_view(config.resolution_in_pixel);
@@ -646,6 +657,7 @@ impl ViewBuilder {
         let active_draw_phases = {
             let mut active_draw_phases = DrawPhase::Opaque
                 | DrawPhase::Background
+                | DrawPhase::Volume
                 | DrawPhase::Transparent
                 | DrawPhase::Compositing;
             if config.outline_config.is_some() {
@@ -680,12 +692,15 @@ impl ViewBuilder {
             .num_view_builders_created
             .fetch_add(1, std::sync::atomic::Ordering::Release);
 
+        let depth_resolve_processor = DepthResolveProcessor::new(ctx, &setup.depth_buffer);
+
         let mut view_builder = Self {
             setup,
             draw_phase_manager,
             outline_mask_processor,
             screenshot_processor: Default::default(),
             picking_processor,
+            depth_resolve_processor,
         };
 
         view_builder.queue_draw(
@@ -736,9 +751,16 @@ impl ViewBuilder {
     ) -> Result<wgpu::CommandBuffer, PoolError> {
         re_tracing::profile_function!();
 
-        let pipelines = ctx.gpu_resources.render_pipelines.resources();
-
         let setup = &self.setup;
+
+        let has_volume_phase = !self
+            .draw_phase_manager
+            .drawables_for_phase(DrawPhase::Volume)
+            .is_empty();
+        let reads_mainphase_depth_buffer = has_volume_phase;
+
+        let pipelines = ctx.gpu_resources.render_pipelines.resources();
+        let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
 
         // Prepare the drawables for drawing!
         self.draw_phase_manager.sort_drawables(ctx.renderers());
@@ -752,14 +774,13 @@ impl ViewBuilder {
         {
             re_tracing::profile_scope!("main target pass");
 
-            let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
-
+            let resolve_target_now = !has_volume_phase && needs_msaa_resolve;
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Label::from(format!("{} - main pass", setup.name)).wgpu_label(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     depth_slice: None,
-                    resolve_target: needs_msaa_resolve
+                    resolve_target: resolve_target_now
                         .then_some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -768,7 +789,7 @@ impl ViewBuilder {
                             b: clear_color.b() as f64,
                             a: clear_color.a() as f64,
                         }),
-                        store: if needs_msaa_resolve {
+                        store: if resolve_target_now {
                             // Don't care about the result, if it's going to be resolved to the resolve target.
                             // This can have be much better perf, especially on tiler gpus.
                             wgpu::StoreOp::Discard
@@ -782,7 +803,11 @@ impl ViewBuilder {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
                         load: Self::DEFAULT_DEPTH_CLEAR,
-                        store: wgpu::StoreOp::Discard,
+                        store: if reads_mainphase_depth_buffer {
+                            wgpu::StoreOp::Store
+                        } else {
+                            wgpu::StoreOp::Discard
+                        },
                     }),
                     stencil_ops: None,
                 }),
@@ -799,28 +824,71 @@ impl ViewBuilder {
                 DrawPhase::Transparent,
             ] {
                 self.draw_phase_manager
-                    .draw(ctx.renderers(), &pipelines, phase, &mut pass);
+                    .draw(ctx.renderers(), &pipelines, phase, None, &mut pass);
             }
+        }
+
+        // Provide depth buffer reads iff needed.
+        let scene_depth_bind_group = if reads_mainphase_depth_buffer {
+            let depth_texture = self
+                .depth_resolve_processor
+                .resolve(&mut encoder, &pipelines)?;
+            Some(ctx.gpu_resources.bind_groups.alloc(
+                &ctx.device,
+                &ctx.gpu_resources,
+                &BindGroupDesc {
+                    label: format!("{:?} - volume scene depth", setup.name).into(),
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(depth_texture.handle)],
+                    layout: Self::scene_depth_bind_group_layout(ctx),
+                },
+            ))
+        } else {
+            None
+        };
+
+        if has_volume_phase {
+            re_tracing::profile_scope!("volume pass");
+
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Label::from(format!("{} - volume pass", setup.name)).wgpu_label(),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &setup.main_target_msaa.default_view,
+                    depth_slice: None,
+                    resolve_target: needs_msaa_resolve
+                        .then_some(&setup.main_target_resolved.default_view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: if needs_msaa_resolve {
+                            wgpu::StoreOp::Discard
+                        } else {
+                            wgpu::StoreOp::Store
+                        },
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_bind_group(0, &setup.bind_group_0, &[]);
+            self.draw_phase_manager.draw(
+                ctx.renderers(),
+                &pipelines,
+                DrawPhase::Volume,
+                scene_depth_bind_group.as_ref(),
+                &mut pass,
+            );
         }
 
         if let Some(picking_processor) = &self.picking_processor {
             {
                 let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder);
-                // PickingProcessor has as custom frame uniform buffer.
-                //
-                // TODO(andreas): Formalize this somehow.
-                // Maybe just every processor should have its own and gets abstract information from the view builder to set it up?
-                // … or we change this whole thing again so slice things differently:
-                // 0: Truly view Global: Samplers, time, point conversions, etc.
-                // 1: Phase global (camera & projection goes here)
-                // 2: Specific renderer
-                // 3: Draw call in renderer.
-                //
-                //pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                // The picking processor supplies group 0 with its cropped camera.
                 self.draw_phase_manager.draw(
                     ctx.renderers(),
                     &pipelines,
                     DrawPhase::PickingLayer,
+                    scene_depth_bind_group.as_ref(),
                     &mut pass,
                 );
             }
@@ -845,12 +913,14 @@ impl ViewBuilder {
                     ctx.renderers(),
                     &pipelines,
                     DrawPhase::OutlineMask,
+                    scene_depth_bind_group.as_ref(),
                     &mut pass,
                 );
                 self.draw_phase_manager.draw(
                     ctx.renderers(),
                     &pipelines,
                     DrawPhase::OutlineMaskNoDepth,
+                    scene_depth_bind_group.as_ref(),
                     &mut pass,
                 );
             }
@@ -865,6 +935,7 @@ impl ViewBuilder {
                     ctx.renderers(),
                     &pipelines,
                     DrawPhase::CompositingScreenshot,
+                    None,
                     &mut pass,
                 );
             }
@@ -935,7 +1006,31 @@ impl ViewBuilder {
             ctx.renderers(),
             &ctx.gpu_resources.render_pipelines.resources(),
             DrawPhase::Compositing,
+            None,
             pass,
         );
+    }
+}
+
+impl ViewBuilder {
+    /// Scene-depth phase bindings for volumes, including their outline and picking passes.
+    /// Picking keeps the same layout but does not sample scene depth.
+    pub fn scene_depth_bind_group_layout(ctx: &RenderContext) -> GpuBindGroupLayoutHandle {
+        ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
+            &BindGroupLayoutDesc {
+                label: "ViewBuilder::scene_depth_bind_group_layout".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                }],
+            },
+        )
     }
 }

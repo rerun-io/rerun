@@ -3,7 +3,6 @@ use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
 use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
 use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
@@ -114,11 +113,12 @@ Set the displayed dimensions in a selection panel.",
             if let Some(TensorVisualization {
                 tensor,
                 tensor_row_id,
+                tensor_component,
                 ..
             }) = &state.tensor
             {
                 let tensor_stats = ctx.store_context.memoizer(|c: &mut TensorStatsCache| {
-                    c.entry(Hash64::hash(*tensor_row_id), tensor)
+                    c.entry(*tensor_row_id, *tensor_component, tensor)
                 });
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
@@ -351,6 +351,7 @@ impl TensorView {
         };
         let TensorVisualization {
             tensor_row_id,
+            tensor_component: _,
             tensor,
             data_range,
         } = &tensor_view;
@@ -365,7 +366,9 @@ impl TensorView {
 
         let colormap = ColormapWithRange {
             colormap,
-            value_range: [data_range.start() as f32, data_range.end() as f32],
+            value_range: data_range.try_as_f32_range().ok_or_else(|| {
+                anyhow::anyhow!("value_range must have finite, distinct f32 endpoints")
+            })?,
         };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
             ctx.render_ctx(),

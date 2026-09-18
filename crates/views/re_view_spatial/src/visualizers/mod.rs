@@ -23,6 +23,7 @@ mod segmentation_images;
 mod transform_axes_3d;
 pub mod utilities;
 mod video;
+mod volume_3d;
 mod voxel_grid_map;
 
 pub use cameras::{CamerasVisualizer, CamerasVisualizerOutput};
@@ -123,6 +124,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform_axes_3d::TransformAxes3DVisualizer>()?;
+    system_registry.register_visualizer::<volume_3d::Volume3DVisualizer>()?;
     system_registry.register_visualizer::<voxel_grid_map::VoxelGridMapVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
     system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;

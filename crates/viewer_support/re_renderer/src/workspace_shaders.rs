@@ -134,6 +134,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/resolve_depth.wgsl");
+        let content = include_str!("../shader/resolve_depth.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/screen_triangle.wgsl");
         let content = include_str!("../shader/screen_triangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -220,6 +226,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/srgb.wgsl");
         let content = include_str!("../shader/utils/srgb.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/volume.wgsl");
+        let content = include_str!("../shader/volume.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

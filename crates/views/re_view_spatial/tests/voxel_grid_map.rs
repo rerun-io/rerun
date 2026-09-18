@@ -107,7 +107,7 @@ fn test_voxel_grid_map_snapshot_and_instance_selection() {
             &Enabled::from(true),
         );
     });
-    harness.run_steps(10);
+    harness.run();
 
     harness.snapshot("voxel_grid_map");
 }
@@ -162,7 +162,7 @@ fn test_voxel_grid_map_transparent_opacity_snapshot() {
             &Position3D::new(0.5, 0.2, 0.5),
         );
     });
-    harness.run_steps(10);
+    harness.run();
 
     harness.snapshot("voxel_grid_map_transparent_opacity");
 }

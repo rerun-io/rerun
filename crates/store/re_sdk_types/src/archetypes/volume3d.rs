@@ -43,6 +43,9 @@ use ::std::borrow::Cow;
 /// therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` up to
 /// `[width - 1, height - 1, depth - 1]`.
 ///
+/// **WebGL limitation:** The viewer is not able to clip volumes against opaque scene geometry.
+/// Parts of a volume can therefore appear in front of objects that should hide them.
+///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///
 /// ## Example
@@ -113,24 +116,32 @@ pub struct Volume3D {
     /// translation.
     pub quaternion: Option<SerializedComponentBatch>,
 
-    /// How to map `values` to opacity and color.
+    /// The inclusive range of voxel values to render.
     ///
-    /// If not specified, the range is estimated from the data.
+    /// Values outside the range are ignored.
+    ///
+    /// If not specified, the range is automatically estimated from the data.
     pub value_range: Option<SerializedComponentBatch>,
 
-    /// Colormap applied to the values after mapping them through `value_range`.
+    /// Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+    ///
+    /// The corrected density is `normalized_value ^ gamma`.
+    /// Must be finite and positive.
+    /// Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
+    pub gamma: Option<SerializedComponentBatch>,
+
+    /// Colormap applied to the values after mapping them through `value_range` and gamma correction.
     ///
     /// Defaults to Turbo.
     pub colormap: Option<SerializedComponentBatch>,
 
-    /// Overall opacity of the volume.
+    /// Dimensionless optical depth for the volume.
     ///
-    /// The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-    /// this, i.e. a linear ramp: low values are transparent, high values are opaque.
-    /// Lowering this makes the interior of the volume visible.
+    /// For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+    /// Zero is transparent, one is about 63% opaque, and larger values are denser.
     ///
     /// Defaults to 1.0.
-    pub opacity: Option<SerializedComponentBatch>,
+    pub optical_density: Option<SerializedComponentBatch>,
 }
 
 impl Volume3D {
@@ -204,6 +215,20 @@ impl Volume3D {
         (*DESCRIPTOR).clone()
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
+    ///
+    /// The corresponding component is [`crate::components::GammaCorrection`].
+    #[inline]
+    pub fn descriptor_gamma() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Volume3D".into()),
+                component: "Volume3D:gamma".into(),
+                component_type: Some("rerun.components.GammaCorrection".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
     ///
     /// The corresponding component is [`crate::components::Colormap`].
@@ -218,16 +243,16 @@ impl Volume3D {
         (*DESCRIPTOR).clone()
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::optical_density`].
     ///
-    /// The corresponding component is [`crate::components::Opacity`].
+    /// The corresponding component is [`crate::components::OpticalDensity`].
     #[inline]
-    pub fn descriptor_opacity() -> ComponentDescriptor {
+    pub fn descriptor_optical_density() -> ComponentDescriptor {
         static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
             std::sync::LazyLock::new(|| ComponentDescriptor {
                 archetype: Some("rerun.archetypes.Volume3D".into()),
-                component: "Volume3D:opacity".into(),
-                component_type: Some("rerun.components.Opacity".into()),
+                component: "Volume3D:optical_density".into(),
+                component_type: Some("rerun.components.OpticalDensity".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -239,18 +264,19 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [Volume3D::descriptor_voxel_size()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             Volume3D::descriptor_translation(),
             Volume3D::descriptor_quaternion(),
             Volume3D::descriptor_value_range(),
+            Volume3D::descriptor_gamma(),
             Volume3D::descriptor_colormap(),
-            Volume3D::descriptor_opacity(),
+            Volume3D::descriptor_optical_density(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Volume3D::descriptor_values(),
@@ -258,14 +284,15 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             Volume3D::descriptor_translation(),
             Volume3D::descriptor_quaternion(),
             Volume3D::descriptor_value_range(),
+            Volume3D::descriptor_gamma(),
             Volume3D::descriptor_colormap(),
-            Volume3D::descriptor_opacity(),
+            Volume3D::descriptor_optical_density(),
         ]
     });
 
 impl Volume3D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for Volume3D {
@@ -334,20 +361,26 @@ impl ::re_types_core::Archetype for Volume3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_value_range())
             });
+        let gamma = arrays_by_descr
+            .get(&Self::descriptor_gamma())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_gamma()));
         let colormap = arrays_by_descr
             .get(&Self::descriptor_colormap())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colormap()));
-        let opacity = arrays_by_descr
-            .get(&Self::descriptor_opacity())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
+        let optical_density = arrays_by_descr
+            .get(&Self::descriptor_optical_density())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_optical_density())
+            });
         Ok(Self {
             values,
             voxel_size,
             translation,
             quaternion,
             value_range,
+            gamma,
             colormap,
-            opacity,
+            optical_density,
         })
     }
 }
@@ -362,8 +395,9 @@ impl ::re_types_core::AsComponents for Volume3D {
             self.translation.clone(),
             self.quaternion.clone(),
             self.value_range.clone(),
+            self.gamma.clone(),
             self.colormap.clone(),
-            self.opacity.clone(),
+            self.optical_density.clone(),
         ]
         .into_iter()
         .flatten()
@@ -390,8 +424,9 @@ impl Volume3D {
             translation: None,
             quaternion: None,
             value_range: None,
+            gamma: None,
             colormap: None,
-            opacity: None,
+            optical_density: None,
         }
     }
 
@@ -426,13 +461,17 @@ impl Volume3D {
                 crate::components::ValueRange::arrow_empty(),
                 Self::descriptor_value_range(),
             )),
+            gamma: Some(SerializedComponentBatch::new(
+                crate::components::GammaCorrection::arrow_empty(),
+                Self::descriptor_gamma(),
+            )),
             colormap: Some(SerializedComponentBatch::new(
                 crate::components::Colormap::arrow_empty(),
                 Self::descriptor_colormap(),
             )),
-            opacity: Some(SerializedComponentBatch::new(
-                crate::components::Opacity::arrow_empty(),
-                Self::descriptor_opacity(),
+            optical_density: Some(SerializedComponentBatch::new(
+                crate::components::OpticalDensity::arrow_empty(),
+                Self::descriptor_optical_density(),
             )),
         }
     }
@@ -471,11 +510,14 @@ impl Volume3D {
             self.value_range
                 .map(|value_range| value_range.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.gamma
+                .map(|gamma| gamma.partitioned(_lengths.clone()))
+                .transpose()?,
             self.colormap
                 .map(|colormap| colormap.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
+            self.optical_density
+                .map(|optical_density| optical_density.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
@@ -494,16 +536,18 @@ impl Volume3D {
         let len_translation = self.translation.as_ref().map(|b| b.array.len());
         let len_quaternion = self.quaternion.as_ref().map(|b| b.array.len());
         let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
+        let len_gamma = self.gamma.as_ref().map(|b| b.array.len());
         let len_colormap = self.colormap.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
+        let len_optical_density = self.optical_density.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_values)
             .or(len_voxel_size)
             .or(len_translation)
             .or(len_quaternion)
             .or(len_value_range)
+            .or(len_gamma)
             .or(len_colormap)
-            .or(len_opacity)
+            .or(len_optical_density)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -613,9 +657,11 @@ impl Volume3D {
         self
     }
 
-    /// How to map `values` to opacity and color.
+    /// The inclusive range of voxel values to render.
     ///
-    /// If not specified, the range is estimated from the data.
+    /// Values outside the range are ignored.
+    ///
+    /// If not specified, the range is automatically estimated from the data.
     #[inline]
     pub fn with_value_range(
         mut self,
@@ -638,7 +684,31 @@ impl Volume3D {
         self
     }
 
-    /// Colormap applied to the values after mapping them through `value_range`.
+    /// Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+    ///
+    /// The corrected density is `normalized_value ^ gamma`.
+    /// Must be finite and positive.
+    /// Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
+    #[inline]
+    pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {
+        self.gamma = try_serialize_field(Self::descriptor_gamma(), [gamma]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::GammaCorrection`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_gamma`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_gamma(
+        mut self,
+        gamma: impl IntoIterator<Item = impl Into<crate::components::GammaCorrection>>,
+    ) -> Self {
+        self.gamma = try_serialize_field(Self::descriptor_gamma(), gamma);
+        self
+    }
+
+    /// Colormap applied to the values after mapping them through `value_range` and gamma correction.
     ///
     /// Defaults to Turbo.
     #[inline]
@@ -660,29 +730,33 @@ impl Volume3D {
         self
     }
 
-    /// Overall opacity of the volume.
+    /// Dimensionless optical depth for the volume.
     ///
-    /// The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-    /// this, i.e. a linear ramp: low values are transparent, high values are opaque.
-    /// Lowering this makes the interior of the volume visible.
+    /// For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+    /// Zero is transparent, one is about 63% opaque, and larger values are denser.
     ///
     /// Defaults to 1.0.
     #[inline]
-    pub fn with_opacity(mut self, opacity: impl Into<crate::components::Opacity>) -> Self {
-        self.opacity = try_serialize_field(Self::descriptor_opacity(), [opacity]);
+    pub fn with_optical_density(
+        mut self,
+        optical_density: impl Into<crate::components::OpticalDensity>,
+    ) -> Self {
+        self.optical_density =
+            try_serialize_field(Self::descriptor_optical_density(), [optical_density]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::Opacity`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::OpticalDensity`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_opacity`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_optical_density`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_opacity(
+    pub fn with_many_optical_density(
         mut self,
-        opacity: impl IntoIterator<Item = impl Into<crate::components::Opacity>>,
+        optical_density: impl IntoIterator<Item = impl Into<crate::components::OpticalDensity>>,
     ) -> Self {
-        self.opacity = try_serialize_field(Self::descriptor_opacity(), opacity);
+        self.optical_density =
+            try_serialize_field(Self::descriptor_optical_density(), optical_density);
         self
     }
 }

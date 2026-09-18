@@ -20,6 +20,9 @@
 /// therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` up to
 /// `[width - 1, height - 1, depth - 1]`.
 ///
+/// **WebGL limitation:** The viewer is not able to clip volumes against opaque scene geometry.
+/// Parts of a volume can therefore appear in front of objects that should hide them.
+///
 /// \example archetypes/volume3d_simple title="Simple volume"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
@@ -67,25 +70,34 @@ pub struct Volume3D {
     #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 
-    /// How to map `values` to opacity and color.
+    /// The inclusive range of voxel values to render.
     ///
-    /// If not specified, the range is estimated from the data.
+    /// Values outside the range are ignored.
+    ///
+    /// If not specified, the range is automatically estimated from the data.
     #[rerun(optional)]
     pub value_range: Option<rerun::components::ValueRange>,
 
-    /// Colormap applied to the values after mapping them through `value_range`.
+    /// Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+    ///
+    /// The corrected density is `normalized_value ^ gamma`.
+    /// Must be finite and positive.
+    /// Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
+    #[rerun(optional)]
+    pub gamma: Option<rerun::components::GammaCorrection>,
+
+    /// Colormap applied to the values after mapping them through `value_range` and gamma correction.
     ///
     /// Defaults to Turbo.
     #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 
-    /// Overall opacity of the volume.
+    /// Dimensionless optical depth for the volume.
     ///
-    /// The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-    /// this, i.e. a linear ramp: low values are transparent, high values are opaque.
-    /// Lowering this makes the interior of the volume visible.
+    /// For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+    /// Zero is transparent, one is about 63% opaque, and larger values are denser.
     ///
     /// Defaults to 1.0.
     #[rerun(optional)]
-    pub opacity: Option<rerun::components::Opacity>,
+    pub optical_density: Option<rerun::components::OpticalDensity>,
 }

@@ -460,6 +460,20 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         archetypes::Volume3D::descriptor_voxel_size().component,
         |_| components::VoxelSize::from([1.0, 1.0, 1.0]),
     );
+    registry.register_component_fallback_provider(
+        archetypes::Volume3D::descriptor_value_range().component,
+        |ctx| {
+            tensor_data_range_at(ctx, archetypes::Volume3D::descriptor_values().component)
+                .or_else(|| {
+                    tensor_data_range_at(ctx, archetypes::Tensor::descriptor_data().component)
+                })
+                .unwrap_or_else(|| components::ValueRange::new(0.0, 1.0))
+        },
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Volume3D::descriptor_colormap().component,
+        |_| components::Colormap::Turbo,
+    );
 
     // VoxelGridMap
     registry.register_component_fallback_provider(
@@ -497,25 +511,11 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_component_fallback_provider(
         archetypes::Tensor::descriptor_value_range().component,
         |ctx| {
-            if let Some(((_time, row_id), tensor)) = ctx
-                .recording()
-                .latest_at_component::<components::TensorData>(
-                    ctx.target_entity_path,
-                    &ctx.query,
-                    archetypes::Tensor::descriptor_data().component,
-                )
-            {
-                let tensor_cache_key = re_log_types::hash::Hash64::hash(row_id);
-                let tensor_stats = ctx
-                    .store_ctx()
-                    .memoizer_read_or_compute::<TensorStatsCache, _, _>(&TensorStatsAccessor {
-                        tensor_cache_key,
-                        tensor: &tensor,
-                    });
-                tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
-            } else {
-                components::ValueRange::new(0.0, 1.0)
-            }
+            tensor_data_range_at(ctx, archetypes::Tensor::descriptor_data().component)
+                .or_else(|| {
+                    tensor_data_range_at(ctx, archetypes::Volume3D::descriptor_values().component)
+                })
+                .unwrap_or_else(|| components::ValueRange::new(0.0, 1.0))
         },
     );
 
@@ -635,6 +635,28 @@ fn encoded_depth_image_media_type(
         )
         .map(|(_, c)| c)
         .or_else(|| components::MediaType::guess_from_data(blob))
+}
+
+fn tensor_data_range_at(
+    ctx: &QueryContext<'_>,
+    component: re_sdk_types::ComponentIdentifier,
+) -> Option<components::ValueRange> {
+    let ((_time, row_id), tensor) = ctx
+        .recording()
+        .latest_at_component::<components::TensorData>(
+            ctx.target_entity_path,
+            &ctx.query,
+            component,
+        )?;
+    let tensor_stats = ctx
+        .store_ctx()
+        .memoizer_read_or_compute::<TensorStatsCache, _, _>(&TensorStatsAccessor {
+            row_id,
+            component,
+            tensor: &tensor,
+        });
+
+    Some(tensor_data_range_heuristic(&tensor_stats, tensor.dtype()))
 }
 
 /// Get a valid, finite range for the gpu to use.

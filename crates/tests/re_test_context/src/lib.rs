@@ -889,6 +889,9 @@ impl TestContext {
                             .add_chunk_for_tests(&store_id, &Arc::new(chunk))
                             .expect("Updating the chunk store failed");
                     }
+
+                    // Want to see the result of adding new data or blueprint immediately.
+                    egui_ctx.request_repaint();
                 }
 
                 SystemCommand::DropEntity(store_id, entity_path) => {

@@ -47,6 +47,7 @@
 #include "components/mesh_face_rendering.hpp"
 #include "components/name.hpp"
 #include "components/opacity.hpp"
+#include "components/optical_density.hpp"
 #include "components/pinhole_projection.hpp"
 #include "components/plane3d.hpp"
 #include "components/point_shading.hpp"

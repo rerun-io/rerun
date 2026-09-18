@@ -77,6 +77,7 @@ from .mesh_face_rendering import (
 )
 from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
+from .optical_density import OpticalDensity, OpticalDensityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
 from .plane3d import Plane3D, Plane3DBatch
 from .point_shading import PointShading, PointShadingArrayLike, PointShadingBatch, PointShadingLike
@@ -245,6 +246,8 @@ __all__ = [
     "NameBatch",
     "Opacity",
     "OpacityBatch",
+    "OpticalDensity",
+    "OpticalDensityBatch",
     "PinholeProjection",
     "PinholeProjectionBatch",
     "Plane3D",

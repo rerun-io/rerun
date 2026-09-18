@@ -1,7 +1,5 @@
-use ahash::{HashMap, HashSet};
-use re_mutex::Mutex;
-
 use super::ImageDataToTextureError;
+use super::frame_retained_cache::FrameRetainedCache;
 use super::image_data_to_texture::transfer_image_data_to_texture;
 use crate::RenderContext;
 use crate::resource_managers::ImageDataDesc;
@@ -163,29 +161,9 @@ pub struct TextureManager2D {
     zeroed_texture_sint: GpuTexture2D,
     zeroed_texture_uint: GpuTexture2D,
 
-    /// The mutable part of the manager.
-    inner: Mutex<Inner>,
-}
-
-#[derive(Default)]
-struct Inner {
     /// Caches textures using a unique id, which in practice is the hash of the
     /// row id of the tensor data (`tensor_data_row_id`).
-    ///
-    /// Any texture which wasn't accessed on the previous frame is ejected from the cache
-    /// during [`Self::begin_frame`].
-    texture_cache: HashMap<u64, GpuTexture2D>,
-
-    accessed_textures: HashSet<u64>,
-}
-
-impl Inner {
-    fn begin_frame(&mut self, _frame_index: u64) {
-        // Drop any textures that weren't accessed in the last frame
-        self.texture_cache
-            .retain(|k, _| self.accessed_textures.contains(k));
-        self.accessed_textures.clear();
-    }
+    texture_cache: FrameRetainedCache<u64, GpuTexture2D>,
 }
 
 impl TextureManager2D {
@@ -249,7 +227,7 @@ impl TextureManager2D {
             zeroed_texture_float,
             zeroed_texture_sint,
             zeroed_texture_uint,
-            inner: Default::default(),
+            texture_cache: Default::default(),
         }
     }
 
@@ -319,33 +297,22 @@ impl TextureManager2D {
         render_ctx: &RenderContext,
         try_create_texture_desc: impl FnOnce() -> Result<ImageDataDesc<'a>, Err>,
     ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
-        let mut inner = self.inner.lock();
-        let texture_handle = match inner.texture_cache.entry(key) {
-            std::collections::hash_map::Entry::Occupied(texture_handle) => {
-                texture_handle.get().clone() // already inserted
-            }
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                // Run potentially expensive texture creation code:
-                let tex_creation_desc = try_create_texture_desc()
-                    .map_err(|err| TextureManager2DError::DataCreation(err))?;
+        self.texture_cache.get_or_try_create_with(key, || {
+            // Run potentially expensive texture creation code:
+            let tex_creation_desc = try_create_texture_desc()
+                .map_err(|err| TextureManager2DError::DataCreation(err))?;
 
-                let alpha_channel_usage = tex_creation_desc.alpha_channel_usage;
-                let texture = tex_creation_desc.create_target_texture(
-                    render_ctx,
-                    wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
-                )?;
-                transfer_image_data_to_texture(render_ctx, tex_creation_desc, &texture)?;
-                entry
-                    .insert(GpuTexture2D {
-                        texture,
-                        alpha_channel_usage,
-                    })
-                    .clone()
-            }
-        };
-
-        inner.accessed_textures.insert(key);
-        Ok(texture_handle)
+            let alpha_channel_usage = tex_creation_desc.alpha_channel_usage;
+            let texture = tex_creation_desc.create_target_texture(
+                render_ctx,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            )?;
+            transfer_image_data_to_texture(render_ctx, tex_creation_desc, &texture)?;
+            Ok(GpuTexture2D {
+                texture,
+                alpha_channel_usage,
+            })
+        })
     }
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
@@ -374,7 +341,7 @@ impl TextureManager2D {
     }
 
     pub(crate) fn begin_frame(&self, _frame_index: u64) {
-        self.inner.lock().begin_frame(_frame_index);
+        self.texture_cache.begin_frame();
     }
 }
 

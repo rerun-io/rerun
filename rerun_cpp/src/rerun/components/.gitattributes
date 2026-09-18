@@ -60,6 +60,7 @@ mesh_face_rendering.cpp linguist-generated=true
 mesh_face_rendering.hpp linguist-generated=true
 name.hpp linguist-generated=true
 opacity.hpp linguist-generated=true
+optical_density.hpp linguist-generated=true
 pinhole_projection.hpp linguist-generated=true
 plane3d.hpp linguist-generated=true
 point_shading.cpp linguist-generated=true

@@ -59,6 +59,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`MeshFaceRendering`](components/mesh_face_rendering.md): Determines which faces of a mesh are rendered.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
+* [`OpticalDensity`](components/optical_density.md): Dimensionless natural-log optical depth.
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Plane3D`](components/plane3d.md): An infinite 3D plane represented by a unit normal vector and a distance.
 * [`PointShading`](components/point_shading.md): Defines how points are shaded.

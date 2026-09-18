@@ -4,6 +4,8 @@ use crate::texture_info::Texture3DBufferInfo;
 use crate::wgpu_resources::{GpuTexture, GpuTextureHandle, TextureDesc};
 use crate::{Label, RenderContext};
 
+use super::frame_retained_cache::FrameRetainedCache;
+
 /// Handle to a 3D texture resource.
 ///
 /// Like [`super::GpuTexture2D`], this is solely a more strongly typed regular gpu texture handle.
@@ -401,6 +403,29 @@ pub fn create_and_upload_texture_3d(
     let texture = data_desc.create_target_texture(ctx, wgpu::TextureUsages::TEXTURE_BINDING)?;
     transfer_texture_3d_data(ctx, data_desc, &texture)?;
     Ok(texture)
+}
+
+/// Cache for user-provided 3D textures.
+#[derive(Default)]
+pub struct TextureManager3D {
+    texture_cache: FrameRetainedCache<u64, GpuTexture3D>,
+}
+
+impl TextureManager3D {
+    /// Returns the cached texture for `key`, or creates and uploads it from `data_desc`.
+    pub fn get_or_create(
+        &self,
+        key: u64,
+        ctx: &RenderContext,
+        data_desc: &Texture3DDataDesc<'_>,
+    ) -> Result<GpuTexture3D, Texture3DDataError> {
+        self.texture_cache
+            .get_or_try_create_with(key, || create_and_upload_texture_3d(ctx, data_desc))
+    }
+
+    pub(crate) fn begin_frame(&self, _frame_index: u64) {
+        self.texture_cache.begin_frame();
+    }
 }
 
 #[cfg(test)]

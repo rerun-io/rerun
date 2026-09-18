@@ -23,6 +23,9 @@ This archetype and a [`archetypes.VoxelGridMap`](https://rerun.io/docs/reference
 therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` up to
 `[width - 1, height - 1, depth - 1]`.
 
+**WebGL limitation:** The viewer is not able to clip volumes against opaque scene geometry.
+Parts of a volume can therefore appear in front of objects that should hide them.
+
 ## Fields
 ### Required
 * `values`: [`TensorData`](../components/tensor_data.md)
@@ -34,8 +37,9 @@ therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` u
 * `translation`: [`Translation3D`](../components/translation3d.md)
 * `quaternion`: [`RotationQuat`](../components/rotation_quat.md)
 * `value_range`: [`ValueRange`](../components/value_range.md)
+* `gamma`: [`GammaCorrection`](../components/gamma_correction.md)
 * `colormap`: [`Colormap`](../components/colormap.md)
-* `opacity`: [`Opacity`](../components/opacity.md)
+* `optical_density`: [`OpticalDensity`](../components/optical_density.md)
 
 
 ## Can be shown in

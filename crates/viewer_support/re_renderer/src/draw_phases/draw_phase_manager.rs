@@ -7,6 +7,7 @@ use crate::renderer::{
     DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
 };
 use crate::renderers::Renderers;
+use crate::wgpu_resources::GpuBindGroup;
 use crate::{GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId};
 
 /// Draw data id within the [`DrawPhaseManager`].
@@ -202,7 +203,7 @@ impl DrawPhaseManager {
 
         // TODO(andreas): once we have traits/more dynamic interfaces for phases, they should own the sorting configuration.
         for phase in self.active_phases {
-            if phase == DrawPhase::Transparent || phase == DrawPhase::OutlineMaskNoDepth {
+            if phase.requires_back_to_front_sorting() {
                 Drawable::sort_for_transparent_phase(&mut self.drawables[phase as usize]);
             } else {
                 Drawable::sort_for_opaque_phase(
@@ -214,12 +215,16 @@ impl DrawPhaseManager {
     }
 
     /// Draws all drawables for a given phase.
+    ///
+    /// `phase_bind_group`, when present, supplies phase resources and is restored before every renderer invocation.
+    /// See the [bind group convention](crate::renderer::Renderer#bind-group-convention) for binding ownership.
     // TODO(andreas): In the future this should also dispatch to specific phase setup & teardown which is right now hardcoded in `ViewBuilder`.
     pub fn draw(
         &self,
         renderers: &Renderers,
         gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
+        phase_bind_group: Option<&GpuBindGroup>,
         pass: &mut wgpu::RenderPass<'_>,
     ) {
         re_tracing::profile_function!(format!("draw({phase:?})"));
@@ -257,6 +262,9 @@ impl DrawPhaseManager {
                 continue;
             };
 
+            if let Some(bind_group) = phase_bind_group {
+                pass.set_bind_group(1, bind_group, &[]);
+            }
             let draw_result =
                 renderer.run_draw_instructions(gpu_resources, phase, pass, &draw_instructions);
 
@@ -267,9 +275,6 @@ impl DrawPhaseManager {
     }
 
     /// Returns the drawables for the given phase.
-    ///
-    /// Used only for testing.
-    #[cfg(test)]
     pub fn drawables_for_phase(&self, phase: DrawPhase) -> &[Drawable] {
         &self.drawables[phase as usize]
     }

@@ -26,3 +26,6 @@ Float32
  * 🦀 [Rust API docs for `GammaCorrection`](https://docs.rs/rerun/latest/rerun/components/struct.GammaCorrection.html)
 
 
+## Used by
+
+* [`Volume3D`](../archetypes/volume3d.md)

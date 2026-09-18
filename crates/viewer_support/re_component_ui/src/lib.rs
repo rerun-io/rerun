@@ -50,7 +50,7 @@ use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, CellSize, Color, DepthMeter, DrawOrder, FillMode,
     FillRatio, GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode,
     IsKeyframe, Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name,
-    Opacity, PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels,
+    Opacity, OpticalDensity, PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels,
     SphericalHarmonicsDegree, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
     ValueRange, Vector3D, VideoCodec, Visible,
 };
@@ -97,6 +97,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Length>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<LinearSpeed>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
+    registry.add_singleline_edit_or_view::<OpticalDensity>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
 

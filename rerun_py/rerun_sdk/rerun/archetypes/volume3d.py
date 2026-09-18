@@ -48,6 +48,9 @@ class Volume3D(Archetype, VisualizableArchetype):
     therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` up to
     `[width - 1, height - 1, depth - 1]`.
 
+    **WebGL limitation:** The viewer is not able to clip volumes against opaque scene geometry.
+    Parts of a volume can therefore appear in front of objects that should hide them.
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
     Example
@@ -92,8 +95,9 @@ class Volume3D(Archetype, VisualizableArchetype):
         translation: encodings.Vec3DLike | None = None,
         quaternion: encodings.QuaternionLike | None = None,
         value_range: encodings.Range1DLike | None = None,
+        gamma: encodings.Float32Like | None = None,
         colormap: components.ColormapLike | None = None,
-        opacity: encodings.Float32Like | None = None,
+        optical_density: encodings.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Volume3D archetype.
@@ -128,19 +132,26 @@ class Volume3D(Archetype, VisualizableArchetype):
             The rotation is around the minimum corner of voxel `[0, 0, 0]`, and is applied before the
             translation.
         value_range:
-            How to map `values` to opacity and color.
+            The inclusive range of voxel values to render.
 
-            If not specified, the range is estimated from the data.
+            Values outside the range are ignored.
+
+            If not specified, the range is automatically estimated from the data.
+        gamma:
+            Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+
+            The corrected density is `normalized_value ^ gamma`.
+            Must be finite and positive.
+            Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
         colormap:
-            Colormap applied to the values after mapping them through `value_range`.
+            Colormap applied to the values after mapping them through `value_range` and gamma correction.
 
             Defaults to Turbo.
-        opacity:
-            Overall opacity of the volume.
+        optical_density:
+            Dimensionless optical depth for the volume.
 
-            The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-            this, i.e. a linear ramp: low values are transparent, high values are opaque.
-            Lowering this makes the interior of the volume visible.
+            For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+            Zero is transparent, one is about 63% opaque, and larger values are denser.
 
             Defaults to 1.0.
 
@@ -154,8 +165,9 @@ class Volume3D(Archetype, VisualizableArchetype):
                 translation=translation,
                 quaternion=quaternion,
                 value_range=value_range,
+                gamma=gamma,
                 colormap=colormap,
-                opacity=opacity,
+                optical_density=optical_density,
             )
             return
         self.__attrs_clear__()
@@ -168,8 +180,9 @@ class Volume3D(Archetype, VisualizableArchetype):
             translation=None,
             quaternion=None,
             value_range=None,
+            gamma=None,
             colormap=None,
-            opacity=None,
+            optical_density=None,
         )
 
     @classmethod
@@ -189,8 +202,9 @@ class Volume3D(Archetype, VisualizableArchetype):
         translation: encodings.Vec3DLike | None = None,
         quaternion: encodings.QuaternionLike | None = None,
         value_range: encodings.Range1DLike | None = None,
+        gamma: encodings.Float32Like | None = None,
         colormap: components.ColormapLike | None = None,
-        opacity: encodings.Float32Like | None = None,
+        optical_density: encodings.Float32Like | None = None,
     ) -> Volume3D:
         """
         Update only some specific fields of a `Volume3D`.
@@ -227,19 +241,26 @@ class Volume3D(Archetype, VisualizableArchetype):
             The rotation is around the minimum corner of voxel `[0, 0, 0]`, and is applied before the
             translation.
         value_range:
-            How to map `values` to opacity and color.
+            The inclusive range of voxel values to render.
 
-            If not specified, the range is estimated from the data.
+            Values outside the range are ignored.
+
+            If not specified, the range is automatically estimated from the data.
+        gamma:
+            Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+
+            The corrected density is `normalized_value ^ gamma`.
+            Must be finite and positive.
+            Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
         colormap:
-            Colormap applied to the values after mapping them through `value_range`.
+            Colormap applied to the values after mapping them through `value_range` and gamma correction.
 
             Defaults to Turbo.
-        opacity:
-            Overall opacity of the volume.
+        optical_density:
+            Dimensionless optical depth for the volume.
 
-            The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-            this, i.e. a linear ramp: low values are transparent, high values are opaque.
-            Lowering this makes the interior of the volume visible.
+            For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+            Zero is transparent, one is about 63% opaque, and larger values are denser.
 
             Defaults to 1.0.
 
@@ -253,8 +274,9 @@ class Volume3D(Archetype, VisualizableArchetype):
                 "translation": translation,
                 "quaternion": quaternion,
                 "value_range": value_range,
+                "gamma": gamma,
                 "colormap": colormap,
-                "opacity": opacity,
+                "optical_density": optical_density,
             }
 
             if clear_unset:
@@ -312,6 +334,14 @@ class Volume3D(Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_gamma() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Volume3D:gamma",
+            archetype=Volume3D.NAME,
+            component_type=components.GammaCorrectionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_colormap() -> ComponentDescriptor:
         return ComponentDescriptor(
             "Volume3D:colormap",
@@ -320,11 +350,11 @@ class Volume3D(Archetype, VisualizableArchetype):
         )
 
     @staticmethod
-    def descriptor_opacity() -> ComponentDescriptor:
+    def descriptor_optical_density() -> ComponentDescriptor:
         return ComponentDescriptor(
-            "Volume3D:opacity",
+            "Volume3D:optical_density",
             archetype=Volume3D.NAME,
-            component_type=components.OpacityBatch._COMPONENT_TYPE,
+            component_type=components.OpticalDensityBatch._COMPONENT_TYPE,
         )
 
     @classmethod
@@ -336,8 +366,9 @@ class Volume3D(Archetype, VisualizableArchetype):
         translation: encodings.Vec3DArrayLike | None = None,
         quaternion: encodings.QuaternionArrayLike | None = None,
         value_range: encodings.Range1DArrayLike | None = None,
+        gamma: encodings.Float32ArrayLike | None = None,
         colormap: components.ColormapArrayLike | None = None,
-        opacity: encodings.Float32ArrayLike | None = None,
+        optical_density: encodings.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -377,19 +408,26 @@ class Volume3D(Archetype, VisualizableArchetype):
             The rotation is around the minimum corner of voxel `[0, 0, 0]`, and is applied before the
             translation.
         value_range:
-            How to map `values` to opacity and color.
+            The inclusive range of voxel values to render.
 
-            If not specified, the range is estimated from the data.
+            Values outside the range are ignored.
+
+            If not specified, the range is automatically estimated from the data.
+        gamma:
+            Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+
+            The corrected density is `normalized_value ^ gamma`.
+            Must be finite and positive.
+            Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
         colormap:
-            Colormap applied to the values after mapping them through `value_range`.
+            Colormap applied to the values after mapping them through `value_range` and gamma correction.
 
             Defaults to Turbo.
-        opacity:
-            Overall opacity of the volume.
+        optical_density:
+            Dimensionless optical depth for the volume.
 
-            The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-            this, i.e. a linear ramp: low values are transparent, high values are opaque.
-            Lowering this makes the interior of the volume visible.
+            For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+            Zero is transparent, one is about 63% opaque, and larger values are denser.
 
             Defaults to 1.0.
 
@@ -403,8 +441,9 @@ class Volume3D(Archetype, VisualizableArchetype):
                 translation=translation,
                 quaternion=quaternion,
                 value_range=value_range,
+                gamma=gamma,
                 colormap=colormap,
-                opacity=opacity,
+                optical_density=optical_density,
             )
 
         batches = inst.as_component_batches()
@@ -417,8 +456,9 @@ class Volume3D(Archetype, VisualizableArchetype):
             "Volume3D:translation": translation,
             "Volume3D:quaternion": quaternion,
             "Volume3D:value_range": value_range,
+            "Volume3D:gamma": gamma,
             "Volume3D:colormap": colormap,
-            "Volume3D:opacity": opacity,
+            "Volume3D:optical_density": optical_density,
         }
         columns = []
 
@@ -513,9 +553,24 @@ class Volume3D(Archetype, VisualizableArchetype):
         default=None,
         converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
-    # How to map `values` to opacity and color.
+    # The inclusive range of voxel values to render.
     #
-    # If not specified, the range is estimated from the data.
+    # Values outside the range are ignored.
+    #
+    # If not specified, the range is automatically estimated from the data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    gamma: components.GammaCorrectionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.GammaCorrectionBatch._converter,  # type: ignore[misc]
+    )
+    # Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+    #
+    # The corrected density is `normalized_value ^ gamma`.
+    # Must be finite and positive.
+    # Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -524,22 +579,21 @@ class Volume3D(Archetype, VisualizableArchetype):
         default=None,
         converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
-    # Colormap applied to the values after mapping them through `value_range`.
+    # Colormap applied to the values after mapping them through `value_range` and gamma correction.
     #
     # Defaults to Turbo.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    opacity: components.OpacityBatch | None = field(
+    optical_density: components.OpticalDensityBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.OpacityBatch._converter,  # type: ignore[misc]
+        converter=components.OpticalDensityBatch._converter,  # type: ignore[misc]
     )
-    # Overall opacity of the volume.
+    # Dimensionless optical depth for the volume.
     #
-    # The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-    # this, i.e. a linear ramp: low values are transparent, high values are opaque.
-    # Lowering this makes the interior of the volume visible.
+    # For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+    # Zero is transparent, one is about 63% opaque, and larger values are denser.
     #
     # Defaults to 1.0.
     #

@@ -1,46 +1,48 @@
 use ahash::{HashMap, HashSet};
-use itertools::Either;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_log_types::hash::Hash64;
-use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::encodings::TensorData;
+use re_sdk_types::{ComponentIdentifier, RowId};
 
 use crate::{Cache, CacheEntryAccess, TensorStats};
 
 /// Caches tensor stats.
-///
-/// Use [`re_types_core::RowId`] as cache key when available.
 #[derive(Default)]
-pub struct TensorStatsCache(HashMap<Hash64, TensorStats>);
+pub struct TensorStatsCache(HashMap<(RowId, ComponentIdentifier), TensorStats>);
 
 pub struct TensorStatsAccessor<'a> {
-    /// The `RowId` of the `TensorData` may be used as a cache key.
     /// NOTE: `TensorData` is never batched (they are mono-components),
     /// so we don't need the instance id here.
-    pub tensor_cache_key: Hash64,
+    pub row_id: RowId,
+
+    pub component: ComponentIdentifier,
 
     /// The tensor data over which we're computing stats. This is needed for the cache miss case.
     pub tensor: &'a TensorData,
 }
 
 impl TensorStatsCache {
-    pub fn entry(&mut self, tensor_cache_key: Hash64, tensor: &TensorData) -> TensorStats {
+    pub fn entry(
+        &mut self,
+        row_id: RowId,
+        component: ComponentIdentifier,
+        tensor: &TensorData,
+    ) -> TensorStats {
         *self
             .0
-            .entry(tensor_cache_key)
+            .entry((row_id, component))
             .or_insert_with(|| TensorStats::from_tensor(tensor))
     }
 }
 
 impl<'a> CacheEntryAccess<TensorStatsAccessor<'a>, TensorStats> for TensorStatsCache {
     fn read(&self, key: &TensorStatsAccessor<'a>) -> Option<TensorStats> {
-        self.0.get(&key.tensor_cache_key).copied()
+        self.0.get(&(key.row_id, key.component)).copied()
     }
 
     fn compute(&mut self, key: &TensorStatsAccessor<'a>) -> TensorStats {
-        self.entry(key.tensor_cache_key, key.tensor)
+        self.entry(key.row_id, key.component, key.tensor)
     }
 }
 
@@ -56,24 +58,14 @@ impl Cache for TensorStatsCache {
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        let cache_keys: HashSet<Hash64> = events
+        let deleted_rows: HashSet<RowId> = events
             .iter()
             .filter_map(|e| e.to_deletion())
-            .flat_map(|del| {
-                if del
-                    .chunk
-                    .components()
-                    .contains_component(Tensor::descriptor_data().component)
-                {
-                    Either::Left(del.chunk.row_ids().map(Hash64::hash))
-                } else {
-                    Either::Right(std::iter::empty())
-                }
-            })
+            .flat_map(|del| del.chunk.row_ids())
             .collect();
 
         self.0
-            .retain(|cache_key, _per_key| !cache_keys.contains(cache_key));
+            .retain(|(row_id, _component), _stats| !deleted_rows.contains(row_id));
     }
 }
 

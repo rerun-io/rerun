@@ -9,6 +9,7 @@ mod plane_clustering;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
+mod volume;
 mod voxel_grid;
 mod world_grid;
 
@@ -28,6 +29,7 @@ pub use rectangles::{
     TextureAlpha, TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 pub use test_triangle::TestTriangleDrawData;
+pub use volume::{VolumeDrawData, VolumeOptions, VolumeRenderer};
 pub use voxel_grid::{
     VoxelGridDrawData, VoxelGridDrawDataError, VoxelGridInstance, VoxelGridOptions,
 };
@@ -169,12 +171,25 @@ pub struct DrawInstruction<'a, D> {
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
 /// for each of its [`Renderer::draw`] invocations.
 /// Any data that might be different over multiple [`Renderer::draw`] invocations is stored in [`DrawData`].
+///
+/// # Bind group convention
+///
+/// - Group 0 contains caller-provided view globals and must not be overwritten by renderers.
+/// - Group 1 contains phase data for renderers that consume it; otherwise it is renderer-owned.
+/// - Groups 2 and 3 are renderer-owned.
+///
+/// Renderers consuming phase data must place their own bindings at group 2 and above.
+///
+/// [`crate::DrawPhaseManager::draw`] restores phase bindings before every renderer invocation.
+/// Renderers must bind all their own groups on every invocation, as other renderers may have overwritten them.
 pub trait Renderer {
     type RendererDrawData: DrawData + 'static;
 
     fn create_renderer(ctx: &RenderContext) -> Self;
 
-    /// Called once per phase if there are any drawables for that phase.
+    /// Called for each contiguous run of this renderer's drawables in a phase.
+    ///
+    /// See the [bind group convention](Renderer#bind-group-convention) for binding ownership and obligations.
     ///
     /// For each draw data reference, there's at most one [`DrawInstruction`].
     fn draw(
@@ -240,6 +255,7 @@ pub fn register_renderers(renderers: &mut crate::Renderers) {
     renderers.register::<point_cloud::PointCloudRenderer>();
     renderers.register::<rectangles::RectangleRenderer>();
     renderers.register::<test_triangle::TestTriangle>();
+    renderers.register::<volume::VolumeRenderer>();
     renderers.register::<voxel_grid::VoxelGridRenderer>();
     renderers.register::<world_grid::WorldGridRenderer>();
 }

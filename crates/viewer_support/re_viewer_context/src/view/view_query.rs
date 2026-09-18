@@ -259,6 +259,17 @@ impl VisualizerInstruction {
         }
     }
 
+    /// Returns the explicitly mapped source component, or the target for other source kinds or no mapping.
+    /// Selectors are not included in the returned identifier.
+    pub fn source_component(&self, target: ComponentIdentifier) -> ComponentIdentifier {
+        match self.component_mappings.get(&target) {
+            Some(VisualizerComponentSource::SourceComponent {
+                source_component, ..
+            }) => *source_component,
+            _ => target,
+        }
+    }
+
     pub fn override_path_for(
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,

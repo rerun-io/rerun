@@ -46,6 +46,7 @@ mesh_face_rendering.rs linguist-generated=true
 mod.rs linguist-generated=true
 name.rs linguist-generated=true
 opacity.rs linguist-generated=true
+optical_density.rs linguist-generated=true
 pinhole_projection.rs linguist-generated=true
 plane3d.rs linguist-generated=true
 point_shading.rs linguist-generated=true

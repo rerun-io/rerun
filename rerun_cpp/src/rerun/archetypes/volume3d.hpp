@@ -7,7 +7,8 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/colormap.hpp"
-#include "../components/opacity.hpp"
+#include "../components/gamma_correction.hpp"
+#include "../components/optical_density.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/translation3d.hpp"
@@ -39,6 +40,9 @@ namespace rerun::archetypes {
     /// This archetype and a `archetypes::VoxelGridMap` with the same `voxel_size` and pose
     /// therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` up to
     /// `[width - 1, height - 1, depth - 1]`.
+    ///
+    /// **WebGL limitation:** The viewer is not able to clip volumes against opaque scene geometry.
+    /// Parts of a volume can therefore appear in front of objects that should hide them.
     ///
     /// ## Example
     ///
@@ -119,24 +123,32 @@ namespace rerun::archetypes {
         /// translation.
         std::optional<ComponentBatch> quaternion;
 
-        /// How to map `values` to opacity and color.
+        /// The inclusive range of voxel values to render.
         ///
-        /// If not specified, the range is estimated from the data.
+        /// Values outside the range are ignored.
+        ///
+        /// If not specified, the range is automatically estimated from the data.
         std::optional<ComponentBatch> value_range;
 
-        /// Colormap applied to the values after mapping them through `value_range`.
+        /// Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+        ///
+        /// The corrected density is `normalized_value ^ gamma`.
+        /// Must be finite and positive.
+        /// Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
+        std::optional<ComponentBatch> gamma;
+
+        /// Colormap applied to the values after mapping them through `value_range` and gamma correction.
         ///
         /// Defaults to Turbo.
         std::optional<ComponentBatch> colormap;
 
-        /// Overall opacity of the volume.
+        /// Dimensionless optical depth for the volume.
         ///
-        /// The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-        /// this, i.e. a linear ramp: low values are transparent, high values are opaque.
-        /// Lowering this makes the interior of the volume visible.
+        /// For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+        /// Zero is transparent, one is about 63% opaque, and larger values are denser.
         ///
         /// Defaults to 1.0.
-        std::optional<ComponentBatch> opacity;
+        std::optional<ComponentBatch> optical_density;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -166,13 +178,19 @@ namespace rerun::archetypes {
             ArchetypeName, "Volume3D:value_range",
             Loggable<rerun::components::ValueRange>::ComponentType
         );
+        /// `ComponentDescriptor` for the `gamma` field.
+        static constexpr auto Descriptor_gamma = ComponentDescriptor(
+            ArchetypeName, "Volume3D:gamma",
+            Loggable<rerun::components::GammaCorrection>::ComponentType
+        );
         /// `ComponentDescriptor` for the `colormap` field.
         static constexpr auto Descriptor_colormap = ComponentDescriptor(
             ArchetypeName, "Volume3D:colormap", Loggable<rerun::components::Colormap>::ComponentType
         );
-        /// `ComponentDescriptor` for the `opacity` field.
-        static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "Volume3D:opacity", Loggable<rerun::components::Opacity>::ComponentType
+        /// `ComponentDescriptor` for the `optical_density` field.
+        static constexpr auto Descriptor_optical_density = ComponentDescriptor(
+            ArchetypeName, "Volume3D:optical_density",
+            Loggable<rerun::components::OpticalDensity>::ComponentType
         );
 
       public: // START of extensions from volume3d_ext.cpp:
@@ -294,9 +312,11 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// How to map `values` to opacity and color.
+        /// The inclusive range of voxel values to render.
         ///
-        /// If not specified, the range is estimated from the data.
+        /// Values outside the range are ignored.
+        ///
+        /// If not specified, the range is automatically estimated from the data.
         Volume3D with_value_range(const rerun::components::ValueRange& _value_range) && {
             value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
                               .value_or_throw();
@@ -314,7 +334,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Colormap applied to the values after mapping them through `value_range`.
+        /// Gamma correction applied to normalized voxel values before colormapping and opacity calculation.
+        ///
+        /// The corrected density is `normalized_value ^ gamma`.
+        /// Must be finite and positive.
+        /// Defaults to 3.0, suppressing low-density material and emphasizing dense structures.
+        Volume3D with_gamma(const rerun::components::GammaCorrection& _gamma) && {
+            gamma = ComponentBatch::from_loggable(_gamma, Descriptor_gamma).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `gamma` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_gamma` should
+        /// be used when logging a single row's worth of data.
+        Volume3D with_many_gamma(const Collection<rerun::components::GammaCorrection>& _gamma) && {
+            gamma = ComponentBatch::from_loggable(_gamma, Descriptor_gamma).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Colormap applied to the values after mapping them through `value_range` and gamma correction.
         ///
         /// Defaults to Turbo.
         Volume3D with_colormap(const rerun::components::Colormap& _colormap) && {
@@ -333,24 +372,30 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Overall opacity of the volume.
+        /// Dimensionless optical depth for the volume.
         ///
-        /// The opacity of a single voxel is its value (normalized through `value_range`) scaled by
-        /// this, i.e. a linear ramp: low values are transparent, high values are opaque.
-        /// Lowering this makes the interior of the volume visible.
+        /// For a uniform volume at the upper bound of `value_range`, this is the optical depth across one full volume-local axis.
+        /// Zero is transparent, one is about 63% opaque, and larger values are denser.
         ///
         /// Defaults to 1.0.
-        Volume3D with_opacity(const rerun::components::Opacity& _opacity) && {
-            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+        Volume3D with_optical_density(const rerun::components::OpticalDensity& _optical_density
+        ) && {
+            optical_density =
+                ComponentBatch::from_loggable(_optical_density, Descriptor_optical_density)
+                    .value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `opacity` in a single component batch.
+        /// This method makes it possible to pack multiple `optical_density` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
+        /// This only makes sense when used in conjunction with `columns`. `with_optical_density` should
         /// be used when logging a single row's worth of data.
-        Volume3D with_many_opacity(const Collection<rerun::components::Opacity>& _opacity) && {
-            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+        Volume3D with_many_optical_density(
+            const Collection<rerun::components::OpticalDensity>& _optical_density
+        ) && {
+            optical_density =
+                ComponentBatch::from_loggable(_optical_density, Descriptor_optical_density)
+                    .value_or_throw();
             return std::move(*this);
         }
 

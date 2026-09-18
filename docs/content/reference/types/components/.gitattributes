@@ -46,6 +46,7 @@ media_type.md linguist-generated=true
 mesh_face_rendering.md linguist-generated=true
 name.md linguist-generated=true
 opacity.md linguist-generated=true
+optical_density.md linguist-generated=true
 pinhole_projection.md linguist-generated=true
 plane3d.md linguist-generated=true
 point_shading.md linguist-generated=true

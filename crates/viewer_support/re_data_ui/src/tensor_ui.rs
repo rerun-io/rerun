@@ -1,8 +1,7 @@
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
 use re_sdk_types::encodings::TensorData;
-use re_sdk_types::{ComponentDescriptor, RowId};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{StoreViewContext, TensorStats, TensorStatsCache, UiLayout};
 
@@ -39,13 +38,18 @@ impl EntityDataUi for re_sdk_types::components::TensorData {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _entity_path: &EntityPath,
-        _component_descriptor: &ComponentDescriptor,
+        component_descriptor: &ComponentDescriptor,
         row_id: Option<RowId>,
     ) {
         re_tracing::profile_function!();
-        // RowId is enough for cache keying the tensor stats right now since you can't have more than one per row.
-        let tensor_cache_key = row_id.map_or(Hash64::ZERO, Hash64::hash);
-        tensor_ui(ctx, ui, ui_layout, tensor_cache_key, &self.0);
+        tensor_ui(
+            ctx,
+            ui,
+            ui_layout,
+            row_id,
+            component_descriptor.component,
+            &self.0,
+        );
     }
 }
 
@@ -53,12 +57,17 @@ pub fn tensor_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    tensor_cache_key: Hash64,
+    row_id: Option<RowId>,
+    component: ComponentIdentifier,
     tensor: &TensorData,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = ctx.memoizer(|c: &mut TensorStatsCache| c.entry(tensor_cache_key, tensor));
+    let tensor_stats = if let Some(row_id) = row_id {
+        ctx.memoizer(|c: &mut TensorStatsCache| c.entry(row_id, component, tensor))
+    } else {
+        TensorStats::from_tensor(tensor)
+    };
 
     if ui_layout.is_single_line() {
         ui.horizontal(|ui| {

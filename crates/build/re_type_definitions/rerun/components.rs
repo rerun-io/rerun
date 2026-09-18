@@ -90,6 +90,8 @@ mod mesh_face_rendering;
 mod name;
 #[path = "components/opacity.def.rs"]
 mod opacity;
+#[path = "components/optical_density.def.rs"]
+mod optical_density;
 #[path = "components/pinhole_projection.def.rs"]
 mod pinhole_projection;
 #[path = "components/plane3d.def.rs"]
@@ -218,6 +220,7 @@ pub use self::media_type::*;
 pub use self::mesh_face_rendering::*;
 pub use self::name::*;
 pub use self::opacity::*;
+pub use self::optical_density::*;
 pub use self::pinhole_projection::*;
 pub use self::plane3d::*;
 pub use self::point_shading::*;

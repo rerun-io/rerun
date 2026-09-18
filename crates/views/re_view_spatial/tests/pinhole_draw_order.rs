@@ -264,6 +264,6 @@ fn run_view_ui_and_save_snapshot(
         );
     });
 
-    harness.run_steps(10);
+    harness.run();
     harness.snapshot(name);
 }

@@ -46,7 +46,7 @@ fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, si
                 &Position3D::new(1.0, 1.0, 1.0),
             );
     });
-    harness.run_steps(10);
+    harness.run();
 
     harness.snapshot("pinhole_camera");
 }

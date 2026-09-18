@@ -17,6 +17,8 @@ import pydicom as dicom
 import requests
 
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
+from rerun.blueprint.encodings import ComponentSourceKind, VisualizerComponentMapping
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -25,9 +27,10 @@ DESCRIPTION = """
 # Dicom MRI
 This example visualizes an MRI scan using Rerun.
 
-The visualization of the data consists of just the following line
+The same logged `Volume3D:values` component is shown as a sliceable tensor and as a raymarched 3D volume:
 ```python
-rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
+values = rr.TensorData(array=voxels_volume_f16, dim_names=["up", "back", "right"])
+rr.log("volume", rr.Volume3D(values))
 ```
 
 The full source code for this example is available
@@ -57,12 +60,24 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
-    voxels_volume, _ = extract_voxel_data(dicom_files)
+    voxels_volume, ijk_to_xyz = extract_voxel_data(dicom_files)
 
-    # the data is i16, but in range [0, 536].
-    voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
+    # Convert source [i, j, k] axes to Volume3D's [z, y, x] storage order.
+    voxels_volume_f16 = voxels_volume.T.astype(np.float16)
 
-    rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
+    values = rr.TensorData(array=voxels_volume_f16, dim_names=["up", "back", "right"])
+    rr.log(
+        "volume",
+        rr.Transform3D(translation=ijk_to_xyz[:3, 3], mat3x3=ijk_to_xyz[:3, :3]),
+        static=True,
+    )
+    rr.log(
+        "volume",
+        rr.Volume3D(
+            values,
+            optical_density=5.0,
+        ),
+    )
 
 
 def ensure_dataset_downloaded() -> Iterable[Path]:
@@ -83,6 +98,27 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
     rr.script_setup(args, "rerun_example_dicom_mri")
+    tensor_visualizer = rr.Tensor.from_fields().visualizer(
+        mappings=[
+            VisualizerComponentMapping(
+                target="Tensor:data",
+                source_kind=ComponentSourceKind.SourceComponent,
+                source_component="Volume3D:values",
+            )
+        ]
+    )
+    rr.send_blueprint(
+        rrb.Horizontal(
+            rrb.Vertical(
+                rrb.TextDocumentView(name="Description", origin="/description"),
+                rrb.TensorView(
+                    name="MRI slices",
+                    overrides={"/volume": tensor_visualizer},
+                ),
+            ),
+            rrb.Spatial3DView(name="MRI volume"),
+        )
+    )
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
     rr.script_teardown(args)

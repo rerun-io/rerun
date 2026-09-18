@@ -106,7 +106,7 @@ fn test_grid_map_texel_accuracy() {
             &Enabled::from(true),
         );
     });
-    harness.run_steps(10);
+    harness.run();
 
     harness.snapshot("grid_map_texel_accuracy");
 }
@@ -184,6 +184,6 @@ fn run_grid_map_colormap_snapshot(name: &str, colormap: Colormap) {
         );
     });
 
-    harness.run_steps(10);
+    harness.run();
     harness.snapshot(name);
 }

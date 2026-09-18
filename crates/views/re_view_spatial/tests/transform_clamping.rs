@@ -363,7 +363,7 @@ fn run_view_ui_and_save_snapshot(
                     &Position3D::new(0.0, 5.0, 0.0),
                 );
             });
-            harness.run_steps(10);
+            harness.run();
 
             harness.snapshot(&name);
             snapshot_results.extend_harness(&mut harness);
@@ -398,7 +398,7 @@ fn run_view_ui_and_save_snapshot(
                 &Position3D::new(0.0, 0.0, 0.0),
             );
         });
-        harness.run_steps(10);
+        harness.run();
 
         harness.snapshot(&name);
         snapshot_results.extend_harness(&mut harness);
@@ -433,7 +433,7 @@ fn run_view_ui_and_save_snapshot(
                 &Position3D::new(2.0, 2.0, 2.0),
             );
         });
-        harness.run_steps(10);
+        harness.run();
 
         harness.snapshot(&name);
         snapshot_results.extend_harness(&mut harness);
