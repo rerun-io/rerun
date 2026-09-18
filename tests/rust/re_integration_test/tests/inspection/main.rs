@@ -4,4 +4,5 @@ mod analytics;
 mod datasets;
 #[cfg(feature = "browser")]
 mod exports_browser;
+mod internal_catalog;
 mod navigation;

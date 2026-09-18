@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use re_redap_client::{ConnectionHandle, ConnectionRegistryHandle};
@@ -47,18 +48,24 @@ impl CatalogHandle {
         }
     }
 
+    /// Whether this is the Viewer-owned internal catalog.
+    pub fn is_internal(&self) -> bool {
+        matches!(self, Self::Internal { .. })
+    }
+
     /// Makes `file` available to the catalog and returns its credential-free URL.
     ///
     /// On native, the internal catalog reads the file in place instead of copying it.
     pub async fn write_file(
         &self,
+        fingerprint: re_log_encoding::RrdFingerprint,
         #[cfg(not(target_arch = "wasm32"))] file: std::path::PathBuf,
         #[cfg(target_arch = "wasm32")] file: web_sys::File,
     ) -> anyhow::Result<url::Url> {
         cfg_select! {
             target_arch = "wasm32" => {
                 let source = re_web::fs::File::from(file.clone());
-                let key = object_key(&source, &file.name()).await?;
+                let key = object_key(fingerprint)?;
                 match self {
                     Self::Internal { storage_dir, .. } => {
                         write_to_opfs(storage_dir, key, file).await
@@ -99,7 +106,7 @@ impl CatalogHandle {
                                 file.display()
                             )
                         })?;
-                        let key = object_key(&source, &file.to_string_lossy()).await?;
+                        let key = object_key(fingerprint)?;
                         connection.write_object(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
                                 "failed to upload file to {}: {err}",
@@ -136,10 +143,7 @@ impl CatalogHandle {
 /// The key under which a catalog stores its copy of an RRD.
 ///
 /// Derived from the RRD fingerprint, so re-opening the same file addresses the existing object.
-async fn object_key(source: &impl re_async::AsyncReadAt, name: &str) -> anyhow::Result<ObjectKey> {
-    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(source)
-        .await
-        .with_context(|| format!("failed to fingerprint RRD\nFile path: {name}"))?;
+fn object_key(fingerprint: re_log_encoding::RrdFingerprint) -> anyhow::Result<ObjectKey> {
     let fingerprint = re_chunk_index::sha256_to_hex(fingerprint.as_bytes());
     Ok(ObjectKey::try_new(format!(
         "uploads/{fingerprint}/recording.rrd"
