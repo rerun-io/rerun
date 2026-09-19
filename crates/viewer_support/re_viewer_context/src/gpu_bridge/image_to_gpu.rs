@@ -225,12 +225,13 @@ pub fn required_shader_decode(
 ) -> Option<ShaderDecoding> {
     let color_model = image_format.color_model();
 
-    if image_format.pixel_format.is_none() && color_model == ColorModel::BGR
+    if (image_format.pixel_format.is_none() && color_model == ColorModel::BGR)
         || color_model == ColorModel::BGRA
     {
-        // U8 can be converted to RGBA without the shader's help since there's a format for it.
+        // U8 BGR is normalized by the image-data conversion pipeline before consumers see it.
+        // U8 BGRA can use the native BGRA texture format on capable devices.
         if image_format.datatype() == ChannelDatatype::U8
-            && device_caps.tier.support_bgra_textures()
+            && (color_model == ColorModel::BGR || device_caps.tier.support_bgra_textures())
         {
             None
         } else {
@@ -245,7 +246,7 @@ pub fn required_shader_decode(
 ///
 /// The resulting texture has requirements as describe by [`required_shader_decode`].
 ///
-/// TODO(andreas): The consumer needs to be aware of bgr conversions. Other conversions are already taken care of upon upload.
+/// TODO(andreas): The consumer still needs to be aware of non-U8 BGR/BGRA conversions. Other conversions are already taken care of upon upload.
 pub fn texture_creation_desc_from_color_image<'a>(
     device_caps: &DeviceCaps,
     image: &'a ImageInfo,
@@ -253,7 +254,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(#10648): All image data ingestion conversions should all be handled by re_renderer!
+    // TODO(#10648): Move the remaining non-U8 image ingestion conversions into re_renderer.
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);
@@ -334,40 +335,20 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
-                pad_rgb_to_rgba(&image.buffer, 0).into(),
-                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::Rgb8,
             ),
             (ColorModel::RGBA, ChannelDatatype::U8) => (
                 cast_slice_to_cow(&image.buffer),
                 SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
 
-            // Make use of wgpu's BGR(A)8 formats if possible.
-            //
-            // From the pov of our on-the-fly decoding textured rect shader this is just a strange special case
-            // given that it already has to deal with other BGR(A) formats.
-            //
-            // However, we have other places where we don't have the luxury of having a shader that can do the decoding for us.
-            // In those cases we'd like to support as many formats as possible without decoding.
-            //
-            // (in some hopefully not too far future, re_renderer will have an internal conversion pipeline
-            // that injects on-the-fly texture conversion from source formats before the consumer of a given texture is run
-            // and caches the result alongside with the source data)
-            //
-            // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
-            (ColorModel::BGR, ChannelDatatype::U8) => {
-                let padded_data = pad_rgb_to_rgba(&image.buffer, 0).into();
-                let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
-                {
-                    TextureFormat::Rgba8Unorm
-                } else {
-                    TextureFormat::Bgra8Unorm
-                };
-                (
-                    padded_data,
-                    SourceImageDataFormat::WgpuCompatible(texture_format),
-                )
-            }
+            // Three-channel U8 BGR is normalized by re_renderer's upload conversion.
+            (ColorModel::BGR, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::Bgr8,
+            ),
+            // BGRA is already four bytes per pixel, so keep the native format where supported.
             (ColorModel::BGRA, ChannelDatatype::U8) => {
                 let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
                 {

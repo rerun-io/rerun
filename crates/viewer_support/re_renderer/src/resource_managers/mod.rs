@@ -8,6 +8,7 @@
 
 mod frame_retained_cache;
 mod image_data_to_texture;
+mod rgb8_converter;
 mod texture_3d;
 mod texture_manager;
 mod yuv_converter;
@@ -25,5 +26,6 @@ pub use texture_manager::{
 pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
 
 pub fn register_renderers(renderers: &mut crate::Renderers) {
+    renderers.register::<rgb8_converter::Rgb8FormatConverter>();
     renderers.register::<yuv_converter::YuvFormatConverter>();
 }
