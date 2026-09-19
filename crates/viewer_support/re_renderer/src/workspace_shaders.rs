@@ -26,6 +26,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/conversions/rgb8_converter.wgsl");
+        let content = include_str!("../shader/conversions/rgb8_converter.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/conversions/yuv_converter.wgsl");
         let content = include_str!("../shader/conversions/yuv_converter.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

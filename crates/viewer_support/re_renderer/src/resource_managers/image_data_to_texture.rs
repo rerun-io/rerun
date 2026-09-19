@@ -1,5 +1,6 @@
 //! For an overview of image data interpretation check `re_video`'s decoder docs!
 
+use super::rgb8_converter::Rgb8FormatConversionTask;
 use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
@@ -20,6 +21,12 @@ pub enum SourceImageDataFormat {
     ///                 what's appropriate & available for a given device.
     WgpuCompatible(wgpu::TextureFormat),
 
+    /// Tightly packed 8-bit RGB data with three bytes per pixel.
+    Rgb8,
+
+    /// Tightly packed 8-bit BGR data with three bytes per pixel.
+    Bgr8,
+
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
     ///
     /// Does not handle chroma sample locations.
@@ -28,8 +35,6 @@ pub enum SourceImageDataFormat {
         coefficients: YuvMatrixCoefficients,
         range: YuvRange,
     },
-    //
-    // TODO(#10648): Add rgb (3 channels!) formats.
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {
@@ -193,6 +198,7 @@ impl ImageDataDesc<'_> {
                         .ok_or(ImageDataToTextureError::UnsupportedTextureFormat(*format))?
                         as usize
             }
+            SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => num_pixels * 3,
             SourceImageDataFormat::Yuv { layout: format, .. } => {
                 format.num_data_buffer_bytes(*width_height)
             }
@@ -214,6 +220,9 @@ impl ImageDataDesc<'_> {
     pub fn target_texture_usage_requirements(&self) -> wgpu::TextureUsages {
         match self.format {
             SourceImageDataFormat::WgpuCompatible(_) => wgpu::TextureUsages::COPY_DST, // Data arrives via raw data copy.
+            SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => {
+                Rgb8FormatConversionTask::REQUIRED_TARGET_TEXTURE_USAGE_FLAGS
+            }
             SourceImageDataFormat::Yuv { .. } => {
                 YuvFormatConversionTask::REQUIRED_TARGET_TEXTURE_USAGE_FLAGS
             }
@@ -224,6 +233,9 @@ impl ImageDataDesc<'_> {
     pub fn target_texture_format(&self) -> wgpu::TextureFormat {
         match self.format {
             SourceImageDataFormat::WgpuCompatible(format) => format,
+            SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => {
+                Rgb8FormatConversionTask::OUTPUT_FORMAT
+            }
             SourceImageDataFormat::Yuv { .. } => YuvFormatConversionTask::OUTPUT_FORMAT,
         }
     }
@@ -291,24 +303,35 @@ pub fn transfer_image_data_to_texture(
     // Reminder: We can't use raw buffers because of WebGL compatibility.
     let [data_texture_width, data_texture_height] = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => output_width_height,
+        // Pack the raw 3-byte pixels four bytes at a time into an RGBA8Uint source texture.
+        // The fragment conversion pass reconstructs RGB/BGR pixels from this byte stream.
+        SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => [
+            (output_width_height[0] * 3).div_ceil(4),
+            output_width_height[1],
+        ],
         SourceImageDataFormat::Yuv { layout, .. } => {
             layout.data_texture_width_height(output_width_height)
         }
     };
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
+        SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => wgpu::TextureFormat::Rgba8Uint,
         SourceImageDataFormat::Yuv { layout, .. } => layout.data_texture_format(),
     };
 
     // Allocate gpu belt data and upload it.
     let data_texture_label = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => label.clone(),
-        SourceImageDataFormat::Yuv { .. } => format!("{label}_source_data").into(),
+        SourceImageDataFormat::Rgb8
+        | SourceImageDataFormat::Bgr8
+        | SourceImageDataFormat::Yuv { .. } => format!("{label}_source_data").into(),
     };
 
     let data_texture = match source_format {
         // Needs intermediate data texture.
-        SourceImageDataFormat::Yuv { .. } => ctx.gpu_resources.textures.alloc(
+        SourceImageDataFormat::Rgb8
+        | SourceImageDataFormat::Bgr8
+        | SourceImageDataFormat::Yuv { .. } => ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: data_texture_label,
@@ -329,13 +352,23 @@ pub fn transfer_image_data_to_texture(
         SourceImageDataFormat::WgpuCompatible(_) => target_texture.clone(),
     };
 
-    copy_data_to_texture(ctx, &data_texture, data.as_ref())?;
+    let source_bytes_per_row = match source_format {
+        SourceImageDataFormat::Rgb8 | SourceImageDataFormat::Bgr8 => {
+            Some(output_width_height[0] as usize * 3)
+        }
+        _ => None,
+    };
+    copy_data_to_texture(ctx, &data_texture, data.as_ref(), source_bytes_per_row)?;
 
-    // Build a converter task, feeding in the raw data.
-    let converter_task = match source_format {
-        SourceImageDataFormat::WgpuCompatible(_) => {
-            // No further conversion needed, we're done here!
-            return Ok(());
+    let conversion_result = match source_format {
+        SourceImageDataFormat::WgpuCompatible(_) => return Ok(()),
+        SourceImageDataFormat::Rgb8 => {
+            Rgb8FormatConversionTask::new(ctx, false, &data_texture, target_texture)?
+                .convert_input_data_to_texture(ctx)
+        }
+        SourceImageDataFormat::Bgr8 => {
+            Rgb8FormatConversionTask::new(ctx, true, &data_texture, target_texture)?
+                .convert_input_data_to_texture(ctx)
         }
         SourceImageDataFormat::Yuv {
             layout,
@@ -348,26 +381,26 @@ pub fn transfer_image_data_to_texture(
             coefficients,
             &data_texture,
             target_texture,
-        )?,
+        )?
+        .convert_input_data_to_texture(ctx),
     };
 
-    // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.
-    // Note that we execute the task right away, but the way things are set up (by means of using the `Renderer` framework)
-    // it would be fairly easy to schedule this differently!
-    converter_task
-        .convert_input_data_to_texture(ctx)
-        .map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })
+    conversion_result.map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })
 }
 
 fn copy_data_to_texture(
     render_ctx: &RenderContext,
     data_texture: &GpuTexture,
     data: &[u8],
+    source_bytes_per_row: Option<usize>,
 ) -> Result<(), ImageDataToTextureError> {
     re_tracing::profile_function!();
 
     let buffer_info =
         Texture2DBufferInfo::new(data_texture.texture.format(), data_texture.texture.size());
+    let texture_bytes_per_row = buffer_info.bytes_per_row_unpadded as usize;
+    let source_bytes_per_row = source_bytes_per_row.unwrap_or(texture_bytes_per_row);
+    re_log::debug_assert!(source_bytes_per_row <= texture_bytes_per_row);
 
     let mut cpu_write_gpu_read_belt = render_ctx.cpu_write_gpu_read_belt.lock();
     let mut gpu_read_buffer = cpu_write_gpu_read_belt.allocate::<u8>(
@@ -376,7 +409,9 @@ fn copy_data_to_texture(
         buffer_info.buffer_size_padded as usize,
     )?;
 
-    if buffer_info.buffer_size_padded as usize == data.len() {
+    if source_bytes_per_row == texture_bytes_per_row
+        && buffer_info.buffer_size_padded as usize == data.len()
+    {
         re_tracing::profile_scope!("bulk_copy");
 
         // Fast path: Just copy the data over as-is.
@@ -384,20 +419,16 @@ fn copy_data_to_texture(
     } else {
         re_tracing::profile_scope!("row_by_row_copy");
 
-        // Copy row by row in order to jump over padding bytes.
-        let bytes_per_row_unpadded = buffer_info.bytes_per_row_unpadded as usize;
+        // Copy row by row, adding both source-format tail padding and wgpu row padding.
         let num_padding_bytes_per_row =
-            buffer_info.bytes_per_row_padded as usize - bytes_per_row_unpadded;
-        re_log::debug_assert!(
-            num_padding_bytes_per_row > 0,
-            "No padding bytes, but the unpadded buffer size is not equal to the unpadded buffer."
-        );
+            buffer_info.bytes_per_row_padded as usize - source_bytes_per_row;
+        let height = data_texture.texture.size().height as usize;
+        re_log::debug_assert_eq!(data.len(), source_bytes_per_row * height);
 
-        for row in 0..data_texture.texture.size().height as usize {
-            gpu_read_buffer.extend_from_slice(
-                &data[(row * bytes_per_row_unpadded)
-                    ..(row * bytes_per_row_unpadded + bytes_per_row_unpadded)],
-            )?;
+        for row in 0..height {
+            let row_start = row * source_bytes_per_row;
+            gpu_read_buffer
+                .extend_from_slice(&data[row_start..(row_start + source_bytes_per_row)])?;
             gpu_read_buffer.add_n(0, num_padding_bytes_per_row)?;
         }
     }
@@ -408,4 +439,86 @@ fn copy_data_to_texture(
         .copy_to_texture2d_entire_first_layer(before_view_builder_encoder.get(), data_texture)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+    use std::time::Duration;
+
+    use super::*;
+    use crate::{poll_read_texture, schedule_read_texture};
+
+    fn expected_rgba(data: &[u8], bgr: bool) -> Vec<u8> {
+        data.chunks_exact(3)
+            .flat_map(|pixel| {
+                if bgr {
+                    [pixel[2], pixel[1], pixel[0], 0]
+                } else {
+                    [pixel[0], pixel[1], pixel[2], 0]
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn packed_rgb8_gpu_conversion_matches_cpu_reference() {
+        let mut ctx = RenderContext::new_test();
+        let mut cases = Vec::new();
+
+        for bgr in [false, true] {
+            for (width, height) in [1, 2, 3, 4, 5, 7, 8, 63, 64, 65]
+                .into_iter()
+                .map(|width| (width, 3))
+                .chain([1919, 1920, 1921].into_iter().map(|width| (width, 2)))
+            {
+                let num_pixels = width as usize * height as usize;
+                let data = (0..num_pixels * 3)
+                    .map(|i| ((i * 37 + 11) & 0xff) as u8)
+                    .collect::<Vec<_>>();
+                let expected = expected_rgba(&data, bgr);
+                cases.push((width, height, bgr, data, expected));
+            }
+        }
+
+        let mut readback_ids = Vec::with_capacity(cases.len());
+        ctx.execute_test_frame(|ctx| {
+            for (width, height, bgr, data, _) in &cases {
+                let image_data = ImageDataDesc {
+                    label: format!("packed_rgb8_{width}x{height}_{bgr}").into(),
+                    data: Cow::Borrowed(data),
+                    format: if *bgr {
+                        SourceImageDataFormat::Bgr8
+                    } else {
+                        SourceImageDataFormat::Rgb8
+                    },
+                    width_height: [*width, *height],
+                    alpha_channel_usage: AlphaChannelUsage::Opaque,
+                };
+                let texture = image_data
+                    .create_target_texture(ctx, wgpu::TextureUsages::COPY_SRC)
+                    .unwrap();
+
+                transfer_image_data_to_texture(ctx, image_data, &texture).unwrap();
+                readback_ids.push(schedule_read_texture(ctx, &texture.texture).unwrap());
+            }
+            std::iter::empty::<wgpu::CommandBuffer>()
+        });
+
+        ctx.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(10)),
+            })
+            .unwrap();
+
+        for ((width, height, _, _, expected), readback_id) in cases.iter().zip(readback_ids) {
+            let readback = poll_read_texture(&ctx, readback_id)
+                .expect("GPU readback should be available after waiting for the device");
+            assert_eq!(readback.format, wgpu::TextureFormat::Rgba8Unorm);
+            assert_eq!(readback.extent.width, *width);
+            assert_eq!(readback.extent.height, *height);
+            assert_eq!(readback.data, *expected);
+        }
+    }
 }
