@@ -41,7 +41,7 @@ pub struct ReflectionBuilderError(pub &'static str);
 #[derive(Debug, thiserror::Error)]
 pub enum CdrDecodeError {
     /// The message was rejected. Its row is cancelled, so decoding can continue.
-    #[error("{0}")]
+    #[error("{0:#}")]
     Message(anyhow::Error),
 
     /// The Arrow builders could not be returned to a row boundary, so the decoder is unusable.
@@ -630,6 +630,13 @@ mod tests {
     use super::*;
     use crate::MessageSchema;
     use crate::reflection::MessageDecodePlan;
+
+    #[test]
+    fn message_error_includes_full_context() {
+        let err =
+            CdrDecodeError::Message(anyhow::format_err!("root cause").context("outer context"));
+        assert_eq!(err.to_string(), "outer context: root cause");
+    }
 
     /// Decodes one CDR message into a single-row message array.
     fn decode_one(plan: &Arc<MessageDecodePlan>, data: &[u8]) -> FixedSizeListArray {

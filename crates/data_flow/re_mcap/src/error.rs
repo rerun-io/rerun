@@ -39,7 +39,7 @@ pub enum Error {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
-    #[error(transparent)]
+    #[error("{0:#}")]
     Other(#[from] anyhow::Error),
 }
 
@@ -48,5 +48,16 @@ impl Error {
     #[inline]
     pub fn other(err: impl Into<anyhow::Error>) -> Self {
         Self::Other(err.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn other_error_includes_full_context() {
+        let err = Error::other(anyhow::format_err!("root cause").context("outer context"));
+        assert_eq!(err.to_string(), "outer context: root cause");
     }
 }
