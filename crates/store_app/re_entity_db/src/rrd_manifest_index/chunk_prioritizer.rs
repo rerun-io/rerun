@@ -467,8 +467,8 @@ impl ChunkPrioritizer {
         self.latest_result
     }
 
-    /// Find all chunk IDs that contain components with the given prefix.
-    fn find_chunks_with_component_prefix(manifest: &RrdManifest, prefix: &str) -> HighPrioChunks {
+    /// Find all chunk IDs that contain components of one of the given archetypes.
+    fn find_chunks_with_archetypes(manifest: &RrdManifest, prefixes: &[&str]) -> HighPrioChunks {
         let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
 
         // We intentionally ignore static chunks, because we already prioritize ALL static chunks.
@@ -476,7 +476,10 @@ impl ChunkPrioritizer {
         for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
                 for (component, chunks) in components {
-                    if component.as_str().starts_with(prefix) {
+                    if prefixes
+                        .iter()
+                        .any(|prefix| component.as_str().starts_with(prefix))
+                    {
                         for (chunk_id, entry) in chunks {
                             temporal_chunks.entry(*timeline.name()).or_default().push(
                                 HighPrioChunk {
@@ -505,9 +508,10 @@ impl ChunkPrioritizer {
         // parts of a hierarchy, and not all of the transform are required to be
         // available at each time point.
         // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
-        let new_chunks = Self::find_chunks_with_component_prefix(
+        let new_chunks = Self::find_chunks_with_archetypes(
             manifest,
-            "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
+            // TODO(RR-5745): Don't hardcode this.
+            &["Transform3D:", "Pinhole:"],
         );
         for (timeline, mut chunks) in new_chunks.temporal_chunks {
             let existing = self
