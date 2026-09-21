@@ -6,7 +6,7 @@
 /// This archetype is intended for robotics applications like occupancy maps or navigation costmaps,
 /// but can also be useful for other use cases where an image buffer needs to be placed in a scene.
 ///
-/// \example archetypes/grid_map_simple title="Simple occupancy grid map"
+/// \example archetypes/grid_map_simple title="Simple occupancy grid map" image="..."
 /// \example archetypes/grid_map_pose missing="cpp,rs" title="Log a grid map at a specific pose" image="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
