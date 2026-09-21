@@ -10,7 +10,7 @@ use re_log_types::{
 };
 use re_types_core::{ComponentBatch as _, ComponentDescriptor};
 
-use crate::{CodecError, CodecResult, RawRrdManifest};
+use crate::{ChunkIndexError, ChunkIndexResult, RawRrdManifest};
 
 // ---
 
@@ -33,7 +33,7 @@ pub struct RrdManifestBuilder {
 
     /// Each row indicates where in the backing storage does the chunk start, in number of bytes.
     ///
-    /// This _excludes_ the outer [`crate::MessageHeader`] frame.
+    /// This _excludes_ the outer RRD message header frame.
     ///
     /// I.e. if you were to memory-map the data at `file[column_byte_offsets:column_byte_offsets+column_byte_size]`,
     /// you would end up with everything you need to decode the chunk.
@@ -44,7 +44,7 @@ pub struct RrdManifestBuilder {
 
     /// Each row indicates the size in bytes of the chunk in the backing storage, in number of bytes.
     ///
-    /// This _excludes_ the outer [`crate::MessageHeader`] frame.
+    /// This _excludes_ the outer RRD message header frame.
     ///
     /// I.e. if you were to memory-map the data at `file[column_byte_offsets:column_byte_offsets+column_byte_size]`,
     /// you would end up with everything you need to decode the chunk.
@@ -55,7 +55,7 @@ pub struct RrdManifestBuilder {
 
     /// Each row indicates the *uncompressed* size in bytes of the chunk in the backing storage, in number of bytes.
     ///
-    /// This _excludes_ the outer [`crate::MessageHeader`] frame.
+    /// This _excludes_ the outer RRD message header frame.
     column_byte_sizes_uncompressed_excluding_headers: Vec<u64>,
 
     /// Each row is an entity path.
@@ -81,7 +81,7 @@ impl RrdManifestBuilder {
         chunk_batch: &re_sorbet::ChunkBatch,
         byte_span_excluding_header: re_span::Span<u64>,
         byte_size_uncompressed_excluding_header: u64,
-    ) -> CodecResult<()> {
+    ) -> ChunkIndexResult<()> {
         self.sorbet_schema.add_chunk(chunk_batch);
 
         let chunk = Chunk::from_chunk_batch(chunk_batch)?;
@@ -162,7 +162,7 @@ impl RrdManifestBuilder {
             for (component, time_range) in time_column.time_range_per_component(chunk.components())
             {
                 let Some(component_col) = chunk.components().get(component) else {
-                    return Err(crate::CodecError::ArrowDeserialization(
+                    return Err(ChunkIndexError::ArrowDeserialization(
                         arrow::error::ArrowError::SchemaError(
                             "internally inconsistent chunk metadata, this is a bug".to_owned(),
                         ),
@@ -213,13 +213,13 @@ impl RrdManifestBuilder {
         Ok(())
     }
 
-    pub fn build(self, store_id: StoreId) -> CodecResult<RawRrdManifest> {
+    pub fn build(self, store_id: StoreId) -> ChunkIndexResult<RawRrdManifest> {
         let sorbet_schema = arrow::datatypes::Schema::new_with_metadata(
             self.sorbet_schema.clone().build(),
             Default::default(),
         );
         let sorbet_schema_sha256 = RawRrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
-            .map_err(CodecError::ArrowSerialization)?;
+            .map_err(ChunkIndexError::ArrowSerialization)?;
 
         let data = self.into_record_batch()?;
 
@@ -384,7 +384,7 @@ impl RrdManifestBuilder {
     /// Turns the builder into actual [`RecordBatch`].
     ///
     /// The returned batch are guaranteed to match the schema returned by [`Self::schema`].
-    pub fn into_record_batch(self) -> CodecResult<RecordBatch> {
+    pub fn into_record_batch(self) -> ChunkIndexResult<RecordBatch> {
         let schema = self.schema();
         let num_rows = self.column_chunk_ids.len();
         let columns = self.into_columns();
@@ -393,7 +393,7 @@ impl RrdManifestBuilder {
             columns,
             &arrow::record_batch::RecordBatchOptions::new().with_row_count(Some(num_rows)),
         )
-        .map_err(crate::CodecError::ArrowSerialization)
+        .map_err(ChunkIndexError::ArrowSerialization)
     }
 }
 

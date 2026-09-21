@@ -6,17 +6,18 @@ use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
 use re_sorbet::SorbetSchema;
 
-use super::{HubRrdManifest, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
-use crate::{CodecError, CodecResult};
+use crate::{
+    ChunkIndexError, ChunkIndexResult, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap,
+};
 
 /// Concatenates one typed column per manifest, keeping the logical type and the column name.
 fn concat_columns<'a, L: quiver::LogicalType + 'a>(
     columns: impl IntoIterator<Item = &'a quiver::Column<L>>,
-) -> CodecResult<quiver::Column<L>> {
+) -> ChunkIndexResult<quiver::Column<L>> {
     let columns = columns.into_iter().collect::<Vec<_>>();
 
     let Some(first_column) = columns.first() else {
-        return Err(CodecError::FrameDecoding(
+        return Err(ChunkIndexError::Merge(
             "concat_columns: no columns to concatenate".to_owned(),
         ));
     };
@@ -29,10 +30,10 @@ fn concat_columns<'a, L: quiver::LogicalType + 'a>(
         .collect();
 
     let concatenated = re_arrow_util::concat_arrays(&arrays)
-        .map_err(|err| CodecError::FrameDecoding(format!("concat {name:?}: {err}")))?;
+        .map_err(|err| ChunkIndexError::Merge(format!("concat {name:?}: {err}")))?;
 
     quiver::Column::try_new(name.as_str(), concatenated)
-        .map_err(|err| CodecError::FrameDecoding(format!("concat {name:?}: {err}")))
+        .map_err(|err| ChunkIndexError::Merge(format!("concat {name:?}: {err}")))
 }
 
 /// The heap size of a column's arrow array.
@@ -43,7 +44,7 @@ fn column_heap_size_bytes<L: quiver::LogicalType>(column: &quiver::Column<L>) ->
 /// A pre-validated and parsed [`RawRrdManifest`].
 ///
 /// This struct provides a more ergonomic interface to access manifest data without
-/// having to handle `CodecResult` errors on every access. All validation and column
+/// having to handle `ChunkIndexResult` errors on every access. All validation and column
 /// extraction is performed during construction.
 ///
 /// The Arrow arrays stored here are clones of those in the underlying manifest,
@@ -179,9 +180,9 @@ impl RrdManifest {
     pub const COLUMN_CHUNK_BYTE_OFFSET: quiver::ColumnDesc<u64> =
         RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET;
     pub const COLUMN_CHUNK_PARTITION_ID: quiver::ColumnDesc<re_types_core::SegmentId> =
-        HubRrdManifest::COLUMN_CHUNK_PARTITION_ID;
+        RawRrdManifest::COLUMN_CHUNK_PARTITION_ID;
     pub const COLUMN_RERUN_PARTITION_LAYER: quiver::ColumnDesc<re_types_core::LayerName> =
-        HubRrdManifest::COLUMN_RERUN_PARTITION_LAYER;
+        RawRrdManifest::COLUMN_RERUN_PARTITION_LAYER;
 
     /// All columns present in the pruned batch returned by [`Self::chunk_fetcher_rb()`].
     pub const CHUNK_FETCHER_COLUMNS: &[&str] = &[
@@ -201,7 +202,7 @@ impl RrdManifest {
     /// or any required column is missing/malformed, an error is returned.
     ///
     /// All arrays must be non-null (no missing values).
-    pub fn try_new(manifest: &RawRrdManifest) -> CodecResult<Self> {
+    pub fn try_new(manifest: &RawRrdManifest) -> ChunkIndexResult<Self> {
         re_tracing::profile_function!();
 
         if cfg!(debug_assertions) {
@@ -268,12 +269,12 @@ impl RrdManifest {
     /// The chunk fetcher batches of every manifest, concatenated in the given order.
     ///
     /// See [`Self::CHUNK_FETCHER_COLUMNS`] for the columns these pruned batches keep.
-    fn concat_chunk_fetcher_rb(manifests: &[&Self]) -> CodecResult<RecordBatch> {
+    fn concat_chunk_fetcher_rb(manifests: &[&Self]) -> ChunkIndexResult<RecordBatch> {
         re_tracing::profile_function!();
 
         let first = manifests
             .first()
-            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+            .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
         if manifests.len() == 1 {
             return Ok(first.chunk_fetcher_rb.clone());
@@ -308,7 +309,7 @@ impl RrdManifest {
             .unwrap_or_else(|| first.chunk_fetcher_rb.schema());
 
         arrow::compute::concat_batches(&combined_schema, batches_to_concat).map_err(|err| {
-            CodecError::FrameDecoding(format!("Failed to concatenate RRD manifest parts: {err}"))
+            ChunkIndexError::Merge(format!("Failed to concatenate RRD manifest parts: {err}"))
         })
     }
 
@@ -322,10 +323,10 @@ impl RrdManifest {
     /// of the first is then used as it is, with a warning.
     fn merge_schemas(
         manifests: &[&Self],
-    ) -> CodecResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+    ) -> ChunkIndexResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
         let first = manifests
             .first()
-            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+            .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
         let schema_of_first = || {
             (
@@ -358,10 +359,10 @@ impl RrdManifest {
     /// The columns of every manifest in one schema, with the metadata of the first.
     fn unify_columns(
         manifests: &[&Self],
-    ) -> CodecResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+    ) -> ChunkIndexResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
         let first = manifests
             .first()
-            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+            .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
         // Merge the fields into the first schema instead of using `Schema::try_merge`: that one
         // also merges the schema metadata and errors when two schemas disagree on a key. The
@@ -370,14 +371,14 @@ impl RrdManifest {
         for manifest in &manifests[1..] {
             for field in manifest.sorbet_schema.fields() {
                 builder.try_merge(field).map_err(|err| {
-                    CodecError::FrameDecoding(format!("Failed to merge manifest schemas: {err}"))
+                    ChunkIndexError::Merge(format!("Failed to merge manifest schemas: {err}"))
                 })?;
             }
         }
         let sorbet_schema = builder.finish();
 
         let sorbet_schema_sha256 = RawRrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
-            .map_err(CodecError::ArrowSerialization)?;
+            .map_err(ChunkIndexError::ArrowSerialization)?;
 
         let mut recording_schema =
             SorbetSchema::try_from_raw_arrow_schema(Arc::new(sorbet_schema.clone()))?;
@@ -392,12 +393,12 @@ impl RrdManifest {
     /// The parts can be the pieces of one segment's manifest, or the manifests of several
     /// segments. The store id is that of the first part, and the schema covers the columns of all
     /// of them.
-    pub fn merge(manifests: &[&Self]) -> CodecResult<Self> {
+    pub fn merge(manifests: &[&Self]) -> ChunkIndexResult<Self> {
         re_tracing::profile_function!();
 
         let first = manifests
             .first()
-            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+            .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
         let any_has_chunk_keys = manifests.iter().any(|m| m.chunk_keys.is_some());
 
@@ -437,12 +438,12 @@ impl RrdManifest {
                         .as_ref()
                         .or_else(|| null_keys.next())
                         .ok_or_else(|| {
-                            CodecError::FrameDecoding(
+                            ChunkIndexError::Merge(
                                 "concat chunk_keys: row count mismatch".to_owned(),
                             )
                         })
                 });
-                concat_columns(columns.collect::<CodecResult<Vec<_>>>()?)
+                concat_columns(columns.collect::<ChunkIndexResult<Vec<_>>>()?)
             })
             .transpose()?;
 
@@ -505,7 +506,7 @@ impl RrdManifest {
     pub fn build_in_memory_from_chunks<'a>(
         store_id: StoreId,
         chunks: impl Iterator<Item = &'a re_chunk::Chunk>,
-    ) -> CodecResult<Arc<Self>> {
+    ) -> ChunkIndexResult<Arc<Self>> {
         let raw = RawRrdManifest::build_in_memory_from_chunks(store_id, chunks)?;
         Ok(Arc::new(Self::try_new(&raw)?))
     }

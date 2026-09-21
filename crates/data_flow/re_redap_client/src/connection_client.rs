@@ -1,7 +1,8 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
+use re_chunk_index::RawRrdManifest;
+use re_log_encoding::{Decodable as _, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::capabilities::ServerCapabilities;

@@ -5,7 +5,7 @@ use ahash::HashMap;
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::StoreId;
 
-use crate::{ChunkProvider, ChunkProviderError, CodecResult, RawRrdManifest, RrdManifest};
+use crate::{ChunkIndexResult, ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 
 /// [`ChunkProvider`] over a set of already-materialized chunks.
 pub struct InMemoryChunkProvider {
@@ -21,7 +21,7 @@ impl InMemoryChunkProvider {
     pub fn new(
         store_id: &StoreId,
         chunks: impl IntoIterator<Item = Arc<Chunk>>,
-    ) -> CodecResult<Self> {
+    ) -> ChunkIndexResult<Self> {
         // Build the manifest from the caller's insertion order: the synthesized byte offsets and
         // the file-order sweep of downstream consumers must be deterministic, which a hash-map
         // iteration is not.

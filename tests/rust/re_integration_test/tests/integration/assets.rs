@@ -11,11 +11,11 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 
+use re_chunk_index::RrdManifest;
 use re_integration_test::{
     HarnessExt as _, TestServer, ViewerHarnessExt as _, asset_rrd, file_url, register_asset,
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
-use re_log_encoding::RrdManifest;
 use re_redap_client::{
     ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     DEFAULT_ASSET_TASK_TIMEOUT, StreamingOptions,

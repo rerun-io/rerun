@@ -7,9 +7,10 @@ use arrow::array::{BinaryArray, RecordBatch};
 use itertools::{Itertools as _, chain};
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+use re_chunk_index::{RawRrdManifest, RrdManifest, RrdManifestBuilder};
 use re_log_encoding::{
-    Decodable as _, DecoderApp, Encoder, RawRrdManifest, RrdManifest, RrdManifestBuilder,
-    StreamFooter, StreamFooterEntry, ToApplication as _, ToTransport as _,
+    Decodable as _, DecoderApp, Encoder, StreamFooter, StreamFooterEntry, ToApplication as _,
+    ToTransport as _,
 };
 use re_log_msg::{ArrowMsg, LogMsg};
 use re_log_types::external::re_tuid::Tuid;

@@ -5,7 +5,7 @@ use arrow::array::BooleanArray;
 use itertools::{Either, izip};
 
 use re_chunk::{ArrowArray as _, ChunkId, ComponentIdentifier, ComponentType};
-use re_log_encoding::RawRrdManifest;
+use re_chunk_index::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
 
 use crate::Error;
@@ -371,7 +371,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_chunk::{Chunk, ChunkId, RowId};
-    use re_log_encoding::RawRrdManifest;
+    use re_chunk_index::RawRrdManifest;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPath, StoreId, StoreKind, TimePoint, Timeline};
     use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
+use re_chunk_index::{ChunkIndexError, RawRrdManifest, RrdManifestBuilder};
 use re_log_msg::LogMsg;
 use re_log_types::StoreId;
 use re_sorbet::SorbetError;
@@ -13,7 +14,7 @@ use re_span::Span;
 
 use crate::{
     CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
-    RrdManifestBuilder, Serializer, StreamFooter, StreamHeader, ToTransport as _,
+    Serializer, StreamFooter, StreamHeader, ToTransport as _,
 };
 
 // ----------------------------------------------------------------------------
@@ -48,6 +49,12 @@ const _: () = assert!(
 impl From<CodecError> for EncodeError {
     fn from(err: CodecError) -> Self {
         Self::Codec(Box::new(err))
+    }
+}
+
+impl From<ChunkIndexError> for EncodeError {
+    fn from(err: ChunkIndexError) -> Self {
+        Self::Codec(Box::new(err.into()))
     }
 }
 
@@ -141,7 +148,7 @@ impl FooterState {
     }
 
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
-        let manifests: HashMap<StoreId, crate::RawRrdManifest> = self
+        let manifests: HashMap<StoreId, RawRrdManifest> = self
             .manifests
             .into_iter()
             .map(|(store_id, state)| {

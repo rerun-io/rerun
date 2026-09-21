@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Helper library for encoding Rerun log messages.
+Encoding and decoding of RRD streams: the physical byte layout of `.rrd` files, and the conversion between transport-level and application-level types.

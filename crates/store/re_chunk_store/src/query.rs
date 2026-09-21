@@ -1530,7 +1530,7 @@ mod tests {
         // Back the chunks with an RRD manifest. That way, once they get garbage collected, they
         // stay recoverable and keep being reported as missing (partial results) instead of
         // vanishing from the virtual indices entirely.
-        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        let rrd_manifest = re_chunk_index::RrdManifest::build_in_memory_from_chunks(
             store_id,
             [&*chunk1, &*chunk2, &*chunk3].into_iter(),
         )

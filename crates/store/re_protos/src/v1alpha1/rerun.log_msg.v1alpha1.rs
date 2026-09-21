@@ -341,7 +341,7 @@ impl ::prost::Name for RrdFooter {
 /// recording ID, greatly simplifying the process.
 ///
 /// This is a transport-level type, the associated application-level type can be found
-/// in `re_log_encoding::RrdManifest`.
+/// in `re_chunk_index::RawRrdManifest`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RrdManifest {
     /// The recording ID that was used to identify the original recording.

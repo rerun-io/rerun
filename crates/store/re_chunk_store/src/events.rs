@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use re_chunk::Chunk;
+use re_chunk_index::RrdManifest;
 use re_log::ResultExt as _;
-use re_log_encoding::RrdManifest;
 use re_log_types::StoreId;
 
 use crate::{ChunkDirectLineageReport, ChunkStoreGeneration};

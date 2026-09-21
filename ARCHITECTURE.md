@@ -248,11 +248,12 @@ A sibling of `crates/views`: neither depends on the other.
 | Crate              | Description                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------------- |
 | re_chunk           | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
+| re_chunk_index     | Indexes of Rerun chunks: RRD manifests and the chunk providers that serve them                |
 | re_chunk_optimizer | Analysis and memory-bounded optimization of Rerun chunk layouts                               |
 | re_chunk_store     | A storage engine for Rerun's Chunks                                                           |
 | re_lenses_core     | Core lens types and composable Arrow array transformations.                                   |
 | re_log_channel     | An in-memory channel of Rerun data messages.                                                  |
-| re_log_encoding    | Encode/decode and serialize/deserialize RRD streams                                           |
+| re_log_encoding    | Encode/decode RRD streams: the physical byte layout of .rrd files                             |
 | re_log_msg         | The messages that carry Rerun data between the SDK, `.rrd` files and the viewer.              |
 | re_log_types       | The basic building blocks of the Rerun log format: entity paths, timelines, and store ids.    |
 | re_protos          | Rerun remote gRPC/protobuf API types                                                          |

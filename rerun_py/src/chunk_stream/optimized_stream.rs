@@ -11,11 +11,11 @@ use futures::StreamExt as _;
 use futures::stream::BoxStream;
 use re_chunk::external::re_log_types::{EntityPathFilter, EntityPathSubs};
 use re_chunk::{Chunk, ComponentIdentifier, ComponentType};
+use re_chunk_index::ChunkProvider;
 use re_chunk_optimizer::{
     ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
 };
 use re_chunk_store::OptimizationProfile;
-use re_log_encoding::ChunkProvider;
 
 use super::error::ChunkPipelineError;
 use super::{ChunkStream, ChunkStreamFactory};

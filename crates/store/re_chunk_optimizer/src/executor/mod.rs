@@ -11,7 +11,7 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
-use re_log_encoding::ChunkProvider;
+use re_chunk_index::ChunkProvider;
 
 use crate::Error;
 use crate::plan::{ChunkSlice, ColumnSelection, PlanUnit};

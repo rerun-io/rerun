@@ -7,10 +7,10 @@ use arrow::array::RecordBatch;
 use itertools::chain;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
+use re_chunk_index::RrdManifest;
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_int::SaturatingCast as _;
 use re_log::debug_assert;
-use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
 use re_mutex::Mutex;
 
@@ -1393,7 +1393,6 @@ mod tests {
     use re_byte_size::SizeBytes as _;
     use re_chunk::{Chunk, EntityPath, RowId, TimeInt, Timeline};
     use re_chunk_store::ChunkStore;
-    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, TimePoint};
     use re_types_core::ChunkId;
@@ -1405,11 +1404,9 @@ mod tests {
 
     fn setup_test_recording(chunks: &[Arc<Chunk>]) -> (ChunkStore, RrdManifestIndex) {
         let store_id = StoreId::random(StoreKind::Recording, "test");
-        let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id.clone(),
-            chunks.iter().map(|c| &**c),
-        )
-        .unwrap();
+        let manifest =
+            RrdManifest::build_in_memory_from_chunks(store_id.clone(), chunks.iter().map(|c| &**c))
+                .unwrap();
 
         let mut store = ChunkStore::new(store_id, Default::default());
         let _events = store.insert_rrd_manifest(manifest.clone());

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 use re_async::AsyncReadAt;
 use re_chunk::{Chunk, ChunkId};
+use re_chunk_index::RrdManifest;
 use re_span::Span;
 
-use crate::RrdManifest;
 use crate::ToApplication as _;
 use crate::rrd::CodecError;
 

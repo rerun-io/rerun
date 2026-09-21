@@ -8,11 +8,11 @@ use futures::StreamExt as _;
 use futures::executor::block_on;
 
 use re_chunk::{Chunk, ChunkId};
-use re_chunk_optimizer::optimize;
-use re_chunk_optimizer::testing::should_split_chunk;
-use re_log_encoding::{
+use re_chunk_index::{
     ChunkProvider, ChunkProviderError, InMemoryChunkProvider, RawRrdManifest, RrdManifest,
 };
+use re_chunk_optimizer::optimize;
+use re_chunk_optimizer::testing::should_split_chunk;
 
 use super::helpers::*;
 

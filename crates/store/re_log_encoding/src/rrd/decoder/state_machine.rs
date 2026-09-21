@@ -3,12 +3,13 @@ use std::io::{Cursor, Read as _};
 
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
+use re_chunk_index::RawRrdManifest;
 
 use crate::rrd::MessageHeader;
+
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, RawRrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
-    ToApplication as _,
+    EncodingOptions, Serializer, StreamFooter, StreamFooterEntry, StreamHeader, ToApplication as _,
 };
 
 // ---

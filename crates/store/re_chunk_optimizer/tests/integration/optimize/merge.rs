@@ -4,9 +4,9 @@
 use std::sync::Arc;
 
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, RowId};
+use re_chunk_index::ChunkProvider as _;
 use re_chunk_optimizer::testing::smallest_non_splitting_target;
 use re_chunk_optimizer::{analyze_chunk_index, optimize};
-use re_log_encoding::ChunkProvider as _;
 use re_log_types::Timeline;
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_types_core::ComponentBatch as _;

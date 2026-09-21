@@ -587,7 +587,7 @@ impl TestContext {
         }
     }
 
-    pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_log_encoding::RrdManifest>) {
+    pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_chunk_index::RrdManifest>) {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);

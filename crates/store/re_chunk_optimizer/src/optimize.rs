@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::Stream;
 
 use re_chunk::Chunk;
-use re_log_encoding::ChunkProvider;
+use re_chunk_index::ChunkProvider;
 
 use crate::{Error, OptimizationSettings};
 

@@ -5,8 +5,8 @@
 //! production code takes, minus the file.
 
 use re_chunk::{Chunk, ChunkId, RowId};
+use re_chunk_index::RawRrdManifest;
 use re_chunk_optimizer::{ChunkIndexAnalysis, analyze_chunk_index};
-use re_log_encoding::RawRrdManifest;
 use re_log_types::example_components::{MyColor, MyPoints};
 use re_log_types::{StoreId, StoreKind, TimePoint, Timeline};
 use re_types_core::ComponentBatch as _;

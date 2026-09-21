@@ -138,6 +138,7 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId, TimelineName};
+    use re_chunk_index::RrdManifest;
     use re_chunk_store::{ChunkStore, ChunkStoreConfig};
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
@@ -306,7 +307,7 @@ mod tests {
         timeline: Timeline,
         times: &[i64],
         store_id: &StoreId,
-    ) -> (Vec<Arc<Chunk>>, Arc<re_log_encoding::RrdManifest>) {
+    ) -> (Vec<Arc<Chunk>>, Arc<RrdManifest>) {
         let point = MyPoint::new(1.0, 1.0);
         let chunks: Vec<Arc<Chunk>> = times
             .iter()
@@ -327,11 +328,9 @@ mod tests {
             })
             .collect();
 
-        let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id.clone(),
-            chunks.iter().map(|c| &**c),
-        )
-        .unwrap();
+        let manifest =
+            RrdManifest::build_in_memory_from_chunks(store_id.clone(), chunks.iter().map(|c| &**c))
+                .unwrap();
 
         (chunks, manifest)
     }
@@ -429,11 +428,9 @@ mod tests {
         })
         .collect();
 
-        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id.clone(),
-            chunks.iter().map(|c| &**c),
-        )
-        .unwrap();
+        let rrd_manifest =
+            RrdManifest::build_in_memory_from_chunks(store_id.clone(), chunks.iter().map(|c| &**c))
+                .unwrap();
 
         let events = store.insert_rrd_manifest(rrd_manifest.clone());
         manifest_index

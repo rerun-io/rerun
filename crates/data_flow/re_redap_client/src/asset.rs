@@ -4,7 +4,8 @@ use std::collections::hash_map;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use re_log_encoding::{CodecResult, RawRrdManifest, RrdManifest};
+use re_chunk_index::{RawRrdManifest, RrdManifest};
+use re_log_encoding::CodecResult;
 use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, LayerRegistrationStatus, ScanDatasetManifestDataframe,
