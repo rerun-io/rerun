@@ -226,6 +226,7 @@ extend-ignore-re = [
   "\"[a-f0-9]{8}\"",
   "_[a-f0-9]{16}",
 
+  'b"loca"', # TrueType glyph location table tag.
 
   "np.arange", # Stands for "array range" and isn't a misspelling of "arrange".
   "phc_[a-zA-Z0-9]*", # Posthog public key

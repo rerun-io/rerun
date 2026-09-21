@@ -14,148 +14,18 @@ use re_log_types::external::arrow::array::{
 };
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::archetypes::TextLog;
-use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
-use re_sdk_types::{ArchetypeName, ComponentIdentifier, DynamicArchetype, Visualizer};
+use re_sdk_types::{ArchetypeName, ComponentIdentifier, DynamicArchetype};
 use re_test_context::TestContext;
-use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
-use re_view::execute_systems_for_view;
-use re_view_state_timeline::{
-    StateLanesOutput, StateTimelineView, StateValueKind, StateVisualizer,
+use re_view_state_timeline::{StateLanesOutput, StateTimelineView, StateValueKind};
+use re_viewer_context::ViewId;
+
+use super::common::{
+    self, build_view, map_source_to_state, map_source_to_state_with_selector, timed_phase_labels,
 };
-use re_viewer_context::{IdentifiedViewSystem as _, ViewClass as _, ViewId};
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
-const STATE_TARGET: &str = "StateChange:state";
-
-/// Map a custom source component onto the `StateChange:state` slot of a `StateVisualizer`.
-///
-/// `save_visualizers` bypasses the default auto-spawn heuristics, which only fire when the
-/// entity is indicated for the `StateChange` archetype. Custom archetypes (`DynamicArchetype`,
-/// `TextLog`) are not indicated, so the visualizer instruction has to be installed explicitly.
-fn map_source_to_state(source_component: impl Into<ComponentIdentifier>) -> Visualizer {
-    map_source_to_state_with_selector(source_component, None)
-}
-
-/// Like [`map_source_to_state`] but with a jq-like selector into the source component,
-/// e.g. `.u8` to pick a field nested in a struct.
-fn map_source_to_state_with_selector(
-    source_component: impl Into<ComponentIdentifier>,
-    selector: Option<&str>,
-) -> Visualizer {
-    let source_component = source_component.into();
-    Visualizer::new(StateVisualizer::identifier().as_str()).with_mappings([
-        VisualizerComponentMapping {
-            target: STATE_TARGET.into(),
-            source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some(source_component.as_str().into()),
-            selector: selector.map(Into::into),
-        }
-        .into(),
-    ])
-}
-
-/// Lock in the [`Timeline::log_tick`] timeline as active and set up a viewport blueprint
-/// with a single view that maps the given visualizers onto `entity`.
-///
-/// Must be called *after* data has been logged: `set_active_timeline` reads the entity DB
-/// when it runs, so the timeline only resolves to a concrete [`Timeline`] (rather than
-/// staying [`re_viewer_context::ActiveTimeline::Pending`]) once some data exists on it.
-/// After this, [`TestContext::active_timeline`] returns `Some(Timeline::log_tick())`.
-fn build_view(
-    test_context: &mut TestContext,
-    entity: &str,
-    visualizers: impl IntoIterator<Item = Visualizer>,
-) -> ViewId {
-    test_context.set_active_timeline(*Timeline::log_tick().name());
-
-    let visualizers: Vec<_> = visualizers.into_iter().collect();
-    test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        ctx.save_visualizers(&EntityPath::from(entity), view.id, visualizers);
-        blueprint.add_view_at_root(view)
-    })
-}
-
-/// Run the state visualizer and collect every emitted [`StateLanesOutput`].
-///
-/// Reconstructs the per-frame execution that the viewport normally performs, then peeks at
-/// the visualizer's typed output rather than rendering it.
 fn run_visualizer(test_context: &TestContext, view_id: ViewId) -> Vec<StateLanesOutput> {
-    run_visualizer_impl(test_context, view_id, None)
-}
-
-/// Like [`run_visualizer`] but with the visible window constrained to
-/// `[min, min + time_spanned]`, as if the user had panned/zoomed there.
-fn run_visualizer_with_window(
-    test_context: &TestContext,
-    view_id: ViewId,
-    min: f64,
-    time_spanned: f64,
-) -> Vec<StateLanesOutput> {
-    run_visualizer_impl(test_context, view_id, Some((min, time_spanned)))
-}
-
-fn run_visualizer_impl(
-    test_context: &TestContext,
-    view_id: ViewId,
-    window: Option<(f64, f64)>,
-) -> Vec<StateLanesOutput> {
-    if let Some((min, time_spanned)) = window {
-        test_context.with_blueprint_ctx(|ctx, _store_hub| {
-            use re_sdk_types::blueprint::{archetypes::TimeAxis, components::LinkAxis};
-            use re_sdk_types::encodings::TimeRangeBoundary;
-            let property = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<TimeAxis>(
-                &ctx, view_id,
-            );
-            property.save_blueprint_component(
-                &ctx,
-                &TimeAxis::descriptor_link(),
-                &LinkAxis::Independent,
-            );
-            property.save_blueprint_component(
-                &ctx,
-                &TimeAxis::descriptor_view_range(),
-                &re_sdk_types::blueprint::components::TimeRange(
-                    re_sdk_types::encodings::TimeRange {
-                        start: TimeRangeBoundary::Absolute(re_view::time_axis_time_from_plot(
-                            min.into(),
-                            0,
-                        )),
-                        end: TimeRangeBoundary::Absolute(re_view::time_axis_time_from_plot(
-                            (min + time_spanned).into(),
-                            0,
-                        )),
-                    },
-                ),
-            );
-        });
-        test_context.handle_system_commands(&egui::Context::default());
-    }
-    test_context.run_once_in_egui_central_panel(|ctx, _ui| {
-        let viewport_blueprint =
-            ViewportBlueprint::from_db(ctx.store_context.blueprint, &test_context.blueprint_query);
-        let view_blueprint = viewport_blueprint
-            .view(&view_id)
-            .expect("view should exist in blueprint");
-
-        let class_registry = ctx.view_class_registry();
-        let view_class = class_registry.get_class_or_log_error(view_blueprint.class_identifier());
-        let view_state = view_class.new_state();
-
-        let once_per_frame = class_registry.run_once_per_frame_context_systems(
-            ctx,
-            std::iter::once(view_blueprint.class_identifier()),
-        );
-
-        let (_view_query, system_output) =
-            execute_systems_for_view(ctx, view_blueprint, view_state.as_ref(), &once_per_frame);
-
-        system_output
-            .iter_visualizer_data::<StateLanesOutput>()
-            .cloned()
-            .collect()
-    })
+    common::run_visualizer_data(test_context, view_id, None)
 }
 
 fn phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<String> {
@@ -176,33 +46,6 @@ fn phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<String> {
             p.content
                 .as_ref()
                 .map_or_else(String::new, |s| s.label.clone())
-        })
-        .collect()
-}
-
-/// Like [`phase_labels`] but keeps each phase's start time, so tests can assert *when* a
-/// reset (gap, rendered as an empty label) begins.
-fn timed_phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<(i64, String)> {
-    let group = lanes_data
-        .groups
-        .iter()
-        .find(|g| g.entity_path == EntityPath::from(entity))
-        .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
-    assert_eq!(
-        group.lanes.len(),
-        1,
-        "expected a single-instance lane group for entity {entity}"
-    );
-    group.lanes[0]
-        .phases
-        .iter()
-        .map(|p| {
-            (
-                p.start_time,
-                p.content
-                    .as_ref()
-                    .map_or_else(String::new, |s| s.label.clone()),
-            )
         })
         .collect()
 }
@@ -566,77 +409,6 @@ fn test_empty_batch_resets_string_lane() {
             (1, String::new()),
             (2, "active".to_owned())
         ]
-    );
-}
-
-/// A null row before the visible window is a reset. With the window panned to
-/// `[25, 35]` and data `Idle@0`, `[null]@20`, `Active@40`, the lane shows a gap at the
-/// window's left edge: the single latest-at bootstrap row (the null) fully describes the
-/// state there — no further look-back is needed.
-#[test]
-fn test_null_before_window_resets_lane() {
-    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
-    let entity = "/state/null_before_window";
-
-    for (tick, array) in [
-        (0i64, StringArray::from(vec![Some("Idle")])),
-        (20, StringArray::from(vec![None::<&str>])),
-        (40, StringArray::from(vec![Some("Active")])),
-    ] {
-        let archetype = DynamicArchetype::new("strings")
-            .with_component_from_data("value", Arc::new(array) as Arc<_>);
-        test_context.log_entity(entity, |builder| {
-            builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &archetype)
-        });
-    }
-
-    let view_id = build_view(
-        &mut test_context,
-        entity,
-        [map_source_to_state("strings:value")],
-    );
-
-    let outputs = run_visualizer_with_window(&test_context, view_id, 25.0, 10.0);
-    assert_eq!(outputs.len(), 1);
-    // The bootstrap yields the gap event from the null@20; being a leading gap it is
-    // dropped, leaving the lane empty until `Active`@40 (just past the window).
-    assert_eq!(
-        timed_phase_labels(&outputs[0], entity),
-        vec![(40, "Active".to_owned())]
-    );
-}
-
-/// Same-timestamp sibling rows — the later row id wins, both in-window and at the
-/// window-edge bootstrap: `Idle`@20 then `[null]`@20 means the state at t=20 is reset, so a
-/// window starting after 20 shows a gap until the next state.
-#[test]
-fn test_null_wins_over_same_time_sibling_at_bootstrap() {
-    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
-    let entity = "/state/null_same_time";
-
-    for (tick, array) in [
-        (20i64, StringArray::from(vec![Some("Idle")])),
-        (20, StringArray::from(vec![None::<&str>])),
-        (40, StringArray::from(vec![Some("Active")])),
-    ] {
-        let archetype = DynamicArchetype::new("strings")
-            .with_component_from_data("value", Arc::new(array) as Arc<_>);
-        test_context.log_entity(entity, |builder| {
-            builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &archetype)
-        });
-    }
-
-    let view_id = build_view(
-        &mut test_context,
-        entity,
-        [map_source_to_state("strings:value")],
-    );
-
-    let outputs = run_visualizer_with_window(&test_context, view_id, 25.0, 10.0);
-    assert_eq!(outputs.len(), 1);
-    assert_eq!(
-        timed_phase_labels(&outputs[0], entity),
-        vec![(40, "Active".to_owned())]
     );
 }
 
