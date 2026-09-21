@@ -20,6 +20,7 @@ use re_types_core::SegmentId;
 use tokio::sync::mpsc::Sender;
 use tracing::Instrument as _;
 
+use crate::ObjectStoreAuthenticator;
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
     ChunksWithSegment, SortedChunksWithSegment, batch_byte_size, batch_byte_size_uncompressed,
@@ -777,6 +778,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     output_channel: Sender<ApiResult<CpuWorkerMsg>>,
     pending_analytics: crate::PendingQueryAnalytics,
     pipeline_budget: Arc<PipelineBudget>,
+    object_store_auth: &dyn ObjectStoreAuthenticator,
 ) -> ApiResult<()> {
     let origin = client.origin();
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
@@ -1007,6 +1009,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                     &metrics.fetch_direct_requests,
                                     &mut stats,
                                     &pending_analytics,
+                                    object_store_auth,
                                 )
                                 .await
                                 {

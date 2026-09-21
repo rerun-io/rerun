@@ -14,6 +14,8 @@ use self::projection::{
     all_schema_components, compute_schema_for_query, extract_projected_components,
     extract_projected_entity_paths,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use crate::ObjectStoreAuthenticator;
 use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
@@ -142,6 +144,10 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     ///
     /// `Arc` so that the value survives any clone made between planning and scan.
     filter_capture: Arc<Mutex<Option<FilterCapture>>>,
+
+    /// Authentication for object store direct fetch requests.
+    #[cfg(not(target_arch = "wasm32"))]
+    object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 }
 
 /// Per-filter classification data captured in [`DataframeQueryTableProvider::supports_filters_pushdown`]
@@ -242,6 +248,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         arrow_schema: Option<Schema>,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
+        #[cfg(not(target_arch = "wasm32"))] object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
     ) -> ApiResult<Self> {
         let origin = connection.origin().clone();
         let connection = connection.connection().await?;
@@ -256,6 +263,8 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
             metrics_collectors,
+            #[cfg(not(target_arch = "wasm32"))]
+            object_store_auth,
         )
         .await?;
 
@@ -287,6 +296,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         arrow_schema: Option<Schema>,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
+        #[cfg(not(target_arch = "wasm32"))] object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
     ) -> ApiResult<Self> {
         let origin = client.origin().clone();
 
@@ -375,6 +385,10 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             // signing would be wasted work and, on Azure, can fail outright with a 403
             // before the gRPC fetch path is ever reached.
             generate_direct_urls: !force_grpc(),
+            #[cfg(not(target_arch = "wasm32"))]
+            unsigned_direct_urls: !object_store_auth.needs_signed_urls(),
+            #[cfg(target_arch = "wasm32")]
+            unsigned_direct_urls: false,
         };
 
         let schema = Arc::new(prepend_string_column_schema(
@@ -395,6 +409,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             analytics: None,
             metrics_collectors,
             filter_capture: Arc::new(Mutex::new(None)),
+            #[cfg(not(target_arch = "wasm32"))]
+            object_store_auth,
         })
     }
 
@@ -777,6 +793,8 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 trace_id,
                 pending_analytics,
                 self.metrics_collectors.clone(),
+                #[cfg(not(target_arch = "wasm32"))]
+                self.object_store_auth.clone(),
             )
             .map(Arc::new)
             .map(|exec| {

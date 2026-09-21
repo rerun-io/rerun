@@ -318,6 +318,7 @@ pub struct SegmentQueryParams {
     pub include_static_data: bool,
     pub include_temporal_data: bool,
     pub generate_direct_urls: bool,
+    pub unsigned_direct_urls: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
@@ -1623,6 +1624,7 @@ where
                 include_temporal_data,
                 query,
                 generate_direct_urls,
+                unsigned_direct_urls,
             } = params.clone();
 
             async move {
@@ -1642,6 +1644,7 @@ where
                         ..Default::default()
                     }),
                     generate_direct_urls,
+                    unsigned_direct_urls,
                 };
 
                 let response = crate::rpc_retry::retry(|| {

@@ -1295,8 +1295,28 @@ class TableProviderAdapterInternal:
 
     def __datafusion_table_provider__(self, session: Any) -> Any: ...
 
+class BearerTokenObjectStoreAuth:
+    """
+    Authenticates object store fetches with an `Authorization: Bearer` header.
+
+    `get_token` is called before each batch of fetches, so it may refresh expiring credentials.
+    It runs on a background thread while the query executes.
+    """
+
+    def __init__(self, get_token: Callable[[], str]) -> None:
+        """
+        Create an authenticator from a callable returning the current bearer token.
+
+        `get_token` is invoked during queries and must return a `str`.
+        """
+
 class CatalogClientInternal:
-    def __init__(self, url: str, token: str | None = None) -> None: ...
+    def __init__(
+        self,
+        url: str,
+        token: str | None = None,
+        object_store_auth: BearerTokenObjectStoreAuth | None = None,
+    ) -> None: ...
 
     # ---
 

@@ -12108,6 +12108,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_web_viewer_server",
+ "reqwest",
  "rustls",
  "strum 0.26.3",
  "strum_macros 0.26.4",

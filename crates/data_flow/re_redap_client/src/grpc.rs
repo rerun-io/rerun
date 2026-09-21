@@ -1030,6 +1030,7 @@ async fn stream_segment_from_server(
                     .into(),
                 ),
                 generate_direct_urls: false,
+                unsigned_direct_urls: false,
             })
             .await?;
 
@@ -1091,6 +1092,7 @@ async fn stream_segment_from_server(
             include_temporal_data: true,
             query: None, // everything
             generate_direct_urls: false,
+            unsigned_direct_urls: false,
         })
         .await?;
 

@@ -1117,6 +1117,10 @@ pub struct QueryDatasetRequest {
     /// It is not guaranteed that the server will return all (or any) of them.
     #[prost(bool, tag = "12")]
     pub generate_direct_urls: bool,
+    /// If the direct URL generation should skip presigning, and delegate authentication
+    /// to the client. Ignored if `generate_direct_urls` is not `true`.
+    #[prost(bool, tag = "13")]
+    pub unsigned_direct_urls: bool,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]

@@ -8,10 +8,12 @@ use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
+use re_datafusion::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
+
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProviderList;
 use crate::catalog::{
-    PyConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
-    to_py_err,
+    AnyObjectStoreAuthenticator, PyConnectionHandle, PyDatasetEntryInternal, PyEntryId,
+    PyRerunHtmlTable, PyTableEntryInternal, to_py_err,
 };
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
@@ -30,11 +32,18 @@ pub struct PyCatalogClientInternal {
 
     // If this isn't set, it means datafusion wasn't found
     datafusion_ctx: Option<Py<PyAny>>,
+
+    /// Authentication for direct object store fetches made by dataframe queries.
+    object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 }
 
 impl PyCatalogClientInternal {
     pub(crate) fn connection(&self) -> &PyConnectionHandle {
         &self.connection
+    }
+
+    pub(crate) fn object_store_auth(&self) -> &Arc<dyn ObjectStoreAuthenticator> {
+        &self.object_store_auth
     }
 }
 
@@ -72,8 +81,14 @@ impl PyCatalogClientInternal {
 
     /// Create a new catalog client object.
     #[new]
-    #[pyo3(text_signature = "(self, url, token=None)")]
-    fn new(py: Python<'_>, url: String, token: Option<String>) -> PyResult<Self> {
+    #[pyo3(signature = (url, token=None, object_store_auth=None))]
+    #[pyo3(text_signature = "(self, url, token=None, object_store_auth=None)")]
+    fn new(
+        py: Python<'_>,
+        url: String,
+        token: Option<String>,
+        object_store_auth: Option<AnyObjectStoreAuthenticator>,
+    ) -> PyResult<Self> {
         let _span = read_trace_context_from_python(py, "CatalogClient.__new__").entered();
 
         // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
@@ -102,9 +117,18 @@ impl PyCatalogClientInternal {
 
         let datafusion_ctx = setup_datafusion_context(py).ok();
 
+        let object_store_auth = object_store_auth.map_or_else(
+            || {
+                Arc::new(NoOpObjectStoreAuthenticator::default())
+                    as Arc<dyn ObjectStoreAuthenticator>
+            },
+            |auth| auth.into_authenticator(py),
+        );
+
         let ret = Self {
             connection,
             datafusion_ctx,
+            object_store_auth,
         };
 
         ret.register_catalog_provider_list(py)?;

@@ -326,6 +326,7 @@ mod tests {
                     include_static_data: true,
                     include_temporal_data: true,
                     generate_direct_urls: false,
+                    unsigned_direct_urls: false,
                     query: None,
                 })
                 .await
@@ -444,6 +445,7 @@ mod tests {
                     include_static_data: true,
                     include_temporal_data: true,
                     generate_direct_urls: false,
+                    unsigned_direct_urls: false,
                     query: None,
                 })
                 .await

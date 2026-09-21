@@ -1,0 +1,16 @@
+[project]
+name = "query_gcs_auth"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "rerun-sdk[catalog]",
+  "google-auth",
+  "requests", # transport for `google.auth` token refresh
+]
+
+[project.scripts]
+query_gcs_auth = "query_gcs_auth:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

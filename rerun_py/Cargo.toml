@@ -121,6 +121,7 @@ strum.workspace = true
 strum_macros.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+reqwest.workspace = true
 
 # Deps for remote feature
 re_protos = { workspace = true, features = ["py"] }

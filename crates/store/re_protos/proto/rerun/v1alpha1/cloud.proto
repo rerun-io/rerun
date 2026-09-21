@@ -976,6 +976,10 @@ message QueryDatasetRequest {
   // It is not guaranteed that the server will return all (or any) of them.
   bool generate_direct_urls = 12;
 
+  // If the direct URL generation should skip presigning, and delegate authentication
+  // to the client. Ignored if `generate_direct_urls` is not `true`.
+  bool unsigned_direct_urls = 13;
+
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;

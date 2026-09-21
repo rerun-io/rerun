@@ -1661,6 +1661,7 @@ impl RerunCloudService for RerunCloudHandler {
             scan_parameters,
             query,
             generate_direct_urls: _,
+            unsigned_direct_urls: _,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
