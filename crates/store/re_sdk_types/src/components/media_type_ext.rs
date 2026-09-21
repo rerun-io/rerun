@@ -75,6 +75,35 @@ impl MediaType {
     pub const MP4: &'static str = "video/mp4";
 
     // -------------------------------------------------------
+    // Audio:
+
+    /// [AAC audio](https://en.wikipedia.org/wiki/Advanced_Audio_Coding) in a raw ADTS stream: `audio/aac`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/audio/aac>
+    pub const AAC: &'static str = "audio/aac";
+
+    /// [FLAC audio](https://en.wikipedia.org/wiki/FLAC): `audio/flac`.
+    pub const FLAC: &'static str = "audio/flac";
+
+    /// [M4A audio](https://en.wikipedia.org/wiki/MP4_file_format) (AAC in an MP4 container): `audio/mp4`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/audio/mp4>
+    pub const M4A: &'static str = "audio/mp4";
+
+    /// [MP3 audio](https://en.wikipedia.org/wiki/MP3): `audio/mpeg`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/audio/mpeg>
+    pub const MP3: &'static str = "audio/mpeg";
+
+    /// [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/audio/ogg>
+    pub const OGG: &'static str = "audio/ogg";
+
+    /// [WAV audio](https://en.wikipedia.org/wiki/WAV): `audio/wav`.
+    pub const WAV: &'static str = "audio/wav";
+
+    // -------------------------------------------------------
     // Robotics formats:
 
     /// Rerun recording data: `application/x-rerun`.
@@ -185,6 +214,45 @@ impl MediaType {
     }
 
     // -------------------------------------------------------
+    // Audio:
+
+    /// `audio/aac`
+    #[inline]
+    pub fn aac() -> Self {
+        Self(Self::AAC.into())
+    }
+
+    /// `audio/flac`
+    #[inline]
+    pub fn flac() -> Self {
+        Self(Self::FLAC.into())
+    }
+
+    /// `audio/mp4`
+    #[inline]
+    pub fn m4a() -> Self {
+        Self(Self::M4A.into())
+    }
+
+    /// `audio/mpeg`
+    #[inline]
+    pub fn mp3() -> Self {
+        Self(Self::MP3.into())
+    }
+
+    /// `audio/ogg`
+    #[inline]
+    pub fn ogg() -> Self {
+        Self(Self::OGG.into())
+    }
+
+    /// `audio/wav`
+    #[inline]
+    pub fn wav() -> Self {
+        Self(Self::WAV.into())
+    }
+
+    // -------------------------------------------------------
     // Robotics formats:
 
     /// `application/x-rerun`
@@ -243,6 +311,10 @@ impl MediaType {
             // `mime_guess2` considers `.stl` to be a `application/vnd.ms-pki.stl`.
             Some("stl") => {
                 return Some(Self::stl());
+            }
+            // `mime_guess2` considers `.m4a` to be the non-standard `audio/m4a`.
+            Some("m4a") => {
+                return Some(Self::m4a());
             }
             _ => {}
         }
@@ -321,6 +393,12 @@ impl MediaType {
         // - obj is simply text, so no magic byte
 
         let mut inferer = infer::Infer::new();
+        // Custom matchers take precedence over the built-in ones, so these
+        // normalize `infer`'s `audio/x-wav`, `audio/x-flac`, and `audio/m4a`
+        // to the media types we use everywhere else:
+        inferer.add(Self::FLAC, "flac", infer::audio::is_flac);
+        inferer.add(Self::M4A, "m4a", infer::audio::is_m4a);
+        inferer.add(Self::WAV, "wav", infer::audio::is_wav);
         inferer.add(Self::RRD, "rrd", rrd_matcher);
         inferer.add(Self::MCAP, "mcap", mcap_matcher);
         inferer.add(Self::PLY, "ply", ply_matcher);
@@ -355,17 +433,20 @@ impl MediaType {
     pub fn file_extension(&self) -> Option<&'static str> {
         match self.as_str() {
             // Special-case some where there are multiple extensions:
+            Self::DAE => Some("dae"),
             Self::JPEG => Some("jpg"),
+            Self::M4A => Some("m4a"),
             Self::MARKDOWN => Some("md"),
+            Self::MP3 => Some("mp3"),
+            Self::OGG => Some("ogg"),
             Self::RVL => Some("rvl"),
             Self::STL => Some("stl"),
-            Self::DAE => Some("dae"),
             Self::TEXT => Some("txt"),
 
             // Custom MIME types not known to mime_guess2:
-            Self::RRD => Some("rrd"),
             Self::MCAP => Some("mcap"),
             Self::PLY => Some("ply"),
+            Self::RRD => Some("rrd"),
 
             _ => {
                 let alternatives = mime_guess2::get_mime_extensions_str(&self.0)?;
@@ -384,6 +465,11 @@ impl MediaType {
     /// Returns `true` if this is an video media type.
     pub fn is_video(&self) -> bool {
         self.as_str().starts_with("video/")
+    }
+
+    /// Returns `true` if this is an audio media type.
+    pub fn is_audio(&self) -> bool {
+        self.as_str().starts_with("audio/")
     }
 }
 
@@ -414,6 +500,53 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::png().file_extension(), Some("png"));
     assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
+    assert_eq!(MediaType::aac().file_extension(), Some("aac"));
+    assert_eq!(MediaType::flac().file_extension(), Some("flac"));
+    assert_eq!(MediaType::m4a().file_extension(), Some("m4a"));
+    assert_eq!(MediaType::mp3().file_extension(), Some("mp3"));
+    assert_eq!(MediaType::ogg().file_extension(), Some("ogg"));
+    assert_eq!(MediaType::wav().file_extension(), Some("wav"));
+}
+
+#[test]
+fn test_guess_audio() {
+    for (ext, expected) in [
+        ("aac", MediaType::aac()),
+        ("flac", MediaType::flac()),
+        ("m4a", MediaType::m4a()),
+        ("mp3", MediaType::mp3()),
+        ("ogg", MediaType::ogg()),
+        ("wav", MediaType::wav()),
+        ("WAV", MediaType::wav()),
+    ] {
+        assert_eq!(
+            MediaType::guess_from_path(format!("sound.{ext}")),
+            Some(expected),
+            "extension {ext}"
+        );
+    }
+
+    let wav = include_bytes!("../../../../../tests/assets/audio/sine_440hz_2s.wav");
+    assert_eq!(MediaType::guess_from_data(wav), Some(MediaType::wav()));
+
+    let aac = include_bytes!("../../../../../tests/assets/audio/sine_440hz_2s.aac");
+    assert_eq!(MediaType::guess_from_data(aac), Some(MediaType::aac()));
+
+    assert_eq!(
+        MediaType::guess_from_data(b"fLaC\0\0\0\x22"),
+        Some(MediaType::flac())
+    );
+    assert_eq!(
+        MediaType::guess_from_data(b"OggS\0\x02"),
+        Some(MediaType::ogg())
+    );
+    assert_eq!(
+        MediaType::guess_from_data(b"\xff\xfb\x90\x64"),
+        Some(MediaType::mp3())
+    );
+
+    assert!(MediaType::wav().is_audio());
+    assert!(!MediaType::mp4().is_audio());
 }
 
 #[test]

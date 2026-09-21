@@ -834,7 +834,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(Blob::default().to_arrow()?),
                 datatype: Blob::arrow_data_type(),
                 is_enum: false,
                 own_chunk: false,
@@ -2026,6 +2026,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Albedo factor",
                         component_type: "rerun.components.AlbedoFactor".into(),
                         docstring_md: "A color multiplier applied to the whole asset.\n\nFor mesh who already have `albedo_factor` in materials,\nit will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) (if specified).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.archetypes.AssetAudio"),
+            ArchetypeReflection {
+                display_name: "Asset audio",
+                deprecation_summary: None,
+                scope: None,
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "blob",
+                        display_name: "Blob",
+                        component_type: "rerun.components.Blob".into(),
+                        docstring_md: "The asset's bytes.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "media_type",
+                        display_name: "Media type",
+                        component_type: "rerun.components.MediaType".into(),
+                        docstring_md: "The Media Type of the asset.\n\nFor instance:\n* `audio/aac` (raw ADTS stream)\n* `audio/flac`\n* `audio/mp4` (M4A)\n* `audio/mpeg` (MP3)\n* `audio/ogg`\n* `audio/wav`\n\nAny audio media type can be stored.\nWhich ones the viewer can decode depends on the viewer version.\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to play the asset.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

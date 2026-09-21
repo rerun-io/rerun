@@ -3,19 +3,14 @@ from __future__ import annotations
 import pathlib
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import numpy.typing as npt
-
-import rerun_bindings as bindings
-
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from .. import encodings
 
 
-class AssetVideoExt:
-    """Extension for [AssetVideo][rerun.archetypes.AssetVideo]."""
+class AssetAudioExt:
+    """Extension for [AssetAudio][rerun.archetypes.AssetAudio]."""
 
     def __init__(
         self: Any,
@@ -25,7 +20,7 @@ class AssetVideoExt:
         media_type: encodings.Utf8Like | None = None,
     ) -> None:
         """
-        Create a new instance of the AssetVideo archetype.
+        Create a new instance of the AssetAudio archetype.
 
         Parameters
         ----------
@@ -41,11 +36,13 @@ class AssetVideoExt:
             The Media Type of the asset.
 
             For instance:
-             * `video/mp4`
+             * `audio/aac`
+             * `audio/mpeg`
+             * `audio/wav`
 
             If omitted, it will be guessed from the `path` (if any),
             or the viewer will try to guess from the contents (magic header).
-            If the media type cannot be guessed, the viewer won't be able to render the asset.
+            If the media type cannot be guessed, the viewer won't be able to play the asset.
 
         """
 
@@ -66,20 +63,3 @@ class AssetVideoExt:
             return
 
         self.__attrs_clear__()
-
-    def read_frame_timestamps_nanos(self: Any) -> npt.NDArray[np.int64]:
-        """
-        Determines the presentation timestamps of all frames inside the video.
-
-        Throws a runtime exception if the video cannot be read.
-        """
-        if self.blob is not None:
-            video_buffer = self.blob.as_arrow_array()
-        else:
-            raise RuntimeError("Asset video has no video buffer")
-
-        media_type = None
-        if self.media_type is not None:
-            media_type = self.media_type.as_arrow_array()[0].as_py()
-
-        return np.array(bindings.asset_video_read_frame_timestamps_nanos(video_buffer, media_type), dtype=np.int64)

@@ -2,7 +2,7 @@
 source: crates/top/re_viewer/tests/integration/all_component_fallbacks.rs
 expression: arch_display
 ---
-blob: [[0]]
+blob: [[]]
 media_type: [application/octet-stream]
 meter: [1000.0]
 colormap: [5]

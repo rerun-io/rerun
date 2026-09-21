@@ -1,3 +1,4 @@
+mod test_audio_importer;
 #[cfg(feature = "lerobot")]
 mod test_lerobot_importer;
 #[cfg(feature = "mcap")]

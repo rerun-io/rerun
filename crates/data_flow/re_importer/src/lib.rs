@@ -299,6 +299,7 @@ pub type ImporterName = String;
 /// - [`ArchetypeImporter`] for:
 ///     - [3D models]
 ///     - [Images]
+///     - [Audio files]
 ///     - [Point clouds]
 ///     - [Text files]
 /// - [`DirectoryImporter`] for recursively importing folders.
@@ -326,6 +327,7 @@ pub type ImporterName = String;
 /// [Rerun files]: crate::SUPPORTED_RERUN_EXTENSIONS
 /// [3D models]: crate::SUPPORTED_MESH_EXTENSIONS
 /// [Images]: crate::SUPPORTED_IMAGE_EXTENSIONS
+/// [Audio files]: crate::SUPPORTED_AUDIO_EXTENSIONS
 /// [Point clouds]: crate::SUPPORTED_POINT_CLOUD_EXTENSIONS
 /// [Text files]: crate::SUPPORTED_TEXT_EXTENSIONS
 //
@@ -596,6 +598,9 @@ pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
 
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
+pub const SUPPORTED_AUDIO_EXTENSIONS: &[&str] =
+    &["aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav"];
+
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
 
 // TODO(#4532): `.ply` importer should support 2D point cloud & meshes
@@ -619,6 +624,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         SUPPORTED_IMAGE_EXTENSIONS,
         SUPPORTED_DEPTH_IMAGE_EXTENSIONS,
         SUPPORTED_VIDEO_EXTENSIONS,
+        SUPPORTED_AUDIO_EXTENSIONS,
         SUPPORTED_MESH_EXTENSIONS,
         SUPPORTED_POINT_CLOUD_EXTENSIONS,
         SUPPORTED_PARQUET_EXTENSIONS,

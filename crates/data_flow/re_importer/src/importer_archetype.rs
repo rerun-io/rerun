@@ -143,6 +143,10 @@ impl Importer for ArchetypeImporter {
                 }
                 _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
             }
+        } else if crate::SUPPORTED_AUDIO_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading audio…",);
+            load_audio(&filepath, timepoint, entity_path, contents.into_owned())
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
             load_mesh(
@@ -302,6 +306,33 @@ fn load_video(
             None
         }
     }))
+}
+
+/// The audio starts playing at the time it is logged, so it is placed at zero on
+/// its own `audio` duration timeline, mirroring how `load_video` handles `.mp4` files.
+fn load_audio(
+    filepath: &std::path::Path,
+    mut timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, ImporterError> {
+    re_tracing::profile_function!();
+
+    let audio_timeline = re_log_types::Timeline::new_duration("audio");
+    timepoint.insert_cell(
+        *audio_timeline.name(),
+        re_log_types::TimeCell::ZERO_DURATION,
+    );
+
+    let arch = re_sdk_types::archetypes::AssetAudio::from_file_contents(
+        contents,
+        re_sdk_types::components::MediaType::guess_from_path(filepath),
+    );
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(RowId::new(), timepoint, &arch)
+        .build()?;
+
+    Ok(std::iter::once(chunk))
 }
 
 fn load_mesh(
