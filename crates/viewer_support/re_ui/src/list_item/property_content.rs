@@ -185,7 +185,7 @@ impl ListItemContent for PropertyContent<'_> {
             buttons,
         } = *self;
 
-        let content_id_salt = egui::Id::new(label.text());
+        let content_id_salt = egui::IdSalt::new(label.text());
         let tokens = ui.tokens();
 
         // │                                                                              │

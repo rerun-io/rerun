@@ -115,8 +115,9 @@ crates/
 
 For more details about the architecture see `ARCHITECTURE.md`.
 
-**When adding, removing, or renaming a crate**, update `ARCHITECTURE.md`:
-add the crate to the appropriate crate table, and flag for the author that the crate-organization diagram (FigJam) needs a manual update — see the HTML comment next to the diagram in `ARCHITECTURE.md` for instructions.
+**When adding, removing, or renaming a crate**, run `pixi run crate-graph`.
+It regenerates both the crate dependency diagram (`crate_graph.svg`) and the crate tables in `ARCHITECTURE.md` from `cargo metadata`.
+A crate's one-line description comes from the `description` field of its `Cargo.toml`.
 
 ### Type system hierarchy
 

@@ -643,7 +643,7 @@ pub trait UiExt {
     #[inline]
     fn list_item_scope<R>(
         &mut self,
-        id_salt: impl egui::AsId,
+        id_salt: impl egui::AsIdSalt,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
@@ -679,7 +679,7 @@ pub trait UiExt {
         children_ui: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
         let label = label.into();
-        let id = self.ui().id().with(egui::Id::new(label.text()));
+        let id = self.ui().make_persistent_id(label.text());
         self.list_item()
             .interactive(false)
             .show_hierarchical_with_children(
@@ -1115,7 +1115,7 @@ pub trait UiExt {
         let ui = self.ui_mut();
 
         // Have we ever shown any help UI anywhere?
-        let has_shown_help_id = egui::Id::new("has_shown_help");
+        let has_shown_help_id = egui::Id::unique("has_shown_help");
         let user_has_clicked_any_help_button: bool =
             ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
@@ -1188,7 +1188,7 @@ pub trait UiExt {
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {
             data.get_temp_mut_or_default::<Arc<Mutex<egui_commonmark::CommonMarkCache>>>(
-                egui::Id::new("global_egui_commonmark_cache"),
+                egui::Id::unique("global_egui_commonmark_cache"),
             )
             .clone()
         });
@@ -1335,8 +1335,10 @@ pub trait UiExt {
         let show_extras = ui.show_extras();
 
         let content_changed = ui.data_mut(|data| {
-            let stored_show_extras = data
-                .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
+            let stored_show_extras = data.get_temp_mut_or_insert_with(
+                ui.make_persistent_id("__stored_show_extra__"),
+                || show_extras,
+            );
             if *stored_show_extras == show_extras {
                 false
             } else {
@@ -1407,7 +1409,7 @@ pub trait UiExt {
         }
 
         let layout = ui.layout().with_main_wrap(false);
-        let response = ui.scope_builder(UiBuilder::new().id(id).layout(layout), contents);
+        let response = ui.scope_builder(UiBuilder::new().scope_id(id).layout(layout), contents);
 
         // The contents have a width we did not know about when we placed them.
         // Ask for one more pass, so the next one puts them on the correct row.

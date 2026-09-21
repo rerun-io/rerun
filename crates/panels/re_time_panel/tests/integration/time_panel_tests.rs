@@ -2,6 +2,7 @@
 #![expect(clippy::unwrap_used)] // Fine for tests
 
 use re_chunk::Chunk;
+use re_chunk_index::RrdManifest;
 use re_chunk_store::{ChunkStoreConfig, LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
@@ -47,11 +48,9 @@ pub fn time_panel_two_sections() {
 
     let chunks = create_sparse_chunks();
 
-    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-        test_context.active_store_id(),
-        chunks.iter(),
-    )
-    .unwrap();
+    let rrd_manifest =
+        RrdManifest::build_in_memory_from_chunks(test_context.active_store_id(), chunks.iter())
+            .unwrap();
 
     test_context.add_rrd_manifest(rrd_manifest);
     test_context.add_chunks(chunks.into_iter());
@@ -271,11 +270,9 @@ fn with_unloaded_chunks() {
 
     let mut chunks = create_chunks();
 
-    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-        test_context.active_store_id(),
-        chunks.iter(),
-    )
-    .unwrap();
+    let rrd_manifest =
+        RrdManifest::build_in_memory_from_chunks(test_context.active_store_id(), chunks.iter())
+            .unwrap();
 
     test_context.add_rrd_manifest(rrd_manifest);
 

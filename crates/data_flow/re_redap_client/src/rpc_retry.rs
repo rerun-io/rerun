@@ -22,25 +22,40 @@ impl RetryPolicy {
     }
 }
 
-fn default_policy() -> RetryPolicy {
-    dataset_revision_policy()
-}
-
-fn dataset_revision_policy() -> RetryPolicy {
-    RetryPolicy {
+fn default_policy() -> Vec<RetryPolicy> {
+    let dataset_revision_policy = RetryPolicy {
         base_delay: Duration::from_millis(100),
         max_delay: Duration::from_secs(1),
         budget: Duration::from_secs(10),
-
         retry_reason: |status: &tonic::Status| {
-            status.get_details_error_info().filter(|info| {
-                status.code() == tonic::Code::FailedPrecondition
-                    && info.domain == re_protos::error::ERROR_DOMAIN
-                    && info.reason == re_protos::error::DATASET_REVISION_BEHIND
-            })?;
-            Some(status.message())
+            if status.code() != tonic::Code::FailedPrecondition {
+                return None;
+            }
+
+            match status.get_details_error_info() {
+                Some(info)
+                    if info.domain == re_protos::error::ERROR_DOMAIN
+                        && info.reason == re_protos::error::DATASET_REVISION_BEHIND =>
+                {
+                    Some(status.message())
+                }
+                _ => None,
+            }
         },
-    }
+    };
+    let tls_connection_policy = RetryPolicy {
+        // Tonic reports transient TLS failures as `Unknown` during service readiness or as
+        // `Unavailable` after dispatch.
+        retry_reason: |status: &tonic::Status| {
+            matches!(
+                status.code(),
+                tonic::Code::Unknown | tonic::Code::Unavailable
+            )
+            .then_some(status.message())
+        },
+        ..dataset_revision_policy
+    };
+    vec![dataset_revision_policy, tls_connection_policy]
 }
 
 /// Rebuild requests on every attempt so interceptors can refresh their metadata.
@@ -52,18 +67,21 @@ pub async fn retry<T, F: Future<Output = tonic::Result<T>>>(
 }
 
 async fn retry_with_policy<T, F: Future<Output = tonic::Result<T>>>(
-    policy: RetryPolicy,
+    policies: Vec<RetryPolicy>,
     mut call: impl FnMut() -> F,
 ) -> tonic::Result<T> {
     let mut deadline = None;
-    let mut backoff = policy.backoff();
+    let mut backoff = None;
     let mut result = call().await;
     loop {
         let err = match result {
             Ok(response) => return Ok(response),
             Err(err) => err,
         };
-        let Some(reason) = (policy.retry_reason)(&err) else {
+        let Some((policy, reason)) = policies
+            .iter()
+            .find_map(|policy| (policy.retry_reason)(&err).map(|reason| (policy, reason)))
+        else {
             return Err(err);
         };
         let mut timeout = tonic::Status::deadline_exceeded(format!("timed out {reason}"));
@@ -74,6 +92,7 @@ async fn retry_with_policy<T, F: Future<Output = tonic::Result<T>>>(
         }
         let deadline = *deadline.get_or_insert_with(|| web_time::Instant::now() + policy.budget);
         let delay = backoff
+            .get_or_insert_with(|| policy.backoff())
             .gen_next()
             .jittered()
             .min(deadline.saturating_duration_since(web_time::Instant::now()));
@@ -161,7 +180,7 @@ mod tests {
             },
         };
         let mut attempts = 0;
-        let result = retry_with_policy(policy, || {
+        let result = retry_with_policy(vec![policy], || {
             attempts += 1;
             std::future::ready(if attempts == 1 {
                 Err(tonic::Status::unavailable("busy"))
@@ -174,8 +193,23 @@ mod tests {
         assert_eq!(attempts, 2);
     }
 
+    #[test]
+    fn transient_transport_errors_are_retryable() {
+        for status in [
+            tonic::Status::unknown("Service was not ready: transport error"),
+            tonic::Status::unavailable("connection closed"),
+        ] {
+            assert_eq!(
+                default_policy()
+                    .iter()
+                    .find_map(|policy| (policy.retry_reason)(&status)),
+                Some(status.message())
+            );
+        }
+    }
+
     #[tokio::test]
-    async fn only_guard_errors_are_retried() {
+    async fn other_errors_are_not_retried() {
         for error in [
             tonic::Status::not_found("deleted"),
             tonic::Status::failed_precondition("unmarked"),
@@ -202,11 +236,11 @@ mod tests {
     async fn deadline_bounds_backoff_and_pending_attempts() {
         for pending in [false, true] {
             let mut attempts = 0;
-            let mut policy = default_policy();
-            policy.budget = Duration::from_millis(150);
+            let mut policies = default_policy();
+            policies[0].budget = Duration::from_millis(150);
             let result: tonic::Result<()> = tokio::time::timeout(
                 Duration::from_secs(2),
-                retry_with_policy(policy, || {
+                retry_with_policy(policies, || {
                     attempts += 1;
                     let attempts = attempts;
                     async move {
@@ -292,6 +326,7 @@ mod tests {
                     include_static_data: true,
                     include_temporal_data: true,
                     generate_direct_urls: false,
+                    unsigned_direct_urls: false,
                     query: None,
                 })
                 .await
@@ -410,6 +445,7 @@ mod tests {
                     include_static_data: true,
                     include_temporal_data: true,
                     generate_direct_urls: false,
+                    unsigned_direct_urls: false,
                     query: None,
                 })
                 .await

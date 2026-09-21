@@ -20,7 +20,7 @@ all-features = true
 
 [dependencies]
 re_byte_size.workspace = true
-re_log_encoding.workspace = true
+re_chunk_index.workspace = true
 re_log_msg.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true

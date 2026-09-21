@@ -245,7 +245,7 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", &ent_path, instance)),
+                ui.make_persistent_id(("circle", &ent_path, instance)),
                 egui::Sense::click(),
             );
 

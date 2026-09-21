@@ -17,7 +17,6 @@ use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext;
 use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
 use re_viewer_context::{
@@ -760,6 +759,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             + ui.spacing().item_spacing.y,
                     );
                 }
+                let columns_id = ui.make_persistent_id("columns");
                 let visible_columns = blueprint
                     .iter_visible_columns(layout_kind)
                     .filter_map(|column| {
@@ -767,7 +767,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     })
                     .map(|index| {
                         (
-                            egui::Id::new(data_columns.columns[index].physical_name()),
+                            columns_id.with(data_columns.columns[index].physical_name()),
                             index,
                         )
                     });
@@ -849,7 +849,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
             .inner_margin(Margin::symmetric(12, 0));
-        Panel::bottom(session_id.with("bottom_bar"))
+        Panel::bottom((session_id, "bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
             .show(ui, |ui| {
@@ -913,7 +913,7 @@ fn id_from_session_context_and_table(
     session_ctx: &SessionContext,
     table_ref: &DataFusionTableReference,
 ) -> Id {
-    egui::Id::new((session_ctx.session_id(), table_ref))
+    egui::Id::unique((session_ctx.session_id(), table_ref))
 }
 
 /// The row above the table, with an optional title and the display controls.
@@ -1167,7 +1167,7 @@ impl DataFusionTableDelegate<'_> {
             return;
         }
 
-        ui.response().container_context_menu(|ui| {
+        re_ui::menu::container_context_menu(&ui.response(), |ui| {
             let selection = TableSelectionState::load(ui.ctx(), self.session_id);
 
             // re_table will ensure that the right-clicked row is always selected.

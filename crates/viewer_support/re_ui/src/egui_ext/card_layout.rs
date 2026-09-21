@@ -145,7 +145,7 @@ impl CardLayout {
 
         // Read cached row heights from previous frame.
         // For rows without cached data, use the nearest known row height (or 100 as a last resort).
-        let stats_id = ui.id().with("card_layout_row");
+        let stats_id = ui.make_persistent_id("card_layout_row");
         let mut last_known_height = 100.0;
         let row_heights: Vec<f32> = (0..rows.len())
             .map(|i| {
@@ -213,7 +213,7 @@ impl CardLayout {
                 // the press and the release to land on one id.
                 let mut child_ui = ui.new_child(
                     egui::UiBuilder::new()
-                        .id(ui.id().with(("card", i)))
+                        .scope_id(ui.make_persistent_id(("card", i)))
                         .max_rect(card_rect)
                         .layout(egui::Layout::left_to_right(egui::Align::Min))
                         .sense(if item_clickable {

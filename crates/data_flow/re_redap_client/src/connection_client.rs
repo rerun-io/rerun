@@ -1,7 +1,8 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
+use re_chunk_index::RawRrdManifest;
+use re_log_encoding::{Decodable as _, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::capabilities::ServerCapabilities;
@@ -317,6 +318,7 @@ pub struct SegmentQueryParams {
     pub include_static_data: bool,
     pub include_temporal_data: bool,
     pub generate_direct_urls: bool,
+    pub unsigned_direct_urls: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
@@ -1387,21 +1389,30 @@ where
                     .with_entry_id(assets_entry),
                 )
                 .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
-                })?;
-            let mut properties = ApiResponseStream::from_tonic_response(
-                self.origin.clone(),
-                response,
-                "/GetSegmentProperties",
-            );
-            while let Some(response) = properties.next().await {
-                crate::asset::filter_asset_segments(
-                    &self.origin,
-                    &mut asset_segment_ids,
-                    segment_id.as_ref(),
-                    response?,
-                )?;
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed"));
+
+            match response {
+                Ok(response) => {
+                    let mut properties = ApiResponseStream::from_tonic_response(
+                        self.origin.clone(),
+                        response,
+                        "/GetSegmentProperties",
+                    );
+                    while let Some(response) = properties.next().await {
+                        crate::asset::filter_asset_segments(
+                            &self.origin,
+                            &mut asset_segment_ids,
+                            segment_id.as_ref(),
+                            response?,
+                        )?;
+                    }
+                }
+
+                // A server without `/GetSegmentProperties` cannot tell which assets apply to
+                // which segment, so every asset applies.
+                Err(err) if err.kind == ApiErrorKind::Unimplemented => {}
+
+                Err(err) => return Err(err),
             }
         }
 
@@ -1613,6 +1624,7 @@ where
                 include_temporal_data,
                 query,
                 generate_direct_urls,
+                unsigned_direct_urls,
             } = params.clone();
 
             async move {
@@ -1632,6 +1644,7 @@ where
                         ..Default::default()
                     }),
                     generate_direct_urls,
+                    unsigned_direct_urls,
                 };
 
                 let response = crate::rpc_retry::retry(|| {

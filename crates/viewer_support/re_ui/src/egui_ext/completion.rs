@@ -340,7 +340,7 @@ impl<'a> CompletionPopup<'a> {
             .kind(PopupKind::Popup)
             .open(is_open)
             .align(align)
-            .align_alternatives(&[align.flip_y()])
+            .align_alternatives(&[align.flipped_y()])
             .width(width)
             .show(|ui| {
                 ui.set_max_width(ui.available_width().min(width));
@@ -463,7 +463,7 @@ mod tests {
     ];
 
     fn id() -> Id {
-        Id::new("prompt")
+        Id::unique("prompt")
     }
 
     /// Commands are only valid at the start of the prompt.
@@ -502,6 +502,9 @@ mod tests {
     ) -> Harness<'a, State> {
         let mut harness = Harness::new_ui_state(
             move |ui, state: &mut State| {
+                // Without any font, `TextEdit` lays out an empty galley and clamps the cursor to 0.
+                crate::apply_style_and_install_loaders(ui.ctx());
+
                 let output = CompletionPopup::new(id()).show(
                     ui,
                     &mut state.text,
@@ -674,6 +677,8 @@ mod tests {
             .with_size(egui::vec2(1600.0, 900.0))
             .build_ui_state(
                 |ui, text_edit_rect: &mut egui::Rect| {
+                    crate::apply_style_and_install_loaders(ui.ctx());
+
                     egui::Panel::right("side")
                         .default_size(420.0)
                         .show(ui, |ui| {

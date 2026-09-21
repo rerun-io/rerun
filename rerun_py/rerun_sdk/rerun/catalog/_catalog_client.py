@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     import datafusion
     import pyarrow as pa
 
+    from ..experimental import ObjectStoreAuth
     from . import DatasetEntry, TableEntry
 
 # Known FFI compatible releases of Datafusion.
@@ -123,7 +124,14 @@ class CatalogClient:
 
     __slots__ = ("_internal",)
 
-    def __init__(self, url: str, *, token: str | None = None, addr: str | None = None) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        token: str | None = None,
+        object_store_auth: ObjectStoreAuth | None = None,
+        addr: str | None = None,
+    ) -> None:
         """
         Connect to a remote Rerun catalog server.
 
@@ -133,6 +141,9 @@ class CatalogClient:
             The URL of the catalog server to connect to.
         token:
             An optional authentication token to use when connecting to the server.
+        object_store_auth:
+            Authentication for fetching chunks directly from object storage, see
+            [`ObjectStoreAuth`][rerun.experimental.ObjectStoreAuth].
         addr:
             Deprecated: Renamed to `url`
 
@@ -168,7 +179,7 @@ class CatalogClient:
                 optional_dep="catalog",
             )
 
-        self._internal = CatalogClientInternal(url, token)
+        self._internal = CatalogClientInternal(url, token, object_store_auth)
 
     @classmethod
     def _from_internal(cls, internal: CatalogClientInternal) -> CatalogClient:

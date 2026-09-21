@@ -3,8 +3,8 @@ use eframe::emath::Align;
 use eframe::epaint::FontFamily;
 use eframe::epaint::text::TextWrapMode;
 use egui::{
-    Atom, AtomExt as _, AtomLayout, Atoms, Button, FontId, Frame, Id, Layout, Margin, Pos2, Rect,
-    Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetText,
+    Atom, AtomExt as _, Atoms, Button, FontId, Frame, IdSalt, Layout, Margin, Pos2, Rect, Response,
+    Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom, WidgetText,
 };
 
 /// A selectable button to be used within [`egui::ComboBox`]es or [`egui::Popup`]s.
@@ -87,7 +87,8 @@ impl Widget for ComboItem<'_> {
 
         let mut atoms = Atoms::new((check_icon, label));
 
-        let error_id = Id::new("error");
+        let error_id = IdSalt::new("error");
+        let value_atom_id = IdSalt::new("value");
         let value_scope_id = ui.next_auto_id().with("value_scope");
 
         if error.is_some() {
@@ -100,7 +101,7 @@ impl Widget for ComboItem<'_> {
                 .unwrap_or_default();
 
             atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
-            atoms.push_right(Atom::custom(value_scope_id, size));
+            atoms.push_right(Atom::custom(value_atom_id, size));
         }
 
         // Since the ComboItem has uneven padding due to the checkmark, we need to manually add 4px
@@ -128,7 +129,7 @@ impl Widget for ComboItem<'_> {
                 )
                 .on_hover_text(error);
             }
-        } else if let Some(rect) = response.rect(value_scope_id)
+        } else if let Some(rect) = response.rect(value_atom_id)
             && let Some(widget) = value
         {
             let rect = Rect::from_min_max(
@@ -140,7 +141,7 @@ impl Widget for ComboItem<'_> {
             );
             let mut child_ui = ui.new_child(
                 UiBuilder::new()
-                    .id(value_scope_id)
+                    .scope_id(value_scope_id)
                     .max_rect(rect)
                     .layout(Layout::right_to_left(Align::Center)),
             );
@@ -179,7 +180,7 @@ impl ComboItemHeader {
 impl Widget for ComboItemHeader {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.add(
-            AtomLayout::new(self.label)
+            WidgetAtom::new(self.label)
                 .frame(Frame::new().inner_margin(Margin {
                     bottom: 0,
                     left: 14, // 12 for check icon + 2 gap

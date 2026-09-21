@@ -229,8 +229,11 @@ fn row_ui(
                 egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
             );
 
-            let response =
-                ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
+            let response = ui.interact(
+                interact_rect,
+                ui.make_persistent_id(title),
+                egui::Sense::click(),
+            );
 
             if response.hovered() {
                 let clip_rect = ui.clip_rect();

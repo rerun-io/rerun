@@ -7,10 +7,10 @@ use arrow::array::RecordBatch;
 use itertools::chain;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
+use re_chunk_index::RrdManifest;
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_int::SaturatingCast as _;
 use re_log::debug_assert;
-use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
 use re_mutex::Mutex;
 
@@ -467,8 +467,8 @@ impl ChunkPrioritizer {
         self.latest_result
     }
 
-    /// Find all chunk IDs that contain components with the given prefix.
-    fn find_chunks_with_component_prefix(manifest: &RrdManifest, prefix: &str) -> HighPrioChunks {
+    /// Find all chunk IDs that contain components of one of the given archetypes.
+    fn find_chunks_with_archetypes(manifest: &RrdManifest, prefixes: &[&str]) -> HighPrioChunks {
         let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
 
         // We intentionally ignore static chunks, because we already prioritize ALL static chunks.
@@ -476,7 +476,10 @@ impl ChunkPrioritizer {
         for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
                 for (component, chunks) in components {
-                    if component.as_str().starts_with(prefix) {
+                    if prefixes
+                        .iter()
+                        .any(|prefix| component.as_str().starts_with(prefix))
+                    {
                         for (chunk_id, entry) in chunks {
                             temporal_chunks.entry(*timeline.name()).or_default().push(
                                 HighPrioChunk {
@@ -505,9 +508,10 @@ impl ChunkPrioritizer {
         // parts of a hierarchy, and not all of the transform are required to be
         // available at each time point.
         // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
-        let new_chunks = Self::find_chunks_with_component_prefix(
+        let new_chunks = Self::find_chunks_with_archetypes(
             manifest,
-            "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
+            // TODO(RR-5745): Don't hardcode this.
+            &["Transform3D:", "Pinhole:"],
         );
         for (timeline, mut chunks) in new_chunks.temporal_chunks {
             let existing = self
@@ -1389,7 +1393,6 @@ mod tests {
     use re_byte_size::SizeBytes as _;
     use re_chunk::{Chunk, EntityPath, RowId, TimeInt, Timeline};
     use re_chunk_store::ChunkStore;
-    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, TimePoint};
     use re_types_core::ChunkId;
@@ -1401,11 +1404,9 @@ mod tests {
 
     fn setup_test_recording(chunks: &[Arc<Chunk>]) -> (ChunkStore, RrdManifestIndex) {
         let store_id = StoreId::random(StoreKind::Recording, "test");
-        let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id.clone(),
-            chunks.iter().map(|c| &**c),
-        )
-        .unwrap();
+        let manifest =
+            RrdManifest::build_in_memory_from_chunks(store_id.clone(), chunks.iter().map(|c| &**c))
+                .unwrap();
 
         let mut store = ChunkStore::new(store_id, Default::default());
         let _events = store.insert_rrd_manifest(manifest.clone());

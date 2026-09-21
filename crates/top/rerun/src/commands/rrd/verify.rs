@@ -3,7 +3,8 @@ use std::collections::{HashMap, HashSet};
 use arrow::array::AsArray as _;
 use itertools::Itertools as _;
 
-use re_log_encoding::{Decodable as _, RawRrdManifest, RrdFooter};
+use re_chunk_index::RawRrdManifest;
+use re_log_encoding::{Decodable as _, RrdFooter};
 use re_log_msg::LogMsg;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
 

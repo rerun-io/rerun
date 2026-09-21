@@ -1,9 +1,9 @@
+use re_chunk_index::RawRrdManifest;
 use std::pin::Pin;
 
 use futures::io::AsyncBufRead;
 use futures::stream::{Stream, StreamExt as _};
 
-use crate::RawRrdManifest;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
 // ---

@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use re_async::AsyncReadAt;
 use re_chunk::{Chunk, ChunkId};
+use re_chunk_index::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 
-use crate::{ChunkProvider, ChunkProviderError, CodecResult, RawRrdManifest, RrdManifest};
+use crate::CodecResult;
 
 /// Reader-backed [`ChunkProvider`].
 pub struct RrdChunkProvider<R: AsyncReadAt> {

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::str::FromStr as _;
 
-use egui::{Align2, AtomKind, Id, IntoAtoms as _, Ui};
+use egui::{Align2, AtomKind, IntoAtoms as _, Ui};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::loading_indicator::paint_loading_indicator_inside;
@@ -87,7 +87,7 @@ pub fn redap_uri_button(
             .unwrap_or_else(|| url_str.into_atoms())
     };
 
-    let spinner_id = Id::new("loading_spinner");
+    let spinner_id = egui::IdSalt::new("loading_spinner");
 
     if loading {
         let mut mapped_icon = false;

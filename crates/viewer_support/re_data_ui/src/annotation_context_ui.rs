@@ -197,7 +197,7 @@ fn class_description_ui(
                     .iter()
                     .sorted_by_key(|annotation| annotation.id)
                     .collect_vec();
-                ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                ui.push_id(("keypoint_annotations", id.0), |ui| {
                     annotation_info_table_ui(ui, ui_layout, &annotation_infos);
                 });
             },

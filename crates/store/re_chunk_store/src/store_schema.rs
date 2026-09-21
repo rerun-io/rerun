@@ -386,7 +386,7 @@ impl StoreSchema {
     /// Returns newly inserted columns grouped by entity path.
     fn on_rrd_manifest(
         &mut self,
-        rrd_manifest: &re_log_encoding::RrdManifest,
+        rrd_manifest: &re_chunk_index::RrdManifest,
     ) -> Vec<(EntityPath, Vec<ChunkComponentMeta>)> {
         let sorbet_schema = rrd_manifest.recording_schema();
 

@@ -1,6 +1,4 @@
-use egui::{
-    Align, Atom, Button, Color32, Id, Image, Layout, Popup, RichText, Sense, include_image,
-};
+use egui::{Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, include_image};
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
@@ -43,7 +41,7 @@ pub fn top_panel(
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
                 ui.max_rect(),
-                ui.id().with("background"),
+                ui.make_persistent_id("background"),
                 egui::Sense::click(),
             );
             if title_bar_response.double_clicked() {
@@ -298,11 +296,10 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     // so we blink it up and then fade it out quickly.
 
     let now = ui.input(|i| i.time);
+    let last_multipass_time_id = ui.make_persistent_id("last_multipass_time");
     let last_multipass_time = ui.data_mut(|data| {
-        let last_multipass_time = data
-            .get_temp_mut_or_insert_with(egui::Id::new("last_multipass_time"), || {
-                f64::NEG_INFINITY
-            });
+        let last_multipass_time =
+            data.get_temp_mut_or_insert_with(last_multipass_time_id, || f64::NEG_INFINITY);
         if is_multi_pass {
             *last_multipass_time = now;
         }
@@ -487,18 +484,16 @@ fn panel_buttons_r2l(
     if let Some(auth) = &app.state.auth_state
         && !app.is_screenshotting()
     {
-        let rect_id = Id::new("user_icon_rect");
         let user_icon_size = 16.0;
         let response = Button::new((
-            Atom::custom(rect_id, Vec2::splat(user_icon_size)),
+            Atom::paint(Vec2::splat(user_icon_size), |ui, args| {
+                user_icon(&auth.email, args.rect, ui, user_icon_size / 2.0, 220);
+            }),
             icons::DROPDOWN_ARROW
                 .as_image()
                 .tint(ui.visuals().text_color()),
         ))
         .atom_ui(ui);
-        if let Some(rect) = response.rect(rect_id) {
-            user_icon(&auth.email, rect, ui, user_icon_size / 2.0, 220);
-        }
 
         Popup::menu(&response.response)
             .align(RectAlign::BOTTOM_END)
@@ -577,7 +572,7 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
         let low_fps_right_now = fps < 20.0 && ui.has_requested_repaint();
 
         let now = ui.input(|i| i.time);
-        let warn_start_id = ui.id().with("fps_warning");
+        let warn_start_id = ui.make_persistent_id("fps_warning");
         let warn_start_time = ui.data_mut(|d| {
             if low_fps_right_now {
                 *d.get_persisted_mut_or::<f64>(warn_start_id, now)

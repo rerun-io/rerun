@@ -36,3 +36,27 @@ pub fn align_non_button_menu_items<T>(
         .inner_margin(DesignTokens::menu_button_padding())
         .show(ui, content)
 }
+
+/// Show a context menu on right clicks anywhere within this widget, even if covered by a click
+/// sensing widget on the same layer.
+///
+/// Same as [`egui::Response::container_context_menu`], but styled with [`menu_style`].
+// TODO(lucasmerlin): Remove this once menus can be styled via `StyleProvider`
+pub fn container_context_menu<R>(
+    response: &egui::Response,
+    add_contents: impl FnOnce(&mut Ui) -> R,
+) -> Option<InnerResponse<R>> {
+    egui::Popup::menu(response)
+        .open_memory(if response.container_secondary_clicked() {
+            Some(egui::SetOpenCommand::Bool(true))
+        } else if response.container_clicked() {
+            // Explicitly close the menu if the container was clicked,
+            // otherwise the context menu would stay open when clicking elsewhere in the container.
+            Some(egui::SetOpenCommand::Bool(false))
+        } else {
+            None
+        })
+        .style(menu_style())
+        .at_pointer_fixed()
+        .show(add_contents)
+}

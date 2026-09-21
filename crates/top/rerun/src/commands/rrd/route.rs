@@ -5,7 +5,8 @@ use crossbeam::channel::Receiver;
 use itertools::Itertools as _;
 
 use re_chunk::ChunkId;
-use re_log_encoding::{Encoder, RawRrdManifest};
+use re_chunk_index::RawRrdManifest;
+use re_log_encoding::Encoder;
 use re_log_types::ApplicationId;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo};

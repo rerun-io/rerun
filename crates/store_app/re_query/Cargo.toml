@@ -54,7 +54,7 @@ thiserror.workspace = true
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_arrow_util.workspace = true
-re_log_encoding.workspace = true
+re_chunk_index.workspace = true
 re_sdk_types.workspace = true
 
 bytemuck.workspace = true

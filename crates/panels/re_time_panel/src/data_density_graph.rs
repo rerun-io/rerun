@@ -481,7 +481,7 @@ pub fn paint_loaded_indicator_bar(
 
             ui.interact(
                 dashed_line.visual_bounding_rect(),
-                ui.id().with("chunk_fetching_indicator"),
+                ui.make_persistent_id("chunk_fetching_indicator"),
                 egui::Sense::hover(),
             )
             .widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));

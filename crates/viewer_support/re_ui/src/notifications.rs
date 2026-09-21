@@ -83,7 +83,7 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
 }
 
 fn notification_panel_popup_id() -> egui::Id {
-    egui::Id::new("notification_panel_popup")
+    egui::Id::unique("notification_panel_popup")
 }
 
 /// A link to some URL.
@@ -517,7 +517,7 @@ impl Default for Toasts {
 impl Toasts {
     fn new() -> Self {
         Self {
-            id: egui::Id::new("__toasts"),
+            id: egui::Id::unique("__toasts"),
         }
     }
 
@@ -604,7 +604,7 @@ fn details_openness_id(unique_id: u64, mode: DisplayMode) -> egui::Id {
         DisplayMode::Panel => "panel",
         DisplayMode::Toast => "toast",
     };
-    egui::Id::new(("notification_details_openness", unique_id, mode))
+    egui::Id::unique(("notification_details_openness", unique_id, mode))
 }
 
 /// How open the details section of this notification is, from 0 (collapsed) to 1 (expanded).

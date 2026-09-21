@@ -511,7 +511,7 @@ impl DatastoreUi {
             let filter_icon_rect = ui.small_icon(&re_ui::icons::FILTER, None);
             ui.interact(
                 filter_icon_rect,
-                ui.id().with("chunk_list_filter_icon"),
+                ui.make_persistent_id("chunk_list_filter_icon"),
                 egui::Sense::hover(),
             )
             .on_hover_text(
@@ -834,7 +834,7 @@ impl DatastoreUi {
         let icon_rect = ui.small_icon(&re_ui::icons::DATASET, None);
         ui.interact(
             icon_rect,
-            ui.id().with("selected_recording_icon"),
+            ui.make_persistent_id("selected_recording_icon"),
             egui::Sense::hover(),
         )
         .on_hover_text("Selected recording");

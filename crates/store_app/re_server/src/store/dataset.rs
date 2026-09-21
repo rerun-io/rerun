@@ -10,7 +10,7 @@ use arrow::datatypes::{Field, Schema};
 use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
-use re_log_encoding::RawRrdManifest;
+use re_chunk_index::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;

@@ -550,7 +550,7 @@ impl App {
                     }
                 )
                     .no_toast()
-                    .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                    .permanent_dismiss_id(egui::Id::unique("install_native_viewer_prompt"));
                 self.command_sender
                     .send_system(SystemCommand::ShowNotification(notification));
             });

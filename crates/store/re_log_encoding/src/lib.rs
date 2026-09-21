@@ -4,6 +4,9 @@
 //! * Converting between transport-level and application-level Rerun types.
 //! * Encoding and decoding Rerun RRD streams.
 //!
+//! Both concern the physical byte layout of `.rrd` streams.
+//! The chunk indexes carried in the footer live in `re_chunk_index`, which knows nothing about bytes.
+//!
 //! If you are working with one of the gRPC APIs (Redap or SDK comms), then you want to be looking
 //! at the [`ToTransport`]/[`ToApplication`] traits. The [`rrd`] module is completely irrelevant in
 //! that case. You can learn more about these traits below.
@@ -68,7 +71,6 @@
 //! top-level `LogMsg` object is never used in RRD streams, but is used in SDK comms), but for all
 //! the types they do share, the encoding will be the exact same.
 
-pub mod chunk_provider;
 pub mod rrd;
 
 mod app_id_injector;
@@ -81,8 +83,5 @@ pub mod external {
 pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
-#[cfg(feature = "decoder")]
-pub use self::chunk_provider::RrdChunkProvider;
-pub use self::chunk_provider::{ChunkProvider, ChunkProviderError, InMemoryChunkProvider};
 pub use self::rrd::*;
 pub use self::transport_to_app::{ToApplication, ToTransport};

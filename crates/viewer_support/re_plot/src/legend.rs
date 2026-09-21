@@ -1,7 +1,7 @@
 use egui::{
-    Align2, Atom, AtomLayoutResponse, Color32, Frame, Id, NumExt as _, Sense, Shadow, Stroke, Ui,
-    UiBuilder, Vec2,
+    Align2, Atom, Color32, Frame, Id, NumExt as _, Sense, Shadow, Stroke, Ui, UiBuilder, Vec2,
 };
+use egui_plot::{ItemId, ItemIdSet};
 
 use re_ui::UiExt as _;
 use re_ui::egui_ext::Group;
@@ -20,7 +20,7 @@ impl Default for LegendConfig {
     fn default() -> Self {
         Self {
             position: Align2::RIGHT_TOP,
-            id: Id::new("plot_legend"),
+            id: Id::unique("plot_legend"),
         }
     }
 }
@@ -44,7 +44,7 @@ impl LegendWidget {
     pub fn show(&self, ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
         let frame_id = legend_frame_id(self.config.id);
 
-        Group::new("legend")
+        Group::new(ui.make_persistent_id("legend"))
             .align2(self.config.position)
             .show(ui, |ui| {
                 Frame::popup(ui.style())
@@ -52,7 +52,7 @@ impl LegendWidget {
                     .inner_margin(4)
                     .shadow(Shadow::NONE)
                     .show(ui, |ui| {
-                        ui.scope_builder(UiBuilder::new().id(frame_id), |ui| {
+                        ui.scope_builder(UiBuilder::new().scope_id(frame_id), |ui| {
                             ui.set_max_width(300.0);
 
                             let max_height = (ui.available_height() * 0.8).at_most(300.0);
@@ -99,17 +99,17 @@ impl LegendWidget {
         if grouped.is_empty() {
             return LegendOutput {
                 hovered_id: None,
-                hidden_ids: egui::IdSet::default(),
+                hidden_ids: ItemIdSet::default(),
             };
         }
 
-        let mut hovered_id: Option<Id> = None;
+        let mut hovered_id: Option<ItemId> = None;
         let mut toggled_labels: ahash::HashSet<&str> = ahash::HashSet::default();
         let mut focus_label: Option<&str> = None;
 
         self.show(ui, |ui| {
             for entry in &grouped {
-                let response = entry.show(ui);
+                let response = ui.add(entry);
 
                 if response.hovered() {
                     hovered_id = entry.ids.first().copied();
@@ -129,7 +129,7 @@ impl LegendWidget {
                 .iter()
                 .all(|e| e.visible == (e.label.as_str() == focus));
             if already_solo {
-                egui::IdSet::default()
+                ItemIdSet::default()
             } else {
                 grouped
                     .iter()
@@ -159,16 +159,16 @@ impl LegendWidget {
 /// Result of [`LegendWidget::show_entries`].
 pub struct LegendOutput {
     /// ID of the hovered legend entry, if any.
-    pub hovered_id: Option<Id>,
+    pub hovered_id: Option<ItemId>,
 
     /// IDs (from the input entries) that should be hidden after processing clicks this frame.
-    pub hidden_ids: egui::IdSet,
+    pub hidden_ids: ItemIdSet,
 }
 
 /// Flat input for a single series/item. Pass an iterator of these to
 /// [`LegendWidget::show_entries`], which groups them by label internally.
 pub struct LegendEntry {
-    pub id: Id,
+    pub id: ItemId,
     pub label: String,
     pub color: Color32,
     pub visible: bool,
@@ -181,11 +181,11 @@ struct LegendEntryWidget {
     color: Color32,
     visible: bool,
     hovered: bool,
-    ids: Vec<Id>,
+    ids: Vec<ItemId>,
 }
 
-impl LegendEntryWidget {
-    fn show(&self, ui: &mut Ui) -> egui::Response {
+impl egui::Widget for &LegendEntryWidget {
+    fn ui(self, ui: &mut Ui) -> egui::Response {
         let tokens = ui.tokens();
         let text_color = if self.hovered {
             tokens.list_item_strong_text
@@ -197,9 +197,13 @@ impl LegendEntryWidget {
 
         let text = egui::RichText::new(&self.label).color(text_color);
 
-        let atoms = egui::Atoms::new((LegendSwatch::atom(), text));
+        let swatch = LegendSwatch {
+            color: self.color,
+            visible: self.visible,
+        };
+        let atoms = egui::Atoms::new((swatch.atom(), text));
 
-        let mut atom_layout = egui::AtomLayout::new(atoms)
+        let mut atom_layout = egui::WidgetAtom::new(atoms)
             .gap(4.0)
             .frame(Frame::NONE.inner_margin(egui::Margin::symmetric(4, 0)))
             .sense(Sense::click())
@@ -209,16 +213,7 @@ impl LegendEntryWidget {
             .response
             .on_hover_cursor(egui::CursorIcon::PointingHand);
 
-        let atom_response = atom_layout.paint(ui);
-
-        // Paint the color dot / outline.
-        LegendSwatch {
-            color: self.color,
-            visible: self.visible,
-        }
-        .paint(ui, &atom_response);
-
-        atom_response.response
+        atom_layout.paint(ui).response
     }
 }
 
@@ -228,33 +223,19 @@ pub struct LegendSwatch {
 }
 
 impl LegendSwatch {
-    fn id() -> Id {
-        Id::new("legend_swatch")
-    }
-
     const SWATCH_SIZE: f32 = 8.0;
 
-    pub fn atom() -> Atom<'static> {
-        egui::Atom::custom(Self::id(), Vec2::splat(Self::SWATCH_SIZE))
-    }
-
-    pub fn paint(self, ui: &Ui, response: &AtomLayoutResponse) {
-        let display_color = if self.visible {
-            self.color
-        } else {
-            self.color.gamma_multiply(0.5)
-        };
-
-        if let Some(rect) = response.rect(Self::id()) {
+    pub fn atom(self) -> Atom<'static> {
+        Atom::paint(Vec2::splat(Self::SWATCH_SIZE), move |ui, args| {
             if self.visible {
                 ui.painter()
-                    .circle_filled(rect.center(), 4.0, display_color);
+                    .circle_filled(args.rect.center(), 4.0, self.color);
             } else {
                 // Neutral gray outline when hidden (inset by half stroke width to match filled size).
                 let stroke_color = ui.tokens().text_subdued;
                 ui.painter()
-                    .circle_stroke(rect.center(), 3.5, Stroke::new(1.0, stroke_color));
+                    .circle_stroke(args.rect.center(), 3.5, Stroke::new(1.0, stroke_color));
             }
-        }
+        })
     }
 }

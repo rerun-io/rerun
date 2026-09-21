@@ -189,7 +189,7 @@ pub(super) fn scene_legend_ui(ui: &egui::Ui, scene_ui_rect: egui::Rect) {
         scene_ui_rect.top() - ui.ctx().content_rect().top() + legend_inset,
     );
 
-    egui::Area::new(ui.id().with("transform_cache_legend"))
+    egui::Area::new(ui.make_persistent_id("transform_cache_legend"))
         .order(egui::Order::Foreground)
         .anchor(egui::Align2::RIGHT_TOP, anchor_offset)
         .show(ui.ctx(), |ui| {
@@ -252,7 +252,7 @@ pub(super) fn draw_transform_cache_contents(
         egui::Tooltip::always_open(
             ui.ctx().clone(),
             ui.layer_id(),
-            ui.id().with("transform_edge_tooltip"),
+            ui.make_persistent_id("transform_edge_tooltip"),
             egui::PopupAnchor::Pointer,
         )
         .at_pointer()
@@ -268,7 +268,7 @@ pub(super) fn draw_transform_cache_contents(
         egui::Tooltip::always_open(
             ui.ctx().clone(),
             ui.layer_id(),
-            ui.id().with("transform_shared_fork_tooltip"),
+            ui.make_persistent_id("transform_shared_fork_tooltip"),
             egui::PopupAnchor::Pointer,
         )
         .at_pointer()

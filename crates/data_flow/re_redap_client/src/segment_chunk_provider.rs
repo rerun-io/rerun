@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
+use re_chunk_index::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::EntryId;
 use re_types_core::SegmentId;
 

@@ -58,15 +58,17 @@ pub(crate) fn dataframe_ui(
     // The table id mainly drives column widths, along with the id of each column. Empirically, the
     // user experience is better if we have stable column width even when the query changes (which
     // can, in turn, change the column's content).
-    let table_id_salt = egui::Id::new("__dataframe__").with(view_id);
+    let table_id_salt = ("__dataframe__", view_id);
 
     // For the row expansion cache, we invalidate more aggressively for now, because the expanded
     // state is stored against a row index (not unique id like columns). This means rows will more
     // often auto-collapse when the query is modified.
-    let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
-        .with(view_id)
-        .with(&selected_columns)
-        .with(query_handle.query());
+    let row_expansion_id = ui.make_persistent_id((
+        "__dataframe_row_exp__",
+        view_id,
+        &selected_columns,
+        query_handle.query(),
+    ));
 
     let (header_groups, header_entity_paths) = column_groups_for_entity(&selected_columns);
 
@@ -84,7 +86,7 @@ pub(crate) fn dataframe_ui(
         )),
         expanded_rows: ExpandedRows::new(
             ui.ctx().clone(),
-            ui.make_persistent_id(row_expansion_id_salt),
+            row_expansion_id,
             expanded_rows_cache,
             tokens.table_row_height(table_style),
         ),
@@ -107,7 +109,7 @@ pub(crate) fn dataframe_ui(
                     .map(|column_descr| {
                         egui_table::Column::new(200.0)
                             .resizable(true)
-                            .id(egui::Id::new(column_descr))
+                            .id(ui.make_persistent_id(column_descr))
                     })
                     .collect::<Vec<_>>(),
             )

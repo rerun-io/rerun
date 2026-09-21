@@ -372,6 +372,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 scan_parameters: None,
                 query,
                 generate_direct_urls: false,
+                unsigned_direct_urls: false,
             },
             &chunk_ids_to_remove,
             dataset_name,

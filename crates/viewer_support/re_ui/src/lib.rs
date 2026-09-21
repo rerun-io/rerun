@@ -270,9 +270,44 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     egui_ctx.add_plugin(EguiMemoryGarbageCollector::default());
 }
 
+/// Draw the characters a dependency writes as text, but that no bundled font covers, from our own SVG icons.
+///
+/// Without this they fall back to whatever the system (or the browser) has, which differs
+/// between platforms and is absent on font-less CI machines.
+/// Our own SVG renders the same everywhere, so snapshots and UI stay predictable.
+// TODO(#3539): paint these in `egui_commonmark` itself, and drop this.
+fn set_svg_glyphs(egui_ctx: &egui::Context) {
+    // `add_glyph_rasterizer` appends and requests a repaint every time, so calling this each
+    // frame (as tests do) would never let the UI settle. Install the glyphs only once.
+    let installed_id = egui::Id::unique("re_ui_svg_glyphs_installed");
+    let already_installed = egui_ctx.data_mut(|data| {
+        std::mem::replace(data.get_temp_mut_or_default::<bool>(installed_id), true)
+    });
+    if already_installed {
+        return;
+    }
+
+    // The code-block copy button in `egui_commonmark_backend`, in its two states.
+    for (cluster, icon) in [("\u{1f5d0}", &icons::COPY), ("\u{2714}", &icons::CHECKED)] {
+        match egui_extras::SvgGlyph::from_bytes(icon.image_bytes()) {
+            Ok(glyph) => {
+                egui_ctx.add_glyph_rasterizer(glyph.into_rasterizer(cluster));
+            }
+            Err(err) => {
+                re_log::warn_once!(
+                    "Failed to read icon as a glyph: {err}\nIcon: {}",
+                    icon.uri()
+                );
+            }
+        }
+    }
+}
+
 fn set_themes(egui_ctx: &egui::Context) {
     // It's the same fonts in dark/light mode:
     design_tokens_of(egui::Theme::Dark).set_fonts(egui_ctx);
+
+    set_svg_glyphs(egui_ctx);
 
     for theme in [egui::Theme::Dark, egui::Theme::Light] {
         let mut style = std::sync::Arc::unwrap_or_clone(egui_ctx.style_of(theme));

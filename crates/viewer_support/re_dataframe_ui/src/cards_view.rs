@@ -164,7 +164,7 @@ fn card_content_ui(
     // interactive child widgets (flag button, etc.) take click priority.
     let card_click_response = ui.interact(
         ui.max_rect(),
-        ui.id().with(("card_click", row_idx)),
+        ui.make_persistent_id(("card_click", row_idx)),
         egui::Sense::click(),
     );
 

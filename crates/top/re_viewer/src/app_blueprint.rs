@@ -124,7 +124,7 @@ impl<'a> AppBlueprint<'a> {
         } else {
             // No blueprint store (e.g. Redap catalog browsing, loading screen).
             // Persist panel states across frames in egui memory so the toggle buttons still work.
-            let id = egui::Id::new(FALLBACK_PANEL_STATES_ID);
+            let id = egui::Id::unique(FALLBACK_PANEL_STATES_ID);
             ret.panel_states = egui_ctx.memory_mut(|m| {
                 m.data
                     .get_persisted::<PanelStates>(id)
@@ -276,7 +276,7 @@ impl AppBlueprint<'_> {
         } else {
             // No blueprint to write to; persist in egui memory instead so the
             // change survives across frames.
-            let id = egui::Id::new(FALLBACK_PANEL_STATES_ID);
+            let id = egui::Id::unique(FALLBACK_PANEL_STATES_ID);
             self.egui_ctx.memory_mut(|m| {
                 let mut states = m
                     .data

@@ -90,7 +90,7 @@ impl SortedTemporalChunks {
     pub(super) fn update(
         &mut self,
         entity_tree: &EntityTree,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
+        native_temporal_map: &re_chunk_index::RrdManifestTemporalMap,
     ) {
         re_tracing::profile_function!();
 
@@ -220,6 +220,7 @@ impl SortedTemporalChunks {
 mod tests {
     use super::*;
     use re_chunk::EntityPath;
+    use re_chunk_index::{RrdManifestTemporalMap, RrdManifestTemporalMapEntry};
     use re_log_types::TimeInt;
 
     fn make_entity_tree(paths: &[&EntityPath]) -> EntityTree {
@@ -253,7 +254,7 @@ mod tests {
         let component = re_chunk::ComponentIdentifier::from("test:Position");
 
         // Create a temporal map with chunks in non-sorted order
-        let mut temporal_map = re_log_encoding::RrdManifestTemporalMap::default();
+        let mut temporal_map = RrdManifestTemporalMap::default();
         let chunk1 = ChunkId::new();
         let chunk2 = ChunkId::new();
         let chunk3 = ChunkId::new();
@@ -264,7 +265,7 @@ mod tests {
         let mut chunks = std::collections::BTreeMap::default();
         chunks.insert(
             chunk2,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(200),
                     TimeInt::new_temporal(300),
@@ -274,7 +275,7 @@ mod tests {
         );
         chunks.insert(
             chunk1,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(100),
                     TimeInt::new_temporal(150),
@@ -284,7 +285,7 @@ mod tests {
         );
         chunks.insert(
             chunk3,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(50),
                     TimeInt::new_temporal(80),
@@ -317,7 +318,7 @@ mod tests {
         let child = EntityPath::from("/parent/child");
         let component = re_chunk::ComponentIdentifier::from("test:Position");
 
-        let mut temporal_map = re_log_encoding::RrdManifestTemporalMap::default();
+        let mut temporal_map = RrdManifestTemporalMap::default();
         let parent_chunk = ChunkId::new();
         let child_chunk = ChunkId::new();
 
@@ -328,7 +329,7 @@ mod tests {
         let mut parent_chunks = std::collections::BTreeMap::default();
         parent_chunks.insert(
             parent_chunk,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(100),
                     TimeInt::new_temporal(200),
@@ -347,7 +348,7 @@ mod tests {
         let mut child_chunks = std::collections::BTreeMap::default();
         child_chunks.insert(
             child_chunk,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(50),
                     TimeInt::new_temporal(150),
@@ -381,7 +382,7 @@ mod tests {
         let component1 = re_chunk::ComponentIdentifier::from("test:Position");
         let component2 = re_chunk::ComponentIdentifier::from("test:Color");
 
-        let mut temporal_map = re_log_encoding::RrdManifestTemporalMap::default();
+        let mut temporal_map = RrdManifestTemporalMap::default();
         let chunk_id = ChunkId::new();
 
         let timeline_obj = re_chunk::Timeline::new_sequence(timeline);
@@ -392,7 +393,7 @@ mod tests {
         let mut chunks1 = std::collections::BTreeMap::default();
         chunks1.insert(
             chunk_id,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(100),
                     TimeInt::new_temporal(200),
@@ -405,7 +406,7 @@ mod tests {
         let mut chunks2 = std::collections::BTreeMap::default();
         chunks2.insert(
             chunk_id,
-            re_log_encoding::RrdManifestTemporalMapEntry {
+            RrdManifestTemporalMapEntry {
                 time_range: AbsoluteTimeRange::new(
                     TimeInt::new_temporal(100),
                     TimeInt::new_temporal(200),

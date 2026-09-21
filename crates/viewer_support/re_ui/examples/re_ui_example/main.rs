@@ -106,7 +106,7 @@ impl ExampleApp {
     fn new(ctx: egui::Context) -> Self {
         let text_log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::INFO);
 
-        let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs(egui::Id::unique("my_tree"), vec![1, 2, 3]);
 
         let (command_sender, command_receiver) = command_channel();
 
@@ -439,7 +439,7 @@ impl ExampleApp {
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
                         ui.max_rect(),
-                        ui.id().with("background"),
+                        ui.make_persistent_id("background"),
                         egui::Sense::click(),
                     );
                     if title_bar_response.double_clicked() {

@@ -3,7 +3,7 @@ use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
 use egui::widget_style::WidgetState;
 use egui::{
-    AtomLayoutResponse, Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style,
+    Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style, WidgetAtomResponse,
 };
 
 #[derive(Default, Clone, Copy)]
@@ -256,7 +256,7 @@ impl<'a> ReButton<'a> {
         mut button: impl FnMut() -> Self,
         mut hover_buttons_width: f32,
         hover_buttons: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> (AtomLayoutResponse, Option<R>) {
+    ) -> (WidgetAtomResponse, Option<R>) {
         // Left and right spacing around the icons + some tolerance
         hover_buttons_width += ui.spacing().icon_spacing * 2.0 + 1.0;
 
@@ -333,13 +333,13 @@ impl<'a> ReButton<'a> {
         ui: &mut egui::Ui,
         icon: ReButton<'static>,
         mut button: impl FnMut() -> Self,
-    ) -> (AtomLayoutResponse, Option<Response>) {
+    ) -> (WidgetAtomResponse, Option<Response>) {
         let size = button().size;
         let icon = icon.size(size);
         Self::with_hover_icon_buttons(ui, button, size.icon_button_size().x, |ui| ui.add(icon))
     }
 
-    pub fn atom_ui(self, ui: &mut egui::Ui) -> AtomLayoutResponse {
+    pub fn atom_ui(self, ui: &mut egui::Ui) -> WidgetAtomResponse {
         let Self {
             variant,
             size,

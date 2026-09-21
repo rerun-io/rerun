@@ -36,6 +36,8 @@ pub(crate) use analytics::{
 };
 pub use analytics::{TableKind, TableQueryCaller};
 pub use catalog_provider::RedapCatalogProviderList;
+#[cfg(not(target_arch = "wasm32"))]
+pub use chunk_fetcher::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 pub use cpu_count::{available_cpus, rerun_sdk_num_cpus};
 pub use dataframe_query_common::{
     DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,

@@ -47,6 +47,7 @@ members = [
     "open-photogrammetry-format",
     "openstreetmap-data",
     "plots",
+    "query-gcs-auth",
     "raw-mesh",
     "rerun-notebook",
     "rerun-sdk",
@@ -4678,6 +4679,23 @@ wheels = [
 ]
 
 [[package]]
+name = "query-gcs-auth"
+version = "0.1.0"
+source = { editable = "examples/python/query_gcs_auth" }
+dependencies = [
+    { name = "google-auth" },
+    { name = "requests" },
+    { name = "rerun-sdk", extra = ["catalog"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "google-auth" },
+    { name = "requests" },
+    { name = "rerun-sdk", extras = ["catalog"], editable = "rerun_py" },
+]
+
+[[package]]
 name = "raw-mesh"
 version = "0.1.0"
 source = { editable = "examples/python/raw_mesh" }
@@ -4998,6 +5016,7 @@ examples = [
     { name = "openstreetmap-data" },
     { name = "plots" },
     { name = "polars" },
+    { name = "query-gcs-auth" },
     { name = "raw-mesh" },
     { name = "rgbd" },
     { name = "robot-data-preprocessing" },
@@ -5119,6 +5138,7 @@ examples = [
     { name = "openstreetmap-data", editable = "examples/python/openstreetmap_data" },
     { name = "plots", editable = "examples/python/plots" },
     { name = "polars", specifier = ">=0.12.0" },
+    { name = "query-gcs-auth", editable = "examples/python/query_gcs_auth" },
     { name = "raw-mesh", editable = "examples/python/raw_mesh" },
     { name = "rgbd", editable = "examples/python/rgbd" },
     { name = "robot-data-preprocessing", editable = "examples/python/robot_data_preprocessing" },

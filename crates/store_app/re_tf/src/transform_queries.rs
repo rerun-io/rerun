@@ -67,7 +67,7 @@ fn lookup_chunk_row<'a>(
     row_id: RowId,
 ) -> Option<(&'a ChunkShared, usize)> {
     let store = storage_engine.store();
-    let Some(chunk) = store.physical_chunk(&chunk_id) else {
+    let Some(chunk) = store.use_chunk_or_report_missing(&chunk_id) else {
         missing_chunk_reporter.report_missing_chunk();
         return None;
     };
@@ -110,6 +110,36 @@ pub fn atomic_component_set_for_instance_poses() -> &'static [ComponentIdentifie
             InstancePoses3D::descriptor_mat3x3().component,
         ]
     })
+}
+
+/// Marks the chunks holding the entity's instance poses at the query time as needed,
+/// and returns whether any of them are still missing.
+pub fn report_needed_instance_pose_chunks(
+    entity_db: &EntityDb,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> bool {
+    let storage_engine = entity_db.storage_engine();
+    let store = storage_engine.store();
+
+    let Some(components) = store.schema().all_components_for_entity(entity_path) else {
+        return false;
+    };
+    if !atomic_component_set_for_instance_poses()
+        .iter()
+        .any(|component| components.contains(component))
+    {
+        return false;
+    }
+
+    let results = store.latest_at_relevant_chunks_for_components(
+        re_chunk_store::ChunkTrackingMode::Report,
+        query,
+        entity_path,
+        atomic_component_set_for_instance_poses(),
+    );
+
+    !results.missing_virtual.is_empty()
 }
 
 pub fn atomic_component_set_for_pinhole_projection() -> &'static [ComponentIdentifier] {

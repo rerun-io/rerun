@@ -10,10 +10,11 @@ use futures::{Stream, TryStreamExt as _};
 
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, RowId};
+use re_chunk_index::InMemoryChunkProvider;
 use re_chunk_optimizer::{
     ColumnSelector, Error, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
 };
-use re_log_encoding::{EncodingOptions, InMemoryChunkProvider, RrdChunkProvider};
+use re_log_encoding::{EncodingOptions, RrdChunkProvider};
 use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{StoreId, StoreKind, Timeline};

@@ -10,7 +10,7 @@ pub use flamegraph::{FlamegraphState, flamegraph_ui};
 ///
 /// This is a convenience function that creates or retrieves the state from `ui.data_mut()`.
 pub fn memory_flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree) {
-    let state_id = ui.id().with("flamegraph_state");
+    let state_id = ui.make_persistent_id("flamegraph_state");
     let mut state = ui
         .data_mut(|data| data.get_temp::<FlamegraphState>(state_id))
         .unwrap_or_default();

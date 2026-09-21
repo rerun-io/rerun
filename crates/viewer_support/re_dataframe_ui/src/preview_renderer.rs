@@ -501,7 +501,7 @@ fn preview_timeline(
     time_ctrl: &TimeControl,
     views_rect: egui::Rect,
 ) {
-    let id = ui.id().with(("timeline", column_name, row_nr));
+    let id = ui.make_persistent_id(("timeline", column_name, row_nr));
 
     // Do this outside the if to keep showing the timeline when dragged.
     let was_active = ui.read_response(id).is_some_and(|last_response| {

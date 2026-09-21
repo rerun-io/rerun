@@ -5,6 +5,7 @@ use anyhow::Context as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
+use re_chunk_index::RawRrdManifest;
 use re_log_encoding::ToApplication as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
@@ -412,12 +413,9 @@ impl StatsCommand {
 /// Each chunk index catalogs every chunk in a single recording without requiring any of that chunk
 /// data to be decoded, so all of these stats are derived purely from the index.
 fn print_chunk_index_stats(
-    footers: Vec<(
-        crate::commands::InputSource,
-        anyhow::Result<re_log_encoding::RawRrdManifest>,
-    )>,
+    footers: Vec<(crate::commands::InputSource, anyhow::Result<RawRrdManifest>)>,
     continue_on_error: bool,
-) -> anyhow::Result<Vec<re_log_encoding::RawRrdManifest>> {
+) -> anyhow::Result<Vec<RawRrdManifest>> {
     if footers.is_empty() {
         println!("(none — no chunk index was found)");
         return Ok(Vec::new());
@@ -458,7 +456,7 @@ fn print_chunk_index_stats(
         let byte_size_uncompressed_total: u64 =
             chunk_index.col_chunk_byte_size_uncompressed_iter()?.sum();
 
-        let sha256 = re_log_encoding::sha256_to_hex(&chunk_index.sorbet_schema_sha256);
+        let sha256 = re_chunk_index::sha256_to_hex(&chunk_index.sorbet_schema_sha256);
 
         println!();
         println!("Chunk index for {:?}", chunk_index.store_id);
@@ -498,7 +496,7 @@ fn print_chunk_index_stats(
     Ok(chunk_indexes)
 }
 
-fn print_chunk_index_analysis(chunk_index: &re_log_encoding::RawRrdManifest) {
+fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) {
     use re_chunk_optimizer::analyze_chunk_index;
 
     let chunk_max_bytes = re_chunk_store::OptimizationProfile::OBJECT_STORE.chunk_max_bytes;

@@ -100,7 +100,7 @@ pub enum ChunkStoreError {
     Codec(#[from] re_log_encoding::CodecError),
 
     #[error(transparent)]
-    Provider(#[from] re_log_encoding::ChunkProviderError),
+    Provider(#[from] re_chunk_index::ChunkProviderError),
 
     #[error("Failed to load data, semantic error: {0:#}")]
     Sorbet(#[from] re_sorbet::SorbetError),

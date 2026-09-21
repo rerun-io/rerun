@@ -1,17 +1,12 @@
 //! Screenshotting not implemented on web yet because we
 //! haven't implemented "copy image to clipboard" there.
 
-/// Marker attached as [`egui::UserData`] to the full-app screenshot request, so we can identify
-/// the resulting [`egui::Event::Screenshot`] as ours.
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FullAppScreenshot;
-
 /// Helper for screenshotting the entire app
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
 pub struct Screenshotter {
     countdown: Option<isize>,
+    pending_image: Option<std::sync::mpsc::Receiver<std::sync::Arc<egui::ColorImage>>>,
     target_path: Option<std::path::PathBuf>,
     quit: bool,
     pre_screenshot_zoom_factor: Option<f32>,
@@ -56,6 +51,15 @@ impl Screenshotter {
 
     /// Call once per frame
     pub fn update(&mut self, egui_ctx: &egui::Context) -> ScreenshotterOutput {
+        if let Some(image) = self
+            .pending_image
+            .as_ref()
+            .and_then(|rx| rx.try_recv().ok())
+        {
+            self.pending_image = None;
+            self.save(egui_ctx, &image);
+        }
+
         if let Some(countdown) = &mut self.countdown {
             if *countdown == 0 {
                 // From sending the screenshot command to actually taking it (calling `save`),
@@ -63,9 +67,14 @@ impl Screenshotter {
                 // is done and transferred to ram.
                 // Obviously we want to send the command this command only once, so we keep counting down
                 // to negatives until we get a call to `save` which then disables the counter.
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
-                    FullAppScreenshot,
-                )));
+                let (tx, rx) = std::sync::mpsc::sync_channel(1);
+                self.pending_image = Some(rx);
+                let ctx = egui_ctx.clone();
+                egui_ctx.request_screenshot(move |image| {
+                    if tx.send(image).is_ok() {
+                        ctx.request_repaint();
+                    }
+                });
             }
             *countdown -= 1;
 
@@ -90,7 +99,7 @@ impl Screenshotter {
         self.countdown.is_some()
     }
 
-    pub fn save(&mut self, egui_ctx: &egui::Context, image: &egui::ColorImage) {
+    fn save(&mut self, egui_ctx: &egui::Context, image: &egui::ColorImage) {
         self.countdown = None;
         if let Some(path) = self.target_path.take() {
             let w = image.width() as _;

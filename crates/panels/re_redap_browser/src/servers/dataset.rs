@@ -455,7 +455,7 @@ impl Server {
 
         // The limits line sits in a bottom panel, so the card list gets the height that is left
         // and its scroll area scrolls within that height.
-        egui::Panel::bottom(ui.id().with("asset_limits"))
+        egui::Panel::bottom("asset_limits")
             .show_separator_line(false)
             .frame(egui::Frame::NONE)
             .show(ui, |ui| {
@@ -925,12 +925,12 @@ fn title_with_pill_ui(
         .corner_radius(u8::MAX)
         .inner_margin(PILL_MARGIN);
 
-    let pill = egui::AtomLayout::new(egui::RichText::new(pill_text).monospace().color(color))
+    let pill = egui::WidgetAtom::new(egui::RichText::new(pill_text).monospace().color(color))
         .frame(pill_frame);
 
     // The title gives up the room the pill needs, since the pill is squeezed out of the row
     // otherwise.
-    ui.add(egui::AtomLayout::new((
+    ui.add(egui::WidgetAtom::new((
         egui::RichText::new(title)
             .heading()
             .strong()
@@ -1094,7 +1094,7 @@ fn no_assets_ui(
                 let docs_link = |ui: &mut egui::Ui| {
                     if ui
                         .add(
-                            egui::AtomLayout::new((
+                            egui::WidgetAtom::new((
                                 egui::RichText::new("docs").monospace().color(link_color),
                                 icons::EXTERNAL_LINK
                                     .as_image()
@@ -1195,7 +1195,7 @@ fn sdk_call_ui(ui: &mut egui::Ui, source_example: &str) {
     // Only the call gives up width: the icon keeps its size, so it never leaves the box.
     let response = ui
         .add(
-            egui::AtomLayout::new((
+            egui::WidgetAtom::new((
                 call.to_job(ui.style()).atom_shrink(true),
                 icons::COPY
                     .as_image()

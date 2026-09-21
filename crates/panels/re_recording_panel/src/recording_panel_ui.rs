@@ -229,7 +229,7 @@ fn recording_section_ui(
         return;
     }
 
-    let id = egui::Id::new(title);
+    let id = ui.make_persistent_id(title);
     if ui
         .list_item()
         .header()
@@ -283,7 +283,7 @@ fn welcome_item_ui(
         list_item
             .show_hierarchical_with_children(
                 ui,
-                egui::Id::new("example items"),
+                ui.make_persistent_id("example items"),
                 true,
                 title,
                 |ui| {
@@ -854,11 +854,11 @@ fn expand_parents_for_item(
 }
 
 fn server_item_id(origin: &re_uri::Origin) -> egui::Id {
-    egui::Id::new(origin).with("server_item")
+    egui::Id::unique((origin, "server_item"))
 }
 
 fn dataset_group_id(path_prefix: &str) -> egui::Id {
-    egui::Id::new("dataset_group").with(path_prefix)
+    egui::Id::unique(("dataset_group", path_prefix))
 }
 
 fn expand_parent_folders_for_entry(

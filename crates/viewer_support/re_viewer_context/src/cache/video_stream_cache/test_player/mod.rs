@@ -981,7 +981,7 @@ pub(super) fn playable_stream(
 }
 
 pub(super) fn load_into_rrd_manifest(store: &mut EntityDb, chunks: &[Arc<Chunk>]) {
-    let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+    let manifest = re_chunk_index::RrdManifest::build_in_memory_from_chunks(
         store.store_id().clone(),
         chunks.iter().map(|c| &**c),
     )

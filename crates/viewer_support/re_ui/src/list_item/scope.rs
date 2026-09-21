@@ -268,10 +268,10 @@ impl LayoutInfoStack {
 /// See [`list_item_scope_in_place`] for a variant that doesn't create a child [`egui::Ui`].
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
-    id_salt: impl egui::AsId,
+    id_salt: impl egui::AsIdSalt,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
-    let id_salt = egui::Id::new(id_salt); // So we can use it twice
+    let id_salt = ui.make_persistent_id(id_salt); // So we can use it twice
 
     with_layout_info(ui, id_salt, |ui| {
         ui.push_id(id_salt, |ui| {
@@ -287,10 +287,11 @@ pub fn list_item_scope<R>(
 /// `item_spacing`.
 pub fn list_item_scope_in_place<R>(
     ui: &mut egui::Ui,
-    id_salt: impl egui::AsId,
+    id_salt: impl egui::AsIdSalt,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
-    with_layout_info(ui, egui::Id::new(id_salt), content)
+    let id_salt = ui.make_persistent_id(id_salt);
+    with_layout_info(ui, id_salt, content)
 }
 
 /// Set up the [`LayoutInfo`] for `content`, without touching the layout itself.
@@ -301,7 +302,7 @@ fn with_layout_info<R>(
 ) -> R {
     ui.sanity_check();
 
-    let scope_id = ui.id().with(id_salt);
+    let scope_id = ui.make_persistent_id(id_salt);
 
     // read last frame layout statistics and reset for the new frame
     let layout_stats = LayoutStatistics::read(ui.ctx(), scope_id);

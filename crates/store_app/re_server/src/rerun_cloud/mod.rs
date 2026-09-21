@@ -8,6 +8,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk_index::{ChunkProvider as _, RrdManifest};
 use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
@@ -15,7 +16,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
-use re_log_encoding::{ChunkProvider as _, ToTransport as _};
+use re_log_encoding::ToTransport as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
     AssetMode, QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
@@ -1660,6 +1661,7 @@ impl RerunCloudService for RerunCloudHandler {
             scan_parameters,
             query,
             generate_direct_urls: _,
+            unsigned_direct_urls: _,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -2394,7 +2396,7 @@ impl ChunkMetadata {
     }
 
     fn from_manifest(
-        manifest: &re_log_encoding::RrdManifest,
+        manifest: &RrdManifest,
         chunk_id: ChunkId,
         row_idx: usize,
         chunk_timelines: Option<&IntMap<TimelineName, AbsoluteTimeRange>>,

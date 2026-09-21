@@ -93,7 +93,7 @@ pub(crate) fn tree_from_views(
         }
     };
 
-    egui_tiles::Tree::new("viewport_tree", root, tiles)
+    egui_tiles::Tree::new(egui::Id::unique("viewport_tree"), root, tiles)
 }
 
 fn arrange_three(

@@ -355,7 +355,7 @@ impl ViewClass for StateTimelineView {
                 egui::Rect::from_x_y_ranges((x - HALF_WIDTH)..=(x + HALF_WIDTH), rect.y_range());
             ui.interact(
                 interact_rect,
-                ui.id().with("state_timeline_cursor"),
+                ui.make_persistent_id("state_timeline_cursor"),
                 egui::Sense::click_and_drag(),
             )
             .on_hover_cursor(egui::CursorIcon::ResizeColumn)
@@ -1174,7 +1174,7 @@ fn show_item_tooltip(
     egui::Tooltip::always_open(
         ui.ctx().clone(),
         ui.layer_id(),
-        egui::Id::new("state_tooltip"),
+        ui.make_persistent_id("state_tooltip"),
         egui::PopupAnchor::Pointer,
     )
     .show(|ui| {

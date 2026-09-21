@@ -332,7 +332,7 @@ impl TensorView {
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, image_rect, font_id, dimension_labels);
+            paint_axis_names(ui, image_rect, &font_id, dimension_labels);
         }
 
         Ok(())
@@ -493,7 +493,7 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
 fn paint_axis_names(
     ui: &egui::Ui,
     rect: egui::Rect,
-    font_id: egui::FontId,
+    font_id: &egui::FontId,
     dimension_labels: [Option<(String, bool)>; 2],
 ) {
     let painter = ui.painter();
@@ -527,8 +527,6 @@ fn paint_axis_names(
     // .......... a
     // .......... r
 
-    // TODO(emilk): draw actual arrows behind the text instead of the ugly emoji arrows
-
     let paint_text_bg = |text_background, text_rect: egui::Rect| {
         painter.set(
             text_background,
@@ -550,13 +548,7 @@ fn paint_axis_names(
             } else {
                 (rect.left_top(), Align2::LEFT_TOP)
             };
-            painter.text(
-                pos,
-                align,
-                format!("{width_name} ⬅"),
-                font_id.clone(),
-                text_color,
-            )
+            paint_axis_name(ui, pos, align, 0.0, false, width_name, font_id, text_color)
         } else {
             // On right, pointing right:
             let (pos, align) = if invert_height {
@@ -564,13 +556,7 @@ fn paint_axis_names(
             } else {
                 (rect.right_top(), Align2::RIGHT_TOP)
             };
-            painter.text(
-                pos,
-                align,
-                format!("➡ {width_name}"),
-                font_id.clone(),
-                text_color,
-            )
+            paint_axis_name(ui, pos, align, 0.0, true, width_name, font_id, text_color)
         };
         paint_text_bg(text_background, text_rect);
     }
@@ -578,41 +564,104 @@ fn paint_axis_names(
     // Label for Y axis:
     if let Some(height_name) = height_name {
         let text_background = painter.add(egui::Shape::Noop);
+        let angle = -std::f32::consts::TAU / 4.0;
         let text_rect = if invert_height {
             // On top, pointing up:
-            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
-            let galley_size = galley.size();
-            let pos = if invert_width {
-                rect.right_top() + egui::vec2(-galley_size.y, galley_size.x)
+            let (pos, align) = if invert_width {
+                (rect.right_top(), Align2::RIGHT_TOP)
             } else {
-                rect.left_top() + egui::vec2(0.0, galley_size.x)
+                (rect.left_top(), Align2::LEFT_TOP)
             };
-            painter.add(
-                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
-            );
-            egui::Rect::from_min_size(
-                pos - galley_size.x * egui::Vec2::Y,
-                egui::vec2(galley_size.y, galley_size.x),
+            paint_axis_name(
+                ui,
+                pos,
+                align,
+                angle,
+                true,
+                height_name,
+                font_id,
+                text_color,
             )
         } else {
             // On bottom, pointing down:
-            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-            let galley_size = galley.size();
-            let pos = if invert_width {
-                rect.right_bottom() - egui::vec2(galley_size.y, 0.0)
+            let (pos, align) = if invert_width {
+                (rect.right_bottom(), Align2::RIGHT_BOTTOM)
             } else {
-                rect.left_bottom()
+                (rect.left_bottom(), Align2::LEFT_BOTTOM)
             };
-            painter.add(
-                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
-            );
-            egui::Rect::from_min_size(
-                pos - galley_size.x * egui::Vec2::Y,
-                egui::vec2(galley_size.y, galley_size.x),
+            paint_axis_name(
+                ui,
+                pos,
+                align,
+                angle,
+                false,
+                height_name,
+                font_id,
+                text_color,
             )
         };
         paint_text_bg(text_background, text_rect);
     }
+}
+
+/// Paints one axis name with an arrow beside it, and returns the rect the two cover.
+///
+/// The label is laid out left-to-right and then rotated by `angle` around its own origin,
+/// with `align` placing the result against `anchor`.
+/// `forward` puts the arrow ahead of the name, pointing along the reading direction;
+/// otherwise the arrow follows the name and points back.
+///
+/// The arrow is an icon rather than a glyph: no font we bundle carries the arrow characters,
+/// and the viewer must not depend on a system font that may be missing.
+#[expect(clippy::too_many_arguments)]
+fn paint_axis_name(
+    ui: &egui::Ui,
+    anchor: egui::Pos2,
+    align: Align2,
+    angle: f32,
+    forward: bool,
+    name: String,
+    font_id: &egui::FontId,
+    color: egui::Color32,
+) -> egui::Rect {
+    let painter = ui.painter();
+    let galley = painter.layout_no_wrap(name, font_id.clone(), color);
+    let text_size = galley.size();
+    let arrow_side = text_size.y;
+    let gap = 0.25 * arrow_side;
+    let size = egui::vec2(arrow_side + gap + text_size.x, text_size.y);
+
+    let quarter_turn = angle != 0.0;
+    let rect = align.anchor_size(anchor, if quarter_turn { size.yx() } else { size });
+
+    // `angle` maps the label's local axes onto the screen, so the local origin is
+    // whichever corner of `rect` local (0, 0) rotates onto.
+    let origin = if quarter_turn {
+        rect.left_bottom()
+    } else {
+        rect.left_top()
+    };
+    let rotation = egui::emath::Rot2::from_angle(angle);
+    let to_screen = |local: egui::Vec2| origin + rotation * local;
+
+    let text_x = if forward { arrow_side + gap } else { 0.0 };
+    painter
+        .add(TextShape::new(to_screen(egui::vec2(text_x, 0.0)), galley, color).with_angle(angle));
+
+    let arrow_x = if forward { 0.0 } else { text_size.x + gap };
+    let arrow_center = egui::vec2(arrow_x + 0.5 * arrow_side, 0.5 * arrow_side);
+    let arrow_rect =
+        egui::Rect::from_center_size(to_screen(arrow_center), egui::Vec2::splat(arrow_side));
+    // The icon already points along the reading direction, so only the backwards case
+    // needs a half turn, before `angle` turns the whole label.
+    let arrow_angle = if forward { 0.0 } else { std::f32::consts::PI } + angle;
+    re_ui::icons::ARROW_RIGHT
+        .as_image()
+        .tint(color)
+        .rotate(arrow_angle, egui::Vec2::splat(0.5))
+        .paint_at(ui, arrow_rect);
+
+    rect
 }
 
 pub fn index_for_dimension_mut(

@@ -244,6 +244,15 @@ impl Span<usize> {
             len: len as u64,
         }
     }
+
+    /// The elements of `slice` covered by this span.
+    ///
+    /// Returns `None` if the span overflows `usize` or reaches past the end of `slice`.
+    #[inline]
+    pub fn try_slice<T>(self, slice: &[T]) -> Option<&[T]> {
+        let Self { start, len } = self;
+        slice.get(start..start.checked_add(len)?)
+    }
 }
 
 impl Span<u64> {
@@ -308,6 +317,19 @@ impl<Idx: Unsigned + Copy> From<Span<Idx>> for core::range::Range<Idx> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_try_slice() {
+        let data = [10, 20, 30, 40];
+        assert_eq!(
+            Span::from_start_len(1, 2).try_slice(&data),
+            Some(&[20, 30][..])
+        );
+        assert_eq!(Span::from_start_len(4, 0).try_slice(&data), Some(&[][..]));
+        assert_eq!(Span::from_start_len(3, 2).try_slice(&data), None);
+        assert_eq!(Span::from_start_len(5, 0).try_slice(&data), None);
+        assert_eq!(Span::from_start_len(usize::MAX, 1).try_slice(&data), None);
+    }
+
     use super::Span;
 
     #[test]

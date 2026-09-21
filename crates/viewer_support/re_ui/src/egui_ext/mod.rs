@@ -5,7 +5,6 @@ mod completion;
 pub mod garbage_collect;
 mod group;
 mod kb_shortcut_ext;
-pub mod response_ext;
 pub(crate) mod widget_ext;
 mod widget_text_ext;
 

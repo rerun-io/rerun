@@ -392,7 +392,7 @@ mod tests {
     use std::num::NonZeroU64;
 
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId};
-    use re_log_encoding::RawRrdManifest;
+    use re_chunk_index::RawRrdManifest;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPathFilter, StoreId, StoreKind, Timeline};
     use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};

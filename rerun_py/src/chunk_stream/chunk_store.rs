@@ -5,12 +5,12 @@ use pyo3::prelude::*;
 
 use arrow::pyarrow::ToPyArrow as _;
 use re_chunk::Chunk;
+use re_chunk_index::{InMemoryChunkProvider, RawRrdManifest};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, SparseFillStrategy,
     StaticColumnSelection, ViewContentsSelector,
 };
 use re_datafusion::LocalChunkStoreTableProvider;
-use re_log_encoding::{InMemoryChunkProvider, RawRrdManifest};
 use re_log_types::{EntityPathFilter, StoreId, StoreKind};
 
 use super::error::ChunkPipelineError;

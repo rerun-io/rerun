@@ -979,7 +979,7 @@ fn entity_path_filter_ui(
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
     // This is so it can contain invalid rules while the user edits it, and it's only normalized
     // when they press enter, or stops editing.
-    let filter_text_id = ui.id().with("filter_text");
+    let filter_text_id = ui.make_persistent_id("filter_text");
 
     let mut filter_string = ui.data_mut(|data| {
         data.get_temp_mut_or_insert_with::<String>(filter_text_id, || {

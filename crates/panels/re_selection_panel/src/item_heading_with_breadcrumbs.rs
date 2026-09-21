@@ -458,7 +458,7 @@ fn nav_popup_item_ui(
         .collapse_temporary(true);
 
     let response = if let Some(children) = children.non_empty(ctx) {
-        let id = egui::Id::new(&item).with("nav_popup_list_item");
+        let id = ui.make_persistent_id(("nav_popup_list_item", &item));
         list_item
             .show_hierarchical_with_children(ui, id, false, content, |ui| {
                 nav_children_ui(ctx, ui, children);
@@ -685,9 +685,9 @@ fn chevron_with_popup(
     popup_seed: impl std::hash::Hash + std::fmt::Debug,
     visible: bool,
 ) {
-    // Seed with `ui.id()` so the same seed (e.g. the same entity selected twice
+    // Seed with `ui.scope_id()` so the same seed (e.g. the same entity selected twice
     // in a multi-selection) still gets a unique popup per heading section.
-    let popup_id = ui.id().with("nav_popup").with(popup_seed);
+    let popup_id = ui.scope_id().with(("nav_popup", popup_seed));
 
     let (rect, response) = ui.allocate_exact_size(
         egui::vec2(NAV_CHEVRON_WIDTH, ui.spacing().interact_size.y),
@@ -735,7 +735,7 @@ fn copy_path_button_ui(ui: &mut egui::Ui, label: &str, path: &str) {
     // Keep the tooltip sticky so the user can move into it and click.
     ui.style_mut().interaction.selectable_labels = true;
 
-    let copied_at_id = ui.id().with("copied_at");
+    let copied_at_id = ui.make_persistent_id("copied_at");
     let now = ui.input(|i| i.time);
     let copied_at: Option<f64> = ui.ctx().data(|d| d.get_temp(copied_at_id));
     let show_copied = copied_at.is_some_and(|t| now - t < 1.5);

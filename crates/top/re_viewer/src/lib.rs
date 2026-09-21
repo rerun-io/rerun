@@ -282,6 +282,11 @@ pub fn customize_eframe_and_setup_renderer(
     }
 
     re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+
+    // Any glyph we cannot render is a bug, so make tests fail loudly instead of drawing tofu.
+    #[cfg(feature = "testing")]
+    re_ui::testing::PanicOnMissingGlyph::install(&cc.egui_ctx);
+
     Ok(())
 }
 

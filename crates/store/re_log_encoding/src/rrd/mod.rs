@@ -39,6 +39,9 @@ mod fingerprint;
 #[cfg(feature = "decoder")]
 mod footer_reader;
 
+#[cfg(feature = "decoder")]
+mod rrd_chunk_provider;
+
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;
@@ -61,10 +64,7 @@ pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
 pub use self::file_sink::{FileFlushError, FileSink, FileSinkError, FileSinkOptions};
 #[cfg(feature = "decoder")]
 pub use self::fingerprint::RrdFingerprint;
-pub use self::footer::{
-    HubRrdManifest, RawRrdManifest, RrdFooter, RrdManifest, RrdManifestBuilder, RrdManifestSha256,
-    RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry, sha256_to_hex,
-};
+pub use self::footer::{HubRrdManifest, RrdFooter, read_raw_rrd_manifests};
 #[cfg(feature = "decoder")]
 pub use self::footer_reader::{
     RrdMetadata, enumerate_legacy_metadata, enumerate_rrd_stores, read_rrd_footer,
@@ -73,6 +73,8 @@ pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamFooterEntry, StreamHeader,
 };
+#[cfg(feature = "decoder")]
+pub use self::rrd_chunk_provider::RrdChunkProvider;
 
 // ---
 

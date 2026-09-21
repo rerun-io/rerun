@@ -1,7 +1,7 @@
 use egui::layers::ShapeIdx;
 use egui::{
-    Align, AtomLayout, Frame, IntoAtoms, Layout, Margin, Rangef, Rect, Response, Sense, Shape, Ui,
-    UiBuilder, WidgetInfo, WidgetType,
+    Align, Frame, IntoAtoms, Layout, Margin, Rangef, Rect, Response, Sense, Shape, Ui, UiBuilder,
+    WidgetAtom, WidgetInfo, WidgetType,
 };
 
 use crate::UiExt as _;
@@ -127,7 +127,7 @@ impl<'a> TabBar<'a> {
         let (left, right) = if ui.is_sizing_pass() {
             (selected_rect.left(), selected_rect.right())
         } else {
-            let id = ui.id().with("tab_underline");
+            let id = ui.make_persistent_id("tab_underline");
             let animation_time = ui.style().animation_time * 0.5;
             let animate = |salt: &str, x: f32| {
                 bar_left
@@ -196,7 +196,7 @@ fn tab_ui<'a>(ui: &mut Ui, atoms: impl IntoAtoms<'a>, selected: bool) -> Respons
 
     // A tab is as wide as its label: no horizontal padding, so the underline matches the word and
     // `TAB_SPACING` is the whole gap between two of them.
-    let mut layout = AtomLayout::new(atoms)
+    let mut layout = WidgetAtom::new(atoms)
         .frame(Frame::new().inner_margin(Margin {
             left: 0,
             right: 0,

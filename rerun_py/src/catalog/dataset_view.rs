@@ -344,7 +344,10 @@ fn build_dataframe_query_table_provider(
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
     let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref)?;
-    let connection = dataset_ref.client().borrow(py).connection().clone();
+    let client_ref = dataset_ref.client().borrow(py);
+    let connection = client_ref.connection().clone();
+    let object_store_auth = client_ref.object_store_auth().clone();
+    drop(client_ref);
     drop(dataset_ref);
 
     // Error if the queried index is unknown.
@@ -435,6 +438,8 @@ fn build_dataframe_query_table_provider(
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers_opt,
             metrics_collectors,
+            #[cfg(not(target_arch = "wasm32"))]
+            object_store_auth,
         )
         .await
     })

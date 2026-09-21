@@ -3,10 +3,10 @@ use std::sync::Arc;
 use ahash::HashMap;
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
 use re_byte_size::SizeBytes as _;
+use re_chunk_index::RrdManifest;
 use re_chunk_store::ChunkStore;
 use re_entity_db::EntityDb;
 use re_log::{debug_assert, debug_assert_eq};
-use re_log_encoding::RrdManifest;
 use re_log_types::{TimeInt, TimelineName};
 use re_sdk_types::archetypes;
 

@@ -10,7 +10,6 @@ use egui::{
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use itertools::chain;
 use re_format::format_uint;
-use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::{TableStyle, UiExt as _};
 
 use crate::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
@@ -136,7 +135,7 @@ impl<'a> ReTable<'a> {
                         egui_table::Column::new(row_number_cell_width)
                             .resizable(false)
                             .range(Rangef::new(row_number_cell_width, row_number_cell_width))
-                            .id(Id::new("row_number")),
+                            .id(ui.make_persistent_id("row_number")),
                     ),
                     self.visible_columns.iter().map(|(id, index)| {
                         if let Some(preview_column) = self

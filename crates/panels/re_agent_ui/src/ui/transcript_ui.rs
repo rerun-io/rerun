@@ -17,7 +17,7 @@ pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: 
                         thoughts_ui(ui, thoughts);
                     }
                     for (block_index, block) in content.iter().enumerate() {
-                        content_block_ui(ui, block, ui.id().with(block_index));
+                        content_block_ui(ui, block, ui.make_persistent_id(block_index));
                     }
                 }
                 TranscriptItem::ToolCall(call) => tool_call_ui(ui, call),

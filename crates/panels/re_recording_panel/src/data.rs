@@ -269,7 +269,7 @@ impl<'a> AppIdData<'a> {
     }
 
     pub fn id(&self) -> egui::Id {
-        egui::Id::new(&self.app_id)
+        egui::Id::unique(&self.app_id)
     }
 
     pub fn name(&self) -> &str {
@@ -662,7 +662,7 @@ impl EntryData {
     }
 
     pub fn id(&self) -> egui::Id {
-        egui::Id::new(&self.origin)
+        egui::Id::unique(&self.origin)
             .with(self.entry_id)
             .with(&self.name)
     }

@@ -6,7 +6,7 @@ use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_byte_size::SizeBytes as _;
-use re_log_encoding::{ChunkProvider as _, RawRrdManifest};
+use re_chunk_index::{ChunkProvider as _, RawRrdManifest, RrdManifestBuilder};
 use re_log_types::{AbsoluteTimeRange, Timeline};
 use re_protos::cloud::v1alpha1::ext::DataSourceKind;
 use url::Url;
@@ -137,7 +137,7 @@ impl Source {
     }
 
     pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
-        re_log_encoding::RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
+        RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
     }
 
     pub async fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
@@ -151,7 +151,7 @@ impl Source {
     ///
     /// The `store_id` on the returned manifest is the layer's own store id; callers merging
     /// multiple layer manifests into a segment-scoped manifest should override it afterwards
-    /// (see [`re_log_encoding::RawRrdManifest::merge`]).
+    /// (see [`RawRrdManifest::merge`]).
     pub fn rrd_manifest(&self) -> Result<RawRrdManifest, super::Error> {
         match &self.resolved {
             ResolvedStore::Lazy(lazy) => self.rrd_manifest_from_lazy_cache(lazy),
@@ -191,7 +191,7 @@ impl Source {
         let store_id = store.id().clone();
         drop(store);
 
-        let mut builder = re_log_encoding::RrdManifestBuilder::default();
+        let mut builder = RrdManifestBuilder::default();
         let mut chunk_keys = Vec::with_capacity(chunks.len());
         let mut offset = 0;
 

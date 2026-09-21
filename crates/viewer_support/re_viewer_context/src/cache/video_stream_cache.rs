@@ -9,6 +9,7 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, RowId, TimelineName};
+use re_chunk_index::RrdManifestTemporalMapEntry;
 use re_chunk_store::{
     ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkTrackingMode,
 };
@@ -1646,16 +1647,13 @@ impl ChunkSamples {
         }
     }
 
-    /// Create new chunk samples from a [`re_log_encoding::RrdManifestTemporalMapEntry`].
+    /// Create new chunk samples from a [`RrdManifestTemporalMapEntry`].
     ///
     /// Conservatively guesses that samples are all at the start of the chunk.
     // TODO(isse): Since samples could potentially be anywhere. We could
     // get into a situation where a chunk has a sample that should be in
     // a certain gop, but doesn't get distributed there by this method.
-    fn from_temporal_root(
-        id: ChunkId,
-        entry: &re_log_encoding::RrdManifestTemporalMapEntry,
-    ) -> Option<Self> {
+    fn from_temporal_root(id: ChunkId, entry: &RrdManifestTemporalMapEntry) -> Option<Self> {
         if entry.num_rows == 0 {
             return None;
         }
@@ -1875,7 +1873,7 @@ fn load_known_chunk_ranges(
                 }
                 ChunkSamples::from_temporal_root(
                     *id,
-                    &re_log_encoding::RrdManifestTemporalMapEntry {
+                    &RrdManifestTemporalMapEntry {
                         num_rows: remaining,
                         ..*entry
                     },

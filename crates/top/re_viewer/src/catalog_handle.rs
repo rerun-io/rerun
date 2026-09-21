@@ -140,7 +140,7 @@ async fn object_key(source: &impl re_async::AsyncReadAt, name: &str) -> anyhow::
     let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(source)
         .await
         .with_context(|| format!("failed to fingerprint RRD\nFile path: {name}"))?;
-    let fingerprint = re_log_encoding::sha256_to_hex(fingerprint.as_bytes());
+    let fingerprint = re_chunk_index::sha256_to_hex(fingerprint.as_bytes());
     Ok(ObjectKey::try_new(format!(
         "uploads/{fingerprint}/recording.rrd"
     ))?)

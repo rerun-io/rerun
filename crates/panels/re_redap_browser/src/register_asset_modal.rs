@@ -133,7 +133,7 @@ fn source_uri_field(
     /// Tall enough for the picker, so the field does not change height with it.
     const FIELD_HEIGHT: f32 = 19.0;
 
-    let textedit_id = ui.id().with("source_uri");
+    let textedit_id = ui.make_persistent_id("source_uri");
     let response = ui.read_response(textedit_id);
 
     let visuals = response

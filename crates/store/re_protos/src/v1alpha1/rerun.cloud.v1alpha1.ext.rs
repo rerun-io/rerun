@@ -225,6 +225,7 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
 pub struct QueryDatasetRequest {
     pub segment_ids: Vec<common_ext::SegmentId>,
     pub generate_direct_urls: bool,
+    pub unsigned_direct_urls: bool,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -248,6 +249,7 @@ impl Default for QueryDatasetRequest {
             scan_parameters: None,
             query: None,
             generate_direct_urls: false,
+            unsigned_direct_urls: false,
         }
     }
 }
@@ -269,6 +271,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             scan_parameters: value.scan_parameters.map(Into::into),
             query: value.query.map(Into::into),
             generate_direct_urls: value.generate_direct_urls,
+            unsigned_direct_urls: value.unsigned_direct_urls,
         }
     }
 }
@@ -321,6 +324,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             query: value.query.map(|q| q.try_into()).transpose()?,
 
             generate_direct_urls: value.generate_direct_urls,
+            unsigned_direct_urls: value.unsigned_direct_urls,
         };
 
         if let Some(query) = result.query.as_ref()

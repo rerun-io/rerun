@@ -8,7 +8,7 @@ use datafusion::prelude::SessionContext;
 use futures::{StreamExt as _, TryStreamExt as _};
 use itertools::Itertools as _;
 use re_chunk_store::IndexValue;
-use re_datafusion::DataframeQueryTableProvider;
+use re_datafusion::{DataframeQueryTableProvider, NoOpObjectStoreAuthenticator};
 use re_log_types::{EntityPath, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
@@ -507,6 +507,7 @@ async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudServ
             None,
             None,
             Vec::new(),
+            Arc::new(NoOpObjectStoreAuthenticator::default()),
         )
         .await
         .unwrap();
@@ -1045,6 +1046,7 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
         None,       // arrow_schema — let the provider fetch it
         None,       // trace_headers
         Vec::new(), // metrics_collectors
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();

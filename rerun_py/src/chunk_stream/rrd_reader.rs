@@ -5,8 +5,9 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use re_chunk::Chunk;
+use re_chunk_index::RawRrdManifest;
 use re_chunk_store::LazyStore;
-use re_log_encoding::{RawRrdManifest, RrdChunkProvider, RrdFooter};
+use re_log_encoding::{RrdChunkProvider, RrdFooter};
 use re_log_msg::LogMsg;
 use re_log_types::{StoreId, StoreKind};
 

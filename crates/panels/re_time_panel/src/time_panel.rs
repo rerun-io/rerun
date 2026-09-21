@@ -1,7 +1,7 @@
 use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
-    Align, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
+    Align2, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
     TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
@@ -64,20 +64,13 @@ impl TimePanelItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Debug, Clone, Copy, Default, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize,
+)]
 pub enum TimePanelSource {
     #[default]
     Recording,
     Blueprint,
-}
-
-impl From<TimePanelSource> for egui::Id {
-    fn from(source: TimePanelSource) -> Self {
-        match source {
-            TimePanelSource::Recording => "recording".into(),
-            TimePanelSource::Blueprint => "blueprint".into(),
-        }
-    }
 }
 
 impl From<TimePanelSource> for re_log_types::StoreKind {
@@ -242,11 +235,9 @@ impl TimePanel {
 
         let window_height = ui.content_rect().height();
 
-        let id: egui::Id = self.source.into();
-
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
-        let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
+        let expanded = egui::Panel::bottom((self.source, "time_panel_expanded"))
             .resizable(true)
             .frame(panel_frame)
             .min_size(min_height)
@@ -254,7 +245,7 @@ impl TimePanel {
             .default_size((0.25 * window_height).clamp(min_height, 250.0).round());
 
         if can_collapse_to_bar {
-            let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
+            let collapsed = egui::Panel::bottom((self.source, "time_panel_collapsed"))
                 .resizable(true)
                 .frame(panel_frame)
                 .exact_size(29.0);
@@ -1230,7 +1221,7 @@ impl TimePanel {
                 egui::Tooltip::always_open(
                     ui.ctx().clone(),
                     ui.layer_id(),
-                    egui::Id::new((item, "data_tooltip")), // give each item a unique tooltip id
+                    ui.make_persistent_id(("data_tooltip", item)), // give each item a unique tooltip id
                     egui::PopupAnchor::Pointer,
                 )
                 .gap(12.0)
@@ -1623,7 +1614,7 @@ impl TimePanel {
                 // `TextEdit::min_size` is ignored for some reason so we need add_sized
                 ui.add_sized(
                     Vec2::new(text_edit_width, Size::Tiny.height()),
-                    TextEdit::singleline(&mut time_str).vertical_align(Align::Center),
+                    TextEdit::singleline(&mut time_str).align(Align2::LEFT_CENTER),
                 )
             });
             if response.changed() {
@@ -1843,7 +1834,7 @@ fn pan_and_zoom_interaction(
     // drags in the timeline rect should create loop selections.
     let response = ui.interact(
         *streams_rect,
-        ui.id().with("time_area_interact"),
+        ui.make_persistent_id("time_area_interact"),
         egui::Sense::click_and_drag(),
     );
 
@@ -1959,7 +1950,7 @@ impl TimePanel {
             .unwrap_or_else(|| {
                 ui.interact(
                     *interact_rect,
-                    ui.id().with("time_cursor_interact"),
+                    ui.make_persistent_id("time_cursor_interact"),
                     egui::Sense::click_and_drag(),
                 )
             })
@@ -1991,7 +1982,7 @@ impl TimePanel {
 
         // Show hover preview, and right-click context menu:
         {
-            let right_clicked_time_id = egui::Id::new("__right_clicked_time");
+            let right_clicked_time_id = ui.make_persistent_id("__right_clicked_time");
 
             let right_clicked_time = ui
                 .ctx()

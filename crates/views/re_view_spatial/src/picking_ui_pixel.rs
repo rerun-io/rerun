@@ -637,7 +637,7 @@ fn readback_pixel_from_gpu_texture(
 
         // Only use the interaction *index* to identify the memory itself so we don't accumulate data indefinitely.
         // To detect whether the retrieved data belongs to the same interaction we add the full interaction *id* to the cached data.
-        let memory_id = egui::Id::new(interaction_id.interaction_idx);
+        let memory_id = egui::Id::unique(interaction_id.interaction_idx);
         let interaction_id = interaction_id.gpu_readback_id();
 
         if let Some(pixel_bytes) = readback_result {

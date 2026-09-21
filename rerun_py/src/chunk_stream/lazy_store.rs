@@ -5,10 +5,10 @@ use arrow::pyarrow::ToPyArrow as _;
 use pyo3::prelude::*;
 
 use re_chunk::{Chunk, ChunkId};
-use re_chunk_store::LazyStore;
-use re_log_encoding::{
+use re_chunk_index::{
     ChunkProvider as _, RrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap,
 };
+use re_chunk_store::LazyStore;
 use re_log_types::EntityPath;
 use re_types_core::{ComponentIdentifier, TimelineName};
 
@@ -303,7 +303,7 @@ impl ChunkPredicateView for ManifestRow<'_> {
 
 /// Streaming loader for an indexed (lazy) [`ChunkStore`].
 ///
-/// Pulls chunks from the underlying [`ChunkProvider`][re_log_encoding::ChunkProvider] in
+/// Pulls chunks from the underlying [`ChunkProvider`][ChunkProvider] in
 /// byte-budgeted batches so resident memory stays bounded regardless of total recording size.
 //TODO(RR-4545): this is hardly an optimal strategy. We need the ChunkProvider to expose a streaming
 // API so that specific optimizations can be applied (e.g. adjacency for RRD, parallelism for

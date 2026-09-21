@@ -6,8 +6,9 @@ use itertools::izip;
 use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
+use re_chunk_index::RrdManifest;
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreGeneration};
-use re_log_encoding::{CodecResult, RrdManifest};
+use re_log_encoding::CodecResult;
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
