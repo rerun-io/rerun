@@ -1388,21 +1388,30 @@ where
                     .with_entry_id(assets_entry),
                 )
                 .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
-                })?;
-            let mut properties = ApiResponseStream::from_tonic_response(
-                self.origin.clone(),
-                response,
-                "/GetSegmentProperties",
-            );
-            while let Some(response) = properties.next().await {
-                crate::asset::filter_asset_segments(
-                    &self.origin,
-                    &mut asset_segment_ids,
-                    segment_id.as_ref(),
-                    response?,
-                )?;
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed"));
+
+            match response {
+                Ok(response) => {
+                    let mut properties = ApiResponseStream::from_tonic_response(
+                        self.origin.clone(),
+                        response,
+                        "/GetSegmentProperties",
+                    );
+                    while let Some(response) = properties.next().await {
+                        crate::asset::filter_asset_segments(
+                            &self.origin,
+                            &mut asset_segment_ids,
+                            segment_id.as_ref(),
+                            response?,
+                        )?;
+                    }
+                }
+
+                // A server without `/GetSegmentProperties` cannot tell which assets apply to
+                // which segment, so every asset applies.
+                Err(err) if err.kind == ApiErrorKind::Unimplemented => {}
+
+                Err(err) => return Err(err),
             }
         }
 
