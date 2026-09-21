@@ -639,6 +639,7 @@ async fn register_rrd_file_url(
     }
 
     let origin = connection.origin().clone();
+    // The hidden blueprint dataset keeps its base layer; only recordings get per-file layers.
     let blueprint_data_source = DataSource::new_rrd_url(file_url.clone());
     let mut data_source = DataSource::new_rrd_url(file_url);
     if let Some(layer) = layer {
