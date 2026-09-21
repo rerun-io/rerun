@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use re_data_ui::item_ui::{self, timeline_button};
+use re_dataframe_ui::{apply_table_style_fixes, cell_ui, header_ui};
 use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
@@ -9,7 +11,7 @@ use re_sdk_types::blueprint::encodings as bp_encodings;
 use re_sdk_types::components::TextLogLevel;
 use re_sdk_types::{View as _, ViewClassIdentifier, encodings};
 use re_ui::list_item::LabelContent;
-use re_ui::{DesignTokens, Help, UiExt as _};
+use re_ui::{Help, TableStyle, UiExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem as _, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
     ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
@@ -17,7 +19,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::visualizer_system::{Entry, TextLogSystem};
+use super::visualizer_system::{Entry, TextLogEntries, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -38,8 +40,6 @@ pub struct TextViewState {
     last_anchor_time: Option<i64>,
 
     seen_levels: BTreeSet<String>,
-
-    last_columns_min_sizes: Vec<u32>,
 }
 
 impl ViewState for TextViewState {
@@ -201,12 +201,18 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextViewState>()?;
-        let text =
-            system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
+        let output = system_output
+            .visualizer_data_or_default::<Arc<TextLogEntries>>(TextLogSystem::identifier())?;
+        let entries = output.entries.as_slice();
+
+        for level in &output.levels {
+            if !state.seen_levels.contains(level) {
+                state.seen_levels.insert(level.clone());
+            }
+        }
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
-        let rows_property = ViewProperty::from_archetype::<TextLogRows>(&view_ctx);
         let format_property = ViewProperty::from_archetype::<TextLogFormat>(&view_ctx);
 
         let monospace_body = format_property.component_or_fallback::<Enabled>(
@@ -223,66 +229,47 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_timeline_columns().component,
         )?;
 
-        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
-            &view_ctx,
-            TextLogRows::descriptor_filter_by_log_level().component,
-        )?;
-
-        for te in text.iter() {
-            if let Some(lvl) = &te.level {
-                state.seen_levels.insert(lvl.to_string());
-            }
-        }
-
-        // TODO(andreas): Should filter text entries in the part-system instead.
-        // this likely requires a way to pass state into a context.
-        let entries = text
-            .iter()
-            .filter(|te| {
-                te.level
-                    .as_ref()
-                    .is_none_or(|lvl| levels.iter().any(|l| l.as_str() == lvl.as_str()))
-            })
-            .collect::<Vec<_>>();
-
         let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
+
+        // Auto-scroll when the time cursor moves, or whenever the
+        // latest-at row shifts because new (possibly out-of-order) data
+        // landed closer to the cursor.
+        let anchor_time = entries
+            .partition_point(|te| te.time.as_i64() <= time)
+            .checked_sub(1)
+            .map(|i| entries[i].time.as_i64());
+        let anchor_moved = anchor_time != state.last_anchor_time;
+        let time_cursor_moved = state.latest_time != time;
+        let scroll_to_cursor = time_cursor_moved || anchor_moved;
+        let cursor_row = entries.partition_point(|te| te.time.as_i64() < time);
+        state.last_anchor_time = anchor_time;
+        state.latest_time = time;
+
         egui::Frame {
             inner_margin: tokens.view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
-            // Auto-scroll when the time cursor moves, or whenever the
-            // latest-at row shifts because new (possibly out-of-order) data
-            // landed closer to the cursor.
-            let anchor_time = entries
-                .partition_point(|te| te.time.as_i64() <= time)
-                .checked_sub(1)
-                .map(|i| entries[i].time.as_i64());
-            let anchor_moved = anchor_time != state.last_anchor_time;
-            let time_cursor_moved = state.latest_time != time;
-            let scroll_to_row = (time_cursor_moved || anchor_moved).then(|| {
-                re_tracing::profile_scope!("search scroll time");
-                entries.partition_point(|te| te.time.as_i64() < time)
-            });
-            state.last_anchor_time = anchor_time;
+            re_tracing::profile_scope!("render table");
 
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                egui::ScrollArea::horizontal().show(ui, |ui| {
-                    re_tracing::profile_scope!("render table");
-                    table_ui(
-                        ctx,
-                        ui,
-                        state,
-                        &timeline_columns,
-                        &columns,
-                        **monospace_body,
-                        &entries,
-                        scroll_to_row,
-                    );
-                })
-            })
+            // The table state lives in egui memory keyed on the parent `Ui`, so it is lost whenever
+            // the view gets re-hosted (e.g. maximized or moved to another container). Re-scroll then.
+            let table_id =
+                egui_table::TableState::id(ui, egui::IdSalt::new(table_id_salt(query.view_id)));
+            let table_is_new = egui_table::TableState::load(ui.ctx(), table_id).is_none();
+            let scroll_to_row = (scroll_to_cursor || table_is_new).then_some(cursor_row);
+
+            table_ui(
+                ctx,
+                ui,
+                query.view_id,
+                &timeline_columns,
+                &columns,
+                **monospace_body,
+                entries,
+                scroll_to_row,
+            );
         });
-        state.latest_time = time;
 
         Ok(Default::default())
     }
@@ -290,203 +277,214 @@ Filter message types and toggle column visibility in a selection panel.",
 
 // ---
 
+fn table_id_salt(view_id: ViewId) -> impl egui::AsIdSalt {
+    ("text_log", view_id)
+}
+
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
-/// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
-/// scroll in terms of actual points.
+/// as opposed to a scroll offset in points, which `egui_table` computes from it.
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut TextViewState,
+    view_id: ViewId,
     timeline_columns: &[TimelineColumn],
     columns: &[TextLogColumn],
     monospace_body: bool,
-    entries: &[&Entry],
+    entries: &[Entry],
     scroll_to_row: Option<usize>,
 ) {
     let tokens = ui.tokens();
-    let table_style = re_ui::TableStyle::Dense;
+    let table_style = TableStyle::Dense;
 
-    use egui_extras::Column;
-
-    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline_name(), ctx.time_ctrl.time_int());
-
-    let mut table_builder = egui_extras::TableBuilder::new(ui)
-        .resizable(true)
-        .vscroll(true)
-        .auto_shrink([false; 2]) // expand to take up the whole View
-        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the view!
-        .max_scroll_height(f32::INFINITY) // Fill up whole height
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
-
-    if let Some(scroll_to_row) = scroll_to_row {
-        table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
-    }
-
-    let mut body_clip_rect = None;
-    let mut current_time_y = None; // where to draw the current time indicator cursor
-
-    let mut new_column_sizes = Vec::new();
-    let mut last_columns = state.last_columns_min_sizes.iter();
-
-    let mut size_column = |column: Column, min_size: u32| {
-        // If this isn't the same min size as before the order changed.
-        let auto_resize = last_columns.next().is_some_and(|c| *c != min_size);
-
-        new_column_sizes.push(min_size);
-
-        column
-            .at_least(min_size as f32)
-            .auto_size_this_frame(auto_resize)
-    };
-
+    let mut column_kinds = Vec::new();
+    let mut table_columns = Vec::new();
     for col in timeline_columns {
-        if *col.visible {
-            table_builder = table_builder.column(size_column(Column::auto().clip(true), 32));
+        if !*col.visible {
+            continue;
+        }
+        if let Some(timeline) = TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+        {
+            column_kinds.push(ColumnKind::Timeline(timeline));
+            table_columns.push(text_log_column(110.0, 60.0));
         }
     }
-
     for col in columns {
         if !*col.visible {
             continue;
         }
-
-        let col = match col.kind {
-            bp_encodings::TextLogColumnKind::EntityPath => {
-                size_column(Column::auto().clip(true), 32)
-            }
-            bp_encodings::TextLogColumnKind::LogLevel => size_column(Column::auto(), 30),
-            bp_encodings::TextLogColumnKind::Body => size_column(Column::remainder(), 100),
+        let (width, min_width) = match col.kind {
+            bp_encodings::TextLogColumnKind::EntityPath => (120.0, 60.0),
+            bp_encodings::TextLogColumnKind::LogLevel => (50.0, 44.0),
+            bp_encodings::TextLogColumnKind::Body => (400.0, 100.0),
         };
-
-        table_builder = table_builder.column(col);
+        column_kinds.push(ColumnKind::Kind(col.kind));
+        table_columns.push(text_log_column(width, min_width));
     }
 
-    state.last_columns_min_sizes = new_column_sizes;
-
-    table_builder
-        .header(tokens.deprecated_table_header_height(), |mut header| {
-            re_ui::DesignTokens::setup_table_header(&mut header);
-            for col in timeline_columns {
-                if !*col.visible {
-                    continue;
-                }
-
-                header.col(|ui| {
-                    if let Some(timeline) =
-                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
-                    {
-                        timeline_button(&ctx.app_ctx, ui, &timeline);
-                    }
-                });
-            }
-            for col in columns {
-                if !*col.visible {
-                    continue;
-                }
-                header.col(|ui| {
-                    column_name_ui(ui, &col.kind);
-                });
-            }
-        })
-        .body(|mut body| {
-            tokens.setup_table_body(&mut body, table_style);
-
-            body_clip_rect = Some(body.max_rect());
-
-            let row_heights = entries
+    // Only draw the current time indicator when the active timeline is shown as a column.
+    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline_name(), ctx.time_ctrl.time_int());
+    let marker_row = global_time
+        .filter(|_| {
+            column_kinds
                 .iter()
-                .map(|te| calc_row_height(tokens, table_style, te));
-            body.heterogeneous_rows(row_heights, |mut row| {
-                let entry = &entries[row.index()];
+                .any(|kind| matches!(kind, ColumnKind::Timeline(timeline) if *timeline == global_timeline))
+        })
+        .map(|global_time| entries.partition_point(|te| te.time <= global_time) as u64);
 
-                for col in timeline_columns {
-                    if !*col.visible {
-                        continue;
-                    }
+    let mut delegate = TextLogTableDelegate {
+        ctx,
+        table_style,
+        row_height: tokens.table_row_height(table_style),
+        column_kinds: &column_kinds,
+        monospace_body,
+        entries,
+        marker_row,
+    };
 
-                    let Some(timeline) =
-                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
-                    else {
-                        continue;
-                    };
+    apply_table_style_fixes(ui.style_mut());
 
-                    row.col(|ui| {
-                        let row_time = entry
-                            .timepoint
-                            .get(&timeline)
-                            .map(re_log_types::TimeInt::from)
-                            .unwrap_or(re_log_types::TimeInt::STATIC);
-                        item_ui::time_button(ctx, ui, &timeline, row_time);
+    let mut table = egui_table::Table::new()
+        .id_salt(table_id_salt(view_id))
+        .columns(table_columns)
+        .auto_size_mode(egui_table::AutoSizeMode::Always)
+        .headers(vec![egui_table::HeaderRow::new(
+            tokens.table_header_height(),
+        )])
+        .num_rows(entries.len() as u64);
 
-                        if let Some(global_time) = global_time
-                            && timeline == global_timeline
-                        {
-                            if global_time < row_time {
-                                // We've past the global time - it is thus above this row.
-                                if current_time_y.is_none() {
-                                    current_time_y = Some(ui.max_rect().top());
-                                }
-                            } else if global_time == row_time {
-                                // This row is exactly at the current time.
-                                // We could draw the current time exactly onto this row, but that would look bad,
-                                // so let's draw it under instead. It looks better in the "following" mode.
-                                current_time_y = Some(ui.max_rect().bottom());
-                            }
-                        }
-                    });
-                }
-
-                for col in columns {
-                    if !*col.visible {
-                        continue;
-                    }
-
-                    row.col(|ui| match col.kind {
-                        bp_encodings::TextLogColumnKind::EntityPath => {
-                            item_ui::entity_path_button(
-                                &ctx.active_recording_store_view_context(),
-                                ui,
-                                None,
-                                &entry.entity_path,
-                            );
-                        }
-                        bp_encodings::TextLogColumnKind::LogLevel => {
-                            if let Some(lvl) = &entry.level {
-                                ui.label(level_to_rich_text(ui, lvl));
-                            } else {
-                                ui.label("-");
-                            }
-                        }
-                        bp_encodings::TextLogColumnKind::Body => {
-                            let mut text = egui::RichText::new(entry.body.as_str());
-
-                            if monospace_body {
-                                text = text.monospace();
-                            }
-                            if let Some(color) = entry.color {
-                                text = text.color(color);
-                            }
-
-                            ui.label(text);
-                        }
-                    });
-                }
-            });
-        });
-
-    // TODO(cmc): this draws on top of the headers :(
-    if let (Some(body_clip_rect), Some(current_time_y)) = (body_clip_rect, current_time_y) {
-        // Show that the current time is here:
-        ui.painter().with_clip_rect(body_clip_rect).hline(
-            ui.max_rect().x_range(),
-            current_time_y,
-            (1.0, ui.tokens().strong_fg_color),
-        );
+    if let Some(scroll_to_row) = scroll_to_row {
+        table = table.scroll_to_row(scroll_to_row as u64, Some(egui::Align::Center));
     }
+
+    table.show(ui, &mut delegate);
 }
 
-fn column_name_ui(ui: &mut egui::Ui, column: &bp_encodings::TextLogColumnKind) -> egui::Response {
-    ui.strong(column.name())
+enum ColumnKind {
+    Timeline(TimelineName),
+    Kind(bp_encodings::TextLogColumnKind),
+}
+
+/// A resizable column that starts out `width` wide but may be squeezed down to `min_width`
+/// when the view is too narrow to fit every column at its preferred width.
+fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
+    egui_table::Column::new(width)
+        .range(egui::Rangef::new(min_width, f32::INFINITY))
+        .resizable(true)
+}
+
+struct TextLogTableDelegate<'a> {
+    ctx: &'a ViewerContext<'a>,
+    table_style: TableStyle,
+    row_height: f32,
+    column_kinds: &'a [ColumnKind],
+    monospace_body: bool,
+    entries: &'a [Entry],
+
+    /// Paint the current time indicator at the top of this row
+    /// (or at the bottom of the last row if this is one past the end).
+    marker_row: Option<u64>,
+}
+
+impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
+    fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        let col_nr = cell.col_range.start;
+        let is_last = col_nr + 1 == self.column_kinds.len();
+        header_ui(ui, self.table_style, is_last, |ui| {
+            match &self.column_kinds[col_nr] {
+                ColumnKind::Timeline(timeline) => {
+                    timeline_button(&self.ctx.app_ctx, ui, timeline);
+                }
+                ColumnKind::Kind(kind) => {
+                    ui.strong(kind.name());
+                }
+            }
+        });
+    }
+
+    fn row_ui(&mut self, ui: &mut egui::Ui, row_nr: u64) {
+        let num_rows = self.entries.len() as u64;
+        let paint_marker_at = if self.marker_row == Some(row_nr) {
+            Some(ui.max_rect().top())
+        } else if row_nr + 1 == num_rows && self.marker_row == Some(num_rows) {
+            // The time cursor is past all rows: draw the marker below the last one.
+            Some(ui.max_rect().bottom())
+        } else {
+            None
+        };
+
+        if let Some(y) = paint_marker_at {
+            ui.painter().hline(
+                ui.max_rect().x_range(),
+                y,
+                (1.0, ui.tokens().strong_fg_color),
+            );
+        }
+    }
+
+    fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
+        let col_nr = cell.col_nr;
+        let is_last = col_nr + 1 == self.column_kinds.len();
+        cell_ui(ui, self.table_style, is_last, |ui| {
+            let Some(entry) = self.entries.get(cell.row_nr as usize) else {
+                return;
+            };
+
+            match &self.column_kinds[col_nr] {
+                ColumnKind::Timeline(timeline) => {
+                    ui.set_truncate_style();
+                    let row_time = entry
+                        .timepoint
+                        .get(timeline)
+                        .map(re_log_types::TimeInt::from)
+                        .unwrap_or(re_log_types::TimeInt::STATIC);
+                    item_ui::time_button(self.ctx, ui, timeline, row_time);
+                }
+                ColumnKind::Kind(bp_encodings::TextLogColumnKind::EntityPath) => {
+                    ui.set_truncate_style();
+                    item_ui::entity_path_button(
+                        &self.ctx.active_recording_store_view_context(),
+                        ui,
+                        None,
+                        &entry.entity_path,
+                    );
+                }
+                ColumnKind::Kind(bp_encodings::TextLogColumnKind::LogLevel) => {
+                    if let Some(lvl) = &entry.level {
+                        ui.label(level_to_rich_text(ui, lvl));
+                    } else {
+                        ui.label("-");
+                    }
+                }
+                ColumnKind::Kind(bp_encodings::TextLogColumnKind::Body) => {
+                    // Rows have a fixed height; show only the first line of multi-line bodies.
+                    let body = entry.body.as_str();
+                    let (first_line, truncated) = match body.split_once('\n') {
+                        Some((first_line, _)) => (first_line, true),
+                        None => (body, false),
+                    };
+
+                    let mut text = if truncated {
+                        egui::RichText::new(format!("{first_line} …"))
+                    } else {
+                        egui::RichText::new(first_line)
+                    };
+
+                    if self.monospace_body {
+                        text = text.monospace();
+                    }
+                    if let Some(color) = entry.color {
+                        text = text.color(color);
+                    }
+
+                    ui.label(text).on_hover_text(body);
+                }
+            }
+        });
+    }
+
+    fn default_row_height(&self) -> f32 {
+        self.row_height
+    }
 }
 
 /// We need this to be a custom ui to be able to use the view state to get seen text log levels.
@@ -593,13 +591,6 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                 sub_prop_ui,
             );
     }
-}
-
-fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {
-    // Simple, fast, ugly, and functional
-    let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
-    let num_rows = 1 + num_newlines;
-    num_rows as f32 * tokens.table_row_height(table_style)
 }
 
 #[test]
