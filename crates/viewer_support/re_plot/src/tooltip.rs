@@ -1,5 +1,5 @@
 use crate::legend::LegendSwatch;
-use egui::{Atom, AtomExt as _, AtomLayout, TextWrapMode};
+use egui::{Atom, AtomExt as _, TextWrapMode, WidgetAtom};
 use re_ui::{DesignTokens, UiExt as _};
 
 /// Shows a plot tooltip at the pointer for the given response.
@@ -9,7 +9,7 @@ use re_ui::{DesignTokens, UiExt as _};
 pub fn show_plot_tooltip(
     ui: &egui::Ui,
     response: &egui::Response,
-    id_salt: egui::Id,
+    id_salt: impl egui::AsIdSalt,
     header: &str,
     label: &str,
     value: &str,
@@ -22,7 +22,7 @@ pub fn show_plot_tooltip(
 pub fn show_plot_tooltip_rows<'a>(
     ui: &egui::Ui,
     response: &egui::Response,
-    id_salt: egui::Id,
+    id_salt: impl egui::AsIdSalt,
     header: &str,
     rows: impl IntoIterator<Item = (&'a str, &'a str, egui::Color32)>,
     omitted_rows: usize,
@@ -58,7 +58,7 @@ pub fn show_plot_tooltip_rows<'a>(
 fn plot_tooltip<'a>(
     ui: &egui::Ui,
     response: &'a egui::Response,
-    id_salt: egui::Id,
+    id_salt: impl egui::AsIdSalt,
 ) -> egui::Tooltip<'a> {
     let prev_style = ui.ctx().global_style();
     ui.ctx().global_style_mut(|style| {
@@ -99,7 +99,11 @@ pub fn plot_tooltip_label_value(
     let value = egui::RichText::new(value_text).color(tokens.list_item_strong_text);
 
     let atoms = (
-        LegendSwatch::atom(),
+        LegendSwatch {
+            color,
+            visible: true,
+        }
+        .atom(),
         label,
         Atom::default().atom_size(egui::vec2(LABEL_VALUE_GAP - SWATCH_GAP * 2.0, 0.0)),
         value,
@@ -107,18 +111,12 @@ pub fn plot_tooltip_label_value(
 
     ui.set_max_width(MAX_WIDTH);
 
-    let atom_layout = AtomLayout::new(atoms)
+    let atom_layout = WidgetAtom::new(atoms)
         .gap(SWATCH_GAP)
         .max_width(MAX_WIDTH)
         .sense(egui::Sense::hover())
         .wrap_mode(TextWrapMode::Truncate)
         .allocate(ui);
 
-    let atom_response = atom_layout.paint(ui);
-
-    LegendSwatch {
-        color,
-        visible: true,
-    }
-    .paint(ui, &atom_response);
+    atom_layout.paint(ui);
 }

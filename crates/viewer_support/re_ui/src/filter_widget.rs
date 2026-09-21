@@ -30,7 +30,7 @@ impl Default for InnerState {
             filter_query: String::new(),
 
             // create a new session id each time the filter is toggled
-            session_id: egui::Id::new(random_bytes),
+            session_id: egui::Id::unique(random_bytes),
         }
     }
 }
@@ -204,7 +204,7 @@ impl FilterState {
     pub fn search_field_ui(&mut self, ui: &mut egui::Ui, hint_text: impl Into<egui::WidgetText>) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
-        let textedit_id = ui.id().with("textedit");
+        let textedit_id = ui.make_persistent_id("textedit");
         let response = ui.read_response(textedit_id);
 
         let visuals = response

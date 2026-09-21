@@ -112,7 +112,7 @@ impl<'a> DataTypeUi<'a> {
         if let Some(datatype_ui) = self.content {
             ui.list_item().show_hierarchical_with_children(
                 ui,
-                ui.id().with("data_type_ui_root"),
+                ui.make_persistent_id("data_type_ui_root"),
                 false,
                 content,
                 datatype_ui,

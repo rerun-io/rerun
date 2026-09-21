@@ -1,5 +1,5 @@
 use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
-use egui::{Align, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
+use egui::{Align2, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
 
 /// Wrapper around eguis [`TextEdit`] that applies reruns styling
 pub struct ReTextEdit<'a> {
@@ -68,7 +68,7 @@ impl TextEditVariant {
 impl ReTextEdit<'_> {
     pub fn singleline(text: &mut dyn TextBuffer) -> ReTextEdit<'_> {
         ReTextEdit {
-            text_edit: TextEdit::singleline(text).vertical_align(Align::Center),
+            text_edit: TextEdit::singleline(text).align(Align2::LEFT_CENTER),
             size: Size::Small,
             variant: TextEditVariant::Outlined,
             prefix: Atoms::default(),

@@ -663,7 +663,7 @@ fn show_video_frame(
         if let Some(texture) = texture {
             has_rendered_texture = true;
             let animated_valid_frame = ctx.egui_ctx().animate_bool(
-                egui::Id::new(format!("{entity_path} video loading indicator"))
+                egui::Id::unique((entity_path, "video loading indicator"))
                     .with(visualizer_instruction),
                 issue.is_none() && !show_loading_indicator,
             );

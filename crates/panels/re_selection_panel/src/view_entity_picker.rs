@@ -153,9 +153,7 @@ fn add_entities_tree_ui(
 
         list_item.show_hierarchical_with_children(
             ui,
-            ui.id()
-                .with(&entity_data.entity_path)
-                .with(filter_session_id),
+            ui.make_persistent_id((&entity_data.entity_path, filter_session_id)),
             default_open,
             item_content,
             |ui| {

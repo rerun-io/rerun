@@ -37,6 +37,16 @@ enum CloseRecording {
 }
 
 impl App {
+    fn request_screenshot(&self, info: re_viewer_context::ScreenshotInfo) {
+        let tx = self.screenshot_tx.clone();
+        let ctx = self.egui_ctx.clone();
+        self.egui_ctx.request_screenshot(move |image| {
+            if tx.send((info, image)).is_ok() {
+                ctx.request_repaint();
+            }
+        });
+    }
+
     pub(super) fn run_pending_system_commands(
         &mut self,
         store_hub: &mut StoreHub,
@@ -795,16 +805,13 @@ impl App {
                     return;
                 }
 
-                self.egui_ctx
-                    .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
-                        re_viewer_context::ScreenshotInfo {
-                            ui_rect: Some(rect),
-                            pixels_per_point: self.egui_ctx.pixels_per_point(),
-                            name,
-                            target,
-                            notify,
-                        },
-                    )));
+                self.request_screenshot(re_viewer_context::ScreenshotInfo {
+                    ui_rect: Some(rect),
+                    pixels_per_point: self.egui_ctx.pixels_per_point(),
+                    name,
+                    target,
+                    notify,
+                });
             } else {
                 re_log::warn!("View {view_id} not found for screenshot");
                 self.notify_screenshot_failed(
@@ -817,16 +824,13 @@ impl App {
             }
         } else {
             // Screenshot the entire viewer
-            self.egui_ctx
-                .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
-                    re_viewer_context::ScreenshotInfo {
-                        ui_rect: None,
-                        pixels_per_point: self.egui_ctx.pixels_per_point(),
-                        name: "screenshot".to_owned(),
-                        target,
-                        notify,
-                    },
-                )));
+            self.request_screenshot(re_viewer_context::ScreenshotInfo {
+                ui_rect: None,
+                pixels_per_point: self.egui_ctx.pixels_per_point(),
+                name: "screenshot".to_owned(),
+                target,
+                notify,
+            });
         }
 
         // Screenshot commands may be triggered from receiving messages over the network, so we may not actually do any painting right now.

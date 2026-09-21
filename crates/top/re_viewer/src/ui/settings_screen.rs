@@ -72,8 +72,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("General");
 
     ui.horizontal(|ui| {
+        // Center the theme label
+        ui.set_height(27.0);
         ui.label("Theme");
-        egui::global_theme_preference_buttons(ui);
+        theme_preference_buttons(ui);
     });
 
     let AppOptions {
@@ -543,4 +545,63 @@ fn separator_with_some_space(ui: &mut egui::Ui) {
     ui.add_space(10.0);
     ui.separator();
     ui.add_space(10.0);
+}
+
+/// A toggle group for picking between the dark, light and system themes.
+///
+/// Same as [`egui::global_theme_preference_buttons`], but in our own style and with our own
+/// icons: egui labels its buttons with emoji that no font we bundle can draw.
+fn theme_preference_buttons(ui: &mut egui::Ui) {
+    let mut preference = ui.options(|opt| opt.theme_preference);
+
+    ui.selectable_toggle(|ui| {
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::System,
+            &re_ui::icons::SUN_MOON,
+            "System",
+        )
+        .on_hover_text("Follow the theme the operating system asks for");
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::Dark,
+            &re_ui::icons::MOON,
+            "Dark",
+        )
+        .on_hover_text("Always use the dark theme");
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::Light,
+            &re_ui::icons::SUN,
+            "Light",
+        )
+        .on_hover_text("Always use the light theme");
+    });
+
+    ui.ctx().set_theme(preference);
+}
+
+/// One button of [`theme_preference_buttons`].
+///
+/// This is [`egui::Ui::selectable_value`] plus `image_tint_follows_text_color`, which the
+/// icon needs to dim along with its label when the button is not the selected one.
+fn theme_preference_button(
+    ui: &mut egui::Ui,
+    preference: &mut egui::ThemePreference,
+    value: egui::ThemePreference,
+    icon: &re_ui::Icon,
+    label: &str,
+) -> egui::Response {
+    let mut response = ui.add(
+        egui::Button::selectable(*preference == value, (icon, label))
+            .image_tint_follows_text_color(true),
+    );
+    if response.clicked() && *preference != value {
+        *preference = value;
+        response.mark_changed();
+    }
+    response
 }

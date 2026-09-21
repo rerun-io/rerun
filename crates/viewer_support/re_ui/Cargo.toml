@@ -20,6 +20,7 @@ include = [
   "data/**/*.png",
   "data/**/*.ron",
   "data/**/*.svg",
+  "data/**/*.ttf",
   "data/**/*.txt",
 ]
 

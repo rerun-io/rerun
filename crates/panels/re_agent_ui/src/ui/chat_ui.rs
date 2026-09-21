@@ -105,7 +105,7 @@ pub fn chat_ui(
     }
     input.was_ready = session.is_ready();
 
-    egui::Panel::bottom(ui.id().with("agent_composer"))
+    egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
             composer_ui(ui, session, input, login_hint);
@@ -458,7 +458,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
         "Waiting for the agent…"
     };
 
-    let input_id = ui.id().with("chat_input");
+    let input_id = ui.make_persistent_id("chat_input");
     history_navigation(ui, input, input_id);
 
     let tokens = ui.tokens();
@@ -638,7 +638,7 @@ fn log_ui(ui: &mut egui::Ui, session: &AgentSession) {
                     LineDirection::Stdout => ("← ", tokens.text_subdued),
                     LineDirection::Stderr => ("", tokens.warn_fg_color),
                 };
-                let id = ui.id().with(index);
+                let id = ui.make_persistent_id(index);
                 let is_expanded = ui.data(|data| data.get_temp::<bool>(id).unwrap_or(false));
                 let wrap_mode = if is_expanded {
                     egui::TextWrapMode::Wrap

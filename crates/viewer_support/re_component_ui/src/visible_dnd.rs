@@ -1,15 +1,17 @@
 use re_ui::{HasDesignTokens as _, UiExt as _};
 
 /// A shared utility for a drag and drop ui with a visibility button for each item.
-pub fn visible_dnd<T: egui::AsId>(
+pub fn visible_dnd<T: egui::AsIdSalt>(
     ui: &mut egui::Ui,
-    id_source: impl egui::AsId,
+    id_salt: impl egui::AsIdSalt,
     items: &mut [T],
     mut item_ui: impl FnMut(&mut egui::Ui, &mut T),
     mut get_item_visibility: impl FnMut(&T) -> bool,
     mut set_item_visibility: impl FnMut(&mut T, bool),
 ) -> egui::Response {
     let mut any_edit = false;
+
+    let id = ui.make_persistent_id(id_salt);
 
     const ITEM_SPACING: f32 = 8.0;
     let egui::InnerResponse { mut response, .. } = egui::Frame::new()
@@ -29,7 +31,7 @@ pub fn visible_dnd<T: egui::AsId>(
                 .map(|s| s.size)
                 .unwrap_or(0.0);
             let sz = egui::vec2(ui.max_rect().size().x, ITEM_SPACING + text_height);
-            let dnd_res = egui_dnd::dnd(ui, id_source).show_sized(
+            let dnd_res = egui_dnd::dnd(ui, id).show_sized(
                 // We include the index in the item here because the item
                 // so doing this will make columns with the
                 // same name not collide.

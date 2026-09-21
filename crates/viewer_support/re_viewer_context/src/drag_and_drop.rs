@@ -214,12 +214,12 @@ impl DragAndDropManager {
 
             let layer_id = egui::LayerId::new(
                 egui::Order::Tooltip,
-                egui::Id::new("drag_and_drop_payload_layer"),
+                egui::Id::unique("drag_and_drop_payload_layer"),
             );
 
             let mut ui = egui::Ui::new(
                 ctx.clone(),
-                egui::Id::new("rerun_drag_and_drop_payload_ui"),
+                egui::Id::unique("rerun_drag_and_drop_payload_ui"),
                 egui::UiBuilder::new().layer_id(layer_id),
             );
 

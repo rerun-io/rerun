@@ -106,3 +106,23 @@ pub fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
         .threshold(threshold)
         .max_failed_pixels(strict_on_ci(10, max_broken_pixels))
 }
+
+/// Panic on any unknown glyphs.
+pub struct PanicOnMissingGlyph;
+
+impl egui::FontProvider for PanicOnMissingGlyph {
+    fn font_for(&self, request: &egui::FallbackRequest<'_>) -> Option<egui::FontInsert> {
+        panic!(
+            "No installed font has a glyph for {:?} (font family {:?}). \
+             The viewer shouldn't depend on system fonts that might not be available everywhere. \
+             Use a proper .svg icon instead.",
+            request.cluster, request.family
+        );
+    }
+}
+
+impl PanicOnMissingGlyph {
+    pub fn install(egui_ctx: &egui::Context) {
+        egui_ctx.add_font_provider(std::sync::Arc::new(Self));
+    }
+}

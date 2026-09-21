@@ -144,8 +144,8 @@ impl PlotSeries {
     ///
     /// NOTE: A single visualizer instruction can be responsible for multiple series,
     /// so we use the instance path number as an additional differentiator.
-    pub fn id(&self) -> egui::Id {
-        egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    pub fn id(&self) -> egui_plot::ItemId {
+        egui_plot::ItemId::new((&self.visualizer_instruction_id, self.instance_path.instance))
     }
 
     /// Whether aggregation reduced the number of rendered points.

@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b, emath::fast_midpoint};
-use egui_plot::{Plot, PlotPoint};
+use egui_plot::{ItemId, Plot, PlotPoint};
 use itertools::{Either, Itertools as _, chain};
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
@@ -67,10 +67,10 @@ pub struct TimeSeriesViewState {
 
     /// The number of time series rendered by each visualizer instruction last frame.
     ///
-    /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
-    /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
+    /// We track plot item ids here because the number of "series" passed to egui can actually be much higher
+    /// since every color change, every discontinuity, etc. creates a new series, sharing the same item id.
     pub num_time_series_last_frame_per_instruction:
-        HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
+        HashMap<VisualizerInstructionId, IntSet<ItemId>>,
 
     /// The plot transform from the previous frame, used by visualizers to map
     /// data-space points to screen-space for `re_renderer` primitives.
@@ -544,7 +544,7 @@ impl ViewClass for TimeSeriesView {
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
-        let plot_item_id_to_data_result_address: HashMap<egui::Id, DataResultInteractionAddress> =
+        let plot_item_id_to_data_result_address: HashMap<ItemId, DataResultInteractionAddress> =
             all_plot_series
                 .iter()
                 .map(|series| {
@@ -700,7 +700,7 @@ impl ViewClass for TimeSeriesView {
 
         let min_axis_thickness = ui.tokens().small_icon_size.y;
 
-        let legend_id = egui::Id::new(query.view_id).with("plot_legend");
+        let legend_id = ui.make_persistent_id("plot_legend");
         let legend_hovered = ui
             .ctx()
             .read_response(re_plot::legend::legend_frame_id(legend_id))
@@ -708,7 +708,7 @@ impl ViewClass for TimeSeriesView {
 
         ui.scope(|ui| {
             // Use timeline_name as part of id, so that egui stores different pan/zoom for different timelines.
-            // Derived from `ui.id()` so it's unique per UI location (i.e. works when the same view is shown multiple times).
+            // Derived from `ui.scope_id()` so it's unique per UI location (i.e. works when the same view is shown multiple times).
             let plot_id_src = ("plot", &timeline_name);
             let plot_id = ui.make_persistent_id(plot_id_src);
 
@@ -744,7 +744,7 @@ impl ViewClass for TimeSeriesView {
                 .show_y(false);
 
             // Sharing the same cursor is always nice:
-            plot = plot.link_cursor(timeline.name().as_str(), [true; 2]);
+            plot = plot.link_cursor(egui::Id::unique(timeline.name()), [true; 2]);
 
             // Legend is rendered separately after plot.show() using our LegendWidget.
 
@@ -1274,7 +1274,7 @@ fn show_time_series_tooltip(
     time_offset: i64,
     time_type: TimeType,
     timestamp_format: re_log_types::TimestampFormat,
-    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+    plot_item_id_to_data_result_address: &ahash::HashMap<ItemId, DataResultInteractionAddress>,
     tooltip_mode: TooltipMode,
 ) -> Option<re_viewer_context::Item> {
     match tooltip_mode {
@@ -1310,7 +1310,7 @@ fn nearest_data_point_tooltip(
     time_offset: i64,
     time_type: TimeType,
     timestamp_format: re_log_types::TimestampFormat,
-    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+    plot_item_id_to_data_result_address: &ahash::HashMap<ItemId, DataResultInteractionAddress>,
 ) -> Option<re_viewer_context::Item> {
     let hover_pos = match response.hover_pos() {
         Some(pos) if response.rect.contains(pos) => pos,
@@ -1585,7 +1585,7 @@ fn all_series_tooltip(
     time_offset: i64,
     time_type: TimeType,
     timestamp_format: re_log_types::TimestampFormat,
-    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+    plot_item_id_to_data_result_address: &ahash::HashMap<ItemId, DataResultInteractionAddress>,
 ) -> Option<re_viewer_context::Item> {
     re_tracing::profile_function!();
 
@@ -1736,7 +1736,7 @@ fn paint_time_cursor(
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
 
-    let time_drag_id = ui.id().with("time_drag");
+    let time_drag_id = ui.make_persistent_id("time_drag");
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_near = ui.rect_contains_pointer(line_rect);
     let is_being_dragged = ui.is_being_dragged(time_drag_id);
@@ -1803,7 +1803,7 @@ fn update_series_visibility_from_legend(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     all_plot_series: &[&crate::PlotSeries],
-    hidden_items: &egui::IdSet,
+    hidden_items: &egui_plot::ItemIdSet,
 ) {
     let Some(query_results) = ctx.query_results.get(&query.view_id) else {
         return;

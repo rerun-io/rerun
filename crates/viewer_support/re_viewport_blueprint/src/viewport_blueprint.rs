@@ -1196,7 +1196,7 @@ fn build_tree_from_views_and_containers<'a>(
     root_container: ContainerId,
 ) -> egui_tiles::Tree<ViewId> {
     re_tracing::profile_function!();
-    let mut tree = egui_tiles::Tree::empty("viewport_tree");
+    let mut tree = egui_tiles::Tree::empty(egui::Id::unique("viewport_tree"));
 
     // First add all the views
     for view in views {

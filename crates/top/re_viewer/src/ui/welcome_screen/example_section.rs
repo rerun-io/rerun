@@ -193,7 +193,7 @@ fn default_manifest_url() -> String {
 impl Default for ExampleSection {
     fn default() -> Self {
         Self {
-            id: egui::Id::new("example_section"),
+            id: egui::Id::unique("example_section"),
             manifest_url: default_manifest_url(),
             examples: None,
         }

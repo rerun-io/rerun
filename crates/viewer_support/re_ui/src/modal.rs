@@ -204,7 +204,7 @@ impl ModalWrapper {
         content_ui: impl FnOnce(&mut egui::Ui) -> R,
     ) -> ModalResponse<R> {
         let tokens = ctx.tokens();
-        let id = egui::Id::new(&self.title);
+        let id = egui::Id::unique(&self.title);
 
         let mut area = egui::Modal::default_area(id);
         if let Some(default_height) = self.default_height {
@@ -407,7 +407,7 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
         screen_size = Vec2::ZERO;
     }
 
-    let id = ui.id().with("prevent_shrinking");
+    let id = ui.make_persistent_id("prevent_shrinking");
     let screen_size_changed = ui.data_mut(|d| {
         let last_screen_size = d.get_temp_mut_or_insert_with(id, || screen_size);
         let changed = *last_screen_size != screen_size;

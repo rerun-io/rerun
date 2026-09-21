@@ -247,7 +247,7 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
     if ui
         .interact(
             full_view_rect,
-            egui::Id::from("dataframe_view_empty").with(view_id),
+            ui.make_persistent_id(("dataframe_view_empty", view_id)),
             egui::Sense::click(),
         )
         .clicked()

@@ -299,51 +299,48 @@ fn component_list_ui(
         }
     }
 
-    re_ui::list_item::list_item_scope(
-        ui,
-        egui::Id::from("component list").with(entity_path),
-        |ui| {
-            for (archetype, archetype_components) in &components_by_archetype {
-                if archetype.is_none() && components_by_archetype.len() == 1 {
-                    // They are all without archetype, so we can skip the label.
+    let scope_id = ui.make_persistent_id(("component list", entity_path));
+    re_ui::list_item::list_item_scope(ui, scope_id, |ui| {
+        for (archetype, archetype_components) in &components_by_archetype {
+            if archetype.is_none() && components_by_archetype.len() == 1 {
+                // They are all without archetype, so we can skip the label.
+            } else {
+                archetype_label_list_item_ui(ui, archetype.as_ref());
+            }
+
+            let mut missing_units = false;
+
+            for component_descr in archetype_components {
+                if let Some(hits) = query_results.components.get(&component_descr.component) {
+                    component_ui(
+                        ctx,
+                        ui,
+                        ui_layout,
+                        instance_path,
+                        archetype_components,
+                        component_descr,
+                        hits,
+                        query_results,
+                    );
                 } else {
-                    archetype_label_list_item_ui(ui, archetype.as_ref());
-                }
-
-                let mut missing_units = false;
-
-                for component_descr in archetype_components {
-                    if let Some(hits) = query_results.components.get(&component_descr.component) {
-                        component_ui(
-                            ctx,
-                            ui,
-                            ui_layout,
-                            instance_path,
-                            archetype_components,
-                            component_descr,
-                            hits,
-                            query_results,
-                        );
-                    } else {
-                        missing_units = true;
-                    }
-                }
-
-                if missing_units {
-                    // No data found at the moment.
-                    // Maybe there is no data this early on the timeline.
-                    // Maybe there _were_ data, but it has been GCed.
-                    // Maybe there _will be_ data, once we have loaded it.
-                    let any_missing_chunks = !query_results.missing_virtual.is_empty();
-                    if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
-                        ui.loading_indicator("Fetching chunks from redap");
-                    } else {
-                        ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
-                    }
+                    missing_units = true;
                 }
             }
-        },
-    );
+
+            if missing_units {
+                // No data found at the moment.
+                // Maybe there is no data this early on the timeline.
+                // Maybe there _were_ data, but it has been GCed.
+                // Maybe there _will be_ data, once we have loaded it.
+                let any_missing_chunks = !query_results.missing_virtual.is_empty();
+                if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
+                    ui.loading_indicator("Fetching chunks from redap");
+                } else {
+                    ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
+                }
+            }
+        }
+    });
 }
 
 fn component_ui(

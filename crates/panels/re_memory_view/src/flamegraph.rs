@@ -234,7 +234,11 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
         zoom_action: &mut zoom_action,
     };
 
-    let bg_response = ui.interact(rect, ui.id().with("flamegraph_bg"), egui::Sense::click());
+    let bg_response = ui.interact(
+        rect,
+        ui.make_persistent_id("flamegraph_bg"),
+        egui::Sense::click(),
+    );
 
     render_flamegraph_node(
         ui,
@@ -242,7 +246,7 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
         &mut ctx,
         0.0,
         0.0,
-        ui.id().with("flamegraph_root"),
+        ui.make_persistent_id("flamegraph_root"),
     );
 
     if let Some(action) = zoom_action {

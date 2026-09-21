@@ -79,7 +79,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         // This is required to assign an id to the context menu, which would
         // otherwise conflict with the popup of this `ComboBox`'s popup menu.
         egui::Popup::menu(&response)
-            .id(egui::Id::new("timeline select context menu"))
+            .id(ui.make_persistent_id("timeline select context menu"))
             .open_memory(if response.secondary_clicked() {
                 Some(egui::SetOpenCommand::Bool(true))
             } else if response.clicked() {
@@ -205,7 +205,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let tokens = ui.tokens();
 
         // Keep the button looking hovered while its menu popup is open.
-        let popup_id = ui.id().with("playhead_nav_menu");
+        let popup_id = ui.make_persistent_id("playhead_nav_menu");
         let popup_open = egui::Popup::is_id_open(ui.ctx(), popup_id);
 
         // Match the height of a `large_button`.

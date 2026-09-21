@@ -92,7 +92,7 @@ impl ViewportUi {
             // to view id logic later in this function works correctly
             let tile_id = Contents::View(view_id).as_tile_id();
             tiles.insert(tile_id, egui_tiles::Tile::Pane(view_id));
-            egui_tiles::Tree::new("viewport_tree", tile_id, tiles)
+            egui_tiles::Tree::new(ui.make_persistent_id("viewport_tree"), tile_id, tiles)
         } else {
             blueprint.tree.clone()
         };
@@ -210,7 +210,8 @@ impl ViewportUi {
 
             // We want the rectangle to be on top of everything in the viewport,
             // including stuff in "zoom-pan areas", like we use in the graph view.
-            let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+            let top_layer_id =
+                egui::LayerId::new(ui.layer_id().order, ui.make_persistent_id("child_id"));
             ui.set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
             let painter = ui.painter().clone().with_layer_id(top_layer_id);
 

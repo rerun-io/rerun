@@ -8,7 +8,6 @@ use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::components::{self, Color, Name};
 use re_sdk_types::{ComponentDescriptor, FromArrow as _};
 use re_ui::UiExt as _;
-use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, SystemCommandSender as _,

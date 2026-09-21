@@ -72,7 +72,7 @@ mod tests {
                         ..Default::default()
                     },
                     |ui| {
-                        egui::Area::new(egui::Id::new("range_hover")).show(ui.ctx(), |ui| {
+                        egui::Area::new(egui::Id::unique("range_hover")).show(ui.ctx(), |ui| {
                             width = time_range_tooltip_ui(
                                 ui,
                                 TimeType::Sequence,

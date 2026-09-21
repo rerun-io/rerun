@@ -224,7 +224,7 @@ pub fn create_labels(
     let show_full_labels = num_multiline_labels <= 5; // TODO(emilk): very simplistic heuristic
     // 0=only show first line, 1=show all lines.
     let label_expansion = parent_ui.animate_bool_with_time(
-        parent_ui.id().with("label-animation"),
+        parent_ui.make_persistent_id("label-animation"),
         show_full_labels,
         parent_ui.tokens().slow_animation_duration_sec,
     );

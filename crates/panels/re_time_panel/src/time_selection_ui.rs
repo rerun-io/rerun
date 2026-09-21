@@ -94,14 +94,14 @@ pub fn loop_selection_ui(
     let timeline_response = ui
         .interact(
             *timeline_rect,
-            ui.id().with("timeline"),
+            ui.make_persistent_id("timeline"),
             egui::Sense::click_and_drag(),
         )
         .on_hover_cursor(crate::CREATE_TIME_LOOP_CURSOR_ICON);
 
-    let left_edge_id = ui.id().with("selection_left_edge");
-    let right_edge_id = ui.id().with("selection_right_edge");
-    let middle_id = ui.id().with("selection_move");
+    let left_edge_id = ui.make_persistent_id("selection_left_edge");
+    let right_edge_id = ui.make_persistent_id("selection_right_edge");
+    let middle_id = ui.make_persistent_id("selection_move");
 
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
@@ -468,7 +468,7 @@ fn on_drag_loop_selection(
 ) -> Option<()> {
     // Since we may snap time values, we need to store full-precision "unsnapped" value
     // somewhere, or we will accumulate rounding errors.
-    let precise_min_id = ui.id().with("__time_loop_drag");
+    let precise_min_id = ui.make_persistent_id("__time_loop_drag");
 
     if ui.input(|i| i.pointer.any_pressed() || i.pointer.any_released()) {
         ui.data_mut(|data| data.remove::<TimeReal>(precise_min_id));

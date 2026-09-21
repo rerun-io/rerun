@@ -46,7 +46,7 @@ impl LinkButton {
     /// Show the button.
     ///
     /// Clicks are handled via [`egui::Context::open_url`].
-    pub fn show_atom(self, ui: &mut egui::Ui) -> egui::AtomLayoutResponse {
+    pub fn show_atom(self, ui: &mut egui::Ui) -> egui::WidgetAtomResponse {
         let Self {
             url,
             mut atoms,

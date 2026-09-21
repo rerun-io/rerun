@@ -146,14 +146,18 @@ fn tensor_dimension_ui(
             let dim_ui_id = drag_source_ui_id(drag_context_id, dim_idx);
 
             let label_text = if let Some(dim_name) = dim.name.as_ref() {
-                format!("▓ {dim_name} ({})", dim.size)
+                format!("{dim_name} ({})", dim.size)
             } else {
-                format!("▓ {dim_idx} ({})", dim.size)
+                format!("{dim_idx} ({})", dim.size)
             };
 
             ui.dnd_drag_source(dim_ui_id, location, |ui| {
                 // TODO(emilk): make these buttons respond on hover.
-                ui.colored_label(ui.visuals().widgets.inactive.fg_stroke.color, label_text);
+                let color = ui.visuals().widgets.inactive.fg_stroke.color;
+                ui.horizontal(|ui| {
+                    ui.small_icon(&re_ui::icons::DND_HANDLE, Some(color));
+                    ui.colored_label(color, label_text);
+                });
             });
         }
     });
@@ -174,7 +178,7 @@ pub fn dimension_mapping_ui(
     let mut drag_source = DragDropAddress::None; // Drag this…
     let mut drop_target = DragDropAddress::None; // …onto this.
 
-    let drag_context_id = ui.id();
+    let drag_context_id = ui.scope_id();
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {

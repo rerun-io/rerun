@@ -480,7 +480,11 @@ fn custom_windows_decorations_resize_ui(ui: &egui::Ui) {
     ];
 
     for (rect, direction, cursor_icon, id) in resize_regions {
-        let response = ui.interact(rect, ui.id().with(id), egui::Sense::click_and_drag());
+        let response = ui.interact(
+            rect,
+            ui.make_persistent_id(id),
+            egui::Sense::click_and_drag(),
+        );
         if response.hovered() || response.dragged() {
             ui.ctx().set_cursor_icon(cursor_icon);
         }
@@ -514,7 +518,7 @@ pub(super) fn paint_custom_window_frame(egui_ctx: &egui::Context) {
 
     let painter = egui::Painter::new(
         egui_ctx.clone(),
-        egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
+        egui::LayerId::new(egui::Order::TOP, egui::Id::unique("native_window_frame")),
         egui::Rect::EVERYTHING,
     );
 
@@ -547,8 +551,10 @@ pub(super) fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             }
         });
 
-        let painter =
-            egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
+        let painter = egui_ctx.layer_painter(LayerId::new(
+            Order::Foreground,
+            Id::unique("file_drop_target"),
+        ));
 
         let screen_rect = egui_ctx.content_rect();
         painter.rect_filled(
