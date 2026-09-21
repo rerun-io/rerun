@@ -981,8 +981,9 @@ fn test_state_timeline_pan_before_data_ending_in_clear() {
         harness.step();
     }
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     assert!(
-        harness.query_by_label_contains("No state data").is_none(),
+        harness.query_all_by_label_contains("No state data").count() == 0,
         "the view fell back to its empty-state message after panning before the data"
     );
 

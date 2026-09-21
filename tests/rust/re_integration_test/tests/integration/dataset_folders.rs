@@ -135,17 +135,20 @@ pub async fn dataset_folders() {
         .last()
         .expect("detection folder card should be present")
         .click();
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "folder `perception.detection` cards appear",
         &mut harness,
         |harness| {
             harness
-                .query_by_role_and_label(Role::Button, "cars")
-                .is_some()
+                .query_all_by_role_and_label(Role::Button, "cars")
+                .count()
+                > 0
                 && harness.query_all_by_label_contains("audit").count() >= 1
                 && harness
-                    .query_by_role_and_label(Role::Button, "pedestrians")
-                    .is_some()
+                    .query_all_by_role_and_label(Role::Button, "pedestrians")
+                    .count()
+                    > 0
         },
     );
     harness.step_until_no_loading_indicator();
@@ -193,10 +196,11 @@ pub async fn dataset_folders() {
         .last()
         .expect("metrics table card should be present")
         .click();
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "table `perception.metrics` row appears",
         &mut table_harness,
-        |harness| harness.query_by_label_contains("metrics-row").is_some(),
+        |harness| 0 < harness.query_all_by_label_contains("metrics-row").count(),
     );
     assert_route_and_selection(&mut table_harness, &metrics_route);
 

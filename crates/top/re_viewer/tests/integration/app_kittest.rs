@@ -51,11 +51,13 @@ async fn settings_screen() {
             "Settings screen shows up with FFMpeg binary not found error",
             &mut harness,
             |harness| {
+                // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
                 harness
-                    .query_by_label_contains(
+                    .query_all_by_label_contains(
                         "The specified FFmpeg binary path does not exist or is not a file.",
                     )
-                    .is_some()
+                    .count()
+                    > 0
             },
         );
         snapshot_results

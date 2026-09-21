@@ -143,11 +143,13 @@ fn export_from_browser(harness: &InspectionHarness, method: &str) -> Vec<u8> {
 }
 
 fn wait_for_test_recording(harness: &mut InspectionHarness, description: &'static str) {
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until(description, |harness| {
         harness
-            .query_by_label_contains("browser_export_recording")
-            .is_some()
-            && harness.query_by_label_contains("test_entity").is_some()
+            .query_all_by_label_contains("browser_export_recording")
+            .count()
+            > 0
+            && harness.query_all_by_label_contains("test_entity").count() > 0
     });
 }
 

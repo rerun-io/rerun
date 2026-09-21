@@ -131,10 +131,11 @@ pub async fn start_with_segment_fragment_url() {
         ..Default::default()
     });
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Recording opened and source tree populated", |harness| {
-        harness.query_by_label_contains("Streams").is_some()
+        harness.query_all_by_label_contains("Streams").count() > 0
             && !harness.is_loading()
-            && harness.query_by_label_contains("my_dataset").is_some()
+            && harness.query_all_by_label_contains("my_dataset").count() > 0
             && harness.query_all_by_label("new_recording_id").count() == 3
     });
 
