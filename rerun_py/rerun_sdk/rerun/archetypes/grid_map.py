@@ -69,6 +69,7 @@ class GridMap(Archetype):
         ),
     )
     ```
+    <img src="...">
 
     ### Log a grid map at a specific pose:
     ```python

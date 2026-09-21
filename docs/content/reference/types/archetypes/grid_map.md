@@ -39,6 +39,8 @@ but can also be useful for other use cases where an image buffer needs to be pla
 
 snippet: archetypes/grid_map_simple
 
+<img src="...">
+
 ### Log a grid map at a specific pose
 
 snippet: archetypes/grid_map_pose

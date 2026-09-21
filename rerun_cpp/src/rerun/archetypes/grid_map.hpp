@@ -31,6 +31,8 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Simple occupancy grid map
+    /// ![example image](...)
+    ///
     /// ```cpp
     /// #include <rerun.hpp>
     ///

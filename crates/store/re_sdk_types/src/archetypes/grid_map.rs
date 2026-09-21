@@ -77,6 +77,7 @@ use ::std::borrow::Cow;
 ///     Ok(())
 /// }
 /// ```
+/// <img src="...">
 #[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct GridMap {
     /// The raw grid data.
