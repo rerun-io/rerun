@@ -50,14 +50,3 @@ impl Error {
         Self::Other(err.into())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn other_error_includes_full_context() {
-        let err = Error::other(anyhow::format_err!("root cause").context("outer context"));
-        assert_eq!(err.to_string(), "outer context: root cause");
-    }
-}

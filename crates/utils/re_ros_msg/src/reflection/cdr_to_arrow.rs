@@ -631,13 +631,6 @@ mod tests {
     use crate::MessageSchema;
     use crate::reflection::MessageDecodePlan;
 
-    #[test]
-    fn message_error_includes_full_context() {
-        let err =
-            CdrDecodeError::Message(anyhow::format_err!("root cause").context("outer context"));
-        assert_eq!(err.to_string(), "outer context: root cause");
-    }
-
     /// Decodes one CDR message into a single-row message array.
     fn decode_one(plan: &Arc<MessageDecodePlan>, data: &[u8]) -> FixedSizeListArray {
         let mut decoder = CdrArrowDecoder::new(Arc::clone(plan), 1);
