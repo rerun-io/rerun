@@ -417,7 +417,7 @@ impl TimePanel {
 
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let time_range = entity_db.time_range_for(time_ctrl.timeline_name());
+        let time_range = time_ctrl.time_range(entity_db);
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
@@ -1495,7 +1495,7 @@ impl TimePanel {
         let time_ctrl = store_ctx.time_ctrl;
         let entity_db = store_ctx.db;
 
-        let Some(time_range) = entity_db.time_range_for(time_ctrl.timeline_name()) else {
+        let Some(time_range) = time_ctrl.time_range(entity_db) else {
             // We have no data on this timeline
             return;
         };
@@ -1772,7 +1772,8 @@ fn initialize_time_ranges_ui(
 
     let timeline = store_ctx.time_ctrl.timeline_name();
     if let Some(time_type) = store_ctx.time_ctrl.time_type()
-        && let Some(full_timeline_range) = store_ctx.db.time_range_for(timeline)
+        && let Some(full_timeline_range) =
+            store_ctx.time_ctrl.time_range_for(store_ctx.db, timeline)
     {
         let data_ranges = store_ctx.db.data_time_ranges_for(timeline);
         let timeline_axis = if let Some(ranges) = data_ranges
@@ -1977,9 +1978,8 @@ impl TimePanel {
         });
 
         let timeline_range = AbsoluteTimeRangeF::from(
-            store_ctx
-                .db
-                .time_range_for(time_ctrl.timeline_name())
+            time_ctrl
+                .time_range(store_ctx.db)
                 .unwrap_or(AbsoluteTimeRange::EVERYTHING),
         );
 

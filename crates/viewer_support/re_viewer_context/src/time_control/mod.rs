@@ -207,6 +207,20 @@ pub struct TimeControl {
     /// Becomes `highlighted_range` on the next [`TimeControl::update`].
     highlighted_range_next_frame: Option<TimeRangeHighlight>,
 
+    /// Per timeline, the time range covered by data with a duration, as published last frame.
+    ///
+    /// A log event has a single time, but what it describes can go on for longer: an audio
+    /// clip logged at `t` plays until `t + duration`. Views that show such data publish the
+    /// covered range every frame via [`TimeControlCommand::ExtendTimeRange`], and
+    /// [`TimeControl::time_range_for`] unions it with the recording's data range so playback
+    /// and the time panel reach past the last logged event.
+    time_extents: BTreeMap<TimelineName, AbsoluteTimeRange>,
+
+    /// Extents published this frame, set by the command handler.
+    ///
+    /// Becomes `time_extents` on the next [`TimeControl::update`].
+    time_extents_next_frame: BTreeMap<TimelineName, AbsoluteTimeRange>,
+
     /// If the user has interacted since the last `update`, if so don't update time this frame.
     just_interacted: bool,
 
@@ -228,6 +242,8 @@ impl Default for TimeControl {
             loop_mode: LoopMode::Off,
             highlighted_range: None,
             highlighted_range_next_frame: None,
+            time_extents: Default::default(),
+            time_extents_next_frame: Default::default(),
 
             just_interacted: false,
             buffer_next_frame: false,
@@ -453,6 +469,7 @@ impl TimeControl {
         // command handler since the previous `update`) becomes readable via
         // `highlighted_range` this frame.
         self.highlighted_range = self.highlighted_range_next_frame.take();
+        self.time_extents = std::mem::take(&mut self.time_extents_next_frame);
 
         let (old_playing, old_timeline, old_state) = (
             self.playing,
@@ -466,7 +483,7 @@ impl TimeControl {
             self.select_valid_timeline(db);
         }
 
-        let Some(full_range) = db.time_range_for(self.timeline_name()) else {
+        let Some(full_range) = self.time_range(db) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
         };
 
@@ -584,7 +601,7 @@ impl TimeControl {
     ) -> TimeControlResponse {
         let mut response = response;
 
-        if should_diff_state && db.time_range_for(self.timeline_name()).is_some() {
+        if should_diff_state && self.time_range(db).is_some() {
             self.diff_with(&mut response, old_timeline, old_playing, old_state);
         }
 
@@ -671,7 +688,7 @@ impl TimeControl {
                 self.following = false;
 
                 if let Some(db) = db
-                    && let Some(range) = db.time_range_for(self.timeline_name())
+                    && let Some(range) = self.time_range(db)
                 {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
                         if self.speed > 0.0 && range.max <= state.time {
@@ -692,7 +709,7 @@ impl TimeControl {
                 self.following = true;
 
                 if let Some(db) = db
-                    && let Some(range) = db.time_range_for(self.timeline_name())
+                    && let Some(range) = self.time_range(db)
                 {
                     // Set the time to the max:
                     self.states
@@ -793,7 +810,29 @@ impl TimeControl {
         self.timeline.name()
     }
 
-    /// Time range that certain views must highlight.
+    /// The full extent of the active timeline, see [`Self::time_range_for`].
+    pub fn time_range(&self, db: &EntityDb) -> Option<AbsoluteTimeRange> {
+        self.time_range_for(db, self.timeline_name())
+    }
+
+    /// The full extent of a timeline: the recording's data range, extended by any
+    /// time extents views published last frame (see [`TimeControlCommand::ExtendTimeRange`]).
+    ///
+    /// Use this instead of [`EntityDb::time_range_for`] for anything that decides how far
+    /// playback or the time panel should reach.
+    pub fn time_range_for(
+        &self,
+        db: &EntityDb,
+        timeline: &TimelineName,
+    ) -> Option<AbsoluteTimeRange> {
+        let data_range = db.time_range_for(timeline);
+        let extent = self.time_extents.get(timeline).copied();
+        match (data_range, extent) {
+            (Some(data_range), Some(extent)) => Some(data_range.union(extent)),
+            (range, None) | (None, range) => range,
+        }
+    }
+
     pub fn highlighted_range(&self) -> Option<&TimeRangeHighlight> {
         self.highlighted_range.as_ref()
     }

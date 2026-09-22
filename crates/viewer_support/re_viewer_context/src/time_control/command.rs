@@ -38,6 +38,18 @@ pub enum TimeControlCommand {
     /// (typically from a hover handler).
     HighlightRange(TimeRangeHighlight),
 
+    /// Declare that data on `timeline` covers `range`, for this frame.
+    ///
+    /// For data with a duration, like an audio clip that plays past the time it was logged at.
+    /// Extents from all producers are unioned per timeline and become readable via
+    /// [`TimeControl::time_range_for`] on the next `TimeControl::update`. Producers must
+    /// re-publish every frame, typically from the view showing the data.
+    // TODO(rerun#4631): derive this from the data once logged events can carry a duration.
+    ExtendTimeRange {
+        timeline: TimelineName,
+        range: AbsoluteTimeRange,
+    },
+
     /// Reset the active timeline to instead be automatically assigned.
     ResetActiveTimeline,
     SetActiveTimeline(TimelineName),
@@ -206,6 +218,13 @@ impl TimeControl {
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
+            TimeControlCommand::ExtendTimeRange { timeline, range } => {
+                self.time_extents_next_frame
+                    .entry(*timeline)
+                    .and_modify(|extent| *extent = extent.union(*range))
+                    .or_insert(*range);
+                NeedsRepaint::No
+            }
             TimeControlCommand::HighlightRange(highlight) => {
                 self.highlighted_range_next_frame = Some(highlight.clone());
                 if self.highlighted_range_next_frame == self.highlighted_range {
@@ -250,7 +269,7 @@ impl TimeControl {
                             None => blueprint_ctx.clear_time_selection(),
                         }
                     }
-                } else if let Some(full_range) = db.time_range_for(timeline_name) {
+                } else if let Some(full_range) = self.time_range_for(db, timeline_name) {
                     // Hazard: inserts a fresh `TimeState` with `time = range.min`.
                     // Any caller that wants to seed a non-default cursor for this
                     // timeline (e.g. blueprint cursor restore) must run *after*
@@ -328,7 +347,7 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::MoveBeginning => {
-                if let Some(full_range) = db.time_range_for(self.timeline_name()) {
+                if let Some(full_range) = self.time_range(db) {
                     // Jumping anywhere but the end leaves follow mode.
                     self.exit_follow_mode(db, blueprint_ctx);
 
@@ -398,9 +417,7 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetTimeSelectionClamped(time_range) => {
-                let timeline_range = db
-                    .time_range_for(self.timeline_name())
-                    .unwrap_or(AbsoluteTimeRange::EVERYTHING);
+                let timeline_range = self.time_range(db).unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
                 let Some(time_range) = timeline_range.intersection(*time_range) else {
                     return self.handle_time_command(
@@ -449,9 +466,7 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetTimeClamped(time) => {
-                let timeline_range = db
-                    .time_range_for(self.timeline_name())
-                    .unwrap_or(AbsoluteTimeRange::EVERYTHING);
+                let timeline_range = self.time_range(db).unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
                 // If the floating point time is inside the range, use that.
                 let timeline_rangef = AbsoluteTimeRangeF::from(timeline_range);
@@ -567,7 +582,7 @@ impl TimeControl {
                 prev.into()
             } else {
                 // Wrap to the end
-                if let Some(range) = db.time_range_for(timeline) {
+                if let Some(range) = self.time_range_for(db, timeline) {
                     range.max.into()
                 } else {
                     return;
@@ -604,7 +619,7 @@ impl TimeControl {
                 next.into()
             } else {
                 // Wrap to the start
-                if let Some(range) = db.time_range_for(timeline) {
+                if let Some(range) = self.time_range_for(db, timeline) {
                     range.min.into()
                 } else {
                     return;
@@ -663,7 +678,7 @@ impl TimeControl {
 
             let range = self
                 .time_selection()
-                .or_else(|| db.time_range_for(self.timeline_name()).map(|r| r.into()));
+                .or_else(|| self.time_range(db).map(|r| r.into()));
             if let Some(range) = range {
                 if time == range.min && new_time < range.min {
                     // jump right to the end

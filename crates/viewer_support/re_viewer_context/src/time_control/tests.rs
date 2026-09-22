@@ -455,3 +455,66 @@ fn looping_and_follow_mode_are_mutually_exclusive() {
     assert_eq!(time_ctrl.play_state(), PlayState::Following);
     assert_eq!(time_ctrl.loop_mode(), LoopMode::Off);
 }
+
+/// A recording with a single event has a zero-length data range, but a view can publish
+/// how far its data really reaches, e.g. the duration of an audio clip logged at that time.
+#[test]
+fn test_time_extents_extend_the_timeline() {
+    let timeline = duration_timeline();
+    let db = dummy_recording(timeline, [0]);
+    let mut time_ctrl = TimeControl::default();
+    send(
+        &mut time_ctrl,
+        &db,
+        &[TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+    step(&mut time_ctrl, &db);
+
+    let single_point = AbsoluteTimeRange::new(0, 0);
+    assert_eq!(
+        time_ctrl.time_range_for(&db, timeline.name()),
+        Some(single_point)
+    );
+
+    let two_seconds = AbsoluteTimeRange::new(0, 2_000_000_000);
+    let extend = || TimeControlCommand::ExtendTimeRange {
+        timeline: *timeline.name(),
+        range: two_seconds,
+    };
+
+    // Published extents are only visible from the next update on:
+    send(&mut time_ctrl, &db, &[extend()]);
+    assert_eq!(
+        time_ctrl.time_range_for(&db, timeline.name()),
+        Some(single_point)
+    );
+    step(&mut time_ctrl, &db);
+    assert_eq!(
+        time_ctrl.time_range_for(&db, timeline.name()),
+        Some(two_seconds)
+    );
+
+    // Playing now moves the cursor into the extended range instead of stopping at the only event:
+    send(
+        &mut time_ctrl,
+        &db,
+        &[
+            TimeControlCommand::SetTime(TimeReal::from(0)),
+            TimeControlCommand::SetPlayState(PlayState::Playing),
+        ],
+    );
+    for _ in 0..3 {
+        send(&mut time_ctrl, &db, &[extend()]);
+        step(&mut time_ctrl, &db);
+    }
+    let time = time_ctrl.time().expect("time should be set");
+    assert!(TimeReal::from(0) < time, "time did not advance: {time:?}");
+    assert!(time <= TimeReal::from(2_000_000_000));
+
+    // An extent that is not re-published expires:
+    step(&mut time_ctrl, &db);
+    assert_eq!(
+        time_ctrl.time_range_for(&db, timeline.name()),
+        Some(single_point)
+    );
+}

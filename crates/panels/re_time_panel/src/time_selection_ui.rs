@@ -68,9 +68,8 @@ pub fn loop_selection_ui(
     };
 
     let timeline_range = AbsoluteTimeRangeF::from(
-        store_ctx
-            .db
-            .time_range_for(time_ctrl.timeline_name())
+        time_ctrl
+            .time_range(store_ctx.db)
             .unwrap_or(AbsoluteTimeRange::EVERYTHING),
     );
 
