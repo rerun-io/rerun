@@ -534,8 +534,12 @@ fn test_guess_audio() {
     let wav = include_bytes!("../../../../../tests/assets/audio/sine_440hz_2s.wav");
     assert_eq!(MediaType::guess_from_data(wav), Some(MediaType::wav()));
 
-    let aac = include_bytes!("../../../../../tests/assets/audio/sine_440hz_2s.aac");
-    assert_eq!(MediaType::guess_from_data(aac), Some(MediaType::aac()));
+    let aac = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/assets/audio/toreador_song.aac"
+    ))
+    .expect("Missing test asset; is git LFS installed?");
+    assert_eq!(MediaType::guess_from_data(&aac), Some(MediaType::aac()));
 
     assert_eq!(
         MediaType::guess_from_data(b"fLaC\0\0\0\x22"),

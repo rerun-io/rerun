@@ -21,8 +21,9 @@ all-features = true
 
 [features]
 ecolor = ["dep:ecolor"]
-egui = ["dep:egui", "ecolor"]
+egui = ["dep:egui", "ecolor", "emath"]
 egui_plot = ["dep:egui_plot"]
+emath = ["dep:emath"]
 glam = ["dep:glam"]
 macaw = ["dep:macaw"]
 
@@ -39,6 +40,7 @@ vec1.workspace = true # Small enough to always depend on it.
 ecolor = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }
 egui_plot = { workspace = true, optional = true }
+emath = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
 

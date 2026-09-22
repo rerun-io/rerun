@@ -286,6 +286,7 @@ A sibling of `crates/views`: neither depends on the other.
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |
+| re_audio            | Rerun audio decoding utilities.                                                                                                                                            |
 | re_auth             | Authentication helpers for Rerun                                                                                                                                           |
 | re_backoff          | Utilities for retrying operations with backoff.                                                                                                                            |
 | re_build_info       | Information about the build. Use together with re_build_tools                                                                                                              |

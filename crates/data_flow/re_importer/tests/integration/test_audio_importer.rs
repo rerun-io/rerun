@@ -43,7 +43,7 @@ fn media_type_of(chunk: &Chunk) -> MediaType {
 fn test_audio_importer_wav_and_aac() {
     for (file, expected_media_type) in [
         ("sine_440hz_2s.wav", MediaType::wav()),
-        ("sine_440hz_2s.aac", MediaType::aac()),
+        ("toreador_song.aac", MediaType::aac()),
     ] {
         let chunks = load_chunks(fixture(file));
         assert_eq!(chunks.len(), 1, "{file}");

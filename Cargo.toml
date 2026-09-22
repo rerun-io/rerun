@@ -457,6 +457,17 @@ stl_io = "0.11.0"
 strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
 strum_macros = "0.26.4" # need to update re_rav1d first
 syn = "3.0"
+symphonia = { version = "0.6.1", default-features = false, features = [
+  "aac",
+  "adpcm",
+  "flac",
+  "isomp4",
+  "mp3",
+  "ogg",
+  "pcm",
+  "vorbis",
+  "wav",
+] }
 sysinfo = { version = "0.39.6", default-features = false }
 tap = "1.0"
 tempfile = "3.27"
@@ -575,6 +586,7 @@ debug = false
 "re_analytics".debug = true
 "re_arrow_ui".debug = true
 "re_arrow_util".debug = true
+"re_audio".debug = true
 "re_auth".debug = true
 "re_blueprint_tree".debug = true
 "re_build_info".debug = true

@@ -7,7 +7,7 @@ import rerun as rr
 
 ASSETS_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "audio"
 WAV_FILEPATH = ASSETS_DIR / "sine_440hz_2s.wav"
-AAC_FILEPATH = ASSETS_DIR / "sine_440hz_2s.aac"
+AAC_FILEPATH = ASSETS_DIR / "toreador_song.aac"
 assert WAV_FILEPATH.is_file()
 assert AAC_FILEPATH.is_file()
 
