@@ -138,6 +138,10 @@ fn merged_status(
             LayerRegistrationStatus::Error => 3,
             LayerRegistrationStatus::Pending => 2,
             LayerRegistrationStatus::Done => 1,
+            #[expect(
+                deprecated,
+                reason = "asset datasets postdate soft deletes; never reported"
+            )]
             LayerRegistrationStatus::Deleted => 0,
         }
     }
@@ -192,12 +196,6 @@ pub(crate) fn assets_from_manifest(
 
         for (id, size, registered_at, updated_at, layer_name, storage_url, status) in rows {
             let status = layer_status(&status);
-
-            // A layer the server dropped is only kept around until it is cleaned up, so it is not
-            // part of the asset any more.
-            if status == LayerRegistrationStatus::Deleted {
-                continue;
-            }
 
             // A layer that is still being registered has no size yet.
             let size = size.unwrap_or(0);
@@ -536,29 +534,6 @@ mod tests {
         assert_eq!(assets.len(), 1);
         assert_eq!(assets[0].status, LayerRegistrationStatus::Error);
         assert!(!assets[0].is_registered());
-    }
-
-    /// A layer the server dropped is not part of its asset any more, and an asset left without a
-    /// single layer is not listed at all.
-    #[test]
-    fn a_dropped_layer_is_left_out() {
-        let batch = manifest_batch(&[
-            done("mesh", Some(9), 10, 10, "base", "s3://bucket/mesh.rrd"),
-            ManifestRow {
-                asset: "dropped",
-                size: Some(4),
-                registered_at: 10,
-                updated_at: 10,
-                layer: "base",
-                storage_url: "s3://bucket/dropped.rrd",
-                status: LayerRegistrationStatus::Deleted,
-            },
-        ]);
-
-        let assets = assets_from_manifest(&re_uri::Origin::test(), &[batch]).unwrap();
-
-        assert_eq!(assets.len(), 1);
-        assert_eq!(assets[0].id, SegmentId::new("mesh".to_owned()));
     }
 
     /// A manifest holding only the columns the server was asked to project.

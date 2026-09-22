@@ -52,6 +52,7 @@ pub enum LayerRegistrationStatus {
 
     /// Legacy value.
     /// Marks rows that have been soft-deleted. This layer has been removed.
+    #[deprecated = "soft deletes are no longer used"]
     Deleted = 3,
 }
 
@@ -66,6 +67,7 @@ impl LayerRegistrationStatus {
             Self::Pending => Self::PENDING_STR,
             Self::Done => Self::DONE_STR,
             Self::Error => Self::ERROR_STR,
+            #[allow(deprecated)]
             Self::Deleted => Self::DELETED_STR,
         }
     }
@@ -85,6 +87,7 @@ impl std::str::FromStr for LayerRegistrationStatus {
             Self::PENDING_STR => Ok(Self::Pending),
             Self::DONE_STR => Ok(Self::Done),
             Self::ERROR_STR => Ok(Self::Error),
+            #[allow(deprecated)]
             Self::DELETED_STR => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
@@ -104,6 +107,7 @@ impl TryFrom<u8> for LayerRegistrationStatus {
             0 => Ok(Self::Pending),
             1 => Ok(Self::Done),
             2 => Ok(Self::Error),
+            #[allow(deprecated)]
             3 => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
