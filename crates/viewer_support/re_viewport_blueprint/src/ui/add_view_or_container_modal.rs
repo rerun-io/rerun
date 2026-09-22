@@ -116,7 +116,7 @@ fn modal_ui(
     let add_view_row = |ui: &mut egui::Ui, view: ViewBlueprint, is_experimental: bool| {
         let icon = view.class(ctx.view_class_registry()).icon();
         let title = view.class(ctx.view_class_registry()).display_name();
-        let subtitle = format!("Create a new view to display {title} content.");
+        let subtitle = format!("Create a new {title} view.");
 
         if row_ui(ui, icon, title, &subtitle, is_experimental).clicked() {
             viewport.add_views(std::iter::once(view), target_container, None);
