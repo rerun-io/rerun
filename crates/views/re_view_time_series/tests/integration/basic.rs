@@ -683,6 +683,53 @@ fn test_all_inf_values() {
     }
 }
 
+/// Pins the default [`re_sdk_types::components::AggregationPolicy`] on a plot dense enough
+/// for aggregation to kick in.
+///
+/// The old default, `MinMax`, emitted both extremes of every window and so drew a vertical
+/// line per pixel, which read as a jagged band rather than a line. The default is now
+/// `MinMaxAverage`, which emits one point per window.
+///
+/// A lone spike is logged so the snapshot also pins what that does to an outlier: the window
+/// holding it plots the midpoint of its two extremes, so the spike is damped but still stands
+/// clearly above the signal. Averaging every point in the window instead would nearly erase
+/// it, which is why the default is not `Average`.
+#[test]
+fn test_default_aggregation_on_dense_series() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    // Far more points than the plot is wide, so aggregation runs.
+    let num_points = 4096_i64;
+    // A single outlier, early enough to fall inside the default visible time range.
+    let outlier_step = 256;
+    for step in 0..num_points {
+        let value = if step == outlier_step {
+            3.0
+        } else {
+            (step as f64 / 50.0).sin() + 0.2 * (step as f64 / 3.0).sin()
+        };
+        test_context.log_entity("dense", |builder| {
+            builder.with_archetype_auto_row(
+                TimePoint::from([(timeline, step)]),
+                &re_sdk_types::archetypes::Scalars::single(value),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "default_aggregation_on_dense_series",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(

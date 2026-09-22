@@ -13,6 +13,15 @@ use crate::line_series_loader::{
 };
 use crate::{PlotSeries, PlotSeriesKind, util};
 
+/// Stroke width, in physical pixels, below which a line is drawn at this width and faded
+/// rather than drawn thinner.
+///
+/// A stroke thinner than one pixel cannot be drawn thinner without aliasing, so it is drawn
+/// one pixel wide at a proportionally lower opacity instead, which keeps the amount of ink
+/// it deposits correct. `epaint` fades thin strokes the same way and at the same cutoff, so
+/// plot lines match egui's own: the default 0.75 point stroke lands at 75% opacity at 1x.
+const FADE_CUTOFF_WIDTH_PX: f32 = 1.0;
+
 /// Output data from [`SeriesLinesSystem`].
 #[derive(Default, Clone)]
 pub struct SeriesLinesOutput {
@@ -169,10 +178,9 @@ pub(crate) fn build_line_draw_data(
     line_builder.reserve_strips(num_strips)?;
     line_builder.reserve_vertices(num_vertices)?;
 
-    // Below 1.5 physical pixels width, we widen the line and fade its color
-    // to keep sub-pixel strokes visible without aliasing.
+    // `radius_ui` is half a stroke width, so halve the cutoff to compare against it.
     let pixels_per_point = ctx.viewer_ctx.egui_ctx().pixels_per_point();
-    let min_line_radius_ui = 0.75 / pixels_per_point;
+    let fade_cutoff_radius_ui = 0.5 * FADE_CUTOFF_WIDTH_PX / pixels_per_point;
 
     for series in all_series {
         if !series.visible || series.points.is_empty() {
@@ -188,10 +196,9 @@ pub(crate) fn build_line_draw_data(
             series.radius_ui
         };
 
-        // Lines below 1.5 physical px width look terrible, so instead reduce the opacity to fade them.
-        if radius_ui < min_line_radius_ui {
-            color = color.gamma_multiply(radius_ui / min_line_radius_ui);
-            radius_ui = min_line_radius_ui;
+        if radius_ui < fade_cutoff_radius_ui {
+            color = color.gamma_multiply(radius_ui / fade_cutoff_radius_ui);
+            radius_ui = fade_cutoff_radius_ui;
         }
 
         // We don't do gpu transforms since that would transform the shape of things, and we

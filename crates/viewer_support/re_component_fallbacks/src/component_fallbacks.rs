@@ -568,13 +568,13 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     // SeriesLines
     registry.register_component_fallback_provider(
         archetypes::SeriesLines::descriptor_widths().component,
-        |_| components::StrokeWidth::from(0.75),
+        |_| components::StrokeWidth::from(1.0), // NOTE: anything below 1.0 will cause dimming on low-DPI screens
     );
 
     // Measurements
     registry.register_component_fallback_provider(
         archetypes::Measurements::descriptor_widths().component,
-        |_| components::StrokeWidth::from(0.75),
+        |_| components::StrokeWidth::from(1.0), // NOTE: anything below 1.0 will cause dimming on low-DPI screens
     );
 
     // SeriesPoints
