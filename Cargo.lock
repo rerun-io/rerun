@@ -9593,6 +9593,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "http",
  "pin-project-lite",
+ "re_tuid",
  "tonic",
  "tower",
 ]

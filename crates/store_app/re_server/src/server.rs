@@ -136,8 +136,8 @@ impl Server {
                 .layer({
                     let name = Some("rerun-oss".to_owned());
                     let version = None;
-                    let is_client = false;
-                    re_protos::headers::new_rerun_headers_layer(name, version, is_client)
+                    let identity = re_protos::headers::RerunIdentity::Service { name };
+                    re_protos::headers::new_rerun_headers_layer(identity, version)
                 })
                 .layer(re_grpc_server::cors_layer(&cors_allowed_origins))
                 .layer(LatencyLayer::new(artificial_latency))

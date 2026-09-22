@@ -5,6 +5,9 @@
 //! `tower-http::propagate_header` used to propagate multiple Rerun headers
 //! between requests and responses.
 
+/// The HTTP header key that identifies a client instance.
+pub const RERUN_HTTP_HEADER_CLIENT_ID: &str = "x-rerun-client-id";
+
 /// The HTTP header key to pass an entry ID to the `RerunCloudService` APIs.
 pub const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
 
@@ -47,15 +50,20 @@ pub type RerunHeadersLayer = tower::layer::util::Stack<
     >,
 >;
 
+#[derive(Clone)]
+pub enum RerunIdentity {
+    Client { id: Tuid, name: Option<String> },
+    Service { name: Option<String> },
+}
+
 /// Instantiates a compound [`tower::Layer`] that handles all things related to Rerun headers.
 pub fn new_rerun_headers_layer(
-    name: Option<String>,
+    identity: RerunIdentity,
     version: Option<String>,
-    is_client: bool,
 ) -> RerunHeadersLayer {
     tower::ServiceBuilder::new()
         .layer(tonic::service::interceptor::InterceptorLayer::new({
-            RerunVersionInterceptor::new(is_client, name, version)
+            RerunVersionInterceptor::new(identity, version)
         }))
         .layer(new_rerun_headers_propagation_layer())
         .into_inner()
@@ -63,7 +71,7 @@ pub fn new_rerun_headers_layer(
 
 /// Build the standard SDK-side Rerun headers layer.
 ///
-/// This is the `(name, version, is_client)` triple every Rerun gRPC client should use
+/// This is the `(identity, version)` pair every Rerun gRPC client should use
 /// unless it has a specific reason not to (e.g. the `redap_cli` binary, which advertises
 /// its own `CARGO_PKG_VERSION`). It is the single source of truth for client-side header
 /// configuration, so any path that opens a sibling channel (the main redap RPC stack, the
@@ -77,18 +85,22 @@ pub fn new_rerun_headers_layer(
 #[cfg(target_arch = "wasm32")]
 pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
     new_rerun_headers_layer(
-        Some("rerun-web".to_owned()),
+        RerunIdentity::Client {
+            id: Tuid::new(),
+            name: Some("rerun-web".to_owned()),
+        },
         None,
-        /* is_client */ true,
     )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
     new_rerun_headers_layer(
-        None,
+        RerunIdentity::Client {
+            id: Tuid::new(),
+            name: None,
+        },
         std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok(),
-        /* is_client */ true,
     )
 }
 
@@ -112,61 +124,85 @@ pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {
 /// See also [`RERUN_HTTP_HEADER_CLIENT_VERSION`] & [`RERUN_HTTP_HEADER_SERVER_VERSION`].
 #[derive(Clone)]
 pub struct RerunVersionInterceptor {
-    is_client: bool,
-    name: String,
+    identity: ResolvedRerunIdentity,
     version: String,
+}
+
+#[derive(Clone)]
+enum ResolvedRerunIdentity {
+    Client { id: Tuid, name: String },
+    Service { name: String },
 }
 
 impl RerunVersionInterceptor {
     pub fn new_client(name: Option<String>, version: Option<String>) -> Self {
-        Self::new(true, name, version)
+        Self::new(
+            RerunIdentity::Client {
+                id: Tuid::new(),
+                name,
+            },
+            version,
+        )
     }
 
     pub fn new_server(name: Option<String>, version: Option<String>) -> Self {
-        Self::new(false, name, version)
+        Self::new(RerunIdentity::Service { name }, version)
     }
 
-    pub fn new(is_client: bool, name: Option<String>, version: Option<String>) -> Self {
-        let mut name = name
-            .or_else(|| std::env::var("OTEL_SERVICE_NAME").ok())
-            .or_else(|| {
-                let path = std::env::current_exe().ok()?;
-                path.file_stem()
-                    .map(|stem| stem.to_string_lossy().to_string())
-            })
-            .unwrap_or_else(|| env!("CARGO_PKG_NAME").to_owned());
+    pub fn new(identity: RerunIdentity, version: Option<String>) -> Self {
+        let resolve_name = |name: Option<String>| {
+            let name = name
+                .or_else(|| std::env::var("OTEL_SERVICE_NAME").ok())
+                .or_else(|| {
+                    let path = std::env::current_exe().ok()?;
+                    path.file_stem()
+                        .map(|stem| stem.to_string_lossy().to_string())
+                })
+                .unwrap_or_else(|| env!("CARGO_PKG_NAME").to_owned());
 
-        if !name.is_ascii() {
-            // Cannot have non ASCII data in HTTP headers.
-            name = "<non_ascii_name_redacted>".to_owned();
-        }
+            if name.is_ascii() {
+                name
+            } else {
+                "<non_ascii_name_redacted>".to_owned()
+            }
+        };
 
+        let identity = match identity {
+            RerunIdentity::Client { id, name } => ResolvedRerunIdentity::Client {
+                id,
+                name: resolve_name(name),
+            },
+            RerunIdentity::Service { name } => ResolvedRerunIdentity::Service {
+                name: resolve_name(name),
+            },
+        };
         let version = version.unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_owned());
 
-        Self {
-            is_client,
-            name,
-            version,
-        }
+        Self { identity, version }
     }
 }
 
 impl tonic::service::Interceptor for RerunVersionInterceptor {
     fn call(&mut self, mut req: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
-        let Self {
-            is_client,
-            name,
-            version,
-        } = self;
+        let Self { identity, version } = self;
+
+        let (name, version_header) = match identity {
+            ResolvedRerunIdentity::Client { id, name } => {
+                let client_id: tonic::metadata::AsciiMetadataValue = id
+                    .to_string()
+                    .parse()
+                    .map_err(|err| tonic::Status::internal(format!("invalid client ID: {err}")))?;
+                req.metadata_mut()
+                    .insert(RERUN_HTTP_HEADER_CLIENT_ID, client_id);
+                (name, RERUN_HTTP_HEADER_CLIENT_VERSION)
+            }
+            ResolvedRerunIdentity::Service { name } => (name, RERUN_HTTP_HEADER_SERVER_VERSION),
+        };
 
         let version = format!("{name}/{version}");
 
         req.metadata_mut().insert(
-            if *is_client {
-                RERUN_HTTP_HEADER_CLIENT_VERSION
-            } else {
-                RERUN_HTTP_HEADER_SERVER_VERSION
-            },
+            version_header,
             version
                 .parse()
                 .expect("cannot fail, checked in constructor"),
@@ -233,6 +269,7 @@ use std::task::{Context, Poll, ready};
 use http::header::HeaderName;
 use http::{HeaderValue, Request, Response};
 use pin_project_lite::pin_project;
+use re_tuid::Tuid;
 use tower::Service;
 use tower::layer::Layer;
 
