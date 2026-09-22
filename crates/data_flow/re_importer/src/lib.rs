@@ -406,7 +406,6 @@ pub trait Importer: Send + Sync {
 /// Errors that might happen when importing data through an [`Importer`].
 #[derive(thiserror::Error, Debug)]
 pub enum ImporterError {
-    #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
@@ -463,7 +462,6 @@ impl ImporterError {
     #[inline]
     pub fn is_path_not_found(&self) -> bool {
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
             Self::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
             Self::File { source, .. } => source.is_path_not_found(),
             _ => false,

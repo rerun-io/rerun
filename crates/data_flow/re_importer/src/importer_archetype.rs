@@ -378,23 +378,18 @@ fn load_ply(
             let builder = Chunk::builder(entity_path);
             let row_id = RowId::new();
 
-            let builder = match re_sdk_types::ply::classify_geometry_from_bytes(contents)
-                .map_err(anyhow::Error::from)?
-            {
+            let builder = match re_sdk_types::ply::classify_geometry_from_bytes(contents)? {
                 PlyGeometryClass::GaussianSplats3D => {
                     let gaussians =
-                        GaussianSplats3D::from_ply_file_contents(contents, Some(filepath))
-                            .map_err(anyhow::Error::from)?;
+                        GaussianSplats3D::from_ply_file_contents(contents, Some(filepath))?;
                     builder.with_archetype(row_id, timepoint, &gaussians)
                 }
                 PlyGeometryClass::Points2D => {
-                    let points2d =
-                        Points2D::from_file_contents(contents).map_err(anyhow::Error::from)?;
+                    let points2d = Points2D::from_file_contents(contents)?;
                     builder.with_archetype(row_id, timepoint, &points2d)
                 }
                 PlyGeometryClass::Points3D => {
-                    let points3d =
-                        Points3D::from_file_contents(contents).map_err(anyhow::Error::from)?;
+                    let points3d = Points3D::from_file_contents(contents)?;
                     builder.with_archetype(row_id, timepoint, &points3d)
                 }
                 PlyGeometryClass::MeshOrAsset3D => {
