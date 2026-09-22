@@ -121,9 +121,12 @@ fn run_view_selection_panel_ui_and_save_snapshot(
                     let view_state =
                         view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
 
-                    view_class
-                        .selection_ui(ctx, ui, view_state, &view_blueprint.space_origin, view_id)
-                        .expect("failed to run view selection panel ui");
+                    let view_ctx = view_blueprint.bundle_context_with_state(ctx, view_state);
+                    let selection_ui = view_class.selection_ui(&view_ctx);
+                    if let Some(properties_ui) = selection_ui.blueprint_properties {
+                        properties_ui(ui, &view_ctx)
+                            .expect("failed to run view selection panel ui");
+                    }
                 });
             });
 

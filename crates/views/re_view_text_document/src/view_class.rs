@@ -6,7 +6,7 @@ use re_ui::{Help, UiExt as _};
 use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _, ViewClass,
-    ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewClassExt as _, ViewClassRegistryError, ViewQuery, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -88,24 +88,21 @@ impl ViewClass for TextDocumentView {
         re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_ref::<TextDocumentViewState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<TextDocumentViewState>()?;
 
-        if !state.only_showing_markdown {
-            ui.list_item_scope("text_document_selection_ui", |ui| {
-                let ctx = self.view_context(ctx, view_id, state, space_origin);
-                re_view::view_property_ui::<TextDocumentFormat>(&ctx, ui);
-            });
-        }
+            if !state.only_showing_markdown {
+                ui.list_item_scope("text_document_selection_ui", |ui| {
+                    re_view::view_property_ui::<TextDocumentFormat>(ctx, ui);
+                });
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn spawn_heuristics(

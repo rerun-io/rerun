@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::blueprint::archetypes::{SpatialInformation, VisualBounds2D};
@@ -94,8 +96,8 @@ fn test_spatial_information_2d() {
         let state = state
             .downcast_mut::<SpatialViewState>()
             .expect("SpatialView2D should use SpatialViewState");
-        state.show_smoothed_bbox = true;
-        state.show_per_entity_bbox = true;
+        state.show_smoothed_bbox.store(true, Ordering::Relaxed);
+        state.show_per_entity_bbox.store(true, Ordering::Relaxed);
     }
 
     test_context

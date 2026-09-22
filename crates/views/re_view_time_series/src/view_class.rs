@@ -223,46 +223,48 @@ impl ViewClass for TimeSeriesView {
         QueryRange::TimeRange(TimeRange::EVERYTHING)
     }
 
-    fn selection_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<TimeSeriesViewState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi {
+            visualizers: Some(time_series_visualizers_section(_view_ctx)),
+            blueprint_properties: Some(Box::new(move |ui, ctx| {
+                list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+                    view_property_ui::<PlotBackground>(ctx, ui);
+                    view_property_ui::<PlotLegend>(ctx, ui);
+                    view_property_ui::<PlotInteraction>(ctx, ui);
 
-        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-            view_property_ui::<PlotBackground>(&ctx, ui);
-            view_property_ui::<PlotLegend>(&ctx, ui);
-            view_property_ui::<PlotInteraction>(&ctx, ui);
+                    let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(ctx)
+                        .component_or_fallback::<LinkAxis>(
+                            ctx,
+                            TimeAxis::descriptor_link().component,
+                        )?;
 
-            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx)
-                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+                    match link_x_axis {
+                        LinkAxis::Independent => {
+                            view_property_ui::<TimeAxis>(ctx, ui);
+                        }
+                        LinkAxis::LinkToGlobal => {
+                            re_view::view_property_ui_with_redirect::<TimeAxis>(
+                                ctx,
+                                ui,
+                                TimeAxis::descriptor_view_range().component,
+                                re_viewer_context::GLOBAL_VIEW_ID,
+                            );
+                        }
+                    }
 
-            match link_x_axis {
-                LinkAxis::Independent => {
-                    view_property_ui::<TimeAxis>(&ctx, ui);
-                }
-                LinkAxis::LinkToGlobal => {
-                    re_view::view_property_ui_with_redirect::<TimeAxis>(
-                        &ctx,
-                        ui,
-                        TimeAxis::descriptor_view_range().component,
-                        re_viewer_context::GLOBAL_VIEW_ID,
-                    );
-                }
-            }
+                    view_property_ui::<ScalarAxis>(ctx, ui);
 
-            view_property_ui::<ScalarAxis>(&ctx, ui);
+                    Ok::<(), ViewSystemExecutionError>(())
+                })
+                .inner?;
 
-            Ok::<(), ViewSystemExecutionError>(())
-        })
-        .inner?;
-
-        Ok(())
+                Ok(())
+            })),
+            ..Default::default()
+        }
     }
 
     fn spawn_heuristics(
@@ -364,59 +366,6 @@ impl ViewClass for TimeSeriesView {
         }
 
         recommended
-    }
-
-    fn visualizers_section<'a>(
-        &'a self,
-        ctx: &'a re_viewer_context::ViewContext<'a>,
-    ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
-        let series_line_id = SeriesLinesSystem::identifier();
-        let visualizable_entities = ctx
-            .viewer_ctx
-            .iter_visualizable_entities_for_view_class(Self::identifier())
-            .find(|(viz, _)| *viz == series_line_id)
-            .map(|(_, ents)| ents);
-
-        let data_results = ctx.query_result.tree.iter_data_results();
-        let add_options = data_results
-            .filter_map(|data_result| {
-                if data_result.tree_prefix_only {
-                    return None;
-                }
-
-                // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
-                // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
-                // by indication or recommended datatypes — we show everything that could be visualized.
-                let VisualizableReason::SingleRequiredComponentMatch(
-                    SingleRequiredComponentMatch {
-                        target_component: _,
-                        matches,
-                    },
-                ) = visualizable_entities?.get(&data_result.entity_path)?
-                else {
-                    return None;
-                };
-
-                let recommended = if let Ok(mappings) =
-                    vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
-                {
-                    RecommendedVisualizers::new(
-                        std::iter::once((series_line_id, mappings)).collect(),
-                    )
-                } else {
-                    return None;
-                };
-
-                Some((data_result.entity_path.clone(), recommended))
-            })
-            .collect();
-
-        Some(re_viewer_context::VisualizersSectionOutput {
-            ui: Box::new(move |ui, ctx| {
-                visualizers_section_ui(ui, ctx);
-            }),
-            add_options,
-        })
     }
 
     /// Accept drops of scalar components onto the time series view. For each dropped component, a
@@ -2091,6 +2040,54 @@ fn render_re_renderer_draw_data(
     ));
 
     Ok(())
+}
+
+fn time_series_visualizers_section(
+    ctx: &re_viewer_context::ViewContext<'_>,
+) -> re_viewer_context::VisualizersSectionOutput<'static> {
+    let series_line_id = SeriesLinesSystem::identifier();
+    let visualizable_entities = ctx
+        .viewer_ctx
+        .iter_visualizable_entities_for_view_class(TimeSeriesView::identifier())
+        .find(|(viz, _)| *viz == series_line_id)
+        .map(|(_, ents)| ents);
+
+    let data_results = ctx.query_result.tree.iter_data_results();
+    let add_options = data_results
+        .filter_map(|data_result| {
+            if data_result.tree_prefix_only {
+                return None;
+            }
+
+            // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
+            // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
+            // by indication or recommended datatypes — we show everything that could be visualized.
+            let VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
+                target_component: _,
+                matches,
+            }) = visualizable_entities?.get(&data_result.entity_path)?
+            else {
+                return None;
+            };
+
+            let recommended = if let Ok(mappings) =
+                vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
+            {
+                RecommendedVisualizers::new(std::iter::once((series_line_id, mappings)).collect())
+            } else {
+                return None;
+            };
+
+            Some((data_result.entity_path.clone(), recommended))
+        })
+        .collect();
+
+    re_viewer_context::VisualizersSectionOutput {
+        ui: Box::new(move |ui, ctx| {
+            visualizers_section_ui(ui, ctx);
+        }),
+        add_options,
+    }
 }
 
 #[cfg(test)]

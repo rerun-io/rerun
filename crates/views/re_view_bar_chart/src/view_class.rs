@@ -8,14 +8,13 @@ use re_sdk_types::blueprint::components::{Corner2D, Enabled};
 use re_sdk_types::components::{Color, Visible};
 use re_sdk_types::encodings::TensorBuffer;
 use re_sdk_types::{View as _, ViewClassIdentifier};
-use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, icons};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
-use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, RecommendedVisualizers,
-    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableReason, suggest_view_for_each_entity,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -135,23 +134,6 @@ impl ViewClass for BarChartView {
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
         re_viewer_context::ViewClassLayoutPriority::Low
-    }
-
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<PlotBackground>(&ctx, ui);
-            view_property_ui::<PlotLegend>(&ctx, ui);
-        });
-
-        Ok(())
     }
 
     fn ui(

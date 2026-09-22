@@ -57,6 +57,25 @@ impl ViewProperty {
         Self::from_archetype_for_view::<A>(ctx.viewer_ctx, ctx.view_id)
     }
 
+    /// Query a reflected view property for a view context.
+    pub fn from_reflection(ctx: &ViewContext<'_>, archetype_name: ArchetypeName) -> Option<Self> {
+        let reflection = ctx.viewer_ctx.reflection();
+        let archetype = reflection.archetypes.get(&archetype_name)?;
+        let component_descrs = archetype
+            .fields
+            .iter()
+            .map(|field| field.component_descriptor(archetype_name))
+            .collect();
+
+        Some(Self::from_archetype_impl(
+            ctx.viewer_ctx.current_blueprint(),
+            ctx.viewer_ctx.blueprint_query().clone(),
+            ctx.view_id,
+            archetype_name,
+            component_descrs,
+        ))
+    }
+
     /// Query a specific view property for a given view.
     pub fn from_archetype_for_view<A: Archetype>(
         ctx: &impl BlueprintContext,

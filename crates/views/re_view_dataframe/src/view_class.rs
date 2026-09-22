@@ -107,18 +107,21 @@ Configure in the selection panel:
         ViewSpawnHeuristics::empty()
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<DataframeViewState>()?;
-        let view_query = view_query::Query::from_blueprint(ctx, view_id);
-        list_item::list_item_scope_in_place(ui, "dataframe_selection_ui", |ui| {
-            view_query.selection_panel_ui(ctx, ui, view_id, state.view_columns.as_deref())
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<DataframeViewState>()?;
+            let view_query = view_query::Query::from_blueprint(ctx.viewer_ctx, ctx.view_id);
+            list_item::list_item_scope_in_place(ui, "dataframe_selection_ui", |ui| {
+                view_query.selection_panel_ui(
+                    ctx.viewer_ctx,
+                    ui,
+                    ctx.view_id,
+                    state.view_columns.as_deref(),
+                )
+            })
         })
     }
 

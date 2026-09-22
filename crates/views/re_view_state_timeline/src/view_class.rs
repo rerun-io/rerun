@@ -177,34 +177,33 @@ impl ViewClass for StateTimelineView {
         }
     }
 
-    fn selection_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        list_item::list_item_scope(ui, "state_timeline_selection_ui", |ui| {
-            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-            let time_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx);
-            let link = time_axis
-                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            list_item::list_item_scope(ui, "state_timeline_selection_ui", |ui| {
+                let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
+                let link = time_axis.component_or_fallback::<LinkAxis>(
+                    ctx,
+                    TimeAxis::descriptor_link().component,
+                )?;
 
-            match link {
-                LinkAxis::Independent => re_view::view_property_ui::<TimeAxis>(&ctx, ui),
-                // When linked to global, expose the shared view range stored on the global view.
-                LinkAxis::LinkToGlobal => re_view::view_property_ui_with_redirect::<TimeAxis>(
-                    &ctx,
-                    ui,
-                    TimeAxis::descriptor_view_range().component,
-                    GLOBAL_VIEW_ID,
-                ),
-            }
+                match link {
+                    LinkAxis::Independent => re_view::view_property_ui::<TimeAxis>(ctx, ui),
+                    // When linked to global, expose the shared view range stored on the global view.
+                    LinkAxis::LinkToGlobal => re_view::view_property_ui_with_redirect::<TimeAxis>(
+                        ctx,
+                        ui,
+                        TimeAxis::descriptor_view_range().component,
+                        GLOBAL_VIEW_ID,
+                    ),
+                }
 
-            Ok::<(), ViewSystemExecutionError>(())
+                Ok::<(), ViewSystemExecutionError>(())
+            })
+            .inner
         })
-        .inner
     }
 
     /// Only take dropped entities that log a `StateChange`. For any other archetype,

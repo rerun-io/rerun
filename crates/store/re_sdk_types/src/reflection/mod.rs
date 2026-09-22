@@ -5611,12 +5611,19 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.BarChart"),
                     ArchetypeName::from("rerun.archetypes.Tensor"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground"),
+                ],
             },
         ),
         (
             ViewClassIdentifier::from_static_str("Dataframe"),
             ViewReflection {
                 applicability: ViewApplicability::AllArchetypes,
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.DataframeQuery",
+                )],
             },
         ),
         (
@@ -5626,6 +5633,15 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.GraphEdges"),
                     ArchetypeName::from("rerun.archetypes.GraphNodes"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.GraphBackground"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceLink"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceManyBody"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForcePosition"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceCollisionRadius"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceCenter"),
+                ],
             },
         ),
         (
@@ -5635,6 +5651,10 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
                     ArchetypeName::from("rerun.archetypes.GeoPoints"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.MapBackground"),
+                ],
             },
         ),
         (
@@ -5671,6 +5691,12 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.VideoFrameReference"),
                     ArchetypeName::from("rerun.archetypes.VideoStream"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.Background"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5712,6 +5738,13 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.Volume3D"),
                     ArchetypeName::from("rerun.archetypes.VoxelGridMap"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.Background"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.LineGrid3D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.EyeControls3D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5721,6 +5754,10 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.StateChange"),
                     ArchetypeName::from("rerun.archetypes.StateConfiguration"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5729,6 +5766,11 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.Tensor",
                 )]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorSliceSelection"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorScalarMapping"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorViewFit"),
+                ],
             },
         ),
         (
@@ -5737,6 +5779,9 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.TextDocument",
                 )]),
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.TextDocumentFormat",
+                )],
             },
         ),
         (
@@ -5745,6 +5790,11 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.TextLog",
                 )]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogColumns"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogRows"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogFormat"),
+                ],
             },
         ),
         (
@@ -5757,6 +5807,14 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.SeriesLines"),
                     ArchetypeName::from("rerun.archetypes.SeriesPoints"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotInteraction"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
     ];

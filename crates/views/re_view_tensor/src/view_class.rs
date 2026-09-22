@@ -98,82 +98,84 @@ Set the displayed dimensions in a selection panel.",
         Box::<ViewTensorState>::default()
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<ViewTensorState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<ViewTensorState>()?;
 
-        // TODO(andreas): Listitemify
-        ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
-            if let Some(TensorVisualization {
-                tensor,
-                tensor_row_id,
-                tensor_component,
-                ..
-            }) = &state.tensor
-            {
-                let tensor_stats = ctx.store_context.memoizer(|c: &mut TensorStatsCache| {
-                    c.entry(*tensor_row_id, *tensor_component, tensor)
-                });
+            // TODO(andreas): Listitemify
+            ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
+                if let Some(TensorVisualization {
+                    tensor,
+                    tensor_row_id,
+                    tensor_component,
+                    ..
+                }) = &state.tensor
+                {
+                    let tensor_stats =
+                        ctx.viewer_ctx
+                            .store_context
+                            .memoizer(|c: &mut TensorStatsCache| {
+                                c.entry(*tensor_row_id, *tensor_component, tensor)
+                            });
 
-                tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
+                    tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
+                }
+            });
+
+            list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
+                view_property_ui::<TensorScalarMapping>(ctx, ui);
+                view_property_ui::<TensorViewFit>(ctx, ui);
+            });
+
+            // TODO(#6075): Listitemify
+            if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
+                let slice_property = ViewProperty::from_archetype_for_view::<
+                    re_sdk_types::blueprint::archetypes::TensorSliceSelection,
+                >(ctx.viewer_ctx, ctx.view_id);
+                let slice_selection = TensorSliceSelection::load_and_make_valid(
+                    &slice_property,
+                    &TensorDimension::from_tensor_data(tensor),
+                )?;
+
+                ui.separator();
+                ui.strong("Dimension Mapping");
+                dimension_mapping_ui(
+                    ctx.viewer_ctx,
+                    ui,
+                    &TensorDimension::from_tensor_data(tensor),
+                    &slice_selection,
+                    &slice_property,
+                );
+
+                // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
+                if ui
+                    .button("Reset to default blueprint")
+                    .on_hover_text(
+                        "Reset dimension mapping to the previously set default blueprint",
+                    )
+                    .clicked()
+                {
+                    slice_property.reset_all_components(ctx.viewer_ctx);
+                }
+
+                if ui
+                    .add_enabled(
+                        slice_property.any_non_empty(),
+                        egui::Button::new("Reset to heuristic"),
+                    )
+                    .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
+                    .on_disabled_hover_text("No custom dimension mapping set")
+                    .clicked()
+                {
+                    slice_property.reset_all_components_to_empty(ctx.viewer_ctx);
+                }
             }
-        });
 
-        list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<TensorScalarMapping>(&ctx, ui);
-            view_property_ui::<TensorViewFit>(&ctx, ui);
-        });
-
-        // TODO(#6075): Listitemify
-        if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
-            let slice_property = ViewProperty::from_archetype_for_view::<
-                re_sdk_types::blueprint::archetypes::TensorSliceSelection,
-            >(ctx, view_id);
-            let slice_selection = TensorSliceSelection::load_and_make_valid(
-                &slice_property,
-                &TensorDimension::from_tensor_data(tensor),
-            )?;
-
-            ui.separator();
-            ui.strong("Dimension Mapping");
-            dimension_mapping_ui(
-                ctx,
-                ui,
-                &TensorDimension::from_tensor_data(tensor),
-                &slice_selection,
-                &slice_property,
-            );
-
-            // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
-            if ui
-                .button("Reset to default blueprint")
-                .on_hover_text("Reset dimension mapping to the previously set default blueprint")
-                .clicked()
-            {
-                slice_property.reset_all_components(ctx);
-            }
-
-            if ui
-                .add_enabled(
-                    slice_property.any_non_empty(),
-                    egui::Button::new("Reset to heuristic"),
-                )
-                .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
-                .on_disabled_hover_text("No custom dimension mapping set")
-                .clicked()
-            {
-                slice_property.reset_all_components_to_empty(ctx);
-            }
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn spawn_heuristics(
@@ -309,10 +311,10 @@ impl TensorView {
             }),
         ];
 
+        let view_ctx = self.view_context(ctx, view_id, state, space_origin);
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
             if let Err(err) =
-                Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
+                Self::tensor_slice_ui(&view_ctx, ui, state, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }

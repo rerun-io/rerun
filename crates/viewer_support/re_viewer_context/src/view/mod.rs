@@ -32,8 +32,9 @@ pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,
 };
 pub use view_class::{
-    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassUiOutput,
-    ViewState, ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
+    BlueprintPropertiesUi, RecommendedVisualizers, SelectionSection, SelectionSectionUi, ViewClass,
+    ViewClassExt, ViewClassLayoutPriority, ViewClassUiOutput, ViewSelectionUi, ViewState,
+    ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};

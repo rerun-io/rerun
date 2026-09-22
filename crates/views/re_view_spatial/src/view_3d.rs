@@ -19,8 +19,8 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryContext, RecommendedView,
-    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    RecommendedVisualizers, ViewClass, ViewClassRegistryError, ViewContext, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableReason,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -486,43 +486,32 @@ impl ViewClass for SpatialView3D {
         .unwrap_or_else(ViewSpawnHeuristics::empty)
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<SpatialViewState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<SpatialViewState>()?;
 
-        // TODO(andreas): list_item'ify the rest
-        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            ui.grid_left_hand_label("Camera")
-                .on_hover_text("The virtual camera which controls what is shown on screen");
-            ui.vertical(|ui| {
-                state.view_eye_ui(ui, ctx, view_id);
+            // TODO(andreas): list_item'ify the rest
+            ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+                state.bounding_box_ui(ui, SpaceKind::ThreeD);
+
+                #[cfg(debug_assertions)]
+                bbox_debug_ui(ui, state);
             });
-            ui.end_row();
 
-            state.bounding_box_ui(ui, SpaceKind::ThreeD);
+            re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
+                view_property_ui::<SpatialInformation>(ctx, ui);
+                view_coordinates_ui(ctx, ui);
 
-            #[cfg(debug_assertions)]
-            bbox_debug_ui(ui, state);
-        });
+                view_property_ui::<EyeControls3D>(ctx, ui);
+                view_property_ui::<Background>(ctx, ui);
+                view_property_ui_grid3d(ctx, ui);
+            });
 
-        re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
-            view_coordinates_ui(&view_ctx, ui);
-
-            view_property_ui::<EyeControls3D>(&view_ctx, ui);
-            view_property_ui::<Background>(&view_ctx, ui);
-            view_property_ui_grid3d(&view_ctx, ui);
-        });
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn ui(

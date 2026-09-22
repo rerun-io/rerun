@@ -168,24 +168,19 @@ Filter message types and toggle column visibility in a selection panel.",
         }
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<TextViewState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            ui.list_item_scope("text_log_selection_ui", |ui| {
+                re_view::view_property_ui::<TextLogColumns>(ctx, ui);
+                view_property_ui_rows(ctx, ui);
+                re_view::view_property_ui::<TextLogFormat>(ctx, ui);
+            });
 
-        ui.list_item_scope("text_log_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            re_view::view_property_ui::<TextLogColumns>(&ctx, ui);
-            view_property_ui_rows(&ctx, ui);
-            re_view::view_property_ui::<TextLogFormat>(&ctx, ui);
-        });
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn ui(

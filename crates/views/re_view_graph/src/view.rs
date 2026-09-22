@@ -11,7 +11,7 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -154,33 +154,30 @@ impl ViewClass for GraphView {
     /// Additional UI displayed when the view is selected.
     ///
     /// In this sample we show a combo box to select the color coordinates mode.
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<GraphViewState>()?;
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<GraphViewState>()?;
 
-        ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
-            state.layout_ui(ui);
-            state.simulation_ui(ui);
-        });
+            ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
+                state.layout_ui(ui);
+                state.simulation_ui(ui);
+            });
 
-        re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<GraphBackground>(&ctx, ui);
-            view_property_ui::<VisualBounds2D>(&ctx, ui);
-            view_property_force_ui::<ForceLink>(&ctx, ui);
-            view_property_force_ui::<ForceManyBody>(&ctx, ui);
-            view_property_force_ui::<ForcePosition>(&ctx, ui);
-            view_property_force_ui::<ForceCenter>(&ctx, ui);
-            view_property_force_ui::<ForceCollisionRadius>(&ctx, ui);
-        });
+            re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
+                view_property_ui::<GraphBackground>(ctx, ui);
+                view_property_ui::<VisualBounds2D>(ctx, ui);
+                view_property_force_ui::<ForceLink>(ctx, ui);
+                view_property_force_ui::<ForceManyBody>(ctx, ui);
+                view_property_force_ui::<ForcePosition>(ctx, ui);
+                view_property_force_ui::<ForceCenter>(ctx, ui);
+                view_property_force_ui::<ForceCollisionRadius>(ctx, ui);
+            });
 
-        Ok(())
+            Ok(())
+        })
     }
 
     /// The contents of the View window and all interaction within it.
@@ -211,6 +208,7 @@ impl ViewClass for GraphView {
             .collect::<Vec<_>>();
 
         let state = state.downcast_mut::<GraphViewState>()?;
+        state.handle_pending_actions();
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let params = ForceLayoutParams::get(&view_ctx)?;
