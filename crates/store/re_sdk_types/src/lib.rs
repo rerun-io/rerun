@@ -289,6 +289,8 @@ pub mod external {
     pub use {arrow, ndarray, re_types_core, uuid};
 }
 
+pub mod ply;
+
 // Has to live here because otherwise we can't use it to implement `Hash` for `crate::components::TransformFrameId`.
 mod transform_frame_id_hash;
 pub use transform_frame_id_hash::TransformFrameIdHash;
