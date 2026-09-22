@@ -1238,39 +1238,71 @@ fn record_batch_to_ipc_bytes(
 }
 
 /// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
+///
+/// The arrays are sliced out of the IPC body rather than copied, so the batch is one allocation
+/// shared by all its columns for as long as any of them is alive.
 #[tracing::instrument(level = "debug", skip_all)]
 fn record_batch_from_ipc_bytes(
-    bytes: &[u8],
+    payload: &prost::bytes::Bytes,
     compression: Compression,
     uncompressed_size: u64,
 ) -> Result<Option<arrow::array::RecordBatch>, ArrowError> {
-    let mut uncompressed = Vec::new();
-    let bytes = match compression {
-        Compression::Off => bytes,
+    let mut buffer = match compression {
+        Compression::Off => arrow::buffer::Buffer::from(payload.clone()),
         Compression::LZ4 => {
             re_tracing::profile_scope!("LZ4-decompress");
             let _span = tracing::trace_span!("lz4::decompress").entered();
-            uncompressed.resize(uncompressed_size as usize, 0);
-            lz4_flex::block::decompress_into(bytes, &mut uncompressed).map_err(|err| {
+            let mut uncompressed = vec![0; uncompressed_size as usize];
+            lz4_flex::block::decompress_into(payload, &mut uncompressed).map_err(|err| {
                 ArrowError::ParseError(format!("LZ4 decompression failure: {err:#}"))
             })?;
-            uncompressed.as_slice()
+            arrow::buffer::Buffer::from_vec(uncompressed)
         }
     };
 
-    let mut stream = {
-        let _span = tracing::trace_span!("schema").entered();
-        arrow::ipc::reader::StreamReader::try_new(bytes, None)?
-    };
-
     let _span = tracing::trace_span!("data").entered();
-    stream.next().transpose()
+    // A single `decode` consumes the whole buffer up to the first record batch; `finish` then
+    // reports a truncated message as an error rather than silently yielding no batch.
+    let mut decoder = arrow::ipc::reader::StreamDecoder::new();
+    match decoder.decode(&mut buffer)? {
+        Some(batch) => Ok(Some(batch)),
+        None => {
+            decoder.finish()?;
+            Ok(None)
+        }
+    }
 }
 
 // ---
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn record_batch_ipc_roundtrip_and_truncation() {
+        use arrow::array::{Int32Array, RecordBatch};
+        use arrow::datatypes::{DataType, Field, Schema};
+
+        let batch = RecordBatch::try_new(
+            std::sync::Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)])),
+            vec![std::sync::Arc::new(Int32Array::from(vec![1, 2, 3]))],
+        )
+        .unwrap();
+
+        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+        let payload = prost::bytes::Bytes::from(payload);
+
+        let decoded = record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
+            .unwrap()
+            .unwrap();
+        assert_eq!(decoded, batch);
+
+        let truncated = payload.slice(..payload.len() - 16);
+        assert!(
+            record_batch_from_ipc_bytes(&truncated, Compression::Off, uncompressed_size).is_err()
+        );
+    }
 
     #[test]
     fn timestamp_to_proto_normalizes_pre_epoch_nanos() {
