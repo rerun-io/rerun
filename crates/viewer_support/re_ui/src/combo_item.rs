@@ -232,7 +232,9 @@ pub mod tests {
                     ui.add(
                         ComboItem::new("Rerun default").value(code.into_widget_text(ui.style())),
                     );
-                });
+                })
+                .response
+                .accessible_name("Example");
         });
 
         harness.get_by_value("ComboItem Example").click();

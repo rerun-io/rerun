@@ -19,7 +19,7 @@ use crate::DesignTokens;
 /// As a clickable button that follows the text color:
 /// ```
 /// # egui::__run_test_ui(|ui| {
-/// if ui.add(re_ui::icons::PLAY.as_button()).clicked() {
+/// if ui.add(re_ui::icons::PLAY.as_button("Play")).clicked() {
 ///     // …
 /// }
 /// # });
@@ -114,9 +114,15 @@ impl Icon {
         Image::new(self.as_image_source()).fit_to_original_size(scale)
     }
 
+    /// An icon-only button.
+    ///
+    /// `alt_text` is the button's accessible name: what a screen reader announces, what
+    /// `Harness::get_by_label` finds, and the only thing the MCP UI tools can search an icon
+    /// button by. A button without one is unreachable by name, so it is required here.
     #[inline]
-    pub fn as_button(&self) -> egui::Button<'_> {
-        egui::Button::image(self.as_image()).image_tint_follows_text_color(true)
+    pub fn as_button(&self, alt_text: impl Into<String>) -> egui::Button<'_> {
+        egui::Button::opt_image_and_text(Some(self.as_image().alt_text(alt_text)), None)
+            .image_tint_follows_text_color(true)
     }
 
     #[inline]

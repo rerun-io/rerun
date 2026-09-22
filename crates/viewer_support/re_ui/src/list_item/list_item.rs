@@ -641,6 +641,18 @@ impl ListItem {
                 id.with("collapsing_triangle"),
                 triangle_sense,
             );
+            // Reachable by name. Not named after the item: a query by the item's label must
+            // keep finding the item alone.
+            let expanded = 0.5 < openness;
+            triangle_response.widget_info(|| {
+                egui::WidgetInfo::labeled(
+                    egui::Role::DisclosureTriangle,
+                    ui.is_enabled(),
+                    if expanded { "Collapse" } else { "Expand" },
+                )
+            });
+            ui.ctx()
+                .accesskit_node_builder(triangle_response.id, |node| node.set_expanded(expanded));
 
             let color = visuals.collapse_button_color(triangle_response.hovered());
 

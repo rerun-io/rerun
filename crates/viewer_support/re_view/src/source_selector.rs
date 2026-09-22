@@ -265,7 +265,7 @@ pub fn source_selector_ui(
                     });
                 response.response.widget_info(|| {
                     egui::WidgetInfo::labeled(
-                        egui::WidgetType::ComboBox,
+                        egui::Role::ComboBox,
                         ui.is_enabled(),
                         // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
                         format!("{}_$source", mapping_ctx.target_component()),

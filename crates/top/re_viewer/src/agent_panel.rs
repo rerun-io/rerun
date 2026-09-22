@@ -4,6 +4,7 @@
 use std::path::Path;
 
 use re_agent_ui::{AgentPanel, AgentSettings, HostButton, McpServerConfig, SessionContext};
+use re_ui::UiExt as _;
 
 mod preamble;
 mod self_improve;
@@ -105,6 +106,8 @@ impl ViewerAgentPanel {
                 ..Default::default()
             })
             .show_collapsible(ui, open, |ui| {
+                ui.name_panel("Agent panel");
+
                 if let Some(panel) = panel {
                     panel.ui(ui);
                     settings.clone_from(panel.settings());

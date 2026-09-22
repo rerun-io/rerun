@@ -335,7 +335,7 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::datatypes::{DataType, Field, FieldRef};
-    use egui::accesskit::Role;
+    use egui::Role;
     use egui::{Key, Modifiers};
     use egui_kittest::SnapshotResults;
     use egui_kittest::kittest::Queryable as _;

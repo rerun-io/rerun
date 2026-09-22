@@ -131,16 +131,19 @@ pub fn redap_uri_button(
         ReButton::with_hover_icon_buttons(ui, button, icon_button_width, |ui| {
             (
                 ui.add(
-                    ReButton::icon(icons::COPY)
+                    ReButton::icon(icons::COPY, "Copy")
                         .size(size)
                         .variant(default_variant),
                 )
                 .clicked(),
                 if open {
                     ui.add(
-                        ReButton::icon(icons::CLOSE_SMALL)
-                            .size(size)
-                            .variant(default_variant),
+                        ReButton::icon(
+                            icons::CLOSE_SMALL,
+                            if loading { "Cancel" } else { "Close" },
+                        )
+                        .size(size)
+                        .variant(default_variant),
                     )
                     .on_hover_text(if loading { "Cancel" } else { "Close" })
                     .clicked()

@@ -224,7 +224,9 @@ impl Filter for TimestampFilter {
                             self.operator = *possible_op;
                         }
                     }
-                });
+                })
+                .response
+                .accessible_name("Operator");
         });
 
         // Note on prefilling value for `Before`. Since `Before` generally uses the "high" boundary
@@ -488,7 +490,9 @@ impl EditableTimestamp {
                     ui.style_invalid_field();
                 }
 
-                let response = ui.text_edit_singleline(&mut timestamp_string_to_edit);
+                let response = ui
+                    .text_edit_singleline(&mut timestamp_string_to_edit)
+                    .accessible_name("Timestamp");
 
                 if response.changed() && is_editable {
                     self.update_and_resolve_timestamp(timestamp_string_to_edit, timestamp_format);

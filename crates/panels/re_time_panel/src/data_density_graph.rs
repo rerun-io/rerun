@@ -484,7 +484,9 @@ pub fn paint_loaded_indicator_bar(
                 ui.make_persistent_id("chunk_fetching_indicator"),
                 egui::Sense::hover(),
             )
-            .widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
+            .widget_info(|| {
+                egui::WidgetInfo::labeled(egui::Role::ProgressIndicator, true, "Fetching chunks")
+            });
 
             ui.painter()
                 // Need to clip because offsetting the dashed line may end up outside otherwise

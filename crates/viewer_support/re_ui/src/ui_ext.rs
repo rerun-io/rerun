@@ -1,3 +1,4 @@
+use egui::Role;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
     UiBuilder, Widget as _, WidgetInfo, WidgetText, pos2,
@@ -141,12 +142,31 @@ pub trait UiExt {
         icon: &'a Icon,
         alt_text: impl Into<String>,
     ) -> egui::Button<'a> {
-        egui::Button::image(
-            icon.as_image()
-                .fit_to_exact_size(self.tokens().small_icon_size)
-                .alt_text(alt_text),
+        egui::Button::opt_image_and_text(
+            Some(
+                icon.as_image()
+                    .fit_to_exact_size(self.tokens().small_icon_size)
+                    .alt_text(alt_text),
+            ),
+            None,
         )
         .image_tint_follows_text_color(true)
+    }
+
+    /// A button showing an image you styled yourself, e.g. resized or tinted.
+    ///
+    /// Reach for [`Self::small_icon_button`] or [`crate::ReButton::icon`] where a plain icon
+    /// will do; this is the escape hatch that still guarantees an accessible name.
+    ///
+    /// `alt_text` is the button's accessible name: what a screen reader announces, what
+    /// `Harness::get_by_label` finds, and the only thing the MCP UI tools can search an icon
+    /// button by.
+    fn image_button_widget<'a>(
+        &self,
+        image: egui::Image<'a>,
+        alt_text: impl Into<String>,
+    ) -> egui::Button<'a> {
+        egui::Button::opt_image_and_text(Some(image.alt_text(alt_text)), None)
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
@@ -189,9 +209,8 @@ pub trait UiExt {
             *selected = !*selected;
             response.mark_changed();
         }
-        response.widget_info(|| {
-            WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
-        });
+        response
+            .widget_info(|| WidgetInfo::selected(Role::Button, true, *selected, alt_text.clone()));
         response
     }
 
@@ -210,7 +229,7 @@ pub trait UiExt {
         let alt_text = alt_text.into();
         let response = ui
             .add(
-                egui::Button::image(icon.as_image().alt_text(alt_text.clone()))
+                icon.as_button(alt_text.clone())
                     .image_tint_follows_text_color(true)
                     .selected(selected),
             )
@@ -218,53 +237,6 @@ pub trait UiExt {
         if response.clicked() {
             *current_value = selected_value;
         }
-        response
-    }
-
-    fn large_button_impl(
-        &mut self,
-        icon: &Icon,
-        bg_fill: Option<Color32>,
-        tint: Option<Color32>,
-    ) -> egui::Response {
-        let tokens = self.tokens();
-        let button_size = tokens.large_button_size;
-        let icon_size = tokens.large_button_icon_size; // centered inside the button
-        let corner_radius = tokens.large_button_corner_radius;
-
-        let ui = self.ui_mut();
-
-        let prev_style = ui.style().clone();
-        {
-            // For big buttons we have a background color even when inactive:
-            let visuals = ui.visuals_mut();
-            visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
-
-            // no expansion effect
-            visuals.widgets.hovered.expansion = 0.0;
-            visuals.widgets.active.expansion = 0.0;
-            visuals.widgets.open.expansion = 0.0;
-        }
-
-        let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::Button));
-
-        if ui.is_rect_visible(rect) {
-            let visuals = ui.style().interact(&response);
-            let bg_fill = bg_fill.unwrap_or(visuals.bg_fill);
-            let tint = tint.unwrap_or(visuals.fg_stroke.color);
-
-            let image_rect = egui::Align2::CENTER_CENTER.align_size_within_rect(icon_size, rect);
-            // let image_rect = image_rect.expand2(expansion); // can make it blurry, so let's not
-
-            ui.painter()
-                .rect_filled(rect.expand(visuals.expansion), corner_radius, bg_fill);
-
-            icon.as_image().tint(tint).paint_at(ui, image_rect);
-        }
-
-        ui.set_style(prev_style);
-
         response
     }
 
@@ -320,17 +292,6 @@ pub trait UiExt {
                 ui.radio_value(current_value, alternative, text)
             })
             .inner
-    }
-
-    fn large_button(&mut self, icon: &Icon) -> egui::Response {
-        self.large_button_impl(icon, None, None)
-    }
-
-    fn large_button_selected(&mut self, icon: &Icon, selected: bool) -> egui::Response {
-        let ui = self.ui();
-        let bg_fill = selected.then(|| ui.visuals().selection.bg_fill);
-        let tint = selected.then(|| ui.visuals().selection.stroke.color);
-        self.large_button_impl(icon, bg_fill, tint)
     }
 
     fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {
@@ -406,6 +367,20 @@ pub trait UiExt {
             });
 
         ret
+    }
+
+    /// Name this [`egui::Ui`] as a panel in the accessibility tree.
+    ///
+    /// Every `Ui` is an anonymous [`Role::GenericContainer`] by default, so
+    /// without this a screen reader — or an agent driving the viewer over MCP — sees nothing but a
+    /// deep tree of nameless boxes. Naming the regions a user would name (the top bar, the panels,
+    /// the viewport) is what gives that tree a shape.
+    ///
+    /// The name is user-facing: use the same words as the docs and the tooltips.
+    fn name_panel(&self, name: &str) {
+        self.ui()
+            .response()
+            .widget_info(|| egui::WidgetInfo::labeled(Role::Pane, true, name));
     }
 
     // TODO(ab): this used to be used for inner margin, after registering full span range in panels.
@@ -488,11 +463,7 @@ pub trait UiExt {
 
         let mut header_response = ui.interact(rect, id, egui::Sense::click());
         header_response.widget_info(|| {
-            egui::WidgetInfo::labeled(
-                egui::WidgetType::CollapsingHeader,
-                ui.is_enabled(),
-                galley.text(),
-            )
+            egui::WidgetInfo::labeled(Role::DisclosureTriangle, ui.is_enabled(), galley.text())
         });
         let text_pos = pos2(
             text_pos.x,
@@ -725,7 +696,7 @@ pub trait UiExt {
         }
 
         let (response, copy_response) =
-            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY), button);
+            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY, "Copy"), button);
         if copy_response.is_some_and(|resp| resp.clicked()) {
             re_log::info!("Copied {raw_text:?}");
             ui.copy_text(raw_text);
@@ -780,8 +751,9 @@ pub trait UiExt {
                 .inner
             })
         } else {
-            // Reuse the header text as the loading reason shown on hover in debug builds.
-            let reason = header.text().to_owned();
+            // Names the indicator (and is shown on hover in debug builds). Includes the source
+            // so it does not collide with the header label right below it.
+            let reason = format!("{} {}", header.text(), source.text());
             self.loading_screen_ui(&reason, |ui| {
                 ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
                 ui.strong(source);
@@ -912,8 +884,10 @@ pub trait UiExt {
 
     /// Binary toggle switch.
     ///
+    /// A small on/off switch. `label` names it in the accessibility tree.
+    ///
     /// Adapted from `egui_demo_lib/src/demo/toggle_switch.rs`
-    fn toggle_switch(&mut self, height: f32, on: &mut bool) -> egui::Response {
+    fn toggle_switch(&mut self, height: f32, on: &mut bool, label: &str) -> egui::Response {
         let ui = self.ui_mut();
         let width = (height / 2. * 3.).ceil();
         let size = egui::vec2(width, height); // 12x7 in figma, but 12x8 looks _much_ better in epaint
@@ -927,7 +901,7 @@ pub trait UiExt {
             response.mark_changed();
         }
         response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Checkbox, ui.is_enabled(), *on, "")
+            egui::WidgetInfo::selected(Role::CheckBox, ui.is_enabled(), *on, label)
         });
 
         if ui.is_rect_visible(visual_rect) {

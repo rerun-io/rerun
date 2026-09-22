@@ -679,6 +679,7 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Viewport");
                         viewport_ui.viewport_ui(ui, &ctx, view_states);
                     });
 
@@ -723,6 +724,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Loading screen");
+
                         let error = self
                             .last_loading_error_for(log_source)
                             .map(|error| format!("Failed to load {source_name}: {error}"));
@@ -753,6 +756,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Table page");
+
                         if let Some(store) = app_ctx.table_stores().get(table_id) {
                             re_dataframe_ui::DataFusionTableWidget::new(
                                 store.session_context(),
@@ -792,6 +797,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Server page");
+
                         if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                             let origin = self
                                 .redap_servers
@@ -851,6 +858,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Entry page");
+
                         self.redap_servers.entry_ui(
                             &app_ctx,
                             ui,
@@ -881,6 +890,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
+                        ui.name_panel("Folder page");
+
                         self.redap_servers.folder_central_panel_ui(
                             &app_ctx,
                             ui,
@@ -1092,7 +1103,7 @@ impl AppState {
             });
         if let Some(left_panel_response) = left_panel_response {
             left_panel_response.response.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
+                egui::WidgetInfo::labeled(egui::Role::Pane, true, "Blueprint panel")
             });
         }
 

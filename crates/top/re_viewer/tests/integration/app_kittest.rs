@@ -1,6 +1,6 @@
 #![cfg(feature = "testing")]
 
-use egui::accesskit::Role;
+use egui::Role;
 use egui::os::OperatingSystem;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
@@ -60,6 +60,7 @@ async fn settings_screen() {
                     > 0
             },
         );
+
         snapshot_results
             .add(harness.try_snapshot(format!("settings_screen_{}", os_snapshot_suffix(os))));
     }

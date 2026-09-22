@@ -58,7 +58,11 @@ impl RightPanel {
                 let show_hierarchical = self.show_hierarchical_demo;
                 ui.section_collapsing_header("Drag and drop")
                     .with_buttons(|ui| {
-                        ui.toggle_switch(8.0, &mut self.show_hierarchical_demo);
+                        ui.toggle_switch(
+                            8.0,
+                            &mut self.show_hierarchical_demo,
+                            "Hierarchical demo",
+                        );
                         ui.label("Hierarchical:");
                     })
                     .show(ui, |ui| {

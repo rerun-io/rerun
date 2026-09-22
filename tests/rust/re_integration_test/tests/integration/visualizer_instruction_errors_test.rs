@@ -93,7 +93,7 @@ pub async fn per_visualizer_instruction_errors() {
     // The invalid source should remain selected and show its resolution error.
     harness
         .selection_panel()
-        .toggle_nth_hierarchical_list("scalars", 2);
+        .toggle_nth_hierarchical_list("scalars", 3);
     harness
         .selection_panel()
         .click_label("Scalars:scalars_$source");
@@ -103,7 +103,7 @@ pub async fn per_visualizer_instruction_errors() {
         .click_label("Scalars:scalars_$source");
     harness
         .selection_panel()
-        .toggle_nth_hierarchical_list("scalars", 2);
+        .toggle_nth_hierarchical_list("scalars", 3);
 
     // Now test errors only - remove the warning visualizer.
     {

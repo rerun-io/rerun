@@ -206,7 +206,7 @@ impl ModalWrapper {
         let tokens = ctx.tokens();
         let id = egui::Id::unique(&self.title);
 
-        let mut area = egui::Modal::default_area(id);
+        let mut area = egui::Modal::default_area(id).accessible_name(&self.title);
         if let Some(default_height) = self.default_height {
             area = area.default_height(default_height);
         }

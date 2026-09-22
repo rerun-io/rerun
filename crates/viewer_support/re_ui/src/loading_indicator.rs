@@ -49,7 +49,7 @@ pub fn inline_loading_indicator_ui(ui: &mut egui::Ui, reason: &str) -> egui::Res
     let r = calc_radius(Vec2::new(ui.available_size_before_wrap().x, line_height));
     let size = Vec2::new(r * WIDTH_IN_R, line_height);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
-    response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::ProgressIndicator, true, reason));
     paint_loading_indicator_inside(ui, Align2::LEFT_CENTER, rect, 1.0, None, reason);
     response
 }
@@ -83,7 +83,7 @@ pub fn paint_loading_indicator_inside(
     container_rect: Rect,
     opacity: f32,
     color: Option<Color32>,
-    #[cfg_attr(not(debug_assertions), expect(unused_variables))] reason: &str,
+    reason: &str,
 ) {
     if opacity <= 0.0 {
         return;
@@ -129,7 +129,7 @@ pub fn paint_loading_indicator_inside(
 
     // Tell tests and screen readers that something is loading here
     let response = ui.allocate_rect(rect_pts, egui::Sense::hover());
-    response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::ProgressIndicator, true, reason));
 
     #[cfg(debug_assertions)]
     {

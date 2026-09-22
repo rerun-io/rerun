@@ -447,7 +447,7 @@ fn word_range_before_cursor(
 
 #[cfg(test)]
 mod tests {
-    use egui::accesskit::Role;
+    use egui::Role;
     use egui::{KeyboardShortcut, Modifiers};
     use egui_kittest::{Harness, kittest::Queryable as _};
 
@@ -486,13 +486,14 @@ mod tests {
     }
 
     fn harness<'a>() -> Harness<'a, State> {
-        harness_with(|text| TextEdit::singleline(text))
+        harness_with(|text| TextEdit::singleline(text).hint_text("Prompt"))
     }
 
     /// A chat composer: multiline, Shift+Enter for newline, Enter to send.
     fn chat_harness<'a>() -> Harness<'a, State> {
         harness_with(|text| {
             TextEdit::multiline(text)
+                .hint_text("Prompt")
                 .return_key(KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter))
         })
     }
@@ -685,7 +686,11 @@ mod tests {
                             let output = CompletionPopup::new(id()).show(
                                 ui,
                                 &mut text,
-                                |text| TextEdit::multiline(text).desired_width(f32::INFINITY),
+                                |text| {
+                                    TextEdit::multiline(text)
+                                        .hint_text("Prompt")
+                                        .desired_width(f32::INFINITY)
+                                },
                                 |query| {
                                     if !query.word.starts_with('/') {
                                         return vec![];

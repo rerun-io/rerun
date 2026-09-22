@@ -90,9 +90,11 @@ impl<'a> ReTable<'a> {
         ui: &mut Ui,
         checked: &mut bool,
         intermediate: bool,
+        name: &str,
     ) -> egui::Response {
         Self::add_row_number_content(ui, |ui| {
             ui.checkbox_indeterminate(checked, (), intermediate)
+                .accessible_name(name)
         })
     }
 
@@ -193,7 +195,12 @@ impl egui_table::TableDelegate for ReTable<'_> {
                     let mut checked = !self.selection.selected_rows.is_empty();
                     let intermediate =
                         self.selection.selected_rows.len() as u64 != self.num_rows && checked;
-                    let response = Self::row_selection_checkbox(ui, &mut checked, intermediate);
+                    let response = Self::row_selection_checkbox(
+                        ui,
+                        &mut checked,
+                        intermediate,
+                        "Select all rows",
+                    );
                     if response.changed() {
                         if checked {
                             self.selection.selected_rows.extend(0..self.num_rows);
@@ -229,7 +236,8 @@ impl egui_table::TableDelegate for ReTable<'_> {
                     || self.previous_selection.hovered_row == Some(cell.row_nr);
                 if show_checkbox {
                     let mut checked = self.previous_selection.selected_rows.contains(&cell.row_nr);
-                    let response = Self::row_selection_checkbox(ui, &mut checked, false);
+                    let response =
+                        Self::row_selection_checkbox(ui, &mut checked, false, "Select row");
                     if response.changed() {
                         // If the checkbox is clicked, the row will also detect the click.
                         // Since we want the checkbox to have a different click behavior,

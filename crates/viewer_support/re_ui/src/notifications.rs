@@ -542,6 +542,8 @@ impl Toasts {
                 .order(egui::Order::Foreground)
                 .interactable(true)
                 .movable(false)
+                .role(egui::Role::Alert)
+                .accessible_name("Notification")
                 .show(egui_ctx, |ui| {
                     show_notification(ui, notification, DisplayMode::Toast);
                 })

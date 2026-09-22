@@ -65,7 +65,13 @@ fn history_button_ui(
 
     let button_size = egui::vec2(BUTTON_SIZE, BUTTON_SIZE);
     let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-    response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::Button));
+    response.widget_info(|| {
+        let name = match direction {
+            Direction::Back => "Previous selection",
+            Direction::Forward => "Next selection",
+        };
+        egui::WidgetInfo::labeled(egui::Role::Button, has_target, name)
+    });
 
     if ui.is_rect_visible(rect) {
         let tokens = ui.tokens();

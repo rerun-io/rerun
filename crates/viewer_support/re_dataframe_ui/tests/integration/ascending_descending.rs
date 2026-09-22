@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow::array::{Array as _, ListArray, StringBuilder};
 use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprints};

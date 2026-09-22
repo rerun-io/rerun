@@ -24,13 +24,17 @@ impl App {
         ui: &mut egui::Ui,
     ) {
         let icon_tint = ui.tokens().strong_fg_color;
-        let image = re_ui::icons::RERUN_WORDMARK
-            .as_image()
-            .max_height(12.0)
-            .tint(icon_tint)
-            .alt_text("Menu");
 
-        MenuButton::new((image, icons::DROPDOWN_ARROW.as_image().tint(icon_tint)))
+        let rerun_and_arrow = (
+            re_ui::icons::RERUN_WORDMARK
+                .as_image()
+                .max_height(12.0)
+                .tint(icon_tint)
+                .alt_text("Menu"),
+            icons::DROPDOWN_ARROW.as_image().tint(icon_tint),
+        );
+
+        MenuButton::new(rerun_and_arrow)
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
                 ui.set_max_height(ui.content_rect().height());

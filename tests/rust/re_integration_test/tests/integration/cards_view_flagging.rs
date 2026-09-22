@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, BooleanArray, Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 use re_integration_test::TestServer;

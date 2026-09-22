@@ -1,7 +1,7 @@
 use egui::layers::ShapeIdx;
 use egui::{
     Align, Frame, IntoAtoms, Layout, Margin, Rangef, Rect, Response, Sense, Shape, Ui, UiBuilder,
-    WidgetAtom, WidgetInfo, WidgetType,
+    WidgetAtom, WidgetInfo,
 };
 
 use crate::UiExt as _;
@@ -223,7 +223,7 @@ fn tab_ui<'a>(ui: &mut Ui, atoms: impl IntoAtoms<'a>, selected: bool) -> Respons
 
     response.widget_info(|| {
         WidgetInfo::selected(
-            WidgetType::SelectableLabel,
+            egui::Role::Button,
             ui.is_enabled(),
             selected,
             label.as_deref().unwrap_or_default(),

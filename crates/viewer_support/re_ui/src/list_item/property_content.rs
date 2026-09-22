@@ -272,7 +272,7 @@ impl ListItemContent for PropertyContent<'_> {
         // this happens here to avoid cloning the text
         context.response.widget_info(|| {
             egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
+                egui::Role::Button,
                 ui.is_enabled(),
                 context.list_item.selected,
                 galley.text(),
@@ -323,7 +323,10 @@ impl ListItemContent for PropertyContent<'_> {
             }
 
             child_ui.sanity_check();
-            value_fn(&mut child_ui, visuals_for_value);
+            // The row itself carries the property name (see `widget_info` above).
+            child_ui.label_inputs_by(context.response.id, |ui| {
+                value_fn(ui, visuals_for_value);
+            });
             child_ui.sanity_check();
 
             context.layout_info.register_property_content_max_width(

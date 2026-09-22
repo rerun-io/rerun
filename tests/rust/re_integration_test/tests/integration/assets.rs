@@ -7,6 +7,7 @@ use std::str::FromStr as _;
 use std::time::Duration;
 
 use arrow::array::RecordBatch;
+use egui::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
@@ -477,7 +478,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -535,7 +536,7 @@ async fn a_refused_registration_is_listed_as_failed() {
     const REFUSED_ASSET_URI: &str = "file://somehost/file/path.rrd";
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(REFUSED_ASSET_URI);
     harness.run_ok();
 
@@ -944,7 +945,7 @@ async fn registering_an_asset_reaches_segments_the_viewer_already_has() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 

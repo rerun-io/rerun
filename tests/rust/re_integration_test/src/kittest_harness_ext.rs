@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use egui::accesskit::Role;
+use egui::Role;
 use egui::{Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;

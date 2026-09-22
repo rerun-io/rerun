@@ -506,9 +506,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         );
 
         response.response.widget_info(|| {
-            let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);
-            info.label = Some(view_blueprint.display_name_or_default().as_ref().to_owned());
-            info
+            egui::WidgetInfo::labeled(
+                egui::Role::Pane,
+                true,
+                view_blueprint.display_name_or_default().as_ref(),
+            )
         });
 
         Default::default()
@@ -542,7 +544,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let active = tab_state.active;
         response.widget_info(|| {
             egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
+                egui::Role::Button,
                 true,
                 active,
                 label.clone().unwrap_or_default(),
@@ -854,23 +856,27 @@ impl TilesDelegate<'_, '_> {
         let report_count: usize = grouped_reports.values().map(|reports| reports.len()).sum();
 
         ui.scope(|ui| {
-            let report_image =
+            let (report_image, alt_text) =
                 if max_severity == Some(re_viewer_context::ViewerReportSeverity::Warning) {
-                    icons::WARNING
-                        .as_image()
-                        .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .alt_text("View warnings")
-                        .tint(ui.tokens().alert_warning.icon)
+                    (
+                        icons::WARNING
+                            .as_image()
+                            .fit_to_exact_size(ui.tokens().small_icon_size)
+                            .tint(ui.tokens().alert_warning.icon),
+                        "View warnings",
+                    )
                 } else {
-                    icons::ERROR
-                        .as_image()
-                        .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .alt_text("View errors")
-                        .tint(ui.tokens().alert_error.icon)
+                    (
+                        icons::ERROR
+                            .as_image()
+                            .fit_to_exact_size(ui.tokens().small_icon_size)
+                            .tint(ui.tokens().alert_error.icon),
+                        "View errors",
+                    )
                 };
 
             let response = ui
-                .add(egui::Button::image(report_image))
+                .add(ui.image_button_widget(report_image, alt_text))
                 .on_hover_text(format!(
                     "Show {}",
                     re_format::format_plural_s(report_count, "report")

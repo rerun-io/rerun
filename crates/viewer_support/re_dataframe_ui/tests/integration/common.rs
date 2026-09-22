@@ -5,7 +5,7 @@ use arrow::array::ArrayRef;
 use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use re_test_context::TestContext;

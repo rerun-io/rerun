@@ -1,4 +1,4 @@
-use egui::{Response, Ui, WidgetInfo, WidgetType};
+use egui::{Response, Ui, WidgetInfo};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
@@ -166,9 +166,7 @@ impl BlueprintTree {
                         }
                     })
                     .response
-                    .widget_info(|| {
-                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
-                    });
+                    .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_blueprint_tree"));
 
                     let empty_space_response =
                         ui.allocate_response(ui.available_size(), egui::Sense::click());

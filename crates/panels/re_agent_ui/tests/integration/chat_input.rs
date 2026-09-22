@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use egui::Role;
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent_ui::acp::schema::v1::{
@@ -63,12 +64,12 @@ fn slash_command_popup_keeps_focus_in_the_input() {
         );
     harness.run_steps(2);
 
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     input.focus();
     input.type_text("/");
     harness.run_steps(3);
 
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(input.accesskit_node().is_focused(), "input lost focus");
     assert_eq!(input.accesskit_node().value(), Some("/".into()));
     harness.get_by_label_contains("/help");
@@ -87,7 +88,7 @@ fn escape_keeps_focus_in_the_input() {
         );
     harness.run_steps(2);
 
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     input.focus();
     input.type_text("hi");
     harness.run_steps(2);
@@ -95,7 +96,7 @@ fn escape_keeps_focus_in_the_input() {
     harness.key_press(egui::Key::Escape);
     harness.run_steps(3);
 
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(input.accesskit_node().is_focused(), "input lost focus");
     assert_eq!(input.accesskit_node().value(), Some("hi".into()));
 }
@@ -115,12 +116,12 @@ fn requested_input_focus_is_applied() {
 
     harness.get_by_value("Manual").focus();
     harness.run_steps(2);
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(!input.accesskit_node().is_focused());
 
     harness.state_mut().request_input_focus();
     harness.run_steps(2);
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(input.accesskit_node().is_focused());
 }
 
@@ -175,7 +176,7 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
         );
     harness.run_steps(2);
 
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     input.focus();
     input.type_text("also fix the tests");
     harness.key_press(egui::Key::Enter);
@@ -184,7 +185,7 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     let session = harness.state().session().expect("one conversation");
     assert_eq!(session.queued_prompts().len(), 1);
     harness.get_by_label("also fix the tests");
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert_eq!(input.accesskit_node().value(), Some(String::new()));
 
     harness.key_press(egui::Key::Escape);
@@ -192,7 +193,7 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
 
     let session = harness.state().session().expect("one conversation");
     assert!(session.queued_prompts().is_empty());
-    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    let input = harness.get_by_role(Role::MultilineTextInput);
     assert_eq!(
         input.accesskit_node().value(),
         Some("also fix the tests".into())

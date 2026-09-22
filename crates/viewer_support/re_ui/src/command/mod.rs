@@ -154,8 +154,6 @@ fn consume_best_shortcut<Cmd: Copy>(
     egui_ctx: &egui::Context,
     mut commands: Vec<(KeyboardShortcut, Cmd)>,
 ) -> Option<Cmd> {
-    use crate::egui_ext::KeyboardShortcutExt as _;
-
     let text_edit_has_focus = egui_ctx.text_edit_focused();
 
     // If the user pressed `Cmd-Shift-S` then egui will match that

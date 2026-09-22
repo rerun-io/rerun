@@ -1,3 +1,4 @@
+use egui::Role;
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
@@ -73,9 +74,9 @@ pub async fn test_view_entity_picker_scrolls_long_entity_lists() {
         "scrolling the entity picker should move its entity list"
     );
     let last_entity_rect = harness.root_section().get_label("entity_099").rect();
+    // The dialog itself carries the same name, so ask for the title label.
     let modal_title_rect = harness
-        .root_section()
-        .get_label("Add/remove Entities")
+        .get_by_role_and_label(Role::Label, "Add/remove Entities")
         .rect();
     let window_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
     assert!(

@@ -34,6 +34,8 @@ pub fn top_panel(
     }
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
+        ui.name_panel("Top bar");
+
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
         if !native_window_bar {

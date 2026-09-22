@@ -655,11 +655,11 @@ fn viewport_breadcrumbs(
 
     let ItemTitle {
         icon,
-        label: _, // ignored: we just show the icon for breadcrumbs
+        label, // only the icon is shown, but the label still names the button for accessibility
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 
-    let mut response = ui.add(ReButton::icon(*icon).size(CRUMB_SIZE));
+    let mut response = ui.add(ReButton::icon(*icon, label.text()).size(CRUMB_SIZE));
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -816,7 +816,7 @@ fn entity_path_breadcrumbs(
             // just to make it clear that this is a different kind of hierarchy.
             &icons::RECORDING // streams hierarchy
         };
-        ReButton::icon(*icon).size(CRUMB_SIZE)
+        ReButton::icon(*icon, "/").size(CRUMB_SIZE)
     };
 
     // No tooltip on breadcrumb segments — only the last crumb gets the copy tooltip.

@@ -19,10 +19,9 @@
 
 use std::collections::BTreeSet;
 
+use crate::fuzzy::{FuzzyMatch, FuzzyQuery};
 use egui::text::LayoutJob;
 use egui::{Key, NumExt as _};
-
-use crate::fuzzy::{FuzzyMatch, FuzzyQuery};
 
 /// The visual content of a single command-palette row, as produced by a
 /// [`CommandPaletteProvider`].
@@ -246,11 +245,13 @@ impl CommandPalette {
             )
         });
 
-        let text_response = ui.add(
-            egui::TextEdit::singleline(&mut self.raw_query)
-                .desired_width(f32::INFINITY)
-                .lock_focus(true),
-        );
+        let text_response = ui
+            .add(
+                egui::TextEdit::singleline(&mut self.raw_query)
+                    .desired_width(f32::INFINITY)
+                    .lock_focus(true),
+            )
+            .accessible_name("Search commands");
         text_response.request_focus();
         let scroll_to_selected_alternative = if text_response.changed() {
             self.selected_alternative = 0;

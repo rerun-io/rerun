@@ -1,11 +1,10 @@
 use std::ops::Range;
 
+use crate::{UiExt as _, icons, list_item};
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use re_log::debug_assert;
 use smallvec::SmallVec;
-
-use crate::{UiExt as _, icons, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]
@@ -156,7 +155,8 @@ impl FilterState {
                             let response =
                                 egui::TextEdit::singleline(&mut inner_state.filter_query)
                                     .lock_focus(true)
-                                    .ui(ui);
+                                    .ui(ui)
+                                    .accessible_name("Filter");
 
                             if self.request_focus {
                                 self.request_focus = false;
@@ -246,6 +246,7 @@ impl FilterState {
                                 .hint_text(hint_text)
                                 .desired_width(ui.available_width()),
                         )
+                        .accessible_name("Filter")
                     });
                 });
             });

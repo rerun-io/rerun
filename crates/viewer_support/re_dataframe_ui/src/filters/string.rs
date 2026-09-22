@@ -107,10 +107,14 @@ impl Filter for StringFilter {
                             self.operator = *possible_op;
                         }
                     }
-                });
+                })
+                .response
+                .accessible_name("Operator");
         });
 
-        let response = ui.text_edit_singleline(&mut self.query);
+        let response = ui
+            .text_edit_singleline(&mut self.query)
+            .accessible_name("Value");
 
         if popup_just_opened {
             response.request_focus();

@@ -225,7 +225,7 @@ fn edit_single_axis(
 
     response.widget_info(|| {
         egui::WidgetInfo::labeled(
-            egui::WidgetType::ComboBox,
+            egui::Role::ComboBox,
             ui.is_enabled(),
             selected_value.to_string(),
         )

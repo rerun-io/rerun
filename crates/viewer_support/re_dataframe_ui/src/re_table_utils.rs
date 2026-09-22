@@ -545,12 +545,10 @@ mod tests {
     }
 
     fn filter(harness: &mut Harness<'_, MenuState>) {
-        harness
-            .get_by_role(egui::accesskit::Role::TextInput)
-            .click();
+        harness.get_by_role(egui::Role::TextInput).click();
         harness.run();
         harness
-            .get_by_role(egui::accesskit::Role::TextInput)
+            .get_by_role(egui::Role::TextInput)
             .type_text(" CAMERA ");
         harness.run();
         // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.

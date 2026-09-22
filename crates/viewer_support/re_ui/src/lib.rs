@@ -304,10 +304,12 @@ fn set_svg_glyphs(egui_ctx: &egui::Context) {
 }
 
 fn set_themes(egui_ctx: &egui::Context) {
+    // Before the fonts: when no font is loaded yet, egui applies the new fonts right away,
+    // and the fonts pick up the rasterizers registered so far.
+    set_svg_glyphs(egui_ctx);
+
     // It's the same fonts in dark/light mode:
     design_tokens_of(egui::Theme::Dark).set_fonts(egui_ctx);
-
-    set_svg_glyphs(egui_ctx);
 
     for theme in [egui::Theme::Dark, egui::Theme::Light] {
         let mut style = std::sync::Arc::unwrap_or_clone(egui_ctx.style_of(theme));

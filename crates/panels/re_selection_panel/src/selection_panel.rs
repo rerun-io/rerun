@@ -1,4 +1,5 @@
-use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
+use egui::Role;
+use egui::{NumExt as _, TextBuffer, WidgetInfo};
 use egui_tiles::ContainerKind;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
@@ -81,6 +82,8 @@ impl SelectionPanel {
         }
 
         panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
+            ui.name_panel("Selection panel");
+
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
@@ -153,7 +156,7 @@ impl SelectionPanel {
                     );
                 });
                 res.response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+                    egui::WidgetInfo::labeled(Role::Pane, true, "_selection_panel")
                 });
             }
         } else {
@@ -175,9 +178,9 @@ impl SelectionPanel {
                     item_title_list_item(ctx, viewport, ui, item);
                 }
             });
-            response.response.widget_info(|| {
-                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
-            });
+            response
+                .response
+                .widget_info(|| WidgetInfo::labeled(Role::Pane, true, "_selection_panel"));
         }
     }
 
@@ -989,11 +992,13 @@ fn entity_path_filter_ui(
         .clone()
     });
 
-    let response = ui.add(
-        egui::TextEdit::multiline(&mut filter_string)
-            .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
-            .layouter(&mut text_layouter),
-    );
+    let response = ui
+        .add(
+            egui::TextEdit::multiline(&mut filter_string)
+                .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
+                .layouter(&mut text_layouter),
+        )
+        .accessible_name("Entity path filter");
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
@@ -1373,7 +1378,7 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
             }
         }
     })
-    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
+    .widget_info(|| WidgetInfo::labeled(Role::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui

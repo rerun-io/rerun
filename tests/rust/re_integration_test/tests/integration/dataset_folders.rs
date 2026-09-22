@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
 use re_integration_test::{HarnessExt as _, TestServer, ViewerHarnessExt as _};

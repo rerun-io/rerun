@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrow::array::{Array as _, BooleanArray, Int32Array, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::prelude::SessionContext;
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_async::AsyncRuntimeHandle;
 use re_chunk_store::external::re_chunk::Chunk;

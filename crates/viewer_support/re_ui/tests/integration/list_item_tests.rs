@@ -80,7 +80,8 @@ pub fn test_list_items_should_match_snapshot() {
                     list_item::LabelContent::new("Fake radio button").with_icon_fn(
                         |ui, rect, _visuals| {
                             let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-                            ui.re_radio_value(&mut boolean, true, "");
+                            ui.re_radio_value(&mut boolean, true, "")
+                                .accessible_name("Fake radio button");
                         },
                     ),
                 );
@@ -90,7 +91,8 @@ pub fn test_list_items_should_match_snapshot() {
                     list_item::LabelContent::new("Fake radio button").with_icon_fn(
                         |ui, rect, _visuals| {
                             let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-                            ui.re_radio_value(&mut boolean, false, "");
+                            ui.re_radio_value(&mut boolean, false, "")
+                                .accessible_name("Fake radio button");
                         },
                     ),
                 );

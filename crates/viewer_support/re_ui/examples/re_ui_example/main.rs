@@ -213,7 +213,7 @@ impl eframe::App for ExampleApp {
 
             ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
-                ui.toggle_switch(8.0, &mut self.dummy_bool);
+                ui.toggle_switch(8.0, &mut self.dummy_bool, "Dummy toggle");
                 ui.help_button(|ui| {
                     ui.label("This some help text.");
                 });

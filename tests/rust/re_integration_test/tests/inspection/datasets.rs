@@ -28,11 +28,11 @@ pub async fn dataset_ui_test() {
     snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address:")
+        .get_by_role_and_label(egui::Role::TextInput, "Address:")
         .click();
     harness.run();
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address:")
+        .get_by_role_and_label(egui::Role::TextInput, "Address:")
         .type_text(&format!("rerun+http://localhost:{}", server.port()));
     harness.run();
 

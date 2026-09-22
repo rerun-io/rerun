@@ -58,13 +58,16 @@ impl LinkButton {
 
         atoms.map_images(|image| image.fit_to_exact_size(icon_size));
 
-        let (mut response, copy_response) =
-            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY).ghost(), || {
+        let (mut response, copy_response) = ReButton::with_hover_icon_button(
+            ui,
+            ReButton::icon(icons::COPY, "Copy link").ghost(),
+            || {
                 ReButton::from_button(egui::Button::new(atoms.clone()).wrap_mode(wrap_mode))
                     .ghost()
                     .tiny()
                     .image_tint_follows_text_color(tint_icons)
-            });
+            },
+        );
         let copy_response = copy_response.map(|r| r.on_hover_text("Copy link"));
 
         response.response = response

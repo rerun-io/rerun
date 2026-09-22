@@ -2,7 +2,7 @@ use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
     Align2, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
+    TextEdit, Ui, Vec2, WidgetInfo,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
@@ -71,6 +71,16 @@ pub enum TimePanelSource {
     #[default]
     Recording,
     Blueprint,
+}
+
+impl TimePanelSource {
+    /// User-facing name of the panel, also used to name it in the accessibility tree.
+    fn panel_name(self) -> &'static str {
+        match self {
+            Self::Recording => "Time panel",
+            Self::Blueprint => "Blueprint time panel",
+        }
+    }
 }
 
 impl From<TimePanelSource> for re_log_types::StoreKind {
@@ -306,6 +316,8 @@ impl TimePanel {
     ) {
         let tokens = ui.tokens();
 
+        ui.name_panel(self.source.panel_name());
+
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 0.5;
             // Add back the margin we removed from the panel:
@@ -357,6 +369,8 @@ impl TimePanel {
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
         re_tracing::profile_function!();
+
+        ui.name_panel(self.source.panel_name());
 
         let time_ctrl = store_ctx.time_ctrl;
         let entity_db = store_ctx.db;
@@ -573,7 +587,7 @@ impl TimePanel {
         let timeline_rect = {
             let top = ui.min_rect().bottom();
             ui.response()
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Panel, true, "_streams_tree"));
+                .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_streams_tree"));
 
             let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
@@ -1616,6 +1630,7 @@ impl TimePanel {
                     Vec2::new(text_edit_width, Size::Tiny.height()),
                     TextEdit::singleline(&mut time_str).align(Align2::LEFT_CENTER),
                 )
+                .accessible_name("Current time")
             });
             if response.changed() {
                 self.time_edit_string = Some(time_str.clone());

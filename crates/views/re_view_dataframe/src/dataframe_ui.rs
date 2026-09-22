@@ -397,6 +397,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let hide_clicked = cell_with_hover_button_ui(
                         ui,
                         &re_ui::icons::VISIBLE,
+                        "Hide column",
                         CellStyle::Header,
                         header_content,
                     );
@@ -640,6 +641,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::EXPAND,
+                "Expand instances",
                 CellStyle::InstanceData,
                 |ui| {
                     ui.label(re_format::format_plural_s(instance_count, "instance"));
@@ -659,6 +661,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::ARROW_UP,
+                "Collapse instances",
                 CellStyle::InstanceData,
                 data_content,
             );
@@ -674,6 +677,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::EXPAND,
+                "Show more instances",
                 CellStyle::InstanceData,
                 |ui| {
                     ui.label(format!(
@@ -746,6 +750,7 @@ enum CellStyle {
 fn cell_with_hover_button_ui(
     ui: &mut egui::Ui,
     icon: &'static re_ui::Icon,
+    alt_text: &str,
     style: CellStyle,
     cell_content: impl FnOnce(&mut egui::Ui),
 ) -> bool {
@@ -780,11 +785,14 @@ fn cell_with_hover_button_ui(
         let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
         button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-        button_ui.add(egui::Button::image(
-            icon.as_image()
-                .fit_to_exact_size(tokens.small_icon_size)
-                .tint(button_tint),
-        ));
+        button_ui.add(
+            button_ui.image_button_widget(
+                icon.as_image()
+                    .fit_to_exact_size(tokens.small_icon_size)
+                    .tint(button_tint),
+                alt_text,
+            ),
+        );
 
         let click_happened = ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
 

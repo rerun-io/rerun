@@ -15,7 +15,7 @@ use re_log_types::{ApplicationId, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
 use re_types_core::reflection::ComponentReflectionMap;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
@@ -1351,6 +1351,8 @@ impl eframe::App for App {
 
     /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        ui.name_panel("Viewer");
+
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         if let Some(tracy) = re_perf_telemetry::external::tracing_tracy::client::Client::running() {
             tracy.frame_mark();
