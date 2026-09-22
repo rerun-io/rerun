@@ -180,6 +180,15 @@ impl DatasetUri {
             segment_id,
         ))
     }
+
+    /// Parse a URI that may be written relative to `base`, see [`RedapUri::parse_with_base`].
+    pub fn parse_with_base(base: &Origin, input: &str) -> Result<Self, Error> {
+        if let RedapUri::Dataset(uri) = RedapUri::parse_with_base(base, input)? {
+            Ok(uri)
+        } else {
+            Err(Error::UnexpectedUri(input.to_owned()))
+        }
+    }
 }
 
 impl std::str::FromStr for DatasetUri {
@@ -264,6 +273,23 @@ fn assets_of_a_dataset_do_not_share_an_application_id() {
     assert_ne!(robot.application_id(), gripper.application_id());
     assert_ne!(robot.application_id(), segment.application_id());
     assert_ne!(robot, segment);
+}
+
+/// A dataset path picks up the base origin, and a path naming another endpoint does not resolve.
+#[test]
+fn parse_with_base_resolves_a_dataset_path() {
+    let base: Origin = "rerun://127.0.0.1:1234".parse().expect("valid origin");
+
+    assert_eq!(
+        DatasetUri::parse_with_base(
+            &base,
+            "/dataset/1830B33B45B963E7774455beb91701ae?segment_id=segment"
+        )
+        .expect("a dataset path resolves"),
+        test_uri(DatasetResource::Segments, "segment")
+    );
+
+    assert!(DatasetUri::parse_with_base(&base, "/entry/00000000000000000000000000000001").is_err());
 }
 
 /// A uri that names no segment points at the dataset itself, and so at no store.

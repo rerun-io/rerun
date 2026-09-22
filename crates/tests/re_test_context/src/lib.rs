@@ -98,6 +98,12 @@ pub struct TestContext {
 
     pub connection_registry: re_redap_client::ConnectionRegistryHandle,
 
+    /// The route reported by [`AppContext::route`], for tests that need one other than the
+    /// recording this context was created with.
+    ///
+    /// The active store context is read from the recording either way.
+    pub route: Option<Route>,
+
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
 
@@ -314,6 +320,7 @@ impl TestContext {
             app_options: AppOptions::test(),
             recording_store_id,
             application_id,
+            route: None,
 
             view_class_registry: Default::default(),
             selection_state: Default::default(),
@@ -708,9 +715,7 @@ impl TestContext {
                 view_class_registry: &self.view_class_registry,
                 component_fallback_registry: &self.component_fallback_registry,
 
-                route: &Route::LocalRecording {
-                    recording_id: self.recording_store_id.clone(),
-                },
+                route: self.route.as_ref().unwrap_or(&route),
 
                 selection_state: &selection_state,
                 focused_item: &focused_item,

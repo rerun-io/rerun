@@ -26,11 +26,18 @@ pub fn redap_uri_button(
         return Err("component batches are not supported".into());
     }
 
-    let url_str = array
+    let value = array
         .try_downcast_array_ref::<arrow::array::StringArray>()?
         .value(0);
 
-    let uri = RedapUri::from_str(url_str)?;
+    // A path resolves against the route's server. The button opens, decorates and copies the
+    // resolved uri.
+    let uri = match ctx.route.origin() {
+        Some(base) => RedapUri::parse_with_base(base, value)?,
+        None => RedapUri::from_str(value)?,
+    };
+    let url_string = uri.to_string();
+    let url_str = url_string.as_str();
 
     let loaded_recording_info = ctx.store_bundle().recordings().find_map(|db| {
         if db
