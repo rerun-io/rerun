@@ -551,15 +551,14 @@ fn debug_menu_options_ui(
 
     if ui.button("Log an error").clicked() {
         // The same shape a failed server call arrives in: a summary, and the rest as details.
-        let err = re_error::StructuredError::parse(
-            "/GetTableSchema failed: invalid lance input (Internal)",
-        )
-        .with_details([
-            "Server: rerun://example.com:443",
-            "trace-id: ad66019921fce81f3f56462f9a8dbd63",
-            "dataset url: file:///path/to/file",
-            r#"metadata: {"x-request-trace-id": "ad66019921fce81f3f56462f9a8dbd63"}"#,
-        ]);
+        let err =
+            re_error::StructuredError::parse("invalid lance input (Internal)").with_details([
+                "Server: rerun://example.com:443",
+                "Endpoint: /GetTableSchema",
+                "trace-id: ad66019921fce81f3f56462f9a8dbd63",
+                "dataset url: file:///path/to/file",
+                r#"metadata: {"x-request-trace-id": "ad66019921fce81f3f56462f9a8dbd63"}"#,
+            ]);
         re_log::error!("{err}");
     }
 

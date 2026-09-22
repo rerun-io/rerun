@@ -9444,6 +9444,7 @@ dependencies = [
  "re_backoff",
  "re_byte_size",
  "re_dataframe",
+ "re_error",
  "re_format",
  "re_int",
  "re_log",

@@ -160,7 +160,7 @@ impl TableEntryTableProvider {
                             }),
                         })
                         .await
-                        .map_err(|err| ApiError::tonic(&origin, err, "/FindEntries failed"))
+                        .map_err(|err| ApiError::tonic(&origin, err, "/FindEntries"))
                 })
                 .await?;
                 let trace_id = re_redap_client::extract_trace_id(response.metadata());
@@ -220,7 +220,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                 .inner()
                 .get_table_schema(request)
                 .await
-                .map_err(|err| ApiError::tonic(&origin, err, "/GetTableSchema failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/GetTableSchema"))
         })
         .await?;
         let trace_id = re_redap_client::extract_trace_id(response.metadata());
@@ -267,7 +267,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                 .inner()
                 .scan_table(request)
                 .await
-                .map_err(|err| ApiError::tonic(&origin, err, "/ScanTable failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanTable"))
         })
         .await?;
 

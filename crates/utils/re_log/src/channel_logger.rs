@@ -12,6 +12,17 @@ pub struct ChannelLayer {
     channels: parking_lot::RwLock<Vec<Channel>>,
 }
 
+/// Field that marks a log event as log-only: `re_log::warn!(gui_notification = false, …)`.
+///
+/// The event still reaches every log sink, but the viewer must not turn it into a notification.
+/// It is for an event that exists for post-hoc investigation and whose user-facing report is made
+/// somewhere else, e.g. a transport error that is also returned to the caller. Without it, one
+/// failure reaches the user twice: once from where it was noticed, once from where it was handled.
+///
+/// The name is spelled out at the call site, since a `tracing` field name is an identifier and
+/// not an expression. Keep the two in sync.
+pub const GUI_NOTIFICATION_FIELD: &str = "gui_notification";
+
 #[derive(Clone, Debug)]
 pub struct LogMsg {
     /// The verbosity level.

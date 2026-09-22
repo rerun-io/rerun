@@ -149,7 +149,7 @@ impl ConnectionHandle {
             .inner()
             .register_with_dataset(req.map(Into::into))
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterWithDataset failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterWithDataset"))?;
         let trace_id = extract_trace_id(response.metadata());
         let descriptors =
             parse_task_descriptors(&self.origin, trace_id, response.into_inner().data)?;

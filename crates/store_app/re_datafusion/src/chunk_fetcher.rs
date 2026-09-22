@@ -461,10 +461,8 @@ impl From<reqwest::Error> for DirectFetchError {
             source = cause.source();
         }
 
-        if let Some(url) = redacted_url
-            && let Err(err) = write!(msg, "\nURL: {url}")
-        {
-            re_log::debug!("Failed to append URL to message: {err}");
+        if let Some(url) = redacted_url {
+            msg = re_error::format_with_details(msg, format!("URL: {url}"));
         }
 
         Self {

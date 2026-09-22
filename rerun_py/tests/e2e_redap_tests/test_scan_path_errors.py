@@ -38,7 +38,7 @@ DUMMY_TRACE_ID = "abba000000000000000000000000abba"
     [
         # Catalog-client path inside ds.reader() — shadows the scan-path
         # GetDatasetSchema call.
-        ("GetDatasetSchema", "/GetDatasetSchema failed"),
+        ("GetDatasetSchema", "/GetDatasetSchema"),
         # Scan-path call in DataframeQueryTableProvider — newly typed by #1666.
         ("QueryDataset", "query_dataset"),
         # IO-loop call in chunk_fetcher — typed on main via #1540.

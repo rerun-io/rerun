@@ -26,7 +26,7 @@ mod result_extensions;
 mod setup;
 
 #[cfg(feature = "setup")]
-pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
+pub use channel_logger::{GUI_NOTIFICATION_FIELD, LogMsg, Receiver, Sender, add_log_msg_receiver};
 #[cfg(feature = "setup")]
 pub use event_visitor::FieldValue;
 pub use log_once::LogOnceSet;

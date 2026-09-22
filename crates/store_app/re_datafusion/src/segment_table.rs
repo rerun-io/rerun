@@ -106,7 +106,7 @@ impl GrpcStreamToTable for SegmentTableProvider {
                 .inner()
                 .scan_segment_table(request)
                 .await
-                .map_err(|err| ApiError::tonic(&origin, err, "/ScanSegmentTable failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanSegmentTable"))
         })
         .await?;
 

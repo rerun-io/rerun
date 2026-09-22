@@ -788,7 +788,10 @@ pub async fn stream_blueprint_and_segment_from_server(
     else {
         return Err(ApiError::invalid_arguments(
             client.origin(),
-            format!("Cannot stream a dataset that names no segment\nUri: {uri}"),
+            re_error::format_with_details(
+                "Cannot stream a dataset that names no segment",
+                format!("Uri: {uri}"),
+            ),
         ));
     };
 
@@ -806,7 +809,10 @@ pub async fn stream_blueprint_and_segment_from_server(
             let Some(asset_dataset) = dataset_entry.dataset_details.asset_dataset else {
                 return Err(ApiError::invalid_arguments(
                     client.origin(),
-                    format!("No assets are registered for this dataset\nUri: {uri}"),
+                    re_error::format_with_details(
+                        "No assets are registered for this dataset",
+                        format!("Uri: {uri}"),
+                    ),
                 ));
             };
 
@@ -972,7 +978,11 @@ async fn stream_segment_from_server(
 
                 Ok(ManifestOutcome::NoManifest { .. }) => {
                     re_log::warn_once!(
-                        "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
+                        "{}",
+                        re_error::format_with_details(
+                            "The server has no manifest for this asset, skipping it",
+                            format!("Asset segment id: {asset_segment_id}"),
+                        )
                     );
                 }
 

@@ -89,8 +89,7 @@ fn test_notification_with_details_in_field() {
         "x-request-trace-id",
         tonic::metadata::MetadataValue::from_static("ad66019921fce81f3f56462f9a8dbd63"),
     );
-    let err =
-        re_redap_client::ApiError::tonic(&re_uri::Origin::test(), status, "/GetTableSchema failed");
+    let err = re_redap_client::ApiError::tonic(&re_uri::Origin::test(), status, "/GetTableSchema");
 
     // `target: "re_ui"` so it passes the notification relevance filter (rerun-crate + WARN).
     re_log::error!(target: "re_ui", "An error occurred: {err}");
