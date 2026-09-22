@@ -8220,6 +8220,9 @@ dependencies = [
  "itoa",
  "parking_lot",
  "prometheus-client-derive-encode",
+ "prost",
+ "prost-build",
+ "prost-types",
 ]
 
 [[package]]
@@ -10092,9 +10095,11 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
+ "prost",
  "rand 0.9.5",
  "re_auth",
  "re_grpc_headers",
+ "re_log",
  "re_test_mocks",
  "serde",
  "serde_json",
