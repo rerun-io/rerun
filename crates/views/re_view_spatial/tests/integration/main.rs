@@ -21,7 +21,7 @@ mod pinhole_draw_order;
 mod point_shading;
 mod points2d_ui_radius;
 mod project_2d_and_3d;
-mod segmentation_image_transparency;
+mod segmentation_image;
 mod select_box_instances;
 mod spatial_information_2d;
 mod spawn_heuristics;

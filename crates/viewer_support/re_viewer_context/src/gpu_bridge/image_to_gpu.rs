@@ -521,9 +521,18 @@ fn segmentation_image_to_gpu(
     })
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
+    // `max` is the maximum class id that is actually in use.
+    // However, since we round up the colormap range full rows of `colormap_width`, the actual range
+    // the input data is allowed to have is `[0, colormap_width * colormap_height - 1]`.
+    //
+    // It's important we set this correctly, since the internal pipeline of the shader first normalizes
+    // all values to that range and then samples the colormap with normalized coordinates.
+    // (Naturally, for segmentation images that's a bit of a back and forth, but it makes the colormap feature a lot more flexible.)
+    let range = [0.0, (colormap_width * colormap_height - 1) as f32];
+
     Ok(ColormappedTexture {
         texture: main_texture_handle,
-        range: [0.0, (colormap_width * colormap_height) as f32],
+        range,
         decode_srgb: false, // Setting this to true would affect the class ids, not the color they resolve to.
         texture_alpha: TextureAlpha::AlreadyPremultiplied,
         gamma: 1.0,

@@ -4,7 +4,7 @@ use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_sdk_types::encodings::Rgba32;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 /// Regression test for transparent annotation classes in segmentation images.
@@ -90,33 +90,19 @@ pub fn test_segmentation_image_transparency() {
     });
 
     // The transparent class 0 regions should show the blue background through.
-    run_view_ui_and_save_snapshot(
-        &test_context,
-        view_id,
-        "segmentation_image_transparency",
-        egui::vec2(150.0, 100.0) * 2.0,
-    );
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_3d(egui::vec2(150.0, 100.0) * 2.0)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
     test_context.set_time(1);
     harness.run();
-    harness.snapshot(name);
+    harness.snapshot("segmentation_image_transparency");
 
     test_context.set_time(2);
     harness.run();
-    harness.snapshot(format!("{name}_updated_annotation_context"));
+    harness.snapshot("segmentation_image_transparency_updated_annotation_context");
 }
 
 /// A segmentation image without any associated annotation context will still use `class_id` generated colors.
@@ -146,4 +132,55 @@ fn test_segmentation_image_without_annotations() {
         });
     harness.run();
     harness.snapshot("segmentation_image_without_annotations");
+}
+
+// Regression test for https://github.com/rerun-io/rerun/issues/12939
+#[test]
+fn test_segmentation_image_class_ids_beyond_128() {
+    use re_sdk_types::archetypes::{AnnotationContext, SegmentationImage};
+
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    // IDs around half the padded colormap range distinguish division by N from division by N - 1.
+    let classes = [
+        (0u16, "black", [0, 0, 0]),
+        (1, "red", [255, 0, 0]),
+        (2, "yellow", [255, 255, 0]),
+        (64, "light_blue", [0, 128, 255]),
+        (126, "light_green", [128, 255, 0]),
+        (127, "magenta", [255, 0, 255]),
+        (128, "blue", [0, 0, 255]),
+        (129, "gray", [128, 128, 128]),
+        (130, "orange", [255, 128, 0]),
+        (131, "purple", [128, 0, 128]),
+        (132, "green", [0, 255, 0]),
+    ];
+    test_context.log_entity("segmentation_mask", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &AnnotationContext::new(classes.iter().map(|&(id, name, [r, g, b])| {
+                (id, name, Rgba32::from_unmultiplied_rgba(r, g, b, 255))
+            })),
+        )
+    });
+
+    let mask = ndarray::Array2::from_shape_fn((1, classes.len()), |(_, x)| classes[x].0 as u8);
+    test_context.log_entity("segmentation_mask", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &SegmentationImage::try_from(mask).unwrap().with_opacity(1.0),
+        )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView2D::identifier(),
+        ))
+    });
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(88.0, 24.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    harness.run();
+    harness.snapshot("segmentation_image_class_ids_beyond_128");
 }
