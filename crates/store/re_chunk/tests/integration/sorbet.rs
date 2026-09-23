@@ -34,7 +34,7 @@ fn sorbet_version_presence() {
     );
 }
 
-/// A timestamp recorded after parsing must be reflected in every schema copy a `ChunkBatch` holds.
+/// A timestamp recorded after parsing must land in both the Arrow metadata and the parsed schema.
 #[test]
 fn track_latency_matches_reparse() {
     let mut array_builder = ListBuilder::new(Int32Builder::new());

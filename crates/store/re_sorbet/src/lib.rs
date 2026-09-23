@@ -4,8 +4,8 @@
 //!
 //! An arrow record batch that follows a specific schema is called a [`SorbetBatch`].
 //!
-//! There is also [`ChunkBatch`], which is a has even more constrained requirements.
-//! Every [`ChunkBatch`] is a [`SorbetBatch`], but the opposite does not hold.
+//! There is also [`ChunkBatch`], which has even more constrained requirements.
+//! Every [`ChunkBatch`] can be converted into a [`SorbetBatch`], but the opposite does not hold.
 //!
 //! Each batch type has a matching schema type:
 //! * [`SorbetBatch`] has a [`SorbetSchema`] with [`SorbetColumnDescriptors`]

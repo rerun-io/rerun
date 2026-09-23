@@ -114,6 +114,14 @@ fn test_timestamp_encoding() {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TimestampMetadata(BTreeMap<TimestampLocation, web_time::SystemTime>);
 
+impl re_byte_size::SizeBytes for TimestampMetadata {
+    fn heap_size_bytes(&self) -> u64 {
+        (self.0.len()
+            * (std::mem::size_of::<TimestampLocation>()
+                + std::mem::size_of::<web_time::SystemTime>())) as u64
+    }
+}
+
 impl Deref for TimestampMetadata {
     type Target = BTreeMap<TimestampLocation, web_time::SystemTime>;
 
@@ -146,6 +154,23 @@ impl TimestampMetadata {
         }
 
         Self(map)
+    }
+
+    /// Records the current time as the moment the owning batch passed `location`, in both
+    /// `self` and `batch_metadata`.
+    ///
+    /// Does nothing for locations that are not carried in the batch metadata.
+    pub fn track_latency(
+        &mut self,
+        batch_metadata: &mut ArrowBatchMetadata,
+        location: TimestampLocation,
+    ) {
+        let Some(key) = location.metadata_key() else {
+            return;
+        };
+        let now = web_time::SystemTime::now();
+        batch_metadata.insert(key.to_owned(), encode_timestamp(now));
+        self.0.insert(location, now);
     }
 
     pub fn to_metadata(&self) -> impl Iterator<Item = (String, String)> {

@@ -1,52 +1,27 @@
-use std::ops::{Deref, DerefMut};
-
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use re_log_types::EntityPath;
-use re_types_core::ChunkId;
+use re_types_core::{ChunkId, SegmentId};
 
 use crate::chunk_columns::ChunkColumnDescriptors;
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, BatchType, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor, SorbetError, SorbetSchema, TimestampMetadata,
 };
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.
+///
+/// Compared to a [`SorbetSchema`], the chunk id and entity path are mandatory, and the columns
+/// are always ordered as row id, then indices, then components.
 ///
 /// This does NOT preserve custom arrow metadata.
 /// It only contains the metadata used by Rerun.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkSchema {
-    // TODO(RR-5743): this duplicates the `SorbetSchema` of the owning `SorbetBatch`.
-    sorbet: SorbetSchema,
-
-    // Some things here are also in [`SorbetSchema]`, but are duplicated
-    // here because they have additional constraints (e.g. ordering, non-optional):
-    chunk_columns: ChunkColumnDescriptors,
     chunk_id: ChunkId,
     entity_path: EntityPath,
-}
-
-impl From<ChunkSchema> for SorbetSchema {
-    #[inline]
-    fn from(value: ChunkSchema) -> Self {
-        value.sorbet
-    }
-}
-
-impl Deref for ChunkSchema {
-    type Target = SorbetSchema;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.sorbet
-    }
-}
-
-impl DerefMut for ChunkSchema {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.sorbet
-    }
+    segment_id: Option<SegmentId>,
+    columns: ChunkColumnDescriptors,
+    latency_metadata: TimestampMetadata,
 }
 
 /// ## Builders
@@ -57,30 +32,18 @@ impl ChunkSchema {
         row_id: RowIdColumnDescriptor,
         indices: Vec<IndexColumnDescriptor>,
         components: Vec<ComponentColumnDescriptor>,
-        timestamps: crate::TimestampMetadata,
+        latency_metadata: TimestampMetadata,
     ) -> Self {
         Self {
-            sorbet: SorbetSchema {
-                columns: SorbetColumnDescriptors {
-                    columns: itertools::chain!(
-                        std::iter::once(ColumnDescriptor::RowId(row_id.clone())),
-                        indices.iter().cloned().map(ColumnDescriptor::Time),
-                        components.iter().cloned().map(ColumnDescriptor::Component),
-                    )
-                    .collect(),
-                },
-                segment_id: None, // TODO(#9977): This should be required in the future.
-                chunk_id: Some(chunk_id),
-                entity_path: Some(entity_path.clone()),
-                timestamps,
-            },
-            chunk_columns: ChunkColumnDescriptors {
+            chunk_id,
+            entity_path,
+            segment_id: None, // TODO(#9977): This should be required in the future.
+            columns: ChunkColumnDescriptors {
                 row_id,
                 indices,
                 components,
             },
-            chunk_id,
-            entity_path,
+            latency_metadata,
         }
     }
 }
@@ -99,38 +62,123 @@ impl ChunkSchema {
         &self.entity_path
     }
 
+    /// The segment this chunk belongs to, if known.
+    #[inline]
+    pub fn segment_id(&self) -> Option<&SegmentId> {
+        self.segment_id.as_ref()
+    }
+
     /// Is this chunk static?
     #[inline]
     pub fn is_static(&self) -> bool {
-        self.chunk_columns.indices.is_empty()
+        self.columns.indices.is_empty()
     }
 
     /// Total number of columns in this chunk,
     /// including the row id column, the index columns,
     /// and the data columns.
     pub fn num_columns(&self) -> usize {
-        self.sorbet.columns.num_columns()
+        1 + self.columns.indices.len() + self.columns.components.len()
+    }
+
+    #[inline]
+    pub fn columns(&self) -> &ChunkColumnDescriptors {
+        &self.columns
     }
 
     #[inline]
     pub fn row_id_column(&self) -> &RowIdColumnDescriptor {
-        &self.chunk_columns.row_id
+        &self.columns.row_id
+    }
+
+    /// The index (timeline) columns, in column order.
+    #[inline]
+    pub fn index_columns(&self) -> &[IndexColumnDescriptor] {
+        &self.columns.indices
+    }
+
+    /// The component columns, in column order.
+    #[inline]
+    pub fn component_columns(&self) -> &[ComponentColumnDescriptor] {
+        &self.columns.components
+    }
+
+    /// Latency-measurement timestamps of the pipeline stages this chunk has passed.
+    ///
+    /// NOT related to timelines.
+    #[inline]
+    pub fn latency_metadata(&self) -> &TimestampMetadata {
+        &self.latency_metadata
+    }
+
+    #[inline]
+    pub fn latency_metadata_mut(&mut self) -> &mut TimestampMetadata {
+        &mut self.latency_metadata
     }
 
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
-        self.sorbet.arrow_batch_metadata()
+        crate::sorbet_schema::arrow_batch_metadata(
+            Some(&self.chunk_id),
+            Some(&self.entity_path),
+            self.segment_id.as_ref(),
+            &self.latency_metadata,
+        )
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
-        self.sorbet.columns.arrow_fields(crate::BatchType::Chunk)
+        self.columns
+            .iter_ref()
+            .map(|c| c.to_arrow_field(BatchType::Chunk))
+            .collect()
+    }
+
+    pub fn to_arrow(&self) -> ArrowSchema {
+        ArrowSchema {
+            metadata: self.arrow_batch_metadata(),
+            fields: self.arrow_fields().into(),
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for ChunkSchema {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            chunk_id: _,
+            entity_path,
+            segment_id,
+            columns,
+            latency_metadata,
+        } = self;
+
+        entity_path.heap_size_bytes()
+            + segment_id.heap_size_bytes()
+            + columns.heap_size_bytes()
+            + latency_metadata.heap_size_bytes()
     }
 }
 
 impl From<&ChunkSchema> for ArrowSchema {
     fn from(chunk_schema: &ChunkSchema) -> Self {
+        chunk_schema.to_arrow()
+    }
+}
+
+impl From<ChunkSchema> for SorbetSchema {
+    fn from(chunk_schema: ChunkSchema) -> Self {
+        let ChunkSchema {
+            chunk_id,
+            entity_path,
+            segment_id,
+            columns,
+            latency_metadata,
+        } = chunk_schema;
+
         Self {
-            metadata: chunk_schema.arrow_batch_metadata(),
-            fields: chunk_schema.arrow_fields().into(),
+            columns: columns.into(),
+            chunk_id: Some(chunk_id),
+            entity_path: Some(entity_path),
+            segment_id,
+            latency_metadata,
         }
     }
 }
@@ -139,16 +187,20 @@ impl TryFrom<SorbetSchema> for ChunkSchema {
     type Error = SorbetError;
 
     fn try_from(sorbet_schema: SorbetSchema) -> Result<Self, Self::Error> {
+        let SorbetSchema {
+            columns,
+            chunk_id,
+            entity_path,
+            segment_id,
+            latency_metadata,
+        } = sorbet_schema;
+
         Ok(Self {
-            sorbet: sorbet_schema.clone(),
-
-            chunk_columns: ChunkColumnDescriptors::try_from(sorbet_schema.columns.clone())?,
-
-            chunk_id: sorbet_schema.chunk_id.ok_or(SorbetError::MissingChunkId)?,
-
-            entity_path: sorbet_schema
-                .entity_path
-                .ok_or(SorbetError::MissingEntityPath)?,
+            chunk_id: chunk_id.ok_or(SorbetError::MissingChunkId)?,
+            entity_path: entity_path.ok_or(SorbetError::MissingEntityPath)?,
+            segment_id,
+            columns: ChunkColumnDescriptors::try_from(columns)?,
+            latency_metadata,
         })
     }
 }

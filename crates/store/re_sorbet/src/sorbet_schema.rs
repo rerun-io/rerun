@@ -32,7 +32,7 @@ pub struct SorbetSchema {
     ///
     /// NOT related to timelines.
     /// This is about measuring the latency of the data pipeline, from SDK to viewer.
-    pub timestamps: TimestampMetadata,
+    pub latency_metadata: TimestampMetadata,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -48,52 +48,69 @@ impl SorbetSchema {
     pub(crate) const METADATA_VERSION: semver::Version = semver::Version::new(0, 1, 3);
 }
 
+/// The Rerun record batch metadata implied by these fields.
+///
+/// Shared by [`SorbetSchema`] and [`crate::ChunkSchema`] so both encode the same keys.
+pub fn arrow_batch_metadata(
+    chunk_id: Option<&ChunkId>,
+    entity_path: Option<&EntityPath>,
+    segment_id: Option<&SegmentId>,
+    latency_metadata: &TimestampMetadata,
+) -> ArrowBatchMetadata {
+    fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
+        (
+            crate::metadata::RERUN_CHUNK_ID.to_owned(),
+            chunk_id.to_string(),
+        )
+    }
+
+    fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
+        (
+            crate::metadata::SORBET_ENTITY_PATH.to_owned(),
+            entity_path.to_string(),
+        )
+    }
+
+    fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
+        (
+            "rerun:segment_id".to_owned(),
+            segment_id.as_ref().to_owned(),
+        )
+    }
+
+    std::iter::chain(
+        [
+            Some((
+                SorbetSchema::METADATA_KEY_VERSION.to_owned(),
+                SorbetSchema::METADATA_VERSION.to_string(),
+            )),
+            chunk_id.map(chunk_id_metadata),
+            entity_path.map(entity_path_metadata),
+            segment_id.map(segment_id_metadata),
+        ]
+        .into_iter()
+        .flatten(),
+        latency_metadata.to_metadata(),
+    )
+    .collect()
+}
+
 impl SorbetSchema {
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
-        fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-            (
-                crate::metadata::RERUN_CHUNK_ID.to_owned(),
-                chunk_id.to_string(),
-            )
-        }
-
-        fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
-            (
-                crate::metadata::SORBET_ENTITY_PATH.to_owned(),
-                entity_path.to_string(),
-            )
-        }
-
-        fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
-            (
-                "rerun:segment_id".to_owned(),
-                segment_id.as_ref().to_owned(),
-            )
-        }
-
         let Self {
             columns: _,
             chunk_id,
             entity_path,
             segment_id,
-            timestamps,
+            latency_metadata,
         } = self;
 
-        std::iter::chain(
-            [
-                Some((
-                    Self::METADATA_KEY_VERSION.to_owned(),
-                    Self::METADATA_VERSION.to_string(),
-                )),
-                chunk_id.as_ref().map(chunk_id_metadata),
-                entity_path.as_ref().map(entity_path_metadata),
-                segment_id.as_ref().map(segment_id_metadata),
-            ]
-            .into_iter()
-            .flatten(),
-            timestamps.to_metadata(),
+        arrow_batch_metadata(
+            chunk_id.as_ref(),
+            entity_path.as_ref(),
+            segment_id.as_ref(),
+            latency_metadata,
         )
-        .collect()
     }
 
     /// All the entities referenced by any column.
@@ -103,6 +120,23 @@ impl SorbetSchema {
             self.entity_path.iter(),
         )
         .collect()
+    }
+}
+
+impl re_byte_size::SizeBytes for SorbetSchema {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            columns,
+            chunk_id: _,
+            entity_path,
+            segment_id,
+            latency_metadata,
+        } = self;
+
+        columns.heap_size_bytes()
+            + entity_path.heap_size_bytes()
+            + segment_id.heap_size_bytes()
+            + latency_metadata.heap_size_bytes()
     }
 }
 
@@ -177,7 +211,7 @@ impl SorbetSchema {
             chunk_id,
             entity_path,
             segment_id,
-            timestamps: TimestampMetadata::parse_record_batch_metadata(metadata),
+            latency_metadata: TimestampMetadata::parse_record_batch_metadata(metadata),
         })
     }
 }

@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{
-    Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
-};
+use arrow::array::{Array as _, ArrayRef as ArrowArrayRef, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields as ArrowFields, Schema as ArrowSchema};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
@@ -13,9 +11,9 @@ use crate::{
     IndexColumnDescriptor, SorbetError, SorbetSchema,
 };
 
-/// Any rerun-compatible [`ArrowRecordBatch`].
+/// Any rerun-compatible [`RecordBatch`].
 ///
-/// This is a wrapper around a [`SorbetSchema`] and a [`ArrowRecordBatch`].
+/// This is a wrapper around a [`SorbetSchema`] and a [`RecordBatch`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct SorbetBatch {
     schema: SorbetSchema,
@@ -24,7 +22,7 @@ pub struct SorbetBatch {
     /// required by a [`SorbetBatch`].
     ///
     /// It also has all non-Rerun metadata intact from wherever it was created from.
-    batch: ArrowRecordBatch,
+    batch: RecordBatch,
 }
 
 impl SorbetBatch {
@@ -37,7 +35,7 @@ impl SorbetBatch {
     ) -> Result<Self, ArrowError> {
         let arrow_columns = itertools::chain!(row_ids, index_arrays, data_arrays).collect();
 
-        let batch = ArrowRecordBatch::try_new_with_options(
+        let batch = RecordBatch::try_new_with_options(
             std::sync::Arc::new(schema.to_arrow(batch_type)),
             arrow_columns,
             &RecordBatchOptions::default(),
@@ -46,20 +44,20 @@ impl SorbetBatch {
         Ok(Self { schema, batch })
     }
 
+    /// Splits this batch into its parsed schema and the underlying record batch.
+    pub fn into_parts(self) -> (SorbetSchema, RecordBatch) {
+        let Self { schema, batch } = self;
+        (schema, batch)
+    }
+
     /// Records the current time as the moment this batch passed `location`.
     ///
     /// Updates both the Arrow metadata and the parsed [`SorbetSchema`].
     /// Does nothing for locations that are not carried in the batch metadata.
     pub fn track_latency(&mut self, location: crate::TimestampLocation) {
-        let Some(key) = location.metadata_key() else {
-            return;
-        };
-        let now = web_time::SystemTime::now();
-        self.batch.schema_metadata_mut().insert(
-            key.to_owned(),
-            crate::timestamp_metadata::encode_timestamp(now),
-        );
-        self.schema.timestamps.insert(location, now);
+        self.schema
+            .latency_metadata
+            .track_latency(self.batch.schema_metadata_mut(), location);
     }
 
     /// Returns self but with all rows removed.
@@ -87,7 +85,7 @@ impl SorbetBatch {
         );
         let mut columns: Vec<ArrowArrayRef> = self.batch.columns().to_vec();
         columns[col_idx] = new_array;
-        let batch = ArrowRecordBatch::try_new_with_options(
+        let batch = RecordBatch::try_new_with_options(
             self.batch.schema(),
             columns,
             &RecordBatchOptions::default(),
@@ -170,40 +168,35 @@ impl std::fmt::Display for SorbetBatch {
 
 impl re_byte_size::SizeBytes for SorbetBatch {
     fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            // TODO(RR-5743): count the parsed schema once it is no longer duplicated.
-            schema: _,
-            batch,
-        } = self;
-
-        batch.heap_size_bytes()
+        let Self { schema, batch } = self;
+        schema.heap_size_bytes() + batch.heap_size_bytes()
     }
 }
 
-impl AsRef<ArrowRecordBatch> for SorbetBatch {
+impl AsRef<RecordBatch> for SorbetBatch {
     #[inline]
-    fn as_ref(&self) -> &ArrowRecordBatch {
+    fn as_ref(&self) -> &RecordBatch {
         &self.batch
     }
 }
 
 impl std::ops::Deref for SorbetBatch {
-    type Target = ArrowRecordBatch;
+    type Target = RecordBatch;
 
     #[inline]
-    fn deref(&self) -> &ArrowRecordBatch {
+    fn deref(&self) -> &RecordBatch {
         &self.batch
     }
 }
 
-impl From<SorbetBatch> for ArrowRecordBatch {
+impl From<SorbetBatch> for RecordBatch {
     #[inline]
     fn from(batch: SorbetBatch) -> Self {
         batch.batch
     }
 }
 
-impl From<&SorbetBatch> for ArrowRecordBatch {
+impl From<&SorbetBatch> for RecordBatch {
     #[inline]
     fn from(batch: &SorbetBatch) -> Self {
         batch.batch.clone()
@@ -218,7 +211,7 @@ impl SorbetBatch {
     /// Non-Rerun metadata will be preserved (both at batch-level and column-level).
     /// Rerun metadata will be updated and added to the batch if needed.
     pub fn try_from_record_batch(
-        batch: &ArrowRecordBatch,
+        batch: &RecordBatch,
         batch_type: crate::BatchType,
     ) -> Result<Self, SorbetError> {
         re_tracing::profile_function!();
@@ -252,13 +245,13 @@ impl SorbetBatch {
 
         let arrow_schema = Arc::new(ArrowSchema::new_with_metadata(new_fields, batch_metadata));
 
-        let batch = ArrowRecordBatch::try_new_with_options(
+        let batch = RecordBatch::try_new_with_options(
             arrow_schema.clone(),
             batch.columns().to_vec(),
             &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
         )
         .ok_or_log_error()
-        .unwrap_or_else(|| ArrowRecordBatch::new_empty(arrow_schema));
+        .unwrap_or_else(|| RecordBatch::new_empty(arrow_schema));
 
         Ok(Self {
             schema: sorbet_schema,
@@ -278,7 +271,7 @@ mod tests {
     /// Also test that we add the proper Rerun metadata, and remove old Rerun metadata that is not relevant anymore.
     #[test]
     fn test_sorbet_batch_metadata() {
-        let original: ArrowRecordBatch = {
+        let original: RecordBatch = {
             let mut row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
             row_id_field
                 .metadata_mut()
@@ -303,7 +296,7 @@ mod tests {
                 .into_iter()
                 .collect(),
             );
-            ArrowRecordBatch::new_empty(arrow_schema.into())
+            RecordBatch::new_empty(arrow_schema.into())
         };
 
         {
@@ -328,7 +321,7 @@ mod tests {
         )
         .unwrap();
 
-        let ret = ArrowRecordBatch::from(sorbet_batch);
+        let ret = RecordBatch::from(sorbet_batch);
 
         assert!(
             !ret.schema().metadata().contains_key("rerun.id"),

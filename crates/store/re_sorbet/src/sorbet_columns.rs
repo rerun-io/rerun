@@ -23,7 +23,7 @@ pub enum ColumnSelectorResolveError {
     TimelineNotFound(TimelineName),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct SorbetColumnDescriptors {
     pub columns: Vec<ColumnDescriptor>,
 }
