@@ -15,6 +15,7 @@ use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::ConnectionHandle;
+use re_types_core::LayerName;
 
 use crate::catalog_handle::CatalogHandle;
 
@@ -457,10 +458,16 @@ impl App {
             match registration {
                 Ok(RegistrationTarget::DatasetSegment(uri)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
-                    // Refresh the dataset if it is open.
                     sender.send_system(SystemCommand::RefreshRedapEntry {
                         origin: uri.origin.clone(),
                         entry_id: uri.dataset_id.into(),
+                    });
+                    // Registration can add or replace layers in an already-open segment. Its URI
+                    // stays the same, so normal load deduplication would retain the old manifest.
+                    sender.send_system(SystemCommand::ReloadDatasetSegments {
+                        origin: uri.origin.clone(),
+                        dataset_id: uri.dataset_id.into(),
+                        unregistered_asset: None,
                     });
                     sender.send_system(SystemCommand::LoadDataSource(
                         LogDataSource::RedapDatasetSegment {
@@ -555,8 +562,26 @@ async fn register_file(
         )
     })?;
 
+    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&reader)
+        .await
+        .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?;
+    let filename = path
+        .file_name()
+        .unwrap_or(path.as_os_str())
+        .to_string_lossy();
+    let layer = catalog
+        .is_internal()
+        .then(|| {
+            LayerName::try_new(format!(
+                "{filename}-{}",
+                re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
+            ))
+        })
+        .transpose()?;
+
     let file_url = catalog
         .write_file(
+            fingerprint,
             #[cfg(not(target_arch = "wasm32"))]
             abs_path,
             #[cfg(target_arch = "wasm32")]
@@ -564,7 +589,7 @@ async fn register_file(
         )
         .await?;
 
-    register_rrd_file_url(catalog.connection(), file_url, rrd_metadata).await
+    register_rrd_file_url(catalog.connection(), file_url, rrd_metadata, layer).await
 }
 
 /// Makes use of the fact that we don't need to scan for `default_blueprint_by_app_id`,
@@ -599,6 +624,7 @@ async fn register_rrd_file_url(
     connection: &ConnectionHandle,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
+    layer: Option<LayerName>,
 ) -> anyhow::Result<RegistrationTarget> {
     let application_id = rrd_metadata
         .store_ids
@@ -617,7 +643,12 @@ async fn register_rrd_file_url(
     }
 
     let origin = connection.origin().clone();
-    let data_source = DataSource::new_rrd_url(file_url);
+    // The hidden blueprint dataset keeps its base layer; only recordings get per-file layers.
+    let blueprint_data_source = DataSource::new_rrd_url(file_url.clone());
+    let mut data_source = DataSource::new_rrd_url(file_url);
+    if let Some(layer) = layer {
+        data_source.layer = layer;
+    }
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
 
     // If there are recordings in the file, register them with the dataset.
@@ -648,7 +679,7 @@ async fn register_rrd_file_url(
     if let Err(err) = register_blueprints(
         connection,
         dataset_id,
-        data_source,
+        blueprint_data_source,
         &rrd_metadata,
         application_id,
     )

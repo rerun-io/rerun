@@ -1,6 +1,7 @@
 //! The test-facing harness: spawn a viewer, drive it with `egui` events, query its `AccessKit`
 //! tree, and snapshot it.
 
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use egui_kittest::EventQueue;
@@ -200,6 +201,56 @@ impl InspectionHarness {
         // The resize takes effect on the viewer's next frame, and relayout may take a few more.
         self.connection.settle(SETTLE_MAX_STEPS);
         self.refresh_tree();
+    }
+
+    /// Open `path` through the viewer's “Open from URL” flow.
+    ///
+    /// Native targets send `Cmd/Ctrl+Shift+L`, enter `path`, and click “Open”.
+    /// Browser targets receive a synthetic file drop because browser security prevents this flow.
+    pub fn open_file(&mut self, path: &Path) {
+        #[cfg(feature = "browser")]
+        if Self::is_browser() {
+            use base64::Engine as _;
+
+            let bytes = std::fs::read(path).expect("failed to read file");
+            let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+            let name = path.file_name().expect("file has a name").to_string_lossy();
+            self.evaluate_js_in_browser(&format!(
+                r#"(() => {{
+                    const data = new DataTransfer();
+                    data.items.add(new File([Uint8Array.fromBase64({encoded:?})], {name:?}));
+                    document.querySelector("canvas").dispatchEvent(new DragEvent("drop", {{
+                        dataTransfer: data, bubbles: true, cancelable: true,
+                    }}));
+                    return "dropped";
+                }})()"#
+            ));
+            return;
+        }
+
+        for pressed in [true, false] {
+            self.queue_event(egui::Event::Key {
+                key: egui::Key::L,
+                physical_key: None,
+                pressed,
+                repeat: false,
+                modifiers: egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            });
+        }
+        self.run();
+        for pressed in [true, false] {
+            self.queue_event(egui::Event::Key {
+                key: egui::Key::A,
+                physical_key: None,
+                pressed,
+                repeat: false,
+                modifiers: egui::Modifiers::COMMAND,
+            });
+        }
+        self.queue_event(egui::Event::Text(path.display().to_string()));
+        self.run();
+        self.get_by_label("Open").click();
+        self.run_ok();
     }
 
     /// Evaluate an async `JavaScript` expression in the browser target.
