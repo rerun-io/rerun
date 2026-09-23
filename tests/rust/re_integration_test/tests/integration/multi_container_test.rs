@@ -225,6 +225,9 @@ pub async fn test_add_container_from_blueprint_panel_menu() {
     harness.snapshot_app("add_container_from_blueprint_panel_menu_2");
 
     harness.click_label("Horizontal");
+    // The modal closes under the cursor, so the cursor ends up hovering whatever is behind it.
+    // Remove it, or this snapshot changes whenever the modal's layout does.
+    harness.remove_cursor();
     harness.snapshot_app("add_container_from_blueprint_panel_menu_3");
 }
 
@@ -242,6 +245,8 @@ pub async fn test_add_container_from_selection_panel() {
     harness.snapshot_app("add_container_from_selection_panel_2");
 
     harness.click_label("Vertical");
+    // Same as above: hide the cursor so the modal's layout can't leak into this snapshot.
+    harness.remove_cursor();
     harness.snapshot_app("add_container_from_selection_panel_3");
 
     // TODO(aedm): count the labels in the selection panel only
