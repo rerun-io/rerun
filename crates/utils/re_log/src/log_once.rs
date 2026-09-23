@@ -38,6 +38,12 @@ macro_rules! __log_once {
 }
 
 /// Like [`crate::trace!`], but logs each distinct message at most once per call site.
+///
+/// Deduplication is on the fully formatted message: `trace_once!("Failed to load {path}")`
+/// logs once for every distinct `path`, and suppresses repeats of a path it has already logged.
+///
+/// Every distinct message is kept in memory for the lifetime of the process,
+/// so don't interpolate values that change on every call (timestamps, counters, frame numbers).
 #[macro_export]
 macro_rules! trace_once {
     ($($arg:tt)+) => {
@@ -46,6 +52,12 @@ macro_rules! trace_once {
 }
 
 /// Like [`crate::debug!`], but logs each distinct message at most once per call site.
+///
+/// Deduplication is on the fully formatted message: `debug_once!("Failed to load {path}")`
+/// logs once for every distinct `path`, and suppresses repeats of a path it has already logged.
+///
+/// Every distinct message is kept in memory for the lifetime of the process,
+/// so don't interpolate values that change on every call (timestamps, counters, frame numbers).
 #[macro_export]
 macro_rules! debug_once {
     ($($arg:tt)+) => {
@@ -54,6 +66,12 @@ macro_rules! debug_once {
 }
 
 /// Like [`crate::info!`], but logs each distinct message at most once per call site.
+///
+/// Deduplication is on the fully formatted message: `info_once!("Failed to load {path}")`
+/// logs once for every distinct `path`, and suppresses repeats of a path it has already logged.
+///
+/// Every distinct message is kept in memory for the lifetime of the process,
+/// so don't interpolate values that change on every call (timestamps, counters, frame numbers).
 #[macro_export]
 macro_rules! info_once {
     ($($arg:tt)+) => {
@@ -62,6 +80,12 @@ macro_rules! info_once {
 }
 
 /// Like [`crate::warn!`], but logs each distinct message at most once per call site.
+///
+/// Deduplication is on the fully formatted message: `warn_once!("Failed to load {path}")`
+/// logs once for every distinct `path`, and suppresses repeats of a path it has already logged.
+///
+/// Every distinct message is kept in memory for the lifetime of the process,
+/// so don't interpolate values that change on every call (timestamps, counters, frame numbers).
 #[macro_export]
 macro_rules! warn_once {
     ($($arg:tt)+) => {
@@ -70,6 +94,12 @@ macro_rules! warn_once {
 }
 
 /// Like [`crate::error!`], but logs each distinct message at most once per call site.
+///
+/// Deduplication is on the fully formatted message: `error_once!("Failed to load {path}")`
+/// logs once for every distinct `path`, and suppresses repeats of a path it has already logged.
+///
+/// Every distinct message is kept in memory for the lifetime of the process,
+/// so don't interpolate values that change on every call (timestamps, counters, frame numbers).
 #[macro_export]
 macro_rules! error_once {
     ($($arg:tt)+) => {
@@ -77,7 +107,9 @@ macro_rules! error_once {
     };
 }
 
-/// Log once at the given [`crate::Level`].
+/// Log each distinct message at most once per call site, at the given [`crate::Level`].
+///
+/// See [`crate::warn_once!`] for how messages are deduplicated.
 #[macro_export]
 macro_rules! log_once {
     ($level:expr, $($arg:tt)+) => {

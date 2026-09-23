@@ -225,3 +225,21 @@ Key things to know:
 Don't open pull requests or issues unless explicitly asked.
 When opening or interacting with one, follow the [pull request template](.github/pull_request_template.md) or [issue templates](.github/ISSUE_TEMPLATE/), and disclose that you are an LLM.
 Let the user know that you included this disclosure.
+
+### Before requesting review
+
+- CI is green, and the code is formatted (`pixi run rs-fmt`).
+- The branch history is clean: no broken merges, and no commits from unrelated work.
+- The description is honest about the scope, and says *why* the change is needed.
+- UI changes come with a screenshot or video.
+
+### Addressing review comments
+
+- When a reviewer flags one instance of a pattern, fix every instance in the diff, and say so in your reply.
+- A review comment phrased as a question wants an answer, not a code change — unless the answer is "yes, that is wrong".
+- When a reviewer asks for a change, make it in this PR.
+  Only defer it to a follow-up PR if the reviewer agrees.
+- If the fix belongs in a dependency we maintain (egui, egui_plot, egui_tiles, emath, quiver, puffin, …), suggest an upstream PR instead of a local workaround.
+- Reviewers want to talk to the human author.
+  When a comment asks for a judgement call (API shape, scope, product behavior), bring it to your user instead of deciding in the reply.
+- Always reply when mentioned, even if only to say you are unsure.

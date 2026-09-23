@@ -60,8 +60,24 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * Never ignore an error: either pass it on, or log it.
 * Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
 * Put any sensitive data (like URLs, file paths etc) LAST in the error message, so that users can send us the first half and omit the sensitive half.
+* Prefer returning an error to the caller over logging it and carrying on.
+  Do fallible setup (binding a socket, opening a device) before spawning a thread, so that the failure can be returned.
+* Don't `.map_err(|err| err.to_string())` unless the function returns `Result<_, String>` — it throws away the error type.
+* Don't drop an error with `.map_err(|_err| …)` unless you log it or wrap it first.
+* Use `warn_once!`/`error_once!` for messages that would otherwise repeat every frame.
+* Invalid configuration (env vars, CLI args, config files) is an error, not a silent fallback to the default.
 
 Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
+
+Prefer strong types over primitive ones:
+* `url::Url` and `PathBuf` over `String`.
+* A newtype (`struct StreamId(u64)`) over a bare integer or a type alias.
+* An enum over a `bool` field or parameter (`enum Screen { Setup, Chat }` over `show_setup: bool`).
+* `Option<Result<(), Error>>` over `Option<bool>`.
+* A named struct (or `Rangef`, `Span`, …) over a tuple.
+* `Option<NonZeroU64>` over a `u64` where `0` means "disabled".
+
+If a path or file marker could silently go stale, add a `debug_assert!` or a test that checks it.
 
 Some contracts cannot be enforced using the type system. In those cases you should explicitly enforce them using `assert` (self-documenting code) and in documentation (if it is part of a public API).
 
@@ -150,10 +166,15 @@ fn some_panel_ui(ctx: &ViewerContext, ui: &mut Ui) {
 
 ### Libraries
 We use [`thiserror`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
+Don't add `anyhow` to a library crate, not even for a one-off error: add a variant to the crate's error type instead.
 
 For faster hashing, we use [`ahash`](https://crates.io/crates/ahash) (`ahash::HashMap`, …).
 
-When the hashmap key is high-entropy we use [`nohash-hasher`](https://crates.io/crates/nohash-hasher) (`nohash_hasher::IntMap`).
+When the hashmap key is high-entropy we use [`nohash-hasher`](https://crates.io/crates/nohash-hasher) (`nohash_hasher::IntMap` and `IntSet`).
+This includes any key that is itself a hash, e.g. `EntityPath`, `ComponentDescriptor`, `InternedString`, and other types that implement `nohash_hasher::IsEnabled`.
+
+Use `re_format` to format numbers, durations, and sizes for humans, e.g. `format_uint`, `format_f64`, `format_bytes`, and `DurationFormatOptions`, rather than `format!("{x}")`.
+That way we get the same thousands separators, minus sign, and units everywhere.
 
 ### Style
 We follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html).
@@ -176,9 +197,58 @@ Both of these are nightly-only rustfmt options (`group_imports` and `imports_gra
 We re-apply them now and then with the `nightly-fmt` skill ([`.claude/skills/nightly-fmt/SKILL.md`](../.claude/skills/nightly-fmt/SKILL.md)), run as `nightly-fmt.sh --imports`.
 
 Use the destructor syntax (`let Self { a, b, c} = self;`) whenever you're accessing most of (or all) of the fields of a struct.
+This also makes the compiler tell you when a new field is added that you may have forgotten about.
+
+If you use a type or function more than twice in a file, add a `use` for it at the top of the file instead of spelling out its full path each time.
+
+Keep hand-written lists sorted alphabetically, unless the order carries meaning.
+This includes enum variants, match arms, Cargo features, `clippy.toml` entries, `.gitattributes` lines, and tables in docs.
+
+Prefer `cfg_select!` over pairs of `#[cfg(…)]`/`#[cfg(not(…))]` blocks.
+For UI, prefer a runtime check (e.g. a disabled button on web) over compile-time `#[cfg]`.
+
+Add `re_tracing::profile_function!()` (or `profile_scope!`) to functions that may be slow, e.g. I/O, encoding and decoding, opening or closing devices, and large loops.
+
+Don't wrap code in a closure that is called immediately, and don't extract a helper that is only called once unless it names a concept.
+
+Avoid catch-all `_ =>` arms when matching on our own enums, so that the compiler flags every `match` that needs updating when a variant is added.
+
+Every new timeout, size limit, or threshold needs a reason: say where the number comes from, or reuse an existing constant.
+Refer to metadata keys and column names through their constants, never through a string literal.
+
+### API design
+* Prefer constructors and associated functions over free functions.
+* Avoid global state (`static FOO: LazyLock<…>`); let the caller own it.
+* Instead of `fn should_do_x(x) -> bool` + `fn do_x(x)`, write a single `fn do_x(x) -> Option<…>`.
+* Keep items private by default, and make only the intended API `pub`.
+  Don't make a field `pub` if it also has a setter.
+* Keep `lib.rs` and `mod.rs` short: mostly `mod` declarations and `pub use` statements that list what the crate exports.
+  Small items like constants are fine there too; move functions and types with real logic into their own modules.
+* Don't add traits, public methods, or hooks to production code only so that tests can use them.
+* Don't add code "for later", or backwards compatibility that nothing needs.
+* Before writing a helper, look for an existing one in this repo or in a dependency we maintain (egui, emath, quiver, …).
+  If it is missing there, add it upstream instead of working around it locally.
+
+### Comments and docstrings
+Every crate-level public item, and every public field such structs, should have a docstring.
+Document behavior, not implementation: what it does, units, defaults, and what happens in edge cases (missing, empty, already exists, …).
+Explain domain terms for readers who are not experts in that domain.
+If something has several names (e.g. `application_id` is the dataset id), list them.
+
+Start a multi-line docstring with a one-line summary, followed by an empty line.
+Put the docstring before any `#[derive(…)]` attributes.
+
+Comments must add durable value: explain non-obvious invariants, contracts, performance constraints, or caller obligations.
+Don't write comments that justify a change to the reviewer, narrate what the next line does, or describe history ("no longer", "deliberately", "being phased out").
+A comment describes the code it is attached to: don't describe what other code does ("see the module docs", "same as the X branch"), or what may happen in the future.
+Document a fact once, where it is true, and link to it from elsewhere.
+
+A wrong comment is worse than no comment: after changing or renaming code, check that the comments around it are still true.
 
 ### `TODO`:s
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
+
+For work that is left for a later PR, prefer linking an issue, e.g. `TODO(rerun-io/rerun#1234)` or `TODO(RR-1234)`, so it doesn't get lost.
 
 You can also use the `todo()!` macro during development, but again it won't pass CI until you rewrite it as `todo!("more details")`. Of course, we should try to avoid `todo!` macros in our code.
 
@@ -187,6 +257,9 @@ You can also use the `todo()!` macro during development, but again it won't pass
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
 Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
+
+Derive egui ids from the parent `Ui` with `ui.make_persistent_id(…)`, so that two instances of the same widget don't collide.
+Hash a tuple rather than building an id with `format!`: `ui.make_persistent_id(("plot_legend", view_id))`.
 
 We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
 
@@ -307,6 +380,12 @@ When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
 
 Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.
+
+Name things for what they are, not for what they are used for.
+
+Don't repeat the type in the name: `age`, not `age_integer`.
+
+Use one name for one concept, everywhere.
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 

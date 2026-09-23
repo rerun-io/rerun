@@ -13,6 +13,18 @@ This is an overview of our testing infrastructure.
 
 
 
+## Writing good tests
+
+* Test behavior that could plausibly break.
+  Don't add tests for deprecated code paths, trivial UI shortcuts, or one case out of many that all work the same way.
+* Keep tests readable: one behavior per test, with setup, action, and checks visibly separated.
+  Reviewers read tests to understand what the code is supposed to do.
+* Test the viewer through its UI (e.g. clicking buttons in an `egui_kittest` harness) rather than by writing to internal state.
+* Give non-obvious `assert!`s a message saying what should hold, and make failure messages print what was actually received.
+* Prefer an exact comparison (`assert_eq!`) over a partial one (`contains`).
+* Keep fixtures small (a handful of rows or messages), and keep tests fast: no waiting for many seconds.
+* For small, pure functions, consider a doc test.
+
 ## Rust unit tests
 
 We use the standard Rust test framework.
