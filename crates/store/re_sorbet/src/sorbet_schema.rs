@@ -16,20 +16,57 @@ use crate::{
 /// It only contains the metadata used by Rerun.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SorbetSchema {
-    pub columns: SorbetColumnDescriptors,
+    pub(crate) columns: SorbetColumnDescriptors,
 
     /// The globally unique ID of this chunk,
     /// if this is a chunk.
-    pub chunk_id: Option<ChunkId>,
+    pub(crate) chunk_id: Option<ChunkId>,
 
     /// Which entity is this chunk for?
-    pub entity_path: Option<EntityPath>,
+    pub(crate) entity_path: Option<EntityPath>,
 
     /// The segment id that this chunk belongs to.
-    pub segment_id: Option<SegmentId>,
+    pub(crate) segment_id: Option<SegmentId>,
 
     /// Timing statistics.
-    pub latency_metadata: LatencyMetadata,
+    pub(crate) latency_metadata: LatencyMetadata,
+}
+
+/// ## Accessors
+impl SorbetSchema {
+    #[inline]
+    pub fn columns(&self) -> &SorbetColumnDescriptors {
+        &self.columns
+    }
+
+    /// The globally unique ID of this chunk, if this is a chunk.
+    #[inline]
+    pub fn chunk_id(&self) -> Option<ChunkId> {
+        self.chunk_id
+    }
+
+    /// Which entity is this chunk for?
+    #[inline]
+    pub fn entity_path(&self) -> Option<&EntityPath> {
+        self.entity_path.as_ref()
+    }
+
+    /// The segment this chunk belongs to, if known.
+    #[inline]
+    pub fn segment_id(&self) -> Option<&SegmentId> {
+        self.segment_id.as_ref()
+    }
+
+    /// Latency-measurement timestamps of the pipeline stages this batch has passed.
+    #[inline]
+    pub fn latency_metadata(&self) -> &LatencyMetadata {
+        &self.latency_metadata
+    }
+
+    /// Puts the columns in a canonical order, so that equality does not depend on the column order of the source.
+    pub fn sort_columns(&mut self) {
+        self.columns.columns.sort();
+    }
 }
 
 /// ## Metadata keys for the record batch metadata

@@ -88,12 +88,15 @@ pub struct DataColumns<'a> {
 
 impl<'a> DataColumns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema, original_schema: &arrow::datatypes::Schema) -> Self {
-        re_log::debug_assert_eq!(original_schema.fields().len(), sorbet_schema.columns.len());
+        re_log::debug_assert_eq!(
+            original_schema.fields().len(),
+            sorbet_schema.columns().len()
+        );
 
         // TODO(andreas): Preserve the DataFusion field name in the Sorbet schema so this mapping
         // does not depend on migration preserving column order.
         let columns = sorbet_schema
-            .columns
+            .columns()
             .iter()
             .enumerate()
             .map(|(index, desc)| {
@@ -603,7 +606,11 @@ impl<'a> DataFusionTableWidget<'a> {
                 // The order in which we query should be the same order in which we receive, so we should be able to zip things up just fine.
                 // TODO(andreas): seems brittle with sorbet migrations?
                 DisplayRecordBatch::try_new(itertools::izip!(
-                    query_result.sorbet_schema.columns.iter().map(|x| x.into()),
+                    query_result
+                        .sorbet_schema
+                        .columns()
+                        .iter()
+                        .map(|x| x.into()),
                     record_batch.columns().iter().map(Arc::clone)
                 ))
             })
@@ -674,7 +681,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let migrated_fields = query_result
             .sorbet_schema
-            .columns
+            .columns()
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
         let potentially_writable_remote_table = self.table_ref.url().and_then(|uri| match uri {

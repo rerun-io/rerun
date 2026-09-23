@@ -237,7 +237,7 @@ impl RrdManifest {
             SorbetSchema::try_from_raw_arrow_schema(Arc::new(manifest.sorbet_schema.clone()))?;
         // Sort columns so that PartialEq is stable across protobuf round-trips,
         // which do not preserve column ordering.
-        recording_schema.columns.columns.sort();
+        recording_schema.sort_columns();
 
         let pruned_batch = manifest.chunk_fetcher_record_batch();
 
@@ -383,7 +383,7 @@ impl RrdManifest {
         let mut recording_schema =
             SorbetSchema::try_from_raw_arrow_schema(Arc::new(sorbet_schema.clone()))?;
         // Sorted for the same reason as in `try_new`: to keep `PartialEq` stable.
-        recording_schema.columns.columns.sort();
+        recording_schema.sort_columns();
 
         Ok((recording_schema, sorbet_schema, sorbet_schema_sha256))
     }
