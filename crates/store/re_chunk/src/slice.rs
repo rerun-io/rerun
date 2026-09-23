@@ -762,6 +762,10 @@ impl Chunk {
     ///
     /// [take]: arrow::compute::kernels::take
     ///
+    /// `indices` must be non-decreasing: the sortedness flags of a sorted source carry over to the
+    /// result without a rescan, which only holds for a subsequence. A gather that reorders rows
+    /// yields flags that disagree with the data.
+    ///
     /// The returned chunk always gets a new unique [`crate::ChunkId`].
     #[must_use]
     #[inline]
@@ -972,7 +976,9 @@ impl TimeColumn {
         .into_parts()
         .1;
 
-        Self::new(Some(*is_sorted), *timeline, new_times)
+        // A non-decreasing take of a sorted column stays sorted, but a take of an unsorted column
+        // can come out sorted, so only a `true` flag carries over; see `Self::filtered`.
+        Self::new(is_sorted.then_some(true), *timeline, new_times)
     }
 }
 
@@ -1682,6 +1688,55 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(indices.len(), got.num_rows());
         }
+
+        Ok(())
+    }
+
+    /// A take out of a time-unsorted chunk reports the sortedness of the rows it kept, not the
+    /// source's: a subset that comes out time-sorted is flagged sorted, and one that does not stays
+    /// unsorted. In debug builds a wrong flag fails the sanity check inside `taken` itself.
+    #[test]
+    fn taken_from_time_unsorted_chunk() -> anyhow::Result<()> {
+        use arrow::array::Int32Array as ArrowInt32Array;
+
+        let frame = Timeline::new_sequence("frame");
+        let entity_path = "my/entity";
+
+        // Row ids ascend with position, so the chunk is row-id sorted; `frame` is not.
+        let mut builder = Chunk::builder(entity_path);
+        for (i, time) in [0, 20, 10].into_iter().enumerate() {
+            builder = builder.with_sparse_component_batches(
+                RowId::ZERO.incremented_by(10 * (i as u64 + 1)),
+                [(frame, time)],
+                [(
+                    MyPoints::descriptor_points(),
+                    Some(&[MyPoint::new(i as f32, i as f32)] as _),
+                )],
+            );
+        }
+        let chunk = builder.build()?;
+
+        let frame_sorted = |chunk: &Chunk| chunk.is_timeline_sorted(frame.name());
+        assert!(chunk.is_row_ids_sorted());
+        assert!(!frame_sorted(&chunk));
+
+        // A subsequence that skips the out-of-order row is sorted.
+        let got = chunk.taken(&ArrowInt32Array::from(vec![0, 2]));
+        got.sanity_check()?;
+        assert_eq!(got.num_rows(), 2);
+        assert!(got.is_row_ids_sorted());
+        assert!(frame_sorted(&got));
+
+        // A single row is sorted.
+        let got = chunk.taken(&ArrowInt32Array::from(vec![1]));
+        got.sanity_check()?;
+        assert!(frame_sorted(&got));
+
+        // The whole chunk stays unsorted.
+        let got = chunk.taken(&ArrowInt32Array::from(vec![0, 1, 2]));
+        got.sanity_check()?;
+        assert!(got.is_row_ids_sorted());
+        assert!(!frame_sorted(&got));
 
         Ok(())
     }
