@@ -119,9 +119,8 @@ default = ["base"]
 # in which you want to do viewer builds.
 cpp = ["base", "cpp"]
 
-# Test coverage tooling (cargo-llvm-cov + cargo-nextest). Kept out of the default
-# environment so normal dev/CI installs don't pull these tools, and so CI's own pinned
-# nextest (installed via taiki-e/install-action) isn't shadowed. Used by `rs-coverage`.
+# Test coverage tooling (cargo-llvm-cov). Kept out of the default environment so normal
+# dev/CI installs don't pull it. Used by `rs-coverage`.
 coverage = ["base", "coverage"]
 
 ################################################################################
@@ -353,9 +352,7 @@ py-lint-rerun-ty = "uv run ty check --error deprecated"
 # Isolated examples (their own uv project + .venv, excluded from the shared mypy run above).
 # The script auto-discovers any example whose pyproject.toml sets
 # `[tool.rerun-example] isolated = true` and lints it with the shared mypy config.
-# RERUN_ALLOW_MISSING_BIN matches `py-build` — lets maturin build the rerun-sdk extension
-# into each example's .venv without needing the `rerun` CLI binary on disk first.
-py-lint-isolated-examples = { cmd = "python scripts/ci/isolated_examples.py lint", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-lint-isolated-examples = "python scripts/ci/isolated_examples.py lint"
 py-lint = { depends-on = [
   "py-lint-rerun-ty", # Fast first
   "py-lint-non-sdk",
@@ -619,6 +616,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
+cargo-nextest = ">=0.9.140"
 clang = "19.1.7.*"
 clang-tools = "19.1.7.*" # clang-format
 cmake = "3.27.6.*"
@@ -672,27 +670,22 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.11.32"
 
 # Test coverage tooling, isolated in the `coverage` environment (see [environments]).
-# Available on all supported platforms. `cargo-nextest` lives here rather than in `base`
-# on purpose: CI installs its own pinned nextest, and a second copy in the default env
-# would shadow it. Used only by the `rs-coverage` task.
+# Available on all supported platforms. Used only by the `rs-coverage` task.
 [feature.coverage.dependencies]
-cargo-nextest = ">=0.9.140" # Test runner driven by cargo-llvm-cov
 cargo-llvm-cov = ">=0.8.7" # Source-based Rust test coverage
 
 [target.linux-64.dependencies]
-cargo-zigbuild = "0.20.*"
+lld = "19.1.7.*"
+llvm-tools = "19.1.7.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
-zig = "0.13.0.*"
 
 [target.linux-aarch64.dependencies]
-cargo-zigbuild = "0.20.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
-zig = "0.13.0.*"
 
 [target.osx-arm64.dependencies]
 buf = "1.*" # not available for linux-aarch64

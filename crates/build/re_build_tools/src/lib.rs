@@ -313,6 +313,7 @@ pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
         // Make sure this works without a connection, since docs.rs won't have one either.
         // See https://github.com/rerun-io/rerun/issues/8165
         .other_options(vec!["--frozen".to_owned()])
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .exec()?)
 }
 

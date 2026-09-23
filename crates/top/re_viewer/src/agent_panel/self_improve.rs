@@ -191,8 +191,9 @@ mod tests {
 
     #[test]
     fn the_marker_still_names_this_very_crate() {
-        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let checkout = rerun_checkout(manifest_dir)
+        let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from);
+        let checkout = rerun_checkout(&manifest_dir)
             .expect("this crate is built inside a rerun checkout, so one must be found");
 
         assert_eq!(

@@ -44,6 +44,7 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
 
     let metadata = MetadataCommand::new()
         .features(CargoOpt::AllFeatures)
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .exec()
         .unwrap();
 

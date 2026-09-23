@@ -8,7 +8,11 @@ use re_sdk_types::archetypes::AssetAudio;
 use re_sdk_types::components::MediaType;
 
 fn fixture(name: &str) -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(
+            || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            std::path::PathBuf::from,
+        )
         .ancestors()
         .nth(3)
         .expect("workspace root is three ancestors up from crates/data_flow/re_importer")

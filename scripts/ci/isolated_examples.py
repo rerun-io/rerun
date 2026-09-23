@@ -43,11 +43,15 @@ def _format_override(override: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_merged_config(base_ini: Path, pyproject: Path) -> str:
+def build_merged_config(base_ini: Path, pyproject: Path, repo_root: Path) -> str:
     with pyproject.open("rb") as f:
         data = tomli.load(f)
     overrides = data.get("tool", {}).get("mypy", {}).get("overrides", [])
-    sections = [base_ini.read_text().rstrip()]
+    mypy_path = ":".join(str(repo_root / p) for p in ("rerun_py", "rerun_py/rerun_sdk"))
+    sections = [
+        base_ini.read_text().rstrip() + f"\nmypy_path = {mypy_path}",
+        _format_override({"module": ["rerun.*", "rerun_bindings.*"], "ignore_errors": True}),
+    ]
     sections.extend(_format_override(o) for o in overrides)
     return "\n\n".join(sections) + "\n"
 
@@ -68,14 +72,12 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
 
     for project in projects:
         print(f"\n=== {project.relative_to(repo_root)} ===", flush=True)
-        subprocess.run(["uv", "sync", "--frozen"], cwd=project, check=True)
-        # rerun-dev-fixup is not in pyproject.toml (uv 0.7.x resolves all groups
-        # unconditionally — a path-only package would block standalone --no-sources).
-        # Install it explicitly here when running inside the monorepo.
-        shim_dir = (project / "../../../rerun_py/rerun_dev_fixup").resolve()
-        if shim_dir.exists():
-            subprocess.run(["uv", "pip", "install", str(shim_dir)], cwd=project, check=True)
-        merged = build_merged_config(shared_base, project / "pyproject.toml")
+        subprocess.run(
+            ["uv", "sync", "--frozen", "--no-install-package", "rerun-sdk"],
+            cwd=project,
+            check=True,
+        )
+        merged = build_merged_config(shared_base, project / "pyproject.toml", repo_root)
         with tempfile.NamedTemporaryFile(
             mode="w",
             suffix=".ini",
@@ -86,7 +88,7 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
             tmp_path = tmp.name
         try:
             subprocess.run(
-                ["uv", "run", "mypy", "--config-file", tmp_path, "."],
+                ["uv", "run", "--no-sync", "mypy", "--config-file", tmp_path, "."],
                 cwd=project,
                 check=True,
             )
