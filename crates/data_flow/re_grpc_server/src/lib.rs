@@ -735,7 +735,7 @@ pub fn spawn_with_recv_and_services(
                     // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
                     // Note that this function is only called by the viewer
                     // (that's what the message-receiver is connected to).
-                    log_msg.track_latency(re_sorbet::TimestampLocation::IPCDecode);
+                    log_msg.track_latency(re_sorbet::LatencyLocation::IPCDecode);
 
                     if channel_log_tx.send(log_msg).is_err() {
                         re_log::debug!(

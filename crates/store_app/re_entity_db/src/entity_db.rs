@@ -817,19 +817,19 @@ impl EntityDb {
         self.last_modified_at = web_time::Instant::now();
         let mut chunk = re_chunk::Chunk::from_chunk_batch(chunk_batch)?;
         chunk.sort_by_row_ids_if_needed();
-        self.add_chunk_with_timestamp_metadata(&Arc::new(chunk), chunk_batch.latency_metadata())
+        self.add_chunk_with_latency_metadata(&Arc::new(chunk), chunk_batch.latency_metadata())
     }
 
     /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
         re_tracing::profile_function!();
-        self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
+        self.add_chunk_with_latency_metadata(chunk, &Default::default())
     }
 
-    fn add_chunk_with_timestamp_metadata(
+    fn add_chunk_with_latency_metadata(
         &mut self,
         chunk: &Arc<Chunk>,
-        chunk_timestamps: &re_sorbet::TimestampMetadata,
+        latency_metadata: &re_sorbet::LatencyMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let store_events = self.storage_engine.write().store().insert_chunk(chunk)?;
 
@@ -848,8 +848,8 @@ impl EntityDb {
         // We inform the stats last, since it measures e2e latency.
         // We only care about latency metrics during ingestion (adding a chunk)
         // which is why we only call it here, and not inside of `on_store_events`
-        // (we need the `chunk_timestamps`).
-        self.stats.on_events(chunk_timestamps, &store_events);
+        // (we need the `latency_metadata`).
+        self.stats.on_events(latency_metadata, &store_events);
 
         Ok(store_events)
     }

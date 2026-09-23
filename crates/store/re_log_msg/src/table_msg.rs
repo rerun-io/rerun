@@ -21,12 +21,11 @@ pub struct TableMsg {
 
 impl TableMsg {
     /// Records the current time as the moment this table passed `location`.
-    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
+    pub fn track_latency(&mut self, location: re_sorbet::LatencyLocation) {
         if let Some(key) = location.metadata_key() {
-            self.data.schema_metadata_mut().insert(
-                key.to_owned(),
-                re_sorbet::timestamp_metadata::now_timestamp(),
-            );
+            self.data
+                .schema_metadata_mut()
+                .insert(key.to_owned(), re_sorbet::latency_metadata::now_timestamp());
         }
     }
 }

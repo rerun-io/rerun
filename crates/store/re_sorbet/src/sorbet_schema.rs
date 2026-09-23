@@ -5,7 +5,7 @@ use re_log_types::EntityPath;
 use re_types_core::{ChunkId, SegmentId};
 
 use crate::{
-    ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata, migrate_schema_ref,
+    ArrowBatchMetadata, LatencyMetadata, SorbetColumnDescriptors, SorbetError, migrate_schema_ref,
 };
 
 // ----------------------------------------------------------------------------
@@ -29,10 +29,7 @@ pub struct SorbetSchema {
     pub segment_id: Option<SegmentId>,
 
     /// Timing statistics.
-    ///
-    /// NOT related to timelines.
-    /// This is about measuring the latency of the data pipeline, from SDK to viewer.
-    pub latency_metadata: TimestampMetadata,
+    pub latency_metadata: LatencyMetadata,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -55,7 +52,7 @@ pub fn arrow_batch_metadata(
     chunk_id: Option<&ChunkId>,
     entity_path: Option<&EntityPath>,
     segment_id: Option<&SegmentId>,
-    latency_metadata: &TimestampMetadata,
+    latency_metadata: &LatencyMetadata,
 ) -> ArrowBatchMetadata {
     fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
         (
@@ -211,7 +208,7 @@ impl SorbetSchema {
             chunk_id,
             entity_path,
             segment_id,
-            latency_metadata: TimestampMetadata::parse_record_batch_metadata(metadata),
+            latency_metadata: LatencyMetadata::parse_record_batch_metadata(metadata),
         })
     }
 }

@@ -5,7 +5,7 @@ use re_types_core::{ChunkId, SegmentId};
 use crate::chunk_columns::ChunkColumnDescriptors;
 use crate::{
     ArrowBatchMetadata, BatchType, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetError, SorbetSchema, TimestampMetadata,
+    LatencyMetadata, RowIdColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.
@@ -21,7 +21,7 @@ pub struct ChunkSchema {
     entity_path: EntityPath,
     segment_id: Option<SegmentId>,
     columns: ChunkColumnDescriptors,
-    latency_metadata: TimestampMetadata,
+    latency_metadata: LatencyMetadata,
 }
 
 /// ## Builders
@@ -32,7 +32,7 @@ impl ChunkSchema {
         row_id: RowIdColumnDescriptor,
         indices: Vec<IndexColumnDescriptor>,
         components: Vec<ComponentColumnDescriptor>,
-        latency_metadata: TimestampMetadata,
+        latency_metadata: LatencyMetadata,
     ) -> Self {
         Self {
             chunk_id,
@@ -107,12 +107,12 @@ impl ChunkSchema {
     ///
     /// NOT related to timelines.
     #[inline]
-    pub fn latency_metadata(&self) -> &TimestampMetadata {
+    pub fn latency_metadata(&self) -> &LatencyMetadata {
         &self.latency_metadata
     }
 
     #[inline]
-    pub fn latency_metadata_mut(&mut self) -> &mut TimestampMetadata {
+    pub fn latency_metadata_mut(&mut self) -> &mut LatencyMetadata {
         &mut self.latency_metadata
     }
 

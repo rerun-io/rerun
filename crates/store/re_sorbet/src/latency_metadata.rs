@@ -1,4 +1,4 @@
-//! Tools for adding timpestamp metadata to a Record Batch.
+//! Tools for adding latency metadata to a record batch.
 //!
 //! This is used for latency measurements.
 
@@ -13,7 +13,7 @@ use crate::ArrowBatchMetadata;
 ///
 /// Ordered chronologically.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::EnumIter)]
-pub enum TimestampLocation {
+pub enum LatencyLocation {
     /// Time of log call. Encoded in [`re_types_core::RowId`].
     Log,
 
@@ -35,7 +35,7 @@ pub enum TimestampLocation {
     Ingest,
 }
 
-impl std::fmt::Display for TimestampLocation {
+impl std::fmt::Display for LatencyLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             Self::Log => "log call",
@@ -49,16 +49,16 @@ impl std::fmt::Display for TimestampLocation {
     }
 }
 
-impl TimestampLocation {
+impl LatencyLocation {
     /// The first step of the pipeline
     pub const FIRST: Self = Self::Log;
 
     /// The last step of the pipeline
     pub const LAST: Self = Self::Ingest;
 
-    /// Get the arrow recordbatch metadata key associated with this timestamp location.
+    /// Get the arrow recordbatch metadata key associated with this location.
     ///
-    /// Returns `None` for timestamp locations that are not recorded in metadata.
+    /// Returns `None` for locations that are not recorded in metadata.
     pub fn metadata_key(&self) -> Option<&'static str> {
         #[expect(clippy::match_same_arms)]
         match self {
@@ -112,18 +112,18 @@ fn test_timestamp_encoding() {
 
 /// Timestamps about this batch; used for latency measurements.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct TimestampMetadata(BTreeMap<TimestampLocation, web_time::SystemTime>);
+pub struct LatencyMetadata(BTreeMap<LatencyLocation, web_time::SystemTime>);
 
-impl re_byte_size::SizeBytes for TimestampMetadata {
+impl re_byte_size::SizeBytes for LatencyMetadata {
     fn heap_size_bytes(&self) -> u64 {
         (self.0.len()
-            * (std::mem::size_of::<TimestampLocation>()
+            * (std::mem::size_of::<LatencyLocation>()
                 + std::mem::size_of::<web_time::SystemTime>())) as u64
     }
 }
 
-impl Deref for TimestampMetadata {
-    type Target = BTreeMap<TimestampLocation, web_time::SystemTime>;
+impl Deref for LatencyMetadata {
+    type Target = BTreeMap<LatencyLocation, web_time::SystemTime>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -131,20 +131,20 @@ impl Deref for TimestampMetadata {
     }
 }
 
-impl DerefMut for TimestampMetadata {
+impl DerefMut for LatencyMetadata {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl TimestampMetadata {
+impl LatencyMetadata {
     pub fn parse_record_batch_metadata(metadata: &ArrowBatchMetadata) -> Self {
         use strum::IntoEnumIterator as _;
 
         let mut map = BTreeMap::new();
 
-        for location in TimestampLocation::iter() {
+        for location in LatencyLocation::iter() {
             if let Some(key) = location.metadata_key()
                 && let Some(value) = metadata.get(key)
                 && let Some(timestamp) = parse_timestamp(value.as_str())
@@ -163,7 +163,7 @@ impl TimestampMetadata {
     pub fn track_latency(
         &mut self,
         batch_metadata: &mut ArrowBatchMetadata,
-        location: TimestampLocation,
+        location: LatencyLocation,
     ) {
         let Some(key) = location.metadata_key() else {
             return;

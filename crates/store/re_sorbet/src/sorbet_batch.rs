@@ -54,7 +54,7 @@ impl SorbetBatch {
     ///
     /// Updates both the Arrow metadata and the parsed [`SorbetSchema`].
     /// Does nothing for locations that are not carried in the batch metadata.
-    pub fn track_latency(&mut self, location: crate::TimestampLocation) {
+    pub fn track_latency(&mut self, location: crate::LatencyLocation) {
         self.schema
             .latency_metadata
             .track_latency(self.batch.schema_metadata_mut(), location);

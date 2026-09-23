@@ -50,7 +50,7 @@ fn track_latency_matches_reparse() {
         .unwrap();
 
     let mut batch = chunk.to_chunk_batch().unwrap();
-    batch.track_latency(re_sorbet::TimestampLocation::GrpcSink);
+    batch.track_latency(re_sorbet::LatencyLocation::GrpcSink);
 
     let reparsed =
         re_sorbet::ChunkBatch::try_from(&arrow::array::RecordBatch::from(&batch)).unwrap();

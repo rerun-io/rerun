@@ -10,7 +10,7 @@ use re_types_core::ChunkId;
 
 use crate::{
     ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetBatch, SorbetError, TimestampMetadata,
+    LatencyMetadata, RowIdColumnDescriptor, SorbetBatch, SorbetError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -101,7 +101,7 @@ impl ChunkBatch {
 
     /// Latency-measurement timestamps of the pipeline stages this chunk has passed.
     #[inline]
-    pub fn latency_metadata(&self) -> &TimestampMetadata {
+    pub fn latency_metadata(&self) -> &LatencyMetadata {
         self.schema.latency_metadata()
     }
 
@@ -156,7 +156,7 @@ impl ChunkBatch {
     ///
     /// Updates both the Arrow metadata and the parsed [`ChunkSchema`].
     /// Does nothing for locations that are not carried in the batch metadata.
-    pub fn track_latency(&mut self, location: crate::TimestampLocation) {
+    pub fn track_latency(&mut self, location: crate::LatencyLocation) {
         self.schema
             .latency_metadata_mut()
             .track_latency(self.batch.schema_metadata_mut(), location);
