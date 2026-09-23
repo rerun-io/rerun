@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use egui::Role;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 
@@ -76,10 +77,10 @@ pub trait ViewerHarnessExt {
 
     /// Is the viewer showing any loading indicator?
     ///
-    /// Checks if there are any [`egui::accesskit::Role::ProgressIndicator`] shown.
+    /// Checks if there are any [`Role::ProgressIndicator`] shown.
     fn is_loading(&self) -> bool {
         self.root_node()
-            .query_all_by_role(egui::accesskit::Role::ProgressIndicator)
+            .query_all_by_role(Role::ProgressIndicator)
             .next()
             .is_some()
     }
@@ -198,7 +199,7 @@ impl ViewerHarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     fn section_node<'s>(&'s self, section_label: Option<&'s str>) -> egui_kittest::Node<'s> {
         match section_label {
             None => self.root(),
-            Some(label) => self.get_by_role_and_label(egui::accesskit::Role::Pane, label),
+            Some(label) => self.get_by_role_and_label(Role::Pane, label),
         }
     }
 

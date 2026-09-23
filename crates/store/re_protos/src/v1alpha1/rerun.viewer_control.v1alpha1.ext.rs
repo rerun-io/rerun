@@ -4,9 +4,10 @@
 use crate::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, GetRecordingSchemaRequest,
     GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
-    GetViewerStateResponse, OpenUrlRequest, OpenUrlResponse, SaveScreenshotRequest,
-    SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest,
-    ViewerControlResponse, viewer_control_request, viewer_control_response,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
+    OpenUrlResponse, SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest,
+    SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse, viewer_control_request,
+    viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -105,6 +106,7 @@ viewer_control_ops! {
     "get_recording_schema" => GetRecordingSchema(GetRecordingSchemaRequest, GetRecordingSchemaResponse),
     "get_viewer_logs" => GetViewerLogs(GetViewerLogsRequest, GetViewerLogsResponse),
     "get_viewer_state" => GetViewerState(GetViewerStateRequest, GetViewerStateResponse),
+    "highlight_rect" => HighlightRect(HighlightRectRequest, HighlightRectResponse),
     "open_url" => OpenUrl(OpenUrlRequest, OpenUrlResponse),
     "save_screenshot" => SaveScreenshot(SaveScreenshotRequest, SaveScreenshotResponse),
     "set_time_cursor" => SetTimeCursor(SetTimeCursorRequest, SetTimeCursorResponse),

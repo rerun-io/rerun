@@ -78,6 +78,13 @@ namespace rerun::components {
             return "model/obj";
         }
 
+        /// [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
+        ///
+        /// Holds either a mesh or a point cloud, depending on its header.
+        static MediaType ply() {
+            return "application/x-ply";
+        }
+
         /// [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
         ///
         /// Either binary or ASCII.
@@ -105,6 +112,47 @@ namespace rerun::components {
         /// <https://www.iana.org/assignments/media-types/video/mp4>
         static MediaType mp4() {
             return "video/mp4";
+        }
+
+        // -------------------------------------------------------
+        // Audio:
+
+        /// [AAC audio](https://en.wikipedia.org/wiki/Advanced_Audio_Coding) in a raw ADTS stream: `audio/aac`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/audio/aac>
+        static MediaType aac() {
+            return "audio/aac";
+        }
+
+        /// [FLAC audio](https://en.wikipedia.org/wiki/FLAC): `audio/flac`.
+        static MediaType flac() {
+            return "audio/flac";
+        }
+
+        /// [M4A audio](https://en.wikipedia.org/wiki/MP4_file_format) (AAC in an MP4 container): `audio/mp4`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/audio/mp4>
+        static MediaType m4a() {
+            return "audio/mp4";
+        }
+
+        /// [MP3 audio](https://en.wikipedia.org/wiki/MP3): `audio/mpeg`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/audio/mpeg>
+        static MediaType mp3() {
+            return "audio/mpeg";
+        }
+
+        /// [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/audio/ogg>
+        static MediaType ogg() {
+            return "audio/ogg";
+        }
+
+        /// [WAV audio](https://en.wikipedia.org/wiki/WAV): `audio/wav`.
+        static MediaType wav() {
+            return "audio/wav";
         }
 
         static std::optional<MediaType> guess_from_path(const std::filesystem::path& path);

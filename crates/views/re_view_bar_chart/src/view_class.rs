@@ -1,5 +1,6 @@
 use ahash::HashMap;
 use egui::NumExt as _;
+use egui_plot::ItemId;
 use itertools::izip;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
@@ -7,14 +8,13 @@ use re_sdk_types::blueprint::components::{Corner2D, Enabled};
 use re_sdk_types::components::{Color, Visible};
 use re_sdk_types::encodings::TensorBuffer;
 use re_sdk_types::{View as _, ViewClassIdentifier};
-use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, icons};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
-use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, RecommendedVisualizers,
-    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableReason, suggest_view_for_each_entity,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -136,23 +136,6 @@ impl ViewClass for BarChartView {
         re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<PlotBackground>(&ctx, ui);
-            view_property_ui::<PlotLegend>(&ctx, ui);
-        });
-
-        Ok(())
-    }
-
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -188,7 +171,7 @@ impl ViewClass for BarChartView {
         let legend_corner: Corner2D =
             plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_corner().component)?;
 
-        let legend_id = egui::Id::new(query.view_id).with("plot_legend");
+        let legend_id = ui.make_persistent_id("plot_legend");
         let legend_hovered = ui
             .ctx()
             .read_response(re_plot::legend::legend_frame_id(legend_id))
@@ -260,8 +243,7 @@ impl ViewClass for BarChartView {
                     })
                     .collect();
 
-                plot_item_id_to_entity_path
-                    .insert(egui::Id::new(ent_path.hash()), ent_path.clone());
+                plot_item_id_to_entity_path.insert(ItemId::new(ent_path.hash()), ent_path.clone());
 
                 resolved_bars.push(ResolvedBarData {
                     entity_path: ent_path.clone(),
@@ -271,7 +253,7 @@ impl ViewClass for BarChartView {
             }
 
             // Load previous frame's transform for hover detection before rendering.
-            let plot_id = ui.make_persistent_id(egui::Id::new("bar_chart_plot"));
+            let plot_id = ui.make_persistent_id("bar_chart_plot");
             let hovered_bar = egui_plot::PlotMemory::load(ui.ctx(), plot_id)
                 .map(|mem| mem.transform())
                 // Don't hover plot items when hovering legend
@@ -320,7 +302,7 @@ impl ViewClass for BarChartView {
                     )
                     .name(resolved.entity_path.to_string())
                     .color(egui_color)
-                    .id(egui::Id::new(resolved.entity_path.hash()));
+                    .id(resolved.entity_path.hash());
 
                     plot_ui.bar_chart(chart);
                 }
@@ -338,14 +320,14 @@ impl ViewClass for BarChartView {
                     re_plot::tooltip::show_plot_tooltip(
                         ui,
                         &response,
-                        egui::Id::new(entity_hash).with(bar_idx),
+                        (entity_hash, bar_idx),
                         &format!("#{bar_idx}"),
                         &entity_path.to_string(),
                         &re_format::format_f64(value),
                         resolved.color,
                     );
 
-                    if let Some(ep) = plot_item_id_to_entity_path.get(&egui::Id::new(entity_hash)) {
+                    if let Some(ep) = plot_item_id_to_entity_path.get(&ItemId::new(entity_hash)) {
                         ctx.viewer_ctx.handle_select_hover_drag_interactions(
                             &response,
                             re_viewer_context::Item::DataResult(
@@ -386,7 +368,7 @@ impl ViewClass for BarChartView {
                     tree.iter_data_results()
                         .filter(|dr| !dr.tree_prefix_only && charts.contains_key(&dr.entity_path))
                         .map(|dr| {
-                            let id = egui::Id::new(dr.entity_path.hash());
+                            let id = ItemId::new(dr.entity_path.hash());
                             let color = charts
                                 .get(&dr.entity_path)
                                 .map(|cd| egui::Color32::from(cd.color.0))
@@ -406,7 +388,7 @@ impl ViewClass for BarChartView {
                     if dr.tree_prefix_only {
                         continue;
                     }
-                    let id = egui::Id::new(dr.entity_path.hash());
+                    let id = ItemId::new(dr.entity_path.hash());
                     let new_visible = !legend_output.hidden_ids.contains(&id);
                     if dr.is_visible() != new_visible {
                         dr.save_visible(ctx.viewer_ctx, tree, new_visible);

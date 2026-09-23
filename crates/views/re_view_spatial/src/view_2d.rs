@@ -9,8 +9,8 @@ use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::{view_property_ui, view_property_ui_with_hidden_components};
 use re_viewer_context::{
-    RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    RecommendedView, ViewClass, ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::SpaceKind;
@@ -230,36 +230,33 @@ impl ViewClass for SpatialView2D {
         .unwrap_or_else(ViewSpawnHeuristics::empty)
     }
 
-    fn selection_ui(
-        &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<SpatialViewState>()?;
-        // TODO(andreas): list_item'ify the rest
-        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.bounding_box_ui(ui, SpaceKind::TwoD);
+    fn selection_ui<'a>(
+        &'a self,
+        _view_ctx: &re_viewer_context::ViewContext<'_>,
+    ) -> re_viewer_context::ViewSelectionUi<'a> {
+        re_viewer_context::ViewSelectionUi::properties_ui(move |ui, ctx| {
+            let state = ctx.view_state.downcast_ref::<SpatialViewState>()?;
+            // TODO(andreas): list_item'ify the rest
+            ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+                state.bounding_box_ui(ui, SpaceKind::TwoD);
 
-            #[cfg(debug_assertions)]
-            bbox_debug_ui(ui, state);
-        });
+                #[cfg(debug_assertions)]
+                bbox_debug_ui(ui, state);
+            });
 
-        re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui_with_hidden_components::<SpatialInformation>(
-                &view_ctx,
-                ui,
-                &[SpatialInformation::descriptor_axes().component],
-            );
-            view_property_ui::<VisualBounds2D>(&view_ctx, ui);
-            view_property_ui::<NearClipPlane>(&view_ctx, ui);
-            view_property_ui::<Background>(&view_ctx, ui);
-        });
+            re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
+                view_property_ui_with_hidden_components::<SpatialInformation>(
+                    ctx,
+                    ui,
+                    &[SpatialInformation::descriptor_axes().component],
+                );
+                view_property_ui::<VisualBounds2D>(ctx, ui);
+                view_property_ui::<NearClipPlane>(ctx, ui);
+                view_property_ui::<Background>(ctx, ui);
+            });
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn ui(

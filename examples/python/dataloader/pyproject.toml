@@ -6,6 +6,8 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "rerun-sdk[dataloader,catalog,tracing]",
   "huggingface-hub>=1.0",
+  # LeRobot 0.6.0 requires torch<2.12 and setuptools<81. Remove the dependabot
+  # ignore ranges once LeRobot supports newer versions
   "lerobot[dataset]==0.6.0",
 ]
 

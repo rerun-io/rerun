@@ -39,13 +39,13 @@ impl OpenUrlModal {
                     }
                 });
 
-                let edit_output = egui::TextEdit::singleline(&mut self.url)
-                    .desired_width(f32::INFINITY)
-                    .show(ui);
+                let response = ui
+                    .add(egui::TextEdit::singleline(&mut self.url).desired_width(f32::INFINITY))
+                    .accessible_name("URL");
 
                 // If we just opened the dialog, focus the text edit so user can just paste.
                 if self.just_opened {
-                    edit_output.response.request_focus();
+                    response.request_focus();
 
                     // Pasting the clipboard is a cool idea until you realize that we may just have pasted a password.
                     // We can't read the clipboard contents on the web and we don't have a nice API for that on native right now,

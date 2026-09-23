@@ -70,9 +70,11 @@ disallowed-methods = [
   { path = "ecolor::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Rgba::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
+  { path = "egui::Button::image", reason = "An image-only button needs an accessible name, or nothing can find it by name: a screen reader, a kittest query, or the MCP UI tools. Use `re_ui::ReButton::icon`, `ui.small_icon_button` or `ui.image_button_widget`, which all take the alt text." },
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
   { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
+  { path = "egui::WidgetInfo::new", reason = "A widget without a name cannot be found by name: not by a screen reader, a kittest query, or the MCP UI tools. Use `WidgetInfo::labeled` (or `selected`, `slider`, … which all take a label)." },
   # `SnapshotOptions::default` cannot be listed here (clippy can't refer to trait methods),
   # so `scripts/lint.py` forbids that one instead.
   { path = "egui_kittest::SnapshotOptions::new", reason = "Use `re_ui::testing::default_snapshot_options_for_ui/_3d` instead, so that snapshot tests get strict thresholds on CI" },

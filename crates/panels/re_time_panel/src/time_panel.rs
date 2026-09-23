@@ -1,8 +1,8 @@
 use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
-    Align, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
+    Align2, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
+    TextEdit, Ui, Vec2, WidgetInfo,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
@@ -64,18 +64,21 @@ impl TimePanelItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Debug, Clone, Copy, Default, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize,
+)]
 pub enum TimePanelSource {
     #[default]
     Recording,
     Blueprint,
 }
 
-impl From<TimePanelSource> for egui::Id {
-    fn from(source: TimePanelSource) -> Self {
-        match source {
-            TimePanelSource::Recording => "recording".into(),
-            TimePanelSource::Blueprint => "blueprint".into(),
+impl TimePanelSource {
+    /// User-facing name of the panel, also used to name it in the accessibility tree.
+    fn panel_name(self) -> &'static str {
+        match self {
+            Self::Recording => "Time panel",
+            Self::Blueprint => "Blueprint time panel",
         }
     }
 }
@@ -242,11 +245,9 @@ impl TimePanel {
 
         let window_height = ui.content_rect().height();
 
-        let id: egui::Id = self.source.into();
-
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
-        let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
+        let expanded = egui::Panel::bottom((self.source, "time_panel_expanded"))
             .resizable(true)
             .frame(panel_frame)
             .min_size(min_height)
@@ -254,7 +255,7 @@ impl TimePanel {
             .default_size((0.25 * window_height).clamp(min_height, 250.0).round());
 
         if can_collapse_to_bar {
-            let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
+            let collapsed = egui::Panel::bottom((self.source, "time_panel_collapsed"))
                 .resizable(true)
                 .frame(panel_frame)
                 .exact_size(29.0);
@@ -315,6 +316,8 @@ impl TimePanel {
     ) {
         let tokens = ui.tokens();
 
+        ui.name_panel(self.source.panel_name());
+
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 0.5;
             // Add back the margin we removed from the panel:
@@ -367,6 +370,8 @@ impl TimePanel {
     ) {
         re_tracing::profile_function!();
 
+        ui.name_panel(self.source.panel_name());
+
         let time_ctrl = store_ctx.time_ctrl;
         let entity_db = store_ctx.db;
 
@@ -412,7 +417,7 @@ impl TimePanel {
 
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let time_range = entity_db.time_range_for(time_ctrl.timeline_name());
+        let time_range = time_ctrl.time_range(entity_db);
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
@@ -582,7 +587,7 @@ impl TimePanel {
         let timeline_rect = {
             let top = ui.min_rect().bottom();
             ui.response()
-                .widget_info(|| WidgetInfo::labeled(WidgetType::Panel, true, "_streams_tree"));
+                .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_streams_tree"));
 
             let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
@@ -1230,7 +1235,7 @@ impl TimePanel {
                 egui::Tooltip::always_open(
                     ui.ctx().clone(),
                     ui.layer_id(),
-                    egui::Id::new((item, "data_tooltip")), // give each item a unique tooltip id
+                    ui.make_persistent_id(("data_tooltip", item)), // give each item a unique tooltip id
                     egui::PopupAnchor::Pointer,
                 )
                 .gap(12.0)
@@ -1490,7 +1495,7 @@ impl TimePanel {
         let time_ctrl = store_ctx.time_ctrl;
         let entity_db = store_ctx.db;
 
-        let Some(time_range) = entity_db.time_range_for(time_ctrl.timeline_name()) else {
+        let Some(time_range) = time_ctrl.time_range(entity_db) else {
             // We have no data on this timeline
             return;
         };
@@ -1623,8 +1628,9 @@ impl TimePanel {
                 // `TextEdit::min_size` is ignored for some reason so we need add_sized
                 ui.add_sized(
                     Vec2::new(text_edit_width, Size::Tiny.height()),
-                    TextEdit::singleline(&mut time_str).vertical_align(Align::Center),
+                    TextEdit::singleline(&mut time_str).align(Align2::LEFT_CENTER),
                 )
+                .accessible_name("Current time")
             });
             if response.changed() {
                 self.time_edit_string = Some(time_str.clone());
@@ -1766,7 +1772,8 @@ fn initialize_time_ranges_ui(
 
     let timeline = store_ctx.time_ctrl.timeline_name();
     if let Some(time_type) = store_ctx.time_ctrl.time_type()
-        && let Some(full_timeline_range) = store_ctx.db.time_range_for(timeline)
+        && let Some(full_timeline_range) =
+            store_ctx.time_ctrl.time_range_for(store_ctx.db, timeline)
     {
         let data_ranges = store_ctx.db.data_time_ranges_for(timeline);
         let timeline_axis = if let Some(ranges) = data_ranges
@@ -1843,7 +1850,7 @@ fn pan_and_zoom_interaction(
     // drags in the timeline rect should create loop selections.
     let response = ui.interact(
         *streams_rect,
-        ui.id().with("time_area_interact"),
+        ui.make_persistent_id("time_area_interact"),
         egui::Sense::click_and_drag(),
     );
 
@@ -1959,7 +1966,7 @@ impl TimePanel {
             .unwrap_or_else(|| {
                 ui.interact(
                     *interact_rect,
-                    ui.id().with("time_cursor_interact"),
+                    ui.make_persistent_id("time_cursor_interact"),
                     egui::Sense::click_and_drag(),
                 )
             })
@@ -1971,9 +1978,8 @@ impl TimePanel {
         });
 
         let timeline_range = AbsoluteTimeRangeF::from(
-            store_ctx
-                .db
-                .time_range_for(time_ctrl.timeline_name())
+            time_ctrl
+                .time_range(store_ctx.db)
                 .unwrap_or(AbsoluteTimeRange::EVERYTHING),
         );
 
@@ -1991,7 +1997,7 @@ impl TimePanel {
 
         // Show hover preview, and right-click context menu:
         {
-            let right_clicked_time_id = egui::Id::new("__right_clicked_time");
+            let right_clicked_time_id = ui.make_persistent_id("__right_clicked_time");
 
             let right_clicked_time = ui
                 .ctx()

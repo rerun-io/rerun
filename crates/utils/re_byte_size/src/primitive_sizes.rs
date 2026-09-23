@@ -71,6 +71,9 @@ impl_size_bytes_pod!(ecolor::Color32);
 #[cfg(feature = "egui")]
 impl_size_bytes_pod!(egui::Id, egui::Pos2, egui::Rect, egui::Vec2);
 
+#[cfg(feature = "egui_plot")]
+impl_size_bytes_pod!(egui_plot::ItemId);
+
 #[cfg(feature = "glam")]
 impl_size_bytes_pod!(
     glam::Mat3,

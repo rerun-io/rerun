@@ -106,7 +106,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
                 .inner()
                 .scan_dataset_manifest(request)
                 .await
-                .map_err(|err| ApiError::tonic(&origin, err, "/ScanDatasetManifest failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanDatasetManifest"))
         })
         .await?;
 

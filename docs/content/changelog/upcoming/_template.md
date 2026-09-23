@@ -28,6 +28,12 @@ type: feature # highlight | misc | breaking | feature
  A `misc` entry becomes one list item under `## Other`, combining its heading and body;
  the release changeset has no headings or prose outside those list items.
 
+ Keep it short: one to three sentences on what the user can now do.
+ Leave out implementation details and anything the user doesn't need to know.
+ Stick to facts, not sales copy, and reserve `highlight` for flagship changes.
+ If the feature is partial (e.g. data types without viewer support yet), say what doesn't work yet.
+ A breaking change gets a new migration guide; never edit the migration guides of past releases.
+
  For each entry, consider:
    * Migration guide   — required for any breaking change. Show before/after.
    * Visual media      — required for any visual feature. Use permanent website

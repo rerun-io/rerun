@@ -910,7 +910,26 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component: ComponentIdentifier,
     ) -> QueryResults {
-        self.point_relevant_chunks(report_mode, query, entity_path, component)
+        self.point_relevant_chunks(
+            report_mode,
+            query,
+            entity_path,
+            std::slice::from_ref(&component),
+        )
+    }
+
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and set of [`ComponentIdentifier`]s.
+    ///
+    /// The result is the union of what [`Self::latest_at_relevant_chunks`] returns for each
+    /// component, free of duplicates.
+    pub fn latest_at_relevant_chunks_for_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        components: &[ComponentIdentifier],
+    ) -> QueryResults {
+        self.point_relevant_chunks(report_mode, query, entity_path, components)
     }
 
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
@@ -936,46 +955,56 @@ impl ChunkStore {
         )
     }
 
-    /// Shared body of [`Self::latest_at_relevant_chunks`] and
-    /// [`Self::earliest_at_relevant_chunks`].
+    /// Shared body of [`Self::latest_at_relevant_chunks`],
+    /// [`Self::earliest_at_relevant_chunks`] and
+    /// [`Self::latest_at_relevant_chunks_for_components`].
     fn point_relevant_chunks(
         &self,
         report_mode: ChunkTrackingMode,
         query: &impl PointQuery,
         entity_path: &EntityPath,
-        component: ComponentIdentifier,
+        components: &[ComponentIdentifier],
     ) -> QueryResults {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
 
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
 
-        if let Some(static_chunk_id) = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
-        {
-            return QueryResults::from_chunk_ids(
-                self,
-                entity_path,
-                report_mode,
-                std::iter::once(*static_chunk_id),
-            );
-        }
-
-        let chunk_ids = self
+        let static_chunk_ids_per_component = self.static_chunk_ids_per_entity.get(entity_path);
+        let temporal_chunk_ids_per_component = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(&query.timeline()?)
-            })
-            .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component)
-            })
-            .and_then(|per_time| query.relevant_chunk_ids(per_time))
-            .unwrap_or_default();
+            });
 
-        QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter())
+        let chunk_ids = components.iter().flat_map(|component| {
+            // Static data unconditionally overrides temporal data.
+            if let Some(static_chunk_id) = static_chunk_ids_per_component
+                .and_then(|static_chunks_per_component| static_chunks_per_component.get(component))
+            {
+                return Either::Left(std::iter::once(*static_chunk_id));
+            }
+
+            Either::Right(
+                temporal_chunk_ids_per_component
+                    .and_then(|temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.get(component)
+                    })
+                    .and_then(|per_time| query.relevant_chunk_ids(per_time))
+                    .unwrap_or_default()
+                    .into_iter(),
+            )
+        });
+
+        // Several components can share a chunk, a single component cannot repeat one.
+        let chunk_ids = if components.len() > 1 {
+            Either::Left(chunk_ids.unique())
+        } else {
+            Either::Right(chunk_ids)
+        };
+
+        QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids)
     }
 
     /// Shared body of [`Self::latest_at_relevant_chunks_for_all_components`] and
@@ -1107,7 +1136,12 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component: ComponentIdentifier,
     ) -> QueryResults {
-        self.point_relevant_chunks(report_mode, query, entity_path, component)
+        self.point_relevant_chunks(
+            report_mode,
+            query,
+            entity_path,
+            std::slice::from_ref(&component),
+        )
     }
 
     /// Returns the most-relevant chunk(s) for the given [`EarliestAtQuery`].
@@ -1496,7 +1530,7 @@ mod tests {
         // Back the chunks with an RRD manifest. That way, once they get garbage collected, they
         // stay recoverable and keep being reported as missing (partial results) instead of
         // vanishing from the virtual indices entirely.
-        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        let rrd_manifest = re_chunk_index::RrdManifest::build_in_memory_from_chunks(
             store_id,
             [&*chunk1, &*chunk2, &*chunk3].into_iter(),
         )

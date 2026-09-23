@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use egui::Rect;
 use re_format::format_f32;
 use re_sdk_types::blueprint::components::VisualBounds2D;
@@ -13,9 +15,17 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
+    #[size_bytes(ignore)]
+    pending_reset: AtomicBool,
 }
 
 impl GraphViewState {
+    pub fn handle_pending_actions(&mut self) {
+        if self.pending_reset.swap(false, Ordering::Relaxed) {
+            self.layout_state.reset();
+        }
+    }
+
     pub fn layout_ui(&self, ui: &mut egui::Ui) {
         let Some(rect) = self.layout_state.bounding_rect() else {
             return;
@@ -31,9 +41,11 @@ impl GraphViewState {
         ui.end_row();
     }
 
-    pub fn simulation_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn simulation_ui(&self, ui: &mut egui::Ui) {
         if ui.button("Reset simulation").clicked() {
-            self.layout_state.reset();
+            self.pending_reset.store(true, Ordering::Relaxed);
+            // The view may have rendered already; schedule another frame to consume the action in its `ui`.
+            ui.ctx().request_repaint();
         }
     }
 }

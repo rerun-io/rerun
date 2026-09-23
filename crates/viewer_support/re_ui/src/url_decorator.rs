@@ -11,7 +11,7 @@ pub type UrlDecoratorFn = std::sync::Arc<dyn Fn(&str) -> Option<LinkButton> + Se
 pub struct UrlDecorator(UrlDecoratorFn);
 
 fn url_decorator_id() -> egui::Id {
-    egui::Id::new("re_ui::url_decorator")
+    egui::Id::unique("re_ui::url_decorator")
 }
 
 impl UrlDecorator {

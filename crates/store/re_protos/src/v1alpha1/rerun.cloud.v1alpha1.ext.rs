@@ -52,6 +52,7 @@ pub enum LayerRegistrationStatus {
 
     /// Legacy value.
     /// Marks rows that have been soft-deleted. This layer has been removed.
+    #[deprecated = "soft deletes are no longer used"]
     Deleted = 3,
 }
 
@@ -66,6 +67,7 @@ impl LayerRegistrationStatus {
             Self::Pending => Self::PENDING_STR,
             Self::Done => Self::DONE_STR,
             Self::Error => Self::ERROR_STR,
+            #[allow(deprecated)]
             Self::Deleted => Self::DELETED_STR,
         }
     }
@@ -85,6 +87,7 @@ impl std::str::FromStr for LayerRegistrationStatus {
             Self::PENDING_STR => Ok(Self::Pending),
             Self::DONE_STR => Ok(Self::Done),
             Self::ERROR_STR => Ok(Self::Error),
+            #[allow(deprecated)]
             Self::DELETED_STR => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
@@ -104,6 +107,7 @@ impl TryFrom<u8> for LayerRegistrationStatus {
             0 => Ok(Self::Pending),
             1 => Ok(Self::Done),
             2 => Ok(Self::Error),
+            #[allow(deprecated)]
             3 => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
@@ -225,6 +229,7 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
 pub struct QueryDatasetRequest {
     pub segment_ids: Vec<common_ext::SegmentId>,
     pub generate_direct_urls: bool,
+    pub unsigned_direct_urls: bool,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -248,6 +253,7 @@ impl Default for QueryDatasetRequest {
             scan_parameters: None,
             query: None,
             generate_direct_urls: false,
+            unsigned_direct_urls: false,
         }
     }
 }
@@ -269,6 +275,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             scan_parameters: value.scan_parameters.map(Into::into),
             query: value.query.map(Into::into),
             generate_direct_urls: value.generate_direct_urls,
+            unsigned_direct_urls: value.unsigned_direct_urls,
         }
     }
 }
@@ -321,6 +328,7 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
             query: value.query.map(|q| q.try_into()).transpose()?,
 
             generate_direct_urls: value.generate_direct_urls,
+            unsigned_direct_urls: value.unsigned_direct_urls,
         };
 
         if let Some(query) = result.query.as_ref()

@@ -1,0 +1,9 @@
+mod compact;
+mod correctness;
+mod dataframe;
+mod drop_time_range;
+mod formatting;
+mod gc;
+mod memory_test;
+mod reads;
+mod stats;

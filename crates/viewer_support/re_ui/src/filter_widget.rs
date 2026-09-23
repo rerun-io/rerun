@@ -1,11 +1,10 @@
 use std::ops::Range;
 
+use crate::{UiExt as _, icons, list_item};
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use re_log::debug_assert;
 use smallvec::SmallVec;
-
-use crate::{UiExt as _, icons, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]
@@ -30,7 +29,7 @@ impl Default for InnerState {
             filter_query: String::new(),
 
             // create a new session id each time the filter is toggled
-            session_id: egui::Id::new(random_bytes),
+            session_id: egui::Id::unique(random_bytes),
         }
     }
 }
@@ -156,7 +155,8 @@ impl FilterState {
                             let response =
                                 egui::TextEdit::singleline(&mut inner_state.filter_query)
                                     .lock_focus(true)
-                                    .ui(ui);
+                                    .ui(ui)
+                                    .accessible_name("Filter");
 
                             if self.request_focus {
                                 self.request_focus = false;
@@ -204,7 +204,7 @@ impl FilterState {
     pub fn search_field_ui(&mut self, ui: &mut egui::Ui, hint_text: impl Into<egui::WidgetText>) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
-        let textedit_id = ui.id().with("textedit");
+        let textedit_id = ui.make_persistent_id("textedit");
         let response = ui.read_response(textedit_id);
 
         let visuals = response
@@ -246,6 +246,7 @@ impl FilterState {
                                 .hint_text(hint_text)
                                 .desired_width(ui.available_width()),
                         )
+                        .accessible_name("Filter")
                     });
                 });
             });

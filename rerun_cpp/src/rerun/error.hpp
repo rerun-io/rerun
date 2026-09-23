@@ -72,6 +72,7 @@ namespace rerun {
         // Errors relating to file IO.
         _CategoryFileIO = 0x0010'0000,
         FileOpenFailure,
+        FileReadFailure,
 
         // Errors directly translated from arrow::StatusCode.
         _CategoryArrowCppStatus = 0x1000'0000,

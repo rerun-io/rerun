@@ -3,7 +3,9 @@ use std::sync::Arc;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithTonicConfig as _;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
-use opentelemetry_sdk::metrics::{Aggregation, SdkMeterProvider};
+use opentelemetry_sdk::metrics::{
+    Aggregation, Instrument, InstrumentKind, SdkMeterProvider, Stream,
+};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -206,6 +208,33 @@ where
     }
 }
 
+/// View that puts every histogram instrument on [`histogram_aggregation`].
+fn histogram_view(instrument: &Instrument) -> Option<Stream> {
+    if instrument.kind() != InstrumentKind::Histogram {
+        return None;
+    }
+
+    Stream::builder()
+        .with_aggregation(histogram_aggregation())
+        .build()
+        .ok()
+}
+
+/// Aggregation applied to every histogram instrument.
+///
+/// Base-2 exponential histograms are the `OTel` equivalent of Prometheus native histograms,
+/// so bucket boundaries come from the data instead of being hardcoded.
+///
+/// `max_scale` is the starting scale and the SDK only downscales, so 8 is what keeps a
+/// near-constant histogram inside the `-4..=8` schema range Prometheus accepts.
+fn histogram_aggregation() -> Aggregation {
+    Aggregation::Base2ExponentialHistogram {
+        max_size: 20,
+        max_scale: 8,
+        record_min_max: true,
+    }
+}
+
 /// Build an OTLP `SpanExporter` that pushes through a tonic Channel whose
 /// outbound requests carry a Rerun SDK Bearer token in the `authorization`
 /// metadata. The token comes from
@@ -319,6 +348,7 @@ pub struct Telemetry {
     metrics: Option<SdkMeterProvider>,
 
     /// The shared manual reader for pull-based metrics collection
+    #[cfg_attr(not(feature = "prometheus"), expect(dead_code))]
     metrics_reader: Option<Arc<opentelemetry_sdk::metrics::ManualReader>>,
 
     drop_behavior: TelemetryDropBehavior,
@@ -864,34 +894,7 @@ impl Telemetry {
             let (metric_provider, metrics_reader) = {
                 let mut builder = SdkMeterProvider::builder();
 
-                // Use base-2 exponential histograms (OTel equivalent of Prometheus native
-                // histograms) instead of explicit bucket histograms. This avoids hardcoding
-                // bucket boundaries and lets the SDK auto-scale resolution.
-                builder =
-                    builder.with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
-                        if instrument.kind()
-                            == opentelemetry_sdk::metrics::InstrumentKind::Histogram
-                        {
-                            opentelemetry_sdk::metrics::Stream::builder()
-                                .with_aggregation(Aggregation::Base2ExponentialHistogram {
-                                    // Max buckets per positive/negative range. Negative buckets
-                                    // stay empty for duration/size metrics. Comparable to the
-                                    // ~10 explicit buckets we had before, but with auto-scaling
-                                    // boundaries.
-                                    max_size: 20,
-                                    // Starting resolution scale. The base of each bucket is
-                                    // 2^(2^(-scale)). At scale 20 (the maximum), buckets are
-                                    // extremely fine-grained; the SDK automatically downscales
-                                    // when observations exceed max_size buckets.
-                                    max_scale: 20,
-                                    record_min_max: true,
-                                })
-                                .build()
-                                .ok()
-                        } else {
-                            None
-                        }
-                    });
+                builder = builder.with_view(histogram_view);
 
                 // Drive the periodic export on the Tokio runtime rather than via
                 // `with_periodic_exporter`. That convenience method installs the
@@ -1061,6 +1064,7 @@ impl Telemetry {
     /// // This will return an error if the port is already in use
     /// telemetry.start_metrics_listener(":9091").await?;
     /// ```
+    #[cfg(feature = "prometheus")]
     pub async fn start_metrics_listener(&self, addr: &str) -> anyhow::Result<()> {
         let reader = self.metrics_reader.as_ref()
             .ok_or_else(|| anyhow::anyhow!(
@@ -1120,7 +1124,7 @@ mod tracy {
 
 #[cfg(test)]
 mod tests {
-    use super::ResolvedTraceEndpoints;
+    use super::{ResolvedTraceEndpoints, histogram_view};
 
     /// Compact projection of `resolve`'s return for table-driven assertions.
     /// `Endpoints` keeps both URLs so we can match the dual-publish cases
@@ -1330,5 +1334,50 @@ mod tests {
             .to_str()
             .expect("authorization should be ASCII");
         assert_eq!(auth, format!("Bearer {TEST_JWT}"));
+    }
+
+    /// A histogram of near-identical values never downscales, so it exports `max_scale` as is.
+    #[test]
+    fn constant_histogram_exports_a_prometheus_legal_scale() {
+        use opentelemetry::metrics::MeterProvider as _;
+        use opentelemetry_sdk::metrics::SdkMeterProvider;
+        use opentelemetry_sdk::metrics::data::{AggregatedMetrics, MetricData, ResourceMetrics};
+        use opentelemetry_sdk::metrics::reader::MetricReader as _;
+
+        let shared = crate::shared_reader::SharedManualReader::new(
+            opentelemetry_sdk::metrics::Temporality::Cumulative,
+        );
+        let reader = shared.inner();
+        let provider = SdkMeterProvider::builder()
+            .with_view(histogram_view)
+            .with_reader(shared)
+            .build();
+
+        let histogram = provider.meter("test").f64_histogram("constant").build();
+        for _ in 0..1000 {
+            histogram.record(1.0, &[]);
+        }
+
+        let mut metrics = ResourceMetrics::default();
+        reader.collect(&mut metrics).expect("collect");
+
+        let mut checked = 0;
+        for scope in metrics.scope_metrics() {
+            for metric in scope.metrics() {
+                if let AggregatedMetrics::F64(MetricData::ExponentialHistogram(histogram)) =
+                    metric.data()
+                {
+                    for point in histogram.data_points() {
+                        assert!(
+                            (-4..=8).contains(&point.scale()),
+                            "scale {} is outside the schema range Prometheus accepts",
+                            point.scale()
+                        );
+                        checked += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(checked, 1, "expected exactly one exported data point");
     }
 }

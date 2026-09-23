@@ -1503,7 +1503,11 @@ mod tests {
     }
 
     fn workspace_dir() -> std::path::PathBuf {
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(
+                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                std::path::PathBuf::from,
+            )
             .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())

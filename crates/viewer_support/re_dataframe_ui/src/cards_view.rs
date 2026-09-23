@@ -164,7 +164,7 @@ fn card_content_ui(
     // interactive child widgets (flag button, etc.) take click priority.
     let card_click_response = ui.interact(
         ui.max_rect(),
-        ui.id().with(("card_click", row_idx)),
+        ui.make_persistent_id(("card_click", row_idx)),
         egui::Sense::click(),
     );
 
@@ -298,10 +298,13 @@ fn card_content_ui(
     if card_click_response.clicked()
         && let Some(idx) = url_col_index
         && let Some(DisplayColumn::Component(comp)) = display_record_batch.columns().get(idx)
-        && let Some(url_str) = comp.string_value_at(batch_index)
-        && re_uri::RedapUri::from_str(&url_str).is_ok()
+        && let Some(value) = comp.string_value_at(batch_index)
+        && let Ok(uri) = match ctx.route.origin() {
+            Some(base) => re_uri::RedapUri::parse_with_base(base, &value),
+            None => re_uri::RedapUri::from_str(&value),
+        }
     {
-        ui.open_url(egui::OpenUrl::same_tab(url_str));
+        ui.open_url(egui::OpenUrl::same_tab(uri.to_string()));
     }
 
     flag_change_event

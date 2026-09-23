@@ -1,4 +1,7 @@
 //! Chunk fetching strategies: direct URL (HTTP Range) and gRPC.
+mod auth;
+
+pub use auth::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -128,8 +131,8 @@ struct ChunkInMergedRange {
 
 /// A single HTTP Range request that may cover multiple adjacent chunks.
 struct MergedRangeRequest {
-    /// The presigned URL to fetch from.
-    url: String,
+    /// The prepared authenticated HTTP request.
+    request: reqwest::Request,
 
     /// Absolute byte span within the file.
     file_range: Span<u64>,
@@ -277,6 +280,7 @@ pub async fn fetch_batch_direct(
     request_counter: &AtomicU64,
     stats: &mut TaskFetchStats,
     pending: &PendingQueryAnalytics,
+    object_store_auth: &dyn ObjectStoreAuthenticator,
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
@@ -286,7 +290,15 @@ pub async fn fetch_batch_direct(
     #[cfg(not(target_arch = "wasm32"))]
     span.record("byte_size", byte_size);
 
-    match fetch_batch_via_direct_urls(http_client, batch, request_counter, stats).await {
+    match fetch_batch_via_direct_urls(
+        http_client,
+        batch,
+        request_counter,
+        stats,
+        object_store_auth,
+    )
+    .await
+    {
         Ok(chunks) => {
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_success(byte_size);
@@ -449,10 +461,8 @@ impl From<reqwest::Error> for DirectFetchError {
             source = cause.source();
         }
 
-        if let Some(url) = redacted_url
-            && let Err(err) = write!(msg, "\nURL: {url}")
-        {
-            re_log::debug!("Failed to append URL to message: {err}");
+        if let Some(url) = redacted_url {
+            msg = re_error::format_with_details(msg, format!("URL: {url}"));
         }
 
         Self {
@@ -481,15 +491,16 @@ fn calculate_optimal_gap_size(ranges: &[Span<u64>]) -> u64 {
 /// Ranges are merged when the gap between them is <= `max_gap_size` and the resulting
 /// merged range does not exceed [`MAX_MERGED_RANGE_SIZE`].
 fn merge_ranges_for_url(
-    url: String,
+    http_client: &reqwest::Client,
+    url: &str,
     mut chunks: Vec<(usize, Span<u64>)>, // (original_row_index, byte span in file)
     max_gap_size: u64,
     segment_id: Option<SegmentId>,
     expected_etag: Option<ETag>,
     registration_time: Option<jiff::Timestamp>,
-) -> Vec<MergedRangeRequest> {
+) -> Result<Vec<MergedRangeRequest>, DirectFetchError> {
     if chunks.is_empty() {
-        return vec![];
+        return Ok(vec![]);
     }
 
     // Sort by offset
@@ -521,7 +532,12 @@ fn merge_ranges_for_url(
             current_span = candidate;
         } else {
             merged_ranges.push(MergedRangeRequest {
-                url: url.clone(),
+                request: build_range_request(
+                    http_client,
+                    url,
+                    current_span,
+                    expected_etag.as_ref(),
+                )?,
                 file_range: current_span,
                 chunks: chunk_infos,
                 segment_id: segment_id.clone(),
@@ -539,7 +555,7 @@ fn merge_ranges_for_url(
 
     // Don't forget the last range
     merged_ranges.push(MergedRangeRequest {
-        url,
+        request: build_range_request(http_client, url, current_span, expected_etag.as_ref())?,
         file_range: current_span,
         chunks: chunk_infos,
         segment_id,
@@ -547,7 +563,36 @@ fn merge_ranges_for_url(
         registration_time,
     });
 
-    merged_ranges
+    Ok(merged_ranges)
+}
+
+fn build_range_request(
+    http_client: &reqwest::Client,
+    url: &str,
+    file_range: Span<u64>,
+    expected_etag: Option<&ETag>,
+) -> Result<reqwest::Request, DirectFetchError> {
+    // `Range` headers are inclusive, so an empty span has no end to ask for.
+    let Some(range_end) = file_range.end().checked_sub(1) else {
+        return Err(DirectFetchError::new(
+            "refusing to fetch an empty byte range".to_owned(),
+            false,
+        ));
+    };
+    let range_start = file_range.start;
+
+    let mut request = http_client
+        .get(url)
+        .header("Range", format!("bytes={range_start}-{range_end}"));
+
+    // If-Match header to detect manifest drift at the source.
+    if let Some(etag) = expected_etag.and_then(ETag::as_if_match) {
+        request = request.header(reqwest::header::IF_MATCH, etag);
+    }
+
+    request
+        .build()
+        .map_err(|err| DirectFetchError::new(format!("Request builder error: {err}"), false))
 }
 
 /// Calculate adaptive concurrency based on range sizes and total data volume.
@@ -630,6 +675,7 @@ async fn fetch_batch_via_direct_urls(
     batch: &RecordBatch,
     request_counter: &AtomicU64,
     stats: &mut TaskFetchStats,
+    object_store_auth: &dyn ObjectStoreAuthenticator,
 ) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
     let column = |err: quiver::Error| DirectFetchError::new(err.to_string(), false);
 
@@ -703,11 +749,12 @@ async fn fetch_batch_via_direct_urls(
 
     // Step 2: Merge adjacent ranges per URL.
     let max_gap_size = calculate_optimal_gap_size(&all_ranges);
-    let merged_requests: Vec<MergedRangeRequest> = url_groups
+    let mut merged_requests: Vec<MergedRangeRequest> = url_groups
         .into_iter()
-        .flat_map(|(url, group)| {
+        .map(|(url, group)| {
             merge_ranges_for_url(
-                url,
+                http_client,
+                &url,
                 group.ranges,
                 max_gap_size,
                 group.segment_id,
@@ -715,7 +762,8 @@ async fn fetch_batch_via_direct_urls(
                 group.registration_time,
             )
         })
-        .collect();
+        .flatten_ok()
+        .try_collect()?;
 
     // Step 3: Calculate adaptive concurrency from original (un-merged) ranges.
     let concurrency = calculate_adaptive_concurrency(&all_ranges);
@@ -732,7 +780,14 @@ async fn fetch_batch_via_direct_urls(
         merged_requests.len()
     );
 
-    // Step 4: Fetch merged ranges concurrently and extract individual chunks.
+    // Step 4: Inject auth into the HTTP requests
+    object_store_auth
+        .authenticate_requests(&mut merged_requests.iter_mut().map(|req| &mut req.request))
+        .map_err(|err| {
+            DirectFetchError::new(format!("could not authenticate requests: {err}"), false)
+        })?;
+
+    // Step 5: Fetch merged ranges concurrently and extract individual chunks.
     //
     // Each inner future owns its own `TaskFetchStats` so nothing touches a
     // shared cache line across threads during the retry-heavy hot path. The
@@ -741,7 +796,6 @@ async fn fetch_batch_via_direct_urls(
         .into_iter()
         .enumerate()
         .map(|(req_idx, request)| {
-            let http_client = http_client.clone();
             async move {
                 request_counter.fetch_add(1, Ordering::Relaxed);
                 let mut local_stats = TaskFetchStats::default();
@@ -779,7 +833,7 @@ async fn fetch_batch_via_direct_urls(
                         backoff.sleep().await;
                     }
 
-                    let fetch_result = fetch_merged_range(&http_client, &request).await;
+                    let fetch_result = fetch_merged_range(http_client, &request).await;
 
                     match fetch_result {
                         Ok((results, decode_elapsed)) => {
@@ -849,7 +903,7 @@ async fn fetch_batch_via_direct_urls(
         return Err(err);
     }
 
-    // Step 5: Reassemble in original row order.
+    // Step 6: Reassemble in original row order.
     all_chunks.sort_by_key(|(idx, _)| *idx);
     let ordered: Vec<(Chunk, Option<SegmentId>)> = all_chunks
         .into_iter()
@@ -868,13 +922,16 @@ async fn fetch_merged_range(
     request: &MergedRangeRequest,
 ) -> Result<(Vec<DecodedChunk>, Duration), DirectFetchError> {
     let MergedRangeRequest {
-        url,
+        request,
         file_range,
         chunks,
         segment_id,
         expected_etag,
         registration_time,
     } = request;
+    let request = request
+        .try_clone()
+        .expect("Request should always be cloneable");
     let file_range = *file_range;
     let segment_id = segment_id.as_ref();
     let expected_etag = expected_etag.as_ref();
@@ -886,7 +943,8 @@ async fn fetch_merged_range(
         merged_bytes,
         returned_etag,
         last_modified,
-    } = fetch_merged_range_bytes(http_client, url, file_range, expected_etag, segment_id).await?;
+        source_url,
+    } = fetch_merged_range_bytes(http_client, request, segment_id).await?;
 
     tracing::Span::current().record("bytes", merged_bytes.len());
 
@@ -912,7 +970,7 @@ async fn fetch_merged_range(
             })?;
             decode_chunk_from_bytes(chunk_bytes)
                 .map_err(|err| {
-                    let logged_url = url_strip_query(url.as_str());
+                    let logged_url = url_strip_query(source_url.as_str());
                     let drifted = match (expected_etag, returned_etag.as_ref()) {
                         (Some(want), Some(got)) => !want.matches(got),
                         _ => false,
@@ -955,6 +1013,9 @@ struct FetchedRange {
 
     /// `Last-Modified` returned by the source, logged alongside on decode failure.
     last_modified: Option<String>,
+
+    /// The URL the range was fetched from.
+    source_url: reqwest::Url,
 }
 
 /// Fetch a merged byte range over HTTP, without decoding it.
@@ -964,34 +1025,15 @@ struct FetchedRange {
 /// the caller's decoding runs uncapped.
 async fn fetch_merged_range_bytes(
     http_client: &reqwest::Client,
-    url: &str,
-    file_range: Span<u64>,
-    expected_etag: Option<&ETag>,
+    request: reqwest::Request,
     segment_id: Option<&SegmentId>,
 ) -> Result<FetchedRange, DirectFetchError> {
-    // `Range` headers are inclusive, so an empty span has no end to ask for.
-    let Some(range_end) = file_range.end().checked_sub(1) else {
-        return Err(DirectFetchError::new(
-            "refusing to fetch an empty byte range".to_owned(),
-            false,
-        ));
-    };
-    let range_start = file_range.start;
-
     let _permit = crate::pipeline_budget::direct_fetch_semaphore()
         .acquire()
         .await
         .expect("direct-fetch semaphore is never closed");
 
-    let mut http_request = http_client
-        .get(url)
-        .header("Range", format!("bytes={range_start}-{range_end}"));
-
-    // If-Match header to detect manifest drift at the source.
-    if let Some(etag) = expected_etag.and_then(ETag::as_if_match) {
-        http_request = http_request.header(reqwest::header::IF_MATCH, etag);
-    }
-    let response = http_request.send().await?;
+    let response = http_client.execute(request).await?;
 
     if response.status() == reqwest::StatusCode::PRECONDITION_FAILED {
         return Err(DirectFetchError::source_changed(segment_id));
@@ -1011,6 +1053,7 @@ async fn fetch_merged_range_bytes(
         .get(reqwest::header::LAST_MODIFIED)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
+    let source_url = response.url().clone();
 
     let merged_bytes = response
         .bytes()
@@ -1021,6 +1064,7 @@ async fn fetch_merged_range_bytes(
         merged_bytes,
         returned_etag,
         last_modified,
+        source_url,
     })
 }
 

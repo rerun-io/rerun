@@ -1,7 +1,7 @@
 mod cpu_worker;
-mod fetch_plan;
+pub(crate) mod fetch_plan;
 mod io_loop;
-mod segment_store;
+pub(crate) mod segment_store;
 #[cfg(test)]
 mod test_utils;
 
@@ -39,7 +39,7 @@ use re_types_core::SegmentId;
 
 use re_redap_client::{ApiError, ApiResult};
 
-use crate::IntoDfError as _;
+use crate::{IntoDfError as _, ObjectStoreAuthenticator};
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -127,6 +127,9 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// Plan-time summary used by `DisplayAs::Verbose` so that `EXPLAIN` (without
     /// `ANALYZE`) also exposes the most useful planning-phase decisions.
     plan_summary: PlanSummary,
+
+    /// Authentication for object store direct fetch requests.
+    object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 }
 
 pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
@@ -187,6 +190,9 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
 
     /// Shared byte budget for end-to-end pipeline backpressure.
     pipeline_budget: Arc<PipelineBudget>,
+
+    /// Authentication for direct chunk fetch requests.
+    object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 }
 
 // TODO(RR-4607): This is a temporary fix to minimize the impact of leaking memory
@@ -271,6 +277,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             let filtered_index_timeline = this.filtered_index_timeline;
             let pending_analytics = this.pending_analytics.clone();
             let pipeline_budget = Arc::clone(&this.pipeline_budget);
+            let object_store_auth = Arc::clone(&this.object_store_auth);
 
             // Parent the IO pipeline under the original caller's trace via the
             // `attach_trace_context` guard above, not under whichever DataFusion
@@ -287,6 +294,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                             chunk_tx,
                             pending_analytics,
                             pipeline_budget,
+                            object_store_auth.as_ref(),
                         )
                         .await
                     }
@@ -526,6 +534,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         server_trace_id: Option<re_redap_client::TraceId>,
         pending_analytics: crate::PendingQueryAnalytics,
         captured_collectors: Vec<crate::MetricsCollector>,
+        object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -600,6 +609,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             captured_collectors,
             partitions_remaining,
             snapshot_sent,
+            object_store_auth,
         })
     }
 }
@@ -725,6 +735,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         );
 
         let filtered_index_timeline = self.query_expression.filtered_index;
+        let object_store_auth = self.object_store_auth.clone();
 
         let stream = DataframeSegmentStreamInner {
             projected_schema: self.projected_schema.clone(),
@@ -743,6 +754,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             partitions_remaining: Arc::clone(&self.partitions_remaining),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
             completed: false,
+            object_store_auth,
         };
         let stream = DataframeSegmentStream {
             inner: Some(stream),
@@ -797,6 +809,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             // shared so the original plan's `Drop`-path emission still
             // dedupes against the new one.
             snapshot_sent: Arc::clone(&self.snapshot_sent),
+            object_store_auth: Arc::clone(&self.object_store_auth),
         };
 
         let partitioning = match &plan.props.as_ref().partitioning {
@@ -997,6 +1010,7 @@ mod plan_properties_tests {
     use tonic::{Request, Response, Status};
 
     use super::*;
+    use crate::NoOpObjectStoreAuthenticator;
     use crate::analytics::{QueryInfo, QueryType, begin_query};
 
     /// `try_new` never touches the client — it only builds the plan node.
@@ -1108,6 +1122,7 @@ mod plan_properties_tests {
             None,
             begin_query(None, query_info(), Instant::now(), SystemTime::now()),
             vec![],
+            Arc::new(NoOpObjectStoreAuthenticator::default()),
         )
         .unwrap();
 

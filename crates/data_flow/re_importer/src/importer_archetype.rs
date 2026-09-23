@@ -143,6 +143,16 @@ impl Importer for ArchetypeImporter {
                 }
                 _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
             }
+        } else if crate::SUPPORTED_AUDIO_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, importer = self.name(), "Loading audio…",);
+            load_audio(&filepath, timepoint, entity_path, contents.into_owned())
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+        } else if extension == "ply" {
+            // `.ply` is in both the mesh and the point-cloud extension lists, so it needs to come
+            // first: only the header tells us which of the two a given file actually holds.
+            re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
+            load_ply(&filepath, timepoint, entity_path, &contents)
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
             load_mesh(
@@ -152,10 +162,6 @@ impl Importer for ArchetypeImporter {
                 contents.into_owned(),
             )
             .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
-        } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading 3D point cloud…",);
-            load_point_cloud(&filepath, timepoint, entity_path, &contents)
-                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
             load_text_document(
@@ -304,6 +310,33 @@ fn load_video(
     }))
 }
 
+/// The audio starts playing at the time it is logged, so it is placed at zero on
+/// its own `audio` duration timeline, mirroring how `load_video` handles `.mp4` files.
+fn load_audio(
+    filepath: &std::path::Path,
+    mut timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, ImporterError> {
+    re_tracing::profile_function!();
+
+    let audio_timeline = re_log_types::Timeline::new_duration("audio");
+    timepoint.insert_cell(
+        *audio_timeline.name(),
+        re_log_types::TimeCell::ZERO_DURATION,
+    );
+
+    let arch = re_sdk_types::archetypes::AssetAudio::from_file_contents(
+        contents,
+        re_sdk_types::components::MediaType::guess_from_path(filepath),
+    );
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(RowId::new(), timepoint, &arch)
+        .build()?;
+
+    Ok(std::iter::once(chunk))
+}
+
 fn load_mesh(
     filepath: std::path::PathBuf,
     timepoint: TimePoint,
@@ -328,30 +361,46 @@ fn load_mesh(
     Ok(rows.into_iter())
 }
 
-fn load_point_cloud(
+fn load_ply(
     filepath: &std::path::Path,
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+    use re_sdk_types::ply::PlyGeometryClass;
+
     re_tracing::profile_function!();
 
     let rows = [
         {
-            let mut builder = Chunk::builder(entity_path);
-            if re_sdk_types::archetypes::GaussianSplats3D::is_gaussian_splat_ply(contents) {
-                let gaussians = re_sdk_types::archetypes::GaussianSplats3D::from_ply_file_contents(
-                    contents,
-                    Some(filepath),
-                )
-                .map_err(anyhow::Error::from)?;
-                builder = builder.with_archetype(RowId::new(), timepoint, &gaussians);
-            } else {
-                // TODO(#4532): `.ply` importer should support 2D point cloud & meshes
-                let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
-                    .map_err(anyhow::Error::from)?;
-                builder = builder.with_archetype(RowId::new(), timepoint, &points3d);
-            }
+            use re_sdk_types::archetypes::{Asset3D, GaussianSplats3D, Points2D, Points3D};
+
+            let builder = Chunk::builder(entity_path);
+            let row_id = RowId::new();
+
+            let builder = match re_sdk_types::ply::classify_geometry_from_bytes(contents)? {
+                PlyGeometryClass::GaussianSplats3D => {
+                    let gaussians =
+                        GaussianSplats3D::from_ply_file_contents(contents, Some(filepath))?;
+                    builder.with_archetype(row_id, timepoint, &gaussians)
+                }
+                PlyGeometryClass::Points2D => {
+                    let points2d = Points2D::from_file_contents(contents)?;
+                    builder.with_archetype(row_id, timepoint, &points2d)
+                }
+                PlyGeometryClass::Points3D => {
+                    let points3d = Points3D::from_file_contents(contents)?;
+                    builder.with_archetype(row_id, timepoint, &points3d)
+                }
+                PlyGeometryClass::MeshOrAsset3D => {
+                    let asset3d = Asset3D::from_file_contents(
+                        contents.to_vec(),
+                        Some(re_sdk_types::components::MediaType::ply()),
+                    );
+                    builder.with_archetype(row_id, timepoint, &asset3d)
+                }
+            };
+
             builder.build()?
         },
         //

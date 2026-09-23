@@ -58,15 +58,17 @@ pub(crate) fn dataframe_ui(
     // The table id mainly drives column widths, along with the id of each column. Empirically, the
     // user experience is better if we have stable column width even when the query changes (which
     // can, in turn, change the column's content).
-    let table_id_salt = egui::Id::new("__dataframe__").with(view_id);
+    let table_id_salt = ("__dataframe__", view_id);
 
     // For the row expansion cache, we invalidate more aggressively for now, because the expanded
     // state is stored against a row index (not unique id like columns). This means rows will more
     // often auto-collapse when the query is modified.
-    let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
-        .with(view_id)
-        .with(&selected_columns)
-        .with(query_handle.query());
+    let row_expansion_id = ui.make_persistent_id((
+        "__dataframe_row_exp__",
+        view_id,
+        &selected_columns,
+        query_handle.query(),
+    ));
 
     let (header_groups, header_entity_paths) = column_groups_for_entity(&selected_columns);
 
@@ -84,7 +86,7 @@ pub(crate) fn dataframe_ui(
         )),
         expanded_rows: ExpandedRows::new(
             ui.ctx().clone(),
-            ui.make_persistent_id(row_expansion_id_salt),
+            row_expansion_id,
             expanded_rows_cache,
             tokens.table_row_height(table_style),
         ),
@@ -107,7 +109,7 @@ pub(crate) fn dataframe_ui(
                     .map(|column_descr| {
                         egui_table::Column::new(200.0)
                             .resizable(true)
-                            .id(egui::Id::new(column_descr))
+                            .id(ui.make_persistent_id(column_descr))
                     })
                     .collect::<Vec<_>>(),
             )
@@ -395,6 +397,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let hide_clicked = cell_with_hover_button_ui(
                         ui,
                         &re_ui::icons::VISIBLE,
+                        "Hide column",
                         CellStyle::Header,
                         header_content,
                     );
@@ -638,6 +641,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::EXPAND,
+                "Expand instances",
                 CellStyle::InstanceData,
                 |ui| {
                     ui.label(re_format::format_plural_s(instance_count, "instance"));
@@ -657,6 +661,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::ARROW_UP,
+                "Collapse instances",
                 CellStyle::InstanceData,
                 data_content,
             );
@@ -672,6 +677,7 @@ fn line_ui(
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
                 &re_ui::icons::EXPAND,
+                "Show more instances",
                 CellStyle::InstanceData,
                 |ui| {
                     ui.label(format!(
@@ -744,6 +750,7 @@ enum CellStyle {
 fn cell_with_hover_button_ui(
     ui: &mut egui::Ui,
     icon: &'static re_ui::Icon,
+    alt_text: &str,
     style: CellStyle,
     cell_content: impl FnOnce(&mut egui::Ui),
 ) -> bool {
@@ -778,11 +785,14 @@ fn cell_with_hover_button_ui(
         let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
         button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-        button_ui.add(egui::Button::image(
-            icon.as_image()
-                .fit_to_exact_size(tokens.small_icon_size)
-                .tint(button_tint),
-        ));
+        button_ui.add(
+            button_ui.image_button_widget(
+                icon.as_image()
+                    .fit_to_exact_size(tokens.small_icon_size)
+                    .tint(button_tint),
+                alt_text,
+            ),
+        );
 
         let click_happened = ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
 

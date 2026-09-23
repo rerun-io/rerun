@@ -126,6 +126,8 @@ impl ChunkBuilder {
     }
 
     /// Add a row's worth of data by destructuring an archetype into component columns.
+    ///
+    /// Use [`Self::with_archetype_auto_row`] if you don't need to control the [`RowId`].
     #[inline]
     pub fn with_archetype(
         self,

@@ -66,15 +66,19 @@ impl<T: Send + 'static> ApiResponseStream<T> {
                     // timeout, peer GOAWAY, etc.) are visible client-side instead of just
                     // being mapped silently into `ApiError`. We log here — not at every
                     // call-site — because this is the single funnel for streaming RPCs.
+                    //
+                    // `gui_notification = false` (`re_log::GUI_NOTIFICATION_FIELD`) keeps it out
+                    // of the notification panel: the same failure is returned as the `ApiError`
+                    // below, and whoever handles that reports it with more context.
                     tracing::warn!(
+                        gui_notification = false,
                         endpoint,
                         grpc_code = %err.code(),
                         error = %err,
                         trace_id = trace_id.map(|t| t.to_string()).as_deref(),
                         "gRPC streaming response failed"
                     );
-                    ApiError::tonic(&origin, err, format!("{endpoint} stream failed"))
-                        .with_trace_id(trace_id)
+                    ApiError::tonic(&origin, err, endpoint).with_trace_id(trace_id)
                 })
             })
         };

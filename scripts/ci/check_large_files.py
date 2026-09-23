@@ -19,6 +19,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_sdk_types/src/encodings/tensor_buffer.rs",
     "crates/store/re_sdk_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
+    "crates/viewer_support/re_ui/data/Hack-Regular.ttf",
     "crates/viewer_support/re_ui/data/Inter-Medium.otf",
     "crates/top/re_viewer/data/app_icon_mac.png",
     "docs/snippets/INDEX.md",

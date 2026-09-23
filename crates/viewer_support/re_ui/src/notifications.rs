@@ -82,8 +82,17 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
     )
 }
 
+/// Whether the event may become a notification, or asked to stay log-only.
+///
+/// See [`re_log::GUI_NOTIFICATION_FIELD`].
+fn show_in_gui(fields: &[(&'static str, re_log::FieldValue)]) -> bool {
+    !fields.iter().any(|(key, value)| {
+        *key == re_log::GUI_NOTIFICATION_FIELD && matches!(value, re_log::FieldValue::Bool(false))
+    })
+}
+
 fn notification_panel_popup_id() -> egui::Id {
-    egui::Id::new("notification_panel_popup")
+    egui::Id::unique("notification_panel_popup")
 }
 
 /// A link to some URL.
@@ -328,6 +337,8 @@ impl NotificationUi {
     /// ## Special cased text
     /// - If a notifications text has details (see [`re_error::StructuredError`]), those are shown
     ///   inside a collapsible details header, one per line. Structured log fields go in there too.
+    /// - An event carrying [`re_log::GUI_NOTIFICATION_FIELD`] set to `false` is dropped: it is
+    ///   log-only, because whoever handles the failure reports it with more context.
     pub fn add_log(&mut self, log_msg: re_log::LogMsg) {
         let re_log::LogMsg {
             level,
@@ -335,6 +346,10 @@ impl NotificationUi {
             message,
             fields,
         } = log_msg;
+
+        if !show_in_gui(&fields) {
+            return;
+        }
 
         if is_relevant(&target, level) {
             let mut message = re_error::StructuredError::parse(message);
@@ -517,7 +532,7 @@ impl Default for Toasts {
 impl Toasts {
     fn new() -> Self {
         Self {
-            id: egui::Id::new("__toasts"),
+            id: egui::Id::unique("__toasts"),
         }
     }
 
@@ -542,6 +557,8 @@ impl Toasts {
                 .order(egui::Order::Foreground)
                 .interactable(true)
                 .movable(false)
+                .role(egui::Role::Alert)
+                .accessible_name("Notification")
                 .show(egui_ctx, |ui| {
                     show_notification(ui, notification, DisplayMode::Toast);
                 })
@@ -604,7 +621,7 @@ fn details_openness_id(unique_id: u64, mode: DisplayMode) -> egui::Id {
         DisplayMode::Panel => "panel",
         DisplayMode::Toast => "toast",
     };
-    egui::Id::new(("notification_details_openness", unique_id, mode))
+    egui::Id::unique(("notification_details_openness", unique_id, mode))
 }
 
 /// How open the details section of this notification is, from 0 (collapsed) to 1 (expanded).
@@ -853,5 +870,30 @@ mod tests {
             .expect("the log should have become a notification");
         assert_eq!(notification.text(), "it failed");
         assert_eq!(notification.details, ["the fine print"]);
+    }
+
+    /// A log-only event must not reach the panel, or the user sees one failure twice: once from
+    /// where it was noticed, once from where it was handled.
+    #[test]
+    fn test_log_only_event_is_not_notified() {
+        let mut ui = NotificationUi::new(egui::Context::default());
+
+        ui.add_log(re_log::LogMsg {
+            level: re_log::Level::WARN,
+            target: "re_ui".to_owned(),
+            message: "gRPC streaming response failed".to_owned(),
+            fields: vec![
+                (
+                    re_log::GUI_NOTIFICATION_FIELD,
+                    re_log::FieldValue::Bool(false),
+                ),
+                (
+                    "endpoint",
+                    re_log::FieldValue::String("/FetchChunks".to_owned()),
+                ),
+            ],
+        });
+
+        assert!(ui.notifications().is_empty());
     }
 }

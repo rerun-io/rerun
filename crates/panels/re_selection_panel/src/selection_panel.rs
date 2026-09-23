@@ -1,4 +1,5 @@
-use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
+use egui::Role;
+use egui::{NumExt as _, TextBuffer, WidgetInfo};
 use egui_tiles::ContainerKind;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
@@ -81,6 +82,8 @@ impl SelectionPanel {
         }
 
         panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
+            ui.name_panel("Selection panel");
+
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
@@ -153,7 +156,7 @@ impl SelectionPanel {
                     );
                 });
                 res.response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+                    egui::WidgetInfo::labeled(Role::Pane, true, "_selection_panel")
                 });
             }
         } else {
@@ -175,9 +178,9 @@ impl SelectionPanel {
                     item_title_list_item(ctx, viewport, ui, item);
                 }
             });
-            response.response.widget_info(|| {
-                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
-            });
+            response
+                .response
+                .widget_info(|| WidgetInfo::labeled(Role::Pane, true, "_selection_panel"));
         }
     }
 
@@ -411,7 +414,10 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         clone_view_button_ui(ctx, ui, viewport, *view_id);
 
         if let Some(view) = viewport.view(view_id) {
-            if view.class(ctx.view_class_registry()).is_experimental() {
+            let view_class = view.class(ctx.view_class_registry());
+            let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
+
+            if view_class.is_experimental() {
                 ui.add_space(6.0);
                 ui.info_label(
                     "This view is experimental: its API, behavior, and on-disk format may change without notice.",
@@ -419,46 +425,62 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 ui.add_space(8.0);
             }
 
-            ui.add_space(SPACE_BEFORE_FIRST_SECTION);
-            ui.section_collapsing_header("Entity path filter")
-                .with_action_button(
-                    &re_ui::icons::EDIT,
-                    "Modify the entity query using the editor",
-                    || {
-                        self.view_entity_modal.open(*view_id);
-                    },
-                )
-                .with_help_markdown(markdown)
-                .show(ui, |ui| {
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            let selection = view_class.selection_ui(&view_ctx);
+            {
+                ui.add_space(SPACE_BEFORE_FIRST_SECTION);
+
+                if selection.show_entity_filter {
+                    let header = ui
+                        .section_collapsing_header("Entity path filter")
+                        .with_action_button(
+                            &re_ui::icons::EDIT,
+                            "Modify the entity query using the editor",
+                            || {
+                                self.view_entity_modal.open(*view_id);
+                            },
+                        )
+                        .with_help_markdown(markdown);
+
+                    header
+                        .show(ui, |ui| {
+                            // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                            ui.spacing_mut().item_spacing.y =
+                                ui.global_style().spacing.item_spacing.y;
+
+                            if let Some(new_entity_path_filter) = entity_path_filter_ui(
+                                ctx,
+                                ui,
+                                *view_id,
+                                view.contents.entity_path_filter(),
+                                &view.space_origin,
+                            ) {
+                                let path_subs = EntityPathSubs::new_with_origin(&view.space_origin);
+                                let query_filter =
+                                    new_entity_path_filter.resolve_forgiving(&path_subs);
+                                view.contents.set_entity_path_filter(ctx, query_filter);
+                            }
+                        })
+                        .header_response
+                        .on_hover_text(
+                            "The entity path query consists of a list of include/exclude rules \
+                that determines what entities are part of this view",
+                        );
+                }
+            }
+
+            if let Some(section) = selection.visualizers {
+                show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
+                    let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                    (section.ui)(ui, &view_ctx);
+                });
+            }
+
+            for section in selection.extra_sections {
+                ui.section_collapsing_header(section.title).show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
-                    if let Some(new_entity_path_filter) = entity_path_filter_ui(
-                        ctx,
-                        ui,
-                        *view_id,
-                        view.contents.entity_path_filter(),
-                        &view.space_origin,
-                    ) {
-                        let path_subs = EntityPathSubs::new_with_origin(&view.space_origin);
-                        let query_filter = new_entity_path_filter.resolve_forgiving(&path_subs);
-                        view.contents.set_entity_path_filter(ctx, query_filter);
-                    }
-                })
-                .header_response
-                .on_hover_text(
-                    "The entity path query consists of a list of include/exclude rules \
-                that determines what entities are part of this view",
-                );
-        }
-
-        if let Some(view) = viewport.view(view_id) {
-            let view_class = view.class(ctx.view_class_registry());
-            let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
-
-            let view_ctx = view.bundle_context_with_state(ctx, view_state);
-            if let Some(section) = view_class.visualizers_section(&view_ctx) {
-                show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
                     let view_ctx = view.bundle_context_with_state(ctx, view_state);
                     (section.ui)(ui, &view_ctx);
                 });
@@ -471,14 +493,17 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
                     let cursor = ui.cursor();
 
-                    if let Err(err) =
-                        view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-                    {
-                        re_log::error_once!(
-                            "Error in view selection UI (class: {}, display name: {}): {err}",
-                            view.class_identifier(),
-                            view_class.display_name(),
-                        );
+                    let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                    if let Some(blueprint_properties) = selection.blueprint_properties {
+                        if let Err(err) = blueprint_properties(ui, &view_ctx) {
+                            re_log::error_once!(
+                                "Error in view selection UI (class: {}, display name: {}): {err}",
+                                view.class_identifier(),
+                                view_class.display_name(),
+                            );
+                        }
+                    } else {
+                        re_view::view_properties_ui(&view_ctx, ui);
                     }
 
                     if cursor == ui.cursor() {
@@ -979,7 +1004,7 @@ fn entity_path_filter_ui(
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
     // This is so it can contain invalid rules while the user edits it, and it's only normalized
     // when they press enter, or stops editing.
-    let filter_text_id = ui.id().with("filter_text");
+    let filter_text_id = ui.make_persistent_id("filter_text");
 
     let mut filter_string = ui.data_mut(|data| {
         data.get_temp_mut_or_insert_with::<String>(filter_text_id, || {
@@ -989,11 +1014,13 @@ fn entity_path_filter_ui(
         .clone()
     });
 
-    let response = ui.add(
-        egui::TextEdit::multiline(&mut filter_string)
-            .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
-            .layouter(&mut text_layouter),
-    );
+    let response = ui
+        .add(
+            egui::TextEdit::multiline(&mut filter_string)
+                .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
+                .layouter(&mut text_layouter),
+        )
+        .accessible_name("Entity path filter");
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
@@ -1239,9 +1266,8 @@ fn view_top_level_properties(
         super::view_space_origin_ui::view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
-        "The origin entity for this view. For spatial views, the space \
-                    view's origin is the same as this entity's origin and all transforms are \
-                    relative to it.",
+        "The entity used for $origin in this view's entity path filter. \
+         For spatial views, it also defines the default for the coordinate system in which data is displayed.",
     );
 
     ui.list_item_flat_noninteractive(
@@ -1373,7 +1399,7 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
             }
         }
     })
-    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
+    .widget_info(|| WidgetInfo::labeled(Role::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
@@ -1492,7 +1518,7 @@ mod tests {
     ) {
         test_context.run(&ui.ctx().clone(), |viewer_ctx| {
             ui.scope_builder(
-                // We need this to for `re_ui::is_in_resizable_panel` to return the correct thing…
+                // We need this to for `re_ui::is_in_resizable_container` to return the correct thing…
                 egui::UiBuilder::new()
                     .ui_stack_info(egui::UiStackInfo::new(egui::UiKind::RightPanel)),
                 |ui| {

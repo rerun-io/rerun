@@ -79,7 +79,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         // This is required to assign an id to the context menu, which would
         // otherwise conflict with the popup of this `ComboBox`'s popup menu.
         egui::Popup::menu(&response)
-            .id(egui::Id::new("timeline select context menu"))
+            .id(ui.make_persistent_id("timeline select context menu"))
             .open_memory(if response.secondary_clicked() {
                 Some(egui::SetOpenCommand::Bool(true))
             } else if response.clicked() {
@@ -117,7 +117,8 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         .speed(1)
                         .range(0.0..=f32::INFINITY),
                 )
-                .on_hover_text("Frames per second");
+                .on_hover_text("Frames per second")
+                .accessible_name("Frames per second");
             });
             if old_fps != fps {
                 time_commands.push(TimeControlCommand::SetFps(fps));
@@ -150,10 +151,13 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let is_paused = time_ctrl.play_state() == PlayState::Paused;
         if ui
             .add(
-                ReButton::icon(if is_paused { icons::PLAY } else { icons::PAUSE })
-                    .selected(!is_paused)
-                    .size(TIME_CONTROL_ROW_SIZE)
-                    .secondary(),
+                ReButton::icon(
+                    if is_paused { icons::PLAY } else { icons::PAUSE },
+                    RecordingCommandKind::PlaybackTogglePlayPause.text(),
+                )
+                .selected(!is_paused)
+                .size(TIME_CONTROL_ROW_SIZE)
+                .secondary(),
             )
             .on_hover_ui(|ui| RecordingCommandKind::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
@@ -170,9 +174,12 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     ) {
         if ui
             .add(
-                ReButton::icon(icons::SKIP_TO_END)
-                    .size(TIME_CONTROL_ROW_SIZE)
-                    .secondary(),
+                ReButton::icon(
+                    icons::SKIP_TO_END,
+                    RecordingCommandKind::PlaybackEndAndFollow.text(),
+                )
+                .size(TIME_CONTROL_ROW_SIZE)
+                .secondary(),
             )
             .on_hover_ui(|ui| RecordingCommandKind::PlaybackEndAndFollow.tooltip_ui(ui))
             .clicked()
@@ -205,7 +212,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let tokens = ui.tokens();
 
         // Keep the button looking hovered while its menu popup is open.
-        let popup_id = ui.id().with("playhead_nav_menu");
+        let popup_id = ui.make_persistent_id("playhead_nav_menu");
         let popup_open = egui::Popup::is_id_open(ui.ctx(), popup_id);
 
         // Match the height of a `large_button`.
@@ -218,6 +225,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         re_ui::icons::PLAYHEAD_NAV,
                         re_ui::icons::DROPDOWN_ARROW,
                     ))
+                    .accessible_name("Playhead navigation")
                     .secondary()
                     .size(TIME_CONTROL_ROW_SIZE)
                     .highlighted(popup_open),
@@ -257,7 +265,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        let button = ReButton::icon(re_ui::icons::LOOP)
+        let button = ReButton::icon(re_ui::icons::LOOP, "Loop")
             .size(TIME_CONTROL_ROW_SIZE)
             .secondary();
 
@@ -323,7 +331,8 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     .speed(drag_speed)
                     .suffix("x"),
             )
-            .on_hover_text("Playback speed");
+            .on_hover_text("Playback speed")
+            .accessible_name("Playback speed");
         });
 
         if speed != time_ctrl.speed() {

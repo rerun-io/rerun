@@ -82,6 +82,13 @@ namespace rerun {
                 return "model/obj";
             }
 
+            /// [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
+            ///
+            /// Holds either a mesh or a point cloud, depending on its header.
+            static MediaType ply() {
+                return "application/x-ply";
+            }
+
             /// [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
             ///
             /// Either binary or ASCII.
@@ -111,6 +118,47 @@ namespace rerun {
                 return "video/mp4";
             }
 
+            // -------------------------------------------------------
+            // Audio:
+
+            /// [AAC audio](https://en.wikipedia.org/wiki/Advanced_Audio_Coding) in a raw ADTS stream: `audio/aac`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/audio/aac>
+            static MediaType aac() {
+                return "audio/aac";
+            }
+
+            /// [FLAC audio](https://en.wikipedia.org/wiki/FLAC): `audio/flac`.
+            static MediaType flac() {
+                return "audio/flac";
+            }
+
+            /// [M4A audio](https://en.wikipedia.org/wiki/MP4_file_format) (AAC in an MP4 container): `audio/mp4`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/audio/mp4>
+            static MediaType m4a() {
+                return "audio/mp4";
+            }
+
+            /// [MP3 audio](https://en.wikipedia.org/wiki/MP3): `audio/mpeg`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/audio/mpeg>
+            static MediaType mp3() {
+                return "audio/mpeg";
+            }
+
+            /// [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/audio/ogg>
+            static MediaType ogg() {
+                return "audio/ogg";
+            }
+
+            /// [WAV audio](https://en.wikipedia.org/wiki/WAV): `audio/wav`.
+            static MediaType wav() {
+                return "audio/wav";
+            }
+
             static std::optional<MediaType> guess_from_path(const std::filesystem::path& path);
 
             // </CODEGEN_COPY_TO_HEADER>
@@ -137,6 +185,8 @@ namespace rerun {
                 return MediaType::gltf();
             } else if (ext == ".obj") {
                 return MediaType::obj();
+            } else if (ext == ".ply") {
+                return MediaType::ply();
             } else if (ext == ".stl") {
                 return MediaType::stl();
             }
@@ -144,6 +194,21 @@ namespace rerun {
             // Video
             if (ext == ".mp4") {
                 return MediaType::mp4();
+            }
+
+            // Audio
+            if (ext == ".aac") {
+                return MediaType::aac();
+            } else if (ext == ".flac") {
+                return MediaType::flac();
+            } else if (ext == ".m4a") {
+                return MediaType::m4a();
+            } else if (ext == ".mp3") {
+                return MediaType::mp3();
+            } else if (ext == ".oga" || ext == ".ogg" || ext == ".opus") {
+                return MediaType::ogg();
+            } else if (ext == ".wav") {
+                return MediaType::wav();
             }
 
             return std::nullopt;

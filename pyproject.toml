@@ -124,6 +124,7 @@ examples = [
   "open_photogrammetry_format",
   "openstreetmap_data",
   "plots",
+  "query_gcs_auth",
   "raw_mesh",
   "rgbd",
   "robot_data_preprocessing",
@@ -210,6 +211,7 @@ openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
 # dataloader = { workspace = true }  # Excluded: lerobot requires Python >=3.12.
 plots = { workspace = true }
+query_gcs_auth = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
 robot_data_preprocessing = { workspace = true }
@@ -267,6 +269,7 @@ members = [
   "examples/python/openstreetmap_data",
   # "examples/python/dataloader" # Excluded: RR-3548 (lerobot requires Python >=3.12).
   "examples/python/plots",
+  "examples/python/query_gcs_auth",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
   "examples/python/robot_data_preprocessing",

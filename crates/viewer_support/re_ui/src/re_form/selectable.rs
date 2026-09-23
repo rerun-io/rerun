@@ -3,8 +3,8 @@ use crate::re_form::{ConstructFormStrip, FormStrip, Fractions, form_field_frame}
 use egui::epaint::RectShape;
 use egui::layers::ShapeIdx;
 use egui::{
-    AtomLayout, Atoms, Direction, Frame, IntoAtoms, Layout, Response, Shape, Stroke, StrokeKind,
-    Ui, Widget,
+    Atoms, Direction, Frame, IntoAtoms, Layout, Response, Shape, Stroke, StrokeKind, Ui, Widget,
+    WidgetAtom,
 };
 use std::ops::{Deref, DerefMut};
 
@@ -99,7 +99,7 @@ impl<'a> SelectableToggle<'a> {
 impl Widget for SelectableToggle<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         // Allocate widget space and observe interactions.
-        let mut atom_layout = AtomLayout::new(self.atoms)
+        let mut atom_layout = WidgetAtom::new(self.atoms)
             .frame(Frame::new().corner_radius(4.0))
             .sense(egui::Sense::click())
             .allocate(ui);

@@ -13,7 +13,7 @@ use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
@@ -201,23 +201,6 @@ impl ViewClass for MapView {
         } else {
             ViewSpawnHeuristics::empty()
         }
-    }
-
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            re_view::view_property_ui::<MapZoom>(&ctx, ui);
-            re_view::view_property_ui::<MapBackground>(&ctx, ui);
-        });
-
-        Ok(())
     }
 
     fn ui(

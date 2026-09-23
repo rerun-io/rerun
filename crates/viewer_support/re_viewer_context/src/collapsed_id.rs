@@ -114,7 +114,7 @@ pub struct CollapsedId {
 
 impl From<CollapsedId> for egui::Id {
     fn from(id: CollapsedId) -> Self {
-        Self::new(id)
+        Self::unique(id)
     }
 }
 

@@ -9,6 +9,7 @@ use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
+use re_chunk_index::{RawRrdManifest, RrdManifest};
 use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
@@ -787,7 +788,10 @@ pub async fn stream_blueprint_and_segment_from_server(
     else {
         return Err(ApiError::invalid_arguments(
             client.origin(),
-            format!("Cannot stream a dataset that names no segment\nUri: {uri}"),
+            re_error::format_with_details(
+                "Cannot stream a dataset that names no segment",
+                format!("Uri: {uri}"),
+            ),
         ));
     };
 
@@ -805,7 +809,10 @@ pub async fn stream_blueprint_and_segment_from_server(
             let Some(asset_dataset) = dataset_entry.dataset_details.asset_dataset else {
                 return Err(ApiError::invalid_arguments(
                     client.origin(),
-                    format!("No assets are registered for this dataset\nUri: {uri}"),
+                    re_error::format_with_details(
+                        "No assets are registered for this dataset",
+                        format!("Uri: {uri}"),
+                    ),
                 ));
             };
 
@@ -971,7 +978,11 @@ async fn stream_segment_from_server(
 
                 Ok(ManifestOutcome::NoManifest { .. }) => {
                     re_log::warn_once!(
-                        "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
+                        "{}",
+                        re_error::format_with_details(
+                            "The server has no manifest for this asset, skipping it",
+                            format!("Asset segment id: {asset_segment_id}"),
+                        )
                     );
                 }
 
@@ -1029,6 +1040,7 @@ async fn stream_segment_from_server(
                     .into(),
                 ),
                 generate_direct_urls: false,
+                unsigned_direct_urls: false,
             })
             .await?;
 
@@ -1062,7 +1074,7 @@ async fn stream_segment_from_server(
                 )
             })?;
 
-            if let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
+            if let Some(chunk_id_col) = RrdManifest::col_chunk_ids_of(&batch) {
                 already_loaded_chunk_ids = chunk_id_col.iter_owned().collect();
             } else {
                 re_log::warn_once!(
@@ -1090,6 +1102,7 @@ async fn stream_segment_from_server(
             include_temporal_data: true,
             query: None, // everything
             generate_direct_urls: false,
+            unsigned_direct_urls: false,
         })
         .await?;
 
@@ -1117,7 +1130,7 @@ async fn stream_segment_from_server(
         )
     })?;
 
-    if let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
+    if let Some(chunk_id_col) = RrdManifest::col_chunk_ids_of(&batch)
         && !already_loaded_chunk_ids.is_empty()
     {
         // Filter out already loaded chunk IDs:
@@ -1196,7 +1209,7 @@ async fn stream_manifest(
             let mut manifest_stream = std::pin::pin!(manifest_stream);
 
             let mut raw_rrd_manifest_parts = Vec::new();
-            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
+            let mut rrd_manifest_parts: Vec<Arc<RrdManifest>> = Vec::new();
 
             while let Some(part_result) = manifest_stream.next().await {
                 let raw_rrd_manifest_part = part_result?;
@@ -1212,17 +1225,15 @@ async fn stream_manifest(
                         )
                     })?
                 } else {
-                    let rrd_manifest = re_log_encoding::RrdManifest::try_new(
-                        &raw_rrd_manifest_part,
-                    )
-                    .map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            client.origin(),
-                            trace_id,
-                            err,
-                            "Invalid RRD manifest part",
-                        )
-                    })?;
+                    let rrd_manifest =
+                        RrdManifest::try_new(&raw_rrd_manifest_part).map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                client.origin(),
+                                trace_id,
+                                err,
+                                "Invalid RRD manifest part",
+                            )
+                        })?;
 
                     (raw_rrd_manifest_part, rrd_manifest)
                 };
@@ -1284,27 +1295,23 @@ async fn stream_manifest(
                 }
                 StoreKind::Recording | StoreKind::Blueprint => {
                     re_log::debug!("Loading all of the chunks in one go; most important first");
-                    let combined = re_log_encoding::RawRrdManifest::merge(
-                        store_id.clone(),
-                        raw_rrd_manifest_parts,
-                    )
-                    .map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            client.origin(),
-                            trace_id,
-                            err,
-                            "Failed to merge RRD manifest parts",
-                        )
-                    })?;
-                    let combined =
-                        re_log_encoding::RrdManifest::try_new(&combined).map_err(|err| {
+                    let combined = RawRrdManifest::merge(store_id.clone(), raw_rrd_manifest_parts)
+                        .map_err(|err| {
                             ApiError::invalid_arguments_with_source(
                                 client.origin(),
                                 trace_id,
                                 err,
-                                "Invalid merged RRD manifest",
+                                "Failed to merge RRD manifest parts",
                             )
                         })?;
+                    let combined = RrdManifest::try_new(&combined).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            client.origin(),
+                            trace_id,
+                            err,
+                            "Invalid merged RRD manifest",
+                        )
+                    })?;
                     let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             client.origin(),
@@ -1335,7 +1342,7 @@ async fn stream_manifest(
     Ok(ManifestOutcome::NoManifest { trace_id })
 }
 
-/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+/// Takes a dataframe that looks like an [`RrdManifest`] (has a `chunk_key` column).
 #[tracing::instrument(skip_all, fields(
     num_chunks = tracing::field::Empty,
     total_size_bytes = tracing::field::Empty,
@@ -1419,9 +1426,7 @@ async fn load_chunks(
 
 /// Try to extract total deflated size from the batch's `chunk_byte_size` column.
 fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
-    let column = re_log_encoding::RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE
-        .extract(batch)
-        .ok()?;
+    let column = RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.extract(batch).ok()?;
     Some(column.iter().sum())
 }
 
@@ -1486,8 +1491,8 @@ async fn load_small_chunk_batch(
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
     // Both columns are guaranteed to exist in the pruned batch:
-    let chunk_is_static = re_log_encoding::RrdManifest::COLUMN_CHUNK_IS_STATIC.extract(batch)?;
-    let chunk_id = re_log_encoding::RrdManifest::COLUMN_CHUNK_ID.extract(batch)?;
+    let chunk_is_static = RrdManifest::COLUMN_CHUNK_IS_STATIC.extract(batch)?;
+    let chunk_id = RrdManifest::COLUMN_CHUNK_ID.extract(batch)?;
 
     let sort_keys = vec![
         // Static first:

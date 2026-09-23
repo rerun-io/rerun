@@ -8,6 +8,8 @@ mod arrows2d;
 mod arrows3d;
 #[path = "archetypes/asset3d.def.rs"]
 mod asset3d;
+#[path = "archetypes/asset_audio.def.rs"]
+mod asset_audio;
 #[path = "archetypes/asset_video.def.rs"]
 mod asset_video;
 #[path = "archetypes/bar_chart.def.rs"]
@@ -110,6 +112,7 @@ mod voxel_grid_map;
 pub use self::annotation_context::*;
 pub use self::arrows2d::*;
 pub use self::arrows3d::*;
+pub use self::asset_audio::*;
 pub use self::asset_video::*;
 pub use self::asset3d::*;
 pub use self::bar_chart::*;

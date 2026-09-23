@@ -10,6 +10,7 @@ mod dataset_view;
 mod entry;
 mod errors;
 mod index_columns;
+mod object_store;
 mod registration_handle;
 mod schema;
 mod segment_url_udf;
@@ -34,6 +35,7 @@ pub use self::dataset_view::PyDatasetViewInternal;
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
+pub use self::object_store::{AnyObjectStoreAuthenticator, BearerTokenObjectStoreAuthenticator};
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
 pub use self::segment_url_udf::PySegmentUrlUdfInternal;
@@ -45,6 +47,7 @@ pub use self::unregistration_handle::PyUnregistrationHandleInternal;
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCatalogClientInternal>()?;
+    m.add_class::<BearerTokenObjectStoreAuthenticator>()?;
 
     m.add_class::<PyEntryId>()?;
     m.add_class::<PyEntryKind>()?;

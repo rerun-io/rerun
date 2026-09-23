@@ -1,8 +1,7 @@
+use re_chunk_index::{RrdManifest, RrdManifestTemporalMapEntry};
 use std::sync::Arc;
 
 use ahash::HashMap;
-
-use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
 use crate::lineage::TrackedDirectChunkLineage;
 use crate::store::ChunkIdSetPerTime;
@@ -216,6 +215,7 @@ impl ChunkStore {
 #[cfg(test)]
 mod tests {
     use re_chunk::{Chunk, EntityPath, RowId, TimePoint, Timeline};
+    use re_chunk_index::RawRrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use similar_asserts::assert_eq;
 
@@ -250,10 +250,8 @@ mod tests {
             })
             .collect();
 
-        let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id,
-            chunks.iter().map(|c| &**c),
-        )?;
+        let rrd_manifest =
+            RrdManifest::build_in_memory_from_chunks(store_id, chunks.iter().map(|c| &**c))?;
 
         let events = store.insert_rrd_manifest(rrd_manifest);
         assert_eq!(events.len(), 2);
@@ -267,7 +265,7 @@ mod tests {
         assert!(!schema_add.new_columns[0].components.is_empty());
 
         // Inserting the same manifest again should NOT emit a second SchemaAddition.
-        let rrd_manifest2 = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        let rrd_manifest2 = RrdManifest::build_in_memory_from_chunks(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             chunks.iter().map(|c| &**c),
         )?;
@@ -304,7 +302,7 @@ mod tests {
                 )
                 .build()?,
         );
-        let manifest_temporal = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        let manifest_temporal = RrdManifest::build_in_memory_from_chunks(
             store_id.clone(),
             std::iter::once(&*temporal_chunk),
         )?;
@@ -331,10 +329,8 @@ mod tests {
                 )
                 .build()?,
         );
-        let manifest_static = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
-            store_id,
-            std::iter::once(&*static_chunk),
-        )?;
+        let manifest_static =
+            RrdManifest::build_in_memory_from_chunks(store_id, std::iter::once(&*static_chunk))?;
 
         let events = store.insert_rrd_manifest(manifest_static);
         assert_eq!(events.len(), 2);
@@ -424,11 +420,11 @@ mod tests {
             re_sdk_types::SegmentId::from(own_manifest_store_id.recording_id());
         let expected_asset_segment = re_sdk_types::SegmentId::from(asset_store_id.recording_id());
 
-        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        _ = store.insert_rrd_manifest(RrdManifest::build_in_memory_from_chunks(
             own_manifest_store_id,
             own_chunks.iter().map(|chunk| &**chunk),
         )?);
-        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        _ = store.insert_rrd_manifest(RrdManifest::build_in_memory_from_chunks(
             asset_store_id,
             asset_chunks.iter().map(|chunk| &**chunk),
         )?);
@@ -479,15 +475,12 @@ mod tests {
 
     /// A manifest of the given chunks as a server serves it, with a `chunk_partition_id` column
     /// naming the segment they came from.
-    fn served_manifest(
-        segment: &str,
-        chunks: &[Arc<Chunk>],
-    ) -> anyhow::Result<re_log_encoding::RrdManifest> {
+    fn served_manifest(segment: &str, chunks: &[Arc<Chunk>]) -> anyhow::Result<RrdManifest> {
         // The manifest was written by the recording SDK, so it names the logging application rather
         // than the dataset the store was opened from.
         let store_id =
             re_log_types::StoreId::new(re_log_types::StoreKind::Recording, "recorded_app", segment);
-        let raw = re_log_encoding::RawRrdManifest::build_in_memory_from_chunks(
+        let raw = RawRrdManifest::build_in_memory_from_chunks(
             store_id,
             chunks.iter().map(|chunk| &**chunk),
         )?;
@@ -508,9 +501,7 @@ mod tests {
             &arrow::array::RecordBatchOptions::new().with_row_count(Some(row_count)),
         )?;
 
-        Ok(re_log_encoding::RrdManifest::try_new(
-            &re_log_encoding::RawRrdManifest { data, ..raw },
-        )?)
+        Ok(RrdManifest::try_new(&RawRrdManifest { data, ..raw })?)
     }
 
     /// A manifest served by a server names the segment of every chunk, so one manifest can describe
@@ -544,7 +535,7 @@ mod tests {
         let own_manifest = served_manifest(own_segment, &own_chunks)?;
         let asset_manifest = served_manifest(asset_segment, &asset_chunks)?;
 
-        _ = store.insert_rrd_manifest(Arc::new(re_log_encoding::RrdManifest::merge(&[
+        _ = store.insert_rrd_manifest(Arc::new(RrdManifest::merge(&[
             &own_manifest,
             &asset_manifest,
         ])?));

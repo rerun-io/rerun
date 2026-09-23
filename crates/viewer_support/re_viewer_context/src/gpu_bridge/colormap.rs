@@ -159,6 +159,7 @@ pub fn colormap_edit_or_view_ui_with_selection(
             .show_ui(ui, |ui| {
                 list_item::list_item_scope(ui, "inner_scope", content_ui)
             });
+        inner_response.response = inner_response.response.accessible_name("Colormap");
         if let Some(response) = inner_response.inner
             && response.inner.changed()
         {

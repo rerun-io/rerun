@@ -340,7 +340,7 @@ impl<'a> CompletionPopup<'a> {
             .kind(PopupKind::Popup)
             .open(is_open)
             .align(align)
-            .align_alternatives(&[align.flip_y()])
+            .align_alternatives(&[align.flipped_y()])
             .width(width)
             .show(|ui| {
                 ui.set_max_width(ui.available_width().min(width));
@@ -447,7 +447,7 @@ fn word_range_before_cursor(
 
 #[cfg(test)]
 mod tests {
-    use egui::accesskit::Role;
+    use egui::Role;
     use egui::{KeyboardShortcut, Modifiers};
     use egui_kittest::{Harness, kittest::Queryable as _};
 
@@ -463,7 +463,7 @@ mod tests {
     ];
 
     fn id() -> Id {
-        Id::new("prompt")
+        Id::unique("prompt")
     }
 
     /// Commands are only valid at the start of the prompt.
@@ -486,13 +486,14 @@ mod tests {
     }
 
     fn harness<'a>() -> Harness<'a, State> {
-        harness_with(|text| TextEdit::singleline(text))
+        harness_with(|text| TextEdit::singleline(text).hint_text("Prompt"))
     }
 
     /// A chat composer: multiline, Shift+Enter for newline, Enter to send.
     fn chat_harness<'a>() -> Harness<'a, State> {
         harness_with(|text| {
             TextEdit::multiline(text)
+                .hint_text("Prompt")
                 .return_key(KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter))
         })
     }
@@ -502,6 +503,9 @@ mod tests {
     ) -> Harness<'a, State> {
         let mut harness = Harness::new_ui_state(
             move |ui, state: &mut State| {
+                // Without any font, `TextEdit` lays out an empty galley and clamps the cursor to 0.
+                crate::apply_style_and_install_loaders(ui.ctx());
+
                 let output = CompletionPopup::new(id()).show(
                     ui,
                     &mut state.text,
@@ -674,13 +678,19 @@ mod tests {
             .with_size(egui::vec2(1600.0, 900.0))
             .build_ui_state(
                 |ui, text_edit_rect: &mut egui::Rect| {
+                    crate::apply_style_and_install_loaders(ui.ctx());
+
                     egui::Panel::right("side")
                         .default_size(420.0)
                         .show(ui, |ui| {
                             let output = CompletionPopup::new(id()).show(
                                 ui,
                                 &mut text,
-                                |text| TextEdit::multiline(text).desired_width(f32::INFINITY),
+                                |text| {
+                                    TextEdit::multiline(text)
+                                        .hint_text("Prompt")
+                                        .desired_width(f32::INFINITY)
+                                },
                                 |query| {
                                     if !query.word.starts_with('/') {
                                         return vec![];

@@ -209,7 +209,8 @@ mod tests {
     }
 
     fn fixture(name: &str) -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
+        std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
             .join("tests/assets/lerobot")
             .join(name)
     }

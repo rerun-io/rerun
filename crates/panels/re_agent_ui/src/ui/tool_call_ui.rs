@@ -6,7 +6,7 @@ use re_agent::ToolCallState;
 
 /// A collapsible card for one tool call: status, kind, title, and the details underneath.
 pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState) {
-    let id = ui.id().with(&call.id.0);
+    let id = ui.make_persistent_id(&call.id.0);
     let default_open = call.status == ToolCallStatus::Failed;
 
     let state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -84,7 +84,7 @@ fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
     for (index, content) in call.content.iter().enumerate() {
         match content {
             ToolCallContent::Content(content) => {
-                content_block_ui(ui, &content.content, ui.id().with(index));
+                content_block_ui(ui, &content.content, ui.make_persistent_id(index));
             }
             ToolCallContent::Diff(diff) => diff_ui(ui, diff),
             ToolCallContent::Terminal(terminal) => {
@@ -333,7 +333,7 @@ pub fn code_ui(ui: &mut egui::Ui, text: &str, fill: Option<Color32>) {
         .inner_margin(6)
         .show(ui, |ui| {
             egui::ScrollArea::horizontal()
-                .id_salt(ui.id().with("code"))
+                .id_salt("code")
                 .show(ui, |ui| {
                     ui.add(
                         egui::Label::new(RichText::new(text).monospace())

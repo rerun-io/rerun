@@ -34,11 +34,14 @@ pub mod external {
 ///
 /// e.g. `asset_path("gaussian_splats/cactus.ply")`.
 pub fn asset_path(relative_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
-    // `crates/tests/re_test_context` → `crates/tests` → `crates` → repo-root.
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+        || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+        std::path::PathBuf::from,
+    );
+    manifest_dir
         .ancestors()
-        .nth(3)
-        .expect("workspace root is three ancestors up from crates/tests/re_test_context")
+        .find(|dir| dir.join("Cargo.lock").is_file())
+        .expect("no workspace root (directory containing Cargo.lock) above CARGO_MANIFEST_DIR")
         .join("tests/assets")
         .join(relative_path)
 }
@@ -94,6 +97,12 @@ pub struct TestContext {
     pub reflection: Reflection,
 
     pub connection_registry: re_redap_client::ConnectionRegistryHandle,
+
+    /// The route reported by [`AppContext::route`], for tests that need one other than the
+    /// recording this context was created with.
+    ///
+    /// The active store context is read from the recording either way.
+    pub route: Option<Route>,
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -311,6 +320,7 @@ impl TestContext {
             app_options: AppOptions::test(),
             recording_store_id,
             application_id,
+            route: None,
 
             view_class_registry: Default::default(),
             selection_state: Default::default(),
@@ -584,7 +594,7 @@ impl TestContext {
         }
     }
 
-    pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_log_encoding::RrdManifest>) {
+    pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_chunk_index::RrdManifest>) {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
@@ -705,9 +715,7 @@ impl TestContext {
                 view_class_registry: &self.view_class_registry,
                 component_fallback_registry: &self.component_fallback_registry,
 
-                route: &Route::LocalRecording {
-                    recording_id: self.recording_store_id.clone(),
-                },
+                route: self.route.as_ref().unwrap_or(&route),
 
                 selection_state: &selection_state,
                 focused_item: &focused_item,

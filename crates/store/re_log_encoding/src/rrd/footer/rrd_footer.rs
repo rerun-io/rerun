@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
+use re_chunk_index::RawRrdManifest;
 use re_log_types::StoreId;
-
-use super::RawRrdManifest;
 
 /// This is the payload that is carried in messages of type `::End` in RRD streams.
 ///

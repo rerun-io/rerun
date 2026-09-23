@@ -9,6 +9,7 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, RowId, TimelineName};
+use re_chunk_index::RrdManifestTemporalMapEntry;
 use re_chunk_store::{
     ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkTrackingMode,
 };
@@ -1646,16 +1647,13 @@ impl ChunkSamples {
         }
     }
 
-    /// Create new chunk samples from a [`re_log_encoding::RrdManifestTemporalMapEntry`].
+    /// Create new chunk samples from a [`RrdManifestTemporalMapEntry`].
     ///
     /// Conservatively guesses that samples are all at the start of the chunk.
     // TODO(isse): Since samples could potentially be anywhere. We could
     // get into a situation where a chunk has a sample that should be in
     // a certain gop, but doesn't get distributed there by this method.
-    fn from_temporal_root(
-        id: ChunkId,
-        entry: &re_log_encoding::RrdManifestTemporalMapEntry,
-    ) -> Option<Self> {
+    fn from_temporal_root(id: ChunkId, entry: &RrdManifestTemporalMapEntry) -> Option<Self> {
         if entry.num_rows == 0 {
             return None;
         }
@@ -1875,7 +1873,7 @@ fn load_known_chunk_ranges(
                 }
                 ChunkSamples::from_temporal_root(
                     *id,
-                    &re_log_encoding::RrdManifestTemporalMapEntry {
+                    &RrdManifestTemporalMapEntry {
                         num_rows: remaining,
                         ..*entry
                     },
@@ -2276,6 +2274,8 @@ mod tests {
     // ffmpeg -i 'rerun-io/internal-test-assets/video/gif_conversion_color_issues_h264.mp4' -c:v libx264 -pix_fmt yuv420p -g 10 -vf scale=iw/2:ih/2 -bf 0 gif_as_h264_nobframes.mp4
     const RAW_H264_DATA: &[u8] =
         include_bytes!("../../../../../tests/assets/video/gif_as_h264_nobframes.h264");
+
+    const GRINDA_JPEG: &[u8] = include_bytes!("../../../../../tests/assets/image/grinda.jpg");
 
     const NUM_FRAMES: usize = 44;
 
@@ -2723,11 +2723,7 @@ mod tests {
     /// video description.
     #[test]
     fn video_stream_cache_from_single_static_encoded_image() {
-        let jpeg_path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/assets/image/grinda.jpg"
-        );
-        let jpeg_data = std::fs::read(jpeg_path).unwrap();
+        let jpeg_data = GRINDA_JPEG.to_vec();
 
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::new(StoreId::random(
@@ -2784,11 +2780,7 @@ mod tests {
     /// `RowId`. The emitted sample should point at that row, not at an earlier shadowed one.
     #[test]
     fn video_stream_cache_static_picks_highest_row_id() {
-        let jpeg_path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/assets/image/grinda.jpg"
-        );
-        let jpeg_data = std::fs::read(jpeg_path).unwrap();
+        let jpeg_data = GRINDA_JPEG.to_vec();
         let image =
             re_sdk_types::archetypes::EncodedImage::new(jpeg_data).with_media_type("image/jpeg");
 

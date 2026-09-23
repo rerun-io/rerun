@@ -24,10 +24,9 @@
 //! [`UNOPTIMIZED_EXCESS_THRESHOLD`] chunks. The ratio catches bad packing; the absolute gate
 //! keeps small recordings silent.
 
-use re_log_encoding::RawRrdManifest;
-
 use crate::error::Error;
 use crate::view::ChunkIndexView;
+use re_chunk_index::RawRrdManifest;
 
 /// Everything this crate can tell about one store's chunk index.
 #[derive(Clone, Debug)]

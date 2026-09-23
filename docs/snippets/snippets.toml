@@ -187,7 +187,7 @@ backwards_check = [
   # and `opt_out.backwards_check` isn't an escape hatch, since it also stops the snippet from
   # saving its output at all (it would then spawn a real Viewer and hang).
   # The `.ply` → `GaussianSplats3D` path is covered end-to-end instead by
-  # `crates/data_flow/re_importer/tests/test_ply_importer.rs`, which runs against that same file.
+  # `crates/data_flow/re_importer/tests/integration/test_ply_importer.rs`, which runs against that same file.
   "py",
   "cpp",
   "rust",
@@ -721,6 +721,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
 "concepts/send_chunks" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
+"archetypes/asset_audio_simple" = ["$config_dir/../../tests/assets/audio/sine_440hz_2s.wav"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]

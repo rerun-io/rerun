@@ -49,6 +49,23 @@ impl RedapUri {
             Self::Dataset(dataset_uri) => dataset_uri.store_id(),
         }
     }
+
+    /// Parse a URI that may be written relative to `base`.
+    ///
+    /// An input carrying a scheme is parsed on its own and `base` is unused.
+    /// Any other input is the path of a URI on `base` and starts with a `/`, as in
+    /// `/dataset/<dataset_id>?segment_id=<segment_id>`.
+    pub fn parse_with_base(base: &Origin, input: &str) -> Result<Self, Error> {
+        use std::str::FromStr as _;
+
+        if input.contains("://") {
+            Self::from_str(input)
+        } else if input.starts_with('/') {
+            Self::from_str(&format!("{base}{input}"))
+        } else {
+            Err(Error::UnexpectedUri(input.to_owned()))
+        }
+    }
 }
 
 impl std::fmt::Display for RedapUri {
@@ -680,5 +697,67 @@ mod tests {
         let url = "rerun://localhost:51234/folder/";
         let address: Result<RedapUri, _> = url.parse();
         assert!(address.is_err());
+    }
+
+    /// A value that carries its own scheme keeps the origin it names, whatever base it is
+    /// resolved against.
+    #[test]
+    fn test_parse_with_base_keeps_absolute_uri() {
+        let base: Origin = "rerun+http://localhost:1234".parse().unwrap();
+        let url =
+            "rerun+http://example.com:9999/dataset/1830B33B45B963E7774455beb91701ae?segment_id=seg";
+
+        assert_eq!(
+            RedapUri::parse_with_base(&base, url).unwrap(),
+            url.parse::<RedapUri>().unwrap()
+        );
+    }
+
+    /// A path picks up the base origin, whichever endpoint it names.
+    #[test]
+    fn test_parse_with_base_resolves_a_path() {
+        let base: Origin = "rerun+http://localhost:1234".parse().unwrap();
+
+        let parsed = RedapUri::parse_with_base(
+            &base,
+            "/dataset/1830B33B45B963E7774455beb91701ae?segment_id=my_segment",
+        )
+        .unwrap();
+
+        assert_eq!(
+            parsed,
+            RedapUri::Dataset(DatasetUri {
+                origin: base.clone(),
+                dataset_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                resource: DatasetResource::Segments,
+                segment_id: Some(SegmentId::from("my_segment")),
+                fragment: Fragment::default(),
+            })
+        );
+
+        assert_eq!(
+            RedapUri::parse_with_base(&base, "/entry/00000000000000000000000000000001").unwrap(),
+            "rerun+http://localhost:1234/entry/00000000000000000000000000000001"
+                .parse()
+                .unwrap()
+        );
+    }
+
+    /// A value that is no path at all does not resolve, including one without the leading `/`.
+    #[test]
+    fn test_parse_with_base_rejects_a_non_path() {
+        let base: Origin = "rerun+http://localhost:1234".parse().unwrap();
+
+        for input in [
+            "",
+            "not a uri",
+            "dataset/1830B33B45B963E7774455beb91701ae",
+            "/nonesuch/1234",
+        ] {
+            assert!(
+                RedapUri::parse_with_base(&base, input).is_err(),
+                "input: {input:?}"
+            );
+        }
     }
 }

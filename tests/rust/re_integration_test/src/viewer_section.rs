@@ -1,4 +1,4 @@
-use egui::PointerButton;
+use egui::{PointerButton, Role};
 use egui_kittest::kittest::Queryable as _;
 
 use crate::ViewerHarnessExt;
@@ -162,18 +162,28 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
         self.harness.run();
     }
 
-    /// Toggles the collapse triangle of a hierarchical list item. Eg. visualizer components in the selection panel.
+    /// Toggles the collapse arrow of the `index`th list item labelled `label`, e.g. a
+    /// visualizer's components in the selection panel.
+    ///
+    /// The arrow is its own widget ("Expand"/"Collapse") on the item's row.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such items than `index`, or the item has no arrow.
     pub fn toggle_nth_hierarchical_list(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-        let rect = node.rect();
+        let row = self.get_nth_label(label, index).rect();
+        let arrow = self
+            .root()
+            .get_all_by_role(Role::DisclosureTriangle)
+            .find(|arrow| row.contains(arrow.rect().center()))
+            .unwrap_or_else(|| panic!("'{label}' #{index} has no collapse arrow on its row"));
 
-        // Click at the left edge of the rect + 8 pixels (to hit the center of the ~16px triangle)
-        let triangle_x = rect.left() + 8.0;
-        let triangle_y = rect.center().y;
-        let triangle_pos = egui::pos2(triangle_x, triangle_y);
+        // Click where the arrow is drawn (its node is padded), so the pointer ends up where
+        // the snapshots expect it.
+        let pos = egui::pos2(row.left() + 8.0, row.center().y);
+        assert!(arrow.rect().contains(pos));
         for pressed in [true, false] {
             self.harness.queue_event(egui::Event::PointerButton {
-                pos: triangle_pos,
+                pos,
                 button: PointerButton::Primary,
                 pressed,
                 modifiers: egui::Modifiers::NONE,

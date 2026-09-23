@@ -255,7 +255,9 @@ impl Filter for NullableBooleanFilter {
                             self.operator = *possible_op;
                         }
                     }
-                });
+                })
+                .response
+                .accessible_name("Operator");
         });
 
         let mut clicked = false;

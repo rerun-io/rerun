@@ -132,7 +132,7 @@ fn edit_view_enum_impl<
 
             combobox_response.response.widget_info(|| {
                 egui::WidgetInfo::labeled(
-                    egui::WidgetType::ComboBox,
+                    egui::Role::ComboBox,
                     ui.is_enabled(),
                     current_value.to_string(),
                 )

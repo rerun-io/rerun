@@ -116,7 +116,7 @@ fn modal_ui(
     let add_view_row = |ui: &mut egui::Ui, view: ViewBlueprint, is_experimental: bool| {
         let icon = view.class(ctx.view_class_registry()).icon();
         let title = view.class(ctx.view_class_registry()).display_name();
-        let subtitle = format!("Create a new view to display {title} content.");
+        let subtitle = format!("Create a new {title} view.");
 
         if row_ui(ui, icon, title, &subtitle, is_experimental).clicked() {
             viewport.add_views(std::iter::once(view), target_container, None);
@@ -229,8 +229,11 @@ fn row_ui(
                 egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
             );
 
-            let response =
-                ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
+            let response = ui.interact(
+                interact_rect,
+                ui.make_persistent_id(title),
+                egui::Sense::click(),
+            );
 
             if response.hovered() {
                 let clip_rect = ui.clip_rect();

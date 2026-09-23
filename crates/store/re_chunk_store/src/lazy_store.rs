@@ -5,7 +5,7 @@ use ahash::{HashMap, HashMapExt as _};
 use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
+use re_chunk_index::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimelineName};
 
 use crate::{

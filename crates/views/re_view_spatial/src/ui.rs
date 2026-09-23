@@ -3,15 +3,14 @@ use egui::{NumExt as _, WidgetText};
 use egui::{emath::OrderedFloat, epaint::text::ByteRangeExt as _, text::ByteRange};
 use macaw::BoundingBox;
 use re_format::format_f32;
-use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::VisualBounds2D;
 use re_sdk_types::components::Radius;
 use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
-use re_viewer_context::{
-    HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
-};
-use re_viewport_blueprint::ViewProperty;
+use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewState};
+
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 
 use super::eye::Eye;
 use super::ui_3d::View3DState;
@@ -48,13 +47,16 @@ pub struct ImageCounts {
 }
 
 /// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by `View3DState`, not the other way round.
-#[derive(Clone, Default, re_byte_size::SizeBytes)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
     pub show_bounding_box: bool,
 
-    pub show_smoothed_bbox: bool,
-    pub show_per_entity_bbox: bool,
+    /// Debug only, set from selection panel (where we have read-only access on the state).
+    pub show_smoothed_bbox: AtomicBool,
+
+    /// Debug only, set from selection panel (where we have read-only access on the state).
+    pub show_per_entity_bbox: AtomicBool,
 
     /// Number of images per image kind processed last frame.
     pub image_counts_last_frame: ImageCounts,
@@ -68,6 +70,22 @@ pub struct SpatialViewState {
     pub pinhole_at_origin: Option<Pinhole>,
 
     pub visual_bounds_2d: Option<VisualBounds2D>,
+}
+
+impl Clone for SpatialViewState {
+    fn clone(&self) -> Self {
+        Self {
+            bounding_boxes: self.bounding_boxes.clone(),
+            show_bounding_box: self.show_bounding_box,
+            show_smoothed_bbox: AtomicBool::new(self.show_smoothed_bbox.load(Relaxed)),
+            show_per_entity_bbox: AtomicBool::new(self.show_per_entity_bbox.load(Relaxed)),
+            image_counts_last_frame: self.image_counts_last_frame,
+            previous_picking_result: self.previous_picking_result.clone(),
+            state_3d: self.state_3d.clone(),
+            pinhole_at_origin: self.pinhole_at_origin,
+            visual_bounds_2d: self.visual_bounds_2d,
+        }
+    }
 }
 
 impl ViewState for SpatialViewState {
@@ -139,23 +157,6 @@ impl SpatialViewState {
         ui.end_row();
     }
 
-    // Say the name out loud. It is fun!
-    pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
-        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
-
-        if ui
-            .button("Reset")
-            .on_hover_text(
-                "Resets camera position & orientation.\nYou can also double-click the 3D view.",
-            )
-            .clicked()
-        {
-            self.bounding_boxes.region_of_interest_smoothed =
-                self.bounding_boxes.region_of_interest_current;
-            self.state_3d.reset_eye(ctx, &eye_property);
-        }
-    }
-
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
         // If we have multiple images in the same view, they should not be fully opaque
         // if there is at least one image of the same kind with equal or lower draw order.
@@ -224,7 +225,7 @@ pub fn create_labels(
     let show_full_labels = num_multiline_labels <= 5; // TODO(emilk): very simplistic heuristic
     // 0=only show first line, 1=show all lines.
     let label_expansion = parent_ui.animate_bool_with_time(
-        parent_ui.id().with("label-animation"),
+        parent_ui.make_persistent_id("label-animation"),
         show_full_labels,
         parent_ui.tokens().slow_animation_duration_sec,
     );
@@ -515,9 +516,29 @@ pub fn paint_loading_indicators(
 
 /// UI for the debug-build-only bounding box controls.
 #[cfg(debug_assertions)]
-pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
-    ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
-    ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &SpatialViewState) {
+    let mut show_smoothed_bbox = state.show_smoothed_bbox.load(Relaxed);
+    if ui
+        .re_checkbox(&mut show_smoothed_bbox, "Smoothed bbox")
+        .changed()
+    {
+        state.show_smoothed_bbox.store(show_smoothed_bbox, Relaxed);
+        // The view may have rendered already; schedule another frame to consume the action in its `ui`.
+        ui.ctx().request_repaint();
+    }
+
+    let mut show_per_entity_bbox = state.show_per_entity_bbox.load(Relaxed);
+    if ui
+        .re_checkbox(&mut show_per_entity_bbox, "Per-entity bboxes")
+        .changed()
+    {
+        state
+            .show_per_entity_bbox
+            .store(show_per_entity_bbox, Relaxed);
+        // The view may have rendered already; schedule another frame to consume the action in its `ui`.
+        ui.ctx().request_repaint();
+    }
+
     ui.debug_only_badge();
 }
 
@@ -565,14 +586,14 @@ pub fn draw_bounding_boxes(
             .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
     }
 
-    if state.show_smoothed_bbox {
+    if state.show_smoothed_bbox.load(Relaxed) {
         line_builder
             .batch("scene_region_of_interest_smoothed")
             .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
             .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
     }
 
-    if state.show_per_entity_bbox {
+    if state.show_per_entity_bbox.load(Relaxed) {
         let mut batch = line_builder.batch("per_entity_regions_of_interest");
         #[expect(clippy::iter_over_hash_type)] // Draw order of lines isn't important.
         for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {

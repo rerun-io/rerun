@@ -1,5 +1,5 @@
-use crate::RawRrdManifest;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
+use re_chunk_index::RawRrdManifest;
 
 // ---
 

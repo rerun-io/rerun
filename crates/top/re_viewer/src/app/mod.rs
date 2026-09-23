@@ -15,7 +15,7 @@ use re_log_types::{ApplicationId, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
 use re_types_core::reflection::ComponentReflectionMap;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
@@ -60,7 +60,7 @@ const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
 /// pairs the stashed command with the *live* active recording and dispatches it — so it can
 /// never target a stale recording.
 fn pending_timeline_shortcut_key() -> egui::Id {
-    egui::Id::new("rerun_pending_timeline_shortcut")
+    egui::Id::unique("rerun_pending_timeline_shortcut")
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -94,6 +94,12 @@ pub struct App {
     pub(crate) egui_ctx: egui::Context,
     egui_renderer: Option<Arc<egui::epaint::mutex::RwLock<egui_wgpu::Renderer>>>,
     screenshotter: crate::screenshotter::Screenshotter,
+
+    /// Screenshots delivered by the renderer, waiting to be processed on the next frame.
+    screenshot_tx:
+        std::sync::mpsc::Sender<(re_viewer_context::ScreenshotInfo, Arc<egui::ColorImage>)>,
+    screenshot_rx:
+        std::sync::mpsc::Receiver<(re_viewer_context::ScreenshotInfo, Arc<egui::ColorImage>)>,
     texture_readback: crate::texture_readback::TextureReadbacks,
 
     /// Notifiers waiting for a file-path screenshot to finish writing.
@@ -139,6 +145,10 @@ pub struct App {
 
     /// Recent log messages, served to agents through `re_viewer_mcp`.
     pub(crate) viewer_log: crate::viewer_log::ViewerLog,
+
+    /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
+    /// until the user clicks.
+    screen_highlight: Option<crate::screen_highlight::ScreenHighlight>,
 
     dev_panel: crate::dev_panel::DevPanel,
     dev_panel_open: bool,
@@ -396,6 +406,10 @@ impl App {
         }
 
         let (command_sender, command_receiver) = command_channel;
+        // Unbounded: the sender is a renderer callback that must never block,
+        // and it delivers at most one image per frame.
+        #[expect(clippy::disallowed_methods)]
+        let (screenshot_tx, screenshot_rx) = std::sync::mpsc::channel();
 
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
@@ -507,6 +521,8 @@ impl App {
             egui_ctx: creation_context.egui_ctx.clone(),
             egui_renderer,
             screenshotter,
+            screenshot_tx,
+            screenshot_rx,
             texture_readback: Default::default(),
             pending_screenshot_notifiers: Default::default(),
 
@@ -540,6 +556,7 @@ impl App {
             table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_log: Default::default(),
+            screen_highlight: None,
 
             dev_panel: Default::default(),
             dev_panel_open: false,
@@ -1178,125 +1195,107 @@ impl App {
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
-        user_data: &egui::UserData,
+        info: re_viewer_context::ScreenshotInfo,
     ) {
         use re_viewer_context::ScreenshotInfo;
 
-        if let Some(info) = user_data
-            .data
-            .as_ref()
-            .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
-        {
-            let ScreenshotInfo {
-                ui_rect,
-                pixels_per_point,
-                name,
-                target,
-                notify,
-            } = (*info).clone();
+        let ScreenshotInfo {
+            ui_rect,
+            pixels_per_point,
+            name,
+            target,
+            notify,
+        } = info;
 
-            // Only used in the native `SaveToPath` branch below.
-            #[cfg(target_arch = "wasm32")]
-            let _ = notify;
+        // Only used in the native `SaveToPath` branch below.
+        #[cfg(target_arch = "wasm32")]
+        let _ = notify;
 
-            let rgba = if let Some(ui_rect) = ui_rect {
-                Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
-            } else {
-                image.clone()
-            };
+        let rgba = if let Some(ui_rect) = ui_rect {
+            Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
+        } else {
+            image.clone()
+        };
 
-            match target {
-                re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    self.egui_ctx.copy_image((*rgba).clone());
+        match target {
+            re_viewer_context::ScreenshotTarget::CopyToClipboard => {
+                self.egui_ctx.copy_image((*rgba).clone());
+            }
+
+            re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
+                use image::ImageEncoder as _;
+                let mut png_bytes: Vec<u8> = Vec::new();
+                if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes).write_image(
+                    rgba.as_raw(),
+                    rgba.width() as u32,
+                    rgba.height() as u32,
+                    image::ExtendedColorType::Rgba8,
+                ) {
+                    re_log::error!("Failed to encode screenshot as PNG: {err}");
+                } else {
+                    let file_name = format!("{name}.png");
+                    self.command_sender.save_file_dialog(
+                        self.main_thread_token,
+                        &file_name,
+                        "Save screenshot".to_owned(),
+                        png_bytes,
+                    );
                 }
+            }
 
-                re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
-                    use image::ImageEncoder as _;
-                    let mut png_bytes: Vec<u8> = Vec::new();
-                    if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
-                        .write_image(
-                            rgba.as_raw(),
-                            rgba.width() as u32,
-                            rgba.height() as u32,
-                            image::ExtendedColorType::Rgba8,
-                        )
-                    {
-                        re_log::error!("Failed to encode screenshot as PNG: {err}");
-                    } else {
-                        let file_name = format!("{name}.png");
-                        self.command_sender.save_file_dialog(
-                            self.main_thread_token,
-                            &file_name,
-                            "Save screenshot".to_owned(),
-                            png_bytes,
+            re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        re_log::error!(
+                            "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
                         );
                     }
-                }
-
-                re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
-                    cfg_select! {
-                        target_arch = "wasm32" => {
-                            re_log::error!(
-                                "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
-                            );
-                        }
-                        _ => {
-                            let rgba = rgba.clone();
-                            let notifier = self.pending_screenshot_notifiers.remove(&file_path);
-                            let Some(rgba_image) = image::RgbaImage::from_vec(
-                                rgba.width() as _,
-                                rgba.height() as _,
-                                bytemuck::pod_collect_to_vec(&rgba.pixels),
-                            ) else {
-                                re_log::error!("Failed to create image from screenshot data");
-                                if let Some(notifier) = notifier {
-                                    notifier.call(Err(SaveScreenshotError::InvalidImageData));
-                                }
-                                return;
-                            };
-
-                            // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
-                            // (There's nothing interesting in the alpha channel anyways.)
-                            let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
-
-                            let result = match rgb_image.save(&file_path) {
-                                Ok(()) => {
-                                    // Only show a user-facing toast for user-initiated screenshots.
-                                    if notify {
-                                        re_log::info!("Saved screenshot to {file_path:?}");
-                                    } else {
-                                        re_log::debug!("Saved screenshot to {file_path:?}");
-                                    }
-                                    Ok(())
-                                }
-                                Err(err) => {
-                                    re_log::error!(?file_path, "Failed to save screenshot: {err}");
-                                    // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
-                                    std::fs::remove_file(&file_path).ok();
-                                    Err(SaveScreenshotError::SaveToPathFailed {
-                                        path: file_path.to_string(),
-                                        reason: err.to_string(),
-                                    })
-                                }
-                            };
-
+                    _ => {
+                        let rgba = rgba.clone();
+                        let notifier = self.pending_screenshot_notifiers.remove(&file_path);
+                        let Some(rgba_image) = image::RgbaImage::from_vec(
+                            rgba.width() as _,
+                            rgba.height() as _,
+                            bytemuck::pod_collect_to_vec(&rgba.pixels),
+                        ) else {
+                            re_log::error!("Failed to create image from screenshot data");
                             if let Some(notifier) = notifier {
-                                notifier.call(result);
+                                notifier.call(Err(SaveScreenshotError::InvalidImageData));
                             }
+                            return;
+                        };
+
+                        // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
+                        // (There's nothing interesting in the alpha channel anyways.)
+                        let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
+
+                        let result = match rgb_image.save(&file_path) {
+                            Ok(()) => {
+                                // Only show a user-facing toast for user-initiated screenshots.
+                                if notify {
+                                    re_log::info!("Saved screenshot to {file_path:?}");
+                                } else {
+                                    re_log::debug!("Saved screenshot to {file_path:?}");
+                                }
+                                Ok(())
+                            }
+                            Err(err) => {
+                                re_log::error!(?file_path, "Failed to save screenshot: {err}");
+                                // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
+                                std::fs::remove_file(&file_path).ok();
+                                Err(SaveScreenshotError::SaveToPathFailed {
+                                    path: file_path.to_string(),
+                                    reason: err.to_string(),
+                                })
+                            }
+                        };
+
+                        if let Some(notifier) = notifier {
+                            notifier.call(result);
                         }
                     }
                 }
             }
-        } else {
-            #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
-            if user_data
-                .data
-                .as_ref()
-                .is_some_and(|data| data.is::<crate::screenshotter::FullAppScreenshot>())
-            {
-                self.screenshotter.save(&self.egui_ctx, image);
-            }
-            // Ignore any other screenshot requests
         }
     }
 }
@@ -1357,6 +1356,8 @@ impl eframe::App for App {
 
     /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        ui.name_panel("Viewer");
+
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         if let Some(tracy) = re_perf_telemetry::external::tracing_tracy::client::Client::running() {
             tracy.frame_mark();
@@ -1426,6 +1427,8 @@ impl eframe::App for App {
         #[cfg(not(target_arch = "wasm32"))]
         if self.screenshotter.update(ui).quit {
             ui.send_viewport_cmd(egui::ViewportCommand::Close);
+            // More frames may run before the window actually closes.
+            self.store_hub = Some(store_hub);
             return;
         }
 
@@ -1778,28 +1781,8 @@ impl eframe::App for App {
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
 
-        {
-            // Check for returned screenshots:
-            let screenshots: Vec<_> = ui.input(|i| {
-                i.raw
-                    .events
-                    .iter()
-                    .filter_map(|event| {
-                        if let egui::Event::Screenshot {
-                            image, user_data, ..
-                        } = event
-                        {
-                            Some((image.clone(), user_data.clone()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            });
-
-            for (image, user_data) in screenshots {
-                self.process_screenshot_result(&image, &user_data);
-            }
+        while let Ok((info, image)) = self.screenshot_rx.try_recv() {
+            self.process_screenshot_result(&image, info);
         }
     }
 

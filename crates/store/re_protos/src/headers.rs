@@ -5,6 +5,8 @@
 // imports keep working without churn.
 pub use re_grpc_headers::*;
 
+use re_tuid::Tuid;
+
 use crate::EntryName;
 
 /// Extension trait for [`tonic::Request`] to inject Rerun Data Protocol headers into gRPC requests.
@@ -84,6 +86,9 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
 /// let entry_id = req.entry_id().unwrap();
 /// ```
 pub trait RerunHeadersExtractorExt {
+    /// Identifies the client instance this request came from.
+    fn client_id(&self) -> tonic::Result<Option<Tuid>>;
+
     fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>>;
 
     fn entry_name(&self) -> tonic::Result<Option<EntryName>>;
@@ -92,6 +97,27 @@ pub trait RerunHeadersExtractorExt {
 }
 
 impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
+    fn client_id(&self) -> tonic::Result<Option<Tuid>> {
+        const HEADER: &str = RERUN_HTTP_HEADER_CLIENT_ID;
+
+        let Some(client_id) = self.metadata().get(HEADER) else {
+            return Ok(None);
+        };
+
+        let client_id = client_id.to_str().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{client_id:?}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
+        let client_id = client_id.parse().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{client_id}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
+
+        Ok(Some(client_id))
+    }
+
     fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 

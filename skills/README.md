@@ -38,3 +38,13 @@ Internal, not aimed at users of the SDK:
 | Skill                                               | What it covers                                                                       |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | [`assemble-changelog`](assemble-changelog/SKILL.md) | Turns `docs/content/changelog/upcoming/` into a release changeset and `CHANGELOG.md` |
+
+## Writing a skill
+
+- Only state facts you have verified.
+  Leave out numbers that are specific to one recording or one machine (calibration offsets, download sizes, timings), and guesses.
+- Don't assume optional tools are installed, e.g. use `grep` rather than `rg`.
+- Link to the canonical page (e.g. <https://ref.rerun.io/docs/python>) instead of describing where to find it.
+- If the task is deterministic, write a script (and test it) instead of a skill; a skill is for decisions that need judgement.
+- For concepts, link to the docs and summarize briefly; don't restate them, and recommend rather than prescribe.
+- Leave out facts that will go stale (server limits, current versions) and things any model already knows.

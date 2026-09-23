@@ -69,6 +69,10 @@ exclude_path = [
   # Generated ghat action definitions (contain upstream URLs we don't control)
   ".github/ghat/actions",
 
+  # Symlink mirror of `docs/` and `skills/`, which are already checked at their real paths.
+  # Relative links that resolve correctly from the real path break when followed through here.
+  "crates/top/re_viewer/agent_context",
+
   # Actually ignored files beyond .gitignore
   "lychee.toml", # Contains regex patterns with URL-like strings that aren't actual links.
   "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
@@ -237,6 +241,7 @@ exclude = [
   'https://dl.acm.org/doi/10.1145/3638550.3643617', # We might be getting rate-limited here.
   'https://forum.doom9.org/.*',
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
+  'https://wiki.multimedia.cx/.*', # Constant timeouts on CI.
   'https://wiki.ros.org/.*', # Constant timeouts.
   'https://www.doxygen.nl/.*', # Getting 403, but the links work.
 

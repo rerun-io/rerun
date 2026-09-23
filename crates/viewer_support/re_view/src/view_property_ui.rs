@@ -8,6 +8,22 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+/// Display the blueprint properties declared by the view definition, in declaration order.
+pub fn view_properties_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
+    let reflection = ctx.viewer_ctx.reflection();
+    if let Some(view) = reflection.views.get(&ctx.view_class_identifier) {
+        re_ui::list_item::list_item_scope(ui, ctx.view_class_identifier, |ui| {
+            for property in &view.property_archetypes {
+                if let Some(view_property) = ViewProperty::from_reflection(ctx, *property) {
+                    view_property_ui_impl(ctx, ui, &view_property, None, &[]);
+                } else {
+                    re_log::warn_once!("Missing reflection data for view property {property:?}.");
+                }
+            }
+        });
+    }
+}
+
 /// Display the UI for editing all components of a blueprint archetype.
 ///
 /// Note that this will show default values for components that are null.
@@ -83,17 +99,28 @@ fn view_property_ui_impl(
 
     let query_ctx = property.query_context(ctx);
 
-    // If the property archetype only has a single component,
-    // and it has the same name as the archetype, then combine them.
-    // Happens in some cases, like for the `NearClipPlane` archetype that
-    // only has one component which is also called `NearClipPlane`.
-    if archetype.fields.len() == 1 && archetype_display_name == archetype.fields[0].display_name {
+    // Render single-field archetypes directly under the archetype name, without a separate component row.
+    if archetype.fields.len() == 1 {
         let field = &archetype.fields[0];
         let component = field
             .component_descriptor(property.archetype_name)
             .component;
         if !hidden_components.contains(&component) {
-            view_property_component_ui(&query_ctx, ui, property, archetype_display_name, field);
+            let (query_ctx, property) = if let Some(override_component_view) =
+                &override_component_view
+                && component == override_component_view.component
+            {
+                (
+                    &override_component_view
+                        .view_property
+                        .query_context(&override_component_view.ctx),
+                    &override_component_view.view_property,
+                )
+            } else {
+                (&query_ctx, property)
+            };
+
+            view_property_component_ui(query_ctx, ui, property, archetype_display_name, field);
         }
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
@@ -223,7 +250,7 @@ pub fn view_property_component_ui_custom(
 
     let list_item_response = if let Some(multiline_ui) = multiline_ui {
         let default_open = false;
-        let id = egui::Id::new((ctx.target_entity_path.hash(), &component_descr));
+        let id = ui.make_persistent_id((ctx.target_entity_path.hash(), &component_descr));
         ui.list_item()
             .interactive(false)
             .show_hierarchical_with_children(

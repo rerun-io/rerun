@@ -1,4 +1,4 @@
-use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, TextStyle, Ui};
+use egui::{Atoms, IntoAtoms, OpenUrl, RichText, TextStyle, Ui, WidgetAtom};
 
 use crate::{UiExt as _, icons};
 
@@ -194,7 +194,7 @@ fn section_ui(ui: &mut Ui, section: HelpSection, horizontal_spacing: f32) {
                         ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                         ui.visuals_mut().override_text_color = Some(color);
                         row.items.map_images(|i| i.tint(color));
-                        AtomLayout::new(row.items).gap(2.0).show(ui);
+                        WidgetAtom::new(row.items).gap(2.0).show(ui);
                     },
                 );
             }

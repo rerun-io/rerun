@@ -1,6 +1,6 @@
 use std::mem;
 
-use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
+use egui::{Atom, Atoms, Frame, Margin, Sense, WidgetAtom};
 use re_log_types::TimestampFormat;
 use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -141,9 +141,7 @@ impl FilterState {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
                         // name.
-                        let filter_id = ui.make_persistent_id(
-                            egui::Id::new(index).with(column_filter.field.name()),
-                        );
+                        let filter_id = ui.make_persistent_id((index, column_filter.field.name()));
 
                         let result = column_filter.ui(
                             ui,
@@ -178,8 +176,8 @@ struct DisplayFilterUiResult {
 }
 
 impl ColumnFilter {
-    pub fn close_button_id() -> egui::Id {
-        egui::Id::new("filter_close_button")
+    pub fn close_button_id() -> egui::IdSalt {
+        egui::IdSalt::new("filter_close_button")
     }
 
     /// UI for a single filter.
@@ -214,7 +212,7 @@ impl ColumnFilter {
             .stroke(ui.tokens().table_filter_frame_stroke)
             .corner_radius(2.0);
 
-        let atom_layout = AtomLayout::new(atoms).sense(Sense::click()).frame(frame);
+        let atom_layout = WidgetAtom::new(atoms).sense(Sense::click()).frame(frame);
 
         let atom_response = atom_layout.show(ui);
 
@@ -337,7 +335,7 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::datatypes::{DataType, Field, FieldRef};
-    use egui::accesskit::Role;
+    use egui::Role;
     use egui::{Key, Modifiers};
     use egui_kittest::SnapshotResults;
     use egui_kittest::kittest::Queryable as _;
@@ -484,7 +482,7 @@ mod tests {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
                     egui::Popup::new(
-                        ui.id().with("popup"),
+                        ui.make_persistent_id("popup"),
                         ui.ctx().clone(),
                         egui::Rect::from_min_size(
                             egui::pos2(10., 10.),

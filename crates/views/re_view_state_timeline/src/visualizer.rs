@@ -77,7 +77,7 @@ use crate::data::{
 
 /// One logged row of the state component.
 struct StateRow {
-    time: i64,
+    time: TimeInt,
     row_id: RowId,
 
     /// One formatted label per instance in the row's state array.
@@ -436,9 +436,6 @@ struct LaneGroupBuilder<'a> {
     /// strings/bools pass through. The post-cast chunks served by the query layer are
     /// therefore one of {Utf8, Float64, Boolean}.
     cast_rules: IntMap<re_sdk_types::ComponentIdentifier, ComponentCastRule>,
-
-    /// Everything we read per lane, across both archetypes.
-    queried_components: Vec<re_sdk_types::ComponentIdentifier>,
 }
 
 impl<'a> LaneGroupBuilder<'a> {
@@ -455,11 +452,6 @@ impl<'a> LaneGroupBuilder<'a> {
                 StateChange::descriptor_state().component,
                 state_cast_rule as ComponentCastRule,
             ))
-            .collect(),
-            queried_components: std::iter::chain(
-                StateChange::all_component_identifiers(),
-                StateConfiguration::all_component_identifiers(),
-            )
             .collect(),
         }
     }
@@ -508,53 +500,60 @@ impl<'a> LaneGroupBuilder<'a> {
         let query = re_chunk_store::RangeQuery::new(self.view_query.timeline, store_range)
             .include_extended_bounds(true);
 
-        // In-window data.
-        let range_results = re_view::BlueprintResolvedResults::from((
-            query.clone(),
-            re_view::range_with_blueprint_resolved_data_polymorphic(
+        // A state active at the left edge is part of the lane, so we have to bootstrap the state with a latest-at query.
+        let mut range_results = re_view::range_with_blueprint_resolved_data_polymorphic(
+            self.ctx,
+            None,
+            &query,
+            data_result,
+            [state_component],
+            instruction,
+            &self.cast_rules,
+        );
+        let bootstrap_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min());
+        range_results.merge_bootstrapped_data(
+            re_view::latest_at_with_blueprint_resolved_data_polymorphic(
                 self.ctx,
                 None,
-                &query,
+                &bootstrap_query,
                 data_result,
-                self.queried_components.iter().copied(),
-                instruction,
+                [state_component],
+                Some(instruction),
                 &self.cast_rules,
             ),
-        ));
+        );
+        let range_results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
         let range_results = re_view::VisualizerInstructionQueryResults::new(
             instruction,
             &range_results,
             self.output,
         );
 
-        // State + config active at the left edge, which we get with a latest-at query: the
-        // `include_extended_bounds` above only considered visible chunks.
-        let latest_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min());
-        let bootstrap_results = re_view::BlueprintResolvedResults::from((
-            latest_query.clone(),
+        // Configuration is a single style table for the entire lane, selected at the cursor.
+        // It's expected to not change as the user pans the independently-controlled view window.
+        let config_results = re_view::BlueprintResolvedResults::from((
+            self.view_query.latest_at_query(),
             re_view::latest_at_with_blueprint_resolved_data_polymorphic(
                 self.ctx,
                 None,
-                &latest_query,
+                &self.view_query.latest_at_query(),
                 data_result,
-                self.queried_components.iter().copied(),
+                StateConfiguration::all_component_identifiers(),
                 Some(instruction),
                 &self.cast_rules,
             ),
         ));
-        let bootstrap_results = re_view::VisualizerInstructionQueryResults::new(
+        let config_results = re_view::VisualizerInstructionQueryResults::new(
             instruction,
-            &bootstrap_results,
+            &config_results,
             self.output,
         );
 
         let range_values = range_results.iter_required(state_component);
-        let bootstrap_values = bootstrap_results.iter_required(state_component);
 
-        // Dispatch on the post-cast element type, observed across both queries. The cast
+        // Dispatch on the post-cast element type, observed across the range and its bootstrap. The cast
         // normally yields a single type; a mix means the column's physical type changed.
-        let mut element_types = state_chunk_element_types(&range_values);
-        element_types.extend(state_chunk_element_types(&bootstrap_values));
+        let element_types = state_chunk_element_types(&range_values);
         if element_types.len() > 1 {
             let kinds_list = element_types
                 .iter()
@@ -576,20 +575,11 @@ impl<'a> LaneGroupBuilder<'a> {
             .next()
             .or_else(|| probe().map(|shape| shape.value_type.clone()));
 
-        // Prefer the in-window `StateConfiguration`; fall back to the bootstrapped one so the
-        // colors/labels/visibility stay correct when the config was set before the window.
-        let mut state_config = resolve_state_config(&range_results);
-        if state_config.is_empty() {
-            state_config = resolve_state_config(&bootstrap_results);
-        }
+        let state_config = resolve_state_config(&config_results);
 
-        // The bootstrapped state-before-the-window comes first (it has the earliest time),
-        // followed by the in-window changes.
-        let mut rows = Vec::new();
-        if let Some(element_type) = &element_type {
-            rows = collect_state_rows(&bootstrap_values, element_type);
-            rows.extend(collect_state_rows(&range_values, element_type));
-        }
+        let rows = element_type.as_ref().map_or_else(Vec::new, |element_type| {
+            collect_state_rows(&range_values, element_type)
+        });
 
         // With no rows on screen, fall back to the shape probed from the store, and finally to a
         // single empty lane.
@@ -718,7 +708,7 @@ where
 {
     rows.into_iter()
         .map(|(data_time, row_id, row_values)| StateRow {
-            time: data_time.as_i64(),
+            time: data_time,
             row_id,
             labels: row_values
                 .into_iter()
@@ -736,18 +726,18 @@ where
 /// - Consecutive `None`s (gaps) collapse to one.
 /// - Leading `None`s (no preceding state) are dropped.
 fn build_lane_phases(
-    value_events: Vec<(i64, RowId, Option<String>)>,
+    value_events: Vec<(TimeInt, RowId, Option<String>)>,
     clear_events: &[(TimeInt, RowId)],
     state_config: &[(String, StateStyle)],
 ) -> Vec<StateLanePhase> {
     let mut events = value_events;
-    events.extend(clear_events.iter().map(|&(t, r)| (t.as_i64(), r, None)));
+    events.extend(clear_events.iter().map(|&(t, r)| (t, r, None)));
     if events.is_empty() {
         return Vec::new();
     }
     events.sort_by_key(|(t, r, _)| (*t, *r));
 
-    let mut phases: Vec<(i64, Option<String>)> = Vec::new();
+    let mut phases: Vec<(TimeInt, Option<String>)> = Vec::new();
     for (t, _r, event) in events {
         if let Some(last) = phases.last_mut()
             && last.0 == t
@@ -773,7 +763,7 @@ fn build_lane_phases(
     phases
         .into_iter()
         .map(|(t, event)| StateLanePhase {
-            start_time: t,
+            start_time: t.as_i64(),
             content: event.and_then(|label| build_phase_content(&label, state_config)),
         })
         .collect()
@@ -817,7 +807,7 @@ fn collect_state_rows(
             values
                 .slice::<Option<String>>()
                 .map(|((data_time, row_id), texts)| StateRow {
-                    time: data_time.as_i64(),
+                    time: data_time,
                     row_id,
                     labels: texts
                         .into_iter()
@@ -937,13 +927,18 @@ mod tests {
     }
 
     #[test]
-    fn bootstrapped_state_becomes_leading_phase() {
+    fn bootstrapped_state_preserves_start_time() {
         // Reproduces RR-4294's pan regression at the data level: the only state change was logged
         // before the visible window (here at its real time t=40, recovered via the bootstrap
         // latest-at), and there are no changes inside the window. The lane must still produce a
-        // phase rather than vanishing; rendering clips its off-screen-left start to the edge.
+        // phase at its original time rather than vanishing; rendering clips its off-screen-left
+        // start to the edge.
         let cfg = visible_config(&["Idle"]);
-        let events = vec![(40, RowId::new(), Some("Idle".to_owned()))];
+        let events = vec![(
+            TimeInt::saturated_temporal_i64(40),
+            RowId::new(),
+            Some("Idle".to_owned()),
+        )];
 
         let phases = build_lane_phases(events, &[], &cfg);
 
@@ -958,8 +953,16 @@ mod tests {
         // leaving a single phase with the in-window value.
         let cfg = visible_config(&["Idle", "Moving"]);
         let events = vec![
-            (100, RowId::ZERO, Some("Idle".to_owned())), // bootstrap value
-            (100, RowId::new(), Some("Moving".to_owned())), // real change at the same time
+            (
+                TimeInt::saturated_temporal_i64(100),
+                RowId::ZERO,
+                Some("Idle".to_owned()),
+            ), // bootstrap value
+            (
+                TimeInt::saturated_temporal_i64(100),
+                RowId::new(),
+                Some("Moving".to_owned()),
+            ), // real change at the same time
         ];
 
         let phases = build_lane_phases(events, &[], &cfg);
@@ -971,5 +974,50 @@ mod tests {
             Some("Moving"),
             "{phases:?}"
         );
+    }
+
+    #[test]
+    fn transition_after_bootstrap_keeps_the_leading_phase() {
+        let cfg = visible_config(&["Idle", "Moving"]);
+        let phases = build_lane_phases(
+            vec![
+                (
+                    TimeInt::saturated_temporal_i64(40),
+                    RowId::new(),
+                    Some("Idle".to_owned()),
+                ),
+                (
+                    TimeInt::saturated_temporal_i64(150),
+                    RowId::new(),
+                    Some("Moving".to_owned()),
+                ),
+            ],
+            &[],
+            &cfg,
+        );
+
+        assert_eq!(phases.len(), 2, "{phases:?}");
+        assert_eq!(phases[0].start_time, 40, "{phases:?}");
+        assert_eq!(phases[1].start_time, 150, "{phases:?}");
+    }
+
+    #[test]
+    fn clear_after_bootstrap_leaves_a_gap() {
+        let cfg = visible_config(&["Idle"]);
+        let phases = build_lane_phases(
+            vec![(
+                TimeInt::saturated_temporal_i64(40),
+                RowId::new(),
+                Some("Idle".to_owned()),
+            )],
+            &[(TimeInt::saturated_temporal_i64(50), RowId::new())],
+            &cfg,
+        );
+
+        assert_eq!(phases.len(), 2, "{phases:?}");
+        assert_eq!(phases[0].start_time, 40, "{phases:?}");
+        assert!(phases[0].content.is_some(), "{phases:?}");
+        assert_eq!(phases[1].start_time, 50, "{phases:?}");
+        assert!(phases[1].content.is_none(), "{phases:?}");
     }
 }

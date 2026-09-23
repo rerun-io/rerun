@@ -72,8 +72,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("General");
 
     ui.horizontal(|ui| {
+        // Center the theme label
+        ui.set_height(27.0);
         ui.label("Theme");
-        egui::global_theme_preference_buttons(ui);
+        theme_preference_buttons(ui);
     });
 
     let AppOptions {
@@ -102,15 +104,15 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.add_space(8.0);
 
     egui::Grid::new("prefetcher").num_columns(2).show(ui, |ui| {
-        ui.label("Memory budget");
-        memory_budget_section_ui(ui, memory_limit);
+        let label = ui.label("Memory budget");
+        memory_budget_section_ui(ui, memory_limit, label.id);
         ui.help_button(|ui| {
             ui.label("When this limit is reached we start purging data from RAM");
         });
         ui.end_row();
 
-        ui.label("Prefetch");
-        prefetch_stage_combo_box_ui(ui, max_fetch_stage);
+        let label = ui.label("Prefetch");
+        prefetch_stage_combo_box_ui(ui, max_fetch_stage, label.id);
         ui.help_button(|ui| {
             ui.label(
                 "Controls how aggressively we prefetch chunks ahead of what is strictly needed.\n\n\
@@ -262,7 +264,7 @@ fn origin_private_filesystem_section_ui(ui: &mut Ui) {
     }
 }
 
-fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
+fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit, label_id: egui::Id) {
     const BYTES_PER_GIB: u64 = 1024 * 1024 * 1024;
     const UPPER_LIMIT_BYTES: u64 = 1_000 * BYTES_PER_GIB;
 
@@ -291,7 +293,8 @@ fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
             .update_while_editing(false)
             .range(0..=UPPER_LIMIT_BYTES)
             .speed(speed),
-    );
+    )
+    .labelled_by(label_id);
 
     if bytes < UPPER_LIMIT_BYTES {
         *memory_limit = MemoryLimit::from_bytes(bytes);
@@ -300,7 +303,7 @@ fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
     }
 }
 
-fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
+fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage, label_id: egui::Id) {
     fn label(stage: FetchStage) -> &'static str {
         match stage {
             FetchStage::Required | FetchStage::Indicated => "Required",
@@ -309,7 +312,7 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
         }
     }
 
-    egui::ComboBox::from_id_salt("max_fetch_stage")
+    let combo_box = egui::ComboBox::from_id_salt("max_fetch_stage")
         .selected_text(label(*max_fetch_stage))
         .show_ui(ui, |ui| {
             for stage in [
@@ -320,6 +323,7 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
                 ui.selectable_value(max_fetch_stage, stage, label(stage));
             }
         });
+    combo_box.response.labelled_by(label_id);
 
     /// Maps t in [0, 1] to a log scale value in [min, max],
     /// where t=1.0 maps to `f64::INFINITY`.
@@ -350,7 +354,8 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
             let seconds = range.map(|d| d.as_secs_f64()).unwrap_or(f64::INFINITY);
 
             let mut value = value_to_log_slider(seconds, MIN, MAX_FINITE);
-            ui.add(egui::Slider::new(&mut value, 0.0..=1.0).show_value(false));
+            ui.add(egui::Slider::new(&mut value, 0.0..=1.0).show_value(false))
+                .accessible_name("Prefetch duration");
 
             *range =
                 std::time::Duration::try_from_secs_f64(log_slider_to_value(value, MIN, MAX_FINITE))
@@ -425,7 +430,7 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
         // TODO(ab): needed for alignment, we should use egui flex instead
         ui.set_height(19.0);
 
-        ui.label("Mapbox access token:").on_hover_ui(|ui| {
+        let label = ui.label("Mapbox access token:").on_hover_ui(|ui| {
             ui.markdown_ui(
                 "This token is used to enable Mapbox-based map view backgrounds.\n\n\
                 Note that the token will be saved in clear text in the configuration file. \
@@ -434,7 +439,8 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
             );
         });
 
-        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true));
+        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
+            .labelled_by(label.id);
     });
 }
 
@@ -446,8 +452,8 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
 
             let hardware_acceleration = &mut options.hw_acceleration;
             ui.horizontal(|ui| {
-                ui.label("Decoder:");
-                egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                let label = ui.label("Decoder:");
+                let combo_box = egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
                     .selected_text(hardware_acceleration.to_string())
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
@@ -466,6 +472,7 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
                             DecodeHardwareAcceleration::PreferHardware.to_string(),
                         );
                     });
+                combo_box.response.labelled_by(label.id);
                 // Note that the setting is part of the video's cache key, so, if it changes, the cache
                 // entries outdate automatically.
             });
@@ -488,9 +495,10 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
                     // TODO(ab): needed for alignment, we should use egui flex instead
                     ui.set_height(19.0);
 
-                    ui.label("Path:");
+                    let label = ui.label("Path:");
 
-                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
+                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path))
+                        .labelled_by(label.id);
                 });
             });
 
@@ -543,4 +551,63 @@ fn separator_with_some_space(ui: &mut egui::Ui) {
     ui.add_space(10.0);
     ui.separator();
     ui.add_space(10.0);
+}
+
+/// A toggle group for picking between the dark, light and system themes.
+///
+/// Same as [`egui::global_theme_preference_buttons`], but in our own style and with our own
+/// icons: egui labels its buttons with emoji that no font we bundle can draw.
+fn theme_preference_buttons(ui: &mut egui::Ui) {
+    let mut preference = ui.options(|opt| opt.theme_preference);
+
+    ui.selectable_toggle(|ui| {
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::System,
+            &re_ui::icons::SUN_MOON,
+            "System",
+        )
+        .on_hover_text("Follow the theme the operating system asks for");
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::Dark,
+            &re_ui::icons::MOON,
+            "Dark",
+        )
+        .on_hover_text("Always use the dark theme");
+        theme_preference_button(
+            ui,
+            &mut preference,
+            egui::ThemePreference::Light,
+            &re_ui::icons::SUN,
+            "Light",
+        )
+        .on_hover_text("Always use the light theme");
+    });
+
+    ui.ctx().set_theme(preference);
+}
+
+/// One button of [`theme_preference_buttons`].
+///
+/// This is [`egui::Ui::selectable_value`] plus `image_tint_follows_text_color`, which the
+/// icon needs to dim along with its label when the button is not the selected one.
+fn theme_preference_button(
+    ui: &mut egui::Ui,
+    preference: &mut egui::ThemePreference,
+    value: egui::ThemePreference,
+    icon: &re_ui::Icon,
+    label: &str,
+) -> egui::Response {
+    let mut response = ui.add(
+        egui::Button::selectable(*preference == value, (icon, label))
+            .image_tint_follows_text_color(true),
+    );
+    if response.clicked() && *preference != value {
+        *preference = value;
+        response.mark_changed();
+    }
+    response
 }

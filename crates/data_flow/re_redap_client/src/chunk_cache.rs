@@ -5,6 +5,7 @@ use arrow::array::{BooleanArray, RecordBatch};
 use arrow::buffer::BooleanBuffer;
 use arrow::compute::filter_record_batch;
 
+use re_chunk_index::RrdManifest;
 use re_log_types::external::re_tuid;
 use re_protos::log_msg::v1alpha1::ArrowMsg;
 
@@ -38,14 +39,13 @@ impl ChunkCacheHandle {
     /// Splits a chunk request into the chunks this cache can serve and the rows that still have to
     /// be fetched.
     ///
-    /// `record_batch` should be shaped like an [`re_log_encoding::RrdManifest`]. It is returned
+    /// `record_batch` should be shaped like an [`RrdManifest`]. It is returned
     /// unchanged when nothing in it is cached.
     pub fn split_cached<'batch>(
         &self,
         record_batch: &'batch RecordBatch,
     ) -> (Vec<ArrowMsg>, Cow<'batch, RecordBatch>) {
-        let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(record_batch)
-        else {
+        let Some(chunk_id_col) = RrdManifest::col_chunk_ids_of(record_batch) else {
             re_log::debug_panic!("Failed to read chunk_id field in chunk request");
             return (Vec::new(), Cow::Borrowed(record_batch));
         };
@@ -186,11 +186,11 @@ mod tests {
     }
 
     /// A chunk request covering `chunk_ids`, shaped like
-    /// [`re_log_encoding::RrdManifest::chunk_fetcher_rb`].
+    /// [`RrdManifest::chunk_fetcher_rb`].
     fn chunk_request(chunk_ids: &[re_chunk::ChunkId]) -> RecordBatch {
         let column = re_chunk::ChunkId::arrow_from_slice(chunk_ids);
         let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![re_log_encoding::RrdManifest::COLUMN_CHUNK_ID.arrow_field()],
+            vec![RrdManifest::COLUMN_CHUNK_ID.arrow_field()],
             Default::default(),
         );
 
@@ -203,7 +203,7 @@ mod tests {
     }
 
     fn chunk_ids_of(record_batch: &RecordBatch) -> Vec<re_chunk::ChunkId> {
-        re_log_encoding::RrdManifest::col_chunk_ids_of(record_batch)
+        RrdManifest::col_chunk_ids_of(record_batch)
             .expect("the request has a chunk id column")
             .to_vec()
     }

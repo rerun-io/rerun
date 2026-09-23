@@ -1,7 +1,8 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
+use re_chunk_index::RawRrdManifest;
+use re_log_encoding::{Decodable as _, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::capabilities::ServerCapabilities;
@@ -165,13 +166,17 @@ async fn fetch_rrd_manifest_via_key(
 
     let redacted_url = url_strip_query(direct_url.as_str());
 
+    // The URL is context, not part of the sentence: it goes on a detail line, so that it ends up
+    // in the details section instead of stretching the summary.
+    let with_url = |what: &str| re_error::format_with_details(what, format!("URL: {redacted_url}"));
+
     let response = response.map_err(|err| {
         let err = err.replace(direct_url.as_str(), redacted_url);
         ApiError::connection_with_source(
             origin,
             trace_id,
             std::io::Error::other(err),
-            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+            with_url("failed to fetch RRD manifest directly"),
         )
     })?;
 
@@ -181,7 +186,7 @@ async fn fetch_rrd_manifest_via_key(
             trace_id,
             http::StatusCode::PRECONDITION_FAILED.as_u16(),
             std::io::Error::other(SOURCE_CHANGED_MESSAGE),
-            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+            with_url("failed to fetch RRD manifest directly"),
         )
     };
 
@@ -191,14 +196,15 @@ async fn fetch_rrd_manifest_via_key(
         return if response.status == http::StatusCode::PRECONDITION_FAILED.as_u16() {
             Err(source_changed_error())
         } else {
-            let layer = layer
-                .as_deref()
-                .map_or_else(String::new, |layer| format!("\nLayer: {layer}"));
+            let message =
+                re_error::StructuredError::from_summary("failed to fetch RRD manifest directly")
+                    .with_details(layer.as_deref().map(|layer| format!("Layer: {layer}")))
+                    .with_detail(format!("URL: {redacted_url}"));
             Err(ApiError::http_status(
                 origin,
                 trace_id,
                 response.status,
-                format!("failed to fetch RRD manifest directly{layer}\nURL: {redacted_url}"),
+                message.to_string(),
             ))
         };
     }
@@ -215,7 +221,7 @@ async fn fetch_rrd_manifest_via_key(
                 "invalid Content-Range: {}",
                 content_range.unwrap_or("missing")
             )),
-            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+            with_url("failed to fetch RRD manifest directly"),
         ));
     }
 
@@ -231,10 +237,10 @@ async fn fetch_rrd_manifest_via_key(
         return Err(ApiError::deserialization(
             origin,
             trace_id,
-            format!(
-                "direct RRD manifest response had {} bytes, expected {expected_length}\nURL: {redacted_url}",
+            with_url(&format!(
+                "direct RRD manifest response had {} bytes, expected {expected_length}",
                 response.bytes.len()
-            ),
+            )),
         ));
     }
 
@@ -244,7 +250,7 @@ async fn fetch_rrd_manifest_via_key(
                 origin,
                 trace_id,
                 err,
-                format!("failed decoding direct RRD footer\nURL: {redacted_url}"),
+                with_url("failed decoding direct RRD footer"),
             )
         })?;
 
@@ -260,11 +266,12 @@ async fn fetch_rrd_manifest_via_key(
                 .is_some_and(|store_id| store_id.recording_id == segment_id.as_str())
         })
         .ok_or_else(|| {
-            ApiError::deserialization(origin,
+            ApiError::deserialization(
+                origin,
                 trace_id,
-                format!(
-                    "direct RRD footer did not contain a manifest for segment {segment_id}\nURL: {redacted_url}"
-                ),
+                with_url(&format!(
+                    "direct RRD footer did not contain a manifest for segment {segment_id}"
+                )),
             )
         })?;
 
@@ -273,7 +280,7 @@ async fn fetch_rrd_manifest_via_key(
             origin,
             trace_id,
             err,
-            format!("failed parsing direct RRD manifest\nURL: {redacted_url}"),
+            with_url("failed parsing direct RRD manifest"),
         )
     })?;
 
@@ -301,7 +308,7 @@ async fn fetch_rrd_manifest_via_key(
             origin,
             trace_id,
             err,
-            format!("failed hub-extending direct RRD manifest\nURL: {redacted_url}"),
+            with_url("failed hub-extending direct RRD manifest"),
         )
     })?;
 
@@ -317,6 +324,7 @@ pub struct SegmentQueryParams {
     pub include_static_data: bool,
     pub include_temporal_data: bool,
     pub generate_direct_urls: bool,
+    pub unsigned_direct_urls: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
@@ -495,7 +503,7 @@ where
         self.inner()
             .version(VersionRequest {})
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/Version failed"))
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/Version"))
             .map(|_| ())
     }
 
@@ -506,7 +514,7 @@ where
             .inner()
             .version(VersionRequest {})
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/Version failed"))?
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/Version"))?
             .into_inner();
         Ok(response.into())
     }
@@ -554,7 +562,7 @@ where
             .who_am_i(re_protos::cloud::v1alpha1::WhoAmIRequest {})
             .await
             .map(|resp| resp.into_inner())
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/WhoAmI failed"))
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/WhoAmI"))
     }
 
     /// Estimate the round-trip time to the server.
@@ -579,14 +587,14 @@ where
                     num_bytes: 1,
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest failed"))?
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest"))?
                 .into_inner();
             // Drain the stream so we measure the full round-trip including the response.
             while stream
                 .next()
                 .await
                 .transpose()
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest stream error"))?
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest"))?
                 .is_some()
             {}
             best = best.min(start.elapsed());
@@ -619,14 +627,15 @@ where
             .inner()
             .do_bandwidth_test(re_protos::cloud::v1alpha1::DoBandwidthTestRequest { num_bytes })
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest failed"))?
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest"))?
             .into_inner();
 
         let mut received: u64 = 0;
-        while let Some(item) =
-            stream.next().await.transpose().map_err(|err| {
-                ApiError::tonic(&self.origin, err, "/DoBandwidthTest stream error")
-            })?
+        while let Some(item) = stream
+            .next()
+            .await
+            .transpose()
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoBandwidthTest"))?
         {
             received += item.payload.len() as u64;
         }
@@ -647,7 +656,7 @@ where
                 kinds: vec![re_protos::cloud::v1alpha1::EventKind::entry()],
             })
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/WatchEvents failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/WatchEvents"))?;
 
         let stream =
             ApiResponseStream::from_tonic_response(self.origin.clone(), response, "/WatchEvents");
@@ -679,7 +688,7 @@ where
                     filter: Some(filter),
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/FindEntries failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/FindEntries"))?,
         );
 
         response
@@ -708,7 +717,7 @@ where
                 .with_entry_id(entry_id),
             )
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/DeleteEntry failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/DeleteEntry"))?;
 
         Ok(())
     }
@@ -733,7 +742,7 @@ where
                     .with_entry_id(entry_id),
                 )
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateEntry"))?,
         );
         let response: UpdateEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -763,7 +772,7 @@ where
                 }
             })
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema failed"))?,
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema"))?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner.schema().map_err(|err| {
@@ -790,7 +799,7 @@ where
                     id: entry_id.map(Into::into),
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/CreateDatasetEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/CreateDatasetEntry"))?,
         );
         let response: CreateDatasetEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -813,7 +822,7 @@ where
                     tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id),
                 )
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/ReadDatasetEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/ReadDatasetEntry"))?,
         );
         let response: ReadDatasetEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -847,7 +856,7 @@ where
                     .with_entry_id(entry_id),
                 )
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateDatasetEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateDatasetEntry"))?,
         );
         let response: UpdateDatasetEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -873,7 +882,7 @@ where
                     .with_entry_id(entry_id),
                 )
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/ReadTableEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/ReadTableEntry"))?,
         );
         let response: ReadTableEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -904,7 +913,7 @@ where
                     .into(),
                 ))
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateTableEntry failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateTableEntry"))?,
         );
         let response: UpdateTableEntryResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -996,7 +1005,7 @@ where
                     }
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanSegmentTable failed"))
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanSegmentTable"))
             }
         })
         .await?;
@@ -1200,9 +1209,7 @@ where
                 }
             })
             .await
-            .map_err(|err| {
-                ApiError::tonic(&self.origin, err, "/GetDatasetManifestSchema failed")
-            })?,
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetManifestSchema"))?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner
@@ -1254,7 +1261,7 @@ where
             }
         })
         .await
-        .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanDatasetManifest failed"))?;
+        .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanDatasetManifest"))?;
 
         let mut stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1318,7 +1325,7 @@ where
                 .with_entry_id(dataset_id),
             )
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetAssetsForSegment failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetAssetsForSegment"))?;
 
         let stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1387,21 +1394,30 @@ where
                     .with_entry_id(assets_entry),
                 )
                 .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
-                })?;
-            let mut properties = ApiResponseStream::from_tonic_response(
-                self.origin.clone(),
-                response,
-                "/GetSegmentProperties",
-            );
-            while let Some(response) = properties.next().await {
-                crate::asset::filter_asset_segments(
-                    &self.origin,
-                    &mut asset_segment_ids,
-                    segment_id.as_ref(),
-                    response?,
-                )?;
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed"));
+
+            match response {
+                Ok(response) => {
+                    let mut properties = ApiResponseStream::from_tonic_response(
+                        self.origin.clone(),
+                        response,
+                        "/GetSegmentProperties",
+                    );
+                    while let Some(response) = properties.next().await {
+                        crate::asset::filter_asset_segments(
+                            &self.origin,
+                            &mut asset_segment_ids,
+                            segment_id.as_ref(),
+                            response?,
+                        )?;
+                    }
+                }
+
+                // A server without `/GetSegmentProperties` cannot tell which assets apply to
+                // which segment, so every asset applies.
+                Err(err) if err.kind == ApiErrorKind::Unimplemented => {}
+
+                Err(err) => return Err(err),
             }
         }
 
@@ -1495,7 +1511,7 @@ where
             }
         })
         .await
-        .map_err(|err| ApiError::tonic(&self.origin, err, "/GetRrdManifest failed"))?;
+        .map_err(|err| ApiError::tonic(&self.origin, err, "/GetRrdManifest"))?;
 
         let stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1613,6 +1629,7 @@ where
                 include_temporal_data,
                 query,
                 generate_direct_urls,
+                unsigned_direct_urls,
             } = params.clone();
 
             async move {
@@ -1632,6 +1649,7 @@ where
                         ..Default::default()
                     }),
                     generate_direct_urls,
+                    unsigned_direct_urls,
                 };
 
                 let response = crate::rpc_retry::retry(|| {
@@ -1651,7 +1669,7 @@ where
                     }
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryDataset failed"))?;
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryDataset"))?;
 
                 Ok(ApiResponseStream::from_tonic_response(
                     self.origin.clone(),
@@ -1746,7 +1764,7 @@ where
             .fetch_chunks(req)
             .await
             // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/FetchChunks failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/FetchChunks"))?;
 
         let response =
             ApiResponseStream::from_tonic_response(self.origin.clone(), response, "/FetchChunks");
@@ -1818,7 +1836,7 @@ where
             .inner()
             .fetch_chunks(req)
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/FetchChunks failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/FetchChunks"))?;
 
         Ok(ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1864,7 +1882,7 @@ where
             .inner()
             .unregister_from_dataset(req)
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/UnregisterFromDataset failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/UnregisterFromDataset"))?;
 
         let trace_id = extract_trace_id(response.metadata());
 
@@ -1945,7 +1963,7 @@ where
                     )
                 })?))
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterTable failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterTable"))?,
         );
         let response: RegisterTableResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
@@ -1986,7 +2004,7 @@ where
                 .with_entry_id(dataset_id),
             )
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoMaintenance failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoMaintenance"))?;
 
         Ok(())
     }
@@ -1998,7 +2016,7 @@ where
                 re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest {},
             ))
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoGlobalMaintenance failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/DoGlobalMaintenance"))?;
 
         Ok(())
     }
@@ -2040,7 +2058,7 @@ where
                 )
             })?))
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryTasksOnCompletion failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryTasksOnCompletion"))?;
         Ok(ApiResponseStream::from_tonic_response(
             self.origin.clone(),
             response,
@@ -2067,7 +2085,7 @@ where
         self.inner()
             .cancel_tasks(CancelTasksRequest { ids: task_ids })
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/CancelTasks failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/CancelTasks"))?;
 
         Ok(())
     }
@@ -2086,7 +2104,7 @@ where
                 )
             })?))
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryTasks failed"))?
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryTasks"))?
             .into_inner();
         Ok(response)
     }
@@ -2154,7 +2172,7 @@ where
                     }),
                 })
                 .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/FindEntries failed"))?,
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/FindEntries"))?,
         );
         inner
             .entries
@@ -2166,7 +2184,7 @@ where
                         &self.origin,
                         trace_id,
                         err,
-                        "/FindEntries failed",
+                        "/FindEntries",
                     )
                 })
             })
@@ -2193,7 +2211,7 @@ where
             .write_table(stream)
             .await
             .map(|_| ())
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/WriteTable failed"))
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/WriteTable"))
     }
 
     /// Create a table entry.
@@ -2218,7 +2236,7 @@ where
         let (resp, trace_id) = self
             .inner()
             .create_table_entry(tonic::Request::new(request.try_into().map_err(|err| {
-                ApiError::internal_with_source(&origin, None, err, "/CreateTableEntry failed")
+                ApiError::internal_with_source(&origin, None, err, "/CreateTableEntry")
             })?))
             .await
             .map_err(|err| ApiError::tonic(&self.origin, err, "failed to create table"))?
@@ -2229,12 +2247,12 @@ where
                 ApiError::deserialization(
                     &self.origin,
                     trace_id,
-                    "/CreateTable failed: entry ID not set in response",
+                    "entry ID not set in the /CreateTable response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::internal_with_source(&self.origin, trace_id, err, "/CreateTable failed")
+                ApiError::internal_with_source(&self.origin, trace_id, err, "/CreateTable")
             })
     }
 

@@ -1,5 +1,5 @@
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
-use eframe::emath::Align;
+use eframe::emath::Align2;
 use egui::{Atom, AtomExt as _, AtomKind, Button, DragValue, RichText, TextEdit, Ui, Vec2};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip};
@@ -58,7 +58,11 @@ impl RightPanel {
                 let show_hierarchical = self.show_hierarchical_demo;
                 ui.section_collapsing_header("Drag and drop")
                     .with_buttons(|ui| {
-                        ui.toggle_switch(8.0, &mut self.show_hierarchical_demo);
+                        ui.toggle_switch(
+                            8.0,
+                            &mut self.show_hierarchical_demo,
+                            "Hierarchical demo",
+                        );
                         ui.label("Hierarchical:");
                     })
                     .show(ui, |ui| {
@@ -505,7 +509,7 @@ impl RightPanel {
                     PropertyContent::new("name")
                         .value_fn(|ui, _vis| {
                             FormFields::single(ui, TextEdit::singleline(&mut "Temperature".to_owned())
-                                .vertical_align(Align::Center));
+                                .align(Align2::LEFT_CENTER));
                         }),
                 );
 

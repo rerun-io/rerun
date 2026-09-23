@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk::Chunk;
-use re_log_encoding::ChunkProvider;
+use re_chunk_index::ChunkProvider;
 
 use super::cut::{Budget, cut_to_fit};
 use super::load_in_order;

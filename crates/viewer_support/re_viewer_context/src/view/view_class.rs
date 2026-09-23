@@ -121,7 +121,7 @@ impl RecommendedVisualizers {
 /// Callback that renders the active visualizers in the selection panel.
 pub type VisualizersSectionUi<'a> = Box<dyn Fn(&mut egui::Ui, &ViewContext<'_>) + 'a>;
 
-/// Output of [`ViewClass::visualizers_section`].
+/// The visualizers section of [`ViewSelectionUi`].
 pub struct VisualizersSectionOutput<'a> {
     /// Renders the active visualizers in the selection panel.
     pub ui: VisualizersSectionUi<'a>,
@@ -129,6 +129,65 @@ pub struct VisualizersSectionOutput<'a> {
     /// Per-entity options for the "add visualizer" menu.
     /// Recommended visualizers for an entity may or may not be identical to [`ViewClass::recommended_visualizers_for_entity`].
     pub add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+}
+
+/// Callback that renders the body of a [`SelectionSection`].
+pub type SelectionSectionUi<'a> = Box<dyn Fn(&mut egui::Ui, &ViewContext<'_>) + 'a>;
+
+/// Callback that renders a view's blueprint properties.
+pub type BlueprintPropertiesUi<'a> =
+    Box<dyn Fn(&mut egui::Ui, &ViewContext<'_>) -> Result<(), ViewSystemExecutionError> + 'a>;
+
+/// A section of the selection panel that a view class fills itself.
+pub struct SelectionSection<'a> {
+    /// Heading of the collapsing section.
+    pub title: String,
+
+    /// Renders the body of the section.
+    pub ui: SelectionSectionUi<'a>,
+}
+
+/// Configures the selection UI for a view.
+///
+/// ⚠ This API is unstable and may change in future versions.
+pub struct ViewSelectionUi<'a> {
+    /// Whether to show the standard entity path filter UI.
+    pub show_entity_filter: bool,
+
+    /// The structured visualizers section, including its add-visualizer menu.
+    pub visualizers: Option<VisualizersSectionOutput<'a>>,
+
+    /// Additional sections inserted between visualizers and blueprint properties.
+    pub extra_sections: Vec<SelectionSection<'a>>,
+
+    /// UI for the "View properties" section.
+    ///
+    /// `Some` replaces the generic property UI; `None` renders the properties declared by the
+    /// reflected view definition. The selection panel displays its empty state if nothing renders.
+    pub blueprint_properties: Option<BlueprintPropertiesUi<'a>>,
+}
+
+impl<'a> ViewSelectionUi<'a> {
+    /// Uses a custom properties UI while keeping the other selection-panel defaults.
+    pub fn properties_ui(
+        ui: impl Fn(&mut egui::Ui, &ViewContext<'_>) -> Result<(), ViewSystemExecutionError> + 'a,
+    ) -> Self {
+        Self {
+            blueprint_properties: Some(Box::new(ui)),
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for ViewSelectionUi<'_> {
+    fn default() -> Self {
+        Self {
+            show_entity_filter: true,
+            visualizers: None,
+            extra_sections: Vec::new(),
+            blueprint_properties: None,
+        }
+    }
 }
 
 /// Output produced by [`ViewClass::ui`].
@@ -274,16 +333,6 @@ pub trait ViewClass: Send + Sync {
         RecommendedVisualizers::new(recommended)
     }
 
-    /// Custom UI and add-visualizer options for the "Visualizers" section in the selection panel.
-    ///
-    /// Returns `None` if the view doesn't provide a custom visualizers section (the default).
-    fn visualizers_section<'a>(
-        &'a self,
-        _ctx: &'a ViewContext<'a>,
-    ) -> Option<VisualizersSectionOutput<'a>> {
-        None
-    }
-
     /// Determines which views should be spawned by default for this class.
     ///
     /// Only entities matching `include_entity` should be considered,
@@ -295,18 +344,10 @@ pub trait ViewClass: Send + Sync {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
 
-    /// Ui shown when the user selects a view of this class.
+    /// Configures the UI shown when the user selects a view of this class.
     #[doc(alias = "settings_ui")]
-    fn selection_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut dyn ViewState,
-        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
-        _space_origin: &EntityPath,
-        _view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        Ok(())
+    fn selection_ui<'a>(&'a self, _ctx: &ViewContext<'_>) -> ViewSelectionUi<'a> {
+        ViewSelectionUi::default()
     }
 
     /// Additional UI displayed in the tab title bar, between the "maximize" and "help" buttons.

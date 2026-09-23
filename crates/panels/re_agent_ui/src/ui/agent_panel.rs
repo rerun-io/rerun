@@ -670,7 +670,7 @@ impl AgentPanel {
 }
 
 fn new_tree(first: Conversation) -> egui_tiles::Tree<Conversation> {
-    egui_tiles::Tree::new_tabs("agent_conversations", vec![first])
+    egui_tiles::Tree::new_tabs(egui::Id::unique("agent_conversations"), vec![first])
 }
 
 fn conversations_mut(

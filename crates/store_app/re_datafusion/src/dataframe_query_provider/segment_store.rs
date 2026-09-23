@@ -1,14 +1,14 @@
 //! Per-segment in-memory store + horizon-driven emit + carry-forward-safe GC.
 //!
 //! This is the latest-at correctness core of the streaming dataset-query
-//! pipeline, shared by the v1 CPU worker (wrapped in its `CurrentStores`,
-//! which layers the pipeline-budget accounting and the per-entity manifest
-//! on top) and by the upcoming v2 per-segment driver (`PIPELINE_V2.md`).
+//! pipeline, shared by the CPU worker (wrapped in its `CurrentStores`, which
+//! layers the pipeline-budget accounting and the per-entity manifest on top)
+//! and by the `pipeline` per-segment driver (`PIPELINE_V2.md`).
 //!
 //! By design this module knows nothing about *when* it is safe to emit —
-//! callers supply the safe horizon (v1: `SegmentChunkManifest`; v2: plan
-//! cursor) — and nothing about memory accounting: methods report byte deltas
-//! back to the caller instead of talking to a budget.
+//! callers supply the safe horizon — and nothing about memory accounting:
+//! methods report byte deltas back to the caller instead of talking to a
+//! budget.
 
 use std::sync::Arc;
 
@@ -150,8 +150,7 @@ async fn send_next_row_batch(
 }
 
 /// Outcome of one [`SegmentStore::flush_incremental_to`] cycle, reported
-/// back so the caller can drive its own accounting (v1: pipeline-budget
-/// release + stall-detector notifies).
+/// back so the caller can drive its own accounting.
 #[derive(Default)]
 #[must_use]
 pub struct IncrementalFlushOutcome {
@@ -295,10 +294,10 @@ impl SegmentStore {
     /// fast-skip relies on it being monotonic across the segment's full
     /// arrival history.
     ///
-    /// Callers that track per-chunk arrivals for their horizon source
-    /// (v1 manifest, v2 plan cursor) must record them *after* this
-    /// returns success: recording before insert would briefly claim a
-    /// chunk arrived that the store doesn't actually hold.
+    /// Callers that track per-chunk arrivals for their horizon source must
+    /// record them *after* this returns success: recording before insert
+    /// would briefly claim a chunk arrived that the store doesn't actually
+    /// hold.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ApiResult<()> {
         self.store.write().insert_chunk(chunk).map_err(|err| {
             ApiError::internal_with_source(

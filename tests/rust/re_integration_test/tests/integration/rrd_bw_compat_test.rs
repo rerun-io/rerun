@@ -3,7 +3,7 @@
 //! This catches backward-compatibility regressions for both recording data and blueprints.
 //! The previous release version is derived from the workspace `CARGO_PKG_VERSION`.
 
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;

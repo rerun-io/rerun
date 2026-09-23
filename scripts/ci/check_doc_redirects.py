@@ -33,16 +33,16 @@ def get_deleted_and_renamed_docs(base_branch: str = "main") -> tuple[list[str], 
         parts = line.split("\t")
         status = parts[0]
 
-        if status == "D":
-            # Deleted file
-            path = parts[1]
-            doc_path = path.removeprefix("docs/content/").removesuffix(".md")
-            deleted.append(doc_path)
-        elif status.startswith("R"):
-            # Renamed file (R followed by similarity percentage)
-            old_path = parts[1]
-            doc_path = old_path.removeprefix("docs/content/").removesuffix(".md")
-            renamed.append(doc_path)
+        if status == "D" or status.startswith("R"):
+            doc_path = parts[1].removeprefix("docs/content/").removesuffix(".md")
+
+            # Upcoming changelog items are exempt from redirect checks since we don't actually list them in stable releases.
+            if doc_path.startswith("changelog/upcoming/"):
+                continue
+            if status == "D":
+                deleted.append(doc_path)
+            else:
+                renamed.append(doc_path)
 
     return deleted, renamed
 

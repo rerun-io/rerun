@@ -86,6 +86,7 @@ re_capabilities.workspace = true
 re_chunk_store_ui.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
+re_chunk_index.workspace = true
 re_component_fallbacks.workspace = true
 re_component_ui.workspace = true
 # The viewer needs to have all importers, so explicitly set that here
@@ -154,8 +155,8 @@ bytes.workspace = true
 camino.workspace = true
 crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
-  "default_fonts",
   "persistence",
+  "system_fonts",
   "wgpu",
 ] }
 egui_plot.workspace = true

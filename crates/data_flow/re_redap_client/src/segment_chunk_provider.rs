@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
+use re_chunk_index::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::EntryId;
 use re_types_core::SegmentId;
 
@@ -126,7 +126,11 @@ async fn fetch_asset_manifests(
             Ok(raw_manifest) => raw_manifest,
             Err(err) => {
                 re_log::warn!(
-                    "Failed to fetch asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                    "{}",
+                    re_error::format_with_details(
+                        format!("Failed to fetch asset manifest, skipping it: {err}"),
+                        format!("Asset segment id: {asset_segment_id}"),
+                    )
                 );
                 continue;
             }
@@ -136,7 +140,11 @@ async fn fetch_asset_manifests(
             Ok((_raw_manifest, manifest)) => manifests.push(Arc::new(manifest)),
             Err(err) => {
                 re_log::warn!(
-                    "Invalid asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                    "{}",
+                    re_error::format_with_details(
+                        format!("Invalid asset manifest, skipping it: {err}"),
+                        format!("Asset segment id: {asset_segment_id}"),
+                    )
                 );
             }
         }

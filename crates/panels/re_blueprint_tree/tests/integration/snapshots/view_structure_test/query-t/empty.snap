@@ -1,0 +1,5 @@
+---
+source: crates/panels/re_blueprint_tree/tests/integration/view_structure_test.rs
+expression: blueprint_tree_data
+---
+root_container: ~

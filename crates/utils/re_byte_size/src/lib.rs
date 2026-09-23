@@ -4,6 +4,8 @@ mod arrow_sizes;
 mod bookkeeping_btreemap;
 #[cfg(feature = "egui")]
 mod egui_sizes;
+#[cfg(feature = "emath")]
+mod emath_sizes;
 mod mem_usage_tree;
 mod parking_lot_sizes;
 mod primitive_sizes;

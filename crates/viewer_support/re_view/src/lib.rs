@@ -63,8 +63,8 @@ pub use time_axis::{
 pub use view_highlights::highlights_for_view;
 pub use view_loading_indicator::paint_view_loading_indicator;
 pub use view_property_ui::{
-    view_property_component_ui, view_property_component_ui_custom, view_property_ui,
-    view_property_ui_with_hidden_components, view_property_ui_with_redirect,
+    view_properties_ui, view_property_component_ui, view_property_component_ui_custom,
+    view_property_ui, view_property_ui_with_hidden_components, view_property_ui_with_redirect,
 };
 pub use visualizer_query::VisualizerInstructionQueryResults;
 

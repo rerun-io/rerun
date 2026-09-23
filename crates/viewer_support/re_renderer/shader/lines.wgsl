@@ -282,6 +282,21 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         fragment_flags |= STRIP_FLAG_CAP_TRIANGLE;
     }
 
+    // `compute_coverage` centers a one-pixel antialiasing feather on the line's border, so
+    // coverage only reaches zero half a pixel outside `strip_radius`. The quad has to be
+    // spanned that far too, or the outer half of the feather lands outside the triangles:
+    // coverage then jumps from ~0.5 straight to 0 at the silhouette, which for a stroke
+    // thinner than a pixel leaves a quad so small it misses whole pixels and the line
+    // renders dashed. `sphere_quad.wgsl` adds the same margin for points.
+    //
+    // Triangle caps are excluded: `compute_coverage` returns 1.0 for them, so the quad *is*
+    // the silhouette and a margin would only make arrow heads half a pixel wider.
+    var quad_margin = 0.5 * approx_pixel_world_size_at(camera_distance);
+    if has_any_flag(fragment_flags, STRIP_FLAG_CAP_TRIANGLE) {
+        quad_margin = 0.0;
+    }
+    let spanned_radius = strip_radius + quad_margin;
+
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     let dir_up = normalize(cross(camera_ray.direction, quad_dir));
     var pos: vec3f;
@@ -290,7 +305,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         center_position += quad_dir * (triangle_cap_length * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
-        pos = center_position + (strip_radius * top_bottom * 0.99) * dir_up;
+        pos = center_position + (spanned_radius * top_bottom) * dir_up;
     }
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
@@ -298,7 +313,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let is_at_quad_with_round_capped_start = !is_at_quad_end && is_first_quad_after_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_ROUND);
     let is_at_quad_with_round_capped_end = is_at_quad_end && is_last_quad_before_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_ROUND);
     if is_at_inner_joint || is_at_quad_with_round_capped_start || is_at_quad_with_round_capped_end {
-        let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
+        let left_right_offset = quad_dir * spanned_radius * select(-1.0, 1.0, is_at_quad_end);
         pos += left_right_offset;
     }
 

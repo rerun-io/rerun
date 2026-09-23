@@ -6,12 +6,11 @@ use rerun::external::re_entity_db::InstancePath;
 use rerun::external::re_log_types::EntityPath;
 use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
-use rerun::external::re_view;
 use rerun::external::re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
     Item, MissingChunkReporter, PerVisualizerType, RecommendedVisualizers, SelectionHighlight,
     SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewClassUiOutput, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewClassRegistryError, ViewClassUiOutput, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
     VisualizableReason,
 };
@@ -103,24 +102,6 @@ impl ViewClass for ColorCoordinatesView {
         } else {
             RecommendedVisualizers::empty()
         }
-    }
-
-    /// Additional UI displayed when the view is selected.
-    ///
-    /// Uses the same generic blueprint-property UI as built-in views. The custom archetype
-    /// reflection and component editor are registered in `main`.
-    fn selection_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut dyn ViewState,
-        space_origin: &EntityPath,
-        view_id: ViewId,
-    ) -> Result<(), ViewSystemExecutionError> {
-        let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-        re_view::view_property_ui::<ColorCoordinatesConfiguration>(&view_ctx, ui);
-
-        Ok(())
     }
 
     /// The contents of the View window and all interaction within it.
@@ -245,7 +226,7 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", &ent_path, instance)),
+                ui.make_persistent_id(("circle", &ent_path, instance)),
                 egui::Sense::click(),
             );
 

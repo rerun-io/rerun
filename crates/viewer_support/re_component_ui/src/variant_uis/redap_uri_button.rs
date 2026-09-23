@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::str::FromStr as _;
 
-use egui::{Align2, AtomKind, Id, IntoAtoms as _, Ui};
+use egui::{Align2, AtomKind, IntoAtoms as _, Ui};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::loading_indicator::paint_loading_indicator_inside;
@@ -26,11 +26,18 @@ pub fn redap_uri_button(
         return Err("component batches are not supported".into());
     }
 
-    let url_str = array
+    let value = array
         .try_downcast_array_ref::<arrow::array::StringArray>()?
         .value(0);
 
-    let uri = RedapUri::from_str(url_str)?;
+    // A path resolves against the route's server. The button opens, decorates and copies the
+    // resolved uri.
+    let uri = match ctx.route.origin() {
+        Some(base) => RedapUri::parse_with_base(base, value)?,
+        None => RedapUri::from_str(value)?,
+    };
+    let url_string = uri.to_string();
+    let url_str = url_string.as_str();
 
     let loaded_recording_info = ctx.store_bundle().recordings().find_map(|db| {
         if db
@@ -87,7 +94,7 @@ pub fn redap_uri_button(
             .unwrap_or_else(|| url_str.into_atoms())
     };
 
-    let spinner_id = Id::new("loading_spinner");
+    let spinner_id = egui::IdSalt::new("loading_spinner");
 
     if loading {
         let mut mapped_icon = false;
@@ -124,16 +131,19 @@ pub fn redap_uri_button(
         ReButton::with_hover_icon_buttons(ui, button, icon_button_width, |ui| {
             (
                 ui.add(
-                    ReButton::icon(icons::COPY)
+                    ReButton::icon(icons::COPY, "Copy")
                         .size(size)
                         .variant(default_variant),
                 )
                 .clicked(),
                 if open {
                     ui.add(
-                        ReButton::icon(icons::CLOSE_SMALL)
-                            .size(size)
-                            .variant(default_variant),
+                        ReButton::icon(
+                            icons::CLOSE_SMALL,
+                            if loading { "Cancel" } else { "Close" },
+                        )
+                        .size(size)
+                        .variant(default_variant),
                     )
                     .on_hover_text(if loading { "Cancel" } else { "Close" })
                     .clicked()

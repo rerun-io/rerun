@@ -12,9 +12,7 @@ use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
-use re_protos::cloud::v1alpha1::ext::{
-    LayerRegistrationStatus, QueryDatasetDataframe, QueryDatasetRequest,
-};
+use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, QueryDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
@@ -444,21 +442,6 @@ async fn scan_dataset_manifest_and_snapshot(
         .unwrap()
         .sort_property_columns();
 
-    // For the comparison to make sense across the OSS and enterprise servers, we need to filter
-    // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
-    let filtered_batch = {
-        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
-            .extract(&filtered_batch)
-            .unwrap();
-
-        let mask = col_status
-            .iter()
-            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
-            .collect_vec();
-
-        arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
-    };
-
     insta::assert_snapshot!(
         format!("{snapshot_name}_manifest_schema"),
         batch.format_schema_snapshot()
@@ -521,21 +504,6 @@ async fn snapshot_response(
         .auto_sort_rows()
         .unwrap()
         .sort_property_columns();
-
-    // For the comparison to make sense across the OSS and enterprise servers, we need to filter
-    // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
-    let filtered_batch = {
-        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
-            .extract(&filtered_batch)
-            .unwrap();
-
-        let mask = col_status
-            .iter()
-            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
-            .collect_vec();
-
-        arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
-    };
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_response_schema"),

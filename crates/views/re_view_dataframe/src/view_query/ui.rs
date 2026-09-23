@@ -678,5 +678,5 @@ fn edit_timeline_name(
         combobox_response.response.mark_changed();
     }
 
-    combobox_response.response
+    combobox_response.response.accessible_name("Timeline")
 }

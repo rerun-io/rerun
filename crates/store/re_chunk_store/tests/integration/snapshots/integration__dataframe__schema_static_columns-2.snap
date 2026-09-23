@@ -1,0 +1,9 @@
+---
+source: crates/store/re_chunk_store/tests/integration/dataframe.rs
+expression: static_only
+---
+[
+    "baz",
+    "foo",
+    "yak",
+]

@@ -193,7 +193,8 @@ mod tests {
             ("v21_apple_storage", LeRobotDatasetVersion::V2),
             ("v30_apple_storage", LeRobotDatasetVersion::V3),
         ] {
-            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            let path = std::env::var_os("CARGO_MANIFEST_DIR")
+                .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
                 .join("../re_importer/tests/assets/lerobot")
                 .join(fixture);
             let dataset = LeRobotDataset::open(&path).unwrap();

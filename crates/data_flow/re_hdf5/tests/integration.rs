@@ -1141,7 +1141,12 @@ fn validate_layout_index_errors() {
 /// string padding, attribute encodings, the h5py compression filters).
 #[test]
 fn reads_h5py_written_file() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/assets/h5py_compat.h5");
+    let path = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(
+            || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            std::path::PathBuf::from,
+        )
+        .join("tests/assets/h5py_compat.h5");
     assert!(
         path.exists(),
         "missing git-lfs asset {path:?} — run `git lfs pull`"

@@ -7,15 +7,16 @@ use std::str::FromStr as _;
 use std::time::Duration;
 
 use arrow::array::RecordBatch;
+use egui::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 
+use re_chunk_index::RrdManifest;
 use re_integration_test::{
     HarnessExt as _, TestServer, ViewerHarnessExt as _, asset_rrd, file_url, register_asset,
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
-use re_log_encoding::RrdManifest;
 use re_redap_client::{
     ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     DEFAULT_ASSET_TASK_TIMEOUT, StreamingOptions,
@@ -455,17 +456,19 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
-        harness.query_by_label("Assets").is_some()
+        harness.query_all_by_label("Assets").count() > 0
     });
 
     harness.get_by_label("Assets").click();
     harness.run_ok();
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_by_label("No assets registered").is_some(),
+        |harness| harness.query_all_by_label("No assets registered").count() > 0,
     );
 
     open_register_asset_modal(&mut harness);
@@ -475,7 +478,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -509,17 +512,19 @@ async fn a_refused_registration_is_listed_as_failed() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
-        harness.query_by_label("Assets").is_some()
+        harness.query_all_by_label("Assets").count() > 0
     });
 
     harness.get_by_label("Assets").click();
     harness.run_ok();
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_by_label("No assets registered").is_some(),
+        |harness| harness.query_all_by_label("No assets registered").count() > 0,
     );
 
     open_register_asset_modal(&mut harness);
@@ -531,19 +536,20 @@ async fn a_refused_registration_is_listed_as_failed() {
     const REFUSED_ASSET_URI: &str = "file://somehost/file/path.rrd";
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(REFUSED_ASSET_URI);
     harness.run_ok();
 
     harness.get_by_label("Register").click();
     harness.run_ok();
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until_with_custom_timeout(
         "the refused registration is listed",
         &mut harness,
         // Only a registration the server has answered can be dismissed, so the button showing up
         // is what says the refused registration is on the list.
-        |harness| harness.query_by_label("Dismiss").is_some(),
+        |harness| harness.query_all_by_label("Dismiss").count() > 0,
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -561,10 +567,11 @@ async fn a_refused_registration_is_listed_as_failed() {
     harness.get_by_label("Dismiss").click();
     harness.run_ok();
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "dismissing takes the refused registration off the list",
         &mut harness,
-        |harness| harness.query_by_label("No assets registered").is_some(),
+        |harness| harness.query_all_by_label("No assets registered").count() > 0,
     );
 }
 
@@ -652,10 +659,11 @@ async fn dataset_assets_tab_without_assets() {
         ..Default::default()
     });
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until_with_custom_timeout(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_by_label("No assets registered").is_some(),
+        |harness| harness.query_all_by_label("No assets registered").count() > 0,
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -794,11 +802,12 @@ async fn open_asset_lists_it_under_owning_dataset() {
     });
 
     let asset_label = asset_segment_id.to_string();
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the asset appears in the recording panel",
         &mut harness,
         |harness| {
-            harness.query_by_label("Loading entries…").is_none()
+            harness.query_all_by_label("Loading entries…").count() == 0
                 && harness.query_all_by_label_contains("robot_data").count() > 0
                 && {
                     let recording_panel = harness.recording_panel();
@@ -936,7 +945,7 @@ async fn registering_an_asset_reaches_segments_the_viewer_already_has() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -988,16 +997,18 @@ async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() 
 
     // Clicked through the accessibility tree, since a toast covers the right edge of the card.
     harness.get_by_label("more").click_accesskit();
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the asset's menu is open", &mut harness, |harness| {
-        harness.query_by_label("Unregister asset").is_some()
+        harness.query_all_by_label("Unregister asset").count() > 0
     });
 
     harness.get_by_label("Unregister asset").click();
     harness.run_ok();
 
     // The menu item only opens the modal, the modal's own button starts the unregistration.
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the modal is asking", &mut harness, |harness| {
-        harness.query_by_label("Unregister").is_some()
+        harness.query_all_by_label("Unregister").count() > 0
     });
 
     harness.get_by_label("Unregister").click();
@@ -1037,8 +1048,9 @@ fn open_asset_list(harness: &mut Harness<'static, re_viewer::App>, server: &Test
         .state()
         .open_url_or_file(&asset_list_uri.to_string());
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the asset list is up", harness, |harness| {
-        harness.query_by_label("Register asset").is_some()
+        harness.query_all_by_label("Register asset").count() > 0
     });
 }
 

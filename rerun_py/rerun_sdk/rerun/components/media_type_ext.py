@@ -60,6 +60,13 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/model/obj>
     """
 
+    PLY: MediaType = None  # type: ignore[assignment]
+    """
+    [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
+
+    Holds either a mesh or a point cloud, depending on its header.
+    """
+
     STL: MediaType = None  # type: ignore[assignment]
     """
     [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
@@ -89,6 +96,47 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/video/mp4>
     """
 
+    # --------------------------
+    # Audio:
+
+    AAC: MediaType = None  # type: ignore[assignment]
+    """
+    [AAC audio](https://en.wikipedia.org/wiki/Advanced_Audio_Coding) in a raw ADTS stream: `audio/aac`.
+
+    <https://www.iana.org/assignments/media-types/audio/aac>
+    """
+
+    FLAC: MediaType = None  # type: ignore[assignment]
+    """
+    [FLAC audio](https://en.wikipedia.org/wiki/FLAC): `audio/flac`.
+    """
+
+    M4A: MediaType = None  # type: ignore[assignment]
+    """
+    [M4A audio](https://en.wikipedia.org/wiki/MP4_file_format) (AAC in an MP4 container): `audio/mp4`.
+
+    <https://www.iana.org/assignments/media-types/audio/mp4>
+    """
+
+    MP3: MediaType = None  # type: ignore[assignment]
+    """
+    [MP3 audio](https://en.wikipedia.org/wiki/MP3): `audio/mpeg`.
+
+    <https://www.iana.org/assignments/media-types/audio/mpeg>
+    """
+
+    OGG: MediaType = None  # type: ignore[assignment]
+    """
+    [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+
+    <https://www.iana.org/assignments/media-types/audio/ogg>
+    """
+
+    WAV: MediaType = None  # type: ignore[assignment]
+    """
+    [WAV audio](https://en.wikipedia.org/wiki/WAV): `audio/wav`.
+    """
+
     @staticmethod
     def deferred_patch_class(cls: Any) -> None:
         cls.TEXT = cls("text/plain")
@@ -100,11 +148,19 @@ class MediaTypeExt:
         cls.GLB = cls("model/gltf-binary")
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
+        cls.PLY = cls("application/x-ply")
         cls.STL = cls("model/stl")
 
         cls.RVL = cls("application/rvl")
 
         cls.MP4 = cls("video/mp4")
+
+        cls.AAC = cls("audio/aac")
+        cls.FLAC = cls("audio/flac")
+        cls.M4A = cls("audio/mp4")
+        cls.MP3 = cls("audio/mpeg")
+        cls.OGG = cls("audio/ogg")
+        cls.WAV = cls("audio/wav")
 
     @staticmethod
     def guess_from_path(path: str | Path) -> MediaType | None:
@@ -125,11 +181,27 @@ class MediaTypeExt:
             return MediaType.GLTF
         elif ext == ".obj":
             return MediaType.OBJ
+        elif ext == ".ply":
+            return MediaType.PLY
         elif ext == ".stl":
             return MediaType.STL
 
         # Video
         if ext == ".mp4":
             return MediaType.MP4
+
+        # Audio
+        if ext == ".aac":
+            return MediaType.AAC
+        elif ext == ".flac":
+            return MediaType.FLAC
+        elif ext == ".m4a":
+            return MediaType.M4A
+        elif ext == ".mp3":
+            return MediaType.MP3
+        elif ext in {".oga", ".ogg", ".opus"}:
+            return MediaType.OGG
+        elif ext == ".wav":
+            return MediaType.WAV
 
         return None

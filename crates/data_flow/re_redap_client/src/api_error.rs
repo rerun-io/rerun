@@ -12,6 +12,11 @@ use crate::extract_trace_id;
 /// [`std::fmt::Display`] renders it as `{message}: {source} ({kind})`, followed by a details
 /// section with the server, the trace-id, and whatever details the source carried. Keep `message`
 /// free of the source's text: it is added when displaying.
+///
+/// A `message` that is nothing but the gRPC endpoint (`"/FetchChunks"`) is rendered as a detail
+/// instead of as a prefix of the summary, so that the summary is what went wrong rather than a
+/// chain of layers announcing that it did. That is the convention for a call whose only context
+/// is the endpoint it made; a call site with more to say puts it in the message as prose.
 #[derive(Clone, Debug)]
 pub struct ApiError {
     /// The server this error is about.
@@ -21,6 +26,13 @@ pub struct ApiError {
     pub origin: re_uri::Origin,
 
     /// A message that does NOT include the contents of [`Self::source`].
+    ///
+    /// Either the gRPC endpoint on its own (`"/FetchChunks"`), or prose describing what was being
+    /// attempted. See the type docs for how the two are displayed.
+    ///
+    /// Context that is not part of the sentence — a URL, a segment id — belongs in the details
+    /// section rather than in the summary. Put it there with [`re_error::format_with_details`] or
+    /// [`re_error::StructuredError`], never by writing the detail markers by hand.
     pub message: String,
 
     pub kind: ApiErrorKind,
@@ -516,6 +528,16 @@ impl ApiError {
     }
 }
 
+/// The gRPC endpoint a message names, if that is all it names: `"/FetchChunks"`, but not
+/// `"/CreateTable: entry ID not set in response"`.
+///
+/// The leading `/` and the absence of any prose is what distinguishes the two. Call sites that
+/// have something to say beyond the endpoint keep saying it in the summary.
+fn endpoint_only(message: &str) -> Option<&str> {
+    let message = message.trim();
+    (message.starts_with('/') && !message.contains(char::is_whitespace)).then_some(message)
+}
+
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -528,9 +550,27 @@ impl std::fmt::Display for ApiError {
 
         let source = source.as_ref().map(|err| err.to_string());
 
+        // A `message` may carry detail lines of its own (a long URL, say), which belong in the
+        // one details section rather than in the summary.
+        let message = re_error::StructuredError::parse(message);
+
         let mut details = Vec::new();
 
         details.push(format!("Server: {origin}"));
+
+        // An endpoint-only message says which call failed, not what went wrong; the source says
+        // that, in words that already name the operation. Keeping both in the summary reads as the
+        // same failure told twice, so the endpoint goes to the details.
+        //
+        // Only when there is a source, or hoisting it would leave nothing to read.
+        let endpoint = source
+            .is_some()
+            .then(|| endpoint_only(&message.summary))
+            .flatten();
+        let has_endpoint = endpoint.is_some();
+        if let Some(endpoint) = endpoint {
+            details.push(format!("Endpoint: {endpoint}"));
+        }
 
         if let Some(trace_id) = trace_id {
             details.push(format!("trace-id: {trace_id}"));
@@ -558,12 +598,21 @@ impl std::fmt::Display for ApiError {
             format!(" ({kind})")
         };
 
+        let re_error::StructuredError {
+            summary: message,
+            details: message_details,
+        } = message;
+        let message = if has_endpoint { "" } else { &message };
+
         let summary = match source_summary {
+            Some(source_summary) if message.is_empty() => format!("{source_summary}{kind}"),
             Some(source_summary) => format!("{message}: {source_summary}{kind}"),
             None => format!("{message}{kind}"),
         };
 
-        let error = re_error::StructuredError::from_summary(summary).with_details(details);
+        let error = re_error::StructuredError::from_summary(summary)
+            .with_details(details)
+            .with_details(message_details);
 
         write!(f, "{error}")
     }
@@ -600,12 +649,13 @@ mod tests {
             .parse::<re_uri::Origin>()
             .expect("hardcoded origin should parse");
 
-        let err = ApiError::tonic(&origin, status, "/GetRrdManifest failed");
+        let err = ApiError::tonic(&origin, status, "/GetRrdManifest");
 
         assert_eq!(
             err.to_string(),
-            "/GetRrdManifest failed: the dataset has no promoted revision yet (NotFound)\n\
+            "the dataset has no promoted revision yet (NotFound)\n\
              - Server: rerun://api.example.com:443\n\
+             - Endpoint: /GetRrdManifest\n\
              - trace-id: abba000000000000000000000000abba\n\
              - dataset url: file:///path/to/file\n\
              - metadata: {\"x-request-trace-id\": \"abba000000000000000000000000abba\"}"
@@ -619,13 +669,63 @@ mod tests {
         let err = ApiError::tonic(
             &re_uri::Origin::test(),
             tonic::Status::aborted("transaction aborted"),
-            "/RegisterWithDataset failed",
+            "/RegisterWithDataset",
         );
 
         assert_eq!(
             err.to_string(),
-            "/RegisterWithDataset failed: transaction aborted (Aborted)\n\
+            "transaction aborted (Aborted)\n\
+             - Server: rerun://example.com:443\n\
+             - Endpoint: /RegisterWithDataset"
+        );
+    }
+
+    /// A URL is context, not part of the sentence: it must not stretch the summary a reader is
+    /// meant to take in at a glance.
+    #[test]
+    fn test_display_hoists_details_out_of_the_message() {
+        let err = ApiError::connection_with_source(
+            &re_uri::Origin::test(),
+            None,
+            std::io::Error::other("connection reset"),
+            re_error::format_with_details(
+                "failed to fetch RRD manifest directly",
+                "URL: https://example.com/very/long/path.rrd",
+            ),
+        );
+
+        assert_eq!(
+            err.to_string(),
+            "failed to fetch RRD manifest directly: connection reset (Connection)\n\
+             - Server: rerun://example.com:443\n\
+             - URL: https://example.com/very/long/path.rrd"
+        );
+    }
+
+    /// A call site with something to say beyond the endpoint keeps saying it in the summary,
+    /// endpoint and all: there is no endpoint to hoist out of prose.
+    #[test]
+    fn test_display_keeps_a_message_that_is_more_than_an_endpoint() {
+        let err = ApiError::tonic(
+            &re_uri::Origin::test(),
+            tonic::Status::internal("the table is gone"),
+            "/CreateTable, retried twice",
+        );
+
+        assert_eq!(
+            err.to_string(),
+            "/CreateTable, retried twice: the table is gone (Internal)\n\
              - Server: rerun://example.com:443"
+        );
+    }
+
+    /// Without a source there is nothing to promote into the summary, so the endpoint stays put
+    /// rather than leaving the reader with a lone error kind.
+    #[test]
+    fn test_display_keeps_an_endpoint_that_is_all_there_is() {
+        assert_eq!(
+            ApiError::internal(&re_uri::Origin::test(), "/CreateTable").to_string(),
+            "/CreateTable (Internal)\n- Server: rerun://example.com:443"
         );
     }
 

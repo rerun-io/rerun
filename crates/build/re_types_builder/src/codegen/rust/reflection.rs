@@ -375,11 +375,17 @@ fn generate_view_reflection(objects: &Objects) -> TokenStream {
                 quote!(ViewApplicability::Archetypes(vec![#(#archetypes),*]))
             };
 
+            let property_archetypes = view.fields.iter().filter_map(|field| {
+                let fqname = field.typ.fqname()?;
+                Some(quote!(ArchetypeName::from(#fqname)))
+            });
+
             quote! {
                 (
                     #quoted_identifier,
                     ViewReflection {
                         applicability: #applicability,
+                        property_archetypes: vec![#(#property_archetypes),*],
                     },
                 )
             }

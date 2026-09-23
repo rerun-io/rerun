@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, BooleanArray, Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
-use egui::accesskit::Role;
+use egui::Role;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 use re_integration_test::TestServer;
@@ -79,8 +79,9 @@ pub async fn cards_view_flagging() {
         )),
         ..Default::default()
     });
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("table data loads", &mut harness, |harness| {
-        harness.query_by_label_contains("Alice").is_some()
+        harness.query_all_by_label_contains("Alice").count() > 0
     });
     harness.set_blueprint_panel_opened(false);
     harness.set_selection_panel_opened(false);

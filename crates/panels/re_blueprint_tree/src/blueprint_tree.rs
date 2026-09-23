@@ -1,4 +1,4 @@
-use egui::{Response, Ui, WidgetInfo, WidgetType};
+use egui::{Response, Ui, WidgetInfo};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
@@ -166,9 +166,7 @@ impl BlueprintTree {
                         }
                     })
                     .response
-                    .widget_info(|| {
-                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
-                    });
+                    .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_blueprint_tree"));
 
                     let empty_space_response =
                         ui.allocate_response(ui.available_size(), egui::Sense::click());
@@ -346,7 +344,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(self.collapse_scope().container(container_data.id));
+        let id = self.collapse_scope().container(container_data.id).egui_id();
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -446,7 +444,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(self.collapse_scope().view(view_data.id));
+        let id = self.collapse_scope().view(view_data.id).egui_id();
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -642,10 +640,13 @@ impl BlueprintTree {
         let response = if has_children {
             // Globally unique id - should only be one of these in view at one time.
             // We do this so that we can support "collapse/expand all" command.
-            let id = egui::Id::new(self.collapse_scope().data_result(
-                data_result_data.view_id,
-                data_result_data.entity_path.clone(),
-            ));
+            let id = self
+                .collapse_scope()
+                .data_result(
+                    data_result_data.view_id,
+                    data_result_data.entity_path.clone(),
+                )
+                .egui_id();
 
             list_item
                 .show_hierarchical_with_children(

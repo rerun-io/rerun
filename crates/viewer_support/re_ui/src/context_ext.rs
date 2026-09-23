@@ -7,7 +7,7 @@ use crate::{DesignTokens, TopBarStyle};
 struct TestMarker;
 
 fn test_marker_id() -> egui::Id {
-    egui::Id::new("__rerun_test_marker")
+    egui::Id::unique("__rerun_test_marker")
 }
 
 /// Extension trait for [`egui::Context`].

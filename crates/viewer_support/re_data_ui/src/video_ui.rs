@@ -68,7 +68,7 @@ pub fn video_stream_result_ui(
             if ui_layout == UiLayout::SelectionPanel {
                 let default_open = true;
                 // Extra scope needed to ensure right spacing.
-                ui.list_item_scope(format!("{stream_kind}_stream"), |ui| {
+                ui.list_item_scope((stream_kind, "stream"), |ui| {
                     ui.list_item_collapsible_noninteractive_label(
                         format!("{} Stream", stream_kind.capitalized()),
                         default_open,
@@ -397,7 +397,7 @@ fn decoded_frame_ui(
     video_source: &dyn GetVideoSource,
 ) {
     let player_stream_id = re_video::player::VideoPlayerStreamId(
-        ui.id().with(format!("{stream_kind}_player")).value(),
+        ui.make_persistent_id((stream_kind, "player")).value(),
     );
 
     let frame_output = video.frame_at(ctx.render_ctx, player_stream_id, video_time, video_source);
@@ -413,39 +413,33 @@ fn decoded_frame_ui(
         if let Some(frame_info) = frame_info
             && ui_layout == UiLayout::SelectionPanel
         {
-            re_ui::list_item::list_item_scope(
-                ui,
-                format!("decoded_{}_ui", stream_kind.frame_word()),
-                |ui| {
-                    let id = ui
-                        .id()
-                        .with(format!("decoded_{}_collapsible", stream_kind.frame_word()));
-                    let default_open = false;
-                    let label = if let Some(frame_nr) = frame_info.frame_nr {
-                        format!(
-                            "Decoded {} #{}",
-                            stream_kind.frame_word(),
-                            re_format::format_uint(frame_nr)
-                        )
-                    } else {
-                        format!("Current decoded {}", stream_kind.frame_word())
-                    };
-                    ui.list_item()
-                        .interactive(false)
-                        .show_hierarchical_with_children(
-                            ui,
-                            id,
-                            default_open,
-                            list_item::LabelContent::new(label),
-                            |ui| {
-                                list_item::list_item_scope(ui, id, |ui| {
-                                    frame_info_ui(ui, &frame_info, video.data_descr(), stream_kind);
-                                    source_image_data_format_ui(ui, &source_pixel_format);
-                                });
-                            },
-                        )
-                },
-            );
+            re_ui::list_item::list_item_scope(ui, (stream_kind, "decoded_ui"), |ui| {
+                let id = ui.make_persistent_id((stream_kind, "decoded_collapsible"));
+                let default_open = false;
+                let label = if let Some(frame_nr) = frame_info.frame_nr {
+                    format!(
+                        "Decoded {} #{}",
+                        stream_kind.frame_word(),
+                        re_format::format_uint(frame_nr)
+                    )
+                } else {
+                    format!("Current decoded {}", stream_kind.frame_word())
+                };
+                ui.list_item()
+                    .interactive(false)
+                    .show_hierarchical_with_children(
+                        ui,
+                        id,
+                        default_open,
+                        list_item::LabelContent::new(label),
+                        |ui| {
+                            list_item::list_item_scope(ui, id, |ui| {
+                                frame_info_ui(ui, &frame_info, video.data_descr(), stream_kind);
+                                source_image_data_format_ui(ui, &source_pixel_format);
+                            });
+                        },
+                    )
+            });
         }
 
         let preview_size = if let Some(texture) = &texture {
@@ -499,7 +493,7 @@ fn decoded_frame_ui(
             let show_loading_indicator = frame_output.error.is_some() || show_loading_indicator;
             let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
             let loading_indicator_opacity = ui.animate_bool(
-                ui.id().with((video_id, "loading_indicator")),
+                ui.make_persistent_id((video_id, "loading_indicator")),
                 show_loading_indicator,
             );
 
@@ -720,7 +714,7 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
 }
 
 /// Whether this is a video stream, or image stream.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamKind {
     Video,
     Image,

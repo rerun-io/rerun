@@ -194,11 +194,11 @@ unknown-git = "deny"
 # "remove once upstream releases an egui 0.36 version", and #3076 met it.
 allow-git = []
 
-# There are currently no git dependencies at all, so `cargo deny` reports the two
-# organizations below as unmatched. They are kept anyway, and the warning accepted,
-# because `Cargo.toml` carries a commented-out block of `emilk/egui`, `rerun-io/kittest`
-# and `rerun-io/arrow-datafusion` git dependencies that is uncommented whenever we need
-# to track an upstream branch. Deleting these would make that a two-file change and the
-# failure would arrive as an unrelated `unknown-git` CI error.
+# `Cargo.toml` tracks the `main` branch of `emilk/egui`, `emilk/egui_plot` and
+# `rerun-io/egui_tiles` until the next egui release. Between such stretches there are no
+# git dependencies and `cargo deny` reports the two organizations below as unmatched.
+# They are kept anyway, and the warning accepted, so that uncommenting the git block in
+# `Cargo.toml` stays a one-file change instead of failing CI with an unrelated
+# `unknown-git` error.
 [sources.allow-org]
 github = ["emilk", "rerun-io"]

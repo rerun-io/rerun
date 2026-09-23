@@ -46,6 +46,7 @@ mod navigation;
 mod open_url_description;
 mod prefetch_chunks;
 mod saving;
+mod screen_highlight;
 mod screenshotter;
 mod startup_options;
 mod texture_readback;
@@ -282,6 +283,13 @@ pub fn customize_eframe_and_setup_renderer(
     }
 
     re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+
+    // Any glyph we cannot render is a bug, so make tests fail loudly instead of drawing tofu.
+    if cfg!(feature = "testing") {
+        cc.egui_ctx
+            .set_missing_glyph_policy(egui::MissingGlyphPolicy::Panic);
+    }
+
     Ok(())
 }
 

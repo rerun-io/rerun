@@ -4,12 +4,15 @@ use arrow::array::{ArrayRef, BinaryArray, RecordBatch, StringArray, UInt64Array}
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use re_chunk::external::re_byte_size;
+use re_chunk_index::RawRrdManifest;
 use re_log_types::StoreId;
 
-use super::RawRrdManifest;
 use crate::{CodecError, CodecResult};
 
 /// A [`RawRrdManifest`] extended with the columns Rerun Hub attaches when it serves a manifest.
+///
+/// The added chunk keys address whole RRD messages in the backing `.rrd` file, header included,
+/// which is why this type lives with the RRD encoding rather than in `re_chunk_index`.
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct HubRrdManifest {
     pub store_id: StoreId,
@@ -24,15 +27,11 @@ pub struct HubRrdManifest {
 impl HubRrdManifest {
     /// The segment the chunk belongs to, repeated on every row.
     pub const COLUMN_CHUNK_PARTITION_ID: quiver::ColumnDesc<re_types_core::SegmentId> =
-        quiver::ColumnDesc::new_with_metadata(
-            "HubRrdManifest",
-            "chunk_partition_id",
-            &[("rerun:kind", "control")],
-        );
+        RawRrdManifest::COLUMN_CHUNK_PARTITION_ID;
 
     /// The layer the chunk belongs to, repeated on every row.
     pub const COLUMN_RERUN_PARTITION_LAYER: quiver::ColumnDesc<re_types_core::LayerName> =
-        quiver::ColumnDesc::new("HubRrdManifest", "rerun_partition_layer");
+        RawRrdManifest::COLUMN_RERUN_PARTITION_LAYER;
 
     /// Opaque key encoding where to fetch the chunk.
     pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
@@ -236,12 +235,12 @@ fn build_chunk_key_column(
 #[cfg(test)]
 mod tests {
     use re_arrow_util::RecordBatchExt as _;
+    use re_chunk_index::RawRrdManifest;
     use re_protos::cloud::v1alpha1::ext::{ChunkKey, ETag, RrdChunkLocation};
     use re_types_core::{LayerName, SegmentId};
     use std::assert_matches;
 
     use super::HubRrdManifest;
-    use crate::rrd::footer::RawRrdManifest;
     use crate::rrd::test_util::{encode_test_rrd, make_test_chunks};
     use crate::{CodecError, MessageHeader};
 

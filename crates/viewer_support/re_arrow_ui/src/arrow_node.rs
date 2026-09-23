@@ -1,4 +1,4 @@
-use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
+use egui::{RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -79,7 +79,7 @@ impl<'a> ArrowNode<'a> {
 
         // We *don't* use index for the ID, since it might change across timesteps,
         // while referring the same logical data.
-        let id = ui.id().with(label.text());
+        let id = ui.make_persistent_id(label.text());
 
         // An item is expandable either if it's nested, i.e a struct,
         // or the content of the item is too wide to be displayed inline.
@@ -148,19 +148,15 @@ impl<'a> ArrowNode<'a> {
 
                                 if let Some(content) = data_type_ui.content {
                                     response.on_hover_ui(|ui| {
-                                        list_item_scope(
-                                            ui,
-                                            Id::new("arrow data type hover"),
-                                            |ui| {
-                                                ui.list_item().show_hierarchical_with_children(
-                                                    ui,
-                                                    Id::new("arrow data type hover item"),
-                                                    true,
-                                                    LabelContent::new(data_type_ui.type_name),
-                                                    content,
-                                                );
-                                            },
-                                        );
+                                        list_item_scope(ui, "arrow data type hover", |ui| {
+                                            ui.list_item().show_hierarchical_with_children(
+                                                ui,
+                                                ui.make_persistent_id("arrow data type hover item"),
+                                                true,
+                                                LabelContent::new(data_type_ui.type_name),
+                                                content,
+                                            );
+                                        });
                                     });
                                 }
                             }

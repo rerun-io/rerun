@@ -1,11 +1,12 @@
 #![expect(clippy::unwrap_used)] // acceptable in benchmarks
 
-use std::path::Path;
+use std::path::PathBuf;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn video_load(c: &mut Criterion) {
-    let video_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+    let video_path = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
         .ancestors()
         .nth(3)
         .unwrap()

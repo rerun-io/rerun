@@ -240,9 +240,10 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
     /// For example, if a plot's color was set at t=50 and you're viewing t=100-200, you want
     /// that color to persist throughout the range rather than disappearing or changing.
     ///
-    /// Bootstrapped results are prepended to the store results and converted to static,
-    /// zeroed chunks to allow proper range zipping. Any errors from the bootstrap query
-    /// are also merged into the component sources.
+    /// Bootstrapped results are prepended with their logged time and row ID intact. This lets
+    /// range zipping apply optional data only when it was logged no later than the required data,
+    /// including when events share a timestamp. Any errors from the bootstrap query are also
+    /// merged into the component sources.
     // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
     pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'a>) {
         // Merge component source from bootstrap into the range results.
@@ -250,10 +251,16 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
         for (component, bootstrap_source) in bootstrapped.component_sources {
             match self.component_sources.entry(component) {
                 std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
-                    #[expect(clippy::match_same_arms)]
                     match bootstrap_source.error() {
                         None => {
-                            // Don't override the source, let the range result take precedence.
+                            // A component may exist only before (or after) the visible range.
+                            // In that case, promote the query overall to successful.
+                            if let Some(err) = range_query_source.get().error()
+                                && err.is_data_temporarily_unavailable()
+                            {
+                                *range_query_source.get_mut() = bootstrap_source;
+                            }
+                            // Otherwise, don't override. Let the range result take precedence.
                         }
 
                         Some(
@@ -292,10 +299,7 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
         // Prepend bootstrapped chunks to range results
         #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
         for (component, unit_chunk) in bootstrapped.store_results.components {
-            // Convert to a static, zeroed chunk for proper range zipping
-            let chunk = Arc::unwrap_or_clone(unit_chunk.into_chunk())
-                .into_static()
-                .zeroed();
+            let chunk = Arc::unwrap_or_clone(unit_chunk.into_chunk());
 
             // Prepend bootstrapped chunk to range results
             self.store_results

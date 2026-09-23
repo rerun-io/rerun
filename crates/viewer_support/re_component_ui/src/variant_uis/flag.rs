@@ -42,12 +42,7 @@ fn flag_button(ui: &mut egui::Ui, is_flagged: bool) -> egui::Response {
     let icon_size = egui::vec2(14.0, 14.0);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
     response.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::Checkbox,
-            ui.is_enabled(),
-            is_flagged,
-            "Flag",
-        )
+        egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), is_flagged, "Flag")
     });
 
     // Three visual tiers based on hover context:

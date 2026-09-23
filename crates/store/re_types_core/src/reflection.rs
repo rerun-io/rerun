@@ -399,6 +399,9 @@ impl ViewApplicability {
 pub struct ViewReflection {
     /// What archetypes this view is applicable to.
     pub applicability: ViewApplicability,
+
+    /// Property archetypes that are used to configure this view.
+    pub property_archetypes: Vec<ArchetypeName>,
 }
 
 impl ViewReflection {
@@ -412,6 +415,7 @@ impl Default for ViewReflection {
     fn default() -> Self {
         Self {
             applicability: ViewApplicability::Archetypes(Vec::new()),
+            property_archetypes: Vec::new(),
         }
     }
 }

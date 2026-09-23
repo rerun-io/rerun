@@ -68,7 +68,7 @@ The tool name says which family it belongs to, and the agent is told to prefer t
 The `rerun_*` tools (`rerun_get_viewer_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open_url`, `rerun_close_recordings`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
 
-The remaining tools (`query_tree`, `click`, `type_text`, `hover`, `scroll`, `screenshot`, …) are low level: they drive the widgets one input event at a time.
+The remaining tools (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, `screenshot`, …) are low level: they drive the widgets one input event at a time.
 They come from `egui_mcp` and travel on the separate `EguiInspect` endpoint, which carries an opaque body the Viewer's `egui_inspection` plugin services.
 
 They reach anything the Viewer can do, including everything the high-level tools do not cover, but at the cost of several calls and a lot of agent context per action, and they break whenever the layout moves.

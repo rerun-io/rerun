@@ -37,6 +37,8 @@ pub enum AggregationPolicy {
     Off = 1,
 
     /// Average all points in the range together.
+    ///
+    /// This can wash out outliers (spikes).
     Average = 2,
 
     /// Keep only the maximum values in the range.
@@ -48,10 +50,15 @@ pub enum AggregationPolicy {
     /// Keep both the minimum and maximum values in the range.
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
-    #[default]
+    /// In practice this often leads to a rather ugly zig-zag look.
     MinMax = 5,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.
+    ///
+    /// This yields a single point per range, so it does not draw a vertical line per pixel,
+    /// while still letting a lone outlier move the plotted value, which averaging all the
+    /// points in the range would wash out.
+    #[default]
     MinMaxAverage = 6,
 }
 
@@ -161,14 +168,16 @@ impl ::re_types_core::reflection::Enum for AggregationPolicy {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::Off => "No aggregation.",
-            Self::Average => "Average all points in the range together.",
+            Self::Average => {
+                "Average all points in the range together.\n\nThis can wash out outliers (spikes)."
+            }
             Self::Max => "Keep only the maximum values in the range.",
             Self::Min => "Keep only the minimum values in the range.",
             Self::MinMax => {
-                "Keep both the minimum and maximum values in the range.\n\nThis will yield two aggregated points instead of one, effectively creating a vertical line."
+                "Keep both the minimum and maximum values in the range.\n\nThis will yield two aggregated points instead of one, effectively creating a vertical line.\nIn practice this often leads to a rather ugly zig-zag look."
             }
             Self::MinMaxAverage => {
-                "Find both the minimum and maximum values in the range, then use the average of those."
+                "Find both the minimum and maximum values in the range, then use the average of those.\n\nThis yields a single point per range, so it does not draw a vertical line per pixel,\nwhile still letting a lone outlier move the plotted value, which averaging all the\npoints in the range would wash out."
             }
         }
     }

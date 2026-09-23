@@ -239,7 +239,7 @@ fn make_load_fn<'a>(
     }
 }
 
-/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+/// Takes a dataframe that looks like an [`re_chunk_index::RrdManifest`] (has a `chunk_key` column).
 async fn load_chunks(client: &mut ConnectionClient, batch: &RecordBatch) -> ApiResult<Vec<Chunk>> {
     use tokio_stream::StreamExt as _;
 

@@ -47,7 +47,9 @@
 mod args;
 mod grpc;
 mod memory_telemetry;
+#[cfg(feature = "prometheus")]
 mod metrics_server;
+#[cfg(feature = "prometheus")]
 mod prometheus;
 mod shared_reader;
 mod telemetry;

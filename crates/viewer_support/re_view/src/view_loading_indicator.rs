@@ -10,7 +10,7 @@ pub fn paint_view_loading_indicator(
         && recording.can_fetch_chunks_from_redap();
 
     let loading_indicator_opacity = ui.ctx().animate_bool(
-        ui.id().with(("loading_indicator", id_salt)),
+        ui.make_persistent_id(("loading_indicator", id_salt)),
         show_loading_indicator,
     );
 

@@ -22,6 +22,7 @@ FUL = "FUL" # forward-up-left coordinate system
 NED = "NED" # north-east-down coordinate system
 Isse = "Isse" # It's a name
 lod = "lod" # level-of-detail
+loca = "loca" # OpenType glyph-location table name
 ND = "ND" # np.NDArray
 opf = "opf" # Open Photogrammetry Format (OPF) file
 somes = "somes" # many `Some`
@@ -225,6 +226,7 @@ extend-ignore-re = [
   "\"[a-f0-9]{8}\"",
   "_[a-f0-9]{16}",
 
+  'b"loca"', # TrueType glyph location table tag.
 
   "np.arange", # Stands for "array range" and isn't a misspelling of "arrange".
   "phc_[a-zA-Z0-9]*", # Posthog public key

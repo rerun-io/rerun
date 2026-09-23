@@ -19,5 +19,6 @@ workspace = true
 [dependencies]
 http.workspace = true
 pin-project-lite.workspace = true
+re_tuid.workspace = true
 tonic.workspace = true
 tower.workspace = true

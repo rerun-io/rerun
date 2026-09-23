@@ -11,6 +11,7 @@
 
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
+use re_chunk_index::RawRrdManifest;
 use re_log_msg::{BlueprintActivationCommand, SetStoreInfo};
 
 use crate::ApplicationIdInjector;
@@ -67,7 +68,7 @@ impl ToTransport for crate::RrdFooter {
     }
 }
 
-impl ToTransport for crate::RawRrdManifest {
+impl ToTransport for RawRrdManifest {
     type Output = re_protos::log_msg::v1alpha1::RrdManifest;
     type Context<'a> = ();
 
@@ -176,7 +177,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdFooter {
 }
 
 impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
-    type Output = crate::RawRrdManifest;
+    type Output = RawRrdManifest;
     type Context<'a> = ();
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {

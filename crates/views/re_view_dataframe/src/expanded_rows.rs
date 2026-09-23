@@ -20,7 +20,7 @@ impl Default for ExpandedRowsCache {
     fn default() -> Self {
         Self {
             expanded_rows: BTreeMap::default(),
-            valid_for: egui::Id::new(""),
+            valid_for: egui::Id::NULL,
         }
     }
 }

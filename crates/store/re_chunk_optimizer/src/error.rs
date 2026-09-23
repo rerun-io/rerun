@@ -1,5 +1,5 @@
 use re_chunk::{ChunkError, ChunkId, ComponentIdentifier};
-use re_log_encoding::{ChunkProviderError, CodecError};
+use re_chunk_index::{ChunkIndexError, ChunkProviderError};
 use re_log_types::EntityPath;
 
 /// Errors of this crate.
@@ -11,11 +11,11 @@ pub enum Error {
     #[error("Failed to read chunk index column {column:?}: {source}")]
     ReadColumn {
         column: &'static str,
-        source: CodecError,
+        source: ChunkIndexError,
     },
 
     #[error("Failed to compute the chunk index's temporal map: {source}")]
-    TemporalMap { source: CodecError },
+    TemporalMap { source: ChunkIndexError },
 
     #[error("Malformed per-component chunk index column {column:?}: {reason}")]
     MalformedComponentColumn {
@@ -73,11 +73,11 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn read_column(column: &'static str, source: CodecError) -> Self {
+    pub fn read_column(column: &'static str, source: ChunkIndexError) -> Self {
         Self::ReadColumn { column, source }
     }
 
-    pub fn temporal_map(source: CodecError) -> Self {
+    pub fn temporal_map(source: ChunkIndexError) -> Self {
         Self::TemporalMap { source }
     }
 

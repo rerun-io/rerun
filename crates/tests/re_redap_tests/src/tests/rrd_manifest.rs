@@ -3,13 +3,14 @@ use std::sync::Arc;
 use arrow::array::{Float32Array, RecordBatch};
 use itertools::Itertools as _;
 use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
+use re_chunk_index::{RawRrdManifest, sha256_to_hex};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetRrdManifestRequest, ScanSegmentTableRequest,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::AsComponents;
-use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _, sha256_to_hex};
+use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_sdk_types::AnyValues;
 use re_types_core::SegmentId;
 

@@ -21,7 +21,7 @@ impl Group {
 
     /// Show the contents.
     pub fn show<T>(self, ui: &mut Ui, content: impl FnOnce(&mut Ui) -> T) -> T {
-        let id = ui.id().with(self.id);
+        let id = ui.make_persistent_id(self.id);
         let data_id = id.with("group");
 
         let rect = ui.available_rect_before_wrap();

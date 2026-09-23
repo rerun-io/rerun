@@ -10,6 +10,9 @@ rust-version.workspace = true
 version.workspace = true
 publish = false
 
+[package.metadata.rerun]
+test-binaries = ["inspection", "integration"]
+
 [features]
 default = []
 
@@ -52,6 +55,7 @@ url = { workspace = true, optional = true }
 [dev-dependencies]
 re_analytics.workspace = true
 re_arrow_util.workspace = true
+re_chunk_index.workspace = true
 re_datafusion.workspace = true
 re_entity_db.workspace = true
 re_log_channel.workspace = true

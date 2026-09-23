@@ -8,8 +8,13 @@
 //! batch before handing the `Vec` over. The within-segment sort below is
 //! per-batch, so if that concatenation ever stops collapsing a segment to one
 //! batch, a segment would become several independently sorted runs laid
-//! end to end — plan order would silently stop matching time order. That is
-//! what [`extract_segment_id`]'s debug assert guards.
+//! end to end — plan order would silently stop matching time order.
+//!
+//! Two distinct properties, guarded in two places. [`extract_segment_id`]'s
+//! debug assert catches a batch that *mixes* segments; it cannot see a segment
+//! *split* across batches, since each half looks single-segment on its own.
+//! `pipeline::plan::build_fetch_plan` catches the split by rejecting a repeated
+//! `SegmentId` across its inputs.
 //!
 //! Given that, the planner's output order is load-bearing twice over:
 //!
@@ -41,7 +46,10 @@ pub type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);
 /// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
 /// chunks *for a single segment*, hence we can just take the first row's `segment_id`. See the
 /// module docs for who establishes that invariant and what silently breaks without it.
-fn extract_segment_id(origin: &re_uri::Origin, chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
+pub fn extract_segment_id(
+    origin: &re_uri::Origin,
+    chunk_info: &RecordBatch,
+) -> ApiResult<SegmentId> {
     let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(chunk_info)
         .map_err(|err| ApiError::internal_quiver(origin, err))?;

@@ -483,8 +483,8 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
     let following_id = ui.make_persistent_id("streaming_plots_following");
     let mut following = ui.data_mut(|d| *d.get_persisted_mut_or(following_id, true));
 
-    let axis_group = egui::Id::new("streaming_axis");
-    let cursor_group = egui::Id::new("streaming_cursor");
+    let axis_group = ui.make_persistent_id("streaming_axis");
+    let cursor_group = ui.make_persistent_id("streaming_cursor");
 
     /// Common plot setup shared by all streaming plots.
     fn base_plot(id: &str, axis_group: egui::Id, cursor_group: egui::Id) -> egui_plot::Plot<'_> {

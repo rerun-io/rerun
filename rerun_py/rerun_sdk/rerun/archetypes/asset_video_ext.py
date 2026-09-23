@@ -30,7 +30,7 @@ class AssetVideoExt:
         Parameters
         ----------
         path:
-            A path to an file stored on the local filesystem. Mutually
+            A path to a file stored on the local filesystem. Mutually
             exclusive with `contents`.
 
         contents:

@@ -39,6 +39,12 @@ tracy_enabled = []
 ## E.g. an async function that yields 50 times will be counted as 51 (the first call + 50 yields).
 tracy = ["dep:tracing-tracy"]
 
+## Serve a Prometheus scrape endpoint via [`Telemetry::start_metrics_listener`].
+##
+## Enabling it makes the build need `protoc` on the `PATH`, since `prometheus-client`
+## compiles a `.proto` at build time.
+prometheus = ["dep:prometheus-client", "dep:prost"]
+
 ## Enable [`Telemetry::init_with_session_id_reader`].
 ##
 ## SDK bindings (today: `rerun_py`) register a host-language-specific reader at
@@ -55,6 +61,7 @@ session_id_reader = []
 # Rerun
 re_auth = { workspace = true, features = ["oauth"] }
 re_grpc_headers.workspace = true
+re_log.workspace = true
 
 # External
 ahash.workspace = true
@@ -84,7 +91,8 @@ tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "json"] }
-prometheus-client.workspace = true
+prometheus-client = { workspace = true, features = ["prometheus_protobuf"], optional = true }
+prost = { workspace = true, optional = true }
 tokio.workspace = true
 
 

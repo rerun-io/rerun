@@ -204,7 +204,7 @@ impl ListItemContent for LabelContent<'_> {
         // this happens here to avoid cloning the text
         context.response.widget_info(|| {
             egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
+                egui::Role::Button,
                 ui.is_enabled(),
                 context.list_item.selected,
                 galley.text(),

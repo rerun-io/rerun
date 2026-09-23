@@ -153,6 +153,7 @@ pub use self::transform_forest::{
 };
 pub use self::transform_queries::{
     query_view_coordinates, query_view_coordinates_at_closest_ancestor,
+    report_needed_instance_pose_chunks,
 };
 pub use self::transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,

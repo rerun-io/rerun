@@ -20,7 +20,7 @@ impl std::fmt::Debug for ItemId {
 
 impl From<ItemId> for egui::Id {
     fn from(id: ItemId) -> Self {
-        Self::new(id)
+        Self::unique(id)
     }
 }
 
@@ -271,7 +271,7 @@ impl HierarchicalDragAndDrop {
     fn container_ui(&self, ui: &mut egui::Ui, item_id: ItemId, children: &Vec<ItemId>) {
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(item_id);
+        let id = egui::Id::unique(item_id);
 
         let response = list_item::ListItem::new()
             .selected(self.selected(item_id))

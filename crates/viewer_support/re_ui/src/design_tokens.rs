@@ -817,6 +817,20 @@ impl DesignTokens {
             .unwrap()
             .insert(0, "Inter-Medium".into());
 
+        // We don't rely on egui's `default_fonts`, so we must bundle a monospace font ourselves.
+        // On web there are no system fonts to fall back to at all.
+        font_definitions.font_data.insert(
+            "Hack-Regular".into(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../data/Hack-Regular.ttf"
+            ))),
+        );
+        font_definitions
+            .families
+            .get_mut(&egui::FontFamily::Monospace)
+            .unwrap()
+            .insert(0, "Hack-Regular".into());
+
         ctx.set_fonts(font_definitions);
     }
 

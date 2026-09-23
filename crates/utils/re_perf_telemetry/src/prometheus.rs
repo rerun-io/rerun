@@ -9,12 +9,16 @@ use std::sync::Arc;
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use parking_lot::{Mutex, RwLock};
-use prometheus_client::encoding::{EncodeLabelSet, EncodeMetric, MetricEncoder, NoLabelSet};
+use prometheus_client::encoding::{
+    EncodeLabelSet, EncodeMetric, MetricEncoder, NativeHistogram, NativeHistogramBuckets,
+    NoLabelSet, prometheus_protobuf,
+};
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::{Family, MetricConstructor};
 use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::metrics::{MetricType, TypedMetric};
 use prometheus_client::registry::Registry;
+use prost::Message as _;
 
 /// Dynamic labels for metrics that support arbitrary key-value pairs
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -58,11 +62,41 @@ impl MetricContainer {
     }
 }
 
-/// Encode a Prometheus registry to text format
+/// Encode a Prometheus registry to text format.
+///
+/// Histograms come out as classic `le` buckets, whose per-series boundaries are not
+/// comparable across label sets.
 pub fn encode_registry(registry: &Registry) -> Result<String, std::fmt::Error> {
     let mut buffer = String::new();
     prometheus_client::encoding::text::encode(&mut buffer, registry)?;
     Ok(buffer)
+}
+
+/// Encode a Prometheus registry to the length-delimited protobuf exposition format.
+pub fn encode_registry_protobuf(
+    registry: &Registry,
+) -> Result<Vec<u8>, prometheus_protobuf::EncodeError> {
+    let mut families = prometheus_protobuf::encode(registry)?;
+
+    // `f64::MAX` is `prometheus-client`'s `+Inf` sentinel, honoured only by its text encoder,
+    // so the classic buckets have it restored here. Left finite, the sentinel counts as a
+    // real bucket and high quantiles resolve into it instead of to the highest real boundary.
+    for bucket in families
+        .iter_mut()
+        .flat_map(|family| family.metric.iter_mut())
+        .filter_map(|metric| metric.histogram.as_mut())
+        .flat_map(|histogram| histogram.bucket.iter_mut())
+    {
+        if bucket.upper_bound == f64::MAX {
+            bucket.upper_bound = f64::INFINITY;
+        }
+    }
+
+    let mut encoded = Vec::new();
+    for family in families {
+        family.encode_length_delimited(&mut encoded)?;
+    }
+    Ok(encoded)
 }
 
 /// Convert `OpenTelemetry` `ResourceMetrics` to Prometheus metrics and return a Registry
@@ -481,16 +515,73 @@ struct PreAggregatedHistogramInner {
     /// The prometheus-client encoder converts these to cumulative during
     /// text encoding.
     buckets: Vec<(f64, u64)>,
+
+    native: NativeForm,
+}
+
+/// The exponential form of a histogram, as Prometheus encodes it.
+#[derive(Debug, Default)]
+struct NativeForm {
+    /// Prometheus `schema`, which is the `OTel` scale unchanged: the two are the same
+    /// quantity with the same definition.
+    schema: i32,
+
+    /// Count of observations that fall in the zero bucket.
+    zero_count: u64,
+
+    /// `(offset, length)` spans over the occupied positive buckets. The first offset is
+    /// absolute, any later one is relative to the end of the previous span.
+    spans: Vec<(i32, u32)>,
+
+    /// Bucket counts, each encoded as the difference from the previous bucket.
+    deltas: Vec<i64>,
+}
+
+impl NativeForm {
+    /// `scale` must be in `-4..=8`, or Prometheus rejects the sample.
+    fn new(scale: i8, offset: i32, positive_counts: &[u64], zero_count: u64) -> Self {
+        re_log::debug_assert!(
+            (-4..=8).contains(&scale),
+            "scale {scale} is outside the schema range Prometheus accepts"
+        );
+
+        // Prometheus bucket `i` covers `(base^(i-1), base^i]` and `OTel` bucket `i` covers
+        // `(base^i, base^(i+1)]`, so the same boundary sits one index higher here.
+        let mut spans: Vec<(i32, u32)> = Vec::new();
+        let mut deltas: Vec<i64> = Vec::new();
+        let mut previous = 0_i64;
+        let mut covered_through = 0_i32;
+        let mut run_start = 0_usize;
+
+        for run in positive_counts.chunk_by(|a, b| (*a == 0) == (*b == 0)) {
+            if run.first().is_some_and(|&count| count != 0) {
+                for &count in run {
+                    deltas.push(count as i64 - previous);
+                    previous = count as i64;
+                }
+
+                let start_index = offset + 1 + run_start as i32;
+                spans.push((start_index - covered_through, run.len() as u32));
+                covered_through = start_index + run.len() as i32;
+            }
+            run_start += run.len();
+        }
+
+        Self {
+            schema: i32::from(scale),
+            zero_count,
+            spans,
+            deltas,
+        }
+    }
 }
 
 impl PreAggregatedHistogram {
     /// Populate from an `OTel` exponential histogram data point.
     ///
-    /// Only positive and zero observations are mapped to Prometheus buckets.
-    /// Negative observations cannot be faithfully represented in Prometheus's
-    /// `le`-based histogram model, so we log a warning if any are present.
-    /// In practice all our histograms track durations and sizes which are
-    /// always non-negative.
+    /// Only positive and zero observations are mapped; negative ones are dropped with a
+    /// warning and `count` still includes them. In practice all our histograms track
+    /// durations and sizes, which are always non-negative.
     fn set_from_exponential(
         &self,
         scale: i8,
@@ -559,10 +650,13 @@ impl PreAggregatedHistogram {
         // Count of 0 is correct here because the encoder accumulates cumulatively.
         buckets.push((f64::MAX, 0));
 
+        let native = NativeForm::new(scale, offset, positive_counts, zero_count);
+
         let mut inner = self.inner.write();
         inner.sum = sum;
         inner.count = count;
         inner.buckets = buckets;
+        inner.native = native;
     }
 }
 
@@ -573,6 +667,7 @@ impl Default for PreAggregatedHistogram {
                 sum: 0.0,
                 count: 0,
                 buckets: Vec::new(),
+                native: NativeForm::default(),
             })),
         }
     }
@@ -585,7 +680,28 @@ impl TypedMetric for PreAggregatedHistogram {
 impl EncodeMetric for PreAggregatedHistogram {
     fn encode(&self, mut encoder: MetricEncoder<'_>) -> Result<(), std::fmt::Error> {
         let inner = self.inner.read();
-        encoder.encode_histogram::<NoLabelSet>(inner.sum, inner.count, &inner.buckets, None)
+
+        encoder.encode_histogram_with_native::<NoLabelSet>(
+            inner.sum,
+            inner.count,
+            &inner.buckets,
+            None,
+            NativeHistogram {
+                schema: inner.native.schema,
+                // The `OTel` SDK always reports a zero threshold of 0: only exact zeros count.
+                zero_threshold: 0.0,
+                zero_count: inner.native.zero_count,
+                negative: NativeHistogramBuckets {
+                    spans: &[],
+                    deltas: &[],
+                },
+                positive: NativeHistogramBuckets {
+                    spans: &inner.native.spans,
+                    deltas: &inner.native.deltas,
+                },
+                created: None,
+            },
+        )
     }
 
     fn metric_type(&self) -> MetricType {
@@ -745,6 +861,7 @@ fn create_dynamic_labels(attributes: &[KeyValue]) -> DynamicLabels {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prometheus_client::encoding::prometheus_protobuf::prometheus_data_model;
     use prometheus_client::encoding::text::encode;
 
     /// Helper: encode a single `PreAggregatedHistogram` registered as "test"
@@ -755,6 +872,153 @@ mod tests {
         let mut buf = String::new();
         encode(&mut buf, &registry).unwrap();
         buf
+    }
+
+    /// Encode a registry into the protobuf data model and return the single histogram in it.
+    fn encode_native(hist: &PreAggregatedHistogram) -> prometheus_data_model::Histogram {
+        let mut registry = Registry::default();
+        registry.register("test", "help", hist.clone());
+        let families = prometheus_protobuf::encode(&registry).unwrap();
+        families[0].metric[0].histogram.clone().unwrap()
+    }
+
+    /// Reconstruct `(bucket_index, count)` pairs the way Prometheus reads the spans back.
+    fn decode_native(histogram: &prometheus_data_model::Histogram) -> Vec<(i32, u64)> {
+        let mut out = Vec::new();
+        let mut index = 0_i32;
+        let mut running = 0_i64;
+        let mut next_delta = 0_usize;
+        for span in &histogram.positive_span {
+            index += span.offset;
+            for _ in 0..span.length {
+                running += histogram.positive_delta[next_delta];
+                next_delta += 1;
+                assert!(running >= 0, "a bucket count decoded negative");
+                out.push((index, running as u64));
+                index += 1;
+            }
+        }
+        assert_eq!(
+            next_delta,
+            histogram.positive_delta.len(),
+            "spans and deltas disagree on how many buckets there are"
+        );
+        out
+    }
+
+    /// A finite top bound makes `histogram_quantile` over the classic buckets read ~1e308.
+    #[test]
+    fn protobuf_classic_buckets_end_at_infinity() {
+        let hist = PreAggregatedHistogram::default();
+        hist.set_from_raw_buckets(0, 0, &[3, 5], 0, 1.0, 8);
+
+        let mut registry = Registry::default();
+        registry.register("test", "help", hist);
+        let bytes = encode_registry_protobuf(&registry).unwrap();
+
+        let family =
+            prometheus_data_model::MetricFamily::decode_length_delimited(bytes.as_slice()).unwrap();
+        let bounds: Vec<f64> = family.metric[0]
+            .histogram
+            .as_ref()
+            .unwrap()
+            .bucket
+            .iter()
+            .map(|bucket| bucket.upper_bound)
+            .collect();
+
+        assert!(bounds.last().unwrap().is_infinite());
+        assert!(bounds[..bounds.len() - 1].iter().all(|b| b.is_finite()));
+    }
+
+    #[test]
+    fn native_histogram_round_trip_preserves_grid() {
+        let hist = PreAggregatedHistogram::default();
+        // Scale 3, first occupied bucket at OTel index 4, counts [3, 0, 5, 2].
+        hist.set_from_raw_buckets(3, 4, &[3, 0, 5, 2], 1, 42.0, 11);
+
+        let histogram = encode_native(&hist);
+
+        assert_eq!(histogram.schema, 3, "scale must survive as the schema");
+        assert_eq!(histogram.sample_count, 11);
+        assert!((histogram.sample_sum - 42.0).abs() < f64::EPSILON);
+        assert_eq!(histogram.zero_count, 1);
+
+        // The empty bucket is skipped rather than spanned, so this is two spans.
+        assert_eq!(histogram.positive_span.len(), 2);
+        assert_eq!(
+            (
+                histogram.positive_span[0].offset,
+                histogram.positive_span[0].length
+            ),
+            (5, 1)
+        );
+        assert_eq!(
+            (
+                histogram.positive_span[1].offset,
+                histogram.positive_span[1].length
+            ),
+            (1, 2)
+        );
+
+        // Prometheus bucket indices sit one above the OTel ones for the same boundaries.
+        assert_eq!(decode_native(&histogram), vec![(5, 3), (7, 5), (8, 2)]);
+    }
+
+    #[test]
+    fn native_histogram_round_trips_arbitrary_layouts() {
+        let mut seed = 0x5eed_u64;
+        let mut next = || {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            seed >> 33
+        };
+
+        for case in 0..500 {
+            let offset = (next() % 101) as i32 - 50;
+            let len = 1 + (next() % 20) as usize;
+            let counts: Vec<u64> = (0..len)
+                .map(|_| if next() % 5 < 2 { 0 } else { 1 + next() % 1000 })
+                .collect();
+
+            let hist = PreAggregatedHistogram::default();
+            hist.set_from_raw_buckets(2, offset, &counts, 0, 1.0, counts.iter().sum());
+
+            let expected: Vec<(i32, u64)> = counts
+                .iter()
+                .enumerate()
+                .filter(|&(_, &c)| c != 0)
+                .map(|(i, &c)| (offset + 1 + i as i32, c))
+                .collect();
+
+            assert_eq!(
+                decode_native(&encode_native(&hist)),
+                expected,
+                "case {case}: offset {offset}, counts {counts:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn native_histogram_all_empty_buckets_emit_no_span() {
+        let hist = PreAggregatedHistogram::default();
+        hist.set_from_raw_buckets(0, 3, &[0, 0, 0], 4, 0.0, 4);
+
+        let histogram = encode_native(&hist);
+        assert!(histogram.positive_span.is_empty());
+        assert!(histogram.positive_delta.is_empty());
+        assert_eq!(histogram.zero_count, 4);
+    }
+
+    #[test]
+    fn native_histogram_without_positive_buckets_emits_no_span() {
+        let hist = PreAggregatedHistogram::default();
+        hist.set_from_raw_buckets(0, 0, &[], 4, 0.0, 4);
+
+        let histogram = encode_native(&hist);
+        assert!(histogram.positive_span.is_empty());
+        assert_eq!(histogram.zero_count, 4);
     }
 
     #[test]

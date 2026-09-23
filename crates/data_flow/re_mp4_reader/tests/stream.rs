@@ -31,7 +31,8 @@ const STREAMABLE_FIXTURES: &[&str] = &[
 
 fn fixture_path(file_name: &str) -> PathBuf {
     // `crates/data_flow/re_mp4_reader` → workspace root is three levels up.
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from)
         .parent()
         .and_then(|p| p.parent())
         .and_then(|p| p.parent())
@@ -732,9 +733,8 @@ fn mid_gop_window_is_frame_exact() {
 #[test]
 fn windowed_read_at_the_end_of_a_100_frame_gop() {
     // 120 frames at 30 fps, keyframes forced exactly at frames 0 and 100.
-    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("worst_case_gop");
-    std::fs::create_dir_all(&dir).expect("temp dir");
-    let path = dir.join("gop100.mp4");
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("gop100.mp4");
     let generated = std::process::Command::new("ffmpeg")
         .args(["-y", "-f", "lavfi", "-i", "testsrc2=duration=4:rate=30"])
         .args(["-c:v", "libx264", "-bf", "0", "-g", "100"])

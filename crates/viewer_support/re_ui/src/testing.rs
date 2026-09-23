@@ -1,4 +1,5 @@
 use egui::Vec2;
+
 use egui_kittest::{HarnessBuilder, OsThreshold, SnapshotOptions};
 
 /// What is the purpose of the test?

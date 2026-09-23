@@ -54,10 +54,10 @@ Two MCP servers let an agent see and click a running UI instead of guessing from
 
 - `rerun viewer-mcp` drives a running Rerun Viewer over gRPC. See `docs/content/reference/viewer/mcp.md`.
 - `egui-mcp` drives *any* egui app started with `EGUI_INSPECTION=1`, including our example apps and headless `egui_kittest` harnesses.
-  It exposes `attach`, `query_tree`, `click`, `type_text`, `screenshot`, `wait_for`, and friends.
+  It exposes `attach`, `widget_tree`, `click`, `type_text`, `screenshot`, `wait_for`, and friends.
   Both are configured in the repo-root `.mcp.json`; install with `cargo install --git https://github.com/rerun-io/kittest_inspector egui_mcp`.
 
-Typical loop: start the app with `EGUI_INSPECTION=1`, call `attach` (host `127.0.0.1`, port `5719`), `query_tree` to find widgets, `click`/`type_text`, then `screenshot` with a `save_path` and look at the image.
+Typical loop: start the app with `EGUI_INSPECTION=1`, call `attach` (host `127.0.0.1`, port `5719`), `widget_tree` to find widgets, `click`/`type_text`, then `screenshot` with a `save_path` and look at the image.
 `egui-mcp` needs the app to paint frames: windowed apps must not be occluded on macOS, so prefer a headless harness where one exists.
 A headless `egui_kittest` harness can opt in with `egui_inspection::attach_from_env(&harness.ctx, label)`.
 Example: `EGUI_INSPECTION=1 cargo run -p re_agent_ui --example agent_app -- --headless`.
@@ -115,8 +115,9 @@ crates/
 
 For more details about the architecture see `ARCHITECTURE.md`.
 
-**When adding, removing, or renaming a crate**, update `ARCHITECTURE.md`:
-add the crate to the appropriate crate table, and flag for the author that the crate-organization diagram (FigJam) needs a manual update — see the HTML comment next to the diagram in `ARCHITECTURE.md` for instructions.
+**When adding, removing, or renaming a crate**, run `pixi run crate-graph`.
+It regenerates both the crate dependency diagram (`crate_graph.svg`) and the crate tables in `ARCHITECTURE.md` from `cargo metadata`.
+A crate's one-line description comes from the `description` field of its `Cargo.toml`.
 
 ### Type system hierarchy
 
@@ -224,3 +225,21 @@ Key things to know:
 Don't open pull requests or issues unless explicitly asked.
 When opening or interacting with one, follow the [pull request template](.github/pull_request_template.md) or [issue templates](.github/ISSUE_TEMPLATE/), and disclose that you are an LLM.
 Let the user know that you included this disclosure.
+
+### Before requesting review
+
+- CI is green, and the code is formatted (`pixi run rs-fmt`).
+- The branch history is clean: no broken merges, and no commits from unrelated work.
+- The description is honest about the scope, and says *why* the change is needed.
+- UI changes come with a screenshot or video.
+
+### Addressing review comments
+
+- When a reviewer flags one instance of a pattern, fix every instance in the diff, and say so in your reply.
+- A review comment phrased as a question wants an answer, not a code change — unless the answer is "yes, that is wrong".
+- When a reviewer asks for a change, make it in this PR.
+  Only defer it to a follow-up PR if the reviewer agrees.
+- If the fix belongs in a dependency we maintain (egui, egui_plot, egui_tiles, emath, quiver, puffin, …), suggest an upstream PR instead of a local workaround.
+- Reviewers want to talk to the human author.
+  When a comment asks for a judgement call (API shape, scope, product behavior), bring it to your user instead of deciding in the reply.
+- Always reply when mentioned, even if only to say you are unsure.

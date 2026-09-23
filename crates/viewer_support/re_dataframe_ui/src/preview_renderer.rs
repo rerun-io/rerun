@@ -159,11 +159,16 @@ impl<'a> RecordingPreviewRenderer<'a> {
         else {
             return None;
         };
-        let uri_str = column.string_value_at(batch_index)?;
-        let uri = uri_str
-            .parse::<re_uri::DatasetUri>()
-            .ok()
-            .filter(|uri| uri.segment_id.is_some())?;
+        let value = column.string_value_at(batch_index)?;
+
+        // A path resolves against the route's server, so the preview loads from the same server
+        // the table is read from.
+        let uri = match ctx.route.origin() {
+            Some(base) => re_uri::DatasetUri::parse_with_base(base, &value),
+            None => value.parse::<re_uri::DatasetUri>(),
+        }
+        .ok()
+        .filter(|uri| uri.segment_id.is_some())?;
 
         if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
             ctx.storage_context.hub.mark_preview(recording.store_id());
@@ -501,7 +506,7 @@ fn preview_timeline(
     time_ctrl: &TimeControl,
     views_rect: egui::Rect,
 ) {
-    let id = ui.id().with(("timeline", column_name, row_nr));
+    let id = ui.make_persistent_id(("timeline", column_name, row_nr));
 
     // Do this outside the if to keep showing the timeline when dragged.
     let was_active = ui.read_response(id).is_some_and(|last_response| {

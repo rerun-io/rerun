@@ -1,5 +1,6 @@
 use re_build_info::CrateVersion;
 use re_chunk::ChunkError;
+use re_chunk_index::ChunkIndexError;
 use re_protos::common::v1alpha1::ext;
 
 pub type CodecResult<T> = Result<T, CodecError>;
@@ -98,6 +99,9 @@ pub enum CodecError {
 
     #[error("Invalid timeline name: {0}")]
     InvalidTimelineName(#[from] re_log_types::InvalidTimelineNameError),
+
+    #[error(transparent)]
+    ChunkIndex(Box<ChunkIndexError>),
 }
 
 const _: () = assert!(
@@ -108,6 +112,12 @@ const _: () = assert!(
 impl From<re_protos::TypeConversionError> for CodecError {
     fn from(value: re_protos::TypeConversionError) -> Self {
         Self::TypeConversion(Box::new(value))
+    }
+}
+
+impl From<ChunkIndexError> for CodecError {
+    fn from(value: ChunkIndexError) -> Self {
+        Self::ChunkIndex(Box::new(value))
     }
 }
 

@@ -3,7 +3,7 @@ use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
 use egui::widget_style::WidgetState;
 use egui::{
-    AtomLayoutResponse, Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style,
+    Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style, WidgetAtomResponse,
 };
 
 #[derive(Default, Clone, Copy)]
@@ -126,6 +126,9 @@ pub struct ReButton<'a> {
     ///
     /// Useful to show that the button is engaged, e.g. while its menu popup is open.
     pub highlighted: bool,
+
+    /// Overrides the name egui derives from the button's text or image alt text.
+    pub accessible_name: Option<String>,
 }
 
 impl<'a> ReButton<'a> {
@@ -140,8 +143,13 @@ impl<'a> ReButton<'a> {
         Self::from_button(Button::new((atoms, icons::DROPDOWN_ARROW)))
     }
 
-    pub fn icon(icon: crate::icons::Icon) -> ReButton<'static> {
-        let mut button = ReButton::new(icon);
+    /// An icon-only button.
+    ///
+    /// `alt_text` is the button's accessible name: what a screen reader announces, what
+    /// `Harness::get_by_label` finds, and the only thing the MCP UI tools can search an icon
+    /// button by. A button without one is unreachable by name, so it is required here.
+    pub fn icon(icon: crate::icons::Icon, alt_text: impl Into<String>) -> ReButton<'static> {
+        let mut button = ReButton::new(icon.as_image().alt_text(alt_text));
         button.icon = true;
         button
     }
@@ -153,6 +161,7 @@ impl<'a> ReButton<'a> {
             variant: Variant::Ghost,
             icon: false,
             highlighted: false,
+            accessible_name: None,
         }
     }
 
@@ -237,6 +246,14 @@ impl<'a> ReButton<'a> {
         self
     }
 
+    /// Name the button in the accessibility tree, for a button whose atoms name nothing useful
+    /// (e.g. two icons).
+    #[inline]
+    pub fn accessible_name(mut self, name: impl Into<String>) -> Self {
+        self.accessible_name = Some(name.into());
+        self
+    }
+
     /// Render the button with its hovered fill even when it isn't hovered.
     ///
     /// Useful to show that the button is engaged, e.g. while its menu popup is open.
@@ -256,7 +273,7 @@ impl<'a> ReButton<'a> {
         mut button: impl FnMut() -> Self,
         mut hover_buttons_width: f32,
         hover_buttons: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> (AtomLayoutResponse, Option<R>) {
+    ) -> (WidgetAtomResponse, Option<R>) {
         // Left and right spacing around the icons + some tolerance
         hover_buttons_width += ui.spacing().icon_spacing * 2.0 + 1.0;
 
@@ -333,19 +350,20 @@ impl<'a> ReButton<'a> {
         ui: &mut egui::Ui,
         icon: ReButton<'static>,
         mut button: impl FnMut() -> Self,
-    ) -> (AtomLayoutResponse, Option<Response>) {
+    ) -> (WidgetAtomResponse, Option<Response>) {
         let size = button().size;
         let icon = icon.size(size);
         Self::with_hover_icon_buttons(ui, button, size.icon_button_size().x, |ui| ui.add(icon))
     }
 
-    pub fn atom_ui(self, ui: &mut egui::Ui) -> AtomLayoutResponse {
+    pub fn atom_ui(self, ui: &mut egui::Ui) -> WidgetAtomResponse {
         let Self {
             variant,
             size,
             inner,
             icon,
             highlighted,
+            accessible_name,
         } = self;
 
         Self::wrap_widget(ui, variant, size, icon, |ui| {
@@ -369,7 +387,11 @@ impl<'a> ReButton<'a> {
                 style.visuals.selection.stroke.color = current.fg_stroke.color;
             }
 
-            inner.min_size(size.icon_button_size()).atom_ui(ui)
+            let mut response = inner.min_size(size.icon_button_size()).atom_ui(ui);
+            if let Some(name) = accessible_name {
+                response.response = response.response.accessible_name(name);
+            }
+            response
         })
     }
 

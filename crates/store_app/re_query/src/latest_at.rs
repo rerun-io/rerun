@@ -816,11 +816,11 @@ mod tests {
 
     use itertools::Itertools as _;
     use re_chunk::{Chunk, ChunkId, RowId};
+    use re_chunk_index::RrdManifest;
     use re_chunk_store::{
         ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
         ChunkStoreSubscriber as _,
     };
-    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};

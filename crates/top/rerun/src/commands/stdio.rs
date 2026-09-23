@@ -4,7 +4,7 @@ use anyhow::Context as _;
 use crossbeam::channel;
 use itertools::Itertools as _;
 use re_chunk::external::crossbeam;
-use re_log_encoding::RawRrdManifest;
+use re_chunk_index::RawRrdManifest;
 use re_quota_channel::send_crossbeam;
 
 // ---

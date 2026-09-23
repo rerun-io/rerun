@@ -19,7 +19,7 @@ use crate::DesignTokens;
 /// As a clickable button that follows the text color:
 /// ```
 /// # egui::__run_test_ui(|ui| {
-/// if ui.add(re_ui::icons::PLAY.as_button()).clicked() {
+/// if ui.add(re_ui::icons::PLAY.as_button("Play")).clicked() {
 ///     // …
 /// }
 /// # });
@@ -77,6 +77,12 @@ impl Icon {
         self.uri
     }
 
+    /// The raw contents of the icon's PNG or SVG file.
+    #[inline]
+    pub fn image_bytes(&self) -> &'static [u8] {
+        self.image_bytes
+    }
+
     #[inline]
     pub fn as_image_source(&self) -> ImageSource<'static> {
         ImageSource::Bytes {
@@ -108,9 +114,15 @@ impl Icon {
         Image::new(self.as_image_source()).fit_to_original_size(scale)
     }
 
+    /// An icon-only button.
+    ///
+    /// `alt_text` is the button's accessible name: what a screen reader announces, what
+    /// `Harness::get_by_label` finds, and the only thing the MCP UI tools can search an icon
+    /// button by. A button without one is unreachable by name, so it is required here.
     #[inline]
-    pub fn as_button(&self) -> egui::Button<'_> {
-        egui::Button::image(self.as_image()).image_tint_follows_text_color(true)
+    pub fn as_button(&self, alt_text: impl Into<String>) -> egui::Button<'_> {
+        egui::Button::opt_image_and_text(Some(self.as_image().alt_text(alt_text)), None)
+            .image_tint_follows_text_color(true)
     }
 
     #[inline]
@@ -298,6 +310,11 @@ pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrum
 pub const FOLDER: Icon = icon_from_path!("../data/icons/folder.svg");
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.svg");
 pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.svg");
+
+// Theme preference:
+pub const SUN: Icon = icon_from_path!("../data/icons/sun.svg");
+pub const MOON: Icon = icon_from_path!("../data/icons/moon.svg");
+pub const SUN_MOON: Icon = icon_from_path!("../data/icons/sun_moon.svg");
 
 // Shortcuts:
 pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.svg");

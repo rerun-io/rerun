@@ -11,6 +11,8 @@
 //!
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
+//! They deduplicate per call site on the fully formatted message,
+//! so `warn_once!("Failed to load {path}")` still logs once for each distinct `path`.
 //!
 //! In the viewer these logs, if >= info, become notifications. See
 //! `re_ui::notifications` for more information.
@@ -26,7 +28,7 @@ mod result_extensions;
 mod setup;
 
 #[cfg(feature = "setup")]
-pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
+pub use channel_logger::{GUI_NOTIFICATION_FIELD, LogMsg, Receiver, Sender, add_log_msg_receiver};
 #[cfg(feature = "setup")]
 pub use event_visitor::FieldValue;
 pub use log_once::LogOnceSet;
@@ -75,7 +77,9 @@ macro_rules! debug_warn {
     };
 }
 
-/// Like [`debug_warn!`], but only logs once per call site.
+/// Like [`debug_warn!`], but logs each distinct message at most once per call site.
+///
+/// See [`crate::warn_once!`] for how messages are deduplicated.
 ///
 /// This is useful for logging messages that should be visible during development
 /// (to help catch issues), but shouldn't spam the logs in release builds.
@@ -94,7 +98,9 @@ macro_rules! debug_warn_once {
     };
 }
 
-/// Like [`debug_warn!`], but only logs once per call site.
+/// Like [`debug_warn!`], but logs each distinct message at most once per call site.
+///
+/// See [`crate::warn_once!`] for how messages are deduplicated.
 ///
 /// This is useful for logging messages that should be visible during development
 /// (to help catch issues), but shouldn't spam the logs in release builds.

@@ -124,10 +124,11 @@ pub async fn preview_table() {
         Duration::from_secs(15),
     );
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until_with_custom_timeout(
         "Opened recording source tree populated",
         &mut harness,
-        |harness| harness.query_by_label_contains("Streams").is_some(),
+        |harness| harness.query_all_by_label_contains("Streams").count() > 0,
         Duration::from_millis(100),
         Duration::from_secs(15),
     );
@@ -163,8 +164,9 @@ pub async fn preview_table_with_multiple_preview_columns() {
         ..Default::default()
     });
     let segment_uris = fixture.segment_uris;
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("table layout toggle appears", &mut harness, |harness| {
-        harness.query_by_label("Table view").is_some()
+        harness.query_all_by_label("Table view").count() > 0
     });
 
     // Two preview fields are stacked vertically in each card. The second field contains two views,

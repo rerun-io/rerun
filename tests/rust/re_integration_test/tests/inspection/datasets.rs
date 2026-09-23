@@ -28,11 +28,11 @@ pub async fn dataset_ui_test() {
     snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address:")
+        .get_by_role_and_label(egui::Role::TextInput, "Address:")
         .click();
     harness.run();
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Address:")
+        .get_by_role_and_label(egui::Role::TextInput, "Address:")
         .type_text(&format!("rerun+http://localhost:{}", server.port()));
     harness.run();
 
@@ -131,10 +131,11 @@ pub async fn start_with_segment_fragment_url() {
         ..Default::default()
     });
 
+    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Recording opened and source tree populated", |harness| {
-        harness.query_by_label_contains("Streams").is_some()
+        harness.query_all_by_label_contains("Streams").count() > 0
             && !harness.is_loading()
-            && harness.query_by_label_contains("my_dataset").is_some()
+            && harness.query_all_by_label_contains("my_dataset").count() > 0
             && harness.query_all_by_label("new_recording_id").count() == 3
     });
 

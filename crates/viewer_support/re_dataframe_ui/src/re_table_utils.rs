@@ -1,6 +1,6 @@
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
-use egui::{Color32, Frame, Id, Label, Link, PopupCloseBehavior, RichText, Stroke, Style};
+use egui::{Color32, Frame, Label, Link, PopupCloseBehavior, RichText, Stroke, Style};
 use re_sdk_types::blueprint::components::{ColumnName, TableLayoutKind};
 use re_ui::text_edit::{ReTextEdit, TextEditVariant};
 use re_ui::{UiExt as _, design_tokens_of, icons};
@@ -251,7 +251,7 @@ impl UiTableConfig<'_> {
                             // The "hidden" header is part of dnd, so a column can be dropped
                             // above or below it.
                             ui.add_space(8.0);
-                            let id = Id::new("hidden_column_section");
+                            let id = ui.make_persistent_id("hidden_column_section");
                             iter.next(ui, id, entry_index.0, true, |ui, item| {
                                 item.ui(ui, |ui, _handle, _state| {
                                     if section_header_ui(
@@ -304,7 +304,7 @@ pub fn columns_edit_menu_ui<'a>(
     MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
         .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
         .ui(ui, |ui| {
-            let filter_id = ui.id().with(("column_filter", layout_kind));
+            let filter_id = ui.make_persistent_id(("column_filter", layout_kind));
             let mut config = UiTableConfig {
                 columns: columns
                     .map(|column| UiColumnConfig {
@@ -422,7 +422,7 @@ fn column_row_ui(
     label: &str,
 ) -> bool {
     // The physical name identifies the column; the label is only what the user reads.
-    let id = Id::new(("column", &column.physical_name));
+    let id = ui.make_persistent_id(("column", &column.physical_name));
 
     let mut clicked = false;
 
@@ -545,16 +545,15 @@ mod tests {
     }
 
     fn filter(harness: &mut Harness<'_, MenuState>) {
-        harness
-            .get_by_role(egui::accesskit::Role::TextInput)
-            .click();
+        harness.get_by_role(egui::Role::TextInput).click();
         harness.run();
         harness
-            .get_by_role(egui::accesskit::Role::TextInput)
+            .get_by_role(egui::Role::TextInput)
             .type_text(" CAMERA ");
         harness.run();
-        assert!(harness.query_by_label("Duration").is_none());
-        assert!(harness.query_by_label("Notes").is_none());
+        // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
+        assert!(harness.query_all_by_label("Duration").count() == 0);
+        assert!(harness.query_all_by_label("Notes").count() == 0);
         harness.get_by_label("Front camera");
         harness.get_by_label("Rear camera");
         harness.get_by_label("Depth image");

@@ -167,6 +167,23 @@ impl Route {
         }
     }
 
+    /// The server this route shows, if any.
+    ///
+    /// A relative Rerun URI shown under this route resolves against it.
+    pub fn origin(&self) -> Option<&re_uri::Origin> {
+        match self {
+            Self::RedapEntry { origin, .. }
+            | Self::RedapFolder { origin, .. }
+            | Self::RedapServer(origin) => Some(origin),
+
+            Self::Settings { .. }
+            | Self::Loading { .. }
+            | Self::LocalRecording { .. }
+            | Self::LocalTable { .. }
+            | Self::ChunkStoreBrowser { .. } => None,
+        }
+    }
+
     pub fn item(&self) -> Option<Item> {
         match self {
             Self::LocalRecording { recording_id } => Some(Item::StoreId(recording_id.clone())),

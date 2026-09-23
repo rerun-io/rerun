@@ -834,7 +834,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(Blob::default().to_arrow()?),
                 datatype: Blob::arrow_data_type(),
                 is_enum: false,
                 own_chunk: false,
@@ -2018,7 +2018,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "media_type",
                         display_name: "Media type",
                         component_type: "rerun.components.MediaType".into(),
-                        docstring_md: "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                        docstring_md: "The Media Type of the asset.\n\nSupported values:\n* `application/x-ply`\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -2026,6 +2026,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Albedo factor",
                         component_type: "rerun.components.AlbedoFactor".into(),
                         docstring_md: "A color multiplier applied to the whole asset.\n\nFor mesh who already have `albedo_factor` in materials,\nit will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) (if specified).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.archetypes.AssetAudio"),
+            ArchetypeReflection {
+                display_name: "Asset audio",
+                deprecation_summary: None,
+                scope: None,
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "blob",
+                        display_name: "Blob",
+                        component_type: "rerun.components.Blob".into(),
+                        docstring_md: "The asset's bytes.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "media_type",
+                        display_name: "Media type",
+                        component_type: "rerun.components.MediaType".into(),
+                        docstring_md: "The Media Type of the asset.\n\nFor instance:\n* `audio/aac` (raw ADTS stream)\n* `audio/flac`\n* `audio/mp4` (M4A)\n* `audio/mpeg` (MP3)\n* `audio/ogg`\n* `audio/wav`\n\nAny audio media type can be stored.\nWhich ones the viewer can decode depends on the viewer version.\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to play the asset.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -5587,12 +5611,19 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.BarChart"),
                     ArchetypeName::from("rerun.archetypes.Tensor"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground"),
+                ],
             },
         ),
         (
             ViewClassIdentifier::from_static_str("Dataframe"),
             ViewReflection {
                 applicability: ViewApplicability::AllArchetypes,
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.DataframeQuery",
+                )],
             },
         ),
         (
@@ -5602,6 +5633,15 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.GraphEdges"),
                     ArchetypeName::from("rerun.archetypes.GraphNodes"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.GraphBackground"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceLink"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceManyBody"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForcePosition"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceCollisionRadius"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ForceCenter"),
+                ],
             },
         ),
         (
@@ -5611,6 +5651,10 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
                     ArchetypeName::from("rerun.archetypes.GeoPoints"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.MapBackground"),
+                ],
             },
         ),
         (
@@ -5647,6 +5691,12 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.VideoFrameReference"),
                     ArchetypeName::from("rerun.archetypes.VideoStream"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.Background"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5688,6 +5738,13 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.Volume3D"),
                     ArchetypeName::from("rerun.archetypes.VoxelGridMap"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.Background"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.LineGrid3D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.EyeControls3D"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5697,6 +5754,10 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.StateChange"),
                     ArchetypeName::from("rerun.archetypes.StateConfiguration"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
         (
@@ -5705,6 +5766,11 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.Tensor",
                 )]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorSliceSelection"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorScalarMapping"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TensorViewFit"),
+                ],
             },
         ),
         (
@@ -5713,6 +5779,9 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.TextDocument",
                 )]),
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.TextDocumentFormat",
+                )],
             },
         ),
         (
@@ -5721,6 +5790,11 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
                     "rerun.archetypes.TextLog",
                 )]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogColumns"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogRows"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.TextLogFormat"),
+                ],
             },
         ),
         (
@@ -5733,6 +5807,14 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.archetypes.SeriesLines"),
                     ArchetypeName::from("rerun.archetypes.SeriesPoints"),
                 ]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.PlotInteraction"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
+                ],
             },
         ),
     ];

@@ -10,7 +10,9 @@ use datafusion::physical_plan::ExecutionPlanProperties as _;
 use datafusion::prelude::{Expr, SessionConfig, SessionContext, col, lit};
 use futures::{StreamExt as _, TryStreamExt as _};
 use itertools::Itertools as _;
-use re_datafusion::{DataframeClientAPI, DataframeQueryTableProvider};
+use re_datafusion::{
+    DataframeClientAPI, DataframeQueryTableProvider, NoOpObjectStoreAuthenticator,
+};
 use re_log_types::{EntityPath, EntryId};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use std::sync::Arc;
@@ -102,6 +104,7 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
             None,       // arrow_schema — let the provider fetch it
             None,       // trace_headers
             Vec::new(), // metrics_collectors
+            Arc::new(NoOpObjectStoreAuthenticator::default()),
         )
         .await
         .unwrap();
@@ -206,6 +209,7 @@ pub async fn query_dataset_range_filter_with_and_without_latest_at_fill(
         None,
         None,
         Vec::new(),
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();
@@ -233,6 +237,7 @@ pub async fn query_dataset_range_filter_with_and_without_latest_at_fill(
         None,
         None,
         Vec::new(),
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();
@@ -336,6 +341,7 @@ pub async fn query_dataset_with_limit(service: impl RerunCloudService) {
         None,       // arrow_schema — let the provider fetch it
         None,       // trace_headers
         Vec::new(), // metrics_collectors
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();
@@ -538,6 +544,7 @@ async fn scan_collect_rows<T: RerunCloudService>(
         None,
         None,
         Vec::new(),
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();
@@ -611,6 +618,7 @@ pub async fn query_dataset_or_with_empty_branch_and_projection(service: impl Rer
         None,       // arrow_schema — let the provider fetch it
         None,       // trace_headers
         Vec::new(), // metrics_collectors
+        Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
     .unwrap();

@@ -483,6 +483,15 @@ mod tests {
 
     /// Saturating subtraction protects against `TimeInt::MIN`
     /// underflow if the server ever ships a chunk with `time_min == MIN`.
+    ///
+    /// This pins *legacy* behavior, not the intended contract. Saturating to
+    /// `MIN` makes the horizon equal to an outstanding chunk's own `time_min`,
+    /// so the inclusive emit range `(processed, horizon]` ships rows that
+    /// chunk still contributes to, and `processed` then advances past `MIN` —
+    /// those rows are never queried again. The v2 pipeline returns `None`
+    /// here instead, gating emission until the chunk lands; see
+    /// `pipeline::segment::tests::outstanding_at_time_int_min_gates_all_emission`.
+    /// Left alone because this module is deleted by the v2 migration.
     #[test]
     fn horizon_saturates_at_time_int_min() {
         let mut m = SegmentChunkManifest::new();

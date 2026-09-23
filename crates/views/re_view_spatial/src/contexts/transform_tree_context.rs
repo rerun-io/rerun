@@ -212,9 +212,12 @@ impl ViewContextSystem for TransformTreeContext {
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
+
+        // Pass the loading state if any missing chunks were found when building the transform forest.
         if self.transform_forest.any_missing_chunks() {
             missing_chunk_reporter.report_missing_chunk();
         }
+
         self.cache_frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
         let frame_id_results = {
@@ -421,6 +424,16 @@ fn map_tree_transform_to_transform_info(
     latest_at_query: &LatestAtQuery,
     entity_path_hash: &EntityPathHash,
 ) -> Result<TransformInfo, re_tf::TransformFromToError> {
+    // We have to manually do a latest at here to mark needed instance poses as missing.
+    //
+    // This is a workaround for the transform cache not taking virtual additions into
+    // account, and not doing the initial request for non-physical pose chunks.
+    if let Some(entity_path) = ctx.recording().entity_path_from_hash(entity_path_hash)
+        && re_tf::report_needed_instance_pose_chunks(ctx.recording(), entity_path, latest_at_query)
+    {
+        missing_chunk_reporter.report_missing_chunk();
+    }
+
     let tree_transform = tree_transform.as_ref().map_err(|err| err.clone())?;
     let poses = transforms
         .pose_transforms(*entity_path_hash)

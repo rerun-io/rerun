@@ -209,6 +209,12 @@ CURATED_GROUPS: Final[list[Group]] = [
         ],
     ),
     Group(
+        title="Audio",
+        items=[
+            "archetypes.AssetAudio",
+        ],
+    ),
+    Group(
         title="Plotting",
         items=[
             "archetypes.BarChart",
