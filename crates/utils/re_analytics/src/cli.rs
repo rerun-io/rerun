@@ -82,7 +82,7 @@ const DETAILS: &str = "
 
     What data is collected?
     - The exact set of analytics events and parameters can be found here:
-      https://github.com/rerun-io/rerun/blob/GIT_HASH/crates/utils/re_analytics/src/event.rs
+      https://github.com/rerun-io/rerun/blob/main/crates/utils/re_analytics/src/event.rs
     - We collect high level events about the usage of the Rerun Viewer. For example:
       - The event 'Viewer Opened' helps us estimate how often Rerun is used.
       - The event 'Data Source Connected' helps us understand if users tend to use live
@@ -115,6 +115,9 @@ const DETAILS: &str = "
     Find out its location by running `rerun analytics config`.
 ";
 
-pub fn print_details(git_hash_or_tag: &str) {
-    eprintln!("{}", DETAILS.replace("GIT_HASH", git_hash_or_tag));
+pub fn print_details(git_ref: &str) {
+    eprintln!(
+        "{}",
+        DETAILS.replace("/blob/main/", &format!("/blob/{git_ref}/"))
+    );
 }

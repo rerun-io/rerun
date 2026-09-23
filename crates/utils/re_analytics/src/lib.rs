@@ -514,20 +514,27 @@ pub trait Properties: Sized {
 
 impl Properties for re_build_info::BuildInfo {
     fn serialize(self, event: &mut AnalyticsEvent) {
-        let git_hash = self.git_hash_or_tag();
         let Self {
             crate_name: _,
             features,
             version,
             rustc_version,
             llvm_version,
-            git_hash: _,
+            git_hash,
             git_branch: _,
             is_in_rerun_workspace,
             target_triple,
             datetime,
             is_debug_build,
         } = self;
+
+        // It is tempting to use [`re_build_info::BuildInfo::git_ref`] here,
+        // but this is the representation that PostHog expects (`v`-prefixed).
+        let git_hash = if git_hash.is_empty() {
+            format!("v{version}")
+        } else {
+            git_hash.to_string()
+        };
 
         event.insert("features", features.to_string());
         event.insert("git_hash", git_hash);
@@ -557,6 +564,31 @@ mod tests {
         set_logged_in(true);
         assert!(Analytics::global_get().is_none());
         assert!(!Analytics::global_init_was_attempted());
+    }
+
+    #[test]
+    fn build_info_serializes_versioned_git_tag() {
+        let build_info = re_build_info::BuildInfo {
+            crate_name: "re_analytics".into(),
+            features: "".into(),
+            version: re_build_info::CrateVersion::parse("0.38.1"),
+            rustc_version: "".into(),
+            llvm_version: "".into(),
+            git_hash: "".into(),
+            git_branch: "".into(),
+            is_in_rerun_workspace: false,
+            target_triple: "".into(),
+            datetime: "".into(),
+            is_debug_build: false,
+        };
+        let mut event = AnalyticsEvent::new("test_event", EventKind::Append);
+
+        build_info.serialize(&mut event);
+
+        assert!(matches!(
+            event.props.get("git_hash"),
+            Some(Property::String(git_hash)) if git_hash == "v0.38.1"
+        ));
     }
 
     #[test]
