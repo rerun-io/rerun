@@ -1,4 +1,6 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
+
+use nohash_hasher::IntMap;
 use std::sync::Arc;
 
 use itertools::izip;
@@ -49,7 +51,7 @@ struct TextLogEntryCacheEntry {
 /// overrides and there is no other way to tell which entries became unreachable.
 #[derive(Default)]
 pub struct TextLogEntryCache {
-    cache: HashMap<Hash64, TextLogEntryCacheEntry>,
+    cache: IntMap<Hash64, TextLogEntryCacheEntry>,
     generation: u64,
 }
 

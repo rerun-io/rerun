@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
@@ -24,7 +24,7 @@ use crate::{Cache, ImageInfo, ImageStats};
 pub struct EncodedDepthImageStatsCache(
     // The inner key is the hash of the media type,
     // since a media type logged later can change how the same blob is decoded.
-    HashMap<StoredBlobCacheKey, HashMap<Hash64, Option<ImageStats>>>,
+    IntMap<StoredBlobCacheKey, IntMap<Hash64, Option<ImageStats>>>,
 );
 
 impl EncodedDepthImageStatsCache {

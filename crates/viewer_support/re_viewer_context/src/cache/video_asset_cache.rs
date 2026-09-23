@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
@@ -34,7 +34,7 @@ struct Entry {
 
 /// Caches videos assets and their players based on media type & row id.
 #[derive(Default)]
-pub struct VideoAssetCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
+pub struct VideoAssetCache(IntMap<StoredBlobCacheKey, IntMap<Hash64, Entry>>);
 
 impl VideoAssetCache {
     /// Read in some video data and cache the result.
