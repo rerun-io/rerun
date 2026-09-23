@@ -61,7 +61,7 @@ service ViewerControlService {
 
   // One `egui_inspection` request/response exchange, driving the viewer's widgets directly.
   //
-  // The bodies are opaque to this service: `egui_mcp`'s UI tools (`click`, `query_tree`,
+  // The bodies are opaque to this service: `egui_mcp`'s UI tools (`click`, `widget_tree`,
   // `screenshot`, …) encode them, and the viewer's `egui_inspection` plugin services them.
   rpc EguiInspect(EguiInspectRequest) returns (EguiInspectResponse) {}
 }
@@ -142,6 +142,15 @@ message ViewerControlRequest {
     //
     // `NOT_FOUND` if the requested recording is not open.
     GetRecordingSchemaRequest get_recording_schema = 7;
+
+    // Draw a pulsing outline on top of the viewer, to point the user at something on screen.
+    //
+    // The outline keeps pulsing until the user clicks anywhere, which dismisses it. There is at
+    // most one highlight at a time: highlighting again replaces the previous one.
+    //
+    // Use it to show the user where the thing you are talking about is, rather than describing
+    // its position in prose.
+    HighlightRectRequest highlight_rect = 8;
   }
 }
 
@@ -169,6 +178,9 @@ message ViewerControlResponse {
 
     // Result of `get_recording_schema`.
     GetRecordingSchemaResponse get_recording_schema = 7;
+
+    // Result of `highlight_rect`.
+    HighlightRectResponse highlight_rect = 8;
   }
 }
 
@@ -466,6 +478,43 @@ message ViewerTimeline {
   // The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
   optional rerun.common.v1alpha1.TimeRange time_range = 3;
 }
+
+// ----------------------------------------------------------------------------
+// HighlightRect
+
+// Request for `HighlightRect`.
+message HighlightRectRequest {
+  // The rectangle to outline, in logical points from the top-left corner of the viewer — the
+  // same coordinate frame `get_widget` reports a widget's `bounds` in, so those bounds can be
+  // passed straight through.
+  //
+  // Omit it to dismiss the current highlight instead.
+  optional ScreenRect rect = 1;
+
+  // Short text shown beside the outline, naming what is being pointed at.
+  optional string label = 2;
+}
+
+// A rectangle on the viewer's screen.
+//
+// In logical points from the top-left corner of the viewer window — the same coordinate frame
+// `get_widget` reports a widget's `bounds` in, so those can be passed straight through.
+message ScreenRect {
+  // Distance from the left edge of the viewer to the left edge of the rectangle.
+  float x = 1;
+
+  // Distance from the top edge of the viewer to the top edge of the rectangle.
+  float y = 2;
+
+  // Width of the rectangle. Must be positive.
+  float w = 3;
+
+  // Height of the rectangle. Must be positive.
+  float h = 4;
+}
+
+// Response for `HighlightRect`. Empty: an error is reported as a gRPC status instead.
+message HighlightRectResponse {}
 
 // ----------------------------------------------------------------------------
 // OpenUrl

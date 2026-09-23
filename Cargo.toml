@@ -428,7 +428,7 @@ reqwest = { version = "0.12.28", default-features = false, features = [
 ] } # 0.13 blocked: `walkers` (latest 0.54) and `http-cache-reqwest` still depend on reqwest 0.12. Bump once walkers moves to reqwest 0.13 (also unblocks tower-http 0.7).
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
-rmcp = { version = "1.8", features = ["macros", "schemars", "server", "transport-io"] }
+rmcp = { version = "3.4", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
 ring = "0.17.14"
@@ -945,6 +945,8 @@ egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main" }
 emath = { git = "https://github.com/emilk/egui", branch = "main" }
 
 # kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
+
+egui_mcp = { git = "https://github.com/rerun-io/kittest_inspector", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

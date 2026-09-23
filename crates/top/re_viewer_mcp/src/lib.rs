@@ -14,7 +14,7 @@
 //!
 //! The tools come in two groups.
 //!
-//! The egui UI tools (`query_tree`, `screenshot`, `click`, …) are `egui_mcp`'s, reused unchanged.
+//! The egui UI tools (`widget_tree`, `screenshot`, `click`, …) are `egui_mcp`'s, reused unchanged.
 //! Each call becomes one `egui_inspection` request/response exchange carried inside a single
 //! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
 //!
@@ -35,8 +35,8 @@ use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt as _,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
-        CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
-        PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
+        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
+        ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
     },
     schemars,
     service::{RequestContext, RoleServer},
@@ -62,6 +62,12 @@ const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 /// These are answered from viewer state without waiting for a frame, so anything this slow means
 /// the viewer is gone rather than busy.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// How long a client may treat the tool list as fresh.
+///
+/// The list cannot change while the process runs, so this only bounds how stale a client's copy
+/// may be across a restart that adds or removes an operation.
+const TOOL_LIST_TTL: Duration = Duration::from_mins(5);
 
 /// Deadline for one `egui_inspection` exchange.
 ///
@@ -290,7 +296,7 @@ impl ViewerMcpServer {
             return;
         };
         conn.log_cursor.store(last.sequence, Ordering::Relaxed);
-        result.content.push(Content::text(format!(
+        result.content.push(ContentBlock::text(format!(
             "Viewer log since the previous tool call:\n{}",
             format_log_entries(&entries)
         )));
@@ -332,7 +338,7 @@ impl ViewerMcpServer {
             .into_inner();
         let json = proto_tools::response_json(name, &response)
             .map_err(|err| format!("{name} failed: {err}"))?;
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             json.to_string(),
         )]))
     }
@@ -438,9 +444,19 @@ type ToolError = String;
 type ToolResult<T> = Result<T, ToolError>;
 
 /// Shape a recoverable failure as an `isError: true` tool result, for the `ServerHandler`
-/// methods that return `Result<CallToolResult, McpError>` rather than a [`ToolResult`].
+/// methods that return a [`CallToolResponse`] rather than a [`ToolResult`].
 fn text_error(msg: impl Into<String>) -> CallToolResult {
-    CallToolResult::error(vec![Content::text(msg.into())])
+    CallToolResult::error(vec![ContentBlock::text(msg.into())])
+}
+
+/// Collapse a router response to its completed result.
+///
+/// None of these tools use multi-round-trip input or tasks, so any other variant is a bug.
+fn complete(response: CallToolResponse) -> CallToolResult {
+    match response {
+        CallToolResponse::Complete(result) => result,
+        other => text_error(format!("unexpected tool response: {other:?}")),
+    }
 }
 
 /// Operating guidance sent to clients at initialize (the MCP `instructions` field). The per-tool
@@ -453,15 +469,19 @@ Getting oriented:
 - Call `rerun_connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
-- The tool name tells you which of two families it belongs to. A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`query_tree`, `click`, `type_text`, `hover`, `scroll`, …) is low level: it drives the widgets one input event at a time, the way a person would.
+- The tool name tells you which of two families it belongs to. A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) is low level: it drives the widgets one input event at a time, the way a person would.
 - Prefer a `rerun_*` tool whenever one fits, and drop to the low-level tools only for what they do not cover. Clicking through the UI costs several calls and a lot of context to achieve what one `rerun_*` call does, and it breaks whenever the layout moves.
-- Start most tasks with `rerun_get_viewer_state` to see what is loaded, then `query_tree` to find widgets, and/or `screenshot` to see the rendered frame.
+- Start most tasks with `rerun_get_viewer_state` to see what is loaded, then `widget_tree` to find widgets, and/or `screenshot` to see the rendered frame.
 
 Targeting widgets:
-- Prefer locators — an `id` from `query_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
+- Prefer locators — an `id` from `widget_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
+
+Pointing the user at something:
+- Whenever the user asks where something is — "where is the time cursor?", "how do I hide this panel?", "which button does X?" — answer with `rerun_highlight_rect`, not with prose about the layout. Find it with `get_widget`, pass its `bounds` straight through as `rect`, and give a short `label`. The user is looking at the screen: showing them beats describing a position they then have to hunt for.
+- Follow the highlight with a one-line answer. The outline pulses until the user clicks anywhere, and highlighting again replaces it, so point at one thing at a time.
 
 Acting and verifying:
-- After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
+- After an action that changes the UI, confirm it landed: `widget_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
 - Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
@@ -478,11 +498,11 @@ Reading the data itself:
 - `rerun_close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
-- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `query_tree`/`get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
+- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
 impl ServerHandler for ViewerMcpServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("viewer-mcp", env!("CARGO_PKG_VERSION")))
             .with_instructions(self.instructions())
     }
@@ -492,18 +512,17 @@ impl ServerHandler for ViewerMcpServer {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(ListToolsResult {
-            tools: self.all_tools(),
-            next_cursor: None,
-            meta: None,
-        })
+        // The tool list is fixed for the life of the process — it comes from the compiled-in
+        // descriptor set — so a client may hold on to it instead of asking again.
+        Ok(ListToolsResult::with_all_items(self.all_tools())
+            .with_ttl_ms(TOOL_LIST_TTL.as_millis() as u64))
     }
 
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         let name = request.name.clone();
 
         // Our own tools carry the prefix. The egui ones keep their upstream names and go to the
@@ -517,9 +536,11 @@ impl ServerHandler for ViewerMcpServer {
             if self.tool_router.has_route(&ours) {
                 let mut request = request;
                 request.name = std::borrow::Cow::Owned(ours);
-                self.tool_router
-                    .call(ToolCallContext::new(self, request, context))
-                    .await?
+                complete(
+                    self.tool_router
+                        .call(ToolCallContext::new(self, request, context))
+                        .await?,
+                )
             } else {
                 match self.call_operation(&ours, request.arguments).await {
                     Ok(result) => result,
@@ -529,7 +550,7 @@ impl ServerHandler for ViewerMcpServer {
         } else {
             let conn = self.conn.lock().clone();
             let Some(conn) = conn else {
-                return Ok(text_error("no app connected — call `rerun_connect` first"));
+                return Ok(text_error("no app connected — call `rerun_connect` first").into());
             };
             conn.ui.dispatch(&self.ui_router, request, context).await?
         };
@@ -537,7 +558,7 @@ impl ServerHandler for ViewerMcpServer {
         if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
             self.append_new_logs(&mut result).await;
         }
-        Ok(result)
+        Ok(result.into())
     }
 }
 

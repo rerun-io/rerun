@@ -15,11 +15,11 @@ use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, GetRecordingSchemaRequest,
     GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse,
-    GetViewerStateResponse, OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema,
-    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest,
-    SetTimeCursorResponse, TimeCursor, ViewerControlRequest, ViewerControlResponse,
-    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerTimeline, ViewerView,
-    viewer_control_request,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
+    OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest,
+    SaveScreenshotResponse, ScreenRect, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
+    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
+    ViewerReport, ViewerTimeline, ViewerView, viewer_control_request,
 };
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
@@ -88,6 +88,10 @@ impl App {
             }
             Kind::GetViewerState(_) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
+            }
+            Kind::HighlightRect(request) => {
+                let result = self.apply_highlight_rect(request, egui_ctx);
+                on_done.call(result.map(ViewerControlResponse::from));
             }
             Kind::OpenUrl(OpenUrlRequest { url }) => {
                 let parsed = ViewerOpenUrl::parse_with_options(
@@ -201,6 +205,38 @@ impl App {
                 view_id,
                 notify: false,
             });
+    }
+
+    /// Point the user at a rectangle on screen, or clear the current highlight.
+    fn apply_highlight_rect(
+        &mut self,
+        request: HighlightRectRequest,
+        egui_ctx: &egui::Context,
+    ) -> Result<HighlightRectResponse, ViewerControlError> {
+        let HighlightRectRequest { rect, label } = request;
+
+        self.screen_highlight = rect
+            .map(|rect| {
+                let ScreenRect { x, y, w, h } = rect;
+                let rect = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(w, h));
+                // A degenerate or non-finite rectangle would paint an outline the user cannot
+                // see, which reads as the viewer having ignored the request. The protobuf floats
+                // are whatever the caller sent, so NaN and infinity both have to be caught here.
+                if !rect.is_finite() || !rect.is_positive() {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "`rect` must be finite with a positive size, got {w}x{h} at ({x}, {y})"
+                    )));
+                }
+                let now = egui_ctx.input(|i| i.time);
+                Ok(crate::screen_highlight::ScreenHighlight::new(
+                    rect, label, now,
+                ))
+            })
+            .transpose()?;
+
+        egui_ctx.request_repaint();
+
+        Ok(HighlightRectResponse {})
     }
 }
 
@@ -639,7 +675,7 @@ fn group_schema_by_entity<'a>(
 /// take a screenshot, inject pointer or keyboard events, and so on.
 ///
 /// `re_viewer_mcp` is one client of it: that server turns each of its egui UI tool calls
-/// (`click`, `query_tree`, `screenshot`, …) into such requests and sends them over the
+/// (`click`, `widget_tree`, `screenshot`, …) into such requests and sends them over the
 /// `egui_inspect` gRPC operation. Its Rerun-specific tools (`viewer_state`, `set_time`, …) use
 /// their own operations and never come here. Any other tool speaking the protocol works too.
 ///

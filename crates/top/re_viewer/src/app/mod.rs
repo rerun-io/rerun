@@ -146,6 +146,10 @@ pub struct App {
     /// Recent log messages, served to agents through `re_viewer_mcp`.
     pub(crate) viewer_log: crate::viewer_log::ViewerLog,
 
+    /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
+    /// until the user clicks.
+    screen_highlight: Option<crate::screen_highlight::ScreenHighlight>,
+
     dev_panel: crate::dev_panel::DevPanel,
     dev_panel_open: bool,
 
@@ -552,6 +556,7 @@ impl App {
             table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_log: Default::default(),
+            screen_highlight: None,
 
             dev_panel: Default::default(),
             dev_panel_open: false,

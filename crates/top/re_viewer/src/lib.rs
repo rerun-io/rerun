@@ -46,6 +46,7 @@ mod navigation;
 mod open_url_description;
 mod prefetch_chunks;
 mod saving;
+mod screen_highlight;
 mod screenshotter;
 mod startup_options;
 mod texture_readback;

@@ -25,6 +25,15 @@ impl App {
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
+        // Before the panels: the highlight is dismissed by any click, and the welcome screen
+        // clears `InputState::pointer` while it paints, so a read afterwards would miss that
+        // click. The outline is painted on its own layer, so it still ends up on top.
+        if let Some(highlight) = &self.screen_highlight
+            && !highlight.show(ui)
+        {
+            self.screen_highlight = None;
+        }
+
         let custom_window_decorations = self.custom_window_decorations();
 
         let mut main_panel_frame = egui::Frame::default();

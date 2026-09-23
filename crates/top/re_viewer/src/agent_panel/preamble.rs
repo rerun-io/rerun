@@ -1,4 +1,7 @@
 //! Instructions sent to the viewer agent with its first prompt.
+//!
+//! Only things specific to the agent panel should go into this file.
+//! Anything general to rerun-mcp goes in the `re_viewer_mcp` preamble instead.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
