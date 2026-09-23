@@ -565,11 +565,15 @@ async fn register_file(
     let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&reader)
         .await
         .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?;
+    let filename = path
+        .file_name()
+        .unwrap_or_else(|| path.as_os_str())
+        .to_string_lossy();
     let layer = catalog
         .is_internal()
         .then(|| {
             LayerName::try_new(format!(
-                "rrd-{}",
+                "{filename}-{}",
                 re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
             ))
         })

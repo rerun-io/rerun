@@ -36,7 +36,7 @@ async fn viewer_catalog_uses_rrd_fingerprint_layers() {
         .expect("failed to fingerprint RRD");
         recordings.push((
             path,
-            format!("rrd-{}", sha256_to_hex(fingerprint.as_bytes())),
+            format!("{filename}-{}", sha256_to_hex(fingerprint.as_bytes())),
             entity,
         ));
     }
@@ -57,7 +57,7 @@ async fn viewer_catalog_uses_rrd_fingerprint_layers() {
     harness.click_label("Columns");
     harness.click_label("Show column layer names");
     harness.step_until("layer names visible", |harness| {
-        harness.query_all_by_label_contains("rrd-").count() == 2
+        harness.query_all_by_label_contains(".rrd-").count() == 2
     });
     let shared_cell = harness.get_by_label_contains(&recordings[0].1);
     let other_cell = harness.get_by_label_contains(&recordings[2].1);
