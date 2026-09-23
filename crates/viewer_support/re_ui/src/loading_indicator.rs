@@ -28,7 +28,8 @@ const DEFAULT_DOT_RADIUS: f32 = 3.0;
 
 /// A loading indicator widget.
 ///
-/// `reason` describes why we are loading. In debug builds, it is shown on hover.
+/// `reason` describes why we are loading as a sentence fragment without trailing punctuation.
+/// In debug builds, it is shown on hover.
 #[doc(alias = "spinner")]
 pub fn loading_indicator_ui(ui: &mut egui::Ui, reason: &str) -> egui::Response {
     let r = calc_radius(ui.available_size_before_wrap());
@@ -42,7 +43,8 @@ pub fn loading_indicator_ui(ui: &mut egui::Ui, reason: &str) -> egui::Response {
 /// A loading indicator as tall as one line of text, so a label can take its place without
 /// changing layout.
 ///
-/// `reason` describes why we are loading. In debug builds, it is shown on hover.
+/// `reason` describes why we are loading as a sentence fragment without trailing punctuation.
+/// In debug builds, it is shown on hover.
 #[doc(alias = "spinner")]
 pub fn inline_loading_indicator_ui(ui: &mut egui::Ui, reason: &str) -> egui::Response {
     let line_height = ui.text_style_height(&egui::TextStyle::Body);
@@ -72,7 +74,8 @@ pub fn calc_radius(available_space: Vec2) -> f32 {
 ///
 /// If `color` is `None`, the spinner uses `visuals.strong_text_color()`.
 ///
-/// `reason` describes why we are loading. In debug builds, it is shown on hover.
+/// `reason` describes why we are loading as a sentence fragment without trailing punctuation.
+/// In debug builds, it is shown on hover.
 ///
 /// The indicator reports itself to `AccessKit` as a `ProgressIndicator`, so tests can wait for all
 /// loading to finish.

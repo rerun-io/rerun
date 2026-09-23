@@ -341,7 +341,7 @@ impl Server {
 
             match self.entries.state() {
                 Poll::Pending => {
-                    ui.loading_indicator("Loading entries…");
+                    ui.loading_indicator("Loading entries");
                 }
                 Poll::Ready(Err(err)) => {
                     Alert::error().show_text(
