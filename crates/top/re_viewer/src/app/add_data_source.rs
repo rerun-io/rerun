@@ -567,7 +567,7 @@ async fn register_file(
         .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?;
     let filename = path
         .file_name()
-        .unwrap_or_else(|| path.as_os_str())
+        .unwrap_or(path.as_os_str())
         .to_string_lossy();
     let layer = catalog
         .is_internal()
