@@ -25,9 +25,4 @@ impl FilterIsNotNull {
     pub fn entity_path(&self) -> EntityPath {
         self.column.entity_path()
     }
-
-    /// Component column selector of the filter column
-    pub fn column_selector(&self) -> re_sorbet::ComponentColumnSelector {
-        self.column.column_selector()
-    }
 }

@@ -190,7 +190,12 @@ impl Query {
 
         let (mut active, filter) = original_filter_is_not_null
             .as_ref()
-            .map(|filter| (filter.active(), Some(filter.column_selector())))
+            .map(|filter| {
+                (
+                    filter.active(),
+                    Some(super::blueprint::column_selector(&filter.column)),
+                )
+            })
             .unwrap_or((false, None));
 
         //

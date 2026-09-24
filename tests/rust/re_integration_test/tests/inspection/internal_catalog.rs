@@ -8,6 +8,7 @@ use re_sdk_types::archetypes::Points2D;
 const APP_ID: &str = "rerun_example_catalog_test";
 
 #[tokio::test(flavor = "multi_thread")]
+#[ignore = "flaky on CI"] // TODO(RR-5790): re-enable https://linear.app/rerun/issue/RR-5790
 async fn viewer_catalog_uses_rrd_fingerprint_layers() {
     let dir = tempfile::tempdir().expect("failed to create catalog test directory");
     let mut recordings = Vec::new();

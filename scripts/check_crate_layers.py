@@ -12,6 +12,9 @@ them side by side.
 
 The same layering is what `ARCHITECTURE.md` draws, one band per folder, so a violation here is
 an arrow pointing the wrong way in that diagram.
+
+`FORBIDDEN_DEPENDENCIES` lists `(crate, dependency)` pairs where `crate` must not depend on
+`dependency`, directly or through other crates, even when they share a folder.
 """
 
 from __future__ import annotations
@@ -35,6 +38,15 @@ LAYERS = [
     ["crates/utils"],
 ]
 
+FORBIDDEN_DEPENDENCIES = [
+    # The generated types describe how we encode data as Arrow;
+    # it should not need to understand our Sorbet spec.
+    ("re_sdk_types", "re_sorbet"),
+    # re_sorbet defines how we name our column names and Arrow metadata;
+    # it should never know about the higher level types in re_sdk_types.
+    ("re_sorbet", "re_sdk_types"),
+]
+
 RERUN_ROOT = Path(__file__).absolute().parent.parent
 
 
@@ -50,6 +62,26 @@ def cargo_metadata() -> dict[str, Any]:
         raise SystemExit(f"cargo metadata failed with exit code {out.returncode}")
     metadata: dict[str, Any] = json.loads(out.stdout)
     return metadata
+
+
+def dependency_chain(normal_deps: dict[str, set[str]], start: str, target: str) -> list[str] | None:
+    """The shortest chain of non-dev dependencies from `start` to `target`, if there is one."""
+    parent: dict[str, str] = {}
+    queue = [start]
+    seen = {start}
+    while queue:
+        crate = queue.pop(0)
+        if crate == target:
+            chain = [crate]
+            while chain[-1] != start:
+                chain.append(parent[chain[-1]])
+            return chain[::-1]
+        for dep in sorted(normal_deps.get(crate, ())):
+            if dep not in seen:
+                seen.add(dep)
+                parent[dep] = crate
+                queue.append(dep)
+    return None
 
 
 def main() -> int:
@@ -82,8 +114,20 @@ def main() -> int:
             where = "a sibling of it" if dep_layer in siblings else "above it"
             errors.add(f"{layer}/{package['name']} depends on {dep['name']} in {dep_layer}, which is {where}")
 
+    workspace_crates = {package["name"] for package in metadata["packages"]}
+    normal_deps = {
+        package["name"]: {
+            dep["name"] for dep in package["dependencies"] if dep["kind"] != "dev" and dep["name"] in workspace_crates
+        }
+        for package in metadata["packages"]
+    }
+    for crate, dependency in FORBIDDEN_DEPENDENCIES:
+        chain = dependency_chain(normal_deps, crate, dependency)
+        if chain is not None:
+            errors.add(f"{crate} must not depend on {dependency}, but does: {' → '.join(chain)}")
+
     if errors:
-        print("The layering of the folders under crates/ is violated:\n")
+        print("The crate layering is violated:\n")
         for error in sorted(errors):
             print(f"  {error}")
         print("\nEither move a crate to a lower folder, or make the dependency a dev-dependency.")
@@ -91,6 +135,9 @@ def main() -> int:
         print("Layers, top to bottom:")
         for folders in LAYERS:
             print(f"  {' + '.join(folders)}")
+        print("Forbidden dependencies:")
+        for crate, dependency in FORBIDDEN_DEPENDENCIES:
+            print(f"  {crate} → {dependency}")
         return 1
 
     print(f"All {len(layer_of_crate)} crates under crates/ respect the layering.")
