@@ -2,6 +2,9 @@
 
 mod sample_decoder;
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests;
+
 use std::time::Duration;
 
 use web_time::Instant;
@@ -674,7 +677,9 @@ impl<T: Default> VideoPlayer<T> {
         let mut keyframe_idx = if let Some(last_enqueued) = self.last_enqueued
             && let Some(keyframe_idx) = video_description.sample_keyframe_idx(last_enqueued)
         {
-            if keyframe_idx < requested_keyframe_idx {
+            // A new live GOP may start exactly after the last enqueued sample.
+            // Keep completed frames in that case: resetting would discard them before display.
+            if keyframe_idx < requested_keyframe_idx && last_enqueued + 1 != requested_sample_idx {
                 // Need to reset if we're skipping frames.
                 self.reset(video_description)?;
                 // Skip forward and just enqueue the requested keyframe.
