@@ -159,14 +159,12 @@ async fn internal_catalog_revealed_by_catalog_api() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     assert!(
         harness
             .recording_panel()
             .root()
-            .query_all_by_label_contains("Viewer catalog")
-            .count()
-            == 0
+            .query_by_label_contains("Viewer catalog")
+            .is_none()
     );
 
     let mut client = harness
@@ -185,12 +183,11 @@ async fn internal_catalog_revealed_by_catalog_api() {
         .await
         .expect("failed to create dataset");
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("internal catalog revealed", &mut harness, |harness| {
         let panel = harness.recording_panel();
         let root = panel.root();
-        root.query_all_by_label_contains("Viewer catalog").count() > 0
-            && root.query_all_by_label_contains(DATASET_NAME).count() > 0
+        root.query_by_label_contains("Viewer catalog").is_some()
+            && root.query_by_label_contains(DATASET_NAME).is_some()
     });
 
     harness.snapshot("internal_catalog_revealed_by_catalog_api");

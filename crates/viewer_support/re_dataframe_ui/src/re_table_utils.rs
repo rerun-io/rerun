@@ -551,9 +551,8 @@ mod tests {
             .get_by_role(egui::Role::TextInput)
             .type_text(" CAMERA ");
         harness.run();
-        // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
-        assert!(harness.query_all_by_label("Duration").count() == 0);
-        assert!(harness.query_all_by_label("Notes").count() == 0);
+        assert!(harness.query_by_label("Duration").is_none());
+        assert!(harness.query_by_label("Notes").is_none());
         harness.get_by_label("Front camera");
         harness.get_by_label("Rear camera");
         harness.get_by_label("Depth image");

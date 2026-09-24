@@ -85,7 +85,6 @@ fn the_host_button_reports_only_the_frame_it_was_clicked_in() {
 #[test]
 fn there_is_no_host_button_unless_the_host_asks_for_one() {
     let harness = harness(panel(None));
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
-    assert!(harness.query_all_by_label_contains(LABEL).count() == 0);
+    assert!(harness.query_by_label_contains(LABEL).is_none());
     assert!(!harness.state().host_button_clicked());
 }

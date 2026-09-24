@@ -95,17 +95,16 @@ fn test_tooltip_mode(tooltip_mode: TooltipMode, snapshot_results: &mut SnapshotR
     };
     snapshot_results.add(harness.try_snapshot(snapshot_name));
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
-    let omitted_series_labels = harness.query_all_by_label_contains("… and 2 more").count();
+    let omitted_series_label = harness.query_by_label_contains("… and 2 more");
     match tooltip_mode {
         TooltipMode::Nearest => {
             assert!(
-                omitted_series_labels == 0,
+                omitted_series_label.is_none(),
                 "the nearest tooltip should only show the hovered series"
             );
         }
         TooltipMode::All => assert!(
-            omitted_series_labels > 0,
+            omitted_series_label.is_some(),
             "the shared tooltip should cap its visible rows and report omitted series"
         ),
     }

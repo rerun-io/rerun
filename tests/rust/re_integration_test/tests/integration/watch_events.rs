@@ -52,12 +52,11 @@ pub async fn watch_events_auto_refresh_test() {
     harness.set_time_panel_opened(false);
 
     // Wait for the persistent dataset and table to appear in the panel.
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("Persistent entries appear", &mut harness, |harness| {
         let panel = harness.recording_panel();
         let root = panel.root();
-        root.query_all_by_label_contains(persistent_dataset).count() > 0
-            && root.query_all_by_label_contains(persistent_table).count() > 0
+        root.query_by_label_contains(persistent_dataset).is_some()
+            && root.query_by_label_contains(persistent_table).is_some()
     });
 
     // Select the persistent table so its data is shown, avoiding the transient "Loading…" state
@@ -68,11 +67,10 @@ pub async fn watch_events_auto_refresh_test() {
         .expect("persistent table label should be present")
         .click();
     harness.run_ok();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "Persistent table data is rendered in main view",
         &mut harness,
-        |harness| harness.query_all_by_label_contains("alpha").count() > 0,
+        |harness| harness.query_by_label_contains("alpha").is_some(),
     );
     snapshot_results.add(harness.try_snapshot("watch_events_1_initial"));
 
@@ -87,18 +85,16 @@ pub async fn watch_events_auto_refresh_test() {
         .expect("Failed to create dataset");
     let table = create_table(&mut client, transient_table).await;
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("Transient entries auto-appear", &mut harness, |harness| {
         let panel = harness.recording_panel();
         let root = panel.root();
-        root.query_all_by_label_contains(transient_dataset).count() > 0
-            && root.query_all_by_label_contains(transient_table).count() > 0
+        root.query_by_label_contains(transient_dataset).is_some()
+            && root.query_by_label_contains(transient_table).is_some()
     });
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "Persistent table data is rendered again after refresh",
         &mut harness,
-        |harness| harness.query_all_by_label_contains("alpha").count() > 0,
+        |harness| harness.query_by_label_contains("alpha").is_some(),
     );
     snapshot_results.add(harness.try_snapshot("watch_events_2_entries_added"));
 
@@ -111,11 +107,10 @@ pub async fn watch_events_auto_refresh_test() {
         .expect("transient table label should be present")
         .click();
     harness.run_ok();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "Transient table data is rendered in main view",
         &mut harness,
-        |harness| harness.query_all_by_label_contains("alpha").count() > 0,
+        |harness| harness.query_by_label_contains("alpha").is_some(),
     );
 
     // When deleting entries, the server emits `EntryDeleted` and the viewer auto-refreshes again.
@@ -146,17 +141,16 @@ pub async fn watch_events_auto_refresh_test() {
     }
 
     // The deleted entries auto-disappear on their own while the persistent ones stay around.
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "Transient entries auto-disappear",
         &mut harness,
         |harness| {
             let panel = harness.recording_panel();
             let root = panel.root();
-            root.query_all_by_label_contains(transient_dataset).count() == 0
-                && root.query_all_by_label_contains(transient_table).count() == 0
-                && root.query_all_by_label_contains(persistent_dataset).count() > 0
-                && root.query_all_by_label_contains(persistent_table).count() > 0
+            root.query_by_label_contains(transient_dataset).is_none()
+                && root.query_by_label_contains(transient_table).is_none()
+                && root.query_by_label_contains(persistent_dataset).is_some()
+                && root.query_by_label_contains(persistent_table).is_some()
         },
     );
     snapshot_results.add(harness.try_snapshot("watch_events_3_entries_removed"));
