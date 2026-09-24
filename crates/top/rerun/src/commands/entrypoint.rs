@@ -762,7 +762,7 @@ where
 
     #[cfg(feature = "analytics")]
     if !args.integration_test {
-        record_cli_command_analytics(&args);
+        record_cli_command_analytics(&args, build_info.clone());
     }
 
     initialize_thread_pool(args.threads);
@@ -2051,7 +2051,7 @@ impl ReceiversFromUrlParams {
 
 /// Records analytics for the CLI command invocation.
 #[cfg(feature = "analytics")]
-fn record_cli_command_analytics(args: &Args) {
+fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInfo) {
     let Some(analytics) = re_analytics::Analytics::global_or_init() else {
         return;
     };
@@ -2148,6 +2148,7 @@ fn record_cli_command_analytics(args: &Args) {
     };
 
     analytics.record(re_analytics::event::CliCommandInvoked {
+        build_info,
         command,
         subcommand,
         web_viewer: *web_viewer,

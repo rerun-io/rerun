@@ -639,8 +639,9 @@ impl Properties for LoadDataSource {
 /// Tracks CLI command invocations.
 ///
 /// This is sent when a user runs the Rerun CLI with any command.
-#[derive(Default)]
 pub struct CliCommandInvoked {
+    pub build_info: BuildInfo,
+
     /// The main command (e.g., "rrd", "auth", "mcap").
     /// "viewer" is used when no subcommand is specified.
     pub command: &'static str,
@@ -671,6 +672,7 @@ impl Event for CliCommandInvoked {
 impl Properties for CliCommandInvoked {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            build_info,
             command,
             subcommand,
             web_viewer,
@@ -688,6 +690,7 @@ impl Properties for CliCommandInvoked {
             test_receive,
         } = self;
 
+        build_info.serialize(event);
         event.insert("command", command);
         event.insert_opt("subcommand", subcommand.map(|s| s.to_owned()));
         event.insert("web_viewer", web_viewer);
