@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use egui::Ui;
 use egui::text_edit::TextEditState;
 use egui::text_selection::LabelSelectionState;
@@ -31,7 +31,7 @@ use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
 use crate::ui::{CloudState, LoginState};
-use crate::{StartupOptions, history};
+use crate::{InitialTime, StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -64,6 +64,14 @@ pub struct AppState {
     /// Created lazily on first use with a given store.
     #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+
+    /// Initial time applied once when each recording's time control is created.
+    #[serde(skip)]
+    pub(crate) initial_time: Option<InitialTime>,
+
+    /// Recordings that have had [`Self::initial_time`] applied.
+    #[serde(skip)]
+    initial_time_applied: HashSet<StoreId>,
 
     /// App-level caches for data that is not tied to any particular store.
     ///
@@ -172,6 +180,8 @@ impl Default for AppState {
             #[cfg(agent_panel)]
             agent_panel_open: false,
             time_controls: Default::default(),
+            initial_time: None,
+            initial_time_applied: Default::default(),
             app_caches: Default::default(),
             blueprint_undo_state: Default::default(),
             selection_histories: Default::default(),
@@ -1125,6 +1135,54 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Apply the configured initial cursor once its target timeline has enough data.
+    pub fn apply_initial_time(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: &impl BlueprintContext,
+        more_data_is_streaming_in: bool,
+    ) {
+        let Some(initial_time) = self.initial_time else {
+            return;
+        };
+        let store_id = entity_db.store_id();
+        if self.initial_time_applied.contains(store_id) {
+            return;
+        }
+
+        let time_ctrl = create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx);
+        let timeline = initial_time.timeline.unwrap_or(*time_ctrl.timeline_name());
+        if !initial_time_is_ready(
+            time_ctrl.time_range_for(entity_db, &timeline),
+            initial_time.time,
+            more_data_is_streaming_in,
+            entity_db.is_downloading_first_part_of_manifest(),
+        ) {
+            return;
+        }
+
+        let _response = time_ctrl.set_start_time(
+            Some(blueprint_ctx),
+            entity_db,
+            Some(timeline),
+            initial_time.time,
+        );
+        self.initial_time_applied.insert(store_id.clone());
+    }
+
+    fn initial_time_is_ready(
+        range: Option<re_log_types::AbsoluteTimeRange>,
+        requested_time: re_log_types::TimeReal,
+        more_data_is_streaming_in: bool,
+        is_downloading_manifest: bool,
+    ) -> bool {
+        let Some(range) = range else {
+            return false;
+        };
+        re_log_types::AbsoluteTimeRangeF::from(range).contains(requested_time)
+            || (!more_data_is_streaming_in && !is_downloading_manifest)
+    }
+
     /// Tick time controls for all preview recordings shown in grid cards.
     ///
     /// All previews share a single playback clock in raw timeline units, so
@@ -1149,6 +1207,8 @@ impl AppState {
 
         self.time_controls
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
+        self.initial_time_applied
+            .retain(|store_id| store_hub.store_bundle().contains(store_id));
 
         self.blueprint_undo_state
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
@@ -1322,9 +1382,42 @@ impl re_byte_size::MemUsageTreeCapture for AppState {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::EntryId;
+    use re_log_types::{AbsoluteTimeRange, EntryId, TimeInt, TimeReal};
 
     use super::*;
+
+    #[test]
+    fn initial_time_waits_for_range_to_finish_loading_before_clamping() {
+        let range = Some(AbsoluteTimeRange::new(
+            TimeInt::new_temporal(0),
+            TimeInt::new_temporal(10),
+        ));
+
+        assert!(!initial_time_is_ready(
+            None,
+            TimeReal::from(5_i64),
+            false,
+            false
+        ));
+        assert!(initial_time_is_ready(
+            range,
+            TimeReal::from(5_i64),
+            true,
+            false
+        ));
+        assert!(!initial_time_is_ready(
+            range,
+            TimeReal::from(20_i64),
+            true,
+            false
+        ));
+        assert!(initial_time_is_ready(
+            range,
+            TimeReal::from(20_i64),
+            false,
+            false
+        ));
+    }
 
     #[test]
     fn loading_error_lookup_ignores_redap_open_behavior() {

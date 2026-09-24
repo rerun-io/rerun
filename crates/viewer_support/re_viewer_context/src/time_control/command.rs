@@ -173,6 +173,25 @@ impl TimeControlCommand {
 }
 
 impl TimeControl {
+    /// Set an initial cursor for a recording and pause playback.
+    ///
+    /// The requested time is clamped to the selected timeline's loaded range.
+    pub fn set_start_time(
+        &mut self,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+        db: &EntityDb,
+        timeline: Option<TimelineName>,
+        time: TimeReal,
+    ) -> TimeControlResponse {
+        let mut commands = Vec::with_capacity(3);
+        if let Some(timeline) = timeline {
+            commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+        }
+        commands.push(TimeControlCommand::Pause);
+        commands.push(TimeControlCommand::SetTimeClamped(time));
+        self.handle_time_commands(blueprint_ctx, db, &commands)
+    }
+
     pub fn handle_time_commands(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,

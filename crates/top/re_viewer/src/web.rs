@@ -750,6 +750,8 @@ pub struct AppOptions {
     fallback_token: Option<String>,
     theme: Option<String>,
     login: Option<crate::LoginOptions>,
+    start_time: Option<StartTime>,
+    start_timeline: Option<String>,
 
     // Hidden `WebViewerOptions`
     // ------------
@@ -759,6 +761,61 @@ pub struct AppOptions {
     panel_state_overrides: Option<PanelStateOverrides>,
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
+}
+
+#[derive(Clone, Copy)]
+struct StartTime(re_log_types::TimeReal);
+
+impl<'de> Deserialize<'de> for StartTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl serde::de::Visitor<'_> for Visitor {
+            type Value = StartTime;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a finite number or decimal integer string")
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(StartTime(value.into()))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                i64::try_from(value)
+                    .map(|value| StartTime(value.into()))
+                    .map_err(E::custom)
+            }
+
+            fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if value.is_finite() {
+                    Ok(StartTime(value.into()))
+                } else {
+                    Err(E::custom("start_time must be finite"))
+                }
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                crate::startup_options::parse_initial_time(value)
+                    .map(StartTime)
+                    .map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_any(Visitor)
+    }
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -827,6 +884,8 @@ fn create_app(
         fallback_token,
         theme,
         login,
+        start_time,
+        start_timeline,
     } = app_options;
 
     if let Some(fallback_token) = fallback_token {
@@ -848,10 +907,17 @@ fn create_app(
         Ok(hw_accell) => Some(hw_accell),
     });
 
+    let initial_time = start_time.map(|time| crate::InitialTime {
+        timeline: start_timeline
+            .and_then(|timeline| TimelineName::try_new(timeline).ok_or_log_error_once()),
+        time: time.0,
+    });
+
     let startup_options = crate::StartupOptions {
         location: Some(cc.integration_info.web_info.location.clone()),
         // Don't persist state in integration-test mode.
         persist_state: !integration_test,
+        initial_time,
         check_for_updates_on_startup,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
