@@ -695,7 +695,7 @@ enum Command {
     #[command(subcommand)]
     Rrd(RrdCommands),
 
-    /// In-memory Rerun data server
+    /// Local Rerun catalog server
     #[cfg(feature = "oss_server")]
     #[command(name = "server")]
     Server(re_server::Args),

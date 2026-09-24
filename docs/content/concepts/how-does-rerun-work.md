@@ -29,7 +29,9 @@ Both viewers can be extended: the Native Viewer through its [Rust API](../howto/
 
 ### Catalog server
 
-The catalog server provides persistent storage and indexing for large-scale data. It organizes data into:
+The catalog server provides storage and indexing for data.
+Rerun Hub provides managed persistent storage, while the local open-source server indexes RRD files on disk and keeps catalog metadata in memory.
+It organizes data into:
 
 - **Datasets**: Named collections of related recordings
 - **Segments**: Individual `.rrd` files registered to a dataset
@@ -189,4 +191,3 @@ df.filter(dfn.col("obs:Scalars:scalars").is_not_null()).count()  # count observa
 ```
 
 Best for: data pipelines, batch processing, ML training data preparation.
-

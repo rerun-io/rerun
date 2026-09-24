@@ -300,7 +300,7 @@ fn check_intra_request_duplicates(
 
 // ---
 
-/// Phase 2: load file-backed sources into memory and unify with already-in-memory sources.
+/// Phase 2: load file-backed sources and unify them with already-registered sources.
 async fn load_sources(
     validated: Vec<ValidatedSource>,
     store_kind: StoreKind,

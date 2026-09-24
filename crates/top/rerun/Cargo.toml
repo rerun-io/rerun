@@ -109,7 +109,7 @@ native_viewer = [
   "re_viewer?/agent_context",
 ]
 
-## Enable the in-memory Rerun data server.
+## Enable the local Rerun catalog server.
 oss_server = ["dep:re_server"]
 
 ## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).

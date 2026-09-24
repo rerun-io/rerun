@@ -214,14 +214,14 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/store_app`](./crates/store_app) — the queryable state a viewer or a server works with.
 
-| Crate         | Description                                                |
-| ------------- | ---------------------------------------------------------- |
-| re_dataframe  | High-level query APIs                                      |
-| re_datafusion | High-level query APIs                                      |
-| re_entity_db  | In-memory storage of Rerun entities                        |
-| re_query      | High-level query APIs                                      |
-| re_server     | A Rerun server implementation backed by an in-memory store |
-| re_tf         | Rerun spatial transform processing                         |
+| Crate         | Description                                           |
+| ------------- | ----------------------------------------------------- |
+| re_dataframe  | High-level query APIs                                 |
+| re_datafusion | High-level query APIs                                 |
+| re_entity_db  | In-memory storage of Rerun entities                   |
+| re_query      | High-level query APIs                                 |
+| re_server     | An ephemeral local Rerun catalog server               |
+| re_tf         | Rerun spatial transform processing                    |
 
 ### Data flow
 
