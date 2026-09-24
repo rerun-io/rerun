@@ -378,7 +378,17 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             exclude_temporal_data: false,
             query: Some(query),
             scan_parameters: Some(ScanParameters {
-                columns: FetchChunksRequest::required_column_names(),
+                columns: {
+                    // `{index}:start` must be named explicitly: the planner reads its presence to
+                    // pick an emit mode, and `query` below cannot stand in for it — an unfiltered
+                    // dataframe query leaves both `latest_at` and `range` unset, so the server has
+                    // no index to infer. Omit it and every segment falls back to `BufferAll`.
+                    let mut columns = FetchChunksRequest::required_column_names();
+                    if let Some(index) = query_expression.filtered_index {
+                        columns.push(format!("{index}:start"));
+                    }
+                    columns
+                },
                 ..Default::default()
             }),
             // Skip server-side URL signing when the client is forced to fetch via gRPC —

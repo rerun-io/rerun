@@ -7,10 +7,12 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-In-memory opensource implementation of the Rerun server.
+Open-source implementation of the Rerun catalog server.
 
-The goal for this crate is to support most of the same gRPC endpoints that our commercial Rerun Hub service supports, but do so in-memory for maximum simplicity.
+The goal for this crate is to support most of the same gRPC endpoints that our commercial Rerun Hub service supports.
+Catalog metadata is kept in memory.
+RRDs with a footer are read from disk on demand.
 
-We use this internally for testing, but in the future it might be useful for users too.
+This crate powers the local `rerun server` command and `rr.server.Server`.
 
 This is (currently) NOT the server you get when running `rerun --serve-grpc`, though we hope to unify the two at some point.
