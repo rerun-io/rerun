@@ -50,7 +50,7 @@ async fn write_and_register_roundtrip() -> anyhow::Result<()> {
     let segment_ids = connection
         .register_with_dataset(
             dataset_id,
-            vec![DataSource::new_rrd_url(storage_url)],
+            vec![DataSource::new_rrd_url(storage_url, None)],
             IfDuplicateBehavior::Overwrite,
         )
         .await?

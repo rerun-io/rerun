@@ -1072,10 +1072,20 @@ class DatasetEntryInternal:
     # ---
 
     def register(
-        self, recording_uris: list[str], recording_layers: list[str], on_duplicate: str
+        self,
+        recording_uris: list[str],
+        recording_layers: list[str],
+        on_duplicate: str,
+        *,
+        object_store_config: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(
-        self, recordings_prefix: str, layer_name: str, on_duplicate: str
+        self,
+        recordings_prefix: str,
+        layer_name: str,
+        on_duplicate: str,
+        *,
+        object_store_config: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def unregister(
         self,

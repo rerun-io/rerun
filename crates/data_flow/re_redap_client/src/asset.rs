@@ -99,7 +99,7 @@ pub fn asset_data_source(
     origin: &re_uri::Origin,
     asset_uri: impl AsRef<str>,
 ) -> ApiResult<DataSource> {
-    DataSource::new_rrd(asset_uri).map_err(|err| {
+    DataSource::new_rrd(asset_uri, None).map_err(|err| {
         ApiError::invalid_arguments_with_source(origin, None, err, "invalid asset url")
     })
 }

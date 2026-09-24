@@ -466,6 +466,10 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
+    /// Use a specific object store configuration for this registration.
+    /// Inferred from the URL if not specified.
+    #[prost(string, optional, tag = "6")]
+    pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -2419,6 +2423,9 @@ pub struct RrdChunkLocation {
     /// Chunk length in bytes.
     #[prost(uint64, optional, tag = "3")]
     pub length: ::core::option::Option<u64>,
+    /// The custom object store where this chunk is stored.
+    #[prost(string, optional, tag = "4")]
+    pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for RrdChunkLocation {
     const NAME: &'static str = "RrdChunkLocation";

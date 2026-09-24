@@ -318,6 +318,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
             vec![
                 DataSource::new_rrd_url(
                     url::Url::from_file_path(recording_path.as_path()).unwrap(),
+                    None,
                 )
                 .into(),
             ],

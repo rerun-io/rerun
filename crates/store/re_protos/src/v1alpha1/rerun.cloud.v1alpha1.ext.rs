@@ -2597,68 +2597,86 @@ pub struct DataSource {
 
     /// File format of the recording data.
     pub kind: DataSourceKind,
+
+    /// Use a specific object store provider for this registration.
+    /// Inferred from the URL if not specified.
+    pub object_store_config: Option<String>,
 }
 
 impl DataSource {
     pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
 
-    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+    pub fn new_rrd(
+        storage_url: impl AsRef<str>,
+        object_store_config: Option<String>,
+    ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         })
     }
 
-    pub fn new_rrd_prefix(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+    pub fn new_rrd_prefix(
+        storage_url: impl AsRef<str>,
+        object_store_config: Option<String>,
+    ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         })
     }
 
     pub fn new_rrd_layer(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
+        object_store_config: Option<String>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         })
     }
 
     pub fn new_rrd_layer_prefix(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
+        object_store_config: Option<String>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         })
     }
 
-    pub fn new_rrd_url(storage_url: url::Url) -> Self {
+    pub fn new_rrd_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
         Self {
             storage_url,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         }
     }
 
-    pub fn new_rrd_prefix_url(storage_url: url::Url) -> Self {
+    pub fn new_rrd_prefix_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
         Self {
             storage_url,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
+            object_store_config,
         }
     }
 }
@@ -2670,6 +2688,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             prefix: value.is_prefix,
             layer: Some(value.layer.into()),
             typ: value.kind as i32,
+            object_store_config: value.object_store_config,
         }
     }
 }
@@ -2700,6 +2719,7 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             is_prefix: prefix,
             layer,
             kind,
+            object_store_config: data_source.object_store_config,
         })
     }
 }
@@ -2711,6 +2731,7 @@ fn datasource_layer_from_proto() {
         prefix: false,
         layer: layer.map(ToOwned::to_owned),
         typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+        object_store_config: Some("custom".to_owned()),
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -2722,6 +2743,8 @@ fn datasource_layer_from_proto() {
 
     let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
     assert_eq!(data_source.layer, "my_layer");
+
+    assert_eq!(data_source.object_store_config, Some("custom".to_owned()));
 }
 
 // --- Tasks ---

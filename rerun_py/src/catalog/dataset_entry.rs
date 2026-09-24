@@ -453,13 +453,20 @@ impl PyDatasetEntryInternal {
     ///
     /// on_duplicate: str
     ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
-    #[pyo3(signature = (recording_uris, recording_layers, on_duplicate))]
-    #[pyo3(text_signature = "(self, /, recording_uris, recording_layers, on_duplicate)")]
+    ///
+    /// object_store_config: str
+    ///     Use a custom object store configuration for the registration.
+    ///     If not specified, the store is inferred from the URL.
+    #[pyo3(signature = (recording_uris, recording_layers, on_duplicate, *, object_store_config = None))]
+    #[pyo3(
+        text_signature = "(self, /, recording_uris, recording_layers, on_duplicate, *, object_store_config=None)"
+    )]
     fn register(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
         on_duplicate: &str,
+        object_store_config: Option<String>,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let py = self_.py();
         let connection = self_.client.borrow(py).connection().clone();
@@ -477,6 +484,7 @@ impl PyDatasetEntryInternal {
             recording_uris,
             recording_layers,
             on_duplicate,
+            object_store_config,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(registration))
@@ -561,13 +569,20 @@ impl PyDatasetEntryInternal {
     ///
     /// on_duplicate: str
     ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
-    #[pyo3(signature = (recordings_prefix, layer_name, on_duplicate))]
-    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name, on_duplicate)")]
+    ///
+    /// object_store_config: str
+    ///     Use a custom object store configuration for the registration.
+    ///     If not specified, the store is inferred from the URL.
+    #[pyo3(signature = (recordings_prefix, layer_name, on_duplicate, *, object_store_config = None))]
+    #[pyo3(
+        text_signature = "(self, /, recordings_prefix, layer_name, on_duplicate, *, object_store_config=None)"
+    )]
     fn register_prefix(
         self_: PyRef<'_, Self>,
         recordings_prefix: String,
         layer_name: String,
         on_duplicate: &str,
+        object_store_config: Option<String>,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetEntry.register_prefix").entered();
@@ -581,6 +596,7 @@ impl PyDatasetEntryInternal {
             recordings_prefix,
             LayerName::try_new(layer_name).map_err(to_py_err)?,
             on_duplicate,
+            object_store_config,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(registration))

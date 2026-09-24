@@ -436,7 +436,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
 
     fe.register_with_dataset_name_blocking(
         dataset_name,
-        vec![cloud_ext::DataSource::new_rrd_prefix_url(root_url).into()],
+        vec![cloud_ext::DataSource::new_rrd_prefix_url(root_url, None).into()],
     )
     .await;
 
@@ -480,6 +480,7 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
         let request = RegisterWithDatasetRequest {
             data_sources: vec![cloud_ext::DataSource::new_rrd_url(
                 url::Url::parse(bad_uri).unwrap(),
+                None,
             )],
             on_duplicate: Default::default(),
         };

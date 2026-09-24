@@ -86,7 +86,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let registration = connection
         .register_with_dataset(
             dataset.details.id,
-            vec![DataSource::new_rrd(url).expect("valid OPFS URL")],
+            vec![DataSource::new_rrd(url, None).expect("valid OPFS URL")],
             IfDuplicateBehavior::Error,
         )
         .await

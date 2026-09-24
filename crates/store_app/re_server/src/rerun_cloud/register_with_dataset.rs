@@ -102,6 +102,7 @@ async fn validate_sources(
             is_prefix,
             layer,
             kind,
+            object_store_config: _,
         } = source;
 
         // TODO(ab): Should some or all of these errors be returned as task error instead?

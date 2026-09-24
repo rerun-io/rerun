@@ -48,6 +48,7 @@ impl HubRrdManifest {
         segment_id: &re_types_core::SegmentId,
         layer: &re_types_core::LayerName,
         storage_url: &url::Url,
+        object_store_config: Option<&str>,
         etag: Option<&re_protos::cloud::v1alpha1::ext::ETag>,
         registration_time: Option<jiff::Timestamp>,
     ) -> CodecResult<Self> {
@@ -64,8 +65,15 @@ impl HubRrdManifest {
         }
 
         let (offsets, sizes) = header_inclusive_offsets_and_sizes(&raw.data)?;
-        let chunk_keys =
-            build_chunk_key_column(raw, &offsets, &sizes, storage_url, etag, registration_time)?;
+        let chunk_keys = build_chunk_key_column(
+            raw,
+            &offsets,
+            &sizes,
+            storage_url,
+            object_store_config,
+            etag,
+            registration_time,
+        )?;
 
         let num_rows = raw.data.num_rows();
         let partition_ids =
@@ -203,6 +211,7 @@ fn build_chunk_key_column(
     offsets: &UInt64Array,
     sizes: &UInt64Array,
     storage_url: &url::Url,
+    object_store_config: Option<&str>,
     etag: Option<&re_protos::cloud::v1alpha1::ext::ETag>,
     registration_time: Option<jiff::Timestamp>,
 ) -> CodecResult<BinaryArray> {
@@ -220,6 +229,7 @@ fn build_chunk_key_column(
             location: RrdChunkLocation {
                 url: storage_url.clone(),
                 byte_span: re_span::Span::from_start_len(offset, length),
+                object_store_config: object_store_config.map(str::to_owned),
             }
             .as_bytes(),
             etag: etag.cloned(),
@@ -273,6 +283,7 @@ mod tests {
             &segment_id,
             &layer,
             &storage_url,
+            None,
             Some(&etag),
             Some(registration_time),
         )
@@ -364,11 +375,12 @@ mod tests {
         let segment_id = SegmentId::from("my_segment");
         let layer = LayerName::base();
 
-        let err = HubRrdManifest::try_from_raw(&raw, &segment_id, &layer, &storage_url, None, None)
-            .expect_err(
-                "an in-memory manifest starts its first chunk at offset 0, which underflows \
+        let err =
+            HubRrdManifest::try_from_raw(&raw, &segment_id, &layer, &storage_url, None, None, None)
+                .expect_err(
+                    "an in-memory manifest starts its first chunk at offset 0, which underflows \
                  when subtracting the message header",
-            );
+                );
         assert_matches!(err, CodecError::FrameDecoding(_));
     }
 }
