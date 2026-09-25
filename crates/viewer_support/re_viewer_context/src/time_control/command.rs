@@ -145,27 +145,27 @@ impl TimeControlCommand {
     /// Returns `None` for non-playback kinds.
     pub fn from_recording_command(command: RecordingCommandKind) -> Option<Self> {
         Some(match command {
-            RecordingCommandKind::PlaybackTogglePlayPause => Self::TogglePlayPause,
-            RecordingCommandKind::PlaybackEndAndFollow => Self::MoveEndAndFollow,
-            RecordingCommandKind::PlaybackStepBack => Self::StepTimeBack,
-            RecordingCommandKind::PlaybackStepForward => Self::StepTimeForward,
-            RecordingCommandKind::PlaybackBack => Self::Move {
+            RecordingCommandKind::TogglePlayPause => Self::TogglePlayPause,
+            RecordingCommandKind::SeekToEndAndFollow => Self::MoveEndAndFollow,
+            RecordingCommandKind::SeekToPreviousEvent => Self::StepTimeBack,
+            RecordingCommandKind::SeekToNextEvent => Self::StepTimeForward,
+            RecordingCommandKind::SeekBackwardShort => Self::Move {
                 direction: MoveDirection::Back,
                 speed: MoveSpeed::Normal,
             },
-            RecordingCommandKind::PlaybackForward => Self::Move {
+            RecordingCommandKind::SeekForwardShort => Self::Move {
                 direction: MoveDirection::Forward,
                 speed: MoveSpeed::Normal,
             },
-            RecordingCommandKind::PlaybackBackFast => Self::Move {
+            RecordingCommandKind::SeekBackwardLong => Self::Move {
                 direction: MoveDirection::Back,
                 speed: MoveSpeed::Fast,
             },
-            RecordingCommandKind::PlaybackForwardFast => Self::Move {
+            RecordingCommandKind::SeekForwardLong => Self::Move {
                 direction: MoveDirection::Forward,
                 speed: MoveSpeed::Fast,
             },
-            RecordingCommandKind::PlaybackBeginning => Self::MoveBeginning,
+            RecordingCommandKind::SeekToStart => Self::MoveBeginning,
             RecordingCommandKind::PlaybackSpeed(speed) => Self::SetSpeed(speed.0.0),
             _ => return None,
         })

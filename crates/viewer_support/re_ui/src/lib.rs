@@ -51,10 +51,11 @@ use egui::{NumExt as _, Style};
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
-    CommandEnvironment, RecordingCommand, RecordingCommandKind, RecordingCommandSender,
-    RedapServerCommand, RedapServerCommandKind, RedapServerCommandSender, ResolvedCommand,
-    SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender, UICommand,
-    UICommandSender, consume_timeline_shortcut, listen_for_kb_shortcuts, refresh_shortcuts,
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, ListedCommand, RecordingCommand,
+    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
+    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
+    UICommand, UICommandSender, consume_timeline_shortcut, listen_for_kb_shortcuts,
+    palette_commands, refresh_shortcuts,
 };
 pub use self::command_palette::{
     CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,

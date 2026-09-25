@@ -165,14 +165,14 @@ impl IntroItem {
                     CloudState { has_server: None, login: LoginState::NoAuth } => {
                         if ui.primary_button("Add server and login").clicked() {
                             analytics();
-                            ctx.command_sender.send_ui(UICommand::AddRedapServer);
+                            ctx.command_sender.send_ui(UICommand::OpenAddServerDialog);
                         }
                     }
                     CloudState { has_server: None, login } => {
                         ui.horizontal_wrapped(|ui| {
                             if ui.primary_button("Add server").clicked() {
                                 analytics();
-                                ctx.command_sender.send_ui(UICommand::AddRedapServer);
+                                ctx.command_sender.send_ui(UICommand::OpenAddServerDialog);
                             }
                             if let LoginState::Auth { email: Some(email) } = login {
                                 ui.spacing_mut().item_spacing.x = 0.0;

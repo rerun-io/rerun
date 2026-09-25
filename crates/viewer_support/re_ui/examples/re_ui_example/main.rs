@@ -392,17 +392,17 @@ impl eframe::App for ExampleApp {
             self.latest_cmd = cmd.text().to_owned();
 
             match cmd {
-                UICommand::ZoomIn => {
+                UICommand::ZoomInUi => {
                     let mut zoom_factor = ui.zoom_factor();
                     zoom_factor += 0.1;
                     ui.set_zoom_factor(zoom_factor);
                 }
-                UICommand::ZoomOut => {
+                UICommand::ZoomOutUi => {
                     let mut zoom_factor = ui.zoom_factor();
                     zoom_factor -= 0.1;
                     ui.set_zoom_factor(zoom_factor);
                 }
-                UICommand::ZoomReset => {
+                UICommand::ResetUiZoom => {
                     ui.set_zoom_factor(1.0);
                 }
                 _ => {}
@@ -497,7 +497,7 @@ impl ExampleApp {
 }
 
 fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
-    UICommand::Open.menu_button_ui(ui, command_sender);
+    UICommand::OpenFile.menu_button_ui(ui, command_sender);
     UICommand::Quit.menu_button_ui(ui, command_sender);
 }
 

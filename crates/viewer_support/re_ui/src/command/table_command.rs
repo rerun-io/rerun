@@ -34,13 +34,16 @@ impl TableCommand {
 }
 
 /// What a [`TableCommand`] does to its table.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter, strum_macros::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum TableCommandKind {
     /// Re-query the contents (the dataframe) of the entry from the server.
     Refresh,
 
     /// Reset the active blueprint of the table to the default one.
-    ResetBlueprint,
+    ResetBlueprintToDefault,
 }
 
 impl TableCommandKind {
@@ -59,7 +62,7 @@ impl TableCommandKind {
                 "Refresh the contents of the current dataset or table",
             ),
 
-            Self::ResetBlueprint => (
+            Self::ResetBlueprintToDefault => (
                 "Reset to default blueprint",
                 "Clear the active blueprint of the current table and use the default blueprint instead",
             ),
@@ -90,7 +93,7 @@ impl TableCommandKind {
             // against the environment, and the table refresh wins when an entry is viewed.
             Self::Refresh => super::refresh_shortcuts(os),
 
-            Self::ResetBlueprint => SmallVec::new(),
+            Self::ResetBlueprintToDefault => SmallVec::new(),
         }
     }
 

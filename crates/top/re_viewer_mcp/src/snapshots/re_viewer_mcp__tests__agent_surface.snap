@@ -13,6 +13,7 @@ Getting oriented:
 - The tool name tells you which of two families it belongs to. A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) is low level: it drives the widgets one input event at a time, the way a person would.
 - Prefer a `rerun_*` tool whenever one fits, and drop to the low-level tools only for what they do not cover. Clicking through the UI costs several calls and a lot of context to achieve what one `rerun_*` call does, and it breaks whenever the layout moves.
 - Start most tasks with `rerun_get_viewer_state` to see what is loaded, then `widget_tree` to find widgets, and/or `screenshot` to see the rendered frame.
+- Prefer `rerun_run_command` over clicking through menus.
 
 Targeting widgets:
 - Prefer locators — an `id` from `widget_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
@@ -40,6 +41,7 @@ Reading the data itself:
 
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
+
 
 # Tools
 
@@ -755,6 +757,34 @@ Conventions:
   }
 }
 
+## rerun_describe_commands
+
+{
+  "name": "rerun_describe_commands",
+  "description": "Describe commands by id. `NOT_FOUND` if any id is unknown.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Command ids, as `ListCommands` reports them."
+      },
+      "store_id": {
+        "type": "string",
+        "description": "Describe `recording` commands against this recording instead of the active one."
+      },
+      "server_origin": {
+        "type": "string",
+        "description": "Describe `server` commands against this server instead of the selected one."
+      }
+    },
+    "description": "Request for `DescribeCommands`."
+  }
+}
+
 ## rerun_disconnect
 
 {
@@ -871,6 +901,35 @@ Conventions:
   }
 }
 
+## rerun_list_commands
+
+{
+  "name": "rerun_list_commands",
+  "description": "List the ids of the viewer's command palette commands (panels, playback, undo, …).\n\nPrefer this over clicking through the UI. The ids are self-describing, so the list is\nusually enough; use `DescribeCommands` for details on a few.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "include_descriptions": {
+        "type": "boolean",
+        "description": "Include one-line descriptions."
+      },
+      "include_unavailable": {
+        "type": "boolean",
+        "description": "Include commands that cannot run right now."
+      },
+      "store_id": {
+        "type": "string",
+        "description": "Check `recording` commands against this recording instead of the active one."
+      },
+      "server_origin": {
+        "type": "string",
+        "description": "Check `server` commands against this server instead of the selected one."
+      }
+    },
+    "description": "Request for `ListCommands`."
+  }
+}
+
 ## rerun_open_url
 
 {
@@ -888,6 +947,38 @@ Conventions:
       "url"
     ],
     "description": "Request for `OpenUrl`."
+  }
+}
+
+## rerun_run_command
+
+{
+  "name": "rerun_run_command",
+  "description": "Run a command palette command by id.\n\nReturns once queued; verify the effect with `GetViewerState` or a screenshot.\nCommands that open a native modal are refused unless `allow_blocking_native_modal` is set.\nAsk the user before running a `destructive` command.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Command id, as `ListCommands` reports it."
+      },
+      "store_id": {
+        "type": "string",
+        "description": "Recording for a `recording` command. Defaults to the active one."
+      },
+      "server_origin": {
+        "type": "string",
+        "description": "Server for a `server` command, e.g. `rerun+http://127.0.0.1:51234`. Defaults to the selected one."
+      },
+      "allow_blocking_native_modal": {
+        "type": "boolean",
+        "description": "Allow a command that opens a native modal (see `ViewerCommand.blocking_native_modal`)."
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "description": "Request for `RunCommand`."
   }
 }
 

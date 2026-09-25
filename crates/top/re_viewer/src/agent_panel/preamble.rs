@@ -62,7 +62,8 @@ impl Preamble<'_> {
         }
         text.push_str(
             " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
-             Prefer the high-level `rerun_*` tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, …); \
+             Prefer the high-level `rerun_*` tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, …), \
+             and `rerun_list_commands` + `rerun_run_command` for anything the command palette can do; \
              drop to the low-level widget tools (`query_tree`, `click`, `screenshot`, …) only for what they do not cover.\n",
         );
 

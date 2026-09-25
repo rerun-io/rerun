@@ -151,6 +151,22 @@ message ViewerControlRequest {
     // Use it to show the user where the thing you are talking about is, rather than describing
     // its position in prose.
     HighlightRectRequest highlight_rect = 8;
+
+    // List the ids of the viewer's command palette commands (panels, playback, undo, …).
+    //
+    // Prefer this over clicking through the UI. The ids are self-describing, so the list is
+    // usually enough; use `DescribeCommands` for details on a few.
+    ListCommandsRequest list_commands = 9;
+
+    // Describe commands by id. `NOT_FOUND` if any id is unknown.
+    DescribeCommandsRequest describe_commands = 10;
+
+    // Run a command palette command by id.
+    //
+    // Returns once queued; verify the effect with `GetViewerState` or a screenshot.
+    // Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
+    // Ask the user before running a `destructive` command.
+    RunCommandRequest run_command = 11;
   }
 }
 
@@ -181,6 +197,15 @@ message ViewerControlResponse {
 
     // Result of `highlight_rect`.
     HighlightRectResponse highlight_rect = 8;
+
+    // Result of `list_commands`.
+    ListCommandsResponse list_commands = 9;
+
+    // Result of `describe_commands`.
+    DescribeCommandsResponse describe_commands = 10;
+
+    // Result of `run_command`.
+    RunCommandResponse run_command = 11;
   }
 }
 
@@ -212,6 +237,63 @@ message ViewerRecordingIds {
 message CloseRecordingsResponse {
   // The recordings that were closed, each as `{kind}:{application_id}:{recording_id}`.
   repeated string closed = 1;
+}
+
+// ----------------------------------------------------------------------------
+// DescribeCommands
+
+// Request for `DescribeCommands`.
+message DescribeCommandsRequest {
+  // Command ids, as `ListCommands` reports them.
+  repeated string ids = 1;
+
+  // Describe `recording` commands against this recording instead of the active one.
+  optional string store_id = 2;
+
+  // Describe `server` commands against this server instead of the selected one.
+  optional string server_origin = 3;
+}
+
+// Response for `DescribeCommands`, in request order.
+message DescribeCommandsResponse {
+  // One per requested id.
+  repeated ViewerCommand commands = 1;
+}
+
+// A command palette command.
+message ViewerCommand {
+  // Id for `RunCommand`.
+  string id = 1;
+
+  // Name shown in the palette.
+  string title = 2;
+
+  // What the command does.
+  string description = 3;
+
+  // What kind of thing it acts on: `"global"`, `"recording"`, `"server"`, or `"table"`.
+  //
+  // `target` names the specific one, e.g. scope `"recording"` with target
+  // `Recording:my_app:1f2e…`, or scope `"server"` with target `rerun+http://127.0.0.1:51234`.
+  string scope = 4;
+
+  // Keyboard shortcuts as the viewer shows them, e.g. `⌘K`. Primary first.
+  // Use these to tell the user how to run the command themselves.
+  repeated string shortcuts = 5;
+
+  // Whether `RunCommand` would run it now.
+  bool available = 6;
+
+  // Opens a native OS modal (e.g. a file dialog), which blocks the viewer (and this API) until a
+  // person closes it.
+  bool blocking_native_modal = 7;
+
+  // Discards data, blueprint edits, a server, or the viewer itself.
+  bool destructive = 8;
+
+  // The specific thing within `scope` it would act on now: a store id, server origin, or table.
+  // Absent for global commands, and when nothing in scope is available.
+  optional string target = 9;
 }
 
 // ----------------------------------------------------------------------------
@@ -517,6 +599,39 @@ message ScreenRect {
 message HighlightRectResponse {}
 
 // ----------------------------------------------------------------------------
+// ListCommands
+
+// Request for `ListCommands`.
+message ListCommandsRequest {
+  // Include one-line descriptions.
+  optional bool include_descriptions = 1;
+
+  // Include commands that cannot run right now.
+  optional bool include_unavailable = 2;
+
+  // Check `recording` commands against this recording instead of the active one.
+  optional string store_id = 3;
+
+  // Check `server` commands against this server instead of the selected one.
+  optional string server_origin = 4;
+}
+
+// Response for `ListCommands`, sorted by id.
+message ListCommandsResponse {
+  // The matching commands.
+  repeated CommandSummary commands = 1;
+}
+
+// A command as `ListCommands` reports it.
+message CommandSummary {
+  // Id for `DescribeCommands` and `RunCommand`.
+  string id = 1;
+
+  // Only with `include_descriptions`.
+  optional string description = 2;
+}
+
+// ----------------------------------------------------------------------------
 // OpenUrl
 
 // Request for `OpenUrl`.
@@ -528,6 +643,33 @@ message OpenUrlRequest {
 
 // Response for `OpenUrl`. Empty: an error is reported as a gRPC status instead.
 message OpenUrlResponse {}
+
+// ----------------------------------------------------------------------------
+// RunCommand
+
+// Request for `RunCommand`.
+message RunCommandRequest {
+  // Command id, as `ListCommands` reports it.
+  string id = 1;
+
+  // Recording for a `recording` command. Defaults to the active one.
+  optional string store_id = 2;
+
+  // Server for a `server` command, e.g. `rerun+http://127.0.0.1:51234`. Defaults to the selected one.
+  optional string server_origin = 3;
+
+  // Allow a command that opens a native modal (see `ViewerCommand.blocking_native_modal`).
+  optional bool allow_blocking_native_modal = 4;
+}
+
+// Response for `RunCommand`.
+message RunCommandResponse {
+  // The command that was queued.
+  string id = 1;
+
+  // What the command acts on. Absent for global commands.
+  optional string target = 2;
+}
 
 // ----------------------------------------------------------------------------
 // SaveScreenshot

@@ -14,27 +14,26 @@ pub trait UICommandSender {
 /// Most are available in the GUI,
 /// some have keyboard shortcuts,
 /// and all are visible in the [`crate::CommandPalette`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter, strum_macros::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
-    Open,
-    OpenUrl,
-    Import,
-
-    CloseAllEntries,
-
-    NextRecording,
-    PreviousRecording,
-
-    NavigateBack,
-    NavigateForward,
+    OpenFile,
+    OpenUrlDialog,
+    ImportFileIntoCurrentRecording,
+    CloseAllRecordings,
+    SwitchToNextRecording,
+    SwitchToPreviousRecording,
+    NavigateBackInHistory,
+    NavigateForwardInHistory,
 
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
-
-    OpenWebsite,
-    OpenWebHelp,
-    OpenRerunDiscord,
+    OpenRerunWebsite,
+    OpenDocsWebsite,
+    OpenDiscordWebsite,
 
     ResetViewer,
 
@@ -54,35 +53,31 @@ pub enum UICommand {
     ExpandSelectionPanel,
 
     ToggleAgentPanel,
-
-    Settings,
+    OpenSettings,
 
     #[cfg(debug_assertions)]
     ToggleEguiDebugPanel,
 
     ToggleFullscreen,
     #[cfg(not(target_arch = "wasm32"))]
-    ZoomIn,
+    ZoomInUi,
     #[cfg(not(target_arch = "wasm32"))]
-    ZoomOut,
+    ZoomOutUi,
     #[cfg(not(target_arch = "wasm32"))]
-    ZoomReset,
+    ResetUiZoom,
 
     ToggleCommandPalette,
 
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
-    ScreenshotWholeApp,
+    CopyScreenshotToClipboard,
 
     #[cfg(debug_assertions)]
     ResetEguiMemory,
-
-    Share,
-    CopyDirectLink,
-
-    CopyTimeSelectionLink,
-
-    CopyEntityHierarchy,
+    OpenShareDialog,
+    CopyDirectLinkToClipboard,
+    CopyTimeSelectionLinkToClipboard,
+    CopyEntityHierarchyToClipboard,
 
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
@@ -91,7 +86,7 @@ pub enum UICommand {
     RestartWithWebGpu,
 
     // Redap commands
-    AddRedapServer,
+    OpenAddServerDialog,
 }
 
 impl UICommand {
@@ -105,42 +100,42 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
-            Self::Open => (
+            Self::OpenFile => (
                 "Open file…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
-            Self::OpenUrl => (
+            Self::OpenUrlDialog => (
                 "Open from URL…",
                 "Open or navigate to data from any supported URL",
             ),
-            Self::Import => (
+            Self::ImportFileIntoCurrentRecording => (
                 "Import into current recording…",
                 "Import any supported files (.rrd, images, meshes, …) in the current recording",
             ),
 
-            Self::CloseAllEntries => (
+            Self::CloseAllRecordings => (
                 "Close all recordings",
                 "Close all open current recording (unsaved data will be lost)",
             ),
 
-            Self::NextRecording => ("Next recording", "Switch to the next open recording"),
-            Self::PreviousRecording => (
+            Self::SwitchToNextRecording => ("Next recording", "Switch to the next open recording"),
+            Self::SwitchToPreviousRecording => (
                 "Previous recording",
                 "Switch to the previous open recording",
             ),
 
-            Self::NavigateBack => ("Back in history", "Go back in history"),
-            Self::NavigateForward => ("Forward in history", "Go forward in history"),
+            Self::NavigateBackInHistory => ("Back in history", "Go back in history"),
+            Self::NavigateForwardInHistory => ("Forward in history", "Go forward in history"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
 
-            Self::OpenWebsite => ("rerun.io", "Visit our homepage"),
-            Self::OpenWebHelp => (
+            Self::OpenRerunWebsite => ("rerun.io", "Visit our homepage"),
+            Self::OpenDocsWebsite => (
                 "Docs",
                 "Visit the docs on our website, with troubleshooting tips and more",
             ),
-            Self::OpenRerunDiscord => (
+            Self::OpenDiscordWebsite => (
                 "Rerun Discord",
                 "Visit the Rerun Discord server, where you can ask questions and get help",
             ),
@@ -186,7 +181,7 @@ impl UICommand {
                 "Toggle the chat panel with a coding agent that can drive the viewer (experimental)",
             ),
 
-            Self::Settings => ("Settings…", "Show the settings screen"),
+            Self::OpenSettings => ("Settings…", "Show the settings screen"),
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => (
@@ -207,11 +202,11 @@ impl UICommand {
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => ("Zoom in", "Increases the UI zoom level"),
+            Self::ZoomInUi => ("Zoom in", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => ("Zoom out", "Decreases the UI zoom level"),
+            Self::ZoomOutUi => ("Zoom out", "Decreases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomReset => (
+            Self::ResetUiZoom => (
                 "Reset zoom",
                 "Resets the UI zoom level to the operating system's default value",
             ),
@@ -219,7 +214,7 @@ impl UICommand {
             Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => (
+            Self::CopyScreenshotToClipboard => (
                 "Screenshot",
                 "Copy screenshot of the whole app to clipboard",
             ),
@@ -229,18 +224,18 @@ impl UICommand {
                 "Reset egui memory, useful for debugging UI code.",
             ),
 
-            Self::Share => ("Share…", "Share the current screen as a link"),
-            Self::CopyDirectLink => (
+            Self::OpenShareDialog => ("Share…", "Share the current screen as a link"),
+            Self::CopyDirectLinkToClipboard => (
                 "Copy direct link",
                 "Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.",
             ),
 
-            Self::CopyTimeSelectionLink => (
+            Self::CopyTimeSelectionLinkToClipboard => (
                 "Copy link to selected time range",
                 "Copy a link to the part of the active recording within the loop selection bounds.",
             ),
 
-            Self::CopyEntityHierarchy => (
+            Self::CopyEntityHierarchyToClipboard => (
                 "Copy entity hierarchy",
                 "Copy the complete entity hierarchy tree of the currently active recording to the clipboard.",
             ),
@@ -256,7 +251,7 @@ impl UICommand {
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost.",
             ),
 
-            Self::AddRedapServer => (
+            Self::OpenAddServerDialog => (
                 "Connect to a server…",
                 "Connect to a Redap server (experimental)",
             ),
@@ -289,19 +284,19 @@ impl UICommand {
         }
 
         match self {
-            Self::Open => smallvec![cmd(Key::O)],
+            Self::OpenFile => smallvec![cmd(Key::O)],
             // Some browsers have a "paste and go" action.
             // But unfortunately there's no standard shortcut for this.
             // Claude however thinks it's this one (it's not). Let's go with that anyways!
-            Self::OpenUrl => smallvec![cmd_shift(Key::L)],
-            Self::Import => smallvec![cmd_shift(Key::O)],
-            Self::CloseAllEntries => smallvec![],
+            Self::OpenUrlDialog => smallvec![cmd_shift(Key::L)],
+            Self::ImportFileIntoCurrentRecording => smallvec![cmd_shift(Key::O)],
+            Self::CloseAllRecordings => smallvec![],
 
-            Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
-            Self::PreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
+            Self::SwitchToNextRecording => smallvec![cmd_alt(Key::ArrowDown)],
+            Self::SwitchToPreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
 
-            Self::NavigateBack => smallvec![cmd(Key::OpenBracket)],
-            Self::NavigateForward => smallvec![cmd(Key::CloseBracket)],
+            Self::NavigateBackInHistory => smallvec![cmd(Key::OpenBracket)],
+            Self::NavigateForwardInHistory => smallvec![cmd(Key::CloseBracket)],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => {
@@ -312,9 +307,9 @@ impl UICommand {
                 }
             }
 
-            Self::OpenWebHelp => smallvec![],
-            Self::OpenWebsite => smallvec![],
-            Self::OpenRerunDiscord => smallvec![],
+            Self::OpenDocsWebsite => smallvec![],
+            Self::OpenRerunWebsite => smallvec![],
+            Self::OpenDiscordWebsite => smallvec![],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
 
@@ -333,7 +328,7 @@ impl UICommand {
 
             Self::ToggleAgentPanel => smallvec![ctrl_shift(Key::A)],
 
-            Self::Settings => smallvec![cmd(Key::Comma)],
+            Self::OpenSettings => smallvec![cmd(Key::Comma)],
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
@@ -347,33 +342,33 @@ impl UICommand {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
+            Self::ZoomInUi => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_OUT],
+            Self::ZoomOutUi => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_OUT],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
+            Self::ResetUiZoom => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
 
             Self::ToggleCommandPalette => smallvec![cmd(Key::K), cmd(Key::P)],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => smallvec![ctrl_shift(Key::F)],
+            Self::CopyScreenshotToClipboard => smallvec![ctrl_shift(Key::F)],
 
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
 
-            Self::Share => smallvec![cmd(Key::L)],
-            Self::CopyDirectLink => smallvec![],
+            Self::OpenShareDialog => smallvec![cmd(Key::L)],
+            Self::CopyDirectLinkToClipboard => smallvec![],
 
-            Self::CopyTimeSelectionLink => smallvec![],
+            Self::CopyTimeSelectionLinkToClipboard => smallvec![],
 
-            Self::CopyEntityHierarchy => smallvec![ctrl_shift(Key::E)],
+            Self::CopyEntityHierarchyToClipboard => smallvec![ctrl_shift(Key::E)],
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => smallvec![],
 
-            Self::AddRedapServer => smallvec![],
+            Self::OpenAddServerDialog => smallvec![],
         }
     }
 
@@ -401,14 +396,14 @@ impl UICommand {
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
         match self {
-            Self::OpenWebsite | Self::OpenWebHelp => Some(&crate::icons::EXTERNAL_LINK),
-            Self::OpenRerunDiscord => Some(&crate::icons::DISCORD),
+            Self::OpenRerunWebsite | Self::OpenDocsWebsite => Some(&crate::icons::EXTERNAL_LINK),
+            Self::OpenDiscordWebsite => Some(&crate::icons::DISCORD),
             _ => None,
         }
     }
 
     pub fn is_link(self) -> bool {
-        matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
+        matches!(self, Self::OpenDocsWebsite | Self::OpenDiscordWebsite)
     }
 
     /// Does this command only exist in debug builds?

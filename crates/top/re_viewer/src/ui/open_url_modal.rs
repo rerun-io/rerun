@@ -30,7 +30,7 @@ impl OpenUrlModal {
 
                     // Repeat shortcut on the right to remind users of how to open this modal quickly.
                     if !self.hide_shortcut {
-                        let shortcut_text = UICommand::OpenUrl
+                        let shortcut_text = UICommand::OpenUrlDialog
                             .formatted_kb_shortcut(ui.ctx())
                             .unwrap_or_default();
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

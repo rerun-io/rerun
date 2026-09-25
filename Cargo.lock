@@ -11071,6 +11071,7 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "getrandom 0.3.4",
+ "insta",
  "itertools 0.15.0",
  "jiff",
  "notify",

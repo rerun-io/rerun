@@ -68,6 +68,10 @@ The tool name says which family it belongs to, and the agent is told to prefer t
 The `rerun_*` tools (`rerun_get_viewer_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open_url`, `rerun_close_recordings`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
 
+Among them, `rerun_list_commands`, `rerun_describe_commands`, and `rerun_run_command` reach every command of the Viewer's command palette.
+Listing returns only the ids by default, so the agent can pick a command without reading the details of every one.
+Commands that open a native modal, such as a file dialog, are refused unless the caller opts in, because the modal freezes the Viewer until a person answers it.
+
 The remaining tools (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, `screenshot`, …) are low level: they drive the widgets one input event at a time.
 They come from `egui_mcp` and travel on the separate `EguiInspect` endpoint, which carries an opaque body the Viewer's `egui_inspection` plugin services.
 

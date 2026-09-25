@@ -55,10 +55,11 @@ impl App {
                 has_back,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
             )
-            .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
+            .on_hover_ui(|ui| UICommand::NavigateBackInHistory.tooltip_ui(ui))
             .clicked()
         {
-            self.command_sender.send_ui(UICommand::NavigateBack);
+            self.command_sender
+                .send_ui(UICommand::NavigateBackInHistory);
         }
 
         if ui
@@ -66,10 +67,11 @@ impl App {
                 has_forward,
                 ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
             )
-            .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))
+            .on_hover_ui(|ui| UICommand::NavigateForwardInHistory.tooltip_ui(ui))
             .clicked()
         {
-            self.command_sender.send_ui(UICommand::NavigateForward);
+            self.command_sender
+                .send_ui(UICommand::NavigateForwardInHistory);
         }
     }
 
@@ -91,17 +93,25 @@ impl App {
 
         let recording_id = _store_context.map(|ctx| ctx.recording_store_id());
 
-        RecordingCommandKind::Undo.menu_button_ui(ui, recording_id, &self.command_sender); // TODO(emilk): only enabled if there is something to undo
-        RecordingCommandKind::Redo.menu_button_ui(ui, recording_id, &self.command_sender); // TODO(emilk): only enabled if there is something to redo
+        RecordingCommandKind::UndoBlueprintEdit.menu_button_ui(
+            ui,
+            recording_id,
+            &self.command_sender,
+        ); // TODO(emilk): only enabled if there is something to undo
+        RecordingCommandKind::RedoBlueprintEdit.menu_button_ui(
+            ui,
+            recording_id,
+            &self.command_sender,
+        ); // TODO(emilk): only enabled if there is something to redo
 
         UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
         ui.add_space(SPACING);
 
-        UICommand::Open.menu_button_ui(ui, &self.command_sender);
-        UICommand::OpenUrl.menu_button_ui(ui, &self.command_sender);
-        UICommand::AddRedapServer.menu_button_ui(ui, &self.command_sender);
-        UICommand::Import.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenFile.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenUrlDialog.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenAddServerDialog.menu_button_ui(ui, &self.command_sender);
+        UICommand::ImportFileIntoCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
         self.save_buttons_ui(ui, _store_context);
 
@@ -120,10 +130,10 @@ impl App {
                         "The UI zoom level on top of the operating system's default value",
                     );
             });
-            UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
-            UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
+            UICommand::ZoomInUi.menu_button_ui(ui, &self.command_sender);
+            UICommand::ZoomOutUi.menu_button_ui(ui, &self.command_sender);
             ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                UICommand::ZoomReset.menu_button_ui(ui, &self.command_sender)
+                UICommand::ResetUiZoom.menu_button_ui(ui, &self.command_sender)
             });
 
             UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
@@ -141,7 +151,7 @@ impl App {
             UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ScreenshotWholeApp.menu_button_ui(ui, &self.command_sender);
+            UICommand::CopyScreenshotToClipboard.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
@@ -149,7 +159,7 @@ impl App {
 
         ui.add_space(SPACING);
 
-        UICommand::Settings.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenSettings.menu_button_ui(ui, &self.command_sender);
 
         #[cfg(target_arch = "wasm32")]
         backend_menu_ui(&self.command_sender, ui, render_state);
@@ -177,9 +187,9 @@ impl App {
 
         ui.add_space(SPACING);
 
-        UICommand::OpenWebsite.menu_button_ui(ui, &self.command_sender);
-        UICommand::OpenWebHelp.menu_button_ui(ui, &self.command_sender);
-        UICommand::OpenRerunDiscord.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenRerunWebsite.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenDocsWebsite.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenDiscordWebsite.menu_button_ui(ui, &self.command_sender);
 
         #[cfg(not(target_arch = "wasm32"))]
         {

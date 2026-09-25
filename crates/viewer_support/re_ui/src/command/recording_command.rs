@@ -35,7 +35,10 @@ pub struct RecordingCommand {
 }
 
 /// What a [`RecordingCommand`] does to its recording.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter, strum_macros::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum RecordingCommandKind {
     // Listed in the order they show up in the command palette by default!
     /// Save the recording, or all selected recordings.
@@ -51,19 +54,19 @@ pub enum RecordingCommandKind {
     Close,
 
     /// Undo the latest blueprint edit.
-    Undo,
+    UndoBlueprintEdit,
 
     /// Redo the latest undone blueprint edit.
-    Redo,
+    RedoBlueprintEdit,
 
     /// Add a view or container to the viewport.
-    AddViewOrContainer,
+    OpenAddViewOrContainerDialog,
 
     /// Reset the active blueprint to the default one.
-    ClearActiveBlueprint,
+    ResetBlueprintToDefault,
 
     /// Reset the active blueprint to a heuristic one.
-    ClearActiveBlueprintAndEnableHeuristics,
+    ResetBlueprintToHeuristic,
 
     ToggleTimePanel,
 
@@ -71,15 +74,15 @@ pub enum RecordingCommandKind {
     ToggleBlueprintInspectionPanel,
 
     // Playback:
-    PlaybackTogglePlayPause,
-    PlaybackStepBack,
-    PlaybackStepForward,
-    PlaybackBack,
-    PlaybackForward,
-    PlaybackBackFast,
-    PlaybackForwardFast,
-    PlaybackBeginning,
-    PlaybackEndAndFollow,
+    TogglePlayPause,
+    SeekToPreviousEvent,
+    SeekToNextEvent,
+    SeekBackwardShort,
+    SeekForwardShort,
+    SeekBackwardLong,
+    SeekForwardLong,
+    SeekToStart,
+    SeekToEndAndFollow,
     PlaybackSpeed(SetPlaybackSpeed),
 
     // Dev-tools:
@@ -124,15 +127,15 @@ impl RecordingCommandKind {
     pub fn is_timeline(self) -> bool {
         matches!(
             self,
-            Self::PlaybackTogglePlayPause
-                | Self::PlaybackStepBack
-                | Self::PlaybackStepForward
-                | Self::PlaybackBack
-                | Self::PlaybackForward
-                | Self::PlaybackBackFast
-                | Self::PlaybackForwardFast
-                | Self::PlaybackBeginning
-                | Self::PlaybackEndAndFollow
+            Self::TogglePlayPause
+                | Self::SeekToPreviousEvent
+                | Self::SeekToNextEvent
+                | Self::SeekBackwardShort
+                | Self::SeekForwardShort
+                | Self::SeekBackwardLong
+                | Self::SeekForwardLong
+                | Self::SeekToStart
+                | Self::SeekToEndAndFollow
                 | Self::PlaybackSpeed(_)
         )
     }
@@ -185,23 +188,23 @@ impl RecordingCommandKind {
                 "Close the current recording (unsaved data will be lost)",
             ),
 
-            Self::Undo => (
+            Self::UndoBlueprintEdit => (
                 "Undo",
                 "Undo the last blueprint edit for the open recording",
             ),
-            Self::Redo => ("Redo", "Redo the last undone thing"),
+            Self::RedoBlueprintEdit => ("Redo", "Redo the last undone thing"),
 
-            Self::AddViewOrContainer => (
+            Self::OpenAddViewOrContainerDialog => (
                 "Add view or container…",
                 "Add a new view or container to the viewport",
             ),
 
-            Self::ClearActiveBlueprint => (
+            Self::ResetBlueprintToDefault => (
                 "Reset to default blueprint",
                 "Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint.",
             ),
 
-            Self::ClearActiveBlueprintAndEnableHeuristics => (
+            Self::ResetBlueprintToHeuristic => (
                 "Reset to heuristic blueprint",
                 "Re-populate viewport with automatically chosen views using default visualizers",
             ),
@@ -214,33 +217,33 @@ impl RecordingCommandKind {
                 "Inspect the timeline of the internal blueprint data.",
             ),
 
-            Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
-            Self::PlaybackStepBack => (
+            Self::TogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
+            Self::SeekToPreviousEvent => (
                 "Previous event",
                 "Move the time marker back to the previous point in time that has any logged data",
             ),
-            Self::PlaybackStepForward => (
+            Self::SeekToNextEvent => (
                 "Next event",
                 "Move the time marker forward to the next point in time that has any logged data",
             ),
-            Self::PlaybackBack => (
+            Self::SeekBackwardShort => (
                 "Backward 0.1s",
                 "Move the time marker backward by 0.1 seconds, or by 1 tick on a sequence timeline",
             ),
-            Self::PlaybackForward => (
+            Self::SeekForwardShort => (
                 "Forward 0.1s",
                 "Move the time marker forward by 0.1 seconds, or by 1 tick on a sequence timeline",
             ),
-            Self::PlaybackBackFast => (
+            Self::SeekBackwardLong => (
                 "Backward 1s",
                 "Move the time marker backward by 1 second, or by 10 ticks on a sequence timeline",
             ),
-            Self::PlaybackForwardFast => (
+            Self::SeekForwardLong => (
                 "Forward 1s",
                 "Move the time marker forward by 1 second, or by 10 ticks on a sequence timeline",
             ),
-            Self::PlaybackBeginning => ("Start of timeline", "Go to the beginning of the timeline"),
-            Self::PlaybackEndAndFollow => (
+            Self::SeekToStart => ("Start of timeline", "Go to the beginning of the timeline"),
+            Self::SeekToEndAndFollow => (
                 "End of timeline",
                 "Go to end of timeline and follow the latest data as it streams in",
             ),
@@ -270,8 +273,8 @@ impl RecordingCommandKind {
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
         match self {
-            Self::AddViewOrContainer => Some(&crate::icons::ADD),
-            Self::ClearActiveBlueprint | Self::ClearActiveBlueprintAndEnableHeuristics => {
+            Self::OpenAddViewOrContainerDialog => Some(&crate::icons::ADD),
+            Self::ResetBlueprintToDefault | Self::ResetBlueprintToHeuristic => {
                 Some(&crate::icons::RESET)
             }
             _ => None,
@@ -314,8 +317,8 @@ impl RecordingCommandKind {
             Self::SaveBlueprint => smallvec![],
             Self::Close => smallvec![],
 
-            Self::Undo => smallvec![cmd(Key::Z)],
-            Self::Redo => {
+            Self::UndoBlueprintEdit => smallvec![cmd(Key::Z)],
+            Self::RedoBlueprintEdit => {
                 if os == OperatingSystem::Mac {
                     smallvec![cmd_shift(Key::Z), cmd(Key::Y)]
                 } else {
@@ -323,24 +326,24 @@ impl RecordingCommandKind {
                 }
             }
 
-            Self::AddViewOrContainer => smallvec![],
-            Self::ClearActiveBlueprint => smallvec![],
-            Self::ClearActiveBlueprintAndEnableHeuristics => smallvec![],
+            Self::OpenAddViewOrContainerDialog => smallvec![],
+            Self::ResetBlueprintToDefault => smallvec![],
+            Self::ResetBlueprintToHeuristic => smallvec![],
 
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
 
-            Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
-            Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
-            Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
-            Self::PlaybackBack => smallvec![key(Key::ArrowLeft)],
-            Self::PlaybackForward => smallvec![key(Key::ArrowRight)],
-            Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
-            Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
-            Self::PlaybackBeginning => smallvec![cmd_shift(Key::ArrowLeft)],
-            Self::PlaybackEndAndFollow => smallvec![cmd_shift(Key::ArrowRight)],
+            Self::TogglePlayPause => smallvec![key(Key::Space)],
+            Self::SeekToPreviousEvent => smallvec![cmd(Key::ArrowLeft)],
+            Self::SeekToNextEvent => smallvec![cmd(Key::ArrowRight)],
+            Self::SeekBackwardShort => smallvec![key(Key::ArrowLeft)],
+            Self::SeekForwardShort => smallvec![key(Key::ArrowRight)],
+            Self::SeekBackwardLong => smallvec![shift(Key::ArrowLeft)],
+            Self::SeekForwardLong => smallvec![shift(Key::ArrowRight)],
+            Self::SeekToStart => smallvec![cmd_shift(Key::ArrowLeft)],
+            Self::SeekToEndAndFollow => smallvec![cmd_shift(Key::ArrowRight)],
 
             Self::PlaybackSpeed(_) => {
                 // This is a chord, so no single shortcut.

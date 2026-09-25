@@ -485,13 +485,13 @@ impl App {
                         self.command_sender
                             .send_system(SystemCommand::RefreshRedapServer(origin));
                     }
-                    re_ui::RedapServerCommandKind::Edit => {
+                    re_ui::RedapServerCommandKind::OpenEditDialog => {
                         self.command_sender
                             .send_system(SystemCommand::EditRedapServerModal(
                                 re_viewer_context::EditRedapServerModalCommand::new(origin),
                             ));
                     }
-                    re_ui::RedapServerCommandKind::CopyUrl => {
+                    re_ui::RedapServerCommandKind::CopyUrlToClipboard => {
                         let url = origin.to_string();
                         re_log::info!("Copied {url:?} to clipboard");
                         egui_ctx.copy_text(url);
@@ -513,7 +513,7 @@ impl App {
                                 .refresh_entry(origin, *entry_id, egui_ctx);
                         }
                     }
-                    re_ui::TableCommandKind::ResetBlueprint => {
+                    re_ui::TableCommandKind::ResetBlueprintToDefault => {
                         if let Err(err) = self.table_blueprints.reset(&table, store_hub) {
                             re_log::warn!("Failed to reset table blueprint: {err}");
                         }
@@ -891,7 +891,7 @@ impl App {
 
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::Open => {
+            UICommand::OpenFile => {
                 use re_data_source::LogDataSource;
                 use re_log_msg::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
@@ -907,7 +907,7 @@ impl App {
                 }
             }
             #[cfg(target_arch = "wasm32")]
-            UICommand::Open => {
+            UICommand::OpenFile => {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
@@ -924,7 +924,7 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::Import => {
+            UICommand::ImportFileIntoCurrentRecording => {
                 use re_data_source::LogDataSource;
                 use re_log_msg::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
@@ -940,7 +940,7 @@ impl App {
                 }
             }
             #[cfg(target_arch = "wasm32")]
-            UICommand::Import => {
+            UICommand::ImportFileIntoCurrentRecording => {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
@@ -956,27 +956,27 @@ impl App {
                 });
             }
 
-            UICommand::OpenUrl => {
+            UICommand::OpenUrlDialog => {
                 self.state.open_url_modal.open();
             }
 
-            UICommand::CloseAllEntries => {
+            UICommand::CloseAllRecordings => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllEntries);
             }
 
-            UICommand::NextRecording => {
+            UICommand::SwitchToNextRecording => {
                 self.state
                     .recording_panel
                     .send_command(re_recording_panel::RecordingPanelCommand::SelectNextRecording);
             }
-            UICommand::PreviousRecording => {
+            UICommand::SwitchToPreviousRecording => {
                 self.state.recording_panel.send_command(
                     re_recording_panel::RecordingPanelCommand::SelectPreviousRecording,
                 );
             }
 
-            UICommand::NavigateBack => {
+            UICommand::NavigateBackInHistory => {
                 if let Some(url) = self.state.history.go_back() {
                     url.clone().open(
                         egui_ctx,
@@ -988,7 +988,7 @@ impl App {
                     );
                 }
             }
-            UICommand::NavigateForward => {
+            UICommand::NavigateForwardInHistory => {
                 if let Some(url) = self.state.history.go_forward() {
                     url.clone().open(
                         egui_ctx,
@@ -1006,19 +1006,19 @@ impl App {
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
 
-            UICommand::OpenWebsite => {
+            UICommand::OpenRerunWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
                     url: "https://rerun.io/".to_owned(),
                     new_tab: true,
                 });
             }
-            UICommand::OpenWebHelp => {
+            UICommand::OpenDocsWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
                     url: "https://rerun.io/docs/getting-started/navigating-the-viewer".to_owned(),
                     new_tab: true,
                 });
             }
-            UICommand::OpenRerunDiscord => {
+            UICommand::OpenDiscordWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
                     url: "https://discord.gg/PXtCgFBSmH".to_owned(),
                     new_tab: true,
@@ -1093,12 +1093,12 @@ impl App {
                 self.toggle_fullscreen();
             }
 
-            UICommand::Settings => {
+            UICommand::OpenSettings => {
                 self.command_sender.send_system(SystemCommand::OpenSettings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomIn => {
+            UICommand::ZoomInUi => {
                 let mut zoom_factor = egui_ctx.zoom_factor();
                 zoom_factor += 0.1;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
@@ -1106,7 +1106,7 @@ impl App {
                 egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomOut => {
+            UICommand::ZoomOutUi => {
                 let mut zoom_factor = egui_ctx.zoom_factor();
                 zoom_factor -= 0.1;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
@@ -1114,7 +1114,7 @@ impl App {
                 egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomReset => {
+            UICommand::ResetUiZoom => {
                 egui_ctx.set_zoom_factor(1.0);
             }
 
@@ -1123,7 +1123,7 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ScreenshotWholeApp => {
+            UICommand::CopyScreenshotToClipboard => {
                 self.screenshotter.request_screenshot(egui_ctx);
             }
             #[cfg(debug_assertions)]
@@ -1134,7 +1134,7 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
-            UICommand::Share => {
+            UICommand::OpenShareDialog => {
                 let selection = self.state.selection_state.selected_items();
                 let rec_cfg = route
                     .recording_id()
@@ -1147,14 +1147,14 @@ impl App {
                     re_log::error!("Cannot share link to current screen: {err}");
                 }
             }
-            UICommand::CopyDirectLink => {
+            UICommand::CopyDirectLinkToClipboard => {
                 match ViewerOpenUrl::from_route(storage_context.hub, route) {
                     Ok(url) => self.run_copy_link_command(&url),
                     Err(err) => re_log::error!("{err}"),
                 }
             }
 
-            UICommand::CopyTimeSelectionLink => {
+            UICommand::CopyTimeSelectionLinkToClipboard => {
                 match ViewerOpenUrl::from_route(storage_context.hub, route) {
                     Ok(mut url) => {
                         if let Some(fragment) = url.fragment_mut() {
@@ -1207,11 +1207,11 @@ impl App {
                 }
             }
 
-            UICommand::CopyEntityHierarchy => {
+            UICommand::CopyEntityHierarchyToClipboard => {
                 self.copy_entity_hierarchy_to_clipboard(egui_ctx, store_context);
             }
 
-            UICommand::AddRedapServer => {
+            UICommand::OpenAddServerDialog => {
                 self.state.redap_servers.open_add_server_modal();
             }
         }
@@ -1323,14 +1323,14 @@ impl App {
                 self.command_sender
                     .send_system(SystemCommand::CloseRecordingOrTable(recording_id.into()));
             }
-            RecordingCommandKind::Undo => {
+            RecordingCommandKind::UndoBlueprintEdit => {
                 if let Some(store_context) = store_context {
                     let blueprint_id = store_context.blueprint.store_id().clone();
                     self.command_sender
                         .send_system(SystemCommand::UndoBlueprint { blueprint_id });
                 }
             }
-            RecordingCommandKind::Redo => {
+            RecordingCommandKind::RedoBlueprintEdit => {
                 if let Some(store_context) = store_context {
                     let blueprint_id = store_context.blueprint.store_id().clone();
                     self.command_sender
@@ -1338,7 +1338,7 @@ impl App {
                 }
             }
 
-            RecordingCommandKind::AddViewOrContainer => {
+            RecordingCommandKind::OpenAddViewOrContainerDialog => {
                 if let Some(ctx) = store_context {
                     let blueprint_query =
                         self.state.blueprint_query_for_viewer(Some(ctx.blueprint));
@@ -1363,11 +1363,11 @@ impl App {
                     );
                 }
             }
-            RecordingCommandKind::ClearActiveBlueprint => {
+            RecordingCommandKind::ResetBlueprintToDefault => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprint);
             }
-            RecordingCommandKind::ClearActiveBlueprintAndEnableHeuristics => {
+            RecordingCommandKind::ResetBlueprintToHeuristic => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
@@ -1381,15 +1381,15 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline ^= true;
             }
 
-            RecordingCommandKind::PlaybackTogglePlayPause
-            | RecordingCommandKind::PlaybackStepBack
-            | RecordingCommandKind::PlaybackStepForward
-            | RecordingCommandKind::PlaybackBack
-            | RecordingCommandKind::PlaybackForward
-            | RecordingCommandKind::PlaybackBackFast
-            | RecordingCommandKind::PlaybackForwardFast
-            | RecordingCommandKind::PlaybackBeginning
-            | RecordingCommandKind::PlaybackEndAndFollow
+            RecordingCommandKind::TogglePlayPause
+            | RecordingCommandKind::SeekToPreviousEvent
+            | RecordingCommandKind::SeekToNextEvent
+            | RecordingCommandKind::SeekBackwardShort
+            | RecordingCommandKind::SeekForwardShort
+            | RecordingCommandKind::SeekBackwardLong
+            | RecordingCommandKind::SeekForwardLong
+            | RecordingCommandKind::SeekToStart
+            | RecordingCommandKind::SeekToEndAndFollow
             | RecordingCommandKind::PlaybackSpeed(_) => {
                 if let Some(time_command) = TimeControlCommand::from_recording_command(kind) {
                     self.command_sender
