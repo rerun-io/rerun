@@ -60,6 +60,7 @@ from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch
 from .visualizer_component_mapping import VisualizerComponentMapping, VisualizerComponentMappingBatch
 from .visualizer_instruction_id import VisualizerInstructionId, VisualizerInstructionIdBatch
 from .visualizer_type import VisualizerType, VisualizerTypeBatch
+from .volume import Volume, VolumeBatch
 from .zoom_level import ZoomLevel, ZoomLevelBatch
 
 __all__ = [
@@ -209,6 +210,8 @@ __all__ = [
     "VisualizerInstructionIdBatch",
     "VisualizerType",
     "VisualizerTypeBatch",
+    "Volume",
+    "VolumeBatch",
     "ZoomLevel",
     "ZoomLevelBatch",
 ]

@@ -2,6 +2,8 @@
 
 #[path = "archetypes/active_visualizers.def.rs"]
 mod active_visualizers;
+#[path = "archetypes/audio_playback.def.rs"]
+mod audio_playback;
 #[path = "archetypes/background.def.rs"]
 mod background;
 #[path = "archetypes/card_layout.def.rs"]
@@ -82,6 +84,7 @@ mod visual_bounds2d;
 mod visualizer_instruction;
 
 pub use self::active_visualizers::*;
+pub use self::audio_playback::*;
 pub use self::background::*;
 pub use self::card_layout::*;
 pub use self::container_blueprint::*;

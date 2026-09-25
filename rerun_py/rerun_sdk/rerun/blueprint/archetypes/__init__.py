@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_visualizers import ActiveVisualizers
+from .audio_playback import AudioPlayback
 from .background import Background
 from .card_layout import CardLayout
 from .container_blueprint import ContainerBlueprint
@@ -48,6 +49,7 @@ from .visualizer_instruction import VisualizerInstruction
 
 __all__ = [
     "ActiveVisualizers",
+    "AudioPlayback",
     "Background",
     "CardLayout",
     "ContainerBlueprint",

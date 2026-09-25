@@ -60,4 +60,5 @@
 #include "blueprint/components/visualizer_component_mapping.hpp"
 #include "blueprint/components/visualizer_instruction_id.hpp"
 #include "blueprint/components/visualizer_type.hpp"
+#include "blueprint/components/volume.hpp"
 #include "blueprint/components/zoom_level.hpp"

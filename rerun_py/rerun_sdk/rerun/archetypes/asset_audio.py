@@ -28,8 +28,9 @@ class AssetAudio(AssetAudioExt, Archetype):
     """
     **Archetype**: An audio file, stored as-is (`.aac`, `.flac`, `.m4a`, `.mp3`, `.ogg`, `.wav`).
 
-    The audio is considered to start playing at the time it was logged,
+    The audio starts playing at the time it was logged,
     so log it on a temporal timeline (duration or timestamp) at the point where playback should begin.
+    The viewer plays it while time is playing, in an [`views.AudioView`][rerun.blueprint.views.AudioView].
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 

@@ -3,6 +3,8 @@
 .gitattributes linguist-generated=true
 active_visualizers.cpp linguist-generated=true
 active_visualizers.hpp linguist-generated=true
+audio_playback.cpp linguist-generated=true
+audio_playback.hpp linguist-generated=true
 background.cpp linguist-generated=true
 background.hpp linguist-generated=true
 card_layout.cpp linguist-generated=true

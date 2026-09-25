@@ -3,6 +3,7 @@
 #pragma once
 
 #include "blueprint/archetypes/active_visualizers.hpp"
+#include "blueprint/archetypes/audio_playback.hpp"
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/card_layout.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"

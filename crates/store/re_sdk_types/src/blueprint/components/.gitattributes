@@ -60,4 +60,5 @@ visual_bounds2d.rs linguist-generated=true
 visualizer_component_mapping.rs linguist-generated=true
 visualizer_instruction_id.rs linguist-generated=true
 visualizer_type.rs linguist-generated=true
+volume.rs linguist-generated=true
 zoom_level.rs linguist-generated=true

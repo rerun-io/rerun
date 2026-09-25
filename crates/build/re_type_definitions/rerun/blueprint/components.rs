@@ -116,6 +116,8 @@ mod visualizer_component_mapping;
 mod visualizer_instruction_id;
 #[path = "components/visualizer_type.def.rs"]
 mod visualizer_type;
+#[path = "components/volume.def.rs"]
+mod volume;
 #[path = "components/zoom_level.def.rs"]
 mod zoom_level;
 
@@ -177,4 +179,5 @@ pub use self::visual_bounds2d::*;
 pub use self::visualizer_component_mapping::*;
 pub use self::visualizer_instruction_id::*;
 pub use self::visualizer_type::*;
+pub use self::volume::*;
 pub use self::zoom_level::*;

@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
 active_visualizers.py linguist-generated=true
+audio_playback.py linguist-generated=true
 background.py linguist-generated=true
 card_layout.py linguist-generated=true
 container_blueprint.py linguist-generated=true

@@ -770,6 +770,18 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Volume as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Playback volume, as a multiplier applied to the audio samples.\n\n0.0 is silent and 1.0 leaves the samples unchanged.\nThe scale is linear in amplitude, not in perceived loudness.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(Volume::default().to_arrow()?),
+                datatype: Volume::arrow_data_type(),
+                is_enum: false,
+                own_chunk: false,
+                verify_arrow_array: Volume::verify_arrow_array,
+            },
+        ),
+        (
             <ZoomLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -4432,6 +4444,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.AudioPlayback"),
+            ArchetypeReflection {
+                display_name: "Audio playback",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![ArchetypeFieldReflection {
+                    name: "volume",
+                    display_name: "Volume",
+                    component_type: "rerun.blueprint.components.Volume".into(),
+                    docstring_md: "Playback volume, from 0.0 (silent) to 1.0 (full).\n\nDefaults to 1.0.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
@@ -5604,6 +5631,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
 
 fn generate_view_reflection() -> ViewReflectionMap {
     let entries = [
+        (
+            ViewClassIdentifier::from_static_str("Audio"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
+                    "rerun.archetypes.AssetAudio",
+                )]),
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.AudioPlayback",
+                )],
+            },
+        ),
         (
             ViewClassIdentifier::from_static_str("BarChart"),
             ViewReflection {

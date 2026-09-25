@@ -74,6 +74,8 @@ mod visualizer_component_mapping;
 mod visualizer_instruction_id;
 mod visualizer_instruction_id_ext;
 mod visualizer_type;
+mod volume;
+mod volume_ext;
 mod zoom_level;
 
 pub use self::absolute_time_range::AbsoluteTimeRange;
@@ -134,4 +136,5 @@ pub use self::visual_bounds2d::VisualBounds2D;
 pub use self::visualizer_component_mapping::VisualizerComponentMapping;
 pub use self::visualizer_instruction_id::VisualizerInstructionId;
 pub use self::visualizer_type::VisualizerType;
+pub use self::volume::Volume;
 pub use self::zoom_level::ZoomLevel;
