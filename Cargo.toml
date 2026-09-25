@@ -310,8 +310,8 @@ env_filter = { version = "2.0", default-features = false }
 ffmpeg-sidecar = { version = "2.5", default-features = false }
 fixed = { version = "1.31", default-features = false }
 fjadra = "0.2.1"
-futures = "0.3.33"
-futures-util = "0.3.33"
+futures = "0.3.34"
+futures-util = "0.3.34"
 getrandom = "0.3.4"
 getrandom02 = { package = "getrandom", version = "0.2.17" }
 gilrs = "0.11.1" # `gilrs-core` 0.6.8 (pulled by 0.11.2) moves to `nix` 0.31, duplicating the `nix` 0.30 that `zbus` requires, so `gilrs-core` is held at 0.6.7 in `Cargo.lock`. Bump once `zbus` moves to `nix` 0.31.
