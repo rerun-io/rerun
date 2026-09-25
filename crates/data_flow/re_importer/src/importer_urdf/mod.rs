@@ -787,7 +787,7 @@ fn resolve_package_uri(uri: &str) -> Result<PathBuf, RosResourceError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{RosResourceError, RosResourceErrorTracker};
+    use super::{RosResourceError, RosResourceErrorTracker, quat_from_rpy};
 
     /// Checks that repeated ROS resource failures use unique paths in one warning per failure reason.
     #[test]
@@ -805,5 +805,32 @@ mod tests {
                 "No root directory set for URDF (1x)\n- meshes/b.stl".to_owned(),
             ]
         );
+    }
+
+    /// Checks that a URDF 1.1 quaternion origin is converted to the expected rotation.
+    ///
+    /// See also: <https://github.com/ros/urdfdom#urdf-versioning>
+    #[test]
+    fn urdf_1_1_quaternion_origin() {
+        let robot = urdf_rs::read_from_string(
+            r#"
+                <robot name="quaternion" version="1.1">
+                    <link name="parent"/>
+                    <link name="child"/>
+                    <joint name="fixed" type="fixed">
+                        <parent link="parent"/>
+                        <child link="child"/>
+                        <origin quat_xyzw="0 0 0.7071067811865476 0.7071067811865476"/>
+                    </joint>
+                </robot>
+            "#,
+        )
+        .expect("URDF 1.1 quaternion origin should parse");
+
+        // Note: `urdf-rs` converts quaternions to RPY during parsing.
+        // See: https://github.com/openrr/urdf-rs#urdf-versions
+        let quaternion = quat_from_rpy(&robot.joints[0].origin.rpy.0);
+        let expected = super::glam::Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
+        assert!(quaternion.abs_diff_eq(expected, 1e-6));
     }
 }

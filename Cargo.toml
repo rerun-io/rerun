@@ -512,7 +512,7 @@ tracing-tracy = { version = "0.11.4", default-features = false, features = [
 tracing-web = "0.1.3"
 typenum = "1.20"
 unindent = "0.2.4"
-urdf-rs = "0.9.0"
+urdf-rs = "0.10.0"
 ureq = { version = "3.3", features = ["json"] }
 url = "2.5"
 uuid = { version = "1.24", features = ["serde", "v4", "js"] }

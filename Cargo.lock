@@ -8634,6 +8634,16 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
+version = "0.39.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdcc8dd4e2f670d309a5f0e83fe36dfdc05af317008fea29144da1a2ac858e5e"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
+name = "quick-xml"
 version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
@@ -14605,16 +14615,16 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "urdf-rs"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "074515a3e6dc230bbbdcf35830fd71b67b55ae2ac22bc4ff69d89412fc84b830"
+checksum = "0c1c4d002a2d281d6ae7a1a8b319bddc50506a35731e826fb9dbd8d648c39bcf"
 dependencies = [
  "RustyXML",
- "quick-xml 0.36.2",
+ "quick-xml 0.39.4",
  "regex",
  "serde",
  "serde-xml-rs",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

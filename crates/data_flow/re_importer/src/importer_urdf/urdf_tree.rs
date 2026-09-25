@@ -104,6 +104,7 @@ impl UrdfTree {
     ) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
+            version: _,
             links,
             joints,
             materials,
@@ -491,6 +492,7 @@ mod tests {
     fn test_apply_frame_prefix_without_prefix() {
         let robot = urdf_rs::Robot {
             name: "test".to_owned(),
+            version: None,
             links: vec![make_minimal_link("base")],
             joints: vec![],
             materials: vec![],
@@ -504,6 +506,7 @@ mod tests {
     fn test_apply_frame_prefix_with_prefix() {
         let robot = urdf_rs::Robot {
             name: "test".to_owned(),
+            version: None,
             links: vec![make_minimal_link("base")],
             joints: vec![],
             materials: vec![],
@@ -519,6 +522,7 @@ mod tests {
     fn test_with_static_transform_entity_overrides_default_path() {
         let robot = urdf_rs::Robot {
             name: "test".to_owned(),
+            version: None,
             links: vec![make_minimal_link("base")],
             joints: vec![],
             materials: vec![],
