@@ -807,8 +807,8 @@ fn py_object_to_time_cell(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<re
         return Ok(re_sdk::TimeCell::new(TimeType::Sequence, value));
     }
 
-    if let Ok(duration) = obj.extract::<chrono::Duration>() {
-        let nanos = duration.num_nanoseconds().ok_or_else(|| {
+    if let Ok(duration) = obj.extract::<jiff::SignedDuration>() {
+        let nanos = i64::try_from(duration.as_nanos()).map_err(|_err| {
             PyOverflowError::new_err("datetime.timedelta is out of nanosecond range")
         })?;
 

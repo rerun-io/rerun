@@ -153,22 +153,14 @@ impl PyEntryDetails {
 
     /// The entry's creation date and time.
     #[getter]
-    //TODO(ab): use jiff when updating to pyo3 0.24.0
-    pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
-        let ts = self.0.created_at;
-        // If the `prost::Timestamp` was legal, then this is also legal.
-        #[expect(clippy::unwrap_used)]
-        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
+    pub fn created_at(&self) -> jiff::Timestamp {
+        self.0.created_at
     }
 
     /// The entry's last updated date and time.
     #[getter]
-    //TODO(ab): use jiff when updating to pyo3 0.24.0
-    pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
-        let ts = self.0.updated_at;
-        // If the `prost::Timestamp` was legal, then this is also legal.
-        #[expect(clippy::unwrap_used)]
-        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
+    pub fn updated_at(&self) -> jiff::Timestamp {
+        self.0.updated_at
     }
 }
 
