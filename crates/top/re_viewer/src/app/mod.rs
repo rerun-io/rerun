@@ -173,9 +173,6 @@ pub struct App {
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
-    /// The last theme we pushed to the OS window (via [`egui::ViewportCommand::SetTheme`]).
-    last_window_theme: Option<egui::SystemTheme>,
-
     /// Read via [`Self::custom_window_decorations`].
     window_decorations_request: WindowDecorationsRequest,
 
@@ -571,7 +568,6 @@ impl App {
             latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
-            last_window_theme: None,
 
             window_decorations_request: WindowDecorationsRequest::NotSent,
 

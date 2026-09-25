@@ -166,7 +166,7 @@ fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes
                 )
                 .clicked()
             {
-                ui.copy_text(format!("{datatype:#?}")); // TODO(apache/arrow-rs#8351): use Display once arrow 57 is released
+                ui.copy_text(datatype.to_string());
                 re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
             }
         },

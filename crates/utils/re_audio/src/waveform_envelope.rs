@@ -40,7 +40,7 @@ impl AudioBuffer {
                     .chunks_exact(num_channels)
                     .map(|frame| frame.iter().sum::<f32>() / num_channels as f32)
                     .fold(Rangef::NOTHING, |range, mixed| {
-                        union(range, Rangef::point(mixed))
+                        range.union(Rangef::point(mixed))
                     })
             })
             .collect();
@@ -67,14 +67,11 @@ impl WaveformEnvelope {
         let last = last_frame
             .div_ceil(self.frames_per_bucket)
             .clamp(first + 1, n);
-        self.buckets[first..last].iter().copied().reduce(union)
+        self.buckets[first..last]
+            .iter()
+            .copied()
+            .reduce(Rangef::union)
     }
-}
-
-/// The smallest range containing both.
-// TODO(emilk/egui#8603): use `Rangef::union` once released.
-fn union(a: Rangef, b: Rangef) -> Rangef {
-    Rangef::new(a.min.min(b.min), a.max.max(b.max))
 }
 
 #[cfg(test)]
