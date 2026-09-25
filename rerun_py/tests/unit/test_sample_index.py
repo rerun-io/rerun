@@ -2,11 +2,67 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 import numpy as np
+import pyarrow as pa
 import pytest
-from rerun.experimental.dataloader import Field
+from datafusion import SessionContext
+from rerun.experimental.dataloader import DataSource, Field, FixedRateSampling
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
 from rerun.experimental.dataloader.decoders import NumericDecoder
+
+if TYPE_CHECKING:
+    from datafusion import DataFrame
+    from rerun.catalog import DatasetEntry
+
+
+class _DatasetWithIndexRanges:
+    def __init__(self, table: pa.Table) -> None:
+        self._table = table
+        self._ctx = SessionContext()
+        self.segment_ids_call_count = 0
+
+    def segment_ids(self) -> list[str]:
+        self.segment_ids_call_count += 1
+        return cast("list[str]", self._table.column("rerun_segment_id").to_pylist())
+
+    def filter_segments(self, segment_ids: list[str]) -> _DatasetWithIndexRanges:
+        assert set(segment_ids) == set(self.segment_ids())
+        return self
+
+    def get_index_ranges(self) -> DataFrame:
+        batches = self._table.to_batches()
+        if not batches:
+            batches = [
+                pa.RecordBatch.from_arrays(
+                    [column.combine_chunks() for column in self._table.columns],
+                    schema=self._table.schema,
+                )
+            ]
+        return self._ctx.create_dataframe([batches])
+
+
+def _build_sample_index(
+    ranges_table: pa.Table,
+    *,
+    timeline_sampling: FixedRateSampling | None = None,
+) -> SampleIndex:
+    dataset = cast("DatasetEntry", _DatasetWithIndexRanges(ranges_table))
+    return SampleIndex.build(
+        DataSource(dataset=dataset),
+        index="frame",
+        fields={},
+        timeline_sampling=timeline_sampling,
+    )
+
+
+def _global_mapping(sample_index: SampleIndex) -> list[tuple[str, object]]:
+    mapping: list[tuple[str, object]] = []
+    for global_index in range(sample_index.total_samples):
+        segment, index_value = sample_index.global_to_local(global_index)
+        mapping.append((segment.segment_id, index_value))
+    return mapping
 
 
 def _integer_segment(segment_id: str, index_start: int, index_end: int) -> SegmentMetadata:
@@ -30,6 +86,68 @@ def _fixed_rate_segment(
         index_end=index_start + (num_samples - 1) * ns_per_sample,
         num_samples=num_samples,
     )
+
+
+def test_build_does_not_fetch_all_segment_ids() -> None:
+    ranges_table = pa.table({
+        "rerun_segment_id": ["segment-a"],
+        "frame:start": pa.array([10], type=pa.int64()),
+        "frame:end": pa.array([11], type=pa.int64()),
+    })
+    dataset = _DatasetWithIndexRanges(ranges_table)
+
+    sample_index = SampleIndex.build(DataSource(dataset=cast("DatasetEntry", dataset)), index="frame", fields={})
+
+    assert sample_index.total_samples == 2
+    assert dataset.segment_ids_call_count == 0
+
+
+def test_build_empty_dataset_without_index_columns() -> None:
+    ranges_table = pa.table({"rerun_segment_id": pa.array([], type=pa.string())})
+
+    sample_index = _build_sample_index(ranges_table)
+
+    assert sample_index.total_samples == 0
+    assert sample_index.segments == []
+
+
+def test_build_integer_mapping_is_independent_of_range_row_order() -> None:
+    ranges_table = pa.table({
+        "rerun_segment_id": ["segment-a", "segment-b"],
+        "frame:start": pa.array([10, 20], type=pa.int64()),
+        "frame:end": pa.array([11, 22], type=pa.int64()),
+    })
+    reversed_ranges_table = ranges_table.take(pa.array([1, 0]))
+    expected_mapping = [
+        ("segment-a", 10),
+        ("segment-a", 11),
+        ("segment-b", 20),
+        ("segment-b", 21),
+        ("segment-b", 22),
+    ]
+
+    assert _global_mapping(_build_sample_index(ranges_table)) == expected_mapping
+    assert _global_mapping(_build_sample_index(reversed_ranges_table)) == expected_mapping
+
+
+def test_build_fixed_rate_mapping_is_independent_of_range_row_order() -> None:
+    ranges_table = pa.table({
+        "rerun_segment_id": ["segment-a", "segment-b"],
+        "frame:start": pa.array([10_000_000_000, 20_000_000_000], type=pa.timestamp("ns")),
+        "frame:end": pa.array([11_000_000_000, 22_000_000_000], type=pa.timestamp("ns")),
+    })
+    reversed_ranges_table = ranges_table.take(pa.array([1, 0]))
+    expected_mapping = [
+        ("segment-a", np.datetime64(10_000_000_000, "ns")),
+        ("segment-a", np.datetime64(11_000_000_000, "ns")),
+        ("segment-b", np.datetime64(20_000_000_000, "ns")),
+        ("segment-b", np.datetime64(21_000_000_000, "ns")),
+        ("segment-b", np.datetime64(22_000_000_000, "ns")),
+    ]
+
+    sampling = FixedRateSampling(rate_hz=1.0)
+    assert _global_mapping(_build_sample_index(ranges_table, timeline_sampling=sampling)) == expected_mapping
+    assert _global_mapping(_build_sample_index(reversed_ranges_table, timeline_sampling=sampling)) == expected_mapping
 
 
 def test_global_to_local_integer_single_segment() -> None:
