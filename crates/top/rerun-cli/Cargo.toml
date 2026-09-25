@@ -44,7 +44,7 @@ doc = false
 default = ["web_viewer", "base"]
 
 ## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
-base = ["native_viewer", "map_view", "oss_server", "perf_telemetry"]
+base = ["audio", "native_viewer", "map_view", "oss_server", "perf_telemetry"]
 
 # !!!IMPORTANT!!!
 #
@@ -74,6 +74,9 @@ release_no_web_viewer = ["base", "lance", "nasm"]
 ## This may enable features that require extra build tools that not everyone has.
 release_full = ["release_no_web_viewer", "web_viewer"]
 
+
+## Support audio playback in the viewer.
+audio = ["rerun/audio"]
 
 ## Support the map view.
 ## This adds a lot of extra dependencies.

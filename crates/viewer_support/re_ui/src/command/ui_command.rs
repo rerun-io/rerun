@@ -74,6 +74,10 @@ pub enum UICommand {
 
     #[cfg(debug_assertions)]
     ResetEguiMemory,
+
+    #[cfg(debug_assertions)]
+    PlayTestSound,
+
     OpenShareDialog,
     CopyDirectLinkToClipboard,
     CopyTimeSelectionLinkToClipboard,
@@ -223,6 +227,8 @@ impl UICommand {
                 "Reset egui memory",
                 "Reset egui memory, useful for debugging UI code.",
             ),
+            #[cfg(debug_assertions)]
+            Self::PlayTestSound => ("Play test sound", "Test that audio playback works"),
 
             Self::OpenShareDialog => ("Share…", "Share the current screen as a link"),
             Self::CopyDirectLinkToClipboard => (
@@ -355,6 +361,8 @@ impl UICommand {
 
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
+            #[cfg(debug_assertions)]
+            Self::PlayTestSound => smallvec![],
 
             Self::OpenShareDialog => smallvec![cmd(Key::L)],
             Self::CopyDirectLinkToClipboard => smallvec![],
@@ -398,6 +406,8 @@ impl UICommand {
         match self {
             Self::OpenRerunWebsite | Self::OpenDocsWebsite => Some(&crate::icons::EXTERNAL_LINK),
             Self::OpenDiscordWebsite => Some(&crate::icons::DISCORD),
+            #[cfg(debug_assertions)]
+            Self::PlayTestSound => Some(&crate::icons::VIEW_AUDIO),
             _ => None,
         }
     }
@@ -411,7 +421,10 @@ impl UICommand {
     /// Such commands are marked with an orange "debug only" badge in the UI.
     #[cfg(debug_assertions)]
     pub fn is_debug_only(self) -> bool {
-        matches!(self, Self::ToggleEguiDebugPanel | Self::ResetEguiMemory)
+        matches!(
+            self,
+            Self::ToggleEguiDebugPanel | Self::ResetEguiMemory | Self::PlayTestSound
+        )
     }
 
     /// Listen for keyboard shortcuts of [`UICommand`]s only.

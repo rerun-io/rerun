@@ -26,6 +26,7 @@ default = [
   "analytics",
   "importers",
   "dataframe",
+  "audio",
   "demo",
   "glam",
   "image",
@@ -82,6 +83,9 @@ log = ["dep:env_filter", "dep:log"]
 ## Only useful in binaries: it pulls in `tracing-subscriber`, which a library
 ## should leave to whoever owns `main`.
 log_setup = ["re_log/setup"]
+
+## Support audio playback in the viewer.
+audio = ["re_viewer?/audio"]
 
 ## Support the map view.
 ## This adds a lot of extra dependencies.

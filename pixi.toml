@@ -209,10 +209,10 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 ] }
 
 # Compile the web-viewer wasm, does not include the cli.
-rerun-build-web = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
+rerun-build-web = "cargo run -p re_dev_tools -- build-web-viewer --debug"
 
 # Compile the web-viewer wasm and the cli.
-rerun-build-web-cli = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "cargo run -p re_dev_tools -- build-web-viewer --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -222,7 +222,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 ] }
 
 # Compile the web-viewer wasm in release mode.
-rerun-build-web-release = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
+rerun-build-web-release = "cargo run -p re_dev_tools -- build-web-viewer --release"
 
 # Run the `re_integration_test` suite against the real wasm web viewer in headless Chrome.
 # Builds the web viewer first, then runs the tests against the `browser` inspection target.

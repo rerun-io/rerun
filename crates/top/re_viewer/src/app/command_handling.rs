@@ -1133,6 +1133,10 @@ impl App {
                 // re-apply style, which is lost when resetting memory
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
+            #[cfg(debug_assertions)]
+            UICommand::PlayTestSound => {
+                self.state.audio_output.play_test_sound();
+            }
 
             UICommand::OpenShareDialog => {
                 let selection = self.state.selection_state.selected_items();

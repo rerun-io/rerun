@@ -32,6 +32,7 @@ mod agent_panel;
 mod app;
 mod app_blueprint;
 mod app_state;
+mod audio_output;
 mod background_tasks;
 mod catalog_handle;
 mod command_palette;

@@ -1759,6 +1759,8 @@ impl eframe::App for App {
         while let Ok((info, image)) = self.screenshot_rx.try_recv() {
             self.process_screenshot_result(&image, info);
         }
+
+        self.state.audio_output.finish_ui_pass(ui.will_discard());
     }
 
     #[cfg(target_arch = "wasm32")]

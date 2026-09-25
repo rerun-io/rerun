@@ -196,7 +196,9 @@ impl CommandKind {
                 | UICommand::CopyScreenshotToClipboard => false,
 
                 #[cfg(debug_assertions)]
-                UICommand::ToggleEguiDebugPanel | UICommand::ResetEguiMemory => false,
+                UICommand::ToggleEguiDebugPanel
+                | UICommand::ResetEguiMemory
+                | UICommand::PlayTestSound => false,
 
                 #[cfg(target_arch = "wasm32")]
                 UICommand::RestartWithWebGl | UICommand::RestartWithWebGpu => false,
@@ -297,7 +299,9 @@ impl CommandKind {
                 | UICommand::CopyScreenshotToClipboard => false,
 
                 #[cfg(debug_assertions)]
-                UICommand::ToggleEguiDebugPanel | UICommand::ResetEguiMemory => false,
+                UICommand::ToggleEguiDebugPanel
+                | UICommand::ResetEguiMemory
+                | UICommand::PlayTestSound => false,
             },
 
             Self::Recording(kind) => match kind {

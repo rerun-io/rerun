@@ -34,13 +34,9 @@ pub struct Args {
     #[argh(option, short = 'o', long = "out")]
     build_dir: Option<Utf8PathBuf>,
 
-    /// comma-separated list of features to pass on to `re_viewer`
+    /// comma-separated list of features to pass on to `re_viewer`, instead of its default features.
     #[argh(option, short = 'F', long = "features", default = "default_features()")]
     features: String,
-
-    /// whether to exclude default features from `re_viewer` wasm build
-    #[argh(switch, long = "no-default-features")]
-    no_default_features: bool,
 
     /// generate a cargo build timings report in `<target-dir>/cargo-timings/`.
     #[argh(switch)]
@@ -48,7 +44,7 @@ pub struct Args {
 }
 
 fn default_features() -> String {
-    "analytics".to_owned()
+    "analytics,default_web".to_owned()
 }
 
 pub fn main(args: Args) -> anyhow::Result<()> {
@@ -69,7 +65,6 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         args.debug_symbols,
         args.target,
         &build_dir,
-        args.no_default_features,
         &args.features,
         args.timings,
     )

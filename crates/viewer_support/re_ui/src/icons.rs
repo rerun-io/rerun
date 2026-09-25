@@ -242,6 +242,7 @@ pub const CONTAINER_TABS: Icon = icon_from_path!("../data/icons/container_tabs.s
 pub const CONTAINER_VERTICAL: Icon = icon_from_path!("../data/icons/container_vertical.svg");
 
 pub const VIEW_2D: Icon = icon_from_path!("../data/icons/view_2d.svg");
+pub const VIEW_AUDIO: Icon = icon_from_path!("../data/icons/view_audio.svg");
 pub const VIEW_3D: Icon = icon_from_path!("../data/icons/view_3d.svg");
 pub const VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/view_dataframe.svg");
 pub const VIEW_GRAPH: Icon = icon_from_path!("../data/icons/view_graph.svg");

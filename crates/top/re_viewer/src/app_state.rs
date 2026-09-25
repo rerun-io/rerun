@@ -48,6 +48,10 @@ pub struct AppState {
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
 
+    /// The viewer's audio output. The device opens on first use.
+    #[serde(skip)]
+    pub(crate) audio_output: crate::audio_output::AudioOutput,
+
     /// Settings shared by all conversations in the agent panel.
     ///
     /// This stays in `re_viewer` so `re_viewer_context` does not depend on the native-only
@@ -167,6 +171,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
+            audio_output: Default::default(),
             #[cfg(agent_panel)]
             agent_settings: Default::default(),
             #[cfg(agent_panel)]

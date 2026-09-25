@@ -31,8 +31,7 @@ function buildWebViewer(mode) {
       "cargo run -p re_dev_tools -- build-web-viewer",
       modeFlags,
       "--target no-modules-base",
-      "--no-default-features",
-      "--features map_view", // no `analytics`
+      "--features default_web", // no `analytics`
       "-o rerun_js/web-viewer",
     ].join(" "),
   );
