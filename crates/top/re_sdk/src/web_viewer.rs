@@ -171,6 +171,12 @@ pub struct WebViewerConfig {
     /// Has no effect if [`Self::open_browser`] is false.
     pub video_decoder: Option<String>,
 
+    /// If set, starts opened recordings at this time in the active timeline's native units.
+    pub start_time: Option<i64>,
+
+    /// If set, activates this timeline before applying [`Self::start_time`].
+    pub start_timeline: Option<String>,
+
     /// If set to `true`, opens the default browser after hosting the webviewer.
     ///
     /// Defaults to `true`.
@@ -192,6 +198,8 @@ impl Default for WebViewerConfig {
             connect_to: Vec::new(),
             force_wgpu_backend: None,
             video_decoder: None,
+            start_time: None,
+            start_timeline: None,
             open_browser: true,
             assets_archive_path: None,
         }
@@ -214,6 +222,8 @@ impl WebViewerConfig {
             web_port,
             force_wgpu_backend,
             video_decoder,
+            start_time,
+            start_timeline,
             open_browser,
             assets_archive_path,
         } = self;
@@ -249,6 +259,16 @@ impl WebViewerConfig {
         }
         if let Some(video_decoder) = video_decoder {
             append_argument(format!("video_decoder={video_decoder}"));
+        }
+        if let Some(start_time) = start_time {
+            append_argument(format!("start_time={start_time}"));
+        }
+        if let Some(start_timeline) = start_timeline {
+            let start_timeline = percent_encoding::utf8_percent_encode(
+                &start_timeline,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            append_argument(format!("start_timeline={start_timeline}"));
         }
 
         re_log::info!(

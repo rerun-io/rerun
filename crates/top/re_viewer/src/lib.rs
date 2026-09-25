@@ -83,7 +83,7 @@ pub use re_sdk_types::reflection::{ViewApplicability, ViewReflection};
 pub use re_viewer_context::{
     CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
 };
-pub use startup_options::{LoginOptions, StartupOptions};
+pub use startup_options::{InitialTime, LoginOptions, StartupOptions};
 pub use ui::about_rerun_ui;
 pub(crate) use ui::dev_panel;
 

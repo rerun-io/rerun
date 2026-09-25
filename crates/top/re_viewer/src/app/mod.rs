@@ -303,6 +303,7 @@ impl App {
         } else {
             AppState::default()
         };
+        state.initial_time = startup_options.initial_time;
 
         if startup_options.persist_state {
             // Check if the user has recently upgraded Rerun.
@@ -808,6 +809,8 @@ impl App {
                             .any(|s| s.as_ref() == store_source)
                     });
 
+                self.state
+                    .apply_initial_time(recording, &bp_ctx, more_data_is_streaming_in);
                 let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
                 // The state diffs are used to trigger callbacks if they are configured.

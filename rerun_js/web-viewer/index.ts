@@ -202,6 +202,17 @@ export interface WebViewerOptions {
   check_for_updates_on_startup?: boolean;
 
   /**
+   * The initial time cursor in the active timeline's native units.
+   *
+   * The value is clamped to the recording's time range and playback starts paused.
+   * Pass a decimal string for exact integers outside JavaScript's safe integer range.
+   */
+  start_time?: number | string;
+
+  /** The timeline to activate before applying `start_time`. */
+  start_timeline?: string;
+
+  /**
    * Allow the viewer to handle fullscreen mode.
    * This option sets canvas style so is not recommended if you are doing anything custom,
    * or are embedding the viewer in an iframe.

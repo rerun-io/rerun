@@ -273,6 +273,34 @@ fn playing_clamps_a_cursor_sitting_outside_of_the_data() {
 }
 
 #[test]
+fn start_time_selects_timeline_clamps_and_pauses() {
+    let sequence = sequence_timeline();
+    let duration = duration_timeline();
+    let duration_name = *duration.name();
+    let mut db = dummy_recording(sequence, [0, 10, 20]);
+    for (i, time) in [100, 200, 300].into_iter().enumerate() {
+        let chunk = Chunk::builder("/duration_scalar")
+            .with_archetype(RowId::new(), [(duration, time)], &Scalars::single(i as f64))
+            .build()
+            .expect("building a chunk with a single scalar should succeed");
+        db.add_chunk(&Arc::new(chunk))
+            .expect("adding a chunk to a new store should succeed");
+    }
+
+    let mut time_ctrl = playing(&db, sequence_timeline().name(), 0_i64, 1.0);
+    let _response = time_ctrl.set_start_time(
+        NO_BLUEPRINT,
+        &db,
+        Some(duration_name),
+        TimeReal::from(1_000_i64),
+    );
+
+    assert_eq!(time_ctrl.timeline_name(), &duration_name);
+    assert_eq!(time(&time_ctrl), TimeReal::from(300_i64));
+    assert_eq!(time_ctrl.play_state(), PlayState::Paused);
+}
+
+#[test]
 fn looping_over_everything_wraps_at_the_end_of_the_data() {
     let db = sequence_recording();
     let mut time_ctrl = playing(

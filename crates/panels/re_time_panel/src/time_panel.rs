@@ -1834,15 +1834,32 @@ fn pan_and_zoom_interaction(
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     let mut delta_x = 0.0;
+    let mut delta_y = 0.0;
     let mut zoom_factor = 1.0;
 
     // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
     // time area rectangle, including the timeline rect.
     let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| full_rect.contains(pointer_pos));
     if full_rect_hovered {
-        ui.input(|input| {
+        ui.input_mut(|input| {
             delta_x += input.smooth_scroll_delta.x;
             zoom_factor *= input.zoom_delta_2d().x;
+
+            if input.modifiers.is_none() {
+                for event in &input.events {
+                    if let egui::Event::MouseWheel {
+                        delta, modifiers, ..
+                    } = event
+                        && modifiers.is_none()
+                    {
+                        delta_y += delta.y;
+                    }
+                }
+
+                // Plain vertical scrolling scrubs time rather than scrolling the streams tree.
+                // Always clear this while hovered to suppress egui's multi-frame smoothing tail.
+                input.smooth_scroll_delta.y = 0.0;
+            }
         });
     }
 
@@ -1874,6 +1891,12 @@ fn pan_and_zoom_interaction(
         && let Some(new_view_range) = time_ranges_ui.zoom_at(pointer_pos.x, zoom_factor)
     {
         time_commands.push(TimeControlCommand::SetTimeView(new_view_range));
+    }
+
+    if delta_y > 0.0 {
+        time_commands.push(TimeControlCommand::StepTimeForward);
+    } else if delta_y < 0.0 {
+        time_commands.push(TimeControlCommand::StepTimeBack);
     }
 
     if response.double_clicked() {
