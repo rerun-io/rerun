@@ -37,7 +37,7 @@ platforms = [
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0" # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
-requires-pixi = ">=0.71.3" # Make sure to keep this in sync with the version on our CI jobs!
+requires-pixi = ">=0.78.0" # Make sure to keep this in sync with the version on our CI jobs!
 
 
 # These should be kept empty as their content is pulled in every single environment. For the "standard" stuff,

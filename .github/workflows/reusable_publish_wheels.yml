@@ -119,7 +119,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - id: "auth"
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
