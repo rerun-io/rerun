@@ -16,43 +16,20 @@ from __future__ import annotations
 import argparse
 import re
 import shutil
-import subprocess
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 # Apple requires CFBundleShortVersionString to be three integers separated by periods.
 # Map e.g. "0.33.0-alpha.1+dev" → "0.33.0".
 _VERSION_PREFIX = re.compile(r"^(\d+\.\d+\.\d+)")
 
-ICNS_SIZES = [
-    (16, "icon_16x16.png"),
-    (32, "icon_16x16@2x.png"),
-    (32, "icon_32x32.png"),
-    (64, "icon_32x32@2x.png"),
-    (128, "icon_128x128.png"),
-    (256, "icon_128x128@2x.png"),
-    (256, "icon_256x256.png"),
-    (512, "icon_256x256@2x.png"),
-    (512, "icon_512x512.png"),
-    (1024, "icon_512x512@2x.png"),
-]
-
-
-def run(args: list[str]) -> None:
-    print(f"> {' '.join(args)}", flush=True)
-    subprocess.run(args, check=True)
-
 
 def build_icns(png: Path, out: Path) -> None:
-    """Build a multi-resolution .icns from a square source PNG using macOS native tools."""
-    iconset = out.parent / f"{out.stem}.iconset"
-    if iconset.exists():
-        shutil.rmtree(iconset)
-    iconset.mkdir(parents=True)
-    for size, name in ICNS_SIZES:
-        run(["sips", "-z", str(size), str(size), str(png), "--out", str(iconset / name)])
-    run(["iconutil", "--convert", "icns", "--output", str(out), str(iconset)])
-    shutil.rmtree(iconset)
+    """Build a multi-resolution .icns from a square source PNG."""
+    with Image.open(png) as image:
+        image.convert("RGBA").save(out, format="ICNS")
 
 
 def main() -> int:
@@ -63,10 +40,6 @@ def main() -> int:
     parser.add_argument("--version", required=True, help="Version string (e.g. 0.21.0)")
     parser.add_argument("--output-dir", required=True, type=Path, help="Directory to write Rerun.app into")
     args = parser.parse_args()
-
-    if sys.platform != "darwin":
-        print("error: bundle_macos_app.py must run on macOS (uses sips and iconutil)", file=sys.stderr)
-        return 1
 
     for path in [args.binary, args.icon, args.info_plist]:
         if not path.exists():
