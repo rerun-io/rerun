@@ -32,7 +32,7 @@ Use the buttons at the top right corner to hide/show parts of the viewer.
 Command Palette
 ----------------------------
 The command palette is a powerful tool to reach arbitrary actions from anywhere via a simple text search.
-You reach it with `cmd/ctrl + P` or via the menu.
+You reach it with `cmd/ctrl + K` or via the menu.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/command-palette/76d89ff6d2b768c718c84462c6e2bdaa54e40e54/480w.png">

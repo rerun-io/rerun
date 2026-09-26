@@ -73,7 +73,7 @@ Either specify the network location with the CLI at launch:
 rerun connect localhost:51234
 ```
 
-or open the command palette in the viewer (`cmd/ctrl + P` or via the menu) and enter/select `Add Redap server`.
+or open the command palette in the viewer (`cmd/ctrl + K` or via the menu) and pick "Connect to a server…".
 Set the scheme to `http` and enter the hostname and port in the dialog.
 
 ## Inspecting the schema

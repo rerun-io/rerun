@@ -33,7 +33,7 @@ In the web viewer, use the browser's own flame graph instead.
 
 ### Save a trace to a file
 
-To capture a profile, open the command palette (`Cmd`/`Ctrl` + `P`) and pick "Capture profile trace…".
+To capture a profile, open the command palette (`Cmd`/`Ctrl` + `K`) and pick "Capture profile trace…".
 This records five frames and asks you where to save them as a `.puffin` file.
 Attach that file to a bug report, or open it later with `puffin_viewer`.
 
