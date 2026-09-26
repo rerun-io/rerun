@@ -112,6 +112,7 @@ numpy.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
   "abi3-py310", # Require at least Python 3.10
+  "generate-import-lib",
   "jiff-02",
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
