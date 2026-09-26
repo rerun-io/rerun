@@ -1,8 +1,11 @@
+use nohash_hasher::IntMap;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::external::arrow;
+use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
+use re_view::ComponentCastRule;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -24,6 +27,20 @@ pub fn series_supported_encodings() -> impl IntoIterator<Item = arrow::datatypes
         arrow::datatypes::DataType::UInt64,
         arrow::datatypes::DataType::Boolean,
     ]
+}
+
+/// Cast rules that canonicalize each of `components` to `Float64`.
+///
+/// The series visualizers accept any of [`series_supported_encodings`] but read values as `f64`,
+/// so every chunk must be cast, including chunks that reach the query without a remapping.
+pub fn float64_cast_rules(
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+) -> IntMap<ComponentIdentifier, ComponentCastRule> {
+    let cast_to_float64: ComponentCastRule = |_| Some(arrow::datatypes::DataType::Float64);
+    components
+        .into_iter()
+        .map(|component| (component, cast_to_float64))
+        .collect()
 }
 
 /// The overlap of an entity's query range with the range we have data on the entity for in the store.
