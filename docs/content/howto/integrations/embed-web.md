@@ -17,7 +17,7 @@ To implement this, fill in the placeholders:
 - `RRD_URL` - The URL of the recording to display in the viewer.
 - `RERUN_VERSION` - The version of the Rerun SDK used to generate the recording.
 
-The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API (e.g. `rerun+http://localhost:4321/proxy`).
+The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [`serve_grpc`](../../reference/sdk/operating-modes.md#serve_grpc) API (e.g. `rerun+http://localhost:4321/proxy`).
 
 For instance:
 
@@ -76,7 +76,7 @@ The first argument for `start` determines the recordings to open in the viewer. 
 - a URL string to open a single recording
 - an array of strings to open multiple recordings
 
-Each URL can be either a file served over `http` or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
+Each URL can be either a file served over `http` or a connection to an SDK using our [`serve_grpc`](../../reference/sdk/operating-modes.md#serve_grpc) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
 
 ### Controlling the canvas
 

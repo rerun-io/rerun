@@ -72,6 +72,7 @@ Decoding:
 Semantic:
 - **`foxglove`**: Semantic interpretation of Foxglove Protobuf messages
 - **`ros2msg`**: Semantic interpretation of ROS2 messages
+- **`ros2_reflection`**: Decode ROS 2 messages without a semantic mapping into generic Arrow data via schema reflection
 
 ### Default behavior
 
@@ -92,6 +93,7 @@ rerun mcap convert input.mcap \
     -d recording_info \
     -d urdf \
     -d ros2msg \
+    -d ros2_reflection \
     -d foxglove \
     -o output.rrd
 ```

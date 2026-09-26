@@ -63,18 +63,18 @@ brand_colors = {
 }
 
 
-def style_plot(symbol: str) -> rr.SeriesLine:
-    return rr.SeriesLine(
-        color=brand_colors[symbol],
-        name=symbol,
+def style_plot(symbol: str) -> rr.SeriesLines:
+    return rr.SeriesLines(
+        colors=brand_colors[symbol],
+        names=symbol,
     )
 
 
-def style_peak(symbol: str) -> rr.SeriesPoint:
-    return rr.SeriesPoint(
-        color=0xFF0000FF,
-        name=f"{symbol} (peak)",
-        marker="Up",
+def style_peak(symbol: str) -> rr.SeriesPoints:
+    return rr.SeriesPoints(
+        colors=0xFF0000FF,
+        names=f"{symbol} (peak)",
+        markers="up",
     )
 
 
@@ -346,8 +346,8 @@ snippet: howto/visualization/save_blueprint
 
 #### Loading blueprints from any language
 
-Existing blueprint files (e.g. created with the Python SDK or saved from the viewer) can be programmatically loaded into Rerun
-This is particularly useful when using Rust or C++ SDKs, since the blueprint API is not yet available for these languages:
+Existing blueprint files (e.g. created with the Python SDK or saved from the viewer) can be programmatically loaded into Rerun.
+This is particularly useful when using the C++ SDK, since the blueprint API is not yet available for C++:
 
 snippet: howto/visualization/load_blueprint
 

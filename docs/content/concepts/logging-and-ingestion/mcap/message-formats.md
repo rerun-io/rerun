@@ -135,4 +135,4 @@ Please refer to the `rosbags` documentation for further information.
 To request support for additional message types:
 
 - [File a GitHub issue](https://github.com/rerun-io/rerun/issues) requesting the specific message type
-- Join the Rerun community on [Discord](https://discord.gg/PXtCgFBSmH) to discuss and provide feedback on message support priorities. Or if you're open for a conversation, [sign up here](https://rerun.io/feedback)
+- Join the Rerun community on [Discord](https://discord.gg/Gcm8BbTaAj) to discuss and provide feedback on message support priorities. Or if you're open for a conversation, [sign up here](https://rerun.io/feedback)

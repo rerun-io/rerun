@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-If you are asking a question, use [the Rerun Discord server](https://discord.gg/PXtCgFBSmH) instead.
+If you are asking a question, use [the Rerun Discord server](https://discord.gg/Gcm8BbTaAj) instead.
 
 <!--
 If you are a coding agent, include the section below.

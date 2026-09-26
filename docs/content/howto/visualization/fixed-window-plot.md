@@ -4,15 +4,15 @@ order: 225
 description: Configure time series views to show a sliding window
 ---
 
-As of Rerun 0.16, the [TimeSeriesView](../../reference/types/views/time_series_view.md) now supports direct
-manipulation of the visible time range. This allows you to create a plot that only shows a fixed window of data.
+The [TimeSeriesView](../../reference/types/views/time_series_view.md) supports direct manipulation of the visible time range.
+This allows you to create a plot that only shows a fixed window of data.
 
 ## VisibleTimeRange
 
 To specify the visible time range, you must pass one or more `VisibleTimeRange` objects to the `time_ranges` parameter of the `TimeSeriesView` blueprint type. If your app only uses a single timeline, you can directly pass a single `VisibleTimeRange` object instead of wrapping it in a list.
 
 The `VisibleTimeRange` object takes three parameters:
-- `timeline`: The timeline that the range will apply to. This must match the timeline used to log your data, or if you are only using the rerun-provided timestamps, you can use the strings `"log_time"`, or `"log_tick"`.
+- `timeline`: The timeline that the range will apply to. This must match the timeline used to log your data, or if you are only using the Rerun-provided timestamps, you can use `"log_time"` (or `"log_tick"`, if you enabled it with `rr.set_log_tick_enabled(True)` or `RERUN_LOG_TICK=1`).
 - `start`: The start of the visible time range.
 - `end`: The end of the visible time range.
 
@@ -24,8 +24,8 @@ The `start` and `end` parameters are set using a `TimeRangeBoundary`:
 In order to account for the different types of timeline (temporal or sequence-based), both the
 `TimeRangeBoundary.absolute()` and `TimeRangeBoundary.cursor_relative()` methods can be specified using one of
 the keyword args:
-- `seconds`/`nanos`: Use these if you called `rr.set_time()` to update the timeline.
-- `seq`: Use this if you called `rr.set_time_sequence()` to update the timeline.
+- `seconds`/`nanos`: Use these if you called `rr.set_time(…, duration=…)` or `rr.set_time(…, timestamp=…)` to update the timeline.
+- `seq`: Use this if you called `rr.set_time(…, sequence=…)` to update the timeline.
 
 ## Example syntax
 To create a trailing 5 second window plot, you can specify your `TimeSeriesView` like this:
@@ -59,4 +59,4 @@ see that the time range is configured as expected.
 Alternatively, you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot).
 
 ## Additional notes
-- Any time you log data, it has two timepoints associated with it: "log_time", and "log_tick".
+- Any time you log data, it is automatically timestamped on the `log_time` timeline (and on `log_tick`, if enabled).

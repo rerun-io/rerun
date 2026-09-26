@@ -90,8 +90,8 @@ snippet: howto/query_videos[export_mp4]
 
 Video streams often use inter-frame compression where most frames only store the difference from previous frames.
 
-`av` handles keyframe detection internally, but for efficient random access to specific frames,
-you may want to log keyframe indicators separately at recording time.
+`av` handles keyframe detection internally, but for efficient random access to specific frames, you may want to log keyframe indicators at recording time.
+[`VideoStream`](../../reference/types/archetypes/video_stream.md) has an optional `is_keyframe` component for this, which is queryable as the `VideoStream:is_keyframe` column.
 
 ### Timestamp handling
 

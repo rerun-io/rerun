@@ -9,13 +9,14 @@ You can specify which decoders to use during conversion, allowing you to extract
 
 ## Understanding decoders with an example
 
-When multiple decoders are enabled, they each process the same messages independently, creating different component types on identical entity paths. This can result in data duplication — for instance, enabling both `raw` and `protobuf` decoders stores the same message as both structured field data and raw binary blobs.
+File-level decoders (`schema`, `stats`, `metadata`, `attachments`, `recording_info`) each run once over the file.
+Message decoders are tried per channel in priority order (`ros2msg`, `ros2_reflection`, `protobuf`), and each channel is handled by the first enabled one that supports it, with `raw` as the fallback for channels no other decoder supports.
 
 Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/robot/camera/image_raw` with ROS2 `sensor_msgs/msg/Image` messages:
 
 - With only the `ros2msg` decoder: Creates an [Image](../../../reference/types/archetypes/image.md) archetype for direct visualization in Rerun's viewer
 - With only the `raw` decoder: Creates an [McapMessage](../../../reference/types/archetypes/mcap_message.md) containing the original CDR-encoded message bytes
-- With both decoders enabled: All representations coexist on the same entity path `/robot/camera/image_raw`
+- With both decoders enabled: `ros2msg` handles the channel, and `raw` is only used for channels that `ros2msg` cannot decode
 
 ## Schema and statistics decoders
 
@@ -73,7 +74,7 @@ rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
 Each decoder creates different types of components on entity paths (derived from MCAP channel topics) that can be accessed through Rerun's SDK:
 
 - Data from the `ros2msg` decoder and supported Foxglove messages appears as native Rerun visualization archetypes (see [here](message-formats.md#overview) for an overview)
-- Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-timeseries-plot-for-custom-message-scalars))
+- Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-time-series-plot-for-custom-message-scalars))
 - Data from the `raw` decoder appears as blob components containing the original message bytes
 - Data from the `urdf` option appears as static 3D robot geometry loaded from the ROS 2 `/robot_description` topic
 - Metadata from `schema`, `stats`, and `recording_info` decoders appears as dedicated metadata entities
@@ -85,13 +86,13 @@ Below is a table showing the mapping between MCAP data and Rerun components:
 
 | MCAP Data        | Rerun component                 | Description                                                                   |
 | ---------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| Schema name      | `mcap.Schema:name`              | Message type name from schema definition                                      |
-| Schema data      | `mcap.Schema:data`              | Raw schema definition (protobuf, ROS2 msg, etc.)                              |
-| Schema encoding  | `mcap.Schema:encoding`          | Schema format type                                                            |
+| Schema name      | `McapSchema:name`               | Message type name from schema definition                                      |
+| Schema data      | `McapSchema:data`               | Raw schema definition (protobuf, ROS2 msg, etc.)                              |
+| Schema encoding  | `McapSchema:encoding`           | Schema format type                                                            |
 |                  |                                 |                                                                               |
-| Channel topic    | `mcap.Channel:topic`            | Topic name from MCAP channel                                                  |
-| Channel ID       | `mcap.Channel:id`               | Numeric channel identifier                                                    |
-| Message encoding | `mcap.Channel:message_encoding` | Encoding format (e.g., `protobuf`, `cdr`)                                     |
+| Channel topic    | `McapChannel:topic`             | Topic name from MCAP channel                                                  |
+| Channel ID       | `McapChannel:id`                | Numeric channel identifier                                                    |
+| Message encoding | `McapChannel:message_encoding`  | Encoding format (e.g., `protobuf`, `cdr`)                                     |
 |                  |                                 |                                                                               |
-| Statistics       | `mcap.Statistics`               | File-level metrics like message counts and time ranges                        |
-| Raw message data | `mcap.Message:data`             | Unprocessed message bytes stored as binary blobs, handled by the `raw` decoder. |
+| Statistics       | `McapStatistics`                | File-level metrics like message counts and time ranges                        |
+| Raw message data | `McapMessage:data`              | Unprocessed message bytes stored as binary blobs, handled by the `raw` decoder. |

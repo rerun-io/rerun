@@ -268,6 +268,31 @@ class LooseUpcomingAssetLinkError(Error):
         )
 
 
+class EmptyLinkTargetError(Error):
+    CODE = "E007"
+
+    def __init__(self, span: Span) -> None:
+        super().__init__(type(self).CODE, "link has an empty target", span)
+
+    @staticmethod
+    def explain() -> str:
+        return textwrap.dedent(
+            """
+            A link with an empty target renders as a link to the current page.
+
+            Example:
+            ```
+            See the [face tracking example]() for more.
+            ```
+
+            Solution: Fill in the target, or remove the link.
+            ```
+            See the [face tracking example](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking) for more.
+            ```
+            """,
+        )
+
+
 EXPLAIN = {
     NoClosingTagError.CODE: NoClosingTagError.explain,
     NoPrecedingBlankLineError.CODE: NoPrecedingBlankLineError.explain,
@@ -275,6 +300,7 @@ EXPLAIN = {
     BacktickLinkError.CODE: BacktickLinkError.explain,
     BadDataReferenceError.CODE: BadDataReferenceError.explain,
     LooseUpcomingAssetLinkError.CODE: LooseUpcomingAssetLinkError.explain,
+    EmptyLinkTargetError.CODE: EmptyLinkTargetError.explain,
 }
 
 
@@ -359,6 +385,8 @@ GITHUB_ASSET_URL = re.compile(
     r")[^\s<>\"')]+"
 )
 FENCED_CODE = re.compile(r"^[ \t]{0,3}(?P<marker>`{3,}|~{3,})")
+INLINE_CODE = re.compile(r"`+[^`\n]*`+")
+EMPTY_LINK_TARGET = re.compile(r"\[[^\[\]\n]+\]\([ \t]*\)")
 
 
 def check_picture_elements(content: str, errors: list[Error]) -> None:
@@ -449,6 +477,25 @@ def check_invalid_links(content: str, errors: list[Error]) -> None:
         errors.append(BacktickLinkError(span=Span(link_start, link_end)))
 
 
+def check_empty_link_targets(content: str, errors: list[Error]) -> None:
+    fence: str | None = None
+    offset = 0
+    for line in content.splitlines(keepends=True):
+        marker_match = FENCED_CODE.match(line)
+        if marker_match is not None:
+            marker = marker_match.group("marker")
+            if fence is None:
+                fence = marker
+            elif marker.startswith(fence[0]) and len(fence) <= len(marker):
+                fence = None
+        elif fence is None:
+            # Blank out inline code so that e.g. `f[x]()` is not mistaken for a link.
+            prose = INLINE_CODE.sub(lambda m: " " * len(m.group()), line)
+            for match in EMPTY_LINK_TARGET.finditer(prose):
+                errors.append(EmptyLinkTargetError(Span(offset + match.start(), offset + match.end())))
+        offset += len(line)
+
+
 def is_upcoming_changelog(path: str) -> bool:
     parts = Path(path).parts
     return any(
@@ -518,6 +565,7 @@ def check_file(path: str) -> str | None:
     check_picture_elements(content, errors)
     check_video_elements(content, errors)
     check_invalid_links(content, errors)
+    check_empty_link_targets(content, errors)
     check_upcoming_asset_links(path, content, errors)
 
     if len(errors) != 0:

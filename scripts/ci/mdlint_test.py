@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from mdlint import Error, check_upcoming_asset_links  # type: ignore[import-not-found]
+from mdlint import Error, check_empty_link_targets, check_upcoming_asset_links  # type: ignore[import-not-found]
 
 UPCOMING_PATH = "docs/content/changelog/upcoming/feature.md"
 GITHUB_ATTACHMENT = "https://github.com/user-attachments/assets/01234567-89ab-cdef-0123-456789abcdef"
@@ -71,6 +71,25 @@ class UpcomingAssetLinksTest(unittest.TestCase):
     def test_only_checks_upcoming_changelog_entries(self) -> None:
         path = "docs/content/changelog/changeset-0-35.md"
         self.assertEqual(self.check(f"{GITHUB_ATTACHMENT}\n", path), [])
+
+
+class EmptyLinkTargetsTest(unittest.TestCase):
+    def check(self, content: str) -> list[str]:
+        errors: list[Error] = []
+        check_empty_link_targets(content, errors)
+        return [error.code for error in errors]
+
+    def test_rejects_empty_targets(self) -> None:
+        for content in ["See [the example]().\n", "Our [`clap`]() integration.\n", "[x]( )\n"]:
+            with self.subTest(content=content):
+                self.assertEqual(self.check(content), ["E007"])
+
+    def test_accepts_filled_targets(self) -> None:
+        self.assertEqual(self.check("See [the example](https://rerun.io).\n"), [])
+
+    def test_ignores_code(self) -> None:
+        content = "Call `handlers[name]()` first.\n\n```py\nhandlers[name]()\n```\n"
+        self.assertEqual(self.check(content), [])
 
 
 if __name__ == "__main__":

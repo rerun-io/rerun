@@ -53,7 +53,7 @@ At a very high level, for each ROS message we are interested in, we create a
 subscriber with a callback that does some form of data conversion and then logs the data to Rerun.
 In most cases, this conversion is either trivial or easy to do with utilities from the ROS ecosystem.
 
-For simplicity, this example uses the rosclpy `MultiThreadedExecutor` and `ReentrantCallbackGroup` for each topic. This
+For simplicity, this example uses the rclpy `MultiThreadedExecutor` and `ReentrantCallbackGroup` for each topic. This
 allows each callback thread to do TF lookups without blocking the other incoming messages. More advanced ROS execution
 models and using asynchronous TF lookups are outside the scope of this guide.
 

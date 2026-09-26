@@ -113,7 +113,7 @@ There's a user provided minimal Bazel example here: https://github.com/kyle-figu
 ### Install with conda package
 
 If you are using a package manager that supports conda packages such as `conda` or `pixi` to manage your C++ dependencies,
-the Rerun C++ SDK is available from conda-forge channel in the [`librerun-sdk` package]().
+the Rerun C++ SDK is available from conda-forge channel in the [`librerun-sdk` package](https://anaconda.org/conda-forge/librerun-sdk).
 After you installed the `librerun-sdk` package. The Rerun Viewer is instead provided by the
 `rerun-sdk` package, and you can install both with:
 

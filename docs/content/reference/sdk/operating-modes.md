@@ -69,7 +69,7 @@ snippet: howto/serve_web_viewer
 
 #### Rust
 * [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc)
-* [`RecordingStream::serve_web_viewer`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web_viewer)
+* [`rerun::serve_web_viewer`](https://docs.rs/rerun/latest/rerun/fn.serve_web_viewer.html)
 
 
 ### `save`
@@ -101,7 +101,7 @@ Streams all logging data to standard output, which can then be loaded by the Rer
 
 #### C++
 
-Use [`RecordingStream::stdout`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
+Use [`RecordingStream::to_stdout`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
 
 Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/stdio/main.cpp).
 
@@ -141,6 +141,6 @@ Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/classrerun_1_1R
 We provide helpers for both Python & Rust to effortlessly add and properly handle all of these flags in your programs.
 
 - For Python, checkout the [`script_helpers`](https://ref.rerun.io/docs/python/stable/common/script_helpers/) module.
-- For Rust, checkout our [`clap`]() [integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
+- For Rust, checkout our [`clap` integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
 
 Have a look at the [official examples](https://rerun.io/examples) to see these helpers in action.

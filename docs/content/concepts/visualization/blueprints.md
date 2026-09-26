@@ -87,7 +87,7 @@ This is the fastest way to experiment with layouts. See [Configure the Viewer](.
 ### 2. Save and load files
 Save your blueprint configuration to `.rbl` files:
 -   Use "Save blueprint…" from the file menu to save your current layout
--   Load blueprints with "Open…" or by dragging `.rbl` files into the Viewer
+-   Load blueprints with "Open file…" or by dragging `.rbl` files into the Viewer
 -   Share blueprint files with teammates to ensure everyone sees data the same way
 -   Reuse blueprints across sessions and different recordings (with the same Application ID)
 

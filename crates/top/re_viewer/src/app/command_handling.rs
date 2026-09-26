@@ -1020,7 +1020,7 @@ impl App {
             }
             UICommand::OpenDiscordWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
-                    url: "https://discord.gg/PXtCgFBSmH".to_owned(),
+                    url: "https://discord.gg/Gcm8BbTaAj".to_owned(),
                     new_tab: true,
                 });
             }

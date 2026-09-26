@@ -101,7 +101,7 @@ Every store in an RRD is identified by a `StoreId` and described by a `StoreInfo
     - **`application_id`** — a user-chosen identifier for the application that produced the recording (see [Recordings](recordings.md) for the conventions, including the relationship with segment and dataset IDs in the remote/catalog context).
     - **`recording_id`** — a UUID or user-chosen string that distinguishes runs of the same application (catalog servers use this as the segment ID — see the [catalog object model](../query-and-transform/catalog-object-model.md)).
 - **`StoreInfo`** wraps the `StoreId` and adds:
-    - **`store_source`** — where the store came from (`PythonSdk`, `RustSdk`, `CppSdk`, or a file source such as CLI / drag-drop).
+    - **`store_source`** — where the store came from (`PythonSdk`, `RustSdk`, `CSdk` (used by the C and C++ SDKs), or a file source such as CLI / drag-drop).
     - **`store_version`** — the Rerun version that produced the data.
 
 Matching `application_id` and `recording_id` is how the Viewer merges multiple `.rrd` files (or multiple stores within one file) into a single logical recording.

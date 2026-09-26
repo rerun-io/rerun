@@ -4,7 +4,7 @@ order: 0
 description: The high-level architecture and how the pieces fit together
 ---
 
-Rerun has several components manage multimodal data across its lifetime. This page explains what they are and how they connect.
+Rerun has several components that manage multimodal data across its lifetime. This page explains what they are and how they connect.
 
 ## The components
 

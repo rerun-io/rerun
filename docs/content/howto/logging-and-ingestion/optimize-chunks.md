@@ -28,7 +28,7 @@ Micro-batching is an online compaction mechanism on the SDK side that compacts s
 This reduces metadata overhead (fewer chunks), which improves network and CPU efficiency. By default, the SDK flushes:
 * every ~200 ms when logging to file,
 * every ~8 ms when logging to the Rerun Viewer directly, or
-* when the batch reaches ~1 MiB.
+* when the batch reaches ~2 MiB.
 
 These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../../reference/sdk/micro-batching.md).
 To measure how much latency each step of the pipeline actually adds, see [Diagnose latency and performance](../visualization/diagnose-performance.md).
@@ -124,7 +124,7 @@ For example:
 $ rerun rrd optimize --max-size 2MiB -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 merge/compaction finished srcs=["/dev/fd/63"] time=2.51217062s num_chunks_before=576 num_chunks_after=217 num_chunks_reduction="-62.326%" srcs_size_bytes=90.0 MiB dst_size_bytes=89.6 MiB size_reduction="-0.474%"
 
-$ rrd stats nuscenes_compacted.rrd
+$ rerun rrd stats nuscenes_compacted.rrd
 Overview
 ----------
 num_chunks = 278

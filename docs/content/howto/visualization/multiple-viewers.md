@@ -46,11 +46,11 @@ rr.init("rerun_example_demo")
 rr.connect_grpc()
 
 # Or connect to a specific port
-rr.connect_grpc("rerun+http://127.0.0.1:6789")
+rr.connect_grpc("rerun+http://127.0.0.1:6789/proxy")
 ```
 
 ## Tips
 
 - Use `spawn()` to automatically start a new viewer if needed — it will reuse an existing viewer on the default port if one is running
 - Each viewer maintains its own Chunk Store, so data sent to different viewers is independent
-- The Web Viewer doesn't use gRPC ports the same way — it connects via WebSocket when served locally
+- The Web Viewer connects to the gRPC server over gRPC-Web (HTTP), not over a raw gRPC connection

@@ -62,7 +62,7 @@ New datasets can also be created or appended after the server is launched:
 dataset = client.create_dataset(
     name="oss_demo",
 )
-dataset.register(Path("/path/to/recording/recording.rrd").resolve().as_uri()).wait()
+dataset.register([Path("/path/to/recording/recording.rrd").resolve().as_uri()]).wait()
 ```
 
 ## Viewing datasets
@@ -70,7 +70,7 @@ dataset.register(Path("/path/to/recording/recording.rrd").resolve().as_uri()).wa
 Either specify the network location with the CLI at launch:
 
 ```console
-rerun connect localhost:51234
+rerun rerun+http://localhost:51234
 ```
 
 or open the command palette in the viewer (`cmd/ctrl + K` or via the menu) and pick "Connect to a server…".

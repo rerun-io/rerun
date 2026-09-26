@@ -16,14 +16,13 @@ You can configure these thresholds using the following environment variables:
 
 Sets the duration of the periodic tick that triggers the time threshold, in seconds.
 
-Defaults to `RERUN_FLUSH_TICK_SECS=0.2` (200ms) unless the recording stream uses a
-a networking sink which defaults to `RERUN_FLUSH_TICK_SECS=0.008` (8ms).
+Defaults to `RERUN_FLUSH_TICK_SECS=0.2` (200ms), unless the recording stream uses a networking sink, which defaults to `RERUN_FLUSH_TICK_SECS=0.008` (8ms).
 
 #### RERUN_FLUSH_NUM_BYTES
 
 Sets the size limit that triggers the space threshold, in bytes.
 
-Defaults to `RERUN_FLUSH_NUM_BYTES=1048576` (1MiB).
+Defaults to `RERUN_FLUSH_NUM_BYTES=2097152` (2MiB).
 
 #### RERUN_FLUSH_NUM_ROWS
 

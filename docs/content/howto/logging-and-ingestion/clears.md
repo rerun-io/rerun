@@ -22,8 +22,8 @@ for frame in sensors.read():
         rr.log(f"tracked/{tracker.id}", rr.Clear(recursive=True))
     else:
         # Log data to the main entity and a child entity
-        rr.log(f"tracked/{tracker.id}", rr.Rect2D(tracker.bounds))
-        rr.log(f"tracked/{tracker.id}/cm", rr.Point2D(tracker.cm))
+        rr.log(f"tracked/{tracker.id}", rr.Boxes2D(array=tracker.bounds, array_format=rr.Box2DFormat.XYXY))
+        rr.log(f"tracked/{tracker.id}/cm", rr.Points2D(tracker.cm))
 
 ```
 ## Clarify data meaning
@@ -42,7 +42,7 @@ for frame in sensors.read():
 
         # Woops! These detections will not update at the
         # same frequency as the input data and thus look strange
-        rr.log("input/detections", rr.Rect2D(detection.bounds))
+        rr.log("input/detections", rr.Boxes2D(array=detection.bounds, array_format=rr.Box2DFormat.XYXY))
 ```
 You could fix this example by logging `rr.Clear`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the Viewer that always allows you to see the frame that was used for the current detection input.
 
@@ -58,7 +58,7 @@ class Detector:
         detection = self.post_process(result)
         # Log the detections together with the downscaled image
         # Image and detections will update at the same frequency
-        rr.log("downscaled/detections", rr.Rect2D(detection.bounds))
+        rr.log("downscaled/detections", rr.Boxes2D(array=detection.bounds, array_format=rr.Box2DFormat.XYXY))
         return detection
 …
 for frame in sensors.read():

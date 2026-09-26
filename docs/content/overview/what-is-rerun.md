@@ -93,5 +93,5 @@ Ready to speed up your iteration cycle?
 
 ## Can't find what you're looking for?
 
-- Join us in the [Rerun Community Discord](https://discord.gg/xwcxHUjD35)
+- Join us in the [Rerun Community Discord](https://discord.gg/Gcm8BbTaAj)
 - [Submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun GitHub project

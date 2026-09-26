@@ -85,7 +85,7 @@ But if you're handing a bunch of rows of data over to Rerun, how does it end up 
 
 #### How are these rows turned into columns?
 
-Before logging data, you can use the `rr.set_time_` APIs to update the SDK's time context with timestamps for custom timelines.
+Before logging data, you can use `rr.set_time` to update the SDK's time context with timestamps for custom timelines.
 For example, `rr.set_time("frame", sequence=42)` will set the "frame" timeline's current value to 42 in the time context.
 
 When you later call `rr.log`, the SDK will generate a row id and a value for the built-in `log_time` timeline (enabled by default), as well as `log_tick` if you have opted in to it.
