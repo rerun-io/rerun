@@ -26,6 +26,7 @@ use re_sdk::external::re_tuid::Tuid;
 use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
 use re_viewer::external::re_entity_db::FetchStage;
+use re_viewer::external::re_ui::notifications::NotificationLevel;
 use re_viewer::external::re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 
@@ -555,6 +556,21 @@ async fn a_refused_registration_is_listed_as_failed() {
             .count()
             > 0,
         "the card should say which source uri the server refused"
+    );
+
+    // The refusal is also logged as an error, which reaches the notification bell on a later frame
+    // than the card.
+    viewer_test_utils::step_until(
+        "the refusal is reported as an error notification",
+        &mut harness,
+        |harness| {
+            harness
+                .state()
+                .testonly_get_notifications()
+                .notifications()
+                .iter()
+                .any(|notification| notification.level() == NotificationLevel::Error)
+        },
     );
 
     harness.snapshot("refused_asset_registration");
