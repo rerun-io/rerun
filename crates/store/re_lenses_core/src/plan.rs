@@ -5,10 +5,12 @@
 
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimeColumn, TimelineName};
 use re_sdk_types::SerializedComponentColumn;
+use vec1::Vec1;
 
 use crate::Selector;
 use re_log_types::ResolvedEntityPathFilter;
@@ -32,20 +34,20 @@ pub struct MergeWork<'a> {
 }
 
 /// Work item for a derive lens that produces a separate output chunk.
-pub struct DeriveWork<'a> {
+pub struct DeriveWork {
     pub rows: Rows,
-    pub input: &'a SerializedComponentColumn,
-    pub target_entity: &'a EntityPath,
-    pub components: &'a [ComponentOutput],
-    pub timelines: &'a [TimeOutput],
-    pub original_timelines: &'a ChunkTimelines,
+    pub chunk: Arc<Chunk>,
+    pub input: SerializedComponentColumn,
+    pub target_entity: EntityPath,
+    pub components: Vec1<ComponentOutput>,
+    pub timelines: Vec<TimeOutput>,
 }
 
 /// The execution plan produced by categorizing lenses.
 pub struct Plan<'a> {
     pub mutate_work: BTreeMap<ComponentIdentifier, MutateWork<'a>>,
     pub merge_work: Vec<MergeWork<'a>>,
-    pub derive_work: Vec<DeriveWork<'a>>,
+    pub derive_work: Vec<DeriveWork>,
 
     /// Original columns to include in the prefix chunk.
     pub forward_columns: BTreeSet<ComponentIdentifier>,
@@ -90,7 +92,7 @@ fn has_output_collision(
 ///
 /// Filters lenses by entity path, resolves input columns against the chunk,
 /// detects output collisions, and determines which original columns to forward.
-pub fn plan<'a>(lenses: &'a Lenses, chunk: &'a Chunk) -> Plan<'a> {
+pub fn plan<'a>(lenses: &'a Lenses, chunk: &'a Arc<Chunk>) -> Plan<'a> {
     let entity_path = chunk.entity_path();
 
     // --- Mutates ---
@@ -116,7 +118,7 @@ pub fn plan<'a>(lenses: &'a Lenses, chunk: &'a Chunk) -> Plan<'a> {
 
     // --- Same-entity derives ---
     let mut merge_work = Vec::<MergeWork<'_>>::new();
-    let mut derive_work = Vec::<DeriveWork<'_>>::new();
+    let mut derive_work = Vec::<DeriveWork>::new();
     let track_consumed = lenses.mode == OutputMode::ForwardUnmatched;
     let mut consumed = BTreeSet::<ComponentIdentifier>::new();
     {
@@ -147,11 +149,11 @@ pub fn plan<'a>(lenses: &'a Lenses, chunk: &'a Chunk) -> Plan<'a> {
             } else {
                 derive_work.push(DeriveWork {
                     rows: derive.rows,
-                    input,
-                    target_entity: entity_path,
-                    components: &derive.output_components,
-                    timelines: &derive.output_timelines,
-                    original_timelines: chunk.timelines(),
+                    chunk: Arc::clone(chunk),
+                    input: input.clone(),
+                    target_entity: entity_path.clone(),
+                    components: derive.output_components.clone(),
+                    timelines: derive.output_timelines.clone(),
                 });
             }
         }
@@ -177,11 +179,11 @@ pub fn plan<'a>(lenses: &'a Lenses, chunk: &'a Chunk) -> Plan<'a> {
             ) {
                 derive_work.push(DeriveWork {
                     rows: derive.rows,
-                    input,
-                    target_entity: &derive.target_entity,
-                    components: &derive.output_components,
-                    timelines: &derive.output_timelines,
-                    original_timelines: chunk.timelines(),
+                    chunk: Arc::clone(chunk),
+                    input: input.clone(),
+                    target_entity: derive.target_entity.clone(),
+                    components: derive.output_components.clone(),
+                    timelines: derive.output_timelines.clone(),
                 });
             }
         }

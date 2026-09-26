@@ -1,5 +1,7 @@
 //! Execution of a lens [`Plan`] against a chunk.
 
+use std::sync::Arc;
+
 use arrow::array::{AsArray as _, Int64Array, ListArray, UInt32Array};
 use arrow::compute::take;
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -115,12 +117,14 @@ fn finalize_chunk(
 }
 
 /// Applies a one-to-one lens transformation (each input row -> exactly one output row).
-fn apply_one_to_one(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, LensError> {
+fn apply_one_to_one(work: &DeriveWork, runtime: &Runtime) -> Result<Chunk, LensError> {
     let mut errors = Vec::new();
 
     let mut component_results = re_chunk::ChunkComponents::default();
 
-    for result in output_components_iter(work.input, work.components, work.target_entity, runtime) {
+    for result in
+        output_components_iter(&work.input, &work.components, &work.target_entity, runtime)
+    {
         match result {
             Ok((component_descr, list_array)) => {
                 component_results
@@ -130,11 +134,11 @@ fn apply_one_to_one(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, L
         }
     }
 
-    let mut chunk_times = work.original_timelines.clone();
+    let mut chunk_times = work.chunk.timelines().clone();
 
     chunk_times.extend(
-        output_timelines_iter(work.input, work.timelines, work.target_entity, runtime).filter_map(
-            |result| match result {
+        output_timelines_iter(&work.input, &work.timelines, &work.target_entity, runtime)
+            .filter_map(|result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
                     match try_convert_time_column(timeline_name, timeline_type, &list_array) {
                         Ok(time_col) => Some(time_col),
@@ -148,8 +152,7 @@ fn apply_one_to_one(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, L
                     errors.push(err);
                     None
                 }
-            },
-        ),
+            }),
     );
 
     finalize_chunk(
@@ -223,11 +226,12 @@ fn scatter_existing_timelines(
 }
 
 /// Applies a one-to-many lens transformation (each input row -> potentially multiple output rows).
-fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, LensError> {
+fn apply_one_to_many(work: &DeriveWork, runtime: &Runtime) -> Result<Chunk, LensError> {
     let mut errors = Vec::new();
 
     let mut components =
-        output_components_iter(work.input, work.components, work.target_entity, runtime).peekable();
+        output_components_iter(&work.input, &work.components, &work.target_entity, runtime)
+            .peekable();
 
     let reference_array = match components.peek() {
         Some(Ok((_descr, reference_array))) => reference_array,
@@ -250,11 +254,11 @@ fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, 
     let expected_rows = scatter_indices_array.len();
 
     let mut chunk_times =
-        scatter_existing_timelines(work.original_timelines, &scatter_indices_array, &mut errors);
+        scatter_existing_timelines(work.chunk.timelines(), &scatter_indices_array, &mut errors);
 
     chunk_times.extend(
-        output_timelines_iter(work.input, work.timelines, work.target_entity, runtime).filter_map(
-            |result| match result {
+        output_timelines_iter(&work.input, &work.timelines, &work.target_entity, runtime)
+            .filter_map(|result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
                     match Explode.transform(&list_array) {
                         Ok(Some(exploded)) => {
@@ -282,8 +286,7 @@ fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, 
                     errors.push(err);
                     None
                 }
-            },
-        ),
+            }),
     );
 
     let mut chunk_components = re_chunk::ChunkComponents::default();
@@ -327,18 +330,18 @@ fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, 
 }
 
 /// Plans and executes relevant lenses against a chunk.
-pub fn execute<'a>(
-    lenses: &'a Lenses,
-    chunk: &'a Chunk,
-    runtime: &'a Runtime,
-) -> impl Iterator<Item = Result<Chunk, LensError>> + 'a {
+pub fn execute(
+    lenses: &Lenses,
+    chunk: Arc<Chunk>,
+    runtime: &Runtime,
+) -> impl Iterator<Item = Result<Chunk, LensError>> + use<> {
     let Plan {
         mutate_work,
         merge_work,
         derive_work,
         forward_columns,
         errors: plan_errors,
-    } = crate::plan::plan(lenses, chunk);
+    } = crate::plan::plan(lenses, &chunk);
 
     // --- Build prefix ---
 
@@ -421,7 +424,7 @@ pub fn execute<'a>(
         }
     } else {
         let p: Option<Chunk> = if forward_columns.len() == chunk.components().len() {
-            Some(chunk.clone())
+            Some(Arc::unwrap_or_clone(chunk))
         } else if forward_columns.is_empty() {
             None
         } else {
@@ -446,9 +449,10 @@ pub fn execute<'a>(
 
     // --- Produce derived chunks ---
 
+    let runtime = runtime.clone();
     let derived_chunks = derive_work.into_iter().map(move |work| match work.rows {
-        Rows::OneToMany => apply_one_to_many(&work, runtime),
-        Rows::OneToOne => apply_one_to_one(&work, runtime),
+        Rows::OneToMany => apply_one_to_many(&work, &runtime),
+        Rows::OneToOne => apply_one_to_one(&work, &runtime),
     });
 
     // --- Chain all results ---

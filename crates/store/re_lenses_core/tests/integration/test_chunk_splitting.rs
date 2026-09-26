@@ -27,7 +27,7 @@ fn example_selector() -> Selector<DynExpr> {
 
 /// Creates a chunk with three Int32 component columns (`alpha`, `beta`, `gamma`)
 /// and a `tick` timeline with 2 rows.
-fn three_component_chunk() -> Chunk {
+fn three_component_chunk() -> Arc<Chunk> {
     let make_column = |values: &[i32]| {
         let mut builder = ListBuilder::new(Int32Builder::new());
         for &v in values {
@@ -50,13 +50,15 @@ fn three_component_chunk() -> Chunk {
 
     let time_column = TimeColumn::new_sequence("tick", 0..2);
 
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        "test/entity".into(),
-        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
-        components.collect(),
+    Arc::new(
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            "test/entity".into(),
+            std::iter::once((TimelineName::from("tick"), time_column)).collect(),
+            components.collect(),
+        )
+        .unwrap(),
     )
-    .unwrap()
 }
 
 #[test]
@@ -114,7 +116,7 @@ fn forward_unmatched_merges_same_entity_outputs() {
         .add_lens(lens_beta);
 
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(results.len(), 1);
@@ -171,7 +173,7 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
         .add_lens(make_lens("gamma", "gamma_out"));
 
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(results.len(), 3);
@@ -258,7 +260,7 @@ fn mutate_only_modifies_prefix() {
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
 
@@ -303,7 +305,7 @@ fn mutate_keep_row_ids_preserves_row_ids() {
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
 
@@ -345,7 +347,7 @@ fn mutate_without_keep_generates_new_row_ids() {
 
     let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
 
@@ -397,7 +399,7 @@ fn same_entity_collision_skips_duplicate() {
     let lenses = Lenses::new(OutputMode::ForwardUnmatched)
         .add_lens(lens_a)
         .add_lens(lens_b);
-    let mut results: Vec<_> = lenses.apply(&chunk, &empty_runtime()).collect();
+    let mut results: Vec<_> = lenses.apply(Arc::clone(&chunk), &empty_runtime()).collect();
 
     // The prefix carries a DeriveCollision error alongside the partial chunk.
     assert_eq!(results.len(), 1);
@@ -460,7 +462,7 @@ fn new_entity_collision_skips_duplicate() {
     let lenses = Lenses::new(OutputMode::DropUnmatched)
         .add_lens(lens_a)
         .add_lens(lens_b);
-    let mut results: Vec<_> = lenses.apply(&chunk, &empty_runtime()).collect();
+    let mut results: Vec<_> = lenses.apply(Arc::clone(&chunk), &empty_runtime()).collect();
 
     // Two items: first is the error-carrying prefix (no forwarded columns with
     // DropUnmatched), second is the successful derive chunk from lens_a.
@@ -517,7 +519,7 @@ fn mutate_collision_returns_error() {
         .add_lens(Lens::mutate("alpha", example_selector()).build())
         .add_lens(Lens::mutate("alpha", example_selector()).build());
 
-    let mut results: Vec<_> = lenses.apply(&chunk, &empty_runtime()).collect();
+    let mut results: Vec<_> = lenses.apply(Arc::clone(&chunk), &empty_runtime()).collect();
 
     // The prefix chunk is an Err carrying the collision.
     assert_eq!(results.len(), 1);
@@ -578,7 +580,7 @@ fn derive_and_mutate_on_same_input() {
         .add_lens(mutate)
         .add_lens(derive);
     let results: Vec<_> = lenses
-        .apply(&chunk, &empty_runtime())
+        .apply(Arc::clone(&chunk), &empty_runtime())
         .try_collect()
         .unwrap();
 
@@ -610,4 +612,27 @@ fn derive_and_mutate_on_same_input() {
     │ └─────────────────────────────────────┴──────────────────┴───────────────────┴──────────────────────┴───────────────────┴───────────────────┘ │
     └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
     "#);
+}
+
+#[test]
+fn derived_chunks_outlive_lenses_and_runtime() {
+    let chunk = three_component_chunk();
+
+    let results = {
+        let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(
+            Lens::derive("alpha")
+                .output_entity("derived")
+                .to_component(
+                    ComponentDescriptor::partial("alpha_out"),
+                    Selector::parse(".").unwrap(),
+                )
+                .build()
+                .unwrap(),
+        );
+        let runtime = empty_runtime();
+        lenses.apply(Arc::clone(&chunk), &runtime)
+    };
+
+    let results: Vec<_> = results.try_collect().unwrap();
+    assert_eq!(results.len(), 1, "one derived chunk, no prefix");
 }

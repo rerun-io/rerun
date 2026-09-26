@@ -53,7 +53,7 @@ fn to_list_array<T: serde::Serialize>(data: &[T], inner_field: Arc<Field>) -> Li
 /// │ [{a:6,b:6}]  │  [null]   │
 /// └──────────────┴───────────┘
 /// ```
-fn nullability_chunk() -> Chunk {
+fn nullability_chunk() -> Arc<Chunk> {
     #[derive(serde::Serialize)]
     struct MyStruct {
         a: Option<f32>,
@@ -117,13 +117,15 @@ fn nullability_chunk() -> Chunk {
 
     let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4, 5, 6]);
 
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        "nullability".into(),
-        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
-        components.collect(),
+    Arc::new(
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            "nullability".into(),
+            std::iter::once((TimelineName::from("tick"), time_column)).collect(),
+            components.collect(),
+        )
+        .unwrap(),
     )
-    .unwrap()
 }
 
 #[test]
@@ -147,7 +149,7 @@ fn test_destructure_cast() {
     );
 
     let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(original_chunk, &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -177,7 +179,7 @@ fn test_destructure() {
     );
 
     let res: Vec<re_chunk::Chunk> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(original_chunk, &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(res.len(), 1);
@@ -248,7 +250,7 @@ fn test_time_column_extraction() {
     );
 
     let res: Vec<Chunk> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(Arc::new(original_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(res.len(), 1);
@@ -379,7 +381,7 @@ fn test_scatter_columns() {
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(Arc::new(original_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(res.len(), 1);
@@ -463,7 +465,7 @@ fn test_scatter_columns_static() {
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(Arc::new(original_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
     assert_eq!(res.len(), 1);
@@ -556,7 +558,7 @@ fn test_output_overwrites_same_named_component() {
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(lens);
 
     let results: Vec<_> = lenses
-        .apply(&original_chunk, &re_lenses::default_runtime())
+        .apply(Arc::new(original_chunk), &re_lenses::default_runtime())
         .collect();
     assert_eq!(results.len(), 1);
 
