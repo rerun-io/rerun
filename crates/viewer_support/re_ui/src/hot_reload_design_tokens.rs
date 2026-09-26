@@ -28,21 +28,23 @@ impl DesignTokensPerTheme {
 
     #[cfg(hot_reload_design_tokens)]
     fn load() -> anyhow::Result<Self> {
+        use anyhow::Context as _;
+
         let data_path = std::fs::canonicalize(
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data"),
         )
-        .expect("Wrong path to data directory???");
+        .context("Failed to find the design-token data directory")?;
 
         Ok(Self {
             dark: DesignTokens::load(
                 egui::Theme::Dark,
                 &std::fs::read_to_string(data_path.join("dark_theme.ron"))
-                    .expect("Failed to read dark theme file"),
+                    .context("Failed to read the dark theme file")?,
             )?,
             light: DesignTokens::load(
                 egui::Theme::Light,
                 &std::fs::read_to_string(data_path.join("light_theme.ron"))
-                    .expect("Failed to read dark theme file"),
+                    .context("Failed to read the light theme file")?,
             )?,
         })
     }
