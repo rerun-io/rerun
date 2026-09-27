@@ -42,6 +42,12 @@ pub struct TableBlueprint {
     /// If unset, defaults to card layout if available.
     /// `Cards` falls back to table layout when no [`archetypes::CardLayout`][crate::blueprint::archetypes::CardLayout] is configured.
     pub layout: Option<SerializedComponentBatch>,
+
+    /// Formatting for column names in table and card layouts.
+    ///
+    /// Defaults to compact formatting when unset.
+    /// Explicit column display names take precedence.
+    pub column_display_mode: Option<SerializedComponentBatch>,
 }
 
 impl TableBlueprint {
@@ -58,6 +64,20 @@ impl TableBlueprint {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::column_display_mode`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ColumnDisplayMode`].
+    #[inline]
+    pub fn descriptor_column_display_mode() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:column_display_mode".into(),
+                component_type: Some("rerun.blueprint.components.ColumnDisplayMode".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -66,15 +86,25 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TableBlueprint::descriptor_layout()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            TableBlueprint::descriptor_layout(),
+            TableBlueprint::descriptor_column_display_mode(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TableBlueprint::descriptor_layout()]);
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            TableBlueprint::descriptor_layout(),
+            TableBlueprint::descriptor_column_display_mode(),
+        ]
+    });
 
 impl TableBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 1usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 impl ::re_types_core::Archetype for TableBlueprint {
@@ -123,7 +153,15 @@ impl ::re_types_core::Archetype for TableBlueprint {
         let layout = arrays_by_descr
             .get(&Self::descriptor_layout())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_layout()));
-        Ok(Self { layout })
+        let column_display_mode = arrays_by_descr
+            .get(&Self::descriptor_column_display_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_column_display_mode())
+            });
+        Ok(Self {
+            layout,
+            column_display_mode,
+        })
     }
 }
 
@@ -131,7 +169,10 @@ impl ::re_types_core::AsComponents for TableBlueprint {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.layout.clone()).flatten().collect()
+        [self.layout.clone(), self.column_display_mode.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -141,7 +182,10 @@ impl TableBlueprint {
     /// Create a new `TableBlueprint`.
     #[inline]
     pub fn new() -> Self {
-        Self { layout: None }
+        Self {
+            layout: None,
+            column_display_mode: None,
+        }
     }
 
     /// Update only some specific fields of a `TableBlueprint`.
@@ -159,6 +203,10 @@ impl TableBlueprint {
                 crate::blueprint::components::TableLayoutKind::arrow_empty(),
                 Self::descriptor_layout(),
             )),
+            column_display_mode: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ColumnDisplayMode::arrow_empty(),
+                Self::descriptor_column_display_mode(),
+            )),
         }
     }
 
@@ -172,6 +220,22 @@ impl TableBlueprint {
         layout: impl Into<crate::blueprint::components::TableLayoutKind>,
     ) -> Self {
         self.layout = try_serialize_field(Self::descriptor_layout(), [layout]);
+        self
+    }
+
+    /// Formatting for column names in table and card layouts.
+    ///
+    /// Defaults to compact formatting when unset.
+    /// Explicit column display names take precedence.
+    #[inline]
+    pub fn with_column_display_mode(
+        mut self,
+        column_display_mode: impl Into<crate::blueprint::components::ColumnDisplayMode>,
+    ) -> Self {
+        self.column_display_mode = try_serialize_field(
+            Self::descriptor_column_display_mode(),
+            [column_display_mode],
+        );
         self
     }
 }

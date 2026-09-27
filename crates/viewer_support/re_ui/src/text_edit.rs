@@ -110,10 +110,8 @@ impl ReTextEdit<'_> {
         self.text_edit = self.text_edit.hint_text(text);
         self
     }
-}
 
-impl Widget for ReTextEdit<'_> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    pub fn atom_ui(self, ui: &mut Ui) -> egui::WidgetAtomResponse {
         let Self {
             mut text_edit,
             size,
@@ -138,11 +136,17 @@ impl Widget for ReTextEdit<'_> {
 
         text_edit = text_edit.min_size(Vec2::new(0.0, size.height()));
 
-        let response = ui.add(text_edit);
+        let response = text_edit.show(ui).response;
 
         ui.set_style(previous_style);
 
         response
+    }
+}
+
+impl Widget for ReTextEdit<'_> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        self.atom_ui(ui).response
     }
 }
 

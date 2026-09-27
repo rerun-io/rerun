@@ -169,9 +169,9 @@ async fn test_cards_view_hides_fields_outside_the_layout() {
     run_async_harness(&test_context, &mut harness).await;
 
     // The listed field has a label on each card, the other columns have none.
-    assert!(harness.query_all_by_label("score").count() > 0);
-    assert_eq!(harness.query_all_by_label("flagged").count(), 0);
-    assert_eq!(harness.query_all_by_label("notes").count(), 0);
+    assert!(harness.query_all_by_label("Score").count() > 0);
+    assert_eq!(harness.query_all_by_label("Flagged").count(), 0);
+    assert_eq!(harness.query_all_by_label("Notes").count(), 0);
 }
 
 // ---

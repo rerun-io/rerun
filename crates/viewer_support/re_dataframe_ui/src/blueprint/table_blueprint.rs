@@ -4,7 +4,7 @@ use re_sdk_types::blueprint::archetypes::{
     TableLayout as TableLayoutArchetype,
 };
 use re_sdk_types::blueprint::components::{
-    ColumnName, TableLayoutKind, TimelineName as BlueprintTimelineName,
+    ColumnDisplayMode, ColumnName, TableLayoutKind, TimelineName as BlueprintTimelineName,
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
@@ -29,6 +29,8 @@ pub struct TableBlueprint<'a> {
     /// If unset, defaults to card layout if available.
     /// `Cards` falls back to table layout when no [`CardLayout`] is configured.
     layout: Option<TableLayoutKind>,
+
+    pub column_display_mode: ColumnDisplayMode,
 
     /// Shared configuration for preview columns in every layout.
     pub previews_config: PreviewsConfig,
@@ -57,8 +59,24 @@ impl<'a> TableBlueprint<'a> {
             ),
         );
 
+        let column_display_mode = results
+            .component_mono(TableBlueprintArchetype::descriptor_column_display_mode().component)
+            .unwrap_or_default();
+        // Default labels are resolved here based on display mode, so that computation of unique
+        // names stays efficient
+        let column_labels = data_columns.compute_labels(column_display_mode);
+        let column_heuristics: TableColumnHeuristic<'_> = Box::new(|layout, desc, column| {
+            let column = additional_column_heuristics(layout, desc, column);
+            if let Some(index) = data_columns.index_by_physical_name(column.physical_name()) {
+                column.with_default_display_name(&column_labels[index])
+            } else {
+                column
+            }
+        });
+
         // TODO(andreas): Should we only resolve the active layout?
         Self {
+            column_display_mode,
             layout: results.component_mono(TableBlueprintArchetype::descriptor_layout().component),
             previews_config: PreviewsConfig {
                 timeline: results
@@ -71,12 +89,12 @@ impl<'a> TableBlueprint<'a> {
             table_layout: TableLayout::load_and_resolve(
                 blueprint_ctx,
                 data_columns,
-                additional_column_heuristics,
+                &column_heuristics,
             ),
             card_layout: CardLayout::load_and_resolve(
                 blueprint_ctx,
                 data_columns,
-                additional_column_heuristics,
+                &column_heuristics,
             ),
         }
     }
@@ -127,6 +145,14 @@ impl<'a> TableBlueprint<'a> {
         blueprint_ctx.save_blueprint_archetype(
             "/table".into(),
             &TableBlueprintArchetype::update_fields().with_layout(layout),
+        );
+    }
+
+    /// Write the column display mode for both layouts, taking effect next frame.
+    pub fn save_column_display_mode(blueprint_ctx: &AppBlueprintCtx<'_>, mode: ColumnDisplayMode) {
+        blueprint_ctx.save_blueprint_archetype(
+            "/table".into(),
+            &TableBlueprintArchetype::update_fields().with_column_display_mode(mode),
         );
     }
 

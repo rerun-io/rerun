@@ -1,9 +1,10 @@
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
-use egui::{Color32, Frame, Label, Link, PopupCloseBehavior, RichText, Stroke, Style};
-use re_sdk_types::blueprint::components::{ColumnName, TableLayoutKind};
+use egui::{Color32, Frame, IdSalt, Label, Link, PopupCloseBehavior, RichText, Stroke, Style};
+use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLayoutKind};
+use re_ui::menu::menu_style;
 use re_ui::text_edit::{ReTextEdit, TextEditVariant};
-use re_ui::{UiExt as _, design_tokens_of, icons};
+use re_ui::{ReButton, Size, UiExt as _, design_tokens_of, icons};
 use re_viewer_context::AppBlueprintCtx;
 
 use crate::blueprint::TableBlueprint;
@@ -175,12 +176,32 @@ impl UiTableConfig<'_> {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, layout_kind: TableLayoutKind) {
-        ui.add(
-            ReTextEdit::singleline(&mut self.filter)
-                .prefix(icons::SEARCH)
-                .variant(TextEditVariant::Outlined)
-                .hint_text("Column name"),
-        );
+        let show_clear = !self.filter.is_empty();
+        let clear_id = IdSalt::new("clear_column_filter");
+        let mut text_edit = ReTextEdit::singleline(&mut self.filter)
+            .prefix(icons::SEARCH)
+            .variant(TextEditVariant::Outlined)
+            .hint_text("Column name");
+        let button_size = Size::Tiny;
+        if show_clear {
+            text_edit =
+                text_edit.suffix(egui::Atom::custom(clear_id, button_size.icon_button_size()));
+        }
+        let response = text_edit.atom_ui(ui);
+        if let Some(rect) = response.rect(clear_id)
+            && ui
+                .place(
+                    rect,
+                    ReButton::icon(icons::CLOSE, "Clear filter")
+                        .size(button_size)
+                        .ghost(),
+                )
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .clicked()
+        {
+            self.filter.clear();
+            response.request_focus();
+        }
         let filter = self.filter.trim().to_lowercase();
 
         let entries: Vec<(String, bool)> = self
@@ -214,7 +235,7 @@ impl UiTableConfig<'_> {
         let mut toggled_column = None;
 
         let dnd_response = egui::ScrollArea::vertical()
-            .min_scrolled_height(400.0)
+            .max_height(300.0)
             .show(ui, |ui| {
                 // The "shown" header is not part of dnd, since it doesn't make sense to move
                 // something above it.
@@ -299,6 +320,7 @@ pub fn columns_edit_menu_ui<'a>(
     ui: &mut egui::Ui,
     blueprint_ctx: &AppBlueprintCtx<'_>,
     layout_kind: TableLayoutKind,
+    column_display_mode: &mut ColumnDisplayMode,
     columns: impl Iterator<Item = &'a TableColumn<'a>>,
 ) {
     MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
@@ -336,6 +358,8 @@ pub fn columns_edit_menu_ui<'a>(
             if changed {
                 config.save(blueprint_ctx, layout_kind);
             }
+            ui.separator();
+            column_display_mode_menu_ui(ui, column_display_mode);
         });
 }
 
@@ -459,6 +483,56 @@ fn column_row_ui(
     clicked
 }
 
+/// The "Column display format" submenu, letting the user pick a [`ColumnDisplayMode`].
+fn column_display_mode_menu_ui(ui: &mut egui::Ui, column_display_mode: &mut ColumnDisplayMode) {
+    use egui::containers::menu::SubMenuButton;
+    use re_ui::ComboItem;
+
+    let previous_style = ui.style().clone();
+    // egui constructs the submenu frame from the parent UI's style.
+    ui.spacing_mut().menu_margin = 4.0.into();
+
+    SubMenuButton::new("Column display format")
+        .config(
+            MenuConfig::new()
+                .style(menu_style())
+                .close_behavior(PopupCloseBehavior::CloseOnClickOutside),
+        )
+        .ui(ui, |ui| {
+            for (mode, label, example) in [
+                (ColumnDisplayMode::Compact, "Compact", "Dataset version"),
+                (
+                    ColumnDisplayMode::Component,
+                    "Component",
+                    "EpisodeAnnotations:dataset_version",
+                ),
+                (
+                    ColumnDisplayMode::Full,
+                    "Full physical name",
+                    "property:EpisodeAnnotations:dataset_version",
+                ),
+            ] {
+                let selected = *column_display_mode == mode;
+                if ui
+                    .add(
+                        ComboItem::new(RichText::new(label).color(ui.tokens().text_strong))
+                            .selected(selected)
+                            .value(
+                                RichText::new(example)
+                                    .monospace()
+                                    .color(ui.tokens().text_subdued),
+                            )
+                            .value_below(true),
+                    )
+                    .clicked()
+                {
+                    *column_display_mode = mode;
+                }
+            }
+        });
+    ui.set_style(previous_style);
+}
+
 #[cfg(test)]
 mod tests {
     use egui_kittest::{Harness, kittest::Queryable as _};
@@ -529,6 +603,7 @@ mod tests {
                             ui,
                             &blueprint,
                             TableLayoutKind::Table,
+                            &mut ColumnDisplayMode::default(),
                             columns.iter(),
                         );
                     });

@@ -877,10 +877,12 @@ fn show_recording_properties(
                 } else if suffix_path.len() == 1 {
                     // Single nested - this is what we expect in the normal case.
                     ui.add_space(8.0);
-                    ui.label(re_case::to_human_case(suffix_path[0].unescaped_str()))
-                        .on_hover_ui(|ui| {
-                            ui.label(entity_path.syntax_highlighted(ui.style()));
-                        });
+                    ui.label(re_case::to_human_case_digits_as_letters(
+                        suffix_path[0].unescaped_str(),
+                    ))
+                    .on_hover_ui(|ui| {
+                        ui.label(entity_path.syntax_highlighted(ui.style()));
+                    });
                 } else {
                     // Deeply nested - show the full path.
                     ui.add_space(8.0);

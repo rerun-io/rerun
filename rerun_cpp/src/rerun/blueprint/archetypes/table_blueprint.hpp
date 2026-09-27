@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/column_display_mode.hpp"
 #include "../../blueprint/components/table_layout_kind.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -34,6 +35,12 @@ namespace rerun::blueprint::archetypes {
         /// `Cards` falls back to table layout when no `archetypes::CardLayout` is configured.
         std::optional<ComponentBatch> layout;
 
+        /// Formatting for column names in table and card layouts.
+        ///
+        /// Defaults to compact formatting when unset.
+        /// Explicit column display names take precedence.
+        std::optional<ComponentBatch> column_display_mode;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TableBlueprint";
@@ -42,6 +49,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_layout = ComponentDescriptor(
             ArchetypeName, "TableBlueprint:layout",
             Loggable<rerun::blueprint::components::TableLayoutKind>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `column_display_mode` field.
+        static constexpr auto Descriptor_column_display_mode = ComponentDescriptor(
+            ArchetypeName, "TableBlueprint:column_display_mode",
+            Loggable<rerun::blueprint::components::ColumnDisplayMode>::ComponentType
         );
 
       public:
@@ -66,6 +78,19 @@ namespace rerun::blueprint::archetypes {
         TableBlueprint with_layout(const rerun::blueprint::components::TableLayoutKind& _layout
         ) && {
             layout = ComponentBatch::from_loggable(_layout, Descriptor_layout).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Formatting for column names in table and card layouts.
+        ///
+        /// Defaults to compact formatting when unset.
+        /// Explicit column display names take precedence.
+        TableBlueprint with_column_display_mode(
+            const rerun::blueprint::components::ColumnDisplayMode& _column_display_mode
+        ) && {
+            column_display_mode =
+                ComponentBatch::from_loggable(_column_display_mode, Descriptor_column_display_mode)
+                    .value_or_throw();
             return std::move(*this);
         }
 

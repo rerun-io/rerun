@@ -280,3 +280,44 @@ fn test_to_human_case() {
         "rerun.components.Translation and mat3x3"
     );
 }
+
+/// Like [`to_human_case`], but digits are treated as lowercase letters.
+///
+/// Use this for names that come from user data (column names, entity path parts) rather than from
+/// Rerun's own type definitions: there is no reason to expect `2d` to mean two dimensions, so <!-- NOLINT -->
+/// `r2d2_version` stays `R2d2 version` instead of becoming `R 2D 2 version`.
+pub fn to_human_case_digits_as_letters(s: &str) -> String {
+    use convert_case::{Boundary, Converter, Pattern};
+
+    let converter = Converter::new()
+        .set_boundaries(&[
+            Boundary::Hyphen,
+            Boundary::Space,
+            Boundary::Underscore,
+            Boundary::Acronym,
+            Boundary::LowerUpper,
+        ])
+        .set_pattern(Pattern::Sentence)
+        .set_delimiter(" ");
+
+    converter.convert(s)
+}
+
+#[test]
+fn test_to_human_case_digits_as_letters() {
+    assert_eq!(
+        to_human_case_digits_as_letters("r2d2_version"),
+        "R2d2 version"
+    );
+    assert_eq!(
+        to_human_case_digits_as_letters("ext1_cam_serial"),
+        "Ext1 cam serial"
+    );
+    assert_eq!(to_human_case_digits_as_letters("start_time"), "Start time");
+    assert_eq!(to_human_case_digits_as_letters("id"), "Id");
+    assert_eq!(to_human_case_digits_as_letters("CameraPose"), "Camera pose");
+    assert_eq!(
+        to_human_case_digits_as_letters("gps-latitude"),
+        "Gps latitude"
+    );
+}

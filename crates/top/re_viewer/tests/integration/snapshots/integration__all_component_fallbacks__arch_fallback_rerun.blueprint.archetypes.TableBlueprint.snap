@@ -3,3 +3,4 @@ source: crates/top/re_viewer/tests/integration/all_component_fallbacks.rs
 expression: arch_display
 ---
 layout: [1]
+column_display_mode: [1]

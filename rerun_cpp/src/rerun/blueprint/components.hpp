@@ -10,6 +10,7 @@
 #include "blueprint/components/auto_scroll.hpp"
 #include "blueprint/components/auto_views.hpp"
 #include "blueprint/components/background_kind.hpp"
+#include "blueprint/components/column_display_mode.hpp"
 #include "blueprint/components/column_name.hpp"
 #include "blueprint/components/column_order.hpp"
 #include "blueprint/components/column_share.hpp"

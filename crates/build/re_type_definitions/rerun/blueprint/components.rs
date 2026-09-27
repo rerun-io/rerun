@@ -16,6 +16,8 @@ mod auto_scroll;
 mod auto_views;
 #[path = "components/background_kind.def.rs"]
 mod background_kind;
+#[path = "components/column_display_mode.def.rs"]
+mod column_display_mode;
 #[path = "components/column_name.def.rs"]
 mod column_name;
 #[path = "components/column_order.def.rs"]
@@ -129,6 +131,7 @@ pub use self::auto_layout::*;
 pub use self::auto_scroll::*;
 pub use self::auto_views::*;
 pub use self::background_kind::*;
+pub use self::column_display_mode::*;
 pub use self::column_name::*;
 pub use self::column_order::*;
 pub use self::column_share::*;

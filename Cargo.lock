@@ -9563,6 +9563,7 @@ dependencies = [
  "ordered-float 5.3.0",
  "re_arrow_util",
  "re_async",
+ "re_case",
  "re_chunk_store",
  "re_component_ui",
  "re_data_source",
