@@ -1165,6 +1165,7 @@ impl PyGrpcServerSink {
         }
     }
 
+    /// URI that a Rerun Viewer can use to connect to this server.
     #[getter]
     fn uri(&self) -> String {
         format!("rerun+http://{}:{}/proxy", self.bind_ip, self.port)
