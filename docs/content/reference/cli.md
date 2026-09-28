@@ -27,7 +27,7 @@ The Rerun command-line interface:
 * `viewer-mcp`: Run an MCP server that controls a running Rerun Viewer.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
-* `server`: In-memory Rerun data server.
+* `server`: Local Rerun catalog server.
 
 **Arguments**
 
@@ -965,7 +965,7 @@ Can be used to ensure that the current Rerun version can load the data.
 
 ## rerun server
 
-In-memory Rerun data server.
+Local Rerun catalog server.
 
 **Usage**: `rerun server [OPTIONS]`
 

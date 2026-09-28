@@ -19,8 +19,9 @@
 namespace rerun::archetypes {
     /// **Archetype**: An audio file, stored as-is (`.aac`, `.flac`, `.m4a`, `.mp3`, `.ogg`, `.wav`).
     ///
-    /// The audio is considered to start playing at the time it was logged,
+    /// The audio starts playing at the time it was logged,
     /// so log it on a temporal timeline (duration or timestamp) at the point where playback should begin.
+    /// The viewer plays it while time is playing, in an `views::AudioView`.
     ///
     /// ## Example
     ///

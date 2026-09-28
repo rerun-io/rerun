@@ -393,6 +393,20 @@ impl re_ui::TableCommandSender for CommandSender {
     }
 }
 
+impl CommandSender {
+    /// Send a command of any type to be executed.
+    pub fn send_command(&self, command: re_ui::BoundCommand) {
+        use re_ui::{RedapServerCommandSender as _, TableCommandSender as _};
+
+        match command {
+            re_ui::BoundCommand::Ui(cmd) => self.send_ui(cmd),
+            re_ui::BoundCommand::Recording(cmd) => self.send_recording_command(cmd),
+            re_ui::BoundCommand::RedapServer(cmd) => self.send_redap_server_command(cmd),
+            re_ui::BoundCommand::Table(cmd) => self.send_table_command(cmd),
+        }
+    }
+}
+
 /// Command to open the edit redap server modal.
 ///
 /// This exists as a separate struct to make it convenient to funnel it through the redap browser

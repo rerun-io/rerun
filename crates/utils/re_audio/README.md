@@ -7,6 +7,6 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Decodes audio files (WAV, AAC, MP3, FLAC, Ogg Vorbis, M4A) into PCM and computes waveform envelopes for efficient visualization.
+Decodes audio files (WAV, AAC, MP3, FLAC, Ogg Vorbis, M4A) into PCM and plays them back through the system's default output device, on native and on the web.
 
-Decoding uses [`symphonia`](https://github.com/pdeljanov/Symphonia): it is pure Rust (so it also builds for the web), covers all the formats above in one crate, and is widely used across the Rust audio ecosystem.
+Decoding (the `decoding` feature) uses [`symphonia`](https://github.com/pdeljanov/Symphonia): it is pure Rust (so it also builds for the web), covers all the formats above in one crate, and is widely used across the Rust audio ecosystem.

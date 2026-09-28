@@ -16,8 +16,8 @@ For convenience, the [`rr.Points3D`](../../reference/types/archetypes/points3d.m
 So the following log calls are equivalent:
 ```python
 single_point = [0.0, 0.0, 0.0]
-rr.log("/data", rr.Points3D(positions=single_point)
-rr.log("/data", rr.Points3D(positions=[single_point])
+rr.log("/data", rr.Points3D(positions=single_point))
+rr.log("/data", rr.Points3D(positions=[single_point]))
 ```
 
 Logging larger batches is obviously possible:

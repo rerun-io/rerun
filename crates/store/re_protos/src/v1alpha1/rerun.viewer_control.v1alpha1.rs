@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -96,6 +96,22 @@ pub mod viewer_control_request {
         /// its position in prose.
         #[prost(message, tag = "8")]
         HighlightRect(super::HighlightRectRequest),
+        /// List the ids of the viewer's command palette commands (panels, playback, undo, …).
+        ///
+        /// Prefer this over clicking through the UI. The ids are self-describing, so the list is
+        /// usually enough; use `DescribeCommands` for details on a few.
+        #[prost(message, tag = "9")]
+        ListCommands(super::ListCommandsRequest),
+        /// Describe commands by id. `NOT_FOUND` if any id is unknown.
+        #[prost(message, tag = "10")]
+        DescribeCommands(super::DescribeCommandsRequest),
+        /// Run a command palette command by id.
+        ///
+        /// Returns once queued; verify the effect with `GetViewerState` or a screenshot.
+        /// Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
+        /// Ask the user before running a `destructive` command.
+        #[prost(message, tag = "11")]
+        RunCommand(super::RunCommandRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -114,7 +130,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -147,6 +163,15 @@ pub mod viewer_control_response {
         /// Result of `highlight_rect`.
         #[prost(message, tag = "8")]
         HighlightRect(super::HighlightRectResponse),
+        /// Result of `list_commands`.
+        #[prost(message, tag = "9")]
+        ListCommands(super::ListCommandsResponse),
+        /// Result of `describe_commands`.
+        #[prost(message, tag = "10")]
+        DescribeCommands(super::DescribeCommandsResponse),
+        /// Result of `run_command`.
+        #[prost(message, tag = "11")]
+        RunCommand(super::RunCommandResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -224,6 +249,93 @@ impl ::prost::Name for CloseRecordingsResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.CloseRecordingsResponse".into()
+    }
+}
+/// Request for `DescribeCommands`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DescribeCommandsRequest {
+    /// Command ids, as `ListCommands` reports them.
+    #[prost(string, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Describe `recording` commands against this recording instead of the active one.
+    #[prost(string, optional, tag = "2")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Describe `server` commands against this server instead of the selected one.
+    #[prost(string, optional, tag = "3")]
+    pub server_origin: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for DescribeCommandsRequest {
+    const NAME: &'static str = "DescribeCommandsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.DescribeCommandsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.DescribeCommandsRequest".into()
+    }
+}
+/// Response for `DescribeCommands`, in request order.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DescribeCommandsResponse {
+    /// One per requested id.
+    #[prost(message, repeated, tag = "1")]
+    pub commands: ::prost::alloc::vec::Vec<ViewerCommand>,
+}
+impl ::prost::Name for DescribeCommandsResponse {
+    const NAME: &'static str = "DescribeCommandsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.DescribeCommandsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.DescribeCommandsResponse".into()
+    }
+}
+/// A command palette command.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerCommand {
+    /// Id for `RunCommand`.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Name shown in the palette.
+    #[prost(string, tag = "2")]
+    pub title: ::prost::alloc::string::String,
+    /// What the command does.
+    #[prost(string, tag = "3")]
+    pub description: ::prost::alloc::string::String,
+    /// What kind of thing it acts on: `"global"`, `"recording"`, `"server"`, or `"table"`.
+    ///
+    /// `target` names the specific one, e.g. scope `"recording"` with target
+    /// `Recording:my_app:1f2e…`, or scope `"server"` with target `rerun+<http://127.0.0.1:51234`.>
+    #[prost(string, tag = "4")]
+    pub scope: ::prost::alloc::string::String,
+    /// Keyboard shortcuts as the viewer shows them, e.g. `⌘K`. Primary first.
+    /// Use these to tell the user how to run the command themselves.
+    #[prost(string, repeated, tag = "5")]
+    pub shortcuts: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Whether `RunCommand` would run it now.
+    #[prost(bool, tag = "6")]
+    pub available: bool,
+    /// Opens a native OS modal (e.g. a file dialog), which blocks the viewer (and this API) until a
+    /// person closes it.
+    #[prost(bool, tag = "7")]
+    pub blocking_native_modal: bool,
+    /// Discards data, blueprint edits, a server, or the viewer itself.
+    #[prost(bool, tag = "8")]
+    pub destructive: bool,
+    /// The specific thing within `scope` it would act on now: a store id, server origin, or table.
+    /// Absent for global commands, and when nothing in scope is available.
+    #[prost(string, optional, tag = "9")]
+    pub target: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerCommand {
+    const NAME: &'static str = "ViewerCommand";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerCommand".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerCommand".into()
     }
 }
 /// Request for `EguiInspect`, wrapping one opaque `egui_inspection` request.
@@ -720,6 +832,69 @@ impl ::prost::Name for HighlightRectResponse {
         "/rerun.viewer_control.v1alpha1.HighlightRectResponse".into()
     }
 }
+/// Request for `ListCommands`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListCommandsRequest {
+    /// Include one-line descriptions.
+    #[prost(bool, optional, tag = "1")]
+    pub include_descriptions: ::core::option::Option<bool>,
+    /// Include commands that cannot run right now.
+    #[prost(bool, optional, tag = "2")]
+    pub include_unavailable: ::core::option::Option<bool>,
+    /// Check `recording` commands against this recording instead of the active one.
+    #[prost(string, optional, tag = "3")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Check `server` commands against this server instead of the selected one.
+    #[prost(string, optional, tag = "4")]
+    pub server_origin: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ListCommandsRequest {
+    const NAME: &'static str = "ListCommandsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListCommandsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListCommandsRequest".into()
+    }
+}
+/// Response for `ListCommands`, sorted by id.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListCommandsResponse {
+    /// The matching commands.
+    #[prost(message, repeated, tag = "1")]
+    pub commands: ::prost::alloc::vec::Vec<CommandSummary>,
+}
+impl ::prost::Name for ListCommandsResponse {
+    const NAME: &'static str = "ListCommandsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListCommandsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListCommandsResponse".into()
+    }
+}
+/// A command as `ListCommands` reports it.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CommandSummary {
+    /// Id for `DescribeCommands` and `RunCommand`.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Only with `include_descriptions`.
+    #[prost(string, optional, tag = "2")]
+    pub description: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for CommandSummary {
+    const NAME: &'static str = "CommandSummary";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.CommandSummary".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.CommandSummary".into()
+    }
+}
 /// Request for `OpenUrl`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OpenUrlRequest {
@@ -749,6 +924,52 @@ impl ::prost::Name for OpenUrlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.OpenUrlResponse".into()
+    }
+}
+/// Request for `RunCommand`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RunCommandRequest {
+    /// Command id, as `ListCommands` reports it.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Recording for a `recording` command. Defaults to the active one.
+    #[prost(string, optional, tag = "2")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Server for a `server` command, e.g. `rerun+<http://127.0.0.1:51234`.> Defaults to the selected one.
+    #[prost(string, optional, tag = "3")]
+    pub server_origin: ::core::option::Option<::prost::alloc::string::String>,
+    /// Allow a command that opens a native modal (see `ViewerCommand.blocking_native_modal`).
+    #[prost(bool, optional, tag = "4")]
+    pub allow_blocking_native_modal: ::core::option::Option<bool>,
+}
+impl ::prost::Name for RunCommandRequest {
+    const NAME: &'static str = "RunCommandRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RunCommandRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RunCommandRequest".into()
+    }
+}
+/// Response for `RunCommand`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RunCommandResponse {
+    /// The command that was queued.
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// What the command acts on. Absent for global commands.
+    #[prost(string, optional, tag = "2")]
+    pub target: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for RunCommandResponse {
+    const NAME: &'static str = "RunCommandResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RunCommandResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RunCommandResponse".into()
     }
 }
 /// Request for `SaveScreenshot`.

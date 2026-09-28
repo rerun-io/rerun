@@ -20,8 +20,14 @@ pub struct TableBlueprint {
     /// `Cards` falls back to table layout when no [`rerun::blueprint::archetypes::CardLayout`] is configured.
     #[rerun(optional)]
     pub layout: Option<rerun::blueprint::components::TableLayoutKind>,
+
+    /// Formatting for column names in table and card layouts.
+    ///
+    /// Defaults to compact formatting when unset.
+    /// Explicit column display names take precedence.
+    #[rerun(optional)]
+    pub column_display_mode: Option<rerun::blueprint::components::ColumnDisplayMode>,
     // TODO(andreas): Reject `Cards` without a configured card layout in the ergonomic API.
-    // TODO(andreas): Add automatic column display name formatting.
     // TODO(andreas): Add persisted column sorting.
     // TODO(andreas): Add persisted column filters.
 }

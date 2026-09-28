@@ -1,5 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
+use std::sync::Arc;
+
 use arrow::array::{ListBuilder, StringBuilder};
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
@@ -8,7 +10,7 @@ use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 
 /// Helper to create a simple chunk with string data for testing
-fn create_test_chunk(entity_path: &str, component_name: &'static str) -> Chunk {
+fn create_test_chunk(entity_path: &str, component_name: &'static str) -> Arc<Chunk> {
     let mut builder = ListBuilder::new(StringBuilder::new());
     builder.values().append_value("test");
     builder.append(true);
@@ -20,13 +22,15 @@ fn create_test_chunk(entity_path: &str, component_name: &'static str) -> Chunk {
 
     let time_column = TimeColumn::new_sequence("tick", 0..2);
 
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path.into(),
-        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
-        components.collect(),
+    Arc::new(
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.into(),
+            std::iter::once((TimelineName::from("tick"), time_column)).collect(),
+            components.collect(),
+        )
+        .unwrap(),
     )
-    .unwrap()
 }
 
 #[test]
@@ -50,7 +54,7 @@ fn test_output_mode_forward_all() {
 
     // Apply to matching chunk
     let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&matching_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -64,7 +68,7 @@ fn test_output_mode_forward_all() {
 
     // Apply to unmatched chunk
     let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&unmatched_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -97,7 +101,7 @@ fn test_output_mode_forward_unmatched() {
 
     // Apply to matching chunk (all components are matched, so no untouched remainder)
     let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&matching_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -107,7 +111,7 @@ fn test_output_mode_forward_unmatched() {
 
     // Apply to unmatched chunk
     let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&unmatched_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -140,7 +144,7 @@ fn test_output_mode_drop_unmatched() {
 
     // Apply to matching chunk
     let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&matching_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 
@@ -150,7 +154,7 @@ fn test_output_mode_drop_unmatched() {
 
     // Apply to unmatched chunk
     let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk, &re_lenses::default_runtime())
+        .apply(Arc::clone(&unmatched_chunk), &re_lenses::default_runtime())
         .try_collect()
         .unwrap();
 

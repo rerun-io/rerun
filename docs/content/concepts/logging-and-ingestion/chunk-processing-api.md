@@ -42,7 +42,7 @@ This is typically implemented on top of an existing chunk index, and is currentl
 Processing chunks through a `LazyStore` is beneficial for pipelines where only a subset of chunks is needed, avoiding the I/O cost of loading unnecessary ones.
 
 > [!NOTE]
-> Filter pushdown to `LazyStore` (e.g. `lazy_store.stream().filter(content="/my/entity")`) is planned but not yet implemented; today the filter runs after the chunks have been loaded.
+> Filters applied to a `LazyStore` stream (e.g. `lazy_store.stream().filter(content="/my/entity")`) are pushed down to the chunk index, so only matching chunks are loaded.
 
 In all cases, readers typically act as the root of a processing pipeline and provide a `LazyChunkStream` object to refine and execute it — see [Lazy stream](#lazy-stream) below.
 
@@ -156,7 +156,7 @@ snippet: concepts/chunk_processing[processing]
 
 - `drop(content="/video_raw/**")` is a no-op against this MCAP (the path does not exist) but illustrates content-based pruning.
 - `fan(side)` builds six `DeriveLens` instances, one per joint, each extracting `.joint_positions[i]` (via `Selector(...).pipe(...)`), converting radians to degrees with `pyarrow.compute`, and routing the result to `/joints_deg/<side>/<joint>` as a `Scalars` column.
-- Two scoped `.lenses(...)` calls apply the per-side fan only to chunks under `/robot_left/**` and `/robot_right/**` respectively. The same component name (`schemas.proto.JointState:message`) lives on both sides; scoping by `content=` is what disambiguates them. With `forward_unmatched`, every chunk outside the scope passes through untouched.
+- Two scoped `.lenses(...)` calls apply the per-side fan only to chunks under `/robot_left/**` and `/robot_right/**` respectively. The same component name (`schemas.proto.JointState:message`) lives on both sides; scoping by `content=` is what disambiguates them. Chunks outside the `content=` scope always pass through untouched; `forward_unmatched` additionally keeps in-scope columns that no lens consumes.
 
 ### Merging
 

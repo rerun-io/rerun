@@ -184,7 +184,7 @@ When you register a recording without specifying a `layer_name`, it is assigned 
 ### Is it possible to obtain a dataframe with a list of all layers in a dataset?
 
 Yes.
-The [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) method returns a DataFusion DataFrame with one row per segment and a `rerun_layer_names` column listing the layers of each segment:
+The [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_table) method returns a DataFusion DataFrame with one row per segment and a `rerun_layer_names` column listing the layers of each segment:
 
 snippet: howto/layers[list_layers]
 

@@ -4,6 +4,8 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use std::sync::Arc;
+
 use arrow::datatypes::DataType;
 use vec1::Vec1;
 
@@ -227,13 +229,12 @@ impl Lenses {
     ///
     /// Each lens matches by input component. Collisions on output component
     /// identifiers are detected: the first lens wins and duplicates are skipped
-    /// with a warning.
-    pub fn apply<'a>(
-        &'a self,
-        // TODO(grtlr): Let's take ownership here.
-        chunk: &'a Chunk,
-        runtime: &'a crate::Runtime,
-    ) -> impl Iterator<Item = Result<Chunk, crate::LensError>> + 'a {
+    /// and reported as errors in the results.
+    pub fn apply(
+        &self,
+        chunk: Arc<Chunk>,
+        runtime: &crate::Runtime,
+    ) -> impl Iterator<Item = Result<Chunk, crate::LensError>> + use<> {
         crate::execute::execute(self, chunk, runtime)
     }
 }

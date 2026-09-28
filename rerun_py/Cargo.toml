@@ -45,7 +45,7 @@ perf_telemetry = [
   "re_perf_telemetry/session_id_reader",
 ]
 
-## Add support for the in-memory OSS server.
+## Add support for the local OSS catalog server.
 server = ["re_sdk/server", "dep:re_grpc_server"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
@@ -97,7 +97,6 @@ re_server = { workspace = true, features = ["lance"] }
 
 anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
-chrono.workspace = true #TODO(#9317): migrate to jiff
 comfy-table.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
@@ -113,7 +112,8 @@ numpy.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
   "abi3-py310", # Require at least Python 3.10
-  "chrono", #TODO(#9317): migrate to jiff
+  "generate-import-lib",
+  "jiff-02",
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 rustls = { workspace = true, features = ["ring"] }

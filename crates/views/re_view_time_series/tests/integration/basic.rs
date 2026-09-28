@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkBuilder};
-use re_log_types::external::arrow::array::{Array, Float64Array, StringArray, StructArray};
+use re_log_types::external::arrow::array::{
+    Array, Float32Array, Float64Array, StringArray, StructArray,
+};
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
@@ -762,6 +764,48 @@ fn test_special_characters_in_entity_path() {
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "special_characters_in_entity_path",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
+/// Scalars logged with a `Float32` datatype under the native `Scalars:scalars` descriptor must be plotted just like `Float64`.
+#[test]
+fn test_float32_native_scalars() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    test_context.log_entity("plots/point", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::default(),
+            &re_sdk_types::archetypes::SeriesPoints::new()
+                .with_markers([re_sdk_types::components::MarkerShape::Circle]),
+        )
+    });
+
+    for i in 0..32 {
+        for entity_path in ["plots/line", "plots/point"] {
+            test_context.log_entity(entity_path, |builder| {
+                builder.with_serialized_batch(
+                    RowId::new(),
+                    [(timeline, i)],
+                    SerializedComponentBatch {
+                        descriptor: re_sdk_types::archetypes::Scalars::descriptor_scalars(),
+                        array: Arc::new(Float32Array::from(vec![(i as f32 / 5.0).sin()])),
+                    },
+                )
+            });
+        }
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "float32_native_scalars",
         egui::vec2(300.0, 300.0),
         None,
     ));

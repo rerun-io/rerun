@@ -1,6 +1,6 @@
 [package]
 name = "re_audio"
-description = "Rerun audio decoding utilities."
+description = "Rerun audio decoding and playback utilities."
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -17,12 +17,47 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["decoding", "output"]
+
+## Decode audio files (WAV, AAC, MP3, FLAC, Ogg Vorbis, M4A) with `symphonia`.
+decoding = ["dep:symphonia"]
+
+## Play audio through the system's default output device.
+##
+## On Linux, ALSA (`libasound.so.2`) is loaded at runtime if present.
+output = [
+  "dep:libloading",
+  "dep:objc2-audio-toolbox",
+  "dep:objc2-core-audio-types",
+  "dep:tinyaudio",
+]
+
 [dependencies]
 re_byte_size = { workspace = true, features = ["emath"] }
 re_log.workspace = true
+re_mutex.workspace = true
 re_tracing.workspace = true
 
 emath.workspace = true
 
-symphonia.workspace = true
+symphonia = { workspace = true, optional = true }
 thiserror.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libloading = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-audio-toolbox = { workspace = true, optional = true, features = [
+  "std",
+  "AudioQueue",
+  "objc2-core-audio-types",
+  "objc2-core-foundation",
+] }
+objc2-core-audio-types = { workspace = true, optional = true, features = [
+  "std",
+  "CoreAudioBaseTypes",
+] }
+
+[target.'cfg(not(any(target_os = "linux", target_os = "macos")))'.dependencies]
+tinyaudio = { workspace = true, optional = true }

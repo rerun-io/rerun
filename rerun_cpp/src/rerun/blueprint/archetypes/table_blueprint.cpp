@@ -11,14 +11,22 @@ namespace rerun::blueprint::archetypes {
         archetype.layout =
             ComponentBatch::empty<rerun::blueprint::components::TableLayoutKind>(Descriptor_layout)
                 .value_or_throw();
+        archetype.column_display_mode =
+            ComponentBatch::empty<rerun::blueprint::components::ColumnDisplayMode>(
+                Descriptor_column_display_mode
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TableBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(2);
         if (layout.has_value()) {
             columns.push_back(layout.value().partitioned(lengths_).value_or_throw());
+        }
+        if (column_display_mode.has_value()) {
+            columns.push_back(column_display_mode.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -26,6 +34,9 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> TableBlueprint::columns() {
         if (layout.has_value()) {
             return columns(std::vector<uint32_t>(layout.value().length(), 1));
+        }
+        if (column_display_mode.has_value()) {
+            return columns(std::vector<uint32_t>(column_display_mode.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -39,10 +50,13 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(1);
+        cells.reserve(2);
 
         if (archetype.layout.has_value()) {
             cells.push_back(archetype.layout.value());
+        }
+        if (archetype.column_display_mode.has_value()) {
+            cells.push_back(archetype.column_display_mode.value());
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -4,7 +4,9 @@ use arrow::datatypes::Field;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::Archetype as _;
 
-use crate::{BatchType, ChunkBatch, ColumnDescriptor, ComponentColumnDescriptor};
+use crate::{
+    BatchType, ChunkBatch, ColumnDescriptor, ColumnDescriptorRef, ComponentColumnDescriptor,
+};
 
 /// Helper to track static-ness ("any" semantics) and emptiness ("all" semantics) of columns across
 /// a collection of chunks. It also strips any chunk-level metadata that becomes meaningless when
@@ -43,15 +45,15 @@ impl SchemaBuilder {
         let chunk_schema = chunk_batch.chunk_schema();
 
         for (column_descriptor, array_ref) in
-            std::iter::zip(chunk_schema.columns.iter(), chunk_batch.columns())
+            std::iter::zip(chunk_schema.columns().iter_ref(), chunk_batch.columns())
         {
             let this_metadata = match column_descriptor {
-                ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => ColumnMetadata {
+                ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => ColumnMetadata {
                     is_static: false,
                     is_semantically_empty: false,
                 },
 
-                ColumnDescriptor::Component(_) => ColumnMetadata {
+                ColumnDescriptorRef::Component(_) => ColumnMetadata {
                     is_static: chunk_batch.is_static(),
                     is_semantically_empty: {
                         array_ref.downcast_array_ref().is_some_and(|list_array| {
@@ -70,7 +72,7 @@ impl SchemaBuilder {
                 .and_modify(|(_descr, metadata): &mut (_, ColumnMetadata)| {
                     metadata.merge_with(this_metadata);
                 })
-                .or_insert_with(|| (column_descriptor.clone(), this_metadata));
+                .or_insert_with(|| (column_descriptor.to_owned(), this_metadata));
         }
     }
 

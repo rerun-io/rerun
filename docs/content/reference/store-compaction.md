@@ -16,7 +16,7 @@ You can configure these thresholds using the following environment variables:
 
 Sets the threshold, in bytes, after which a `Chunk` cannot be compacted any further.
 
-Defaults to `RERUN_CHUNK_MAX_BYTES=4194304` (4MiB).
+Defaults to `RERUN_CHUNK_MAX_BYTES=393216` (384KiB).
 
 #### RERUN_CHUNK_MAX_ROWS
 
@@ -29,4 +29,4 @@ Defaults to `RERUN_CHUNK_MAX_ROWS=4096`.
 Sets the threshold, in rows, after which a `Chunk` cannot be compacted any further.
 Applies specifically to _non_ time-sorted chunks, which can be slower to query.
 
-Defaults to `RERUN_CHUNK_MAX_ROWS=1024`.
+Defaults to `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED=1024`.

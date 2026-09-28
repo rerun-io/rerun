@@ -26,6 +26,7 @@ use re_sdk::external::re_tuid::Tuid;
 use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
 use re_viewer::external::re_entity_db::FetchStage;
+use re_viewer::external::re_ui::notifications::NotificationLevel;
 use re_viewer::external::re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 
@@ -456,19 +457,17 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
-        harness.query_all_by_label("Assets").count() > 0
+        harness.query_by_label("Assets").is_some()
     });
 
     harness.get_by_label("Assets").click();
     harness.run_ok();
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_all_by_label("No assets registered").count() > 0,
+        |harness| harness.query_by_label("No assets registered").is_some(),
     );
 
     open_register_asset_modal(&mut harness);
@@ -512,19 +511,17 @@ async fn a_refused_registration_is_listed_as_failed() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
-        harness.query_all_by_label("Assets").count() > 0
+        harness.query_by_label("Assets").is_some()
     });
 
     harness.get_by_label("Assets").click();
     harness.run_ok();
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_all_by_label("No assets registered").count() > 0,
+        |harness| harness.query_by_label("No assets registered").is_some(),
     );
 
     open_register_asset_modal(&mut harness);
@@ -543,13 +540,12 @@ async fn a_refused_registration_is_listed_as_failed() {
     harness.get_by_label("Register").click();
     harness.run_ok();
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until_with_custom_timeout(
         "the refused registration is listed",
         &mut harness,
         // Only a registration the server has answered can be dismissed, so the button showing up
         // is what says the refused registration is on the list.
-        |harness| harness.query_all_by_label("Dismiss").count() > 0,
+        |harness| harness.query_by_label("Dismiss").is_some(),
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -562,16 +558,30 @@ async fn a_refused_registration_is_listed_as_failed() {
         "the card should say which source uri the server refused"
     );
 
+    // The refusal is also logged as an error, which reaches the notification bell on a later frame
+    // than the card.
+    viewer_test_utils::step_until(
+        "the refusal is reported as an error notification",
+        &mut harness,
+        |harness| {
+            harness
+                .state()
+                .testonly_get_notifications()
+                .notifications()
+                .iter()
+                .any(|notification| notification.level() == NotificationLevel::Error)
+        },
+    );
+
     harness.snapshot("refused_asset_registration");
 
     harness.get_by_label("Dismiss").click();
     harness.run_ok();
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "dismissing takes the refused registration off the list",
         &mut harness,
-        |harness| harness.query_all_by_label("No assets registered").count() > 0,
+        |harness| harness.query_by_label("No assets registered").is_some(),
     );
 }
 
@@ -659,11 +669,10 @@ async fn dataset_assets_tab_without_assets() {
         ..Default::default()
     });
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until_with_custom_timeout(
         "the dataset reports that it has no assets yet",
         &mut harness,
-        |harness| harness.query_all_by_label("No assets registered").count() > 0,
+        |harness| harness.query_by_label("No assets registered").is_some(),
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -802,12 +811,11 @@ async fn open_asset_lists_it_under_owning_dataset() {
     });
 
     let asset_label = asset_segment_id.to_string();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "the asset appears in the recording panel",
         &mut harness,
         |harness| {
-            harness.query_all_by_label("Loading entries…").count() == 0
+            harness.query_by_label("Loading entries…").is_none()
                 && harness.query_all_by_label_contains("robot_data").count() > 0
                 && {
                     let recording_panel = harness.recording_panel();
@@ -997,18 +1005,16 @@ async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() 
 
     // Clicked through the accessibility tree, since a toast covers the right edge of the card.
     harness.get_by_label("more").click_accesskit();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the asset's menu is open", &mut harness, |harness| {
-        harness.query_all_by_label("Unregister asset").count() > 0
+        harness.query_by_label("Unregister asset").is_some()
     });
 
     harness.get_by_label("Unregister asset").click();
     harness.run_ok();
 
     // The menu item only opens the modal, the modal's own button starts the unregistration.
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the modal is asking", &mut harness, |harness| {
-        harness.query_all_by_label("Unregister").count() > 0
+        harness.query_by_label("Unregister").is_some()
     });
 
     harness.get_by_label("Unregister").click();
@@ -1048,9 +1054,8 @@ fn open_asset_list(harness: &mut Harness<'static, re_viewer::App>, server: &Test
         .state()
         .open_url_or_file(&asset_list_uri.to_string());
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until("the asset list is up", harness, |harness| {
-        harness.query_all_by_label("Register asset").count() > 0
+        harness.query_by_label("Register asset").is_some()
     });
 }
 

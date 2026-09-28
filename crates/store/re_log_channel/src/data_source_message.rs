@@ -67,7 +67,7 @@ impl DataSourceMessage {
     /// Records the current time as the moment the carried data passed `location`.
     ///
     /// Only messages that carry Arrow data are stamped.
-    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
+    pub fn track_latency(&mut self, location: re_sorbet::LatencyLocation) {
         match self {
             Self::LogMsg(log_msg) => log_msg.track_latency(location),
             Self::TableMsg(table_msg) => table_msg.track_latency(location),

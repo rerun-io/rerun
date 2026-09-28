@@ -175,6 +175,8 @@ impl ColormapWithRange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct StoredBlobCacheKey(pub Hash64);
 
+impl nohash_hasher::IsEnabled for StoredBlobCacheKey {}
+
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);
 

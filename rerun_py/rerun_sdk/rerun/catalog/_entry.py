@@ -704,6 +704,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         *,
         layer_name: str | Sequence[str] = "base",
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        object_store_config: str | None = None,
     ) -> RegistrationHandle:
         """
         Register RRD URIs to the dataset and return a handle to track progress.
@@ -728,6 +729,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         on_duplicate:
             How to handle the cases where the segment id and layer name already exist in the dataset?
             Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
+        object_store_config:
+            Use a custom object store configuration for the registration.
+            If not specified, the store is inferred from the URL.
 
         Returns
         -------
@@ -759,7 +764,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
         return RegistrationHandle(
-            self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
+            self._internal.register(
+                recording_uris,
+                recording_layers=layer_names,
+                on_duplicate=on_duplicate,
+                object_store_config=object_store_config,
+            )
         )
 
     @with_tracing("DatasetEntry.unregister")
@@ -820,6 +830,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         recordings_prefix: str,
         layer_name: str | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        *,
+        object_store_config: str | None = None,
     ) -> RegistrationHandle:
         """
         Register all RRDs under a given prefix to the dataset and return a handle to track progress.
@@ -843,6 +855,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             How to handle the cases where the segment id and layer name already exist in the dataset?
             Defaults to `OnDuplicateSegmentLayer.ERROR`.
 
+        object_store_config:
+            Use a custom object store configuration for the registration.
+            If not specified, the store is inferred from the URL.
+
         Returns
         -------
         A handle to track and wait on the registration tasks.
@@ -853,7 +869,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if layer_name is None:
             layer_name = "base"
 
-        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
+        return RegistrationHandle(
+            self._internal.register_prefix(
+                recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
+            )
+        )
 
     def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStore:
         """

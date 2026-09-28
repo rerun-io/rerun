@@ -391,7 +391,7 @@ impl StoreSchema {
         let sorbet_schema = rrd_manifest.recording_schema();
 
         // Update time type registry
-        for descr in sorbet_schema.columns.index_columns() {
+        for descr in sorbet_schema.columns().index_columns() {
             self.time_type_registry
                 .insert(descr.timeline_name(), descr.timeline().typ());
         }
@@ -405,7 +405,7 @@ impl StoreSchema {
             Default::default();
 
         // Update component columns and per-entity component sets
-        for descr in sorbet_schema.columns.component_columns() {
+        for descr in sorbet_schema.columns().component_columns() {
             if let Some(meta) = self.update_column_metadata(descr) {
                 new_per_entity
                     .entry(descr.entity_path.clone())

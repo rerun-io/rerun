@@ -37,7 +37,12 @@ class TableBlueprint(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.TableBlueprint"
 
-    def __init__(self: Any, *, layout: blueprint_components.TableLayoutKindLike | None = None) -> None:
+    def __init__(
+        self: Any,
+        *,
+        layout: blueprint_components.TableLayoutKindLike | None = None,
+        column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
+    ) -> None:
         """
         Create a new instance of the TableBlueprint archetype.
 
@@ -48,12 +53,17 @@ class TableBlueprint(Archetype):
 
             If unset, defaults to card layout if available.
             `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
+        column_display_mode:
+            Formatting for column names in table and card layouts.
+
+            Defaults to compact formatting when unset.
+            Explicit column display names take precedence.
 
         """
 
         # You can define your own __init__ function as a member of TableBlueprintExt in table_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(layout=layout)
+            self.__attrs_init__(layout=layout, column_display_mode=column_display_mode)
             return
         self.__attrs_clear__()
 
@@ -61,6 +71,7 @@ class TableBlueprint(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             layout=None,
+            column_display_mode=None,
         )
 
     @classmethod
@@ -76,6 +87,7 @@ class TableBlueprint(Archetype):
         *,
         clear_unset: bool = False,
         layout: blueprint_components.TableLayoutKindLike | None = None,
+        column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
     ) -> TableBlueprint:
         """
         Update only some specific fields of a `TableBlueprint`.
@@ -89,6 +101,11 @@ class TableBlueprint(Archetype):
 
             If unset, defaults to card layout if available.
             `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
+        column_display_mode:
+            Formatting for column names in table and card layouts.
+
+            Defaults to compact formatting when unset.
+            Explicit column display names take precedence.
 
         """
 
@@ -96,6 +113,7 @@ class TableBlueprint(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "layout": layout,
+                "column_display_mode": column_display_mode,
             }
 
             if clear_unset:
@@ -120,6 +138,14 @@ class TableBlueprint(Archetype):
             component_type=blueprint_components.TableLayoutKindBatch._COMPONENT_TYPE,
         )
 
+    @staticmethod
+    def descriptor_column_display_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TableBlueprint:column_display_mode",
+            archetype=TableBlueprint.NAME,
+            component_type=blueprint_components.ColumnDisplayModeBatch._COMPONENT_TYPE,
+        )
+
     layout: blueprint_components.TableLayoutKindBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -129,6 +155,18 @@ class TableBlueprint(Archetype):
     #
     # If unset, defaults to card layout if available.
     # `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    column_display_mode: blueprint_components.ColumnDisplayModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.ColumnDisplayModeBatch._converter,  # type: ignore[misc]
+    )
+    # Formatting for column names in table and card layouts.
+    #
+    # Defaults to compact formatting when unset.
+    # Explicit column display names take precedence.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -153,13 +153,13 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .add(
                 ReButton::icon(
                     if is_paused { icons::PLAY } else { icons::PAUSE },
-                    RecordingCommandKind::PlaybackTogglePlayPause.text(),
+                    RecordingCommandKind::TogglePlayPause.text(),
                 )
                 .selected(!is_paused)
                 .size(TIME_CONTROL_ROW_SIZE)
                 .secondary(),
             )
-            .on_hover_ui(|ui| RecordingCommandKind::PlaybackTogglePlayPause.tooltip_ui(ui))
+            .on_hover_ui(|ui| RecordingCommandKind::TogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
             time_commands.push(TimeControlCommand::TogglePlayPause);
@@ -176,12 +176,12 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .add(
                 ReButton::icon(
                     icons::SKIP_TO_END,
-                    RecordingCommandKind::PlaybackEndAndFollow.text(),
+                    RecordingCommandKind::SeekToEndAndFollow.text(),
                 )
                 .size(TIME_CONTROL_ROW_SIZE)
                 .secondary(),
             )
-            .on_hover_ui(|ui| RecordingCommandKind::PlaybackEndAndFollow.tooltip_ui(ui))
+            .on_hover_ui(|ui| RecordingCommandKind::SeekToEndAndFollow.tooltip_ui(ui))
             .clicked()
         {
             time_commands.push(TimeControlCommand::MoveEndAndFollow);
@@ -192,20 +192,20 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     fn playhead_nav_ui(&self, ui: &mut egui::Ui, time_commands: &mut Vec<TimeControlCommand>) {
         let commands = [
             [
-                RecordingCommandKind::PlaybackForward,
-                RecordingCommandKind::PlaybackBack,
+                RecordingCommandKind::SeekForwardShort,
+                RecordingCommandKind::SeekBackwardShort,
             ],
             [
-                RecordingCommandKind::PlaybackForwardFast,
-                RecordingCommandKind::PlaybackBackFast,
+                RecordingCommandKind::SeekForwardLong,
+                RecordingCommandKind::SeekBackwardLong,
             ],
             [
-                RecordingCommandKind::PlaybackStepForward,
-                RecordingCommandKind::PlaybackStepBack,
+                RecordingCommandKind::SeekToNextEvent,
+                RecordingCommandKind::SeekToPreviousEvent,
             ],
             [
-                RecordingCommandKind::PlaybackEndAndFollow,
-                RecordingCommandKind::PlaybackBeginning,
+                RecordingCommandKind::SeekToEndAndFollow,
+                RecordingCommandKind::SeekToStart,
             ],
         ];
 

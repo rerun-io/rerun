@@ -71,12 +71,12 @@ Component mappings can be modified via the Viewer UI by navigating to a visualiz
 ### Custom values
 
 A common way of customizing a visualization is by setting custom values, for example for visualizers that expect a [`Color`](../../reference/types/components/color.md) component.
-In the UI this can be done via the visualizer UI, by clicking and modifying the color component, or by selecting "Add custom…" from the Source dropdown.
+In the UI this can be done via the visualizer UI, by clicking and modifying the color component, or by selecting "Add custom" from the Source dropdown.
 
 When such a customization is defined, it automatically changes the component's source for this visualizer to point to this new custom value.
 
 The Source dropdown menu allows quick toggling between the different input representations.
-By clicking on "Add custom…" you can create a new custom component override:
+By clicking on "Add custom" you can create a new custom component override:
 
 <picture>
   <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="">
@@ -119,8 +119,10 @@ Suitable components show up in the source dropdown:
 </picture>
 
 
-<!-- TODO(#12661): adjust docs once ticket is closed -->
-> #12661: Currently, only the time series view (scalars) and the state timeline view (state values) allow remapping of required components. All other visualizers require matching Rerun semantics (correct archetype & type metadata) for their required fields.
+This applies to required components too, not only to optional ones: you can reinterpret a mesh as a point cloud, or graph node positions as plain 2D points.
+Two kinds of component are excluded.
+Enum components such as [`FillMode`](../../reference/types/components/fill_mode.md) only accept data that carries the matching Rerun semantics.
+Image-like visualizers take an arbitrary buffer as their pixel data, but still require a proper [`ImageFormat`](../../reference/types/components/image_format.md) alongside it.
 
 As always, component mappings can be set via the blueprint APIs:
 

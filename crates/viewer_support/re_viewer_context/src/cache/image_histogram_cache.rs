@@ -1,7 +1,7 @@
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
 use crate::{Cache, CacheEntryAccess, ImageInfo};
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes as _;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
@@ -41,7 +41,7 @@ impl Rgb8Histogram {
 
 /// Caches per-channel histograms for 8-bit RGB images, keyed by image content.
 #[derive(Default)]
-pub struct ImageHistogramCache(HashMap<StoredBlobCacheKey, Arc<Rgb8Histogram>>);
+pub struct ImageHistogramCache(IntMap<StoredBlobCacheKey, Arc<Rgb8Histogram>>);
 
 impl ImageHistogramCache {
     /// Get the histogram for the given 8-bit `RGB` image, computing and caching it on first access.

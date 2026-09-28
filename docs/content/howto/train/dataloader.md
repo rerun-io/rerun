@@ -173,7 +173,7 @@ The live `RerunIterableDataset` drops a sample when any decoder returns `None` a
 Null source rows and expected encoded-image or video decode failures are converted to `None`; a corrupt video GOP does not prevent later GOPs in the fetch block from decoding.
 Custom decoders should return `None` for recoverable data errors; exceptions still propagate as decoder failures.
 Set `max_consecutive_skipped_samples` to bound how many such samples each rank and `DataLoader` worker may skip in a row; a valid sample resets the count, and exceeding the limit raises with total and per-field counts.
-The default is 100; pass `None` to apply no limit.
+The default is 1000; pass `None` to apply no limit.
 
 Live samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
 Use the DDP `join()` pattern above when consuming the live dataset to exhaustion.

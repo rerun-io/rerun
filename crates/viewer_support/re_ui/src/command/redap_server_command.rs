@@ -25,16 +25,19 @@ pub struct RedapServerCommand {
 }
 
 /// What a [`RedapServerCommand`] does to its server.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter, strum_macros::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum RedapServerCommandKind {
     /// Refresh the contents (datasets & tables) of the server.
     Refresh,
 
     /// Open a modal to edit the URL and credentials of the server.
-    Edit,
+    OpenEditDialog,
 
     /// Copy the URL of the server to the clipboard.
-    CopyUrl,
+    CopyUrlToClipboard,
 
     /// Remove the server from the redap browser.
     Remove,
@@ -99,8 +102,8 @@ impl RedapServerCommandKind {
     /// (i.e. not the viewer's built-in catalog)?
     pub fn requires_editable_server(self) -> bool {
         match self {
-            Self::Refresh | Self::CopyUrl => false,
-            Self::Edit | Self::Remove => true,
+            Self::Refresh | Self::CopyUrlToClipboard => false,
+            Self::OpenEditDialog | Self::Remove => true,
         }
     }
 
@@ -118,8 +121,8 @@ impl RedapServerCommandKind {
                 "Refresh server",
                 "Refresh the contents (datasets & tables) of the server",
             ),
-            Self::Edit => ("Edit server…", "Edit the URL and credentials of the server"),
-            Self::CopyUrl => ("Copy server URL", "Copy the URL of the server"),
+            Self::OpenEditDialog => ("Edit server…", "Edit the URL and credentials of the server"),
+            Self::CopyUrlToClipboard => ("Copy server URL", "Copy the URL of the server"),
             Self::Remove => ("Remove server", "Remove the server"),
         }
     }
@@ -145,7 +148,7 @@ impl RedapServerCommandKind {
             // `Cmd-R` is the natural "reload" shortcut on Mac; elsewhere `F5` is (and `Cmd-R`
             // would clash with the browser's reload on web).
             Self::Refresh => super::refresh_shortcuts(os),
-            Self::Edit | Self::CopyUrl | Self::Remove => smallvec![],
+            Self::OpenEditDialog | Self::CopyUrlToClipboard | Self::Remove => smallvec![],
         }
     }
 
@@ -163,8 +166,8 @@ impl RedapServerCommandKind {
     pub fn icon(self) -> &'static crate::Icon {
         match self {
             Self::Refresh => &crate::icons::RESET,
-            Self::Edit => &crate::icons::SETTINGS,
-            Self::CopyUrl => &crate::icons::COPY,
+            Self::OpenEditDialog => &crate::icons::SETTINGS,
+            Self::CopyUrlToClipboard => &crate::icons::COPY,
             Self::Remove => &crate::icons::TRASH,
         }
     }

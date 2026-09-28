@@ -19,7 +19,7 @@ Using an expressive API, Lenses allow you to:
 3. Wrangle the values stored in individual components
 
 Lenses are available in the Rust SDK using `LensesSink` or directly on a `Chunk` via the `ChunkExt` trait.
-In Python, Lenses can be applied to chunks directly or as a pipeline step in the `ChunkStream` API.
+In Python, Lenses can be applied to chunks directly or as a pipeline step via `LazyChunkStream.lenses()` in the [Chunk Processing API](../logging-and-ingestion/chunk-processing-api.md).
 
 Internally, Rerun uses lenses to implement large parts of our data importers, the MCAP importer is one example of this.
 

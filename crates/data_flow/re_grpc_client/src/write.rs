@@ -388,7 +388,7 @@ async fn message_proxy_client(
                     match cmd {
                         Some(Cmd::LogMsg(mut log_msg)) => {
                             // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                            log_msg.track_latency(re_sorbet::TimestampLocation::IPCEncode);
+                            log_msg.track_latency(re_sorbet::LatencyLocation::IPCEncode);
 
                             let msg = match log_msg.to_transport(compression) {
                                 Ok(msg) => msg,

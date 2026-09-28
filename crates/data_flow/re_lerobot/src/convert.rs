@@ -3,6 +3,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 
 use arrow::array::{ArrayRef, ListArray};
 use arrow::buffer::ScalarBuffer;
@@ -121,7 +122,7 @@ fn tabular_chunks(
             .into_iter()
             .map(|(entity, names)| build_series_names_chunk(&entity, &names)),
         chunks.flat_map(move |item| match item {
-            Ok(chunk) => Either::Right(apply_lenses(&chunk, &lenses, &runtime).into_iter()),
+            Ok(chunk) => Either::Right(apply_lenses(chunk, &lenses, &runtime)),
             Err(err) => Either::Left(std::iter::once(Err(err))),
         }),
     )))
@@ -247,14 +248,13 @@ fn chunk_times(chunk: &Chunk, timeline: Timeline) -> &[i64] {
 ///
 /// A failed lens still surfaces its partial chunk (the columns that succeeded) ahead of
 /// the error.
-/// TODO(RR-5278): `Lenses::apply()` borrows the chunk
 fn apply_lenses(
-    chunk: &Chunk,
+    chunk: Chunk,
     lenses: &re_lenses::Lenses,
     runtime: &re_lenses::Runtime,
-) -> Vec<Result<Chunk, LeRobotError>> {
+) -> impl Iterator<Item = Result<Chunk, LeRobotError>> + use<> {
     lenses
-        .apply(chunk, runtime)
+        .apply(Arc::new(chunk), runtime)
         .flat_map(|result| match result {
             Ok(chunk) => Either::Left(std::iter::once(Ok(chunk))),
             Err(err) => {
@@ -266,7 +266,6 @@ fn apply_lenses(
                 ))
             }
         })
-        .collect()
 }
 
 /// A static `SeriesLines` chunk naming a scalar feature's per-element series, from the
@@ -576,6 +575,25 @@ mod tests {
             components,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn a_failed_lens_yields_its_partial_chunk_before_the_error() {
+        let values: ArrayRef = Arc::new(Int64Array::from(vec![1, 2]));
+        let chunk = column_chunk("action", values);
+        let mutate =
+            || re_lenses::Lens::mutate("action", re_lenses::Selector::parse(".").unwrap()).build();
+        let lenses = re_lenses::Lenses::new(re_lenses::OutputMode::ForwardUnmatched)
+            .add_lens(mutate())
+            .add_lens(mutate());
+
+        let out: Vec<_> = apply_lenses(chunk, &lenses, &re_lenses::default_runtime()).collect();
+        assert_eq!(out.len(), 2, "partial chunk, then the error");
+        assert_eq!(
+            out[0].as_ref().unwrap().entity_path(),
+            &EntityPath::from("/action")
+        );
+        assert!(matches!(out[1], Err(LeRobotError::Lens(_))));
     }
 
     /// A language column whose rows are not lists of annotation rows errors on the first

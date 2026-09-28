@@ -135,20 +135,17 @@ pub async fn dataset_folders() {
         .last()
         .expect("detection folder card should be present")
         .click();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "folder `perception.detection` cards appear",
         &mut harness,
         |harness| {
             harness
-                .query_all_by_role_and_label(Role::Button, "cars")
-                .count()
-                > 0
+                .query_by_role_and_label(Role::Button, "cars")
+                .is_some()
                 && harness.query_all_by_label_contains("audit").count() >= 1
                 && harness
-                    .query_all_by_role_and_label(Role::Button, "pedestrians")
-                    .count()
-                    > 0
+                    .query_by_role_and_label(Role::Button, "pedestrians")
+                    .is_some()
         },
     );
     harness.step_until_no_loading_indicator();
@@ -196,11 +193,10 @@ pub async fn dataset_folders() {
         .last()
         .expect("metrics table card should be present")
         .click();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     viewer_test_utils::step_until(
         "table `perception.metrics` row appears",
         &mut table_harness,
-        |harness| 0 < harness.query_all_by_label_contains("metrics-row").count(),
+        |harness| harness.query_by_label_contains("metrics-row").is_some(),
     );
     assert_route_and_selection(&mut table_harness, &metrics_route);
 
@@ -210,14 +206,10 @@ pub async fn dataset_folders() {
         .last()
         .expect("summary dataset card should be present")
         .click();
-    // `egui_table` draws a brand-new table in an invisible sizing pass, where every scroll
-    // region renders every column. If that pass happens to be the frame's last allowed one,
-    // the accessibility tree briefly holds two `rec_summary` cells, so count instead of
-    // asserting a single node.
     viewer_test_utils::step_until(
         "dataset `perception.summary` recording appears",
         &mut harness,
-        |harness| 0 < harness.query_all_by_label_contains("rec_summary").count(),
+        |harness| harness.query_by_label_contains("rec_summary").is_some(),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);

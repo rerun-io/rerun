@@ -9,7 +9,9 @@ use re_log_types::TimeInt;
 use re_sdk_types::components::{AggregationPolicy, InterpolationMode, StrokeWidth};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
-use re_view::{ChunksWithComponent, collect_recursive_clears, range_with_blueprint_resolved_data};
+use re_view::{
+    ChunksWithComponent, collect_recursive_clears, range_with_blueprint_resolved_data_polymorphic,
+};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerReportSeverity, typed_fallback_for};
 
@@ -130,13 +132,18 @@ pub(crate) fn load_line_series_with_styling(
         // cut-off the data early at the edge of the view.
         .include_extended_bounds(true);
 
-    let mut results = range_with_blueprint_resolved_data(
+    let cast_rules = util::float64_cast_rules(std::iter::chain(
+        [source.value_descriptor.component],
+        source.variance_descriptor.iter().map(|d| d.component),
+    ));
+    let mut results = range_with_blueprint_resolved_data_polymorphic(
         ctx,
         None,
         &query,
         data_result,
         source.queried_components.iter().copied(),
         instruction,
+        &cast_rules,
     );
 
     // The plot view visualizes scalar data within a specific time range, without any kind

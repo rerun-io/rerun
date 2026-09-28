@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
@@ -26,7 +26,7 @@ struct DecodedImageResult {
 /// Caches the results of decoding [`re_sdk_types::archetypes::EncodedImage`] and [`re_sdk_types::archetypes::EncodedDepthImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
+    cache: IntMap<StoredBlobCacheKey, IntMap<Hash64, DecodedImageResult>>,
     memory_used: u64,
     generation: u64,
 }

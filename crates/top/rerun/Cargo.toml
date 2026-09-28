@@ -26,6 +26,7 @@ default = [
   "analytics",
   "importers",
   "dataframe",
+  "audio",
   "demo",
   "glam",
   "image",
@@ -83,6 +84,9 @@ log = ["dep:env_filter", "dep:log"]
 ## should leave to whoever owns `main`.
 log_setup = ["re_log/setup"]
 
+## Support audio playback in the viewer.
+audio = ["re_viewer?/audio"]
+
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 map_view = ["re_viewer?/map_view"]
@@ -109,7 +113,7 @@ native_viewer = [
   "re_viewer?/agent_context",
 ]
 
-## Enable the in-memory Rerun data server.
+## Enable the local Rerun catalog server.
 oss_server = ["dep:re_server"]
 
 ## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).

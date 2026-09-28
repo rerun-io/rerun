@@ -35,7 +35,7 @@ The Rerun Viewer/SDK will then automatically load the data streamed to the exter
 </picture>
 
 Like any other `Importer`, an external importer will be notified of all file openings, unconditionally.
-To indicate that it does not support a given file, the importer has to exit with a [dedicated status code](https://docs.rs/rerun/latest/rerun/constant.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE.html).
+To indicate that it does not support a given file, the importer has to exit with a [dedicated status code](https://docs.rs/rerun/latest/rerun/constant.EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE.html).
 
 When the Viewer and/or SDK executes an external importer, it will pass to it a set of recommended settings in the form of CLI parameters (in addition to the file path to be loaded, which is passed as the one and only positional argument):
 
@@ -74,13 +74,13 @@ When the Viewer and/or SDK executes an external importer, it will pass to it a s
 
     The data is expected to be logged at these specific duration times.
 
-    The timestamps are expected to be in nanoseconds: use `rr.set_time_duration_nanos` (Python) / `RecordingStream::set_time_duration_nanos` (C++, Rust) appropriately.
+    The timestamps are expected to be in nanoseconds: use `rr.set_time(timeline, duration=np.timedelta64(nanos, "ns"))` (Python) / `RecordingStream::set_time_duration_nanos` (C++) / `RecordingStream::set_time(timeline, std::time::Duration::from_nanos(nanos))` (Rust) appropriately.
 
 * `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
 
     The data is expected to be logged at these specific timestamp times.
 
-    The timestamps are expected to be in nanoseconds since Unix epoch: use `rr.set_time_timestamp_nanos` (Python) / `RecordingStream::set_time_timestamp_nanos` (C++, Rust) appropriately.
+    The timestamps are expected to be in nanoseconds since Unix epoch: use `rr.set_time(timeline, timestamp=np.datetime64(nanos, "ns"))` (Python) / `RecordingStream::set_time_timestamp_nanos_since_epoch` (C++) / `RecordingStream::set_timestamp_nanos_since_epoch` (Rust) appropriately.
 
 Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_importer), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_importer) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_importer) that cover every steps in details.
 

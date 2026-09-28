@@ -30,6 +30,7 @@ from .api import (
 )
 from .archetypes import (
     ActiveVisualizers as ActiveVisualizers,
+    AudioPlayback as AudioPlayback,
     Background as Background,
     EntityBehavior as EntityBehavior,
     EyeControls3D as EyeControls3D,
@@ -61,6 +62,7 @@ from .containers import (
     Vertical as Vertical,
 )
 from .views import (
+    AudioView as AudioView,
     BarChartView as BarChartView,
     DataframeView as DataframeView,
     GraphView as GraphView,

@@ -19,12 +19,12 @@ If your values should be grouped together and that grouping isn't referred to fr
 
 You find the documentation for these helpers here:
 
--   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DyanamicArchetype)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype)
 -   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 snippet: tutorials/dynamic_archetype
 
-You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Remapping to a Rerun archetype
 
@@ -34,7 +34,7 @@ Let's start with a simple example where you have your own point cloud class that
 @dataclass
 class LabeledPoints:
     points: np.ndarray
-    labels: List[str])
+    labels: List[str]
 ```
 
 If you implement `as_component_batches()` on `LabeledPoints`, you can pass it directly to `rr.log`. The simplest possible way is to use the matching Rerun archetype’s `as_component_batches` method.
@@ -47,7 +47,7 @@ class LabeledPoints:
     points: np.ndarray
     labels: List[str]
 
-    def as_component_batches(self) -> list[rr.ComponentBatch]:
+    def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
         return rr.Points3D(positions=self.points,
                            labels=self.labels).as_component_batches()
 …

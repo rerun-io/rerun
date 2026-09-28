@@ -49,7 +49,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Codegen check
         run: pixi run codegen --force --check --warnings-as-errors
@@ -76,7 +76,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -105,7 +105,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Toml format check
         run: pixi run toml-fmt-check
@@ -120,7 +120,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check uv.lock
         run: pixi run uv-lock-check
@@ -135,7 +135,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check for too large files
         run: pixi run check-large-files
@@ -150,7 +150,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check for wrong publish flags
         run: pixi run check-publish-flags
@@ -165,7 +165,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check example thumbnails
         # Use uv run --frozen python instead of uvpy.
@@ -183,7 +183,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check docs order
         run: pixi run uv run --frozen python ./scripts/ci/check_doc_order.py
@@ -198,7 +198,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Check for D2 code blocks
         # Use uv run --frozen python instead of uvpy.
@@ -216,7 +216,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -239,7 +239,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -280,7 +280,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check
@@ -320,7 +320,7 @@ jobs:
         if: ${{ inputs.CHANNEL == 'pr' }}
         uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.71.3
+          pixi-version: v0.78.0
 
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)

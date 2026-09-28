@@ -173,9 +173,6 @@ pub struct App {
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
-    /// The last theme we pushed to the OS window (via [`egui::ViewportCommand::SetTheme`]).
-    last_window_theme: Option<egui::SystemTheme>,
-
     /// Read via [`Self::custom_window_decorations`].
     window_decorations_request: WindowDecorationsRequest,
 
@@ -571,7 +568,6 @@ impl App {
             latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
-            last_window_theme: None,
 
             window_decorations_request: WindowDecorationsRequest::NotSent,
 
@@ -681,6 +677,32 @@ impl App {
     /// The active recording [`StoreId`], if any, derived from the current [`Route`].
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.state.active_recording_id()
+    }
+
+    /// What context-dependent commands act on: the active recording, the selected Redap server,
+    /// and the table being viewed.
+    ///
+    /// Keyboard shortcuts, the command palette, and `ViewerControlService` all bind commands
+    /// against this, so they agree on what a command does.
+    fn command_environment(&self) -> re_ui::CommandEnvironment {
+        let active_recording = self.state.navigation.current().recording_id().cloned();
+
+        let selected_redap_server = if let Some(Item::RedapServer(origin)) =
+            self.state.selection_state.selected_items().single_item()
+        {
+            Some(origin.clone())
+        } else {
+            None
+        };
+
+        re_ui::CommandEnvironment {
+            recording: active_recording,
+            has_editable_redap_server: selected_redap_server
+                .as_ref()
+                .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
+            redap_server: selected_redap_server,
+            table: self.state.navigation.current().table_reference(),
+        }
     }
 
     /// The route for `item`, filling in what the catalog knows about a redap entry.
@@ -1587,6 +1609,8 @@ impl eframe::App for App {
                 .and_then(|id| self.state.time_controls.get(id).cloned())
                 .unwrap_or_default();
 
+            let cmd_env = self.command_environment();
+
             let (storage_context, store_context) =
                 store_hub.read_context(active_route, &active_time_ctrl);
 
@@ -1616,52 +1640,13 @@ impl eframe::App for App {
                 ui::paint_custom_window_frame(ui);
             }
 
-            let selected_redap_server = if let Some(Item::RedapServer(origin)) =
-                self.state.selection_state.selected_items().single_item()
-            {
-                Some(origin.clone())
-            } else {
-                None
-            };
-
-            let active_recording_id = store_context
-                .as_ref()
-                .map(|ctx| ctx.recording_store_id().clone());
-
-            // The table currently being viewed (if any), so its commands (e.g. refresh)
-            // are offered in the command palette.
-            let current_table = self.state.navigation.current().table_reference();
-
-            let cmd_env = re_ui::CommandEnvironment {
-                recording: active_recording_id.clone(),
-                has_editable_redap_server: selected_redap_server
-                    .as_ref()
-                    .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
-                redap_server: selected_redap_server,
-                table: current_table,
-            };
-
             // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:
             {
-                use re_ui::{
-                    RecordingCommandSender as _, RedapServerCommandSender as _,
-                    TableCommandSender as _,
-                };
+                use re_ui::RecordingCommandSender as _;
 
                 // Non-timeline shortcuts, resolved against the current environment:
                 if let Some(resolved) = re_ui::listen_for_kb_shortcuts(ui.ctx(), &cmd_env) {
-                    match resolved {
-                        re_ui::ResolvedCommand::Ui(cmd) => self.command_sender.send_ui(cmd),
-                        re_ui::ResolvedCommand::Recording(cmd) => {
-                            self.command_sender.send_recording_command(cmd);
-                        }
-                        re_ui::ResolvedCommand::RedapServer(cmd) => {
-                            self.command_sender.send_redap_server_command(cmd);
-                        }
-                        re_ui::ResolvedCommand::Table(cmd) => {
-                            self.command_sender.send_table_command(cmd);
-                        }
-                    }
+                    self.command_sender.send_command(resolved);
                 }
 
                 // Timeline shortcuts (space/arrows/home/end) were consumed early in
@@ -1685,17 +1670,7 @@ impl eframe::App for App {
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    CommandPaletteAction::UiCommand(cmd) => {
-                        self.command_sender.send_ui(cmd);
-                    }
-                    CommandPaletteAction::RecordingCommand(cmd) => {
-                        use re_ui::RecordingCommandSender as _;
-                        self.command_sender.send_recording_command(cmd);
-                    }
-                    CommandPaletteAction::RedapServerCommand(cmd) => {
-                        use re_ui::RedapServerCommandSender as _;
-                        self.command_sender.send_redap_server_command(cmd);
-                    }
+                    CommandPaletteAction::Command(cmd) => self.command_sender.send_command(cmd),
                     CommandPaletteAction::SelectEntityPath(entity_path) => {
                         self.command_sender
                             .send_system(SystemCommand::set_selection(Item::from(
@@ -1721,10 +1696,6 @@ impl eframe::App for App {
                             origin,
                             kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
                         });
-                    }
-                    CommandPaletteAction::TableCommand(cmd) => {
-                        use re_ui::TableCommandSender as _;
-                        self.command_sender.send_table_command(cmd);
                     }
                     CommandPaletteAction::OpenUrl(url) => {
                         match ViewerOpenUrl::parse_with_options(
@@ -1784,6 +1755,8 @@ impl eframe::App for App {
         while let Ok((info, image)) = self.screenshot_rx.try_recv() {
             self.process_screenshot_result(&image, info);
         }
+
+        self.state.audio_output.finish_ui_pass(ui.will_discard());
     }
 
     #[cfg(target_arch = "wasm32")]

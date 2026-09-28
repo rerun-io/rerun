@@ -23,10 +23,10 @@ It's up to you to decide where each recording ends up:
 Here's a simple example of such a workflow:
 ```python
 # Process 1 logs some spheres to a recording file.
-./app1.py  # rr.init(recording_id='my_shared_recording', rr.save('/tmp/recording1.rrd')
+./app1.py  # rr.init("rerun_example_app1", recording_id="my_shared_recording"); rr.save("/tmp/recording1.rrd")
 
 # Process 2 logs some cubes to another recording file.
-./app2.py  # rr.init(recording_id='my_shared_recording', rr.save('/tmp/recording2.rrd')
+./app2.py  # rr.init("rerun_example_app2", recording_id="my_shared_recording"); rr.save("/tmp/recording2.rrd")
 
 # Visualize a 3D scene with both spheres and cubes.
 rerun /tmp/recording*.rrd  # they share the same Recording ID!

@@ -150,7 +150,7 @@ async fn register_rrds(
 
     let mut data_sources = Vec::with_capacity(paths.len());
     for path in paths {
-        data_sources.push(DataSource::new_rrd(file_url(path)?)?);
+        data_sources.push(DataSource::new_rrd(file_url(path)?, None)?);
     }
 
     let registration = connection
@@ -189,7 +189,7 @@ pub async fn register_asset(
 ) -> Result<SegmentId, Box<dyn Error>> {
     let path = asset_rrd(recording_id)?;
 
-    let data_source = DataSource::new_rrd(file_url(path.path())?)?;
+    let data_source = DataSource::new_rrd(file_url(path.path())?, None)?;
 
     let registration = connection
         .register_with_dataset(asset_dataset, vec![data_source], IfDuplicateBehavior::Error)
@@ -217,7 +217,7 @@ pub async fn register_table_blueprint(
         .blueprint_dataset
         .ok_or("table is missing its implicit blueprint dataset")?;
 
-    let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?)?;
+    let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?, None)?;
 
     let registration = connection
         .register_with_dataset(

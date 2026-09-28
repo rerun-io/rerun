@@ -4,7 +4,7 @@ order: 250
 description: Redirect a visualizer's input to a different component
 ---
 
-By default, each visualizer reads its input components from the - for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
+By default, each visualizer reads its input components from its own archetype — for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
 **Component mappings** let you override this, redirecting any visualizer input to a different component on the same entity. This makes it possible to store multiple variants of the same data and switch between them per view.
 
 To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](https://rerun.io/docs/concepts/visualization/customize-views).

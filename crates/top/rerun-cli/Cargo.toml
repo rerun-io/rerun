@@ -44,7 +44,7 @@ doc = false
 default = ["web_viewer", "base"]
 
 ## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
-base = ["native_viewer", "map_view", "oss_server", "perf_telemetry"]
+base = ["audio", "native_viewer", "map_view", "oss_server", "perf_telemetry"]
 
 # !!!IMPORTANT!!!
 #
@@ -75,6 +75,9 @@ release_no_web_viewer = ["base", "lance", "nasm"]
 release_full = ["release_no_web_viewer", "web_viewer"]
 
 
+## Support audio playback in the viewer.
+audio = ["rerun/audio"]
+
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 map_view = ["rerun/map_view"]
@@ -87,10 +90,10 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
-## Enable the in-memory Rerun Server, useful for testing.
+## Enable the local Rerun catalog server, useful for testing.
 oss_server = ["rerun/oss_server"]
 
-## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
+## Add support for Lance tables in the local OSS Rerun Server (`oss_server` feature flag).
 ## This is opt-in because of <https://github.com/lance-format/lance/issues/3073>.
 # TODO(lancedb/lance#3073): remove feature flag
 lance = ["re_server/lance"]

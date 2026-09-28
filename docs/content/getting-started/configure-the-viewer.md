@@ -34,8 +34,8 @@ to take the images.
 
 ## Prerequisites
 
-Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
-you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
+Although the Rerun SDK is available in Python, Rust, and C++, this walkthrough makes use of the Python installation. Even if
+you plan to use Rerun with Rust or C++, we still recommend having a Rerun Python environment available for quick
 experimentation and working with examples. You can either follow the [Log and Ingest tutorial](data-in.md) or simply run:
 
 ```bash
@@ -46,7 +46,7 @@ You can also find `rerun-sdk` on [`conda`](https://github.com/conda-forge/rerun-
 
 ## Launching an example
 
-If you have already followed the Python Quickstart you may have already check the "Helix" integrated example. This time, we will use the "Structure from Motion" example.
+If you have already followed the [Log and Ingest tutorial](data-in.md) you may have already checked out the "Helix" integrated example. This time, we will use the "Structure from Motion" example.
 
 Start by running the viewer:
 
@@ -85,8 +85,8 @@ Depending on your display size, the panels may have a different arrangements. Fu
 This window has five main sections:
 
 -   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
--   [Recordings panel](../concepts/logging-and-ingestion/recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
--   [Blueprint panel](../reference/viewer/blueprints.md) (below Recordings): Controls the different views.
+-   [Sources panel](../concepts/logging-and-ingestion/recordings.md) (top left): Lists your connected servers, opened recordings, and tables, and allows navigation back to the welcome screen.
+-   [Blueprint panel](../reference/viewer/blueprints.md) (below Sources): Controls the different views.
 -   [Selection panel](../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
 -   [Timeline panel](../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
 

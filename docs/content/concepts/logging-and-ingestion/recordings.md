@@ -51,7 +51,7 @@ Dataset
 └── …
 ```
 
-As a logical recording can contain multiple physical files, a segment can contain multiple _layers_ identified by the segment ID, each backed by a `.rrd` file.
+As a logical recording can contain multiple physical files, a segment can contain multiple _layers_ identified by a layer name, each backed by a `.rrd` file.
 
 ```
 Dataset

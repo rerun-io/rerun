@@ -142,6 +142,7 @@ pub fn compute_crate_hash(pkg_name: impl AsRef<str>) -> String {
     use cargo_metadata::{CargoOpt, MetadataCommand};
     let metadata = MetadataCommand::new()
         .features(CargoOpt::AllFeatures)
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .exec()
         .unwrap();
 

@@ -31,9 +31,7 @@ impl AnalyticsCommands {
         let build_info = re_build_info::build_info!();
         match self {
             #[expect(clippy::unit_arg)]
-            Self::Details => Ok(re_analytics::cli::print_details(
-                &build_info.git_hash_or_tag(),
-            )),
+            Self::Details => Ok(re_analytics::cli::print_details(&build_info.git_ref())),
             Self::Clear => re_analytics::cli::clear(),
             Self::Email { email } => {
                 re_analytics::cli::set([("email".to_owned(), email.clone().into())])

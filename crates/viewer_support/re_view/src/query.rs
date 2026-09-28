@@ -42,8 +42,8 @@ pub fn resolve_visible_time_range(
 /// source's element datatype.
 ///
 /// Returning `Some(dt)` requests that the source array be cast to `dt`.
-/// Returning `None` rejects the source datatype: the surrounding query reports a
-/// [`ComponentMappingError::CastFailed`] and the target slot ends up empty for that chunk.
+/// Returning `None` leaves the source array unchanged.
+/// If the cast fails, the surrounding query reports a [`ComponentMappingError::CastFailed`].
 ///
 /// This is the per-slot override consulted by [`range_with_blueprint_resolved_data_polymorphic`]
 /// and [`latest_at_with_blueprint_resolved_data_polymorphic`]. When no rule is provided for a
@@ -83,6 +83,19 @@ enum CastTarget {
     Polymorphic(ComponentCastRule),
 }
 
+impl CastTarget {
+    /// The datatype to cast a list of `value_type` elements to, if any.
+    fn datatype_for(
+        &self,
+        value_type: &arrow::datatypes::DataType,
+    ) -> Option<arrow::datatypes::DataType> {
+        match self {
+            Self::Fixed(dt) => dt.clone(),
+            Self::Polymorphic(rule) => rule(value_type),
+        }
+    }
+}
+
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
     target: ComponentIdentifier,
@@ -90,6 +103,19 @@ fn transform_chunk(
     cast: &CastTarget,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
+    // Keep the chunk (and its id) when an identity mapping would not change its datatype.
+    if mapping.is_identity(target)
+        && let Some(arr) = chunk.components().get_array(mapping.source)
+    {
+        let value_type = arr.value_type();
+        if cast
+            .datatype_for(&value_type)
+            .is_none_or(|dt| dt == value_type)
+        {
+            return Ok(chunk.clone());
+        }
+    }
+
     chunk.with_shadowed_component(mapping.source, target, |arr| {
         let transformed = if let Some(selector) = &mapping.selector {
             selector
@@ -105,13 +131,8 @@ fn transform_chunk(
             arr
         };
 
-        let target_datatype = match cast {
-            CastTarget::Polymorphic(rule) => rule(&transformed.value_type()),
-            CastTarget::Fixed(dt) => dt.clone(),
-        };
-
         // Apply casting if target datatype is known.
-        if let Some(dt) = target_datatype {
+        if let Some(dt) = cast.datatype_for(&transformed.value_type()) {
             let target_list_datatype = arrow::datatypes::DataType::List(Arc::new(
                 // TODO(grtlr): Ideally we'd make a more informed guess about nullability here.
                 // But in the context of components setting the `ListArray` to nullable is the safe choice.
@@ -607,19 +628,25 @@ fn auto_determine_remaining_sources(
 
         let is_required = visualizer_constraints
             .is_some_and(|constraints| constraints.is_required_component(component));
-        let source = if has_non_empty_override(overrides, component) {
-            VisualizerComponentSource::Override
+        let checked_source = if has_non_empty_override(overrides, component) {
+            CheckedComponentSource::new(Cow::Owned(VisualizerComponentSource::Override))
         } else if has_store_result(component) || is_required {
             // Required components must remain recording-backed when auto-mapped: a view default
             // cannot make an otherwise incompatible entity satisfy a visualizer's requirements.
-            VisualizerComponentSource::simple_map(component)
+            CheckedComponentSource::new(Cow::Owned(VisualizerComponentSource::simple_map(
+                component,
+            )))
+            .with_remapping(ActiveRemapping {
+                source: component,
+                selector: None,
+            })
         } else if annotation_context_resolves(annotation_context, component) && has_annotation_ids {
-            VisualizerComponentSource::AnnotationContext
+            CheckedComponentSource::new(Cow::Owned(VisualizerComponentSource::AnnotationContext))
         } else {
-            VisualizerComponentSource::Default
+            CheckedComponentSource::new(Cow::Owned(VisualizerComponentSource::Default))
         };
 
-        entry.insert(CheckedComponentSource::new(Cow::Owned(source)));
+        entry.insert(checked_source);
     }
 }
 

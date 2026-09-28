@@ -300,6 +300,7 @@ async fn fetch_rrd_manifest_via_key(
         segment_id,
         &layer,
         &location.url,
+        location.object_store_config.as_deref(),
         expected_etag.as_ref(),
         None,
     )
@@ -2431,6 +2432,7 @@ mod tests {
                 url: Some("s3://bucket/recording.rrd".to_owned()),
                 offset: Some(offset),
                 length: Some(manifest_bytes.len() as u64),
+                object_store_config: None,
             }),
             layer: Some("base".to_owned()),
             etag: Some("\"registered-etag\"".to_owned()),
@@ -2459,6 +2461,7 @@ mod tests {
             &segment_id,
             &layer,
             &canonical_url,
+            None,
             Some(&etag),
             None,
         )
@@ -2505,6 +2508,7 @@ mod tests {
                 url: Some("s3://bucket/manifest".to_owned()),
                 offset: Some(0),
                 length: Some(1),
+                object_store_config: None,
             }),
             layer: None,
             etag: Some("\"old-etag\"".to_owned()),

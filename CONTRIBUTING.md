@@ -25,7 +25,7 @@ You can discuss these changes by:
 
 * Commenting on an existing issue,
 * Creating a new issue, or
-* Pinging one of the Rerun maintainers on our [Discord](https://discord.gg/PXtCgFBSmH)
+* Pinging one of the Rerun maintainers on our [Discord](https://discord.gg/Gcm8BbTaAj)
 
 > [!NOTE]
 > PRs containing large undiscussed changes may be closed without comment.

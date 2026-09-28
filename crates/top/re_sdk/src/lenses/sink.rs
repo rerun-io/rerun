@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_chunk::Chunk;
 use re_lenses::Lenses;
 use re_log_msg::LogMsg;
@@ -54,7 +56,7 @@ impl<S: LogSink> LogSink for LensesSink<S> {
             LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
                 Ok(original_chunk) => {
                     let runtime = re_lenses::default_runtime();
-                    let new_chunks = self.lenses.apply(&original_chunk, &runtime);
+                    let new_chunks = self.lenses.apply(Arc::new(original_chunk), &runtime);
                     for maybe_chunk in new_chunks {
                         match maybe_chunk {
                             Ok(new_chunk) => self.send_or_log_error(store_id.clone(), &new_chunk),

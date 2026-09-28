@@ -86,21 +86,20 @@ fn test_state_timeline_tooltip() {
     // The date is dropped even though the test's app options ask for `ShowDate`, and even
     // though the recording is not from today. The prefix and the time are separate labels, so
     // that the times of the two boundaries line up in a column.
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     assert!(
-        harness.query_all_by_label_contains("12:00:05Z").count() > 0,
+        harness.query_by_label_contains("12:00:05Z").is_some(),
         "the tooltip should show the phase start as a plain time-of-day, without the date"
     );
     assert!(
-        harness.query_all_by_label_contains("5s").count() > 0,
+        harness.query_by_label_contains("5s").is_some(),
         "the tooltip should show a human-readable phase length"
     );
     assert!(
-        harness.query_all_by_label_contains("+5s").count() == 0,
+        harness.query_by_label_contains("+5s").is_none(),
         "the phase length should not have a plus sign"
     );
     assert!(
-        harness.query_all_by_label_contains("2025-04-01").count() == 0,
+        harness.query_by_label_contains("2025-04-01").is_none(),
         "no tooltip label should carry a date"
     );
 }

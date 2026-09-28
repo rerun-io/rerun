@@ -1,3 +1,4 @@
+use arrow::datatypes::Field as ArrowField;
 use re_log_types::EntityPath;
 
 use crate::{
@@ -20,6 +21,14 @@ impl ColumnDescriptorRef<'_> {
             Self::RowId(descr) => descr.name().to_owned(),
             Self::Time(descr) => descr.column_name().to_owned(),
             Self::Component(descr) => descr.column_name(batch_type),
+        }
+    }
+
+    pub fn to_arrow_field(&self, batch_type: BatchType) -> ArrowField {
+        match self {
+            Self::RowId(descr) => descr.to_arrow_field(),
+            Self::Time(descr) => descr.to_arrow_field(),
+            Self::Component(descr) => descr.to_arrow_field(batch_type),
         }
     }
 

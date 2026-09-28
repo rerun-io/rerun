@@ -66,9 +66,6 @@ exclude_path = [
   "target",
   "venv",
 
-  # Generated ghat action definitions (contain upstream URLs we don't control)
-  ".github/ghat/actions",
-
   # Symlink mirror of `docs/` and `skills/`, which are already checked at their real paths.
   # Relative links that resolve correctly from the real path break when followed through here.
   "crates/top/re_viewer/agent_context",

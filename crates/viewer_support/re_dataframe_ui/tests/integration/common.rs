@@ -48,8 +48,7 @@ pub async fn run_async_harness<State>(
         // let datafusion do some work!
         tokio::task::yield_now().await;
 
-        // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
-        if harness.query_all_by_role(Role::ProgressIndicator).count() == 0 {
+        if harness.query_by_role(Role::ProgressIndicator).is_none() {
             break;
         }
     }

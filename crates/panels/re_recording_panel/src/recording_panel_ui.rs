@@ -122,19 +122,19 @@ fn add_button_ui(
         ui.small_icon_button_widget(&re_ui::icons::ADD, "Add…")
             .on_hover_text("Open a file or connect to a server")
             .on_menu(|ui| {
-                if re_ui::UICommand::Open
+                if re_ui::UICommand::OpenFile
                     .menu_button_ui(ui, ctx.command_sender())
                     .clicked()
                 {
                     ui.close();
                 }
-                if re_ui::UICommand::OpenUrl
+                if re_ui::UICommand::OpenUrlDialog
                     .menu_button_ui(ui, ctx.command_sender())
                     .clicked()
                 {
                     ui.close();
                 }
-                if re_ui::UICommand::AddRedapServer
+                if re_ui::UICommand::OpenAddServerDialog
                     .menu_button_ui(ui, ctx.command_sender())
                     .clicked()
                 {

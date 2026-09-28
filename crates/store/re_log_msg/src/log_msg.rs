@@ -107,7 +107,7 @@ impl LogMsg {
 
     /// If we are an [`ArrowMsg`], records the current time as the moment the chunk passed
     /// `location`.
-    pub fn track_latency(&mut self, location: re_sorbet::TimestampLocation) {
+    pub fn track_latency(&mut self, location: re_sorbet::LatencyLocation) {
         if let Self::ArrowMsg(_, arrow_msg) = self {
             Arc::make_mut(&mut arrow_msg.batch).track_latency(location);
         }

@@ -29,6 +29,8 @@ use re_viewer_context::{
 
 use super::App;
 
+mod commands;
+
 /// How many entities `get_recording_schema` describes when the request does not say.
 ///
 /// A recording of a few thousand entities would otherwise answer with more than the caller can
@@ -74,6 +76,12 @@ impl App {
                     .map(ViewerControlResponse::from);
                 on_done.call(result);
             }
+            Kind::DescribeCommands(request) => {
+                on_done.call(
+                    self.describe_commands(store_hub, request, egui_ctx)
+                        .map(ViewerControlResponse::from),
+                );
+            }
             Kind::GetViewerLogs(GetViewerLogsRequest { after_sequence }) => {
                 on_done.call(Ok(GetViewerLogsResponse {
                     entries: self.viewer_log.entries_after(after_sequence),
@@ -93,6 +101,12 @@ impl App {
                 let result = self.apply_highlight_rect(request, egui_ctx);
                 on_done.call(result.map(ViewerControlResponse::from));
             }
+            Kind::ListCommands(request) => {
+                on_done.call(
+                    self.list_commands(store_hub, request)
+                        .map(ViewerControlResponse::from),
+                );
+            }
             Kind::OpenUrl(OpenUrlRequest { url }) => {
                 let parsed = ViewerOpenUrl::parse_with_options(
                     &url,
@@ -111,6 +125,13 @@ impl App {
                         ))));
                     }
                 }
+            }
+
+            Kind::RunCommand(request) => {
+                on_done.call(
+                    self.run_command(store_hub, request)
+                        .map(ViewerControlResponse::from),
+                );
             }
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),

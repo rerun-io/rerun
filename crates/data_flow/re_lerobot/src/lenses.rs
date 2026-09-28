@@ -291,9 +291,9 @@ mod tests {
         .unwrap()
     }
 
-    fn apply(lenses: &Lenses, chunk: &Chunk) -> Vec<Chunk> {
+    fn apply(lenses: &Lenses, chunk: Chunk) -> Vec<Chunk> {
         lenses
-            .apply(chunk, &re_lenses::default_runtime())
+            .apply(Arc::new(chunk), &re_lenses::default_runtime())
             .collect::<Result<Vec<_>, _>>()
             .unwrap()
     }
@@ -339,7 +339,7 @@ mod tests {
 
         let lenses = build_lenses(&[scalar_emit("action", true)], &Tasks::default()).unwrap();
         for values in [fixed, listed] {
-            let out = apply(&lenses, &column_chunk("action", values));
+            let out = apply(&lenses, column_chunk("action", values));
             assert_eq!(out.len(), 1, "one chunk in, one chunk out");
             let chunk = &out[0];
             assert_eq!(chunk.entity_path(), &EntityPath::from("/action"));
@@ -374,7 +374,7 @@ mod tests {
 
         let lenses = build_lenses(&[scalar_emit("reward", false)], &Tasks::default()).unwrap();
         for values in [plain, wrapped] {
-            let out = apply(&lenses, &column_chunk("reward", values));
+            let out = apply(&lenses, column_chunk("reward", values));
             let scalars = out[0]
                 .components()
                 .get(Scalars::descriptor_scalars().component)
@@ -397,7 +397,7 @@ mod tests {
 
         let lenses =
             build_lenses(&[image_emit("observation.image", false)], &Tasks::default()).unwrap();
-        let out = apply(&lenses, &column_chunk("observation.image", values));
+        let out = apply(&lenses, column_chunk("observation.image", values));
         assert_eq!(out.len(), 1);
         let chunk = &out[0];
         assert_eq!(chunk.components().len(), 1, "no media type is emitted");
@@ -427,7 +427,7 @@ mod tests {
 
         let lenses =
             build_lenses(&[image_emit("observation.depth", true)], &Tasks::default()).unwrap();
-        let out = apply(&lenses, &column_chunk("observation.depth", values));
+        let out = apply(&lenses, column_chunk("observation.depth", values));
         let chunk = &out[0];
         assert_eq!(chunk.components().len(), 1, "no media type is emitted");
 
@@ -457,7 +457,7 @@ mod tests {
 
         let lenses =
             build_lenses(&[image_emit("observation.depth", true)], &Tasks::default()).unwrap();
-        let out = apply(&lenses, &column_chunk("observation.depth", values));
+        let out = apply(&lenses, column_chunk("observation.depth", values));
         let chunk = &out[0];
 
         let blob = chunk
@@ -496,7 +496,7 @@ mod tests {
         };
 
         let lenses = build_lenses(&[emit], &tasks).unwrap();
-        let out = apply(&lenses, &chunk);
+        let out = apply(&lenses, chunk);
         assert_eq!(out.len(), 1, "the raw index column is consumed");
         let chunk = &out[0];
         assert_eq!(chunk.entity_path(), &EntityPath::from("/task"));
@@ -533,7 +533,7 @@ mod tests {
         let lenses = build_lenses(&[emit], &Tasks::default()).unwrap();
 
         for values in [utf8, view] {
-            let out = apply(&lenses, &column_chunk("subtask", values));
+            let out = apply(&lenses, column_chunk("subtask", values));
             assert_eq!(out.len(), 1, "the raw string column is consumed");
             let chunk = &out[0];
             assert_eq!(chunk.entity_path(), &EntityPath::from("/subtask"));
@@ -559,7 +559,7 @@ mod tests {
         let chunk = column_chunk("language_events", values);
 
         let lenses = build_lenses(&[], &Tasks::default()).unwrap();
-        let out = apply(&lenses, &chunk);
+        let out = apply(&lenses, chunk);
         assert_eq!(out.len(), 1);
         assert!(
             out[0]

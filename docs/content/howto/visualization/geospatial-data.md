@@ -9,10 +9,10 @@ This guide provides a short overview on how to use it to visualize geospatial da
 
 ## Coordinate system
 
-The map view uses the [ESPG:3857](https://epsg.io/3857) [spherical mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection) commonly used by web services such as [OpenStreetMap](https://www.openstreetmap.org/).
+The map view uses the [EPSG:3857](https://epsg.io/3857) [spherical mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection) commonly used by web services such as [OpenStreetMap](https://www.openstreetmap.org/).
 This enables the use of commonly available web tiles for the background map.
 
-To be compatible with this view, geospatial data must be expressed using [ESPG:4326](https://epsg.io/4326) (aka WGS84) latitudes and longitudes.
+To be compatible with this view, geospatial data must be expressed using [EPSG:4326](https://epsg.io/4326) (aka WGS84) latitudes and longitudes.
 This corresponds to what is commonly referred to as "GPS coordinates."
 Rerun provides a set of archetypes prefixed with `Geo` designed to encapsulate such data.
 
@@ -40,9 +40,9 @@ Rerun currently supports two types of geometries:
 > Polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
 
 As in other views, radii may be expressed either as UI points (negative values) or scene units (positive values).
-For the latter case, the map view uses meters are scene units.
+For the latter case, the map view uses meters as scene units.
 
-Apart from the use of latitude and longitude, `GeoPoints` and `GeoLineStrings` are otherwise similar to the [`Points2D`](../../reference/types/archetypes/points2d.md) and [`LineStrip2D`](../../reference/types/archetypes/line_strips2d.md) archetypes used in the [2D view](../../reference/types/views/spatial2d_view.md).
+Apart from the use of latitude and longitude, `GeoPoints` and `GeoLineStrings` are otherwise similar to the [`Points2D`](../../reference/types/archetypes/points2d.md) and [`LineStrips2D`](../../reference/types/archetypes/line_strips2d.md) archetypes used in the [2D view](../../reference/types/views/spatial2d_view.md).
 
 
 ## Using Mapbox background maps <!-- NOLINT -->

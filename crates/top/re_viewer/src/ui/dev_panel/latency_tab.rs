@@ -1,5 +1,5 @@
 use re_entity_db::{EntityDb, LatencySnapshot};
-use re_sorbet::TimestampLocation;
+use re_sorbet::LatencyLocation;
 use re_ui::UiExt as _;
 
 /// Latency above this is not believable, and is hidden from the top bar.
@@ -74,7 +74,7 @@ pub fn latency_tab_ui(ui: &mut egui::Ui, recording: Option<&EntityDb>) {
 
             let mut previous_sec = 0.0;
             for (location, since_log_sec) in secs_since_log {
-                if location == TimestampLocation::Log {
+                if location == LatencyLocation::Log {
                     // The `log` call is the zero-point of the measurement, so it has nothing to show.
                     continue;
                 }

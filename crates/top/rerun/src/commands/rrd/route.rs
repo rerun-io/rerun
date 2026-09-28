@@ -299,14 +299,17 @@ fn process_messages<W: std::io::Write>(
                     let existing_manifest = e.get_mut();
                     assert_eq!(existing_manifest.store_id, patched_store_id);
 
-                    existing_manifest.sorbet_schema = arrow::datatypes::Schema::try_merge([
-                        existing_manifest.sorbet_schema.clone(),
-                        sorbet_schema.clone(),
-                    ])?;
-
-                    existing_manifest.data = arrow::compute::concat_batches(
-                        &existing_manifest.data.schema(),
-                        &[existing_manifest.data.clone(), data.clone()],
+                    let incoming_manifest = RawRrdManifest {
+                        store_id: patched_store_id.clone(),
+                        sorbet_schema,
+                        sorbet_schema_sha256,
+                        data,
+                    };
+                    // TODO(RR-5736): Merge manifests once per output store to avoid repeatedly
+                    // copying the accumulated index and recomputing its schema hash.
+                    *existing_manifest = RawRrdManifest::merge(
+                        patched_store_id.clone(),
+                        vec![existing_manifest.clone(), incoming_manifest],
                     )?;
                 }
 

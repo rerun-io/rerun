@@ -466,6 +466,10 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
+    /// Use a specific object store configuration for this registration.
+    /// Inferred from the URL if not specified.
+    #[prost(string, optional, tag = "6")]
+    pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -1181,16 +1185,22 @@ impl ::prost::Name for QueryDatasetRequest {
 /// One batch of query results, yielded by `QueryDataset`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDatasetResponse {
-    /// One row per matching chunk. These columns are always present, in this order (pinned by
-    /// [`QueryDatasetDataframe`](crate::cloud::v1alpha1::ext::QueryDatasetDataframe)): `chunk_id`, `chunk_segment_id`, `rerun_segment_layer`,
-    /// `chunk_key`, `chunk_entity_path`, `chunk_is_static`, `chunk_byte_len`,
-    /// `chunk_byte_size_uncompressed`, `rerun_layer_direct_url`,
-    /// `rerun_layer_direct_url_expires_at`.
+    /// One row per matching chunk. These columns are always present, in this order: `chunk_id`,
+    /// `chunk_segment_id`, `rerun_segment_layer`, `chunk_key`, `chunk_entity_path`,
+    /// `chunk_is_static`, `chunk_byte_len`, `chunk_byte_size_uncompressed`,
+    /// `rerun_layer_direct_url`, `rerun_layer_direct_url_expires_at`.
     ///
-    /// `chunk_key` is the opaque handle to pass to `FetchChunks`. The direct-URL columns are all
-    /// null unless the server honored `generate_direct_urls`. Additional columns appear on
-    /// demand: one nullable Int64 `{timeline}:start` column per timeline the query can see, and
-    /// more per the `columns_always_include_*` flags on `Query` and `scan_parameters.columns`.
+    /// `chunk_key` is the opaque handle to pass to `FetchChunks`. The direct-URL columns are null
+    /// unless the server honored `generate_direct_urls`.
+    ///
+    /// Any other column must be requested, by family through the `columns_always_include_*` flags or
+    /// by name through `scan_parameters.columns`. Name `{timeline}:start` — each chunk's `time_min`,
+    /// null for static chunks — to order chunks client-side; the server cannot infer the timeline,
+    /// as `range` and `latest_at` may both be unset. It is i64-backed but not always `Int64`: a
+    /// nanosecond-resolution timestamp or duration is equally valid.
+    ///
+    /// `scan_parameters` is a hint: a server may return more columns than requested, or ignore it
+    /// entirely.
     ///
     /// Every batch of one stream carries the same schema, so clients can concatenate them.
     #[prost(message, optional, tag = "1")]
@@ -2413,6 +2423,9 @@ pub struct RrdChunkLocation {
     /// Chunk length in bytes.
     #[prost(uint64, optional, tag = "3")]
     pub length: ::core::option::Option<u64>,
+    /// The custom object store where this chunk is stored.
+    #[prost(string, optional, tag = "4")]
+    pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for RrdChunkLocation {
     const NAME: &'static str = "RrdChunkLocation";

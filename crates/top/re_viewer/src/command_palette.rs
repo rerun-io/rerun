@@ -1,5 +1,5 @@
 //! The viewer's command palette: a fuzzy-searchable list of commands
-//! ([`UICommand`]s, commands acting on the active recording, and commands acting on the
+//! ([`re_ui::UICommand`]s, commands acting on the active recording, and commands acting on the
 //! selected Redap server), entity and component paths in the active recording, Redap servers
 //! and their entries (datasets and tables) known to the viewer, and a fallback for opening any
 //! URL or file path the user pastes.
@@ -10,9 +10,8 @@ use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
 use re_ui::{
-    CmdRow, CommandEnvironment, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup,
-    MatchedCmd, RecordingCommand, RecordingCommandKind, RedapServerCommand,
-    SyntaxHighlighting as _, TableCommand, TableCommandKind, UICommand,
+    BoundCommand, CmdRow, CommandEnvironment, CommandPaletteProvider, FuzzyMatch, FuzzyQuery,
+    ListedCommand, MatchGroup, MatchedCmd, SyntaxHighlighting as _,
 };
 use re_viewer_context::open_url::ViewerOpenUrl;
 
@@ -21,14 +20,9 @@ use crate::open_url_description::ViewerOpenUrlDescription;
 /// Something the user can pick in the command palette.
 #[derive(Clone, Debug)]
 pub enum CommandPaletteAction {
-    /// Run a UI command.
-    UiCommand(UICommand),
-
-    /// Run a command on a specific recording.
-    RecordingCommand(RecordingCommand),
-
-    /// Run a command on the currently selected Redap server.
-    RedapServerCommand(RedapServerCommand),
+    /// Run a command: a UI command, or one acting on the active recording, the selected Redap
+    /// server, or the Redap entry (dataset or table) being viewed.
+    Command(BoundCommand),
 
     /// Select and focus an entity in the active recording.
     SelectEntityPath(EntityPath),
@@ -49,9 +43,6 @@ pub enum CommandPaletteAction {
         show_server: bool,
     },
 
-    /// Run a command on the Redap entry (dataset or table) currently being viewed.
-    TableCommand(TableCommand),
-
     /// Open a URL (or file path).
     ///
     /// URL opening is the fallback for the command palette and needs some special treatment since
@@ -63,14 +54,11 @@ pub enum CommandPaletteAction {
 impl CommandPaletteAction {
     fn tooltip(&self) -> &'static str {
         match self {
-            Self::UiCommand(command) => command.tooltip(),
-            Self::RecordingCommand(command) => command.kind.tooltip(),
-            Self::RedapServerCommand(command) => command.tooltip(),
+            Self::Command(command) => command.kind().tooltip(),
             Self::SelectEntityPath(_) => "Select and focus on this entity",
             Self::SelectComponentPath(_) => "Select and focus on this component",
             Self::SelectRedapServer(_) => "Select and navigate to this Redap server",
             Self::SelectRedapEntry { .. } => "Select and navigate to this entry",
-            Self::TableCommand(command) => command.tooltip(),
             Self::OpenUrl(_) => {
                 "Try to open this URL in the viewer. If the contents are already loaded, this will select them."
             }
@@ -80,11 +68,8 @@ impl CommandPaletteAction {
     #[cfg(debug_assertions)]
     pub fn is_debug_only(&self) -> bool {
         match self {
-            Self::UiCommand(command) => command.is_debug_only(),
-            Self::RecordingCommand(command) => command.kind.is_debug_only(),
-            Self::RedapServerCommand(_)
-            | Self::TableCommand(_)
-            | Self::SelectEntityPath(_)
+            Self::Command(command) => command.kind().is_debug_only(),
+            Self::SelectEntityPath(_)
             | Self::SelectComponentPath(_)
             | Self::SelectRedapServer(_)
             | Self::SelectRedapEntry { .. }
@@ -121,8 +106,6 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
 
     fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<MatchGroup<CommandPaletteAction>> {
         re_tracing::profile_function!();
-        use strum::IntoEnumIterator as _;
-
         let ui_cmd_group = if query.raw_query().starts_with('/') {
             vec![] // The user is looking for an entity path.
         } else {
@@ -148,57 +131,16 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
                 }
             };
 
-            let mut matches: Vec<_> = UICommand::iter()
-                .filter_map(|command| {
+            re_ui::palette_commands(cmd_env)
+                .into_iter()
+                .filter_map(|ListedCommand { command, enabled }| {
                     match_command(
-                        command.text(),
-                        command.is_supported(),
-                        CommandPaletteAction::UiCommand(command),
+                        command.kind().text(),
+                        enabled,
+                        CommandPaletteAction::Command(command),
                     )
                 })
-                .collect();
-
-            // Commands acting on the active recording, if any:
-            if let Some(recording_id) = &cmd_env.recording {
-                for command in RecordingCommand::all_for_recording(recording_id) {
-                    // `PlaybackSpeed` is a chord (type e.g. `5` then `0`), not a single
-                    // action — as a palette entry it would just reset the speed to 1x.
-                    if matches!(command.kind, RecordingCommandKind::PlaybackSpeed(_)) {
-                        continue;
-                    }
-                    matches.extend(match_command(
-                        command.kind.text(),
-                        true,
-                        CommandPaletteAction::RecordingCommand(command),
-                    ));
-                }
-            }
-
-            // Commands acting on the selected Redap server, if any:
-            if let Some(origin) = &cmd_env.redap_server {
-                for command in RedapServerCommand::all_for_server(origin) {
-                    let enabled =
-                        !command.requires_editable_server() || cmd_env.has_editable_redap_server;
-                    matches.extend(match_command(
-                        command.text(),
-                        enabled,
-                        CommandPaletteAction::RedapServerCommand(command),
-                    ));
-                }
-            }
-
-            // Commands acting on the Redap entry currently being viewed, if any:
-            for kind in TableCommandKind::iter() {
-                if let Some(command) = kind.for_environment(cmd_env) {
-                    matches.extend(match_command(
-                        command.text(),
-                        true,
-                        CommandPaletteAction::TableCommand(command),
-                    ));
-                }
-            }
-
-            matches
+                .collect()
         };
 
         let entity_group = if query.is_empty() {
@@ -337,19 +279,8 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         selected: bool,
     ) -> CmdRow {
         let kb_shortcut = match &matched.command {
-            CommandPaletteAction::UiCommand(command) => {
-                command.formatted_kb_shortcut(ui.ctx()).unwrap_or_default()
-            }
-            CommandPaletteAction::RecordingCommand(command) => command
-                .kind
-                .formatted_kb_shortcut(ui.ctx())
-                .unwrap_or_default(),
-            CommandPaletteAction::RedapServerCommand(command) => command
-                .kind
-                .formatted_kb_shortcut(ui.ctx())
-                .unwrap_or_default(),
-            CommandPaletteAction::TableCommand(command) => command
-                .kind
+            CommandPaletteAction::Command(command) => command
+                .kind()
                 .formatted_kb_shortcut(ui.ctx())
                 .unwrap_or_default(),
             CommandPaletteAction::SelectEntityPath(_)
@@ -386,12 +317,9 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
             CommandPaletteAction::SelectComponentPath(component_path) => {
                 recolor_if_selected(component_path.syntax_highlighted(ui.style()))
             }
-            CommandPaletteAction::UiCommand(_)
-            | CommandPaletteAction::RecordingCommand(_)
-            | CommandPaletteAction::RedapServerCommand(_)
+            CommandPaletteAction::Command(_)
             | CommandPaletteAction::SelectRedapServer(_)
             | CommandPaletteAction::SelectRedapEntry { .. }
-            | CommandPaletteAction::TableCommand(_)
             | CommandPaletteAction::OpenUrl(_) => egui::text::LayoutJob::simple(
                 matched.fuzzy_match.target().to_owned(),
                 egui::TextStyle::Button.resolve(ui.style()),

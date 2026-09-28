@@ -83,12 +83,12 @@ fn drag_rotate_view(
 
 /// Send undo command (Cmd/Ctrl+Z).
 fn send_undo(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
-    send_recording_command(harness, RecordingCommandKind::Undo);
+    send_recording_command(harness, RecordingCommandKind::UndoBlueprintEdit);
 }
 
 /// Send redo command (Cmd/Ctrl+Shift+Z).
 fn send_redo(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
-    send_recording_command(harness, RecordingCommandKind::Redo);
+    send_recording_command(harness, RecordingCommandKind::RedoBlueprintEdit);
 }
 
 fn send_recording_command(

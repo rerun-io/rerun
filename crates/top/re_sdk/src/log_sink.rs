@@ -607,7 +607,7 @@ impl Default for GrpcSink {
 impl LogSink for GrpcSink {
     fn send(&self, mut log_msg: LogMsg) {
         // Used for latency measurements:
-        log_msg.track_latency(re_sorbet::TimestampLocation::GrpcSink);
+        log_msg.track_latency(re_sorbet::LatencyLocation::GrpcSink);
 
         self.client.send_blocking(log_msg);
     }

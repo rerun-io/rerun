@@ -231,11 +231,13 @@ mod tests {
     const WAV: &[u8] = include_bytes!("../../../../tests/assets/audio/sine_440hz_2s.wav");
 
     fn toreador_song() -> Vec<u8> {
-        std::fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/assets/audio/toreador_song.aac"
-        ))
-        .expect("Missing test asset; is git LFS installed?")
+        let path = std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(
+                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                std::path::PathBuf::from,
+            )
+            .join("../../../tests/assets/audio/toreador_song.aac");
+        std::fs::read(path).expect("Missing test asset; is git LFS installed?")
     }
 
     fn assert_is_two_second_sine(buffer: &AudioBuffer, tolerance_secs: f64, peak_tolerance: f32) {

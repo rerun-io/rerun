@@ -165,8 +165,8 @@ fn row_ui(
     is_experimental: bool,
 ) -> egui::Response {
     //TODO(ab): use design tokens
-    let row_space = 14.0;
-    let row_height = 42.0;
+    let row_space = 12.0;
+    let row_height = 32.0;
     let icon_size = egui::vec2(18.0, 18.0);
     let thumbnail_rounding = 6;
     let thumbnail_width = 62.0;

@@ -1,0 +1,68 @@
+---
+source: crates/viewer_support/re_ui/src/command/command_kind.rs
+expression: listing
+---
+recording.close: Close the current recording (unsaved data will be lost)
+recording.open_add_view_or_container_dialog: Add a new view or container to the viewport
+recording.print_blueprint_store: Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.
+recording.print_chunk_store: Prints the entire chunk store to the console and clipboard. WARNING: this may be A LOT of text.
+recording.print_primary_cache: Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.
+recording.redo_blueprint_edit: Redo the last undone thing
+recording.reset_blueprint_to_default: Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint.
+recording.reset_blueprint_to_heuristic: Re-populate viewport with automatically chosen views using default visualizers
+recording.save: Save all data to a Rerun data file (.rrd)
+recording.save_blueprint: Save the current viewer setup as a Rerun blueprint file (.rbl)
+recording.save_time_selection: Save data for the current loop selection to a Rerun data file (.rrd)
+recording.seek_backward_long: Move the time marker backward by 1 second, or by 10 ticks on a sequence timeline
+recording.seek_backward_short: Move the time marker backward by 0.1 seconds, or by 1 tick on a sequence timeline
+recording.seek_forward_long: Move the time marker forward by 1 second, or by 10 ticks on a sequence timeline
+recording.seek_forward_short: Move the time marker forward by 0.1 seconds, or by 1 tick on a sequence timeline
+recording.seek_to_end_and_follow: Go to end of timeline and follow the latest data as it streams in
+recording.seek_to_next_event: Move the time marker forward to the next point in time that has any logged data
+recording.seek_to_previous_event: Move the time marker back to the previous point in time that has any logged data
+recording.seek_to_start: Go to the beginning of the timeline
+recording.toggle_play_pause: Either play or pause the time
+recording.toggle_time_panel: Toggle the bottom panel
+recording.undo_blueprint_edit: Undo the last blueprint edit for the open recording
+server.copy_url_to_clipboard: Copy the URL of the server
+server.open_edit_dialog: Edit the URL and credentials of the server
+server.refresh: Refresh the contents (datasets & tables) of the server
+server.remove: Remove the server
+table.refresh: Refresh the contents of the current dataset or table
+table.reset_blueprint_to_default: Clear the active blueprint of the current table and use the default blueprint instead
+ui.capture_profile_trace: Capture profiling data and save them as a .puffin file
+ui.close_all_recordings: Close all open current recording (unsaved data will be lost)
+ui.copy_direct_link_to_clipboard: Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.
+ui.copy_entity_hierarchy_to_clipboard: Copy the complete entity hierarchy tree of the currently active recording to the clipboard.
+ui.copy_screenshot_to_clipboard: Copy screenshot of the whole app to clipboard
+ui.copy_time_selection_link_to_clipboard: Copy a link to the part of the active recording within the loop selection bounds.
+ui.expand_blueprint_panel: Expand the left panel
+ui.expand_selection_panel: Expand the right panel
+ui.import_file_into_current_recording: Import any supported files (.rrd, images, meshes, …) in the current recording
+ui.navigate_back_in_history: Go back in history
+ui.navigate_forward_in_history: Go forward in history
+ui.open_add_server_dialog: Connect to a Redap server (experimental)
+ui.open_discord_website: Visit the Rerun Discord server, where you can ask questions and get help
+ui.open_docs_website: Visit the docs on our website, with troubleshooting tips and more
+ui.open_file: Open any supported files (.rrd, images, meshes, …) in a new recording
+ui.open_profiler: Starts a profiler, showing what makes the viewer run slow
+ui.open_rerun_website: Visit our homepage
+ui.open_settings: Show the settings screen
+ui.open_share_dialog: Share the current screen as a link
+ui.open_url_dialog: Open or navigate to data from any supported URL
+ui.quit: Close the Rerun Viewer
+ui.reset_ui_zoom: Resets the UI zoom level to the operating system's default value
+ui.reset_viewer: Reset the Viewer to how it looked the first time you ran it, forgetting UI state and all stored blueprints, except the ones loaded from *.rbl resources
+ui.switch_to_next_recording: Switch to the next open recording
+ui.switch_to_previous_recording: Switch to the previous open recording
+ui.toggle_agent_panel: Toggle the chat panel with a coding agent that can drive the viewer (experimental)
+ui.toggle_blueprint_panel: Toggle the left panel
+ui.toggle_chunk_store_browser: Toggle the chunk store browser
+ui.toggle_command_palette: Toggle the Command Palette
+ui.toggle_dev_panel: View developer stats like RAM usage inside Rerun Viewer
+ui.toggle_fullscreen: Toggle between windowed and fullscreen viewer
+ui.toggle_panel_state_overrides: Toggle panel state between app blueprint and overrides
+ui.toggle_selection_panel: Toggle the right panel
+ui.toggle_top_panel: Toggle the top panel
+ui.zoom_in_ui: Increases the UI zoom level
+ui.zoom_out_ui: Decreases the UI zoom level

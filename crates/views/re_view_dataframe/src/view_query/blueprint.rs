@@ -11,6 +11,13 @@ use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 use crate::dataframe_ui::HideColumnAction;
 use crate::view_query::Query;
 
+pub fn column_selector(selector: &encodings::ComponentColumnSelector) -> ComponentColumnSelector {
+    ComponentColumnSelector {
+        entity_path: selector.entity_path(),
+        component: selector.component.to_string(),
+    }
+}
+
 // Accessors wrapping reads/writes to the blueprint store.
 impl Query {
     /// Get the query timeline name.
@@ -98,7 +105,7 @@ impl Query {
         Ok(self
             .filter_is_not_null_raw()?
             .filter(|filter_is_not_null| filter_is_not_null.active())
-            .map(|filter| filter.column_selector()))
+            .map(|filter| column_selector(&filter.column)))
     }
 
     /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
@@ -255,7 +262,7 @@ impl Query {
             .collect();
         let selected_component_columns = component_columns
             .iter()
-            .map(|selector| selector.column_selector().column_name())
+            .map(|selector| column_selector(selector).column_name())
             .collect::<HashSet<_>>();
 
         let result = view_columns

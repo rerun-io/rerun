@@ -46,7 +46,8 @@ pub trait UiExt {
 
     /// Show an animated loading indicator.
     ///
-    /// `reason` describes why we are loading. In debug builds, it is shown on hover.
+    /// `reason` describes why we are loading as a sentence fragment without trailing punctuation.
+    /// In debug builds, it is shown on hover.
     ///
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!

@@ -235,16 +235,6 @@ impl Server {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
             // TODO(andreas): Most of these heuristics could just be always applied so all tables profit from then.
 
-            let mut name = column.display_name();
-
-            // Strip the prefix and remove underscores only for base columns, not properties.
-            name = name
-                .strip_prefix("rerun_")
-                .map(|name| name.replace('_', " "))
-                .unwrap_or(name);
-
-            column = column.with_default_display_name(name);
-
             // Only the table layout gets its visibility default from here, a card shows the
             // fields its own layout lists.
             if layout == TableLayoutKind::Table {

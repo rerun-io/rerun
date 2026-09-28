@@ -112,6 +112,7 @@ impl From<ChunkKey> for crate::cloud::v1alpha1::ChunkKey {
 pub struct RrdChunkLocation {
     pub url: url::Url,
     pub byte_span: re_span::Span<u64>,
+    pub object_store_config: Option<String>,
 }
 
 impl RrdChunkLocation {
@@ -155,6 +156,7 @@ impl TryFrom<crate::cloud::v1alpha1::RrdChunkLocation> for RrdChunkLocation {
         Ok(Self {
             url,
             byte_span: re_span::Span::from_start_len(offset, length),
+            object_store_config: value.object_store_config,
         })
     }
 }
@@ -165,6 +167,7 @@ impl From<RrdChunkLocation> for crate::cloud::v1alpha1::RrdChunkLocation {
             url: Some(value.url.to_string()),
             offset: Some(value.byte_span.start),
             length: Some(value.byte_span.len),
+            object_store_config: value.object_store_config,
         }
     }
 }
@@ -456,6 +459,7 @@ mod tests {
                     url: Some("s3://bucket/segment.rrd".to_owned()),
                     offset,
                     length,
+                    object_store_config: None,
                 }),
                 layer: None,
                 etag: None,
@@ -476,6 +480,7 @@ mod tests {
                 url: Some("s3://bucket/segment.rrd".to_owned()),
                 offset: Some(10),
                 length: Some(20),
+                object_store_config: None,
             }),
             layer: None,
             etag: None,
@@ -492,6 +497,7 @@ mod tests {
                 url: Some("s3://bucket/segment.rrd".to_owned()),
                 offset: Some(10),
                 length: Some(20),
+                object_store_config: None,
             }),
             layer: None,
             etag: None,

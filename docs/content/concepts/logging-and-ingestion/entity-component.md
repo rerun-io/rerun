@@ -10,7 +10,7 @@ The core of Rerun's data model is inspired by the ideas of the [Entity Component
 short, an ECS is a composition-oriented framework in which *entities* represent generic objects while *components* describe
 data associated with those entities.
 
- * *Entities* are the "things" that you log with the [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log)function. They are represented by the
+ * *Entities* are the "things" that you log with the [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function. They are represented by the
    [*entity path*](entity-path.md) string which is passed as first argument.
  * *Components*, however, are what contains the data that is associated with those "things". For example, position, color,
    pixel data, etc.
@@ -58,7 +58,7 @@ In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/common/cus
 
 snippet: tutorials/extra_values
 
-It can also be used log an entirely custom set of components:
+It can also be used to log an entirely custom set of components:
 
 snippet: tutorials/any_values
 

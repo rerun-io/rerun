@@ -15,7 +15,9 @@ use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext;
-use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
+use re_sdk_types::blueprint::components::{
+    ColumnDisplayMode, ColumnName, TableCellKind, TableLayoutKind,
+};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
@@ -88,12 +90,15 @@ pub struct DataColumns<'a> {
 
 impl<'a> DataColumns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema, original_schema: &arrow::datatypes::Schema) -> Self {
-        re_log::debug_assert_eq!(original_schema.fields().len(), sorbet_schema.columns.len());
+        re_log::debug_assert_eq!(
+            original_schema.fields().len(),
+            sorbet_schema.columns().len()
+        );
 
         // TODO(andreas): Preserve the DataFusion field name in the Sorbet schema so this mapping
         // does not depend on migration preserving column order.
         let columns = sorbet_schema
-            .columns
+            .columns()
             .iter()
             .enumerate()
             .map(|(index, desc)| {
@@ -127,6 +132,171 @@ impl DataColumns<'_> {
     /// Find a column index by its physical name.
     pub fn index_by_physical_name(&self, name: &ColumnName) -> Option<usize> {
         self.find_by_physical_name(name).map(|(idx, _)| idx)
+    }
+
+    /// Compute, for every column, the name rendered in the selected [`ColumnDisplayMode`].
+    ///
+    /// The result is aligned with `self.columns`.
+    /// `Compact` names are the shortest humanized suffix of the physical path that is unique across
+    /// *all* columns, so a column's compact name never changes when other columns are hidden.
+    /// Component names are also disambiguated across all columns by prepending physical path segments.
+    ///
+    /// Explicit blueprint names remain independent of the display mode.
+    pub fn compute_labels(&self, mode: ColumnDisplayMode) -> Vec<String> {
+        let full = self
+            .columns
+            .iter()
+            .map(|column| column.physical_name().as_str());
+
+        match mode {
+            ColumnDisplayMode::Full => return full.map(str::to_owned).collect(),
+            ColumnDisplayMode::Compact => {
+                let candidates: Vec<String> = full
+                    .clone()
+                    .map(|name| humanize_suffix(&[name.rsplit(':').next().unwrap_or_default()], 1))
+                    .collect();
+                let depth = vec![1; candidates.len()];
+                return disambiguate_labels(full, candidates, depth, humanize_suffix);
+            }
+            ColumnDisplayMode::Component => {}
+        }
+
+        let component: Vec<String> = self
+            .columns
+            .iter()
+            .map(|column| match &column.desc {
+                ColumnDescriptorRef::Component(desc) => desc.component.as_str().to_owned(),
+                ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => {
+                    column.physical_name().as_str().to_owned()
+                }
+            })
+            .collect();
+        let depth = std::iter::zip(full.clone(), &component)
+            .map(|(full, component)| {
+                if full == component || full.ends_with(&format!(":{component}")) {
+                    component.split(':').count()
+                } else {
+                    full.split(':').count().saturating_sub(1)
+                }
+            })
+            .collect();
+        disambiguate_labels(full, component, depth, |segments, depth| {
+            segments[segments.len().saturating_sub(depth)..].join(":")
+        })
+    }
+}
+
+/// Resolve duplicate labels by expanding their physical-path suffixes one segment at a time.
+///
+/// `full`, `candidates`, and `depth` must describe the same columns in the same order and have equal
+/// lengths. Each `depth` is the number of trailing colon-separated physical-path segments already
+/// represented by the candidate; the next expansion passes `depth + 1` to `format_suffix`.
+/// For a candidate that is not a physical-path suffix, callers can set its depth to one less than
+/// the full segment count so its first expansion uses the entire physical path.
+///
+/// Each round expands every colliding candidate that still has a parent segment, then checks all
+/// labels again because expansion can introduce new collisions. Labels that do not collide stay
+/// unchanged. The process stops when no label can expand further, so duplicates may remain if even
+/// fully expanded labels collide.
+fn disambiguate_labels<'a>(
+    full: impl Iterator<Item = &'a str>,
+    mut candidates: Vec<String>,
+    mut depth: Vec<usize>,
+    format_suffix: impl Fn(&[&str], usize) -> String,
+) -> Vec<String> {
+    let segments: Vec<Vec<&str>> = full.map(|name| name.split(':').collect()).collect();
+
+    loop {
+        let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+        for candidate in &candidates {
+            *counts.entry(candidate.as_str()).or_default() += 1;
+        }
+
+        let collisions: Vec<bool> = candidates
+            .iter()
+            .map(|candidate| counts[candidate.as_str()] > 1)
+            .collect();
+        let mut changed = false;
+        for (i, segs) in segments.iter().enumerate() {
+            if collisions[i] && depth[i] < segs.len() {
+                depth[i] += 1;
+                candidates[i] = format_suffix(segs, depth[i]);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    candidates
+}
+
+/// Humanize the last `depth` colon-segments of a physical name and join them with `": "`.
+///
+/// Each segment has its `rerun_` prefix stripped and is humanized independently
+/// (via [`re_case::to_human_case_digits_as_letters`]) so `start_time`
+/// becomes `Start time` and a `User:id` / `Recording:id` collision resolves to `User: Id` /
+/// `Recording: Id`.
+fn humanize_suffix(segments: &[&str], depth: usize) -> String {
+    let start = segments.len().saturating_sub(depth.max(1));
+    segments[start..]
+        .iter()
+        .map(|segment| {
+            re_case::to_human_case_digits_as_letters(
+                segment.strip_prefix("rerun_").unwrap_or(segment),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(": ")
+}
+
+#[cfg(test)]
+mod compact_label_tests {
+    use super::{ColumnDescriptorRef, ColumnDisplayMode, DataColumn, DataColumns};
+
+    fn compact(names: &[&str]) -> Vec<String> {
+        let desc = re_sorbet::RowIdColumnDescriptor::from_sorted(false);
+        let columns = names
+            .iter()
+            .map(|name| DataColumn {
+                physical_name: (*name).into(),
+                desc: ColumnDescriptorRef::RowId(&desc),
+            })
+            .collect();
+        DataColumns { columns }.compute_labels(ColumnDisplayMode::Compact)
+    }
+
+    #[test]
+    fn compact_humanizes_last_segment() {
+        assert_eq!(
+            compact(&["property:RecordingInfo:start_time"]),
+            &["Start time"]
+        );
+    }
+
+    #[test]
+    fn compact_disambiguates_collisions_by_prepending_parents() {
+        // Both end in `id`, so the last segment alone collides and each grows by one segment.
+        assert_eq!(
+            compact(&["dataset:User:id", "dataset:Recording:id"]),
+            &["User: Id", "Recording: Id"]
+        );
+    }
+
+    #[test]
+    fn compact_keeps_distinct_fields_short() {
+        // Distinct last segments never need disambiguation, so they stay at one humanized segment.
+        assert_eq!(
+            compact(&["property:episode:lab", "property:episode:cam_serial"]),
+            &["Lab", "Cam serial"]
+        );
+    }
+
+    #[test]
+    fn compact_handles_single_token_names() {
+        // Row-id / time columns have no hierarchy: just humanize the single token.
+        assert_eq!(compact(&["log_time"]), &["Log time"]);
     }
 }
 
@@ -592,6 +762,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &data_columns,
             &self.additional_column_heuristics,
         );
+        let mut column_display_mode = blueprint.column_display_mode;
 
         let mut layout_kind = blueprint.layout();
         let card_layout_available = blueprint.card_layout.is_some();
@@ -603,7 +774,11 @@ impl<'a> DataFusionTableWidget<'a> {
                 // The order in which we query should be the same order in which we receive, so we should be able to zip things up just fine.
                 // TODO(andreas): seems brittle with sorbet migrations?
                 DisplayRecordBatch::try_new(itertools::izip!(
-                    query_result.sorbet_schema.columns.iter().map(|x| x.into()),
+                    query_result
+                        .sorbet_schema
+                        .columns()
+                        .iter()
+                        .map(|x| x.into()),
                     record_batch.columns().iter().map(Arc::clone)
                 ))
             })
@@ -633,12 +808,16 @@ impl<'a> DataFusionTableWidget<'a> {
             ctx,
             &blueprint_ctx,
             blueprint_columns,
+            &mut column_display_mode,
             self.title.as_deref(),
             self.toolbar_summary_fn.as_deref(),
             self.table_ref.url().map(|url| url.to_string()).as_deref(),
             should_show_loading_indicator,
             layout_kind_ref,
         );
+        if column_display_mode != blueprint.column_display_mode {
+            TableBlueprint::save_column_display_mode(&blueprint_ctx, column_display_mode);
+        }
         if layout_kind != blueprint.layout() {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
         }
@@ -674,7 +853,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let migrated_fields = query_result
             .sorbet_schema
-            .columns
+            .columns()
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
         let potentially_writable_remote_table = self.table_ref.url().and_then(|uri| match uri {
@@ -922,6 +1101,7 @@ fn toolbar_ui<'a>(
     ctx: &AppContext<'_>,
     blueprint_ctx: &AppBlueprintCtx<'_>,
     blueprint_columns: impl Iterator<Item = &'a TableColumn<'a>>,
+    column_display_mode: &mut ColumnDisplayMode,
     title: Option<&str>,
     summary_ui: Option<&dyn Fn(&mut Ui)>,
     url: Option<&str>,
@@ -996,7 +1176,13 @@ fn toolbar_ui<'a>(
                         });
                     }
 
-                    columns_edit_menu_ui(ui, blueprint_ctx, *layout_kind, blueprint_columns);
+                    columns_edit_menu_ui(
+                        ui,
+                        blueprint_ctx,
+                        *layout_kind,
+                        column_display_mode,
+                        blueprint_columns,
+                    );
                 });
             },
         );

@@ -36,13 +36,13 @@ Here is how to send the data as a scalar:
 
 snippet: tutorials/data_out[send_columns]
 
-We use the [`rr.send_column()`](../../howto/logging-and-ingestion/send-columns.md) API to efficiently send the entire column of data in a single batch.
+We use the [`rr.send_columns()`](../../howto/logging-and-ingestion/send-columns.md) API to efficiently send the entire column of data in a single batch.
 
 Next, let's send the same data as `Text` component:
 
 snippet: tutorials/data_out[log_labels]
 
-Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label matching the state for each timestamp.
+Here we first log the [`ShowLabels`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_columns()` again to send an entire batch of text labels. We use [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label matching the state for each timestamp.
 
 ### Final result
 

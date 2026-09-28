@@ -13,7 +13,7 @@ snippet: archetypes/points3d_simple
 Here, only the positions of the points have been specified but, looking at the [complete definition for Points3D](../../reference/types/archetypes/points3d.md), we can see that it has quite a few more [components](../../concepts/logging-and-ingestion/entity-component.md#data-model) available:
 > **Required**: [`Position3D`](../../reference/types/components/position3d.md)
 >
-> **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)
+> **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`PointShading`](../../reference/types/components/point_shading.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)
 
 
 All three languages for which we provide logging SDKs (Python, Rust, C++) expose APIs that allow fine-grained control over which components of an archetypes, when, and how.

@@ -48,7 +48,7 @@ fn test_column_header_tooltips() {
         .collect::<Vec<_>>();
 
     for (desc, field, migrated_field, description) in itertools::izip!(
-        sorbet_batch.sorbet_schema().columns.clone(),
+        sorbet_batch.sorbet_schema().columns().clone(),
         &fields,
         sorbet_batch.fields(),
         descriptions

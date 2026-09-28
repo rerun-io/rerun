@@ -170,6 +170,18 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ColumnDisplayMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How table column names are displayed when no explicit display name is configured.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ColumnDisplayMode::default().to_arrow()?),
+                datatype: ColumnDisplayMode::arrow_data_type(),
+                is_enum: true,
+                own_chunk: false,
+                verify_arrow_array: ColumnDisplayMode::verify_arrow_array,
+            },
+        ),
+        (
             <ColumnName as Component>::name(),
             ComponentReflection {
                 docstring_md: "The name of a column in a table.\n\nThis is the physical column name: it is what the column is looked up by, and it is also\nwhat the user reads whenever the column has no separate, human-facing label.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -767,6 +779,18 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 is_enum: false,
                 own_chunk: false,
                 verify_arrow_array: VisualizerType::verify_arrow_array,
+            },
+        ),
+        (
+            <Volume as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Playback volume, as a multiplier applied to the audio samples.\n\n0.0 is silent and 1.0 leaves the samples unchanged.\nThe scale is linear in amplitude, not in perceived loudness.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(Volume::default().to_arrow()?),
+                datatype: Volume::arrow_data_type(),
+                is_enum: false,
+                own_chunk: false,
+                verify_arrow_array: Volume::verify_arrow_array,
             },
         ),
         (
@@ -4432,6 +4456,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.AudioPlayback"),
+            ArchetypeReflection {
+                display_name: "Audio playback",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![ArchetypeFieldReflection {
+                    name: "volume",
+                    display_name: "Volume",
+                    component_type: "rerun.blueprint.components.Volume".into(),
+                    docstring_md: "Playback volume, from 0.0 (silent) to 1.0 (full).\n\nDefaults to 1.0.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
@@ -5110,13 +5149,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Table blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                fields: vec![ArchetypeFieldReflection {
-                    name: "layout",
-                    display_name: "Layout",
-                    component_type: "rerun.blueprint.components.TableLayoutKind".into(),
-                    docstring_md: "The currently selected layout.\n\nIf unset, defaults to card layout if available.\n`Cards` falls back to table layout when no archetypes.CardLayout is configured.",
-                    flags: ArchetypeFieldFlags::UI_EDITABLE,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "layout",
+                        display_name: "Layout",
+                        component_type: "rerun.blueprint.components.TableLayoutKind".into(),
+                        docstring_md: "The currently selected layout.\n\nIf unset, defaults to card layout if available.\n`Cards` falls back to table layout when no archetypes.CardLayout is configured.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "column_display_mode",
+                        display_name: "Column display mode",
+                        component_type: "rerun.blueprint.components.ColumnDisplayMode".into(),
+                        docstring_md: "Formatting for column names in table and card layouts.\n\nDefaults to compact formatting when unset.\nExplicit column display names take precedence.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
             },
         ),
         (
@@ -5604,6 +5652,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
 
 fn generate_view_reflection() -> ViewReflectionMap {
     let entries = [
+        (
+            ViewClassIdentifier::from_static_str("Audio"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
+                    "rerun.archetypes.AssetAudio",
+                )]),
+                property_archetypes: vec![ArchetypeName::from(
+                    "rerun.blueprint.archetypes.AudioPlayback",
+                )],
+            },
+        ),
         (
             ViewClassIdentifier::from_static_str("BarChart"),
             ViewReflection {

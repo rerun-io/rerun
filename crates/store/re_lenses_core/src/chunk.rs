@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ComponentIdentifier};
 
@@ -33,12 +35,7 @@ pub trait ChunkExt {
 
 impl ChunkExt for Chunk {
     fn apply_lenses(&self, lenses: &[Lens], runtime: &Runtime) -> Result<Vec<Chunk>, LensError> {
-        let mut collection = Lenses::new(OutputMode::ForwardUnmatched);
-        for lens in lenses {
-            collection = collection.add_lens(lens.clone());
-        }
-
-        collection.apply(self, runtime).try_collect()
+        apply_lenses_shared(Arc::new(self.clone()), lenses, runtime)
     }
 
     fn apply_selector(
@@ -73,4 +70,33 @@ impl ChunkExt for Chunk {
             })
         })
     }
+}
+
+impl ChunkExt for Arc<Chunk> {
+    fn apply_lenses(&self, lenses: &[Lens], runtime: &Runtime) -> Result<Vec<Chunk>, LensError> {
+        apply_lenses_shared(Self::clone(self), lenses, runtime)
+    }
+
+    fn apply_selector(
+        &self,
+        source: ComponentIdentifier,
+        selector: &Selector<DynExpr>,
+        runtime: &Runtime,
+    ) -> Result<Chunk, LensRuntimeError> {
+        self.as_ref().apply_selector(source, selector, runtime)
+    }
+}
+
+// TODO(RR-5787): return the iterator from `Lenses::apply` instead of collecting.
+fn apply_lenses_shared(
+    chunk: Arc<Chunk>,
+    lenses: &[Lens],
+    runtime: &Runtime,
+) -> Result<Vec<Chunk>, LensError> {
+    let mut collection = Lenses::new(OutputMode::ForwardUnmatched);
+    for lens in lenses {
+        collection = collection.add_lens(lens.clone());
+    }
+
+    collection.apply(chunk, runtime).try_collect()
 }

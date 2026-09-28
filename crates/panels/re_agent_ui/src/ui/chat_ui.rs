@@ -496,7 +496,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
 
             if session.turn_in_progress() {
                 ui.horizontal(|ui| {
-                    ui.inline_loading_indicator("Working…");
+                    ui.inline_loading_indicator("Working");
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui
                             .add(ReButton::new("Stop").outlined().small())

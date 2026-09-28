@@ -71,7 +71,7 @@ async fn stream_async(
                 let mut log_msg = log_msg_proto.to_application((&mut app_id_cache, None))?;
 
                 // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                log_msg.track_latency(re_sorbet::TimestampLocation::IPCDecode);
+                log_msg.track_latency(re_sorbet::LatencyLocation::IPCDecode);
 
                 cfg_select! {
                     target_arch = "wasm32" => {

@@ -4,7 +4,15 @@ description = "MCP server that allows llm agents to use the Rerun Viewer."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-include.workspace = true
+include = [
+  "../../Cargo.lock",
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.bin",
+  "**/*.rs",
+  "Cargo.toml",
+  "src/instructions.md",
+]
 name = "re_viewer_mcp"
 publish = true
 readme = "README.md"

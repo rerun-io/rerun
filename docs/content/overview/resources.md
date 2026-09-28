@@ -27,6 +27,6 @@ order: 400
 
 ## Beyond the docs
 
-- [Discord](https://discord.gg/PXtCgFBSmH) — ask questions and chat with other Rerun users
+- [Discord](https://discord.gg/Gcm8BbTaAj) — ask questions and chat with other Rerun users
 - [GitHub](https://github.com/rerun-io/rerun) — source code and issue tracker
 - [Examples](https://rerun.io/examples) — see Rerun in action

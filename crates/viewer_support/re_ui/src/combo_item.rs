@@ -1,17 +1,29 @@
-use crate::{DesignTokens, UiExt as _, icons};
+use crate::{DesignTokens, Size, UiExt as _, icons};
 use eframe::emath::Align;
 use eframe::epaint::FontFamily;
 use eframe::epaint::text::TextWrapMode;
 use egui::{
-    Atom, AtomExt as _, Atoms, Button, FontId, Frame, IdSalt, Layout, Margin, Pos2, Rect, Response,
-    Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom, WidgetText,
+    Atom, AtomExt as _, Atoms, Button, ContainerAtom, Direction, FontId, Frame, IdSalt, Layout,
+    Margin, Pos2, Rect, Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom,
+    WidgetText,
 };
+
+/// The value shown alongside a [`ComboItem`]'s label.
+enum ComboItemValue<'a> {
+    /// Plain text. This is the only variant that supports [`ComboItem::value_below`] (stacked
+    /// layout), since text atoms paint natively inside a nested [`egui::AtomLayout`].
+    Text(WidgetText),
+
+    /// An arbitrary widget, drawn inline on the right.
+    Widget(egui::BoxedWidget<'a>),
+}
 
 /// A selectable button to be used within [`egui::ComboBox`]es or [`egui::Popup`]s.
 pub struct ComboItem<'a> {
     label: WidgetText,
     selected: bool,
-    value: Option<egui::BoxedWidget<'a>>,
+    value: Option<ComboItemValue<'a>>,
+    value_below: bool,
     error: Option<String>,
 }
 
@@ -22,6 +34,7 @@ impl<'a> ComboItem<'a> {
             label: label.into(),
             selected: false,
             value: None,
+            value_below: false,
             error: None,
         }
     }
@@ -40,18 +53,31 @@ impl<'a> ComboItem<'a> {
         self
     }
 
-    /// Add a value. Will be shown on the right side at font size 10.
-    pub fn value(mut self, value: impl Into<WidgetText> + 'a) -> Self {
+    /// Add a value. Will be shown on the right side at font size 10 (or below the label if
+    /// [`Self::value_below`] is set).
+    pub fn value(mut self, value: impl Into<WidgetText>) -> Self {
         let value = value
             .into()
             .size(DesignTokens::combo_item_small_font_size());
-        self.value = Some((|ui: &mut Ui| ui.label(value)).boxed());
+        self.value = Some(ComboItemValue::Text(value));
         self
     }
 
     /// Add a value as a widget. Will be shown on the right side at font size 10.
+    ///
+    /// Note that widget values are always inline; [`Self::value_below`] only applies to text
+    /// values (set via [`Self::value`]).
     pub fn value_widget(mut self, value: impl Widget + 'a) -> Self {
-        self.value = Some(value.boxed());
+        self.value = Some(ComboItemValue::Widget(value.boxed()));
+        self
+    }
+
+    /// Show the (text) value stacked *below* the label instead of inline on the right.
+    ///
+    /// Useful when the value is long (e.g. a fully-qualified name) and would otherwise squeeze the
+    /// label. Only affects text values set via [`Self::value`].
+    pub fn value_below(mut self, value_below: bool) -> Self {
+        self.value_below = value_below;
         self
     }
 }
@@ -65,6 +91,7 @@ impl Widget for ComboItem<'_> {
             mut label,
             selected,
             value,
+            value_below,
             error,
         } = self;
 
@@ -85,32 +112,59 @@ impl Widget for ComboItem<'_> {
             Atom::default().atom_size(check_icon_size)
         };
 
-        let mut atoms = Atoms::new((check_icon, label));
-
         let error_id = IdSalt::new("error");
         let value_atom_id = IdSalt::new("value");
         let value_scope_id = ui.next_auto_id().with("value_scope");
 
-        if error.is_some() {
-            atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
-            atoms.push_right(Atom::custom(error_id, ui.tokens().small_icon_size));
-        } else if value.is_some() {
-            let value_scope_response = ui.read_response(value_scope_id);
-            let size = value_scope_response
-                .map(|r| r.rect.size())
-                .unwrap_or_default();
+        // Nested `ContainerAtom`s hide their text from accesskit, so the stacked layout has to
+        // name its button explicitly.
+        let mut stacked_accessible_name = None;
 
-            atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
-            atoms.push_right(Atom::custom(value_atom_id, size));
+        let response = if value_below && let Some(ComboItemValue::Text(value)) = &value {
+            let gap = 2.0;
+            stacked_accessible_name = Some(label.text().to_owned());
+
+            let first_line = ContainerAtom::new((
+                check_icon,
+                Atom::from(label).atom_align(egui::Align2::LEFT_CENTER),
+                Atom::grow(),
+            ))
+            .gap(gap);
+
+            let second_line = ContainerAtom::new((
+                Atom::default().atom_size(Vec2::new(check_icon_size.x, 0.0)),
+                Atom::from(value.clone()).atom_align(egui::Align2::LEFT_CENTER),
+                Atom::grow(),
+            ))
+            .gap(gap);
+
+            let stacked = ContainerAtom::new((first_line, second_line))
+                .direction(Direction::TopDown)
+                .gap(gap);
+            Button::new(stacked).min_size(Vec2::splat(Size::Small.height() + 10.0))
+        } else {
+            let mut atoms = Atoms::new((check_icon, label));
+
+            if error.is_some() {
+                atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
+                atoms.push_right(Atom::custom(error_id, ui.tokens().small_icon_size));
+            } else if value.is_some() {
+                let value_scope_response = ui.read_response(value_scope_id);
+                let size = value_scope_response
+                    .map(|r| r.rect.size())
+                    .unwrap_or_default();
+
+                atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
+                atoms.push_right(Atom::custom(value_atom_id, size));
+            }
+
+            // Since the ComboItem has uneven padding due to the checkmark, we need to manually add 4px
+            // spacing (2px space + 2px gap = 4px)
+            atoms.push_right(Atom::default().atom_size(Vec2::new(2.0, 0.0)));
+
+            Button::new(atoms).wrap_mode(TextWrapMode::Extend)
         }
-
-        // Since the ComboItem has uneven padding due to the checkmark, we need to manually add 4px
-        // spacing (2px space + 2px gap = 4px)
-        atoms.push_right(Atom::default().atom_size(Vec2::new(2.0, 0.0)));
-
-        let response = Button::new(atoms)
-            .wrap_mode(TextWrapMode::Extend)
-            .atom_ui(ui);
+        .atom_ui(ui);
 
         // Paint the error icon and tooltip
         if let Some(rect) = response.rect(error_id) {
@@ -130,7 +184,7 @@ impl Widget for ComboItem<'_> {
                 .on_hover_text(error);
             }
         } else if let Some(rect) = response.rect(value_atom_id)
-            && let Some(widget) = value
+            && let Some(value) = value
         {
             let rect = Rect::from_min_max(
                 Pos2::new(
@@ -154,10 +208,20 @@ impl Widget for ComboItem<'_> {
                 }
             }
 
-            child_ui.add(widget);
+            match value {
+                ComboItemValue::Text(text) => {
+                    child_ui.label(text);
+                }
+                ComboItemValue::Widget(widget) => {
+                    child_ui.add(widget);
+                }
+            }
         }
 
-        response.response
+        match stacked_accessible_name {
+            Some(name) => response.response.accessible_name(name),
+            None => response.response,
+        }
     }
 }
 
@@ -245,5 +309,48 @@ pub mod tests {
         let options = crate::testing::default_snapshot_options_for_ui();
 
         harness.snapshot_options("combo_item", &options);
+    }
+
+    /// [`ComboItem::value_below`]: the value is stacked below the label rather than inline, so
+    /// long values don't squeeze the label. Used e.g. by the table "Column display format" menu.
+    #[test]
+    pub fn test_combo_item_value_below() {
+        let mut harness = Harness::new_ui(|ui| {
+            crate::apply_style_and_install_loaders(ui.ctx());
+
+            ComboBox::new("combo_item_value_below_example", "")
+                .selected_text("ComboItem Example")
+                .popup_style(menu_style())
+                .height(300.0)
+                .show_ui(ui, |ui| {
+                    ui.add(
+                        ComboItem::new("Compact")
+                            .value("Start time")
+                            .value_below(true),
+                    );
+                    ui.add(
+                        ComboItem::new("Component")
+                            .value("RecordingInfo:start_time")
+                            .value_below(true),
+                    );
+                    ui.add(
+                        ComboItem::new("Full")
+                            .value("property:RecordingInfo:start_time")
+                            .value_below(true)
+                            .selected(true),
+                    );
+                })
+                .response
+                .accessible_name("Example");
+        });
+
+        harness.get_by_value("ComboItem Example").click();
+
+        harness.run();
+        harness.fit_contents();
+
+        let options = crate::testing::default_snapshot_options_for_ui();
+
+        harness.snapshot_options("combo_item_value_below", &options);
     }
 }

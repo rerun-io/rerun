@@ -238,17 +238,17 @@ impl State {
         match command {
             Command::UiCommand(ui_cmd) => match ui_cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
-                UICommand::ZoomIn => {
+                UICommand::ZoomInUi => {
                     let mut zoom_factor = ui.zoom_factor();
                     zoom_factor += 0.1;
                     ui.set_zoom_factor(zoom_factor);
                 }
-                UICommand::ZoomOut => {
+                UICommand::ZoomOutUi => {
                     let mut zoom_factor = ui.zoom_factor();
                     zoom_factor -= 0.1;
                     ui.set_zoom_factor(zoom_factor);
                 }
-                UICommand::ZoomReset => {
+                UICommand::ResetUiZoom => {
                     ui.set_zoom_factor(1.0);
                 }
                 _ => {}

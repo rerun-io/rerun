@@ -10,6 +10,12 @@ from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_scroll import AutoScroll, AutoScrollBatch
 from .auto_views import AutoViews, AutoViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
+from .column_display_mode import (
+    ColumnDisplayMode,
+    ColumnDisplayModeArrayLike,
+    ColumnDisplayModeBatch,
+    ColumnDisplayModeLike,
+)
 from .column_name import ColumnName, ColumnNameBatch
 from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, ColumnOrderLike
 from .column_share import ColumnShare, ColumnShareBatch
@@ -60,6 +66,7 @@ from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch
 from .visualizer_component_mapping import VisualizerComponentMapping, VisualizerComponentMappingBatch
 from .visualizer_instruction_id import VisualizerInstructionId, VisualizerInstructionIdBatch
 from .visualizer_type import VisualizerType, VisualizerTypeBatch
+from .volume import Volume, VolumeBatch
 from .zoom_level import ZoomLevel, ZoomLevelBatch
 
 __all__ = [
@@ -81,6 +88,10 @@ __all__ = [
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
     "BackgroundKindLike",
+    "ColumnDisplayMode",
+    "ColumnDisplayModeArrayLike",
+    "ColumnDisplayModeBatch",
+    "ColumnDisplayModeLike",
     "ColumnName",
     "ColumnNameBatch",
     "ColumnOrder",
@@ -209,6 +220,8 @@ __all__ = [
     "VisualizerInstructionIdBatch",
     "VisualizerType",
     "VisualizerTypeBatch",
+    "Volume",
+    "VolumeBatch",
     "ZoomLevel",
     "ZoomLevelBatch",
 ]

@@ -123,8 +123,8 @@ use crate::{ChunkIndexError, ChunkIndexResult};
 /// * `chunk_byte_size` & `chunk_byte_offset` are always reported using the backend's native
 ///   storage size. For a backend that makes use of compression, such as an RRD file with
 ///   compression enabled, these sizes are therefore compressed. For a backend that doesn't do any
-///   kind of compression, such as the OSS server that stores everything already decoded in memory,
-///   these sizes will correspond to heap memory usage.
+///   kind of compression, such as an in-memory chunk store, these sizes will correspond to heap
+///   memory usage.
 /// * `chunk_byte_size_uncompressed` reports the chunk's uncompressed size, whose exact meaning
 ///   depends on the writer: the length of the uncompressed Arrow IPC stream when written to an RRD
 ///   file, and the decoded heap size when synthesized in memory

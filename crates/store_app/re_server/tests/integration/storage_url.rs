@@ -60,7 +60,9 @@ async fn register_memory_url_not_found() {
     let fake_memory_url = format!("memory:///store/{}", re_tuid::Tuid::new());
 
     let memory_data_source: re_protos::cloud::v1alpha1::DataSource =
-        ext::DataSource::new_rrd(&fake_memory_url).unwrap().into();
+        ext::DataSource::new_rrd(&fake_memory_url, None)
+            .unwrap()
+            .into();
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: vec![memory_data_source],

@@ -4,13 +4,17 @@
 //! - [`RecordingCommand`]: commands that act on a specific recording.
 //! - [`RedapServerCommand`]: commands that act on a specific Redap server.
 //! - [`TableCommand`]: commands that act on a specific Redap entry (dataset or table).
+//!
+//! [`CommandKind`] names any of them without a target.
 
+mod command_kind;
 mod environment;
 mod recording_command;
 mod redap_server_command;
 mod table_command;
 mod ui_command;
 
+pub use self::command_kind::{CommandKind, CommandScope, ListedCommand, palette_commands};
 pub use self::environment::CommandEnvironment;
 pub use self::recording_command::{
     RecordingCommand, RecordingCommandKind, RecordingCommandSender, SetPlaybackSpeed,
@@ -42,9 +46,9 @@ pub fn refresh_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardSho
     }
 }
 
-/// A command resolved against the current [`CommandEnvironment`], ready to dispatch.
+/// A command bound to its target from a [`CommandEnvironment`], ready to dispatch.
 #[derive(Clone, Debug)]
-pub enum ResolvedCommand {
+pub enum BoundCommand {
     Ui(UICommand),
     Recording(RecordingCommand),
     RedapServer(RedapServerCommand),
@@ -88,7 +92,7 @@ pub fn consume_timeline_shortcut(egui_ctx: &egui::Context) -> Option<RecordingCo
 pub fn listen_for_kb_shortcuts(
     egui_ctx: &egui::Context,
     env: &CommandEnvironment,
-) -> Option<ResolvedCommand> {
+) -> Option<BoundCommand> {
     use strum::IntoEnumIterator as _;
 
     #[derive(Clone, Copy)]
@@ -142,10 +146,10 @@ pub fn listen_for_kb_shortcuts(
     .collect();
 
     match consume_best_shortcut(egui_ctx, commands)? {
-        Matched::Ui(cmd) => Some(ResolvedCommand::Ui(cmd)),
-        Matched::Recording(kind) => kind.for_environment(env).map(ResolvedCommand::Recording),
-        Matched::RedapServer(kind) => kind.for_environment(env).map(ResolvedCommand::RedapServer),
-        Matched::Table(kind) => kind.for_environment(env).map(ResolvedCommand::Table),
+        Matched::Ui(cmd) => Some(BoundCommand::Ui(cmd)),
+        Matched::Recording(kind) => kind.for_environment(env).map(BoundCommand::Recording),
+        Matched::RedapServer(kind) => kind.for_environment(env).map(BoundCommand::RedapServer),
+        Matched::Table(kind) => kind.for_environment(env).map(BoundCommand::Table),
     }
 }
 

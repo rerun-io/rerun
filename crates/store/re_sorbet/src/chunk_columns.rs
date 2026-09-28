@@ -3,12 +3,12 @@ use itertools::chain;
 use re_log_types::EntityPath;
 
 use crate::{
-    BatchType, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError,
+    BatchType, ColumnDescriptor, ColumnDescriptorRef, ComponentColumnDescriptor,
+    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError,
 };
 
 /// Requires a specific ordering of the columns.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct ChunkColumnDescriptors {
     /// The primary row id column.
     pub row_id: RowIdColumnDescriptor,
@@ -28,6 +28,15 @@ impl ChunkColumnDescriptors {
         for component in &self.components {
             component.sanity_check();
         }
+    }
+
+    /// All columns in order: row id, then indices, then components.
+    pub fn iter_ref(&self) -> impl Iterator<Item = ColumnDescriptorRef<'_>> {
+        chain!(
+            std::iter::once(ColumnDescriptorRef::from(&self.row_id)),
+            self.indices.iter().map(ColumnDescriptorRef::from),
+            self.components.iter().map(ColumnDescriptorRef::from),
+        )
     }
 
     /// Returns all indices and then all components;

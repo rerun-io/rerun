@@ -4,7 +4,7 @@ use emath::History;
 use re_chunk::Chunk;
 use re_chunk_store::{ChunkStoreDiffAddition, ChunkStoreEvent};
 use re_mutex::Mutex;
-use re_sorbet::{TimestampLocation, TimestampMetadata};
+use re_sorbet::{LatencyLocation, LatencyMetadata};
 use web_time::SystemTime;
 
 /// Statistics about the latency of incoming data to a store.
@@ -23,12 +23,12 @@ impl Clone for IngestionStatistics {
 
 impl IngestionStatistics {
     #[inline]
-    pub fn on_events(&self, chunk_timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {
+    pub fn on_events(&self, latency_metadata: &LatencyMetadata, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
         let now_nanos = nanos_since_epoch();
         let mut stats = self.stats.lock();
         for add in events.iter().filter_map(|e| e.to_addition()) {
-            stats.on_store_addition(now_nanos, chunk_timestamps, add);
+            stats.on_store_addition(now_nanos, latency_metadata, add);
         }
     }
 }
@@ -43,25 +43,25 @@ impl IngestionStatistics {
 /// Statistics about the latency of incoming data to a store.
 #[derive(Clone, Debug, Default)]
 pub struct LatencyStats {
-    /// The latency from [`TimestampLocation::Log`] until this point, measured in seconds.
-    from_log_until: BTreeMap<TimestampLocation, History<f32>>,
+    /// The latency from [`LatencyLocation::Log`] until this point, measured in seconds.
+    from_log_until: BTreeMap<LatencyLocation, History<f32>>,
 }
 
 impl LatencyStats {
     fn on_store_addition(
         &mut self,
         now_nanos: i64,
-        chunk_timestamps: &TimestampMetadata,
+        latency_metadata: &LatencyMetadata,
         add: &ChunkStoreDiffAddition,
     ) {
-        let mut chunk_timestamps = chunk_timestamps.clone();
+        let mut latency_metadata = latency_metadata.clone();
 
         let min_samples = 0; // 0: we stop displaying e2e latency if input stops
         let max_samples = 8 * 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
 
-        chunk_timestamps.insert(
-            TimestampLocation::Ingest,
+        latency_metadata.insert(
+            LatencyLocation::Ingest,
             system_time_from_nanos(now_nanos as u64),
         );
 
@@ -76,16 +76,16 @@ impl LatencyStats {
         let Some(log_time) = row_id_timestamp(chunk) else {
             return;
         };
-        chunk_timestamps.insert(TimestampLocation::Log, log_time);
-        chunk_timestamps.insert(
-            TimestampLocation::ChunkCreation,
+        latency_metadata.insert(LatencyLocation::Log, log_time);
+        latency_metadata.insert(
+            LatencyLocation::ChunkCreation,
             system_time_from_nanos(chunk.id().nanos_since_epoch()),
         );
 
         let now = now_nanos as f64 / 1e9;
 
-        for (&location, &timestamp) in chunk_timestamps.iter() {
-            if location == TimestampLocation::Log {
+        for (&location, &timestamp) in latency_metadata.iter() {
+            if location == LatencyLocation::Log {
                 continue;
             }
 
@@ -146,12 +146,12 @@ pub struct LatencySnapshot {
     /// Seconds since the initial log call.
     ///
     /// Only valid if the clocks of the viewer and the SDK are in sync.
-    pub secs_since_log: BTreeMap<TimestampLocation, f32>,
+    pub secs_since_log: BTreeMap<LatencyLocation, f32>,
 }
 
 impl LatencySnapshot {
     /// Get the latency from the initial log call to the ingestion, if available.
     pub fn e2e(&self) -> Option<f32> {
-        self.secs_since_log.get(&TimestampLocation::LAST).copied()
+        self.secs_since_log.get(&LatencyLocation::LAST).copied()
     }
 }

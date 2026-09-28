@@ -50,20 +50,17 @@ pub async fn rejected_startup_url_does_not_create_history() {
         ..Default::default()
     });
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Welcome screen appears", |harness| {
         harness
-            .query_all_by_label("The data layer for physical AI")
-            .count()
-            > 0
+            .query_by_label("The data layer for physical AI")
+            .is_some()
     });
     harness.assert_browser_url_parameter("");
     // An entry without a url leaves the address bar on the bare path.
     harness.assert_browser_query_string("");
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     assert!(
-        harness.query_all_by_label("Loading data source:").count() == 0,
+        harness.query_by_label("Loading data source:").is_none(),
         "An unsupported S3 URI should not be treated as a local file"
     );
 }
@@ -87,9 +84,8 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
         );
     }
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Loading screen appears", |harness| {
-        harness.query_all_by_label("Loading data source:").count() > 0
+        harness.query_by_label("Loading data source:").is_some()
     });
     assert_back_is_disabled(&harness);
     harness.assert_browser_url_parameter(&url);
@@ -98,12 +94,10 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
         .send(())
         .expect("Failed to release the HTTP response");
 
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Loading error appears", |harness| {
-        harness.query_all_by_label("Go Back").count() > 0
+        harness.query_by_label("Go Back").is_some()
     });
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
-    assert!(harness.query_all_by_label("Loading data source:").count() == 0);
+    assert!(harness.query_by_label("Loading data source:").is_none());
     assert_back_is_disabled(&harness);
 
     let mut snapshot_results = SnapshotResults::new();
@@ -114,12 +108,10 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
         .query_by_label("Go Back")
         .expect("The loading error should provide a way back")
         .click();
-    // TODO(emilk/egui#8606): revert to `query_by_*` once invisible widgets no longer end up in the accesskit tree.
     harness.step_until("Welcome screen reappears", |harness| {
         harness
-            .query_all_by_label("The data layer for physical AI")
-            .count()
-            > 0
+            .query_by_label("The data layer for physical AI")
+            .is_some()
     });
     assert_back_is_disabled(&harness);
     harness.assert_browser_url_parameter("");

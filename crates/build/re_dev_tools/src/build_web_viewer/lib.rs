@@ -80,7 +80,6 @@ pub fn build(
     debug_symbols: bool,
     target: Target,
     build_dir: &Utf8Path,
-    no_default_features: bool,
     features: &String,
     timings: bool,
 ) -> anyhow::Result<()> {
@@ -126,10 +125,9 @@ pub fn build(
             "--lib",
             "--target=wasm32-unknown-unknown",
             &format!("--target-dir={}", target_wasm_dir.as_str()),
+            // The native defaults include features that are useless on the web.
+            "--no-default-features",
         ]);
-        if no_default_features {
-            cmd.arg("--no-default-features");
-        }
         if !features.is_empty() {
             cmd.arg(format!("--features={features}"));
         }

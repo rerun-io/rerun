@@ -247,22 +247,24 @@ class _RangesCtx:
     end_col: str
 
 
-def _find_range_columns(ranges_table: pa.Table, index: str) -> tuple[str, str]:
+class EmptyTableError(Exception):
+    pass
+
+
+def _find_range_columns(column_names: list[str], index: str) -> tuple[str, str]:
     """
-    Find the start/end column names for *index* in a ranges table.
+    Find the start/end column names for *index* among range-table columns.
 
     Looks for columns containing `index` and one of
     `start`/`min` (low end) or `end`/`max` (high end). Raises
     if either side is missing or ambiguous.
     """
-    candidates = [n for n in ranges_table.column_names if n != "rerun_segment_id" and index in n]
+    candidates = [n for n in column_names if n != "rerun_segment_id" and index in n]
 
     def pick(keywords: tuple[str, ...], side: str) -> str:
         matches = [n for n in candidates if any(k in n.lower() for k in keywords)]
         if not matches:
-            raise ValueError(
-                f"Could not find {side} range column for index {index!r} in columns: {ranges_table.column_names}"
-            )
+            raise EmptyTableError(f"Could not find {side} range column for index {index!r} in columns: {column_names}")
         if len(matches) > 1:
             raise ValueError(f"Ambiguous {side} range column for index {index!r}: {matches}")
         return matches[0]  # type: ignore[no-any-return]
@@ -297,22 +299,20 @@ def _build(
     """Build a SampleIndex from a DataSource."""
     dataset = source.dataset
 
-    all_segment_ids = dataset.segment_ids()
-    if source.segments is not None:
-        seg_set = set(source.segments)
-        all_segment_ids = [s for s in all_segment_ids if s in seg_set]
-
-    if not all_segment_ids:
+    if source.segments is not None and not source.segments:
         return SampleIndex([])
 
-    view = dataset.filter_segments(all_segment_ids)
-    ranges_df = view.get_index_ranges()
-    with tracing_scope("ranges_df.to_arrow_table"):
-        # `get_index_ranges()` returns a lazy DataFusion DataFrame; the actual
-        # server query only runs here, so the scope captures that cost.
-        ranges_table = ranges_df.to_arrow_table()
+    ranges_source = dataset if source.segments is None else dataset.filter_segments(source.segments)
+    ranges_df = ranges_source.get_index_ranges()
+    try:
+        start_col, end_col = _find_range_columns(ranges_df.schema().names, index)
+    except EmptyTableError:
+        return SampleIndex([])
 
-    start_col, end_col = _find_range_columns(ranges_table, index)
+    ranges_df = ranges_df.select("rerun_segment_id", start_col, end_col).sort("rerun_segment_id")
+    with tracing_scope("ranges_df.to_arrow_table"):
+        # The lazy server query and deterministic sort run during materialization.
+        ranges_table = ranges_df.to_arrow_table()
     ctx = _RangesCtx(
         fields=fields,
         ranges_table=ranges_table,

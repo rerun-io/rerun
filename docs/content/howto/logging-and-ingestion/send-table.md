@@ -82,14 +82,16 @@ client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
 
 ## Using in Jupyter notebooks
 
-Rerun provides special support for Jupyter notebooks, you can find more information here: [https://rerun.io/docs/howto/integrations/embed-notebooks]
+Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../integrations/embed-notebooks.md).
 Note that this API makes use of `rr.notebook.Viewer`:
 
 ```python
-import rerun as rr
-import pyarrow as pa
+import os
 
-# For inline display
+import pyarrow as pa
+import rerun as rr
+
+# Embed the widget JavaScript directly in the notebook instead of fetching it from app.rerun.io
 os.environ["RERUN_NOTEBOOK_ASSET"] = "inline"
 
 # Create and display the viewer
@@ -103,10 +105,10 @@ viewer.send_table(
 )
 ```
 
-You can also use the native viewer instead of the inline viewer:
+You can also send tables to a native Viewer instead of the notebook widget:
 
 ```python
-os.environ["RERUN_NOTEBOOK_ASSET"] = "serve-local"
+from rerun.experimental import ViewerClient
 
 # Connect to a running Rerun Viewer
 client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
@@ -116,7 +118,7 @@ client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 
 As this is an experimental API, there are several limitations to be aware of:
 
-- Only a single record batch is supported per table
+- Multiple record batches (or a DataFusion DataFrame) can be passed, but they are merged into a single record batch before sending
 - Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
 - Integration with the rest of the Rerun API is still in progress
 - Rust and C++ support will be added after the API stabilizes

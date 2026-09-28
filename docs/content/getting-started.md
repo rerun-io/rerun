@@ -75,4 +75,4 @@ snippet: tutorials/getting_started[train]
 
 -   Check the [troubleshooting guide](./getting-started/install-rerun/troubleshooting.md).
 -   [Open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
--   [Join the Discord server](https://discord.gg/PXtCgFBSmH).
+-   [Join the Discord server](https://discord.gg/Gcm8BbTaAj).

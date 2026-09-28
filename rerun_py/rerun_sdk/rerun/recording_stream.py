@@ -1412,7 +1412,7 @@ def get_global_data_recording() -> RecordingStream | None:
     return RecordingStream._from_native(result) if result is not None else None
 
 
-def set_global_data_recording(recording: RecordingStream) -> RecordingStream | None:
+def set_global_data_recording(recording: RecordingStream | None) -> RecordingStream | None:
     """
     Replaces the currently active global recording with the specified one.
 
@@ -1422,7 +1422,7 @@ def set_global_data_recording(recording: RecordingStream) -> RecordingStream | N
         The newly active global recording.
 
     """
-    result = bindings.set_global_data_recording(recording.to_native())
+    result = bindings.set_global_data_recording(recording.to_native() if recording is not None else None)
     return RecordingStream._from_native(result) if result is not None else None
 
 

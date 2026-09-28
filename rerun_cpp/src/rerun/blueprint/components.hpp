@@ -10,6 +10,7 @@
 #include "blueprint/components/auto_scroll.hpp"
 #include "blueprint/components/auto_views.hpp"
 #include "blueprint/components/background_kind.hpp"
+#include "blueprint/components/column_display_mode.hpp"
 #include "blueprint/components/column_name.hpp"
 #include "blueprint/components/column_order.hpp"
 #include "blueprint/components/column_share.hpp"
@@ -60,4 +61,5 @@
 #include "blueprint/components/visualizer_component_mapping.hpp"
 #include "blueprint/components/visualizer_instruction_id.hpp"
 #include "blueprint/components/visualizer_type.hpp"
+#include "blueprint/components/volume.hpp"
 #include "blueprint/components/zoom_level.hpp"

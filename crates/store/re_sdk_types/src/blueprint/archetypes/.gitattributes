@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 active_visualizers.rs linguist-generated=true
+audio_playback.rs linguist-generated=true
 background.rs linguist-generated=true
 card_layout.rs linguist-generated=true
 container_blueprint.rs linguist-generated=true

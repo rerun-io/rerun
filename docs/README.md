@@ -36,8 +36,8 @@ Markdown files with YAML frontmatter, organized hierarchically:
 ```
 docs/content/
   index.md                        # Entry point
-  overview/                       # Installation, what is Rerun
-  getting-started/                # Quick start, data-in/out, configure viewer
+  overview/                       # What is Rerun, docs guide
+  getting-started/                # Quick start, install, project setup, data-in/out, configure viewer, train
   concepts/                       # Logging, visualization, querying
   howto/                          # Integration guides, tutorials
   reference/

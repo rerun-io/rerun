@@ -56,9 +56,13 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
-    pub fn git_hash_or_tag(&self) -> String {
+    /// Returns the most specific source reference available for this build.
+    ///
+    /// Uses the commit hash when available and otherwise falls back to the package version.
+    /// For published builds, that version identifies the corresponding release tag.
+    pub fn git_ref(&self) -> String {
         if self.git_hash.is_empty() {
-            format!("v{}", self.version)
+            self.version.to_string()
         } else {
             self.git_hash.to_string()
         }
@@ -154,6 +158,31 @@ impl CrateVersion<'_> {
         }
         CrateVersion::try_parse(parts[1]).map_err(ToOwned::to_owned)
     }
+}
+
+#[test]
+fn git_ref_from_build_info() {
+    let mut build_info = BuildInfo {
+        crate_name: "re_build_info".into(),
+        features: "".into(),
+        version: CrateVersion::parse("0.38.1"),
+        rustc_version: "".into(),
+        llvm_version: "".into(),
+        git_hash: "".into(),
+        git_branch: "".into(),
+        is_in_rerun_workspace: false,
+        target_triple: "".into(),
+        datetime: "".into(),
+        is_debug_build: false,
+    };
+
+    assert_eq!(build_info.git_ref(), "0.38.1");
+
+    build_info.git_hash = "b08c599e934b0dedee1e95fd74a989a1582ce3d5".into();
+    assert_eq!(
+        build_info.git_ref(),
+        "b08c599e934b0dedee1e95fd74a989a1582ce3d5"
+    );
 }
 
 #[test]

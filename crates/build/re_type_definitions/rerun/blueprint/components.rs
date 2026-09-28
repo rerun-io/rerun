@@ -16,6 +16,8 @@ mod auto_scroll;
 mod auto_views;
 #[path = "components/background_kind.def.rs"]
 mod background_kind;
+#[path = "components/column_display_mode.def.rs"]
+mod column_display_mode;
 #[path = "components/column_name.def.rs"]
 mod column_name;
 #[path = "components/column_order.def.rs"]
@@ -116,6 +118,8 @@ mod visualizer_component_mapping;
 mod visualizer_instruction_id;
 #[path = "components/visualizer_type.def.rs"]
 mod visualizer_type;
+#[path = "components/volume.def.rs"]
+mod volume;
 #[path = "components/zoom_level.def.rs"]
 mod zoom_level;
 
@@ -127,6 +131,7 @@ pub use self::auto_layout::*;
 pub use self::auto_scroll::*;
 pub use self::auto_views::*;
 pub use self::background_kind::*;
+pub use self::column_display_mode::*;
 pub use self::column_name::*;
 pub use self::column_order::*;
 pub use self::column_share::*;
@@ -177,4 +182,5 @@ pub use self::visual_bounds2d::*;
 pub use self::visualizer_component_mapping::*;
 pub use self::visualizer_instruction_id::*;
 pub use self::visualizer_type::*;
+pub use self::volume::*;
 pub use self::zoom_level::*;

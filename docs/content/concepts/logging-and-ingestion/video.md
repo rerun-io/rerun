@@ -18,7 +18,7 @@ This will use up a lot of space and bandwidth. You can also encode them as PNG a
 though it should be noted that PNG encoding usually does very little for the file size of photographic images.
 
 If you want to reduce bandwidth and storage cost, you can encode each frame as a JPEG and log it using `EncodedImage`. This can easily reduce the file sizes by almost two orders of magnitude with minimal perceptual loss.
-This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/0.18.2/common/archetypes/#rerun.archetypes.Image.compress).
+This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/archetypes/#rerun.archetypes.Image.compress).
 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
@@ -169,7 +169,7 @@ Beyond this, for best compatibility we recommend:
 There are still some limitations to encoded Video in Rerun which will be addressed in the future:
 
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
-* [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
+* [#5181](https://github.com/rerun-io/rerun/issues/5181): Audio tracks embedded in video files are not played back; log audio separately with [`AssetAudio`](../../reference/types/archetypes/asset_audio.md)
 * There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
   Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
 

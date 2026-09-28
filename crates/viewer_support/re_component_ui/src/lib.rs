@@ -44,7 +44,7 @@ use re_sdk_types::ColormapSelection;
 use re_sdk_types::blueprint::components::{
     AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
     ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
-    PointsDisplay, RootContainer, TooltipMode, ViewFit, ViewMaximized,
+    PointsDisplay, RootContainer, TooltipMode, ViewFit, ViewMaximized, Volume,
 };
 use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, CellSize, Color, DepthMeter, DrawOrder, FillMode,
@@ -107,6 +107,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
+    registry.add_singleline_edit_or_view::<Volume>(edit_f32_zero_to_one);
 
     // integer range components:
     registry.add_singleline_edit_or_view::<ForceIterations>(|ctx, ui, value| {

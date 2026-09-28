@@ -902,7 +902,7 @@ async fn try_register_into_asset_dataset(
 
 fn rrd_data_source(path: &TempPath) -> DataSource {
     let url = Url::from_file_path(path.as_path()).expect("valid file path");
-    DataSourceExt::new_rrd_url(url).into()
+    DataSourceExt::new_rrd_url(url, None).into()
 }
 
 /// Assert that at least one registration task failed with a message containing `expected_substring`.
