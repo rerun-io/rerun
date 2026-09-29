@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 re_arrow_ui.workspace = true
+re_audio = { workspace = true, default-features = false }
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true

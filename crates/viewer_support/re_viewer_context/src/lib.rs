@@ -15,6 +15,7 @@ mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
+mod audio_output;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
@@ -57,6 +58,9 @@ mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
 
+/// Cursor shown when the pointer can move the time cursor.
+pub const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
+
 pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
     AnnotationContextQuery, AnnotationContextStoreSubscriber, AnnotationContextTarget,
@@ -64,6 +68,7 @@ pub use self::annotations::{
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
+pub use self::audio_output::AudioOutput;
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
 };
@@ -75,6 +80,7 @@ pub use self::cache::{
     ImageHistogramCache, ImageStatsCache, Memoizers, Rgb8Histogram, SharablePlayableVideoStream,
     StoreCache, TensorStatsAccessor, TensorStatsCache, TransformDatabaseStoreCache,
     VideoAssetCache, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
+    filter_blob_removed_events,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{

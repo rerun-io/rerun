@@ -160,6 +160,7 @@ A sibling of `crates/panels`: neither depends on the other.
 
 | Crate                  | Description                                                                 |
 | ---------------------- | --------------------------------------------------------------------------- |
+| re_view_audio          | A view that shows the waveform of an audio asset and plays it back.         |
 | re_view_bar_chart      | A view that shows a single bar chart.                                       |
 | re_view_dataframe      | A view that shows the data contained in entities in a table.                |
 | re_view_graph          | A view that shows a graph (node-link diagram).                              |

@@ -1691,7 +1691,8 @@ fn paint_time_cursor(
     let is_being_dragged = ui.is_being_dragged(time_drag_id);
 
     if is_near || is_being_dragged {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+        ui.ctx()
+            .set_cursor_icon(re_viewer_context::MOVE_TIME_CURSOR_ICON);
     }
 
     if is_near

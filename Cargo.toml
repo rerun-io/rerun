@@ -80,6 +80,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.39.0-alpha.1", defaul
 rerun_c = { path = "crates/top/rerun_c", version = "=0.39.0-alpha.1", default-features = false }
 
 # crates/views:
+re_view_audio = { path = "crates/views/re_view_audio", version = "=0.39.0-alpha.1", default-features = false }
 re_view_bar_chart = { path = "crates/views/re_view_bar_chart", version = "=0.39.0-alpha.1", default-features = false }
 re_view_dataframe = { path = "crates/views/re_view_dataframe", version = "=0.39.0-alpha.1", default-features = false }
 re_view_graph = { path = "crates/views/re_view_graph", version = "=0.39.0-alpha.1", default-features = false }
@@ -688,6 +689,7 @@ debug = false
 "re_uri".debug = true
 "re_video".debug = true
 "re_view".debug = true
+"re_view_audio".debug = true
 "re_view_bar_chart".debug = true
 "re_view_dataframe".debug = true
 "re_view_graph".debug = true

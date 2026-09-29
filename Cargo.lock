@@ -11045,6 +11045,7 @@ dependencies = [
  "parking_lot",
  "pollster 1.0.1",
  "re_arrow_ui",
+ "re_audio",
  "re_build_info",
  "re_chunk",
  "re_chunk_index",
@@ -11448,6 +11449,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view_audio"
+version = "0.39.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "egui",
+ "nohash-hasher",
+ "re_audio",
+ "re_byte_size",
+ "re_chunk",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_test_context",
+ "re_test_viewport",
+ "re_tracing",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "re_workspace_hack",
+ "web-time",
+]
+
+[[package]]
 name = "re_view_bar_chart"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
@@ -11691,7 +11719,6 @@ dependencies = [
  "egui",
  "egui_table",
  "itertools 0.15.0",
- "nohash-hasher",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
@@ -11834,6 +11861,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_view",
+ "re_view_audio",
  "re_view_bar_chart",
  "re_view_dataframe",
  "re_view_graph",
@@ -11901,6 +11929,7 @@ dependencies = [
  "rayon",
  "re_arrow_util",
  "re_async",
+ "re_audio",
  "re_byte_size",
  "re_capabilities",
  "re_chunk",

@@ -65,8 +65,8 @@ agent_context = []
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_ui/analytics"]
 
-## Enable audio playback.
-audio = ["dep:re_audio"]
+## Enable the audio view and audio playback.
+audio = ["re_audio/output", "dep:re_view_audio"]
 
 ## Enable the map view
 map_view = ["dep:re_view_map"]
@@ -88,6 +88,7 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 # Internal:
 re_arrow_json.workspace = true
 re_async.workspace = true
+re_audio = { workspace = true, default-features = false }
 re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
@@ -150,7 +151,7 @@ re_viewport.workspace = true
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
-re_audio = { workspace = true, optional = true, features = ["output"] }
+re_view_audio = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
 # Test dependencies (optional):

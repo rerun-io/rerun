@@ -75,7 +75,7 @@ release_no_web_viewer = ["base", "lance", "nasm"]
 release_full = ["release_no_web_viewer", "web_viewer"]
 
 
-## Support audio playback in the viewer.
+## Support the audio view and audio playback.
 audio = ["rerun/audio"]
 
 ## Support the map view.

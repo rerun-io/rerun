@@ -357,7 +357,7 @@ impl ViewClass for StateTimelineView {
                 ui.make_persistent_id("state_timeline_cursor"),
                 egui::Sense::click_and_drag(),
             )
-            .on_hover_cursor(egui::CursorIcon::ResizeColumn)
+            .on_hover_cursor(re_viewer_context::MOVE_TIME_CURSOR_ICON)
         });
 
         // Background.

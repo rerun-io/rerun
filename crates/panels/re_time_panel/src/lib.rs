@@ -22,9 +22,6 @@ pub mod __bench {
     pub use re_time_ruler::TimeRangesUi;
 }
 
-/// Indicate moving the time cursor.
-const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
-
 /// Indicate creating a new time loop selection.
 const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
 // const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeHorizontal;   // TODO(rust-windowing/winit#4390)

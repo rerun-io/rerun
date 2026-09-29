@@ -169,14 +169,13 @@ Beyond this, for best compatibility we recommend:
 There are still some limitations to encoded Video in Rerun which will be addressed in the future:
 
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
-* [#5181](https://github.com/rerun-io/rerun/issues/5181): Audio tracks embedded in video files are not played back; log audio separately with [`AssetAudio`](../../reference/types/archetypes/asset_audio.md)
+* Audio tracks inside video files are ignored. Log audio separately with [`AssetAudio`](../../reference/types/archetypes/asset_audio.md).
 * There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
   Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
 TODO(#7594): fix above if ticket is outdated.
-TODO(#5181): fix above if ticket is outdated.
 -->
 
 

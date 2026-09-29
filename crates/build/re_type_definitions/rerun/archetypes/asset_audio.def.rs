@@ -13,7 +13,7 @@
 #[docs(unreleased)]
 #[docs(view_types = "AudioView")]
 #[rerun(state = "unstable")]
-#[rerun(visualizer_none)]
+#[rerun(visualizer = "AssetAudio")]
 pub struct AssetAudio {
     /// The asset's bytes.
     #[rerun(no_ui_edit)]

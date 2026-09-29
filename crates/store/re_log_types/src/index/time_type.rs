@@ -47,6 +47,15 @@ impl std::fmt::Display for TimeType {
 }
 
 impl TimeType {
+    /// Whether this represents physical time rather than an arbitrary sequence.
+    #[inline]
+    pub fn is_temporal(self) -> bool {
+        match self {
+            Self::Sequence => false,
+            Self::DurationNs | Self::TimestampNs => true,
+        }
+    }
+
     #[inline]
     pub(crate) fn hash(&self) -> u64 {
         match self {

@@ -84,7 +84,7 @@ log = ["dep:env_filter", "dep:log"]
 ## should leave to whoever owns `main`.
 log_setup = ["re_log/setup"]
 
-## Support audio playback in the viewer.
+## Support the audio view and audio playback.
 audio = ["re_viewer?/audio"]
 
 ## Support the map view.
