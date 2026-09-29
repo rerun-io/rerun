@@ -16,3 +16,6 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap", "web_viewer"] 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

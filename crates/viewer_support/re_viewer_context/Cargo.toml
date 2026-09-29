@@ -103,3 +103,6 @@ re_ui = { workspace = true, features = ["testing"] }
 egui_kittest.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 tiff.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

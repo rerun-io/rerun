@@ -48,6 +48,7 @@ ignored = [
   "re_types_builder",
   "re_protos_builder",
   "re_renderer_examples",
+  "re_workspace_hack", # only depended on for feature unification
 
   # used for specific targets or features
   "profiling",
@@ -163,6 +164,7 @@ re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.39.
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.39.0-alpha.1", default-features = false }
 re_types_builder_macros = { path = "crates/build/re_types_builder_macros", version = "=0.39.0-alpha.1", default-features = false }
 re_types_builder_prelude = { path = "crates/build/re_types_builder_prelude", version = "=0.39.0-alpha.1", default-features = false }
+re_workspace_hack = "0.0.0" # See `[patch.crates-io]`
 
 # crates/utils:
 re_agent = { path = "crates/utils/re_agent", version = "=0.39.0-alpha.1", default-features = false }
@@ -798,6 +800,7 @@ trivial_numeric_casts = "warn"
 unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unexpected_cfgs = { level = "deny", check-cfg = [
   'cfg(TODO)', # NOLINT allow `#[cfg(TODO)]` to compile (it will still fail CI)
+  'cfg(rerun_workspace_hack)', # Set by `.cargo/config.toml`, see `re_workspace_hack`
 ] }
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
@@ -942,6 +945,9 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 #
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
+
+# crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
+re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }

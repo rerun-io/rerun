@@ -101,3 +101,6 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [build-dependencies]
 re_build_tools.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

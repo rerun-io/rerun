@@ -1,0 +1,28 @@
+# Settings for `cargo hakari`, which generates `crates/utils/re_workspace_hack`.
+# See https://docs.rs/cargo-hakari/latest/cargo_hakari/config for a full list of options.
+# After editing this, run `cargo hakari generate`.
+
+hakari-package = "re_workspace_hack"
+
+dep-format-version = "4"
+
+resolver = "2"
+
+# The platforms developers build on.
+# `re_workspace_hack` is never used on wasm (see `rerun_workspace_hack` in `.cargo/config.toml`).
+platforms = [
+  "aarch64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu",
+]
+
+[traversal-excludes]
+# Builds of `rerun_py` differ anyway (maturin sets its own `RUSTFLAGS`),
+# and unifying with it would pull `pyo3` into every build.
+workspace-members = ["rerun_py"]
+third-party = [
+  # Its default features need `nasm` installed, which we don't require (see the `nasm` feature of `re_video`).
+  { name = "re_rav1d" },
+]

@@ -394,6 +394,12 @@ check-large-files = "python scripts/ci/check_large_files.py"
 # Check whether there are `publish=true` crates which depend on `publish=false` crates in the repository.
 check-publish-flags = "python scripts/ci/crates.py check-publish-flags"
 
+# Regenerate `re_workspace_hack` after changing dependencies or their features.
+hakari-generate = "cargo hakari generate"
+
+# Check that `re_workspace_hack` is up to date, and that every crate depends on it.
+hakari-check = "cargo hakari verify && python scripts/ci/crates.py check-feature-unification-deps"
+
 # Check that each crate has at most one integration test binary (opt-out via `[package.metadata.rerun] test-binaries`).
 check-test-binaries = "python scripts/ci/check_test_binaries.py"
 
@@ -616,6 +622,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
+cargo-hakari = ">=0.9.36"
 cargo-nextest = ">=0.9.140"
 clang = "19.1.7.*"
 clang-tools = "19.1.7.*" # clang-format

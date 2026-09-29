@@ -48,3 +48,6 @@ re_test_context.workspace = true
 egui_kittest.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

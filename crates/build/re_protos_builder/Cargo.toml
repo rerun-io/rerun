@@ -27,3 +27,6 @@ re_log = { workspace = true, features = ["setup"] }
 # External
 camino.workspace = true
 tonic-prost-build.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

@@ -14,6 +14,7 @@ Each entry in FORBIDDEN_DEPENDENCIES is a tuple of:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 
@@ -26,6 +27,9 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
     ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
 ]
+
+# Setting `RUSTFLAGS` disables `re_workspace_hack`, which depends on everything.
+CARGO_ENV = {**os.environ, "RUSTFLAGS": os.environ.get("RUSTFLAGS", "")}
 
 
 def get_dependencies(crate_spec: str) -> set[str]:
@@ -43,7 +47,7 @@ def get_dependencies(crate_spec: str) -> set[str]:
         "none",
     ] + extra_args
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, env=CARGO_ENV)
 
     if result.returncode != 0:
         print(f"ERROR: `{' '.join(cmd)}` failed:\n{result.stderr}", file=sys.stderr)
@@ -82,7 +86,7 @@ def get_dependency_path(crate_spec: str, forbidden_dep: str) -> str:
         "normal",
     ] + extra_args
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, env=CARGO_ENV)
 
     if result.returncode != 0:
         return f"  (failed to get dependency path: {result.stderr.strip()})"

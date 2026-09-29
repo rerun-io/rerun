@@ -13,6 +13,9 @@ codegen-backend = true
 [build]
 # Incremental compilation blows up the size of the target folder, and is also buggy.
 incremental = false
+# Enables `re_workspace_hack` (see its `Cargo.toml`).
+# Ignored when `RUSTFLAGS` is set, and for targets with their own `rustflags` below.
+rustflags = ["--cfg", "rerun_workspace_hack"]
 
 
 [env]
@@ -71,4 +74,4 @@ rustflags = [
 # Note that some sources claim that this is incompatible with incremental builds.
 [target.'cfg(all(target_os = "windows", target_env = "msvc"))']
 linker = "link.exe"
-rustflags = ["-C", "link-arg=/Brepro"]
+rustflags = ["-C", "link-arg=/Brepro", "--cfg", "rerun_workspace_hack"]

@@ -47,6 +47,10 @@ CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 MAX_PUBLISH_WORKERS = 3
 
+# Only an empty stub of this is on crates.io, with a fixed version.
+# We treat it as an external dependency: never bump its version, never publish it.
+FEATURE_UNIFICATION_CRATE = "re_workspace_hack"
+
 R = Fore.RED
 G = Fore.GREEN
 B = Fore.BLUE
@@ -111,7 +115,10 @@ def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
                 continue
             manifest_text = crate_cargo_toml.read_text()
             manifest: dict[str, Any] = tomlkit.parse(manifest_text)
-            crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
+            name = manifest["package"]["name"]
+            if name == FEATURE_UNIFICATION_CRATE:
+                continue
+            crates[name] = Crate(manifest, crate_path)
     return crates
 
 
@@ -699,6 +706,32 @@ def check_git_branch_name() -> None:
         raise Exception(f'"{version}" is not a valid version string. See RELEASES.md for supported formats')
 
 
+def check_feature_unification_deps() -> None:
+    """Check that every workspace crate depends on the feature unification crate, so its builds share dependencies."""
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+    crates = get_workspace_crates(root)
+
+    hakari: dict[str, Any] = tomlkit.parse(Path(".config/hakari.toml").read_text(encoding="utf-8"))
+    excluded = set(hakari.get("traversal-excludes", {}).get("workspace-members", []))
+
+    section = "cfg(rerun_workspace_hack)"
+    missing = [
+        name
+        for name, crate in crates.items()
+        if name not in excluded
+        and FEATURE_UNIFICATION_CRATE not in crate.manifest.get("target", {}).get(section, {}).get("dependencies", {})
+    ]
+    if missing:
+        print(f"{R}These crates are missing a dependency on {B}{FEATURE_UNIFICATION_CRATE}{X}:")
+        for name in sorted(missing):
+            print(f"  {name}")
+        print(
+            f"Add this to their Cargo.toml:\n\n[target.'{section}'.dependencies]\n{FEATURE_UNIFICATION_CRATE}.workspace = true"
+        )
+        sys.exit(1)
+    print(f"All crates depend on {FEATURE_UNIFICATION_CRATE}.")
+
+
 def check_publish_flags() -> None:
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     crates = get_workspace_crates(root)
@@ -821,6 +854,10 @@ def main() -> None:
 
     cmds_parser.add_parser("check-dependency-tree", help="Check that our dependency tree doesn't have any cycles.")
 
+    cmds_parser.add_parser(
+        "check-feature-unification-deps", help=f"Check that all crates depend on {FEATURE_UNIFICATION_CRATE}."
+    )
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
@@ -829,6 +866,8 @@ def main() -> None:
         check_publish_flags()
     if args.cmd == "check-dependency-tree":
         check_dependency_tree()
+    if args.cmd == "check-feature-unification-deps":
+        check_feature_unification_deps()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":

@@ -134,3 +134,6 @@ bench = false
 [[bench]]
 name = "video_load_bench"
 harness = false
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

@@ -314,6 +314,7 @@ A sibling of `crates/views`: neither depends on the other.
 | re_tuid             | 128-bit Time-based Unique Identifier                                                                                                                                       |
 | re_video            | Rerun video processing utilities.                                                                                                                                          |
 | re_web              | Utilities for interacting with Web APIs                                                                                                                                    |
+| re_workspace_hack   | Unifies third-party dependency features across the workspace to avoid recompiles. Managed by cargo-hakari.                                                                 |
 
 <!-- crate-tables:end -->
 
