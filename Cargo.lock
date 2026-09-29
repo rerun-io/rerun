@@ -375,6 +375,7 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "windows-sys 0.60.2",
+ "wl-clipboard-rs",
  "x11rb",
 ]
 
@@ -3421,7 +3422,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 [[package]]
 name = "ecolor"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3438,7 +3439,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3476,7 +3477,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3498,7 +3499,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3517,7 +3518,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3585,7 +3586,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "egui",
@@ -3603,7 +3604,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3616,7 +3617,7 @@ dependencies = [
 [[package]]
 name = "egui_inspection"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "egui",
  "image",
@@ -3629,7 +3630,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "dify",
  "eframe",
@@ -3678,7 +3679,7 @@ dependencies = [
 [[package]]
 name = "egui_system_fonts"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "epaint",
  "fontique",
@@ -3740,7 +3741,7 @@ checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 [[package]]
 name = "emath"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3853,7 +3854,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3880,7 +3881,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 
 [[package]]
 name = "equivalent"
@@ -7738,6 +7739,16 @@ checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 dependencies = [
  "futures-core",
  "pin-project-lite",
+]
+
+[[package]]
+name = "os_pipe"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -14872,6 +14883,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree_magic_mini"
+version = "3.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8765b90061cba6c22b5831f675da109ae5561588290f9fa2317adab2714d5a6"
+dependencies = [
+ "memchr",
+ "nom 8.0.0",
+ "petgraph",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15534,9 +15556,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols-wlr"
-version = "0.3.8"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cb6cdc73399c0e06504c437fe3cf886f25568dd5454473d565085b36d6a8bbf"
+checksum = "eb04e52f7836d7c7976c78ca0250d61e33873c34156a2a1fc9474828ec268234"
 dependencies = [
  "bitflags 2.13.1",
  "wayland-backend",
@@ -16198,6 +16220,24 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
+
+[[package]]
+name = "wl-clipboard-rs"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9651471a32e87d96ef3a127715382b2d11cc7c8bb9822ded8a7cc94072eb0a3"
+dependencies = [
+ "libc",
+ "log",
+ "os_pipe",
+ "rustix 1.1.4",
+ "thiserror 2.0.19",
+ "tree_magic_mini",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
+ "wayland-protocols-wlr",
+]
 
 [[package]]
 name = "writeable"

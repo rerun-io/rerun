@@ -62,14 +62,13 @@ datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "color-hex", "serde"] }
 eframe = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
-egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "callstack", "color-hex", "default_fonts", "persistence", "rayon"] }
+egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main" }
 egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["http", "image", "serde", "svg"] }
 ehttp = { version = "0.7", features = ["native-async", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "serde"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
-fastrand = { version = "2" }
 flate2 = { version = "1", features = ["zlib-rs"] }
 foldhash = { version = "0.2" }
 font-types = { version = "0.12", default-features = false, features = ["bytemuck", "serde", "std"] }
@@ -222,14 +221,13 @@ datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "color-hex", "serde"] }
 eframe = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
-egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "callstack", "color-hex", "default_fonts", "persistence", "rayon"] }
+egui = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { git = "https://github.com/emilk/egui", branch = "main" }
 egui_extras = { git = "https://github.com/emilk/egui", branch = "main", features = ["http", "image", "serde", "svg"] }
 ehttp = { version = "0.7", features = ["native-async", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { git = "https://github.com/emilk/egui", branch = "main", features = ["bytemuck", "serde"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
-fastrand = { version = "2" }
 flate2 = { version = "1", features = ["zlib-rs"] }
 foldhash = { version = "0.2" }
 font-types = { version = "0.12", default-features = false, features = ["bytemuck", "serde", "std"] }
@@ -444,6 +442,7 @@ ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
+fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gimli = { version = "0.32" }
@@ -485,6 +484,7 @@ ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
+fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gimli = { version = "0.32" }
@@ -696,6 +696,7 @@ ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
+fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gimli = { version = "0.32" }
@@ -737,6 +738,7 @@ ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
+fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gimli = { version = "0.32" }

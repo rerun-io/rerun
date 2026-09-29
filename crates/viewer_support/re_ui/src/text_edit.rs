@@ -1,4 +1,5 @@
 use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
+use egui::widget_style::{StyleArgs, TextEditStyle};
 use egui::{Align2, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
 
 /// Wrapper around eguis [`TextEdit`] that applies reruns styling
@@ -315,4 +316,29 @@ pub fn autocomplete_text_edit(
     }
 
     response
+}
+
+/// Rerun's style for every [`TextEdit`]: egui's default, with room between the frame and the text.
+///
+/// egui derives a text edit's margin from `button_padding`, which Rerun sets to almost nothing so
+/// that the blueprint panel's icons align (see `DesignTokens`), leaving the text cramped.
+pub struct TextEditTheme;
+
+impl TextEditTheme {
+    /// The space between a text edit's frame and its text.
+    const MARGIN: egui::Margin = egui::Margin::symmetric(4, 2);
+}
+
+impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> TextEditStyle {
+        let mut style: TextEditStyle = egui::theme::DefaultStyle.style(args);
+
+        // The default margin is `button_padding` with room for the stroke taken out of it, so
+        // swapping in our margin by the difference keeps the stroke accounted for.
+        let frame = &mut style.atom_layout.frame;
+        frame.inner_margin = frame.inner_margin + Self::MARGIN
+            - egui::Margin::from(args.style.spacing.button_padding);
+
+        style
+    }
 }
