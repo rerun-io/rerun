@@ -29,6 +29,13 @@ const TAB_TITLE_SPACING: f32 = 12.0;
 /// Gap between the tabs and the buttons at either end of the tab bar.
 const TAB_BAR_BUTTON_SPACING: f32 = 8.0;
 
+/// Opens another conversation tab, the way a browser opens another tab.
+///
+/// `COMMAND` is Cmd on Mac and Ctrl everywhere else, so this reads as the platform's own
+/// new-tab shortcut. Only fires while the panel holds the pointer or the keyboard focus.
+const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::T);
+
 /// One chat with one agent: the content of a tab.
 struct Conversation {
     session: AgentSession,
@@ -264,9 +271,13 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         _tabs: &egui_tiles::Tabs,
     ) {
         ui.add_space(TAB_BAR_BUTTON_SPACING);
+        let tooltip = format!(
+            "New conversation ({})",
+            ui.ctx().format_shortcut(&NEW_CONVERSATION_SHORTCUT)
+        );
         if ui
             .small_icon_button(&icons::ADD, "New conversation")
-            .on_hover_text("New conversation")
+            .on_hover_text(tooltip)
             .clicked()
         {
             self.add_requested = true;
@@ -638,6 +649,7 @@ impl AgentPanel {
             tab_action: None,
         };
         self.tree.ui(&mut behavior, ui);
+        let panel_rect = ui.min_rect();
         let TabsBehavior {
             add_requested,
             host_button_clicked,
@@ -659,7 +671,8 @@ impl AgentPanel {
         }
 
         let has_conversations = self.tree.tiles.tiles().any(|tile| tile.is_pane());
-        if add_requested || !has_conversations {
+        if add_requested || !has_conversations || new_conversation_shortcut_pressed(ui, panel_rect)
+        {
             self.new_conversation();
         }
     }
@@ -668,6 +681,25 @@ impl AgentPanel {
         let tile_id = active_tile_id(&self.tree)?;
         self.tree.tiles.get_pane(&tile_id)
     }
+}
+
+/// Whether the user pressed [`NEW_CONVERSATION_SHORTCUT`] "in" the panel.
+///
+/// The panel is one widget among many in its host, so the shortcut is scoped to it: it only
+/// counts while the pointer is over the panel or a widget inside it has keyboard focus.
+fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> bool {
+    let ctx = ui.ctx();
+
+    let pointer_inside = ctx
+        .pointer_latest_pos()
+        .is_some_and(|pos| panel_rect.contains(pos));
+    let focus_inside = ctx
+        .memory(|memory| memory.focused())
+        .and_then(|id| ctx.read_response(id))
+        .is_some_and(|response| panel_rect.contains_rect(response.rect));
+
+    (pointer_inside || focus_inside)
+        && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
 }
 
 fn new_tree(first: Conversation) -> egui_tiles::Tree<Conversation> {
