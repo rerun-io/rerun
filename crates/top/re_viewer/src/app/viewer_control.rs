@@ -13,13 +13,14 @@ use re_log_channel::{
 use re_log_types::{EntityPath, StoreId, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, GetRecordingSchemaRequest,
-    GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse,
-    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
-    OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest,
-    SaveScreenshotResponse, ScreenRect, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
-    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerTimeline, ViewerView, viewer_control_request,
+    CloseRecordingsRequest, CloseRecordingsResponse, GetBlueprintRequest, GetBlueprintResponse,
+    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetViewerLogsRequest,
+    GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
+    OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema,
+    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetTimeCursorRequest,
+    SetTimeCursorResponse, TimeCursor, ViewerControlRequest, ViewerControlResponse,
+    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerTimeline, ViewerView,
+    viewer_control_request,
 };
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
@@ -79,6 +80,12 @@ impl App {
             Kind::DescribeCommands(request) => {
                 on_done.call(
                     self.describe_commands(store_hub, request, egui_ctx)
+                        .map(ViewerControlResponse::from),
+                );
+            }
+            Kind::GetBlueprint(request) => {
+                on_done.call(
+                    self.collect_blueprint_json(store_hub, request)
                         .map(ViewerControlResponse::from),
                 );
             }
@@ -367,6 +374,55 @@ impl App {
                 .map(|origin| origin.to_string()),
             viewer_version: Some(self.build_info.version.to_string()),
         }
+    }
+
+    /// The active blueprint of a recording's application, as JSON, for the `get_blueprint`
+    /// operation.
+    fn collect_blueprint_json(
+        &mut self,
+        store_hub: &StoreHub,
+        request: GetBlueprintRequest,
+    ) -> Result<GetBlueprintResponse, ViewerControlError> {
+        let GetBlueprintRequest { store_id } = request;
+
+        let store_id = store_id
+            .map(|store_id| store_id.parse::<StoreId>())
+            .transpose()
+            .map_err(|err| {
+                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+            })?
+            .or_else(|| self.state.active_recording_id().cloned())
+            .ok_or_else(|| {
+                ViewerControlError::failed_precondition(
+                    "no active recording to read the blueprint of",
+                )
+            })?;
+
+        if store_hub.entity_db(&store_id).is_none() {
+            return Err(ViewerControlError::not_found(format!(
+                "recording {store_id} is not open"
+            )));
+        }
+
+        let blueprint_db = store_hub
+            .active_blueprint_for_app(store_id.application_id())
+            .ok_or_else(|| {
+                ViewerControlError::not_found(format!(
+                    "recording {store_id} has no active blueprint"
+                ))
+            })?;
+
+        let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+        let json = re_arrow_json::json_from_store(
+            blueprint_db.storage_engine().store(),
+            &query,
+            &self.reflection,
+        );
+
+        Ok(GetBlueprintResponse {
+            blueprint_id: blueprint_db.store_id().to_string(),
+            json: json.to_string(),
+        })
     }
 
     /// Snapshot a recording's schema for the `get_recording_schema` operation: every entity

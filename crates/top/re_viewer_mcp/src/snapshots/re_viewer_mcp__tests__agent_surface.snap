@@ -796,6 +796,23 @@ Conventions:
   }
 }
 
+## rerun_get_blueprint
+
+{
+  "name": "rerun_get_blueprint",
+  "description": "Read a recording's active blueprint (layout, views, their properties and overrides) as\nJSON, keyed by blueprint entity path, then archetype, then field.\n\n`NOT_FOUND` if the recording is not open or has no active blueprint.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "store_id": {
+        "type": "string",
+        "description": "Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.\nIf omitted, the active recording is used.\n\nBlueprints belong to an application, so every recording of the same application shares one."
+      }
+    },
+    "description": "Request for `GetBlueprint`."
+  }
+}
+
 ## rerun_get_recording_schema
 
 {

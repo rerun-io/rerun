@@ -285,7 +285,7 @@ impl ViewClassRegistry {
             reflection
                 .components
                 .iter()
-                .filter(|(_, r)| r.is_enum)
+                .filter(|(_, r)| r.is_enum())
                 .map(|(ct, _)| *ct)
                 .collect(),
         );

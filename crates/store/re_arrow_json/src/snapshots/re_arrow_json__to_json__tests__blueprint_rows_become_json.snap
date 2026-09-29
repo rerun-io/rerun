@@ -1,0 +1,118 @@
+---
+source: crates/store/re_arrow_json/src/to_json.rs
+expression: "serde_json::to_string_pretty(&read(&example_blueprint())).unwrap()"
+---
+{
+  "/blueprint_panel": {
+    "PanelBlueprint": {
+      "state": "Collapsed"
+    }
+  },
+  "/container/00000000-0000-4000-8000-000000000001": {
+    "ContainerBlueprint": {
+      "col_shares": [
+        2.0,
+        1.0
+      ],
+      "container_kind": "Horizontal",
+      "contents": [
+        "/view/00000000-0000-4000-8000-000000000003",
+        "/container/00000000-0000-4000-8000-000000000002"
+      ]
+    }
+  },
+  "/container/00000000-0000-4000-8000-000000000002": {
+    "ContainerBlueprint": {
+      "active_tab": "/view/00000000-0000-4000-8000-000000000005",
+      "container_kind": "Tabs",
+      "contents": [
+        "/view/00000000-0000-4000-8000-000000000004",
+        "/view/00000000-0000-4000-8000-000000000005"
+      ]
+    }
+  },
+  "/time_panel": {
+    "TimePanelBlueprint": {
+      "fps": 30.0,
+      "play_state": "Paused"
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003": {
+    "ViewBlueprint": {
+      "class_identifier": "3D",
+      "display_name": "Scene",
+      "space_origin": "/world"
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003/defaults": {
+    "Points3D": {
+      "radii": 0.02
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003/EyeControls3D": {
+    "EyeControls3D": {
+      "kind": "Orbital",
+      "position": [
+        3.0,
+        3.0,
+        2.0
+      ]
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003/ViewContents": {
+    "ViewContents": {
+      "query": [
+        "+ /world/**",
+        "- /world/debug/**"
+      ]
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003/ViewContents/overrides/world/robot/points/visualizers": {
+    "ActiveVisualizers": {
+      "instruction_ids": "00000000-0000-4000-8000-000000000006"
+    },
+    "EntityBehavior": {
+      "visible": true
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000003/ViewContents/overrides/world/robot/points/visualizers/00000000-0000-4000-8000-000000000006": {
+    "Points3D": {
+      "colors": "#ff0010"
+    },
+    "VisualizerInstruction": {
+      "visualizer_type": "Points3D"
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000004": {
+    "ViewBlueprint": {
+      "class_identifier": "TimeSeries",
+      "space_origin": "/joints"
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000004/TimeAxis": {
+    "TimeAxis": {
+      "view_range": {
+        "start": {
+          "CursorRelative": -100
+        },
+        "end": "Infinite"
+      }
+    }
+  },
+  "/view/00000000-0000-4000-8000-000000000005": {
+    "ViewBlueprint": {
+      "class_identifier": "TextDocument",
+      "display_name": "README",
+      "space_origin": "/description"
+    },
+    "my_note": "hello"
+  },
+  "/viewport": {
+    "ViewportBlueprint": {
+      "auto_layout": false,
+      "auto_views": false,
+      "maximized": "00000000-0000-4000-8000-000000000003",
+      "root_container": "00000000-0000-4000-8000-000000000001"
+    }
+  }
+}

@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -112,6 +112,12 @@ pub mod viewer_control_request {
         /// Ask the user before running a `destructive` command.
         #[prost(message, tag = "11")]
         RunCommand(super::RunCommandRequest),
+        /// Read a recording's active blueprint (layout, views, their properties and overrides) as
+        /// JSON, keyed by blueprint entity path, then archetype, then field.
+        ///
+        /// `NOT_FOUND` if the recording is not open or has no active blueprint.
+        #[prost(message, tag = "12")]
+        GetBlueprint(super::GetBlueprintRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -130,7 +136,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -172,6 +178,9 @@ pub mod viewer_control_response {
         /// Result of `run_command`.
         #[prost(message, tag = "11")]
         RunCommand(super::RunCommandResponse),
+        /// Result of `get_blueprint`.
+        #[prost(message, tag = "12")]
+        GetBlueprint(super::GetBlueprintResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -370,6 +379,46 @@ impl ::prost::Name for EguiInspectResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.EguiInspectResponse".into()
+    }
+}
+/// Request for `GetBlueprint`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetBlueprintRequest {
+    /// Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.
+    /// If omitted, the active recording is used.
+    ///
+    /// Blueprints belong to an application, so every recording of the same application shares one.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for GetBlueprintRequest {
+    const NAME: &'static str = "GetBlueprintRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetBlueprintRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetBlueprintRequest".into()
+    }
+}
+/// Response for `GetBlueprint`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetBlueprintResponse {
+    /// The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
+    #[prost(string, tag = "1")]
+    pub blueprint_id: ::prost::alloc::string::String,
+    /// The blueprint as a JSON object, keyed by blueprint entity path.
+    #[prost(string, tag = "2")]
+    pub json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetBlueprintResponse {
+    const NAME: &'static str = "GetBlueprintResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetBlueprintResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetBlueprintResponse".into()
     }
 }
 /// Request for `GetRecordingSchema`.

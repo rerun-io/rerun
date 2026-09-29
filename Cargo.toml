@@ -140,6 +140,7 @@ re_parquet = { path = "crates/data_flow/re_parquet", version = "=0.39.0-alpha.1"
 re_redap_client = { path = "crates/data_flow/re_redap_client", version = "=0.39.0-alpha.1", default-features = false }
 
 # crates/store:
+re_arrow_json = { path = "crates/store/re_arrow_json", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk_index = { path = "crates/store/re_chunk_index", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk_optimizer = { path = "crates/store/re_chunk_optimizer", version = "=0.39.0-alpha.1", default-features = false }
@@ -591,6 +592,7 @@ debug = false
 "re_agent".debug = true
 "re_agent_ui".debug = true
 "re_analytics".debug = true
+"re_arrow_json".debug = true
 "re_arrow_ui".debug = true
 "re_arrow_util".debug = true
 "re_async".debug = true

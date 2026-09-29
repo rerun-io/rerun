@@ -9010,6 +9010,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_arrow_json"
+version = "0.39.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "insta",
+ "re_chunk",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "serde_json",
+ "thiserror 2.0.19",
+ "uuid",
+]
+
+[[package]]
 name = "re_arrow_ui"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
@@ -11645,6 +11663,7 @@ dependencies = [
  "rayon",
  "re_agent_ui",
  "re_analytics",
+ "re_arrow_json",
  "re_async",
  "re_audio",
  "re_auth",

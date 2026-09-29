@@ -167,6 +167,12 @@ message ViewerControlRequest {
     // Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
     // Ask the user before running a `destructive` command.
     RunCommandRequest run_command = 11;
+
+    // Read a recording's active blueprint (layout, views, their properties and overrides) as
+    // JSON, keyed by blueprint entity path, then archetype, then field.
+    //
+    // `NOT_FOUND` if the recording is not open or has no active blueprint.
+    GetBlueprintRequest get_blueprint = 12;
   }
 }
 
@@ -206,6 +212,9 @@ message ViewerControlResponse {
 
     // Result of `run_command`.
     RunCommandResponse run_command = 11;
+
+    // Result of `get_blueprint`.
+    GetBlueprintResponse get_blueprint = 12;
   }
 }
 
@@ -309,6 +318,27 @@ message EguiInspectRequest {
 message EguiInspectResponse {
   // `egui_inspection` response.
   bytes response = 1;
+}
+
+// ----------------------------------------------------------------------------
+// GetBlueprint
+
+// Request for `GetBlueprint`.
+message GetBlueprintRequest {
+  // Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.
+  // If omitted, the active recording is used.
+  //
+  // Blueprints belong to an application, so every recording of the same application shares one.
+  optional string store_id = 1;
+}
+
+// Response for `GetBlueprint`.
+message GetBlueprintResponse {
+  // The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
+  string blueprint_id = 1;
+
+  // The blueprint as a JSON object, keyed by blueprint entity path.
+  string json = 2;
 }
 
 // ----------------------------------------------------------------------------
