@@ -4,7 +4,7 @@ use re_entity_db::{EntityDb, LogSource};
 use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
-use re_ui::{RecordingCommand, UICommand, UICommandSender as _};
+use re_ui::{RecordingCommand, UICommand};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, Route, StorageContext, StoreHub,
@@ -382,7 +382,22 @@ impl App {
                 if self.state.navigation.current().recording_id().is_none() {
                     self.state.navigation.replace(Route::RedapServer(origin));
                 }
-                self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
+                self.command_sender
+                    .send_system(SystemCommand::ExpandFallbackBlueprintPanel);
+            }
+
+            SystemCommand::ExpandFallbackBlueprintPanel => {
+                // Without a blueprint store, `AppBlueprint` reads and writes the fallback panel states.
+                let app_blueprint = AppBlueprint::new(
+                    None,
+                    &self.state.blueprint_query_for_viewer(None),
+                    egui_ctx,
+                    self.panel_state_overrides_active
+                        .then_some(self.panel_state_overrides),
+                );
+                if !app_blueprint.blueprint_panel_state().is_expanded() {
+                    app_blueprint.toggle_blueprint_panel(&self.command_sender);
+                }
             }
 
             SystemCommand::RefreshRedapServer(origin) => {

@@ -75,7 +75,6 @@ impl App {
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),
             );
-
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,

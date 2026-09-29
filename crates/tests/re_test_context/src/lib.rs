@@ -967,6 +967,7 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::ExpandFallbackBlueprintPanel
                 | SystemCommand::RefreshRedapServer(_)
                 | SystemCommand::RefreshRedapEntry { .. }
                 | SystemCommand::RemoveRedapServer(_)

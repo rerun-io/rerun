@@ -34,6 +34,11 @@ pub enum SystemCommand {
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
 
+    /// Expand the blueprint panel on routes that have no blueprint, such as the redap browser.
+    ///
+    /// The panel state stored in a blueprint stays unchanged.
+    ExpandFallbackBlueprintPanel,
+
     /// Refresh the whole catalog (all datasets & tables) of an already-known redap server.
     RefreshRedapServer(re_uri::Origin),
 
