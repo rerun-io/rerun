@@ -26,11 +26,14 @@ testing = ["re_agent/testing"]
 
 [dependencies]
 re_agent.workspace = true
+re_log.workspace = true
+re_tracing.workspace = true
 re_ui.workspace = true
 
 base64.workspace = true
 egui.workspace = true
 egui_tiles.workspace = true
+image = { workspace = true, default-features = false, features = ["png"] }
 jiff.workspace = true
 pulldown-cmark.workspace = true
 serde_json.workspace = true

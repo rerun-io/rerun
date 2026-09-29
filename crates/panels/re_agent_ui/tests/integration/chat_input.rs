@@ -13,7 +13,7 @@ use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSetting
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
-fn ready_panel() -> AgentPanel {
+pub fn ready_panel() -> AgentPanel {
     let agents = AgentProfile::builtin()
         .into_iter()
         .map(|profile| AgentEntry {

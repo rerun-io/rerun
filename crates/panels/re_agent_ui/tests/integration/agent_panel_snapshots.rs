@@ -14,7 +14,7 @@ use re_agent_ui::acp::schema::v1::{
 };
 use re_agent_ui::{
     AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSession, AgentSettings, McpServerConfig,
-    RECOMMENDED_WIDTH,
+    Prompt, PromptImage, RECOMMENDED_WIDTH,
 };
 
 /// As wide as a host is meant to make the panel, so the snapshots show what users see.
@@ -238,12 +238,46 @@ fn chat_conversation() {
     // The user's own prompt is added by the UI, not by the agent:
     session
         .transcript_mut()
-        .push_user("The left camera doesn't show up in the viewer. Fix it.".to_owned());
+        .push_user("The left camera doesn't show up in the viewer. Fix it.".into());
     for update in updates {
         session.handle_event(AgentEvent::Update(update));
     }
 
     snapshot("chat_conversation", panel);
+}
+
+/// A small solid image, standing in for a pasted screenshot.
+fn pasted_image() -> PromptImage {
+    let size = [64, 48];
+    let pixels = image::RgbImage::from_pixel(64, 48, image::Rgb([90, 120, 160]));
+    let mut bytes = Vec::new();
+    image::DynamicImage::ImageRgb8(pixels)
+        .write_to(
+            &mut std::io::Cursor::new(&mut bytes),
+            image::ImageFormat::Png,
+        )
+        .expect("a solid PNG always encodes");
+    PromptImage {
+        bytes: bytes.into(),
+        mime_type: "image/png".to_owned(),
+        size,
+    }
+}
+
+/// A pasted image stays in the history, so the conversation still reads as a whole later on.
+#[test]
+fn chat_pasted_image() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+
+    session.transcript_mut().push_user(Prompt {
+        text: "What is wrong with this plot?".to_owned(),
+        images: vec![pasted_image()],
+    });
+
+    snapshot("chat_pasted_image", panel);
 }
 
 #[test]
@@ -255,7 +289,7 @@ fn chat_permission_request() {
 
     session
         .transcript_mut()
-        .push_user("Create a file /tmp/probe.txt containing the word 'probe'.".to_owned());
+        .push_user("Create a file /tmp/probe.txt containing the word 'probe'.".into());
     session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
         ToolCall::new("exec-1", "Write probe file")
             .kind(ToolKind::Execute)
@@ -337,7 +371,7 @@ fn chat_wide_table() {
 
     session
         .transcript_mut()
-        .push_user("List the recordings.".to_owned());
+        .push_user("List the recordings.".into());
     let table = "| Recording | Application | Timelines | Duration | Size on disk | Notes |\n\
                  |-----------|-------------|-----------|----------|--------------|-------|\n\
                  | `episode_000001` | `warehouse_pick` | `frame`, `time` | 2m 13s | 1.2 GB | left camera missing after frame 800 |\n\
@@ -362,7 +396,7 @@ fn chat_plan_approval() {
 
     session
         .transcript_mut()
-        .push_user("Make the left camera show up in the viewer.".to_owned());
+        .push_user("Make the left camera show up in the viewer.".into());
     session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
         ToolCall::new("plan-1", "Exit plan mode")
             .kind(ToolKind::SwitchMode)
@@ -429,15 +463,15 @@ fn chat_queued_prompts() {
 
     session
         .transcript_mut()
-        .push_user("Make the left camera show up in the viewer.".to_owned());
+        .push_user("Make the left camera show up in the viewer.".into());
     session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
         ToolCall::new("read-1", "Read log_cameras.py")
             .kind(ToolKind::Read)
             .status(ToolCallStatus::InProgress),
     )));
     session.begin_test_turn();
-    assert!(session.send_prompt("Then also fix the tests."));
-    assert!(session.send_prompt("And update the README:\n- mention the new entity path"));
+    assert!(session.send_prompt("Then also fix the tests.".into()));
+    assert!(session.send_prompt("And update the README:\n- mention the new entity path".into()));
 
     snapshot("chat_queued_prompts", panel);
 }

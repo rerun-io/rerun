@@ -10,9 +10,13 @@ use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
 
+use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
-use re_agent::{AgentSession, AuthPrompt, Phase};
+use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
+
+/// Height a pasted image is previewed at in the composer, in points.
+const PREVIEW_HEIGHT: f32 = 48.0;
 
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
@@ -32,6 +36,15 @@ pub struct ChatInput {
     completion_open: bool,
 
     history: PromptHistory,
+
+    /// Images pasted into the composer, sent with the next prompt.
+    pending_images: Vec<PendingImage>,
+}
+
+/// A pasted image waiting to be sent, and the texture the composer shows for it.
+struct PendingImage {
+    image: PromptImage,
+    preview: egui::TextureHandle,
 }
 
 impl ChatInput {
@@ -244,7 +257,7 @@ fn queue_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
                         ui,
                         |ui| {
                             ui.weak(if index == 0 { "Next:" } else { "Then:" });
-                            ui.label(prompt.lines().next().unwrap_or_default());
+                            ui.label(queued_summary(prompt));
                         },
                         |ui| {
                             if ui
@@ -262,24 +275,52 @@ fn queue_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     if let Some(index) = take_back
         && let Some(prompt) = session.remove_queued(index)
     {
-        move_into_input(input, prompt);
+        move_into_input(ui, input, prompt);
     }
 }
 
 /// Puts `prompt` in front of whatever is being typed, and focuses the input.
-fn move_into_input(input: &mut ChatInput, prompt: String) {
+///
+/// Its images go back to the front of the pending ones, so sending again attaches them in the
+/// order they were pasted in.
+fn move_into_input(ui: &egui::Ui, input: &mut ChatInput, prompt: Prompt) {
+    let Prompt { text, images } = prompt;
     if input.text.trim().is_empty() {
-        input.text = prompt;
+        input.text = text;
     } else {
-        input.text = format!("{prompt}\n{}", input.text);
+        input.text = format!("{text}\n{}", input.text);
     }
+
+    let restored: Vec<PendingImage> = images
+        .into_iter()
+        .filter_map(|image| pending_image(ui.ctx(), image))
+        .collect();
+    input.pending_images.splice(..0, restored);
     input.focus = true;
 }
 
+/// One line describing a queued prompt, for the list of what is waiting.
+fn queued_summary(prompt: &Prompt) -> String {
+    let Prompt { text, images } = prompt;
+    let first_line = text.lines().next().unwrap_or_default();
+    match images.len() {
+        0 => first_line.to_owned(),
+        1 => format!("{first_line} [1 image]"),
+        count => format!("{first_line} [{count} images]"),
+    }
+}
+
+/// Uploads `image`'s preview, so the composer can show what is attached.
+fn pending_image(ctx: &egui::Context, image: PromptImage) -> Option<PendingImage> {
+    let pixels = pasted_image::decode(&image)?;
+    let preview = ctx.load_texture("pasted_image", pixels, egui::TextureOptions::LINEAR);
+    Some(PendingImage { image, preview })
+}
+
 /// Stops the agent. Queued prompts go back into the input instead of starting new turns.
-fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
+fn stop_agent(ui: &egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
     for prompt in session.take_queued().into_iter().rev() {
-        move_into_input(input, prompt);
+        move_into_input(ui, input, prompt);
     }
     session.cancel();
 }
@@ -471,6 +512,8 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
         .corner_radius(6)
         .inner_margin(6)
         .show(ui, |ui| {
+            pending_images_ui(ui, input);
+
             let output = CompletionPopup::new(input_id)
                 .event_filter(EventFilter {
                     horizontal_arrows: true,
@@ -503,7 +546,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
                             .on_hover_text("Cancel the current turn (Esc)")
                             .clicked()
                         {
-                            stop_agent(session, input);
+                            stop_agent(ui, session, input);
                         }
                     });
                 });
@@ -518,11 +561,22 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     }
 
     if response.has_focus() {
+        take_pasted_images(ui, input);
+
         if consume_plain_enter(ui) {
-            let prompt = input.text.trim();
-            if session.send_prompt(prompt) {
-                input.history.push(prompt);
+            let text = input.text.trim().to_owned();
+            let images: Vec<PromptImage> = input
+                .pending_images
+                .iter()
+                .map(|pending| pending.image.clone())
+                .collect();
+            if session.send_prompt(Prompt {
+                text: text.clone(),
+                images,
+            }) {
+                input.history.push(&text);
                 input.text.clear();
+                input.pending_images.clear();
                 response.request_focus();
             }
         }
@@ -531,9 +585,69 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
         if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
             && session.turn_in_progress()
         {
-            stop_agent(session, input);
+            stop_agent(ui, session, input);
         }
     }
+}
+
+/// Takes the images pasted this frame into the composer.
+///
+/// The events are consumed, not just read: a `TextEdit` ignores them, but leaving them in would
+/// hand the same paste to every other widget that looks.
+fn take_pasted_images(ui: &egui::Ui, input: &mut ChatInput) {
+    let pasted = ui.input_mut(|state| {
+        let mut pasted = Vec::new();
+        state.events.retain(|event| {
+            if let egui::Event::PasteImage(image) = event {
+                pasted.push(std::sync::Arc::clone(image));
+                false
+            } else {
+                true
+            }
+        });
+        pasted
+    });
+
+    for image in pasted {
+        let Some((image, preview)) = pasted_image::encode(&image) else {
+            re_log::warn!("Could not encode the pasted image");
+            continue;
+        };
+        let preview = ui
+            .ctx()
+            .load_texture("pasted_image", preview, egui::TextureOptions::LINEAR);
+        input.pending_images.push(PendingImage { image, preview });
+    }
+}
+
+/// The images attached to the prompt being composed, each with a button to drop it again.
+fn pending_images_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
+    if input.pending_images.is_empty() {
+        return;
+    }
+
+    let mut remove = None;
+    ui.horizontal_wrapped(|ui| {
+        for (index, pending) in input.pending_images.iter().enumerate() {
+            let [width, height] = pending.image.size;
+            let aspect = width as f32 / height as f32;
+            let size = egui::vec2(PREVIEW_HEIGHT * aspect, PREVIEW_HEIGHT);
+            ui.image((pending.preview.id(), size))
+                .on_hover_text(format!("Pasted image, {width}×{height} pixels"));
+            if ui
+                .small_icon_button(&icons::CLOSE_SMALL, "Remove this image")
+                .on_hover_text("Do not send this image")
+                .clicked()
+            {
+                remove = Some(index);
+            }
+        }
+    });
+
+    if let Some(index) = remove {
+        input.pending_images.remove(index);
+    }
+    ui.add_space(4.0);
 }
 
 /// Consume a press of `Enter` with no modifier held at all.

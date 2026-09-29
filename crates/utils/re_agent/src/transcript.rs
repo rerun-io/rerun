@@ -7,6 +7,8 @@ use agent_client_protocol::schema::v1::{
     ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
+use crate::{Prompt, PromptImage};
+
 /// The accumulated state of one tool call, patched by later updates.
 #[derive(Clone, Debug)]
 pub struct ToolCallState {
@@ -121,9 +123,7 @@ impl ToolCallState {
 /// One entry in the conversation, in display order.
 #[derive(Clone, Debug)]
 pub enum TranscriptItem {
-    User {
-        text: String,
-    },
+    User(Prompt),
 
     Agent {
         /// Consecutive text blocks are merged so they render as one markdown document.
@@ -186,8 +186,8 @@ impl Transcript {
         });
     }
 
-    pub fn push_user(&mut self, text: String) {
-        self.push(TranscriptItem::User { text });
+    pub fn push_user(&mut self, prompt: Prompt) {
+        self.push(TranscriptItem::User(prompt));
     }
 
     pub fn push_note(&mut self, text: impl Into<String>, is_error: bool) {
@@ -365,8 +365,11 @@ impl Transcript {
         let mut out = String::new();
         for entry in &self.items {
             match &entry.item {
-                TranscriptItem::User { text } => {
+                TranscriptItem::User(Prompt { text, images }) => {
                     writeln!(out, "You: {text}").ok();
+                    for image in images {
+                        writeln!(out, "You: {}", describe_prompt_image(image)).ok();
+                    }
                 }
                 TranscriptItem::Agent { content, thoughts } => {
                     if !thoughts.is_empty() {
@@ -428,8 +431,11 @@ impl Transcript {
                 });
 
             match &entry.item {
-                TranscriptItem::User { text } => {
+                TranscriptItem::User(Prompt { text, images }) => {
                     writeln!(out, "## User{elapsed}\n\n{text}\n").ok();
+                    for image in images {
+                        writeln!(out, "{}\n", describe_prompt_image(image)).ok();
+                    }
                 }
 
                 TranscriptItem::Agent { content, thoughts } => {
@@ -489,6 +495,12 @@ fn describe_agent_block(block: &ContentBlock) -> String {
         ContentBlock::Text(text) => text.text.clone(),
         _ => describe_content_block(block),
     }
+}
+
+/// An attached image, named rather than embedded, the way agent images are in a dump.
+fn describe_prompt_image(image: &PromptImage) -> String {
+    let [width, height] = image.size;
+    format!("`[image {} {width}×{height}]`", image.mime_type)
 }
 
 fn describe_content_block(block: &ContentBlock) -> String {
@@ -551,6 +563,8 @@ fn truncate_bytes(text: &str, max_bytes: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use agent_client_protocol::schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
         SessionConfigSelectOption, ToolCall,
@@ -628,7 +642,7 @@ mod tests {
     #[test]
     fn the_markdown_dump_keeps_the_evidence_of_a_tool_call() {
         let mut transcript = Transcript::default();
-        transcript.push_user("plot the joint angles".to_owned());
+        transcript.push_user("plot the joint angles".into());
         transcript.apply(SessionUpdate::AgentMessageChunk(ContentChunk::new(
             ContentBlock::Text(TextContent::new("Looking at the recording.".to_owned())),
         )));
@@ -652,6 +666,29 @@ mod tests {
         assert!(markdown.contains("no such timeline"));
         assert!(markdown.contains("## Error"));
         assert!(markdown.contains("the agent gave up"));
+    }
+
+    /// The dump is what another agent reads, so an image the user attached has to leave a
+    /// trace there even though the bytes themselves are left out.
+    #[test]
+    fn an_attached_image_is_named_in_both_dumps() {
+        let mut transcript = Transcript::default();
+        transcript.push_user(Prompt {
+            text: "what is wrong here?".to_owned(),
+            images: vec![PromptImage {
+                bytes: Arc::from([0_u8].as_slice()),
+                mime_type: "image/png".to_owned(),
+                size: [800, 600],
+            }],
+        });
+
+        let plain = transcript.to_plain_text();
+        assert!(plain.contains("what is wrong here?"), "{plain}");
+        assert!(plain.contains("[image image/png 800×600]"), "{plain}");
+
+        let markdown = transcript.to_markdown();
+        assert!(markdown.contains("what is wrong here?"), "{markdown}");
+        assert!(markdown.contains("[image image/png 800×600]"), "{markdown}");
     }
 
     /// The cut exists to stop one screenshot burying the dump, not to clip the answer the

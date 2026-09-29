@@ -9,7 +9,7 @@ use super::Screen;
 use super::chat_ui::{ChatInput, chat_ui};
 use super::setup_ui::setup_ui;
 use re_agent::AgentEntry;
-use re_agent::{AgentSession, Phase, TurnReport};
+use re_agent::{AgentSession, Phase, Prompt, TurnReport};
 use re_agent::{AgentSettings, LaunchConfig, SessionContext};
 use re_agent::{Transcript, TranscriptItem};
 
@@ -94,8 +94,8 @@ impl Conversation {
             .clone()
             .or_else(|| {
                 transcript.items.iter().find_map(|entry| match &entry.item {
-                    TranscriptItem::User { text } => {
-                        Some(text.lines().next().unwrap_or_default().to_owned())
+                    TranscriptItem::User(prompt) => {
+                        Some(prompt.text.lines().next().unwrap_or_default().to_owned())
                     }
                     _ => None,
                 })
@@ -157,7 +157,7 @@ impl Conversation {
             return;
         }
         if let Some(prompt) = self.opening_prompt.take()
-            && !self.session.send_prompt(prompt.clone())
+            && !self.session.send_prompt(prompt.clone().into())
         {
             self.opening_prompt = Some(prompt);
         }
@@ -530,9 +530,10 @@ impl AgentPanel {
 
     /// Sends a prompt in the active tab as if the user had typed it.
     /// Returns `false` if it was dropped because the agent is not [`Self::is_ready`].
-    pub fn send_prompt(&mut self, text: impl Into<String>) -> bool {
+    pub fn send_prompt(&mut self, prompt: impl Into<Prompt>) -> bool {
+        let prompt = prompt.into();
         self.session_mut()
-            .is_some_and(|session| session.send_prompt(text))
+            .is_some_and(|session| session.send_prompt(prompt))
     }
 
     /// What the current settings would launch, for hosts that run side sessions with the same

@@ -8968,12 +8968,14 @@ name = "re_agent"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "agent-client-protocol",
+ "base64 0.23.1",
  "futures",
  "re_log",
  "re_workspace_hack",
  "serde",
  "serde_json",
  "shell-words",
+ "tempfile",
 ]
 
 [[package]]
@@ -8987,10 +8989,12 @@ dependencies = [
  "egui_inspection",
  "egui_kittest",
  "egui_tiles",
+ "image",
  "jiff",
  "pulldown-cmark",
  "re_agent",
  "re_log",
+ "re_tracing",
  "re_ui",
  "re_workspace_hack",
  "serde_json",

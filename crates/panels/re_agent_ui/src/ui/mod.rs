@@ -1,6 +1,7 @@
 mod agent_panel;
 mod chat_ui;
 mod linkify;
+mod pasted_image;
 mod setup_ui;
 mod tool_call_ui;
 mod transcript_ui;
