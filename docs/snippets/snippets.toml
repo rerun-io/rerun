@@ -573,9 +573,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/image_advanced" = [
   "py", # Pillow encodes pngs differently on different OSes, and differently from Rust or C++.
 ]
-"archetypes/arrows3d_simple" = [
-  "py", # Python has different colors. TODO(emilk): fix that
-]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
