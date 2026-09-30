@@ -741,6 +741,7 @@ pub struct AppOptions {
     manifest_url: Option<String>,
     render_backend: Option<String>,
     video_decoder: Option<String>,
+    memory_limit: Option<String>,
     hide_welcome_screen: Option<bool>,
     check_for_updates_on_startup: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
@@ -815,6 +816,7 @@ fn create_app(
         manifest_url,
         render_backend,
         video_decoder,
+        memory_limit,
         hide_welcome_screen,
         check_for_updates_on_startup,
         panel_state_overrides,
@@ -903,6 +905,27 @@ fn create_app(
                 re_log::warn!(
                     "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
                 );
+            }
+        }
+    }
+
+    // An explicit web option takes precedence over the restored memory limit.
+    if let Some(memory_limit) = memory_limit {
+        match re_memory::MemoryLimit::parse(&memory_limit) {
+            Ok(limit) => {
+                let default_limit = re_memory::MemoryLimit::default_for_current_platform();
+                app.app_options_mut().memory_limit = if default_limit.as_bytes() < limit.as_bytes()
+                {
+                    re_log::warn!(
+                        "Memory limit of {limit} is above the web viewer's maximum of {default_limit}. Using {default_limit} instead."
+                    );
+                    default_limit
+                } else {
+                    limit
+                };
+            }
+            Err(err) => {
+                re_log::warn!("Ignoring bad `memory_limit` value {memory_limit:?}: {err}");
             }
         }
     }
