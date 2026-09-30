@@ -84,11 +84,22 @@ impl ToTransport for RawRrdManifest {
         let sorbet_schema = re_protos::common::v1alpha1::Schema::try_from(&self.sorbet_schema)
             .map_err(CodecError::ArrowSerialization)?;
 
+        let data: re_protos::common::v1alpha1::DataframePart = self.data.clone().into();
+
+        // Refuse to write a manifest that `DataframePart` decoding would refuse to read.
+        let max = re_protos::common::v1alpha1::ext::MAX_PAYLOAD_SIZE_BYTES;
+        if data.uncompressed_size > max {
+            return Err(CodecError::InvalidUncompressedSize {
+                declared: data.uncompressed_size,
+                max,
+            });
+        }
+
         Ok(Self::Output {
             store_id: Some(self.store_id.clone().into()),
             sorbet_schema_sha256: Some(self.sorbet_schema_sha256.to_vec().into()),
             sorbet_schema: Some(sorbet_schema),
-            data: Some(self.data.clone().into()),
+            data: Some(data),
         })
     }
 }
@@ -338,7 +349,7 @@ fn arrow_msg_transport_to_app(
 
     let batch = decode_arrow(
         &arrow_msg.payload,
-        arrow_msg.uncompressed_size as usize,
+        arrow_msg.uncompressed_size,
         compression.into(),
     )?;
 
@@ -442,6 +453,15 @@ fn encode_arrow(
     // sensitive to refactorings.
     let uncompressed_size = uncompressed.len().try_into()?;
 
+    // Refuse to write what `decode_arrow` would refuse to read.
+    let max = crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES;
+    if uncompressed_size > max {
+        return Err(CodecError::InvalidUncompressedSize {
+            declared: uncompressed_size,
+            max,
+        });
+    }
+
     let data = match compression {
         crate::rrd::Compression::Off => uncompressed,
         crate::rrd::Compression::LZ4 => {
@@ -465,7 +485,7 @@ fn encode_arrow(
 #[tracing::instrument(level = "debug", skip_all)]
 fn decode_arrow(
     data: &[u8],
-    uncompressed_size: usize,
+    uncompressed_size: u64,
     compression: crate::rrd::Compression,
 ) -> Result<arrow::array::RecordBatch, CodecError> {
     let mut uncompressed = Vec::new();
@@ -474,6 +494,15 @@ fn decode_arrow(
         crate::rrd::Compression::LZ4 => {
             re_tracing::profile_scope!("LZ4-decompress");
             let _span = tracing::trace_span!("lz4::decompress").entered();
+            let max = re_protos::common::v1alpha1::ext::max_lz4_decompressed_size(data.len());
+            if uncompressed_size > max {
+                return Err(CodecError::InvalidUncompressedSize {
+                    declared: uncompressed_size,
+                    max,
+                });
+            }
+            let uncompressed_size = usize::try_from(uncompressed_size)?;
+            uncompressed.try_reserve_exact(uncompressed_size)?;
             uncompressed.resize(uncompressed_size, 0);
             lz4_flex::block::decompress_into(data, &mut uncompressed)?;
             uncompressed.as_slice()
@@ -496,6 +525,25 @@ fn decode_arrow(
 #[cfg(test)]
 mod tests {
     use super::CodecError;
+
+    #[test]
+    fn tiny_compressed_payload_cannot_request_a_large_allocation() {
+        for declared in [
+            256,
+            crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES,
+            u64::MAX,
+        ] {
+            let mut arrow_msg =
+                arrow_msg_with_compression(re_protos::common::v1alpha1::Compression::Lz4 as i32);
+            arrow_msg.payload = vec![0].into();
+            arrow_msg.uncompressed_size = declared;
+
+            assert!(matches!(
+                super::arrow_msg_transport_to_app(&arrow_msg),
+                Err(CodecError::InvalidUncompressedSize { declared: size, max: 255 }) if size == declared
+            ));
+        }
+    }
 
     fn arrow_msg_with_compression(compression: i32) -> re_protos::log_msg::v1alpha1::ArrowMsg {
         re_protos::log_msg::v1alpha1::ArrowMsg {

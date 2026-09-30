@@ -44,7 +44,23 @@ impl AsyncReadAt for std::fs::File {
 
         let offset = span.start;
         let len = span_len_usize(span)?;
-        let mut buf = vec![0u8; len];
+
+        // Spans come from an on-disk manifest, so check them against the file before allocating.
+        let file_len = self.metadata()?.len();
+        if span
+            .start
+            .checked_add(span.len)
+            .is_none_or(|end| end > file_len)
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "read past end of file",
+            ));
+        }
+        let mut buf = Vec::new();
+        buf.try_reserve_exact(len)
+            .map_err(|err| io::Error::new(io::ErrorKind::OutOfMemory, err))?;
+        buf.resize(len, 0);
         let mut filled = 0;
         while filled < len {
             let n = {
@@ -101,5 +117,43 @@ impl AsyncReadAt for bytes::Bytes {
 
     async fn size(&self) -> io::Result<u64> {
         Ok(self.len() as u64)
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use std::io::Write as _;
+
+    use super::{AsyncReadAt as _, Span};
+
+    /// A span past the end of the file must fail before anything is allocated for it.
+    #[test]
+    fn file_read_past_eof_is_rejected() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        tmp.write_all(b"hello").unwrap();
+        let file = std::fs::File::open(tmp.path()).unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the test owns this runtime
+            .build()
+            .unwrap();
+
+        for span in [
+            Span {
+                start: 0,
+                len: u64::MAX,
+            },
+            Span { start: 3, len: 3 },
+            Span {
+                start: u64::MAX,
+                len: 1,
+            },
+        ] {
+            let err = rt.block_on(file.read_exact_at(span)).unwrap_err();
+            assert_eq!(err.kind(), std::io::ErrorKind::UnexpectedEof, "{span:?}");
+        }
+
+        let ok = rt
+            .block_on(file.read_exact_at(Span { start: 1, len: 3 }))
+            .unwrap();
+        assert_eq!(&ok[..], b"ell");
     }
 }

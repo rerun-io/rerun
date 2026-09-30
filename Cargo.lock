@@ -9103,6 +9103,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_workspace_hack",
+ "tempfile",
  "thiserror 2.0.19",
  "tokio",
  "wasm-bindgen",

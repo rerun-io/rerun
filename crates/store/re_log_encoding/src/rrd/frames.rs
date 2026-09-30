@@ -503,11 +503,22 @@ pub struct MessageHeader {
 
 impl MessageHeader {
     pub const ENCODED_SIZE_BYTES: usize = 16;
+
+    /// Maximum size of an encoded message or a decompressed Arrow payload, in bytes.
+    ///
+    /// Conservative memory budget for one message, not a format or recording-size limit.
+    pub const MAX_PAYLOAD_SIZE_BYTES: u64 =
+        re_protos::common::v1alpha1::ext::MAX_PAYLOAD_SIZE_BYTES;
 }
 
 impl Encodable for MessageHeader {
     fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, crate::rrd::CodecError> {
         let Self { kind, len } = *self;
+
+        // Refuse to write what `from_rrd_bytes` would refuse to read.
+        if len > Self::MAX_PAYLOAD_SIZE_BYTES {
+            return Err(crate::rrd::CodecError::MessagePayloadTooLarge { len });
+        }
 
         let before = out.len() as u64;
 
@@ -545,6 +556,9 @@ impl Decodable for MessageHeader {
         };
 
         let len = u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above"));
+        if len > Self::MAX_PAYLOAD_SIZE_BYTES {
+            return Err(crate::rrd::CodecError::MessagePayloadTooLarge { len });
+        }
 
         Ok(Self { kind, len })
     }
@@ -557,6 +571,23 @@ mod tests {
     use re_span::Span;
 
     use crate::rrd::{Decodable as _, Encodable as _, StreamFooter, StreamFooterEntry};
+
+    #[test]
+    fn message_header_over_the_cap_is_not_written() {
+        let header = crate::rrd::MessageHeader {
+            kind: crate::rrd::MessageKind::ArrowMsg,
+            len: crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES + 1,
+        };
+        let mut out = Vec::new();
+        assert!(matches!(
+            header.to_rrd_bytes(&mut out),
+            Err(crate::rrd::CodecError::MessagePayloadTooLarge { .. })
+        ));
+        assert!(
+            out.is_empty(),
+            "nothing may be written for a rejected header"
+        );
+    }
 
     fn encode(footer: &StreamFooter) -> Vec<u8> {
         let mut bytes = Vec::new();
