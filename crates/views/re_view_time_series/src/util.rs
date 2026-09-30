@@ -1,3 +1,5 @@
+use std::num::NonZeroU64;
+
 use nohash_hasher::IntMap;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::external::arrow;
@@ -200,22 +202,16 @@ pub fn apply_aggregation(
     let points = if should_aggregate {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
+        let bucket_width = aggregation_bucket_width(aggregation_duration);
+
         match aggregator {
             AggregationPolicy::Off => points,
-            AggregationPolicy::Average => {
-                AverageAggregator::aggregate(aggregation_duration, &points)
-            }
-            AggregationPolicy::Min => {
-                MinMaxAggregator::Min.aggregate(aggregation_duration, &points)
-            }
-            AggregationPolicy::Max => {
-                MinMaxAggregator::Max.aggregate(aggregation_duration, &points)
-            }
-            AggregationPolicy::MinMax => {
-                MinMaxAggregator::MinMax.aggregate(aggregation_duration, &points)
-            }
+            AggregationPolicy::Average => AverageAggregator::aggregate(bucket_width, &points),
+            AggregationPolicy::Min => MinMaxAggregator::Min.aggregate(bucket_width, &points),
+            AggregationPolicy::Max => MinMaxAggregator::Max.aggregate(bucket_width, &points),
+            AggregationPolicy::MinMax => MinMaxAggregator::MinMax.aggregate(bucket_width, &points),
             AggregationPolicy::MinMaxAverage => {
-                MinMaxAggregator::MinMaxAverage.aggregate(aggregation_duration, &points)
+                MinMaxAggregator::MinMaxAverage.aggregate(bucket_width, &points)
             }
         }
     } else {
@@ -235,6 +231,29 @@ pub fn apply_aggregation(
     );
 
     (actual_aggregation_factor, points)
+}
+
+/// The smallest width on the ladder 1, 2, 3, 4, 6, 8, 12, 16, 24, … that covers `aggregation_duration`.
+///
+/// The width is quantized so that it stays exactly constant while panning: `time_per_pixel` is
+/// derived from the plot transform and jitters in its last bits from frame to frame, and far from
+/// the timeline origin even a tiny change in width moves every bucket boundary.
+///
+/// Rounding up keeps each bucket at least one pixel wide, so `MinMax`-style aggregators don't
+/// zig-zag within a pixel; the ladder keeps the coarsening below 1.5x.
+fn aggregation_bucket_width(aggregation_duration: f64) -> NonZeroU64 {
+    if aggregation_duration.is_nan() || aggregation_duration < 2.0 {
+        return NonZeroU64::MIN;
+    }
+    let exponent = aggregation_duration.log2().ceil().min(61.0) as u32;
+    let power_of_two = 1_u64 << exponent;
+    let three_quarters = 3 * (power_of_two / 4);
+    let bucket_width = if aggregation_duration <= three_quarters as f64 {
+        three_quarters
+    } else {
+        power_of_two
+    };
+    NonZeroU64::new(bucket_width).unwrap_or(NonZeroU64::MIN)
 }
 
 #[expect(clippy::needless_pass_by_value)]
@@ -321,5 +340,34 @@ fn add_series_runs(
 
     if !series.points.is_empty() {
         all_series.push(series);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::aggregation_bucket_width;
+
+    #[test]
+    fn bucket_width_ladder() {
+        let cases = [
+            (f64::NAN, 1),
+            (0.5, 1),
+            (1.9, 1),
+            (2.0, 2),
+            (2.5, 3),
+            (3.0, 3),
+            (3.1, 4),
+            (5.0, 6),
+            (7.4, 8),
+            (9.0, 12),
+            (1e30, 1 << 61),
+        ];
+        for (duration, expected) in cases {
+            assert_eq!(
+                aggregation_bucket_width(duration).get(),
+                expected,
+                "{duration}"
+            );
+        }
     }
 }
