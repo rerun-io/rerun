@@ -2306,7 +2306,7 @@ where
 
     // --- Grants ---
 
-    /// Requests authorization to write one object of exactly `size_bytes` bytes at `key`.
+    /// Requests authorization to write one object at `key`.
     ///
     /// Writing the object does not register it: redeem the grant, then pass the returned storage
     /// URL to [`crate::ConnectionHandle::register_with_dataset`], which is a separate operation and
@@ -2316,10 +2316,8 @@ where
     pub async fn get_write_access_grant(
         &mut self,
         key: ObjectKey,
-        size_bytes: u64,
     ) -> ApiResult<GetWriteAccessGrantResponse> {
         let request = cloud_ext::GetWriteAccessGrantRequest {
-            size_bytes,
             key,
             location: None,
         };

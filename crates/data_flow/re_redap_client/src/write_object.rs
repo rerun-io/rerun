@@ -41,11 +41,8 @@ impl ConnectionHandle {
         source: impl AsyncReadAt,
     ) -> Result<url::Url, WriteObjectError> {
         let size = source.size().await?;
-        let GetWriteAccessGrantResponse { storage_url, grant } = self
-            .client()
-            .await?
-            .get_write_access_grant(key, size)
-            .await?;
+        let GetWriteAccessGrantResponse { storage_url, grant } =
+            self.client().await?.get_write_access_grant(key).await?;
 
         if jiff::Timestamp::now() >= grant.expires_at {
             return Err(WriteObjectError::Expired {

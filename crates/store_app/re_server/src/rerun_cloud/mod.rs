@@ -1014,11 +1014,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
-        let ext::GetWriteAccessGrantRequest {
-            size_bytes,
-            key,
-            location,
-        } = request.into_inner().try_into()?;
+        let ext::GetWriteAccessGrantRequest { key, location } = request.into_inner().try_into()?;
         if location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
@@ -1027,7 +1023,7 @@ impl RerunCloudService for RerunCloudHandler {
         let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
             tonic::Status::unimplemented("write access grants are not configured")
         })?;
-        let response = write_access_grants.issue(&key, size_bytes)?;
+        let response = write_access_grants.issue(&key)?;
         Ok(tonic::Response::new(response.try_into()?))
     }
 

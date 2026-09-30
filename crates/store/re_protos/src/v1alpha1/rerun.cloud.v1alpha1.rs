@@ -309,16 +309,12 @@ impl ::prost::Name for Error {
 /// Requests authorization to write one object.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteAccessGrantRequest {
-    /// The exact size of the object in bytes.
-    /// The client may upload incrementally, but it must send exactly this many bytes.
-    #[prost(uint64, tag = "1")]
-    pub size_bytes: u64,
     /// The full object key, including the file name, relative to the location's base.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
     /// The requested storage location.
     /// The request fails if this is absent and the server has no default location.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub location: ::core::option::Option<Location>,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
@@ -3102,7 +3098,7 @@ pub mod rerun_cloud_service_client {
         }
         /// Returns authorization to write one object at the requested key.
         ///
-        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// The grant expires at the time in the response.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         pub async fn get_write_access_grant(
             &mut self,
@@ -3878,7 +3874,7 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
         /// Returns authorization to write one object at the requested key.
         ///
-        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// The grant expires at the time in the response.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         async fn get_write_access_grant(
             &self,
