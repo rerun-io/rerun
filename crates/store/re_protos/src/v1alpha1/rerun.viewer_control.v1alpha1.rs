@@ -1004,12 +1004,11 @@ impl ::prost::Name for RunCommandRequest {
 /// Response for `RunCommand`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RunCommandResponse {
-    /// The command that was queued.
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// What the command acts on. Absent for global commands.
-    #[prost(string, optional, tag = "2")]
-    pub target: ::core::option::Option<::prost::alloc::string::String>,
+    /// The command that was queued, as `DescribeCommands` reports it.
+    ///
+    /// Its `shortcuts` tell the user how to do it themselves next time.
+    #[prost(message, optional, tag = "1")]
+    pub command: ::core::option::Option<ViewerCommand>,
 }
 impl ::prost::Name for RunCommandResponse {
     const NAME: &'static str = "RunCommandResponse";

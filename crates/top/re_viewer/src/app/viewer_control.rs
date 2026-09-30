@@ -136,7 +136,7 @@ impl App {
 
             Kind::RunCommand(request) => {
                 on_done.call(
-                    self.run_command(store_hub, request)
+                    self.run_command(store_hub, request, egui_ctx)
                         .map(ViewerControlResponse::from),
                 );
             }

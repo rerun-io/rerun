@@ -694,11 +694,10 @@ message RunCommandRequest {
 
 // Response for `RunCommand`.
 message RunCommandResponse {
-  // The command that was queued.
-  string id = 1;
-
-  // What the command acts on. Absent for global commands.
-  optional string target = 2;
+  // The command that was queued, as `DescribeCommands` reports it.
+  //
+  // Its `shortcuts` tell the user how to do it themselves next time.
+  ViewerCommand command = 1;
 }
 
 // ----------------------------------------------------------------------------
