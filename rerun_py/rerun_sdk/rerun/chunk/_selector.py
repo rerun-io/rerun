@@ -25,6 +25,7 @@ class Selector:
     - `?` — error suppression / optional operator
     - `!` — assert non-null
     - `|` — pipe the output of one expression to another
+    - `"…"` — emit a string constant once per input value
 
     Example usage::
 

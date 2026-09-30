@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{
     Array as _, ArrayRef, AsArray as _, BooleanBufferBuilder, FixedSizeListArray, ListArray,
-    OffsetSizeTrait,
+    OffsetSizeTrait, StringArray,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{DataType, Field};
@@ -13,7 +13,7 @@ use arrow::error::ArrowError;
 use crate::combinators::{GetField, GetIndexList, Transform as _};
 
 use super::DynExpr;
-use super::parser::{Expr, PathExpr};
+use super::parser::{Expr, Literal, PathExpr};
 use super::runtime::Runtime;
 
 /// Internal trait for expression types that can be evaluated against Arrow arrays.
@@ -541,6 +541,10 @@ impl Eval for Expr {
                     None => Ok(None),
                 }
             }
+
+            Self::Literal(Literal::String(value)) => Ok(Some(EvalResult::flat(Arc::new(
+                StringArray::from(vec![value.as_str(); source.len()]),
+            )))),
 
             Self::Map(body) => match source.data_type() {
                 DataType::List(_) => {

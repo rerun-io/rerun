@@ -108,6 +108,7 @@ The basic syntax elements are:
 * `.sequence[].x` - access a field on each element of a sequence
 * `.optional_field?` - access an optional field, skipping missing values
 * `pack(.x, .y, .z)` - pack several same-typed fields into a fixed-size list (see below)
+* `"foo"` - emit a string constant once per input value
 
 These can be composed using pipes (`|`) as described below.
 

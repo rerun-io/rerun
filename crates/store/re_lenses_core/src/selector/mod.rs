@@ -16,6 +16,7 @@
 //! | `!`       | Assert non-null (promotes all-null rows to outer nulls) | `.field!`          |
 //! | `\|`      | Pipe the output of one expression to another            | `.foo \| .bar`     |
 //! | `pack(…)` | Pack 1:1 paths into a `FixedSizeList` (see below)        | `pack(.x, .y, .z)` |
+//! | `"…"`     | Emit a string constant once per input value             | `"foo"`            |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
 //!

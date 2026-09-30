@@ -2,8 +2,6 @@ use crate::{Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_sdk_types::archetypes::{CoordinateFrame, Measurements};
 
-use crate::semantic::helpers::constant_string;
-
 /// Creates a lens for `sensor_msgs/msg/Illuminance` messages.
 pub fn illuminance() -> Result<Lens, LensBuilderError> {
     Lens::derive("sensor_msgs.msg.Illuminance:message")
@@ -21,7 +19,7 @@ pub fn illuminance() -> Result<Lens, LensBuilderError> {
         )
         .to_component(
             Measurements::descriptor_units(),
-            Selector::parse(".")?.pipe(constant_string("lux")),
+            Selector::parse(r#""lux""#)?,
         )
         .build()
 }

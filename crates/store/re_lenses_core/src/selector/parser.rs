@@ -9,7 +9,8 @@
 //!
 //! ```text
 //! Expr        → Term ( '|' Term )*
-//! Term        → Segment ( '?' | '!' )*  ( Segment ( '?' | '!' )* )*
+//! Term        → Literal                      (constant, one per input value)
+//!             | Segment ( '?' | '!' )*  ( Segment ( '?' | '!' )* )*
 //! Segment     → '.' FIELD
 //!             | '[' INTEGER ']'
 //!             | '[' ']'
@@ -28,7 +29,7 @@
 //! ```
 //!
 //! `PathExpr` is the scalar-navigation subset accepted as a `pack` path: it deliberately
-//! omits iteration (`[]`), `map`, functions, and nested `pack`, so those can never appear
+//! omits iteration (`[]`), `map`, functions, literals, and nested `pack`, so those can never appear
 //! as a path. The restriction is enforced directly by the `path_expr` production rather
 //! than by parsing a full `Expr` and narrowing it afterwards.
 
@@ -51,7 +52,20 @@ pub enum Literal {
 impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(v) => write!(f, "{v:?}"),
+            // Escapes exactly what the lexer unescapes, so `Display` output parses back to the same literal.
+            Self::String(v) => {
+                write!(f, "\"")?;
+                for ch in v.chars() {
+                    match ch {
+                        '\\' => write!(f, "\\\\")?,
+                        '"' => write!(f, "\\\"")?,
+                        '\n' => write!(f, "\\n")?,
+                        '\t' => write!(f, "\\t")?,
+                        ch => write!(f, "{ch}")?,
+                    }
+                }
+                write!(f, "\"")
+            }
         }
     }
 }
@@ -84,6 +98,9 @@ pub enum Expr {
         /// semantically be the same though.
         arguments: Option<Vec<Literal>>,
     },
+
+    /// Emits the literal once per input value.
+    Literal(Literal),
 
     // TODO(grtlr): For now we define `map()` as an `Expr` in the tree. The
     // correct modeling would be to add the `map` function to the registry,
@@ -203,6 +220,7 @@ impl std::fmt::Display for Expr {
 
                 Ok(())
             }
+            Self::Literal(literal) => write!(f, "{literal}"),
             Self::Map(body) => write!(f, "map({body})"),
             Self::Pack(paths) => {
                 write!(f, "pack(")?;
@@ -301,6 +319,12 @@ where
             }
 
             return self.function_args(name);
+        }
+
+        if let Some(token) = self.tokens.peek()
+            && let TokenType::StringLiteral(_) = &token.typ
+        {
+            return Ok(Expr::Literal(self.literal()?));
         }
 
         // Check if it starts with identity (.)
@@ -940,6 +964,42 @@ mod test {
 
         let expr = parse(r#".path | my_func("a"; "b")"#).unwrap();
         assert_eq!(expr.to_string(), r#".path | my_func("a"; "b")"#);
+    }
+
+    fn literal(value: &str) -> Expr {
+        Expr::Literal(Literal::String(value.into()))
+    }
+
+    #[test]
+    fn literal_expr() {
+        assert_eq!(parse(r#""lux""#), Ok(literal("lux")));
+        assert_eq!(
+            parse(r#".items[] | "lux""#),
+            Ok(pipe(
+                Expr::Pipe {
+                    left: Box::new(field("items")),
+                    right: Box::new(each()),
+                    implicit: true,
+                },
+                literal("lux")
+            ))
+        );
+        assert_eq!(parse(r#"map("lux")"#), Ok(map_expr(literal("lux"))));
+        assert!(parse(r#""lux".foo"#).is_err());
+        assert!(parse(r#"pack("lux")"#).is_err());
+    }
+
+    #[test]
+    fn literal_display_roundtrip() {
+        for input in [
+            r#""°C""#,
+            r#""""#,
+            r#""a\"b\\c\nd\te""#,
+            r#".foo | "Pa""#,
+            r#"my_func("a\"b")"#,
+        ] {
+            assert_eq!(parse(input).unwrap().to_string(), input);
+        }
     }
 
     fn map_expr(body: Expr) -> Expr {

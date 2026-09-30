@@ -2,8 +2,6 @@ use crate::{Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_sdk_types::archetypes::{CoordinateFrame, Measurements};
 
-use crate::semantic::helpers::constant_string;
-
 /// Creates a lens for `sensor_msgs/msg/Temperature` messages.
 pub fn temperature() -> Result<Lens, LensBuilderError> {
     Lens::derive("sensor_msgs.msg.Temperature:message")
@@ -21,7 +19,7 @@ pub fn temperature() -> Result<Lens, LensBuilderError> {
         )
         .to_component(
             Measurements::descriptor_units(),
-            Selector::parse(".")?.pipe(constant_string("°C")),
+            Selector::parse(r#""°C""#)?,
         )
         .build()
 }

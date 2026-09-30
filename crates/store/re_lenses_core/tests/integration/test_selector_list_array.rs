@@ -49,6 +49,37 @@ fn execute_nested_struct() -> Result<(), Error> {
 }
 
 #[test]
+fn execute_literal() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    let result = r#".location.x | "m""#.parse::<Selector>()?.execute_per_row(&array)?.unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
+    ┌──────────────────┐
+    │ col              │
+    │ ---              │
+    │ type: List(Utf8) │
+    ╞══════════════════╡
+    │ [m]              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [m]              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [m, m]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [m, m]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [m, m]           │
+    └──────────────────┘
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn execute_identity() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
