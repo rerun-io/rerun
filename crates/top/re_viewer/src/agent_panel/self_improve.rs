@@ -4,9 +4,11 @@
 //! Only offered in our own development builds, where the Rerun source tree is on disk for the
 //! agent to edit. See [`super::ViewerAgentPanel::start_self_improvement`].
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use re_agent_ui::SessionContext;
+use re_agent_ui::acp::LineDirection;
+use re_agent_ui::{AgentSession, SessionContext};
 
 /// Linear issue the agents keep their own wish list in.
 const WISH_LIST_ISSUE: &str = "RR-5712";
@@ -127,6 +129,31 @@ pub fn opening_prompt(transcript: &Path) -> String {
          every tool call with its arguments and output, timestamped from the start of the session.",
         transcript.display()
     )
+}
+
+/// Render everything the reviewing agent needs from one panel session.
+///
+/// The transcript carries the conversation and tool calls, while stderr carries failures from
+/// the agent process and the MCP servers it launched. Protocol stdin and stdout are omitted: when
+/// enabled, they largely duplicate the transcript and can be much larger than it.
+pub fn session_dump(session: &AgentSession) -> String {
+    let mut markdown = session.transcript().to_markdown();
+    let mut stderr = session
+        .log()
+        .iter()
+        .filter(|line| line.direction == LineDirection::Stderr)
+        .peekable();
+    if stderr.peek().is_none() {
+        return markdown;
+    }
+
+    markdown.push_str("\n\n# Agent stderr\n\n");
+    for entry in stderr {
+        for line in entry.line.lines() {
+            writeln!(markdown, "    {line}").ok();
+        }
+    }
+    markdown
 }
 
 /// Writes `markdown` into `dir` and returns the path.
@@ -277,5 +304,28 @@ mod tests {
         assert_ne!(first, second);
         assert_eq!(std::fs::read_to_string(&first).expect("read"), "first");
         assert_eq!(std::fs::read_to_string(&second).expect("read"), "second");
+    }
+
+    #[test]
+    fn session_dump_includes_stderr_without_protocol_traffic() {
+        let mut session = AgentSession::default();
+        session.handle_event(re_agent_ui::AgentEvent::Log {
+            direction: LineDirection::Stderr,
+            line: "Failed to connect to viewer: transport error".to_owned(),
+        });
+        session.handle_event(re_agent_ui::AgentEvent::Log {
+            direction: LineDirection::Stdout,
+            line: "large protocol message".to_owned(),
+        });
+
+        let dump = session_dump(&session);
+
+        let transcript = session.transcript().to_markdown();
+        assert_eq!(
+            dump,
+            format!(
+                "{transcript}\n\n# Agent stderr\n\n    Failed to connect to viewer: transport error\n"
+            )
+        );
     }
 }

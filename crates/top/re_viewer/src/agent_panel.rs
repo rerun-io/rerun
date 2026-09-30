@@ -154,7 +154,7 @@ impl ViewerAgentPanel {
             return;
         }
 
-        let Some(transcript) = panel.transcript().map(re_agent_ui::Transcript::to_markdown) else {
+        let Some(transcript) = panel.session().map(self_improve::session_dump) else {
             return;
         };
         if transcript.trim().is_empty() {
