@@ -24,6 +24,12 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| blueprint::components::Enabled::from(true),
     );
 
+    // ViewBlueprint
+    registry.register_component_fallback_provider(
+        blueprint::archetypes::ViewBlueprint::descriptor_titlebar().component,
+        |_| blueprint::components::Enabled::from(true),
+    );
+
     // GraphBackground
     registry.register_component_fallback_provider(
         blueprint::archetypes::GraphBackground::descriptor_color().component,

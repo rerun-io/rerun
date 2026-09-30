@@ -5949,6 +5949,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "Whether this view is visible.\n\nDefaults to true if not specified.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
+                    ArchetypeFieldReflection {
+                        name: "titlebar",
+                        display_name: "Titlebar",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether this view shows its title bar.\n\nThe title bar is always shown when the view shares a tab container with other views.\n\nDefaults to true if not specified.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
                 ],
             },
         ),

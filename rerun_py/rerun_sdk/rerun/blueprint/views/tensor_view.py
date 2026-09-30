@@ -94,6 +94,7 @@ class TensorView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: encodings.BoolLike | None = None,
+        titlebar: encodings.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
@@ -116,6 +117,12 @@ class TensorView(View):
             The display name of the view.
         visible:
             Whether this view is visible.
+
+            Defaults to true if not specified.
+        titlebar:
+            Whether this view shows its title bar.
+
+            The title bar is always shown when the view shares a tab container with other views.
 
             Defaults to true if not specified.
         defaults:
@@ -168,6 +175,7 @@ class TensorView(View):
             contents=contents,
             name=name,
             visible=visible,
+            titlebar=titlebar,
             properties=properties,
             defaults=defaults,
             overrides=overrides,

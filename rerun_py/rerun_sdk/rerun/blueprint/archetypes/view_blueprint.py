@@ -37,6 +37,7 @@ class ViewBlueprint(Archetype):
         display_name: encodings.Utf8Like | None = None,
         space_origin: encodings.EntityPathLike | None = None,
         visible: encodings.BoolLike | None = None,
+        titlebar: encodings.BoolLike | None = None,
     ) -> None:
         """
         Create a new instance of the ViewBlueprint archetype.
@@ -61,13 +62,23 @@ class ViewBlueprint(Archetype):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        titlebar:
+            Whether this view shows its title bar.
+
+            The title bar is always shown when the view shares a tab container with other views.
+
+            Defaults to true if not specified.
 
         """
 
         # You can define your own __init__ function as a member of ViewBlueprintExt in view_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                class_identifier=class_identifier, display_name=display_name, space_origin=space_origin, visible=visible
+                class_identifier=class_identifier,
+                display_name=display_name,
+                space_origin=space_origin,
+                visible=visible,
+                titlebar=titlebar,
             )
             return
         self.__attrs_clear__()
@@ -79,6 +90,7 @@ class ViewBlueprint(Archetype):
             display_name=None,
             space_origin=None,
             visible=None,
+            titlebar=None,
         )
 
     @classmethod
@@ -97,6 +109,7 @@ class ViewBlueprint(Archetype):
         display_name: encodings.Utf8Like | None = None,
         space_origin: encodings.EntityPathLike | None = None,
         visible: encodings.BoolLike | None = None,
+        titlebar: encodings.BoolLike | None = None,
     ) -> ViewBlueprint:
         """
         Update only some specific fields of a `ViewBlueprint`.
@@ -123,6 +136,12 @@ class ViewBlueprint(Archetype):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        titlebar:
+            Whether this view shows its title bar.
+
+            The title bar is always shown when the view shares a tab container with other views.
+
+            Defaults to true if not specified.
 
         """
 
@@ -133,6 +152,7 @@ class ViewBlueprint(Archetype):
                 "display_name": display_name,
                 "space_origin": space_origin,
                 "visible": visible,
+                "titlebar": titlebar,
             }
 
             if clear_unset:
@@ -181,6 +201,14 @@ class ViewBlueprint(Archetype):
             component_type=components.VisibleBatch._COMPONENT_TYPE,
         )
 
+    @staticmethod
+    def descriptor_titlebar() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewBlueprint:titlebar",
+            archetype=ViewBlueprint.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
+
     class_identifier: blueprint_components.ViewClassBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -222,6 +250,19 @@ class ViewBlueprint(Archetype):
         converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether this view is visible.
+    #
+    # Defaults to true if not specified.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    titlebar: blueprint_components.EnabledBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
+    )
+    # Whether this view shows its title bar.
+    #
+    # The title bar is always shown when the view shares a tab container with other views.
     #
     # Defaults to true if not specified.
     #
