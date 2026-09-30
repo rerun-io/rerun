@@ -473,6 +473,8 @@ impl App {
             }),
         );
 
+        crate::konami::install(&creation_context.egui_ctx);
+
         {
             // This is a workaround consuming the space and arrow keys so we can use them as timeline shortcuts.
             // Egui's built in behavior is to interact with focus, and we don't want that.

@@ -11818,6 +11818,7 @@ dependencies = [
  "num-traits",
  "parking_lot",
  "poll-promise",
+ "rand 0.9.5",
  "rayon",
  "re_agent_ui",
  "re_analytics",
