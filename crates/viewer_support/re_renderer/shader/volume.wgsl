@@ -18,7 +18,7 @@ struct UniformBuffer {
 };
 
 @group(1) @binding(0)
-var scene_depth_texture: texture_depth_2d;
+var scene_depth_texture: texture_2d<f32>;
 
 @group(2) @binding(0)
 var<uniform> volume: UniformBuffer;
@@ -60,7 +60,7 @@ const MIN_TRANSMITTANCE = 0.1;
 const PICKING_AND_OUTLINE_ALPHA_CUTOFF = 0.08;
 
 fn distance_to_scene_depth(world_ray: Ray, ray: Ray, pixel: vec2i) -> f32 {
-    let scene_depth = textureLoad(scene_depth_texture, pixel, 0);
+    let scene_depth = textureLoad(scene_depth_texture, pixel, 0).r;
     if scene_depth <= 0.0 {
         return f32max;
     }
