@@ -78,27 +78,28 @@ pub fn new_rerun_headers_layer(
 /// per-connection analytics OTLP exports, etc.) presents the same
 /// `x-rerun-client-version` value to the server.
 ///
-/// On wasm, the identity is hard-coded to `"rerun-web"` so the cloud server can
-/// distinguish browser traffic. On native, identity is left to fall through the standard
+/// `name` overrides the client identity, e.g. to tell apart SDK components sharing a process.
+/// Otherwise, on wasm the identity is hard-coded to `"rerun-web"` so the cloud server can
+/// distinguish browser traffic, and on native it falls through the standard
 /// `RerunVersionInterceptor` chain (`OTEL_SERVICE_NAME` → exe stem → `re_protos`'s
-/// `CARGO_PKG_NAME`) and the version respects `RERUN_CLIENT_VERSION_OVERRIDE` for tests.
+/// `CARGO_PKG_NAME`). On native, the version respects `RERUN_CLIENT_VERSION_OVERRIDE` for tests.
 #[cfg(target_arch = "wasm32")]
-pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
+pub fn new_rerun_client_headers_layer(name: Option<String>) -> RerunHeadersLayer {
     new_rerun_headers_layer(
         RerunIdentity::Client {
             id: Tuid::new(),
-            name: Some("rerun-web".to_owned()),
+            name: Some(name.unwrap_or_else(|| "rerun-web".to_owned())),
         },
         None,
     )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn new_rerun_client_headers_layer() -> RerunHeadersLayer {
+pub fn new_rerun_client_headers_layer(name: Option<String>) -> RerunHeadersLayer {
     new_rerun_headers_layer(
         RerunIdentity::Client {
             id: Tuid::new(),
-            name: None,
+            name,
         },
         std::env::var("RERUN_CLIENT_VERSION_OVERRIDE").ok(),
     )
@@ -381,5 +382,28 @@ where
         }
 
         Poll::Ready(Ok(res))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tonic::service::Interceptor as _;
+
+    use super::*;
+
+    #[test]
+    fn client_version_header_is_name_slash_version() {
+        let mut interceptor = RerunVersionInterceptor::new_client(
+            Some("rerun-py-dataloader".to_owned()),
+            Some("1.2.3".to_owned()),
+        );
+        let req = interceptor.call(tonic::Request::new(())).unwrap();
+
+        assert_eq!(
+            req.metadata()
+                .get(RERUN_HTTP_HEADER_CLIENT_VERSION)
+                .and_then(|v| v.to_str().ok()),
+            Some("rerun-py-dataloader/1.2.3")
+        );
     }
 }

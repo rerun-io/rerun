@@ -80,14 +80,17 @@ impl PyCatalogClientInternal {
     }
 
     /// Create a new catalog client object.
+    ///
+    /// `client_name` overrides the client name this connection reports in `x-rerun-client-version`.
     #[new]
-    #[pyo3(signature = (url, token=None, object_store_auth=None))]
-    #[pyo3(text_signature = "(self, url, token=None, object_store_auth=None)")]
+    #[pyo3(signature = (url, token=None, object_store_auth=None, client_name=None))]
+    #[pyo3(text_signature = "(self, url, token=None, object_store_auth=None, client_name=None)")]
     fn new(
         py: Python<'_>,
         url: String,
         token: Option<String>,
         object_store_auth: Option<AnyObjectStoreAuthenticator>,
+        client_name: Option<String>,
     ) -> PyResult<Self> {
         let _span = read_trace_context_from_python(py, "CatalogClient.__new__").entered();
 
@@ -100,8 +103,11 @@ impl PyCatalogClientInternal {
 
         let origin = url.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection_registry =
+        let mut connection_registry =
             re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+        if let Some(client_name) = client_name {
+            connection_registry = connection_registry.with_client_name(client_name);
+        }
 
         let credentials = match token
             .map(TryFrom::try_from)

@@ -1326,6 +1326,7 @@ class CatalogClientInternal:
         url: str,
         token: str | None = None,
         object_store_auth: BearerTokenObjectStoreAuth | None = None,
+        client_name: str | None = None,
     ) -> None: ...
 
     # ---

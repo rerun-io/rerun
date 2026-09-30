@@ -326,10 +326,13 @@ pub type RedapClientStack = re_auth::client::AuthService<
 pub(crate) fn assemble_grpc_client(
     channel: tonic_web_wasm_client::Client,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+    client_name: Option<String>,
 ) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
-        .layer(re_protos::headers::new_rerun_client_headers_layer());
+        .layer(re_protos::headers::new_rerun_client_headers_layer(
+            client_name,
+        ));
 
     let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
@@ -343,12 +346,13 @@ pub(crate) fn assemble_grpc_client(
 pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+    client_name: Option<String>,
 ) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_grpc_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials, client_name))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -418,10 +422,13 @@ where
 pub(crate) fn assemble_grpc_client(
     channel: PoolChannel,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+    client_name: Option<String>,
 ) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
-        .layer(re_protos::headers::new_rerun_client_headers_layer());
+        .layer(re_protos::headers::new_rerun_client_headers_layer(
+            client_name,
+        ));
 
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
@@ -438,12 +445,13 @@ pub(crate) fn assemble_grpc_client(
 pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
+    client_name: Option<String>,
 ) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_grpc_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials, client_name))
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.

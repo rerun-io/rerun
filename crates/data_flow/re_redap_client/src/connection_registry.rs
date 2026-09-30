@@ -68,6 +68,7 @@ impl ConnectionRegistry {
             })),
             internal: None,
             use_stored_credentials: true,
+            client_name: None,
         }
     }
 
@@ -85,6 +86,7 @@ impl ConnectionRegistry {
             })),
             internal: None,
             use_stored_credentials: false,
+            client_name: None,
         }
     }
 }
@@ -151,6 +153,9 @@ pub struct ConnectionRegistryHandle {
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
     /// it lives outside the `RwLock`.
     use_stored_credentials: bool,
+
+    /// Overrides the client name sent in `x-rerun-client-version` by every connection of this registry.
+    client_name: Option<String>,
 }
 
 struct InternalConnection {
@@ -270,6 +275,13 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
+    /// Must be set before the first connection is made; existing connections keep their name.
+    #[must_use]
+    pub fn with_client_name(mut self, client_name: String) -> Self {
+        self.client_name = Some(client_name);
+        self
+    }
+
     pub fn with_internal(
         mut self,
         connection: Connection,
@@ -383,7 +395,12 @@ impl ConnectionRegistryHandle {
                 capabilities,
             },
             successful_credentials,
-        ) = Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
+        ) = Self::try_connect_client_stack(
+            origin.clone(),
+            credentials_to_try.into_iter(),
+            self.client_name.as_deref(),
+        )
+        .await?;
 
         // We have a successful connection, so we cache it and remember about the successful token.
         //
@@ -439,13 +456,17 @@ impl ConnectionRegistryHandle {
     async fn try_connect_client_stack(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
+        client_name: Option<&str>,
     ) -> ApiResult<(ValidatedClientStack, Option<SourcedCredentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
-            let result =
-                Self::connect_and_validate_client_stack(origin.clone(), Some(credentials.clone()))
-                    .await;
+            let result = Self::connect_and_validate_client_stack(
+                origin.clone(),
+                Some(credentials.clone()),
+                client_name,
+            )
+            .await;
 
             match result {
                 Ok(validated) => {
@@ -465,7 +486,8 @@ impl ConnectionRegistryHandle {
         }
 
         // Everything failed, last ditch effort without a token.
-        let result = Self::connect_and_validate_client_stack(origin.clone(), None).await;
+        let result =
+            Self::connect_and_validate_client_stack(origin.clone(), None, client_name).await;
 
         match result {
             Ok(validated) => Ok((validated, None)),
@@ -535,6 +557,7 @@ impl ConnectionRegistryHandle {
     async fn connect_and_validate_client_stack(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
+        client_name: Option<&str>,
     ) -> ApiResult<ValidatedClientStack> {
         // Check the token's allowed hosts before wrapping it in a provider that
         // would blindly attach it to every outgoing request. If the host
@@ -574,18 +597,23 @@ impl ConnectionRegistryHandle {
                 None => None,
             };
 
-        let (mut grpc_client, client_stack) =
-            match crate::grpc::connect_grpc_client(origin.clone(), provider).await {
-                Ok(pair) => pair,
-                Err(grpc_err) => {
-                    // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
-                    // so if what we're trying to connect to is not a valid Rerun server, then cut out
-                    // a layer of noise:
-                    Self::ensure_is_rerun_server(&origin).await?;
+        let (mut grpc_client, client_stack) = match crate::grpc::connect_grpc_client(
+            origin.clone(),
+            provider,
+            client_name.map(ToOwned::to_owned),
+        )
+        .await
+        {
+            Ok(pair) => pair,
+            Err(grpc_err) => {
+                // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+                // so if what we're trying to connect to is not a valid Rerun server, then cut out
+                // a layer of noise:
+                Self::ensure_is_rerun_server(&origin).await?;
 
-                    return Err(grpc_err);
-                }
-            };
+                return Err(grpc_err);
+            }
+        };
 
         // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
         // this since we're caching the client, so we're not spamming such a request unnecessarily.
