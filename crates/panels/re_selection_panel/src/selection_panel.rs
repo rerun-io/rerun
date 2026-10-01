@@ -417,14 +417,6 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
 
-            if view_class.is_experimental() {
-                ui.add_space(6.0);
-                ui.info_label(
-                    "This view is experimental: its API, behavior, and on-disk format may change without notice.",
-                );
-                ui.add_space(8.0);
-            }
-
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
             let selection = view_class.selection_ui(&view_ctx);
             {
