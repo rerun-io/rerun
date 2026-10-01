@@ -1,5 +1,6 @@
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, TryLockError};
 use std::io::{BufRead as _, BufReader, Seek as _, Write as _};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -51,12 +52,7 @@ impl Pipeline {
         std::fs::create_dir_all(data_path.clone())?;
 
         let session_file_path = data_path.join(format!("{}.json", config.session_id));
-        let session_file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .read(true)
-            .open(session_file_path)?;
+        let session_file = create_locked_session_file(&session_file_path)?;
 
         // NOTE: We purposefully drop the handles and just forget about all pipeline threads.
         //
@@ -195,34 +191,74 @@ fn flush_pending_events(
                 continue;
             }
 
-            let Ok(mut session_file) = File::open(&path) else {
-                continue;
+            let mut session_file = match open_pending_file(&path) {
+                Ok(Some(session_file)) => session_file,
+                Ok(None) => {
+                    re_log::trace!(%analytics_id, %session_id, ?path, "session file still in use");
+                    continue;
+                }
+                Err(err) => {
+                    re_log::debug!(%analytics_id, %session_id, ?path, %err,
+                        "failed to open session file");
+                    continue;
+                }
             };
-            match flush_events(
-                &mut session_file,
-                &analytics_id,
-                &session_id.into(),
-                sink,
-                abort_signal,
-            ) {
+            let session_id: Arc<str> = session_id.into();
+            match flush_pending_file(&mut session_file, &path, |session_file| {
+                flush_events(session_file, &analytics_id, &session_id, sink, abort_signal)
+            }) {
                 Ok(()) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
-                    match std::fs::remove_file(&path) {
-                        Ok(()) => {
-                            re_log::trace!(%analytics_id, %session_id, ?path, "removed session file");
-                        }
-                        Err(err) => {
-                            // NOTE: this will eventually lead to duplicated data, though we'll be
-                            // able to deduplicate it at query time.
-                            re_log::trace!(%analytics_id, %session_id, ?path, %err,
-                                "failed to remove session file");
-                        }
-                    }
                 }
                 Err(err) => re_log::trace!(%analytics_id, %session_id, ?path, %err,
                     "failed to flush pending events"),
             }
         }
+    }
+
+    Ok(())
+}
+
+/// Locked before it gets its discoverable `.json` name, until the returned handle is dropped.
+fn create_locked_session_file(path: &Path) -> std::io::Result<File> {
+    let tmp_path = path.with_extension("json.tmp");
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .open(&tmp_path)?;
+    if let Err(err) = file.try_lock() {
+        std::fs::remove_file(&tmp_path).ok();
+        return Err(err.into());
+    }
+    std::fs::rename(&tmp_path, path)?;
+    Ok(file)
+}
+
+/// Returns `None` if another process holds the lock.
+fn open_pending_file(path: &Path) -> std::io::Result<Option<File>> {
+    let file = OpenOptions::new().read(true).write(true).open(path)?;
+    match file.try_lock() {
+        Ok(()) => Ok(Some(file)),
+        Err(TryLockError::WouldBlock) => Ok(None),
+        Err(TryLockError::Error(err)) => Err(err),
+    }
+}
+
+/// Empties the file before deleting it, so a process that already opened it sends nothing.
+fn flush_pending_file(
+    session_file: &mut File,
+    path: &Path,
+    flush: impl FnOnce(&mut File) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    flush(session_file)?;
+
+    if let Err(err) = session_file.set_len(0) {
+        re_log::trace!(?path, %err, "failed to truncate session file");
+    }
+    if let Err(err) = std::fs::remove_file(path) {
+        re_log::trace!(?path, %err, "failed to remove session file");
     }
 
     Ok(())
@@ -390,4 +426,89 @@ fn flush_events(
     sink.send(analytics_id, session_id, &events, abort_signal);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_session_file(path: &Path, content: &str) {
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn read_all(file: &mut File) -> String {
+        file.rewind().unwrap();
+        std::io::read_to_string(file).unwrap()
+    }
+
+    #[test]
+    fn session_file_locked_by_owner_is_not_flushed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("live.json");
+
+        let mut owner = create_locked_session_file(&path).unwrap();
+        owner.write_all(b"event\n").unwrap();
+        assert!(!path.with_extension("json.tmp").exists());
+
+        assert!(open_pending_file(&path).unwrap().is_none());
+        assert!(path.exists());
+
+        drop(owner);
+
+        let mut session_file = open_pending_file(&path).unwrap().unwrap();
+        let mut sent = Vec::new();
+        flush_pending_file(&mut session_file, &path, |file| {
+            sent.push(read_all(file));
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(sent, vec!["event\n".to_owned()]);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn session_file_is_flushed_at_most_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("orphan.json");
+        write_session_file(&path, "event\n");
+
+        let mut first = open_pending_file(&path).unwrap().unwrap();
+        let mut second = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+
+        assert!(matches!(second.try_lock(), Err(TryLockError::WouldBlock)));
+
+        let mut sent = Vec::new();
+        flush_pending_file(&mut first, &path, |file| {
+            sent.push(read_all(file));
+            Ok(())
+        })
+        .unwrap();
+        drop(first);
+
+        second.try_lock().unwrap();
+        assert_eq!(read_all(&mut second), "");
+        assert_eq!(sent, vec!["event\n".to_owned()]);
+        assert!(open_pending_file(&path).is_err());
+    }
+
+    #[test]
+    fn failed_flush_keeps_session_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("orphan.json");
+        write_session_file(&path, "event\n");
+
+        let mut session_file = open_pending_file(&path).unwrap().unwrap();
+        flush_pending_file(&mut session_file, &path, |_| {
+            Err(std::io::Error::other("network down"))
+        })
+        .unwrap_err();
+        drop(session_file);
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "event\n");
+    }
 }
