@@ -109,6 +109,14 @@ impl RowId {
         Self(re_tuid::Tuid::new())
     }
 
+    /// Create a new unique [`RowId`] that is strictly greater than `min`.
+    ///
+    /// See [`re_tuid::Tuid::new_after`].
+    #[inline]
+    pub fn new_after(min: Self) -> Self {
+        Self(re_tuid::Tuid::new_after(min.0))
+    }
+
     #[inline]
     pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
         Self(tuid)

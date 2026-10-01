@@ -4,12 +4,16 @@
 //!
 //! Regression test for <https://github.com/rerun-io/rerun/issues/12773>.
 
+use std::sync::Arc;
+
+use re_chunk::{Chunk, RowId};
 use re_log_channel::RecordingOpenBehavior;
-use re_log_types::{RecordingId, TimeReal};
+use re_log_types::{RecordingId, TimePoint, TimeReal};
+use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::PlayState;
 use re_test_context::TestContext;
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
-use re_viewer_context::{TimeControl, TimeControlCommand};
+use re_viewer_context::{TimeControl, TimeControlCommand, time_panel_blueprint_entity_path};
 
 #[test]
 fn empty_blueprint_applies_fallback_play_state() {
@@ -134,4 +138,44 @@ fn dragging_cursor_does_not_resume_playback_after_blueprint_pause() {
         PlayState::Paused,
         "dragging the cursor must not resume playback when paused via blueprint"
     );
+}
+
+/// The SDK writes `PlayState` as static blueprint data, where the highest `RowId` wins.
+/// A viewer whose clock lags the SDK's must still be able to pause.
+#[test]
+fn pausing_overrides_sdk_play_state_with_newer_row_id() {
+    let mut test_context = TestContext::new();
+    let store_id = test_context.active_store_id();
+
+    let one_hour_nanos = 3_600_000_000_000;
+    let sdk_row_id =
+        RowId::from_u128(u128::from(RowId::new().nanos_since_epoch() + one_hour_nanos) << 64);
+    let sdk_chunk = Chunk::builder(time_panel_blueprint_entity_path())
+        .with_archetype(
+            sdk_row_id,
+            TimePoint::STATIC,
+            &TimePanelBlueprint::new().with_play_state(PlayState::Following),
+        )
+        .build()
+        .expect("chunk should build");
+    test_context
+        .active_blueprint()
+        .add_chunk(&Arc::new(sdk_chunk))
+        .expect("adding the chunk should succeed");
+
+    for play_state in [PlayState::Paused, PlayState::Playing, PlayState::Paused] {
+        test_context.send_time_commands(
+            store_id.clone(),
+            [TimeControlCommand::SetPlayState(play_state)],
+        );
+        test_context.handle_system_commands(&egui::Context::default());
+
+        let blueprint_play_state = test_context.with_blueprint_ctx(|blueprint_ctx, _| {
+            TimeControl::from_blueprint(&blueprint_ctx).play_state()
+        });
+        assert_eq!(
+            blueprint_play_state, play_state,
+            "the viewer's write must supersede the SDK's static `PlayState`"
+        );
+    }
 }
