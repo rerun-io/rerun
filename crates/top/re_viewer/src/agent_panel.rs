@@ -487,6 +487,17 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
+    fn preamble_snapshot() {
+        let text = preamble::Preamble {
+            agent_dir: Some(Path::new("/opt/rerun-agent")),
+            ..Default::default()
+        }
+        .text();
+        insta::assert_snapshot!("preamble", text);
+    }
+
+    #[test]
     fn install_writes_every_file() {
         let dir = tempfile::tempdir().expect("tempdir");
         install_agent_files(dir.path()).expect("install");
