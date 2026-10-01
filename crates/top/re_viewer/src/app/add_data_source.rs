@@ -525,11 +525,9 @@ fn record_catalog_load_analytics(
 
 /// Register an `.rrd` file the user picked with `catalog`.
 ///
-/// The server reads the file itself, so the client only reads what it needs to name the dataset.
-/// The internal catalog reads the original file in place on native, and a copy in its OPFS storage
-/// in the browser. A remote catalog receives the file through a write access grant. Copies and
-/// uploads are keyed by the RRD fingerprint, so re-opening the same file reuses the existing
-/// object.
+/// Staging lets the internal catalog read the original file in place on native, or a copy in
+/// OPFS in the browser. Only the OPFS path reuses an existing copy based on its fingerprint
+/// and size; remote uploads follow the server's existing-key policy.
 async fn register_file(
     catalog: &CatalogHandle,
     path: &Path,
@@ -580,7 +578,7 @@ async fn register_file(
         .transpose()?;
 
     let file_url = catalog
-        .write_file(
+        .stage_file(
             fingerprint,
             #[cfg(not(target_arch = "wasm32"))]
             abs_path,

@@ -12648,6 +12648,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "bytes",
  "comfy-table",
  "crossbeam",
  "datafusion",

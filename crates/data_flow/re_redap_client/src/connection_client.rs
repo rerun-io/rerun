@@ -2310,7 +2310,7 @@ where
     ///
     /// Writing the object does not register it: redeem the grant, then pass the returned storage
     /// URL to [`crate::ConnectionHandle::register_with_dataset`], which is a separate operation and
-    /// may happen much later. [`crate::ConnectionHandle::write_object`] does both the request and
+    /// may happen much later. [`crate::ConnectionHandle::stage`] does both the request and
     /// the redemption.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_write_access_grant(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, overload
@@ -239,6 +240,62 @@ class CatalogClient:
         rtt_seconds = self._internal.rtt_seconds(num_pings)
         bandwidth = self._internal.bandwidth_bytes_per_sec(num_bytes, rtt_seconds)
         return BenchmarkResult(rtt=timedelta(seconds=rtt_seconds), bandwidth=bandwidth)
+
+    # TODO(RR-5830): Make optional by handing out structured storage urls.
+    # TODO(RR-5715): Accept binary readers and chunk iterators:
+    # - Require a byte count until grants support unknown lengths.
+    # - Bound read-ahead/retry buffers; hold the GIL only for Python reads.
+    # - Keep multipart handling in Rust and return only after completion.
+    @with_tracing("CatalogClient.stage")
+    def stage(self, source: str | os.PathLike[str] | bytes, *, key: str) -> str:
+        """
+        Upload one object to the catalog's storage and return its storage URL.
+
+        !!! note
+            ⚠️ This API is experimental and may change in future versions! ⚠️
+
+        This call blocks until the upload succeeds.
+        It does not validate recording contents, create a dataset, or register the object.
+        Pass the returned URL to [`DatasetEntry.register`][rerun.catalog.DatasetEntry.register] to register it separately.
+        Registration does not move or consume the object, and a failed registration does not remove it.
+        Staging does not provide automatic cleanup.
+
+        Parameters
+        ----------
+        source:
+            A local file path or the object's bytes.
+            File contents must remain unchanged until the upload completes.
+        key:
+            The object's key within catalog storage, for example `project/run-001/recording.rrd`.
+            Existing-key behavior is determined by the server: the OSS server rejects overwrites,
+            while Hub uploads may overwrite existing objects.
+            Use unique keys to avoid replacing objects referenced by existing registrations.
+
+        Returns
+        -------
+        str
+            The credential-free storage URL of the uploaded object.
+
+        Raises
+        ------
+        ValueError
+            If the key or upload size is invalid.
+        OSError
+            If the source cannot be opened or read.
+        RuntimeError
+            If the upload fails or staging is unavailable on the server.
+
+        Examples
+        --------
+        ```python
+        uri = client.stage("recording.rrd", key="project/run-001/recording.rrd")
+        dataset.register([uri]).wait()
+        ```
+
+        """
+        if isinstance(source, bytes):
+            return self._internal.stage_bytes(source, key=key)
+        return self._internal.stage_file(os.fspath(source), key=key)
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """

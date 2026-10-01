@@ -18,7 +18,8 @@
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
-    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+    PyConnectionError, PyException, PyOSError, PyPermissionError, PyRuntimeError, PyTimeoutError,
+    PyValueError,
 };
 use re_redap_client::{ApiErrorKind, TonicStatusError};
 
@@ -60,6 +61,9 @@ enum ExternalError {
 
     #[error("{0}")]
     ApiError(Box<re_redap_client::ApiError>),
+
+    #[error("{0}")]
+    StagingError(Box<re_redap_client::StagingError>),
 
     /// A DataFusion error that isn't a server error, so it has no [`re_redap_client::ApiError`]
     /// (which always names a server) to carry it.
@@ -112,6 +116,7 @@ macro_rules! impl_from_boxed {
 impl_from_boxed!(re_chunk::ChunkError, ChunkError);
 impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
 impl_from_boxed!(re_redap_client::ApiError, ApiError);
+impl_from_boxed!(re_redap_client::StagingError, StagingError);
 impl_from_boxed!(tonic::transport::Error, TonicTransportError);
 impl_from_boxed!(re_redap_client::TonicStatusError, TonicStatusError);
 
@@ -192,6 +197,12 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Unimplemented
                 | ApiErrorKind::Internal
                 | ApiErrorKind::FailedPrecondition => PyRuntimeError::new_err(err.to_string()),
+            },
+
+            ExternalError::StagingError(err) => match *err {
+                re_redap_client::StagingError::Api(err) => to_py_err(err),
+                err @ re_redap_client::StagingError::Read(_) => PyOSError::new_err(err.to_string()),
+                err => PyRuntimeError::new_err(format!("Staging failed: {err}")),
             },
 
             ExternalError::DataFusionError(err, kind) => {

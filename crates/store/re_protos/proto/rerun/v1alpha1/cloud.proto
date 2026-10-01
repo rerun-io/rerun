@@ -526,6 +526,11 @@ enum ErrorCode {
 
 // --- Grants ---
 
+// TODO(RR-5715): Extend grants for multipart uploads:
+// - Negotiate support; add initiate, part grant/renewal, complete, and abort.
+// - Define idempotency and size limits; keep long-lived credentials server-side.
+// - Represent unknown lengths explicitly; size_bytes=0 means an empty object.
+
 // Requests authorization to write one object.
 message GetWriteAccessGrantRequest {
   // The full object key, including the file name, relative to the location's base.

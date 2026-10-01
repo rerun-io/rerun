@@ -2,14 +2,14 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, TableDetails, TableEntry,
+    DataSource, DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, TableDetails, TableEntry,
     VersionResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
@@ -50,6 +50,38 @@ impl PyConnectionHandle {
 }
 
 impl PyConnectionHandle {
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn stage_file(
+        &self,
+        py: Python<'_>,
+        path: std::path::PathBuf,
+        key: String,
+    ) -> PyResult<String> {
+        let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+        wait_for_future(py, async move {
+            let file = std::fs::File::open(&path).map_err(|err| {
+                PyOSError::new_err(format!(
+                    "failed to open source: {err}\nFile path: {}",
+                    path.display()
+                ))
+            })?;
+            let url = self.inner.stage(key, file).await.map_err(to_py_err)?;
+            Ok(url.to_string())
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn stage_bytes(&self, py: Python<'_>, bytes: &[u8], key: String) -> PyResult<String> {
+        let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let bytes = bytes::Bytes::copy_from_slice(bytes);
+
+        wait_for_future(py, async move {
+            let url = self.inner.stage(key, bytes).await.map_err(to_py_err)?;
+            Ok(url.to_string())
+        })
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     pub fn version_info(&self, py: Python<'_>) -> PyResult<VersionResponse> {
         wait_for_future(py, async {
