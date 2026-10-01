@@ -79,13 +79,15 @@ pub fn top_panel(
         .exact_size(top_bar_style.height);
     let is_expanded = app_blueprint.top_panel_state().is_expanded();
 
-    // On MacOS, we show the close/minimize/maximize buttons in the top panel.
+    // On native MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if native_window_bar {
+    // The web viewer has no window buttons, even when `ui.os()` is MacOS.
+    let has_window_buttons = !cfg!(target_arch = "wasm32") && !native_window_bar;
+    if has_window_buttons {
+        panel.show(ui, |ui| content(ui, is_expanded));
+    } else {
         let mut panel_expanded = is_expanded; // Note: can't resize top panel, or drag-to-close it.
         panel.show_collapsible(ui, &mut panel_expanded, |ui| content(ui, is_expanded));
-    } else {
-        panel.show(ui, |ui| content(ui, is_expanded));
     }
 }
 
