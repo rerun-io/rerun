@@ -8,6 +8,7 @@ description: Send tables as dataframes to the Rerun Viewer
 > The `send_table` API is currently experimental and may change in future releases.
 
 Rerun now supports sending tabular data to the Rerun Viewer! This feature allows you to visualize and interact with dataframes (encoded as Arrow record batches) directly in the Rerun Viewer environment.
+To persist a table on a catalog server instead, see [Storing query results in catalog tables](../query-and-transform/catalog-tables.md).
 
 ## Overview
 
