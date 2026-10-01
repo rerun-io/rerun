@@ -20,6 +20,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 
 | Feature | Example | Description | Python | Rust | C+⁠+ |
 | ------- | ------- | ----------- | :----: | :--: | :-------: |
+| **Catalog server** | `catalog_tables` | Store the result of a catalog dataset query in a table | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/catalog_tables.py) |  |  |
 | **Catalog server** | `dataframe_operations` | Demonstrate common dataframe operations with a catalog server | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataframe_operations.py) |  |  |
 | **Catalog server** | `dataframe_performance` | Sample snippets highlighting common performance-related improvements | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataframe_performance.py) |  |  |
 | **Catalog server** | `dataset_resampling` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataset_resampling.py) |  |  |
