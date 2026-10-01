@@ -498,3 +498,60 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Static data is last-write-wins by `RowId`, also when a chunk holds several rows.
+///
+/// The batcher splits the rows of an entity by datatype set, so static rows logged with
+/// different component sets end up in chunks whose `RowId` ranges interleave.
+#[test]
+fn static_last_write_wins_with_interleaved_row_ids() -> anyhow::Result<()> {
+    let entity_path: EntityPath = "some_entity".into();
+    let [row_id1, row_id2, row_id3] = std::array::from_fn(|_| RowId::new());
+    let point1 = MyPoint::new(1.0, 1.0);
+    let point2 = MyPoint::new(2.0, 2.0);
+    let point3 = MyPoint::new(3.0, 3.0);
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+
+    let chunk = Chunk::builder(entity_path.clone())
+        .with_component_batch(
+            row_id1,
+            TimePoint::default(),
+            (MyPoints::descriptor_points(), &[point1]),
+        )
+        .with_component_batch(
+            row_id3,
+            TimePoint::default(),
+            (MyPoints::descriptor_points(), &[point3]),
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk = Chunk::builder(entity_path.clone())
+        .with_component_batch(
+            row_id2,
+            TimePoint::default(),
+            (MyPoints::descriptor_points(), &[point2]),
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    let query = LatestAtQuery::new(TimelineName::from("doesnt_matter"), TimeInt::MAX);
+    let got = query_latest_component::<MyPoint>(
+        &store,
+        &entity_path,
+        &query,
+        MyPoints::descriptor_points().component,
+    )
+    .map(|(_, row_id, point)| (row_id, point));
+    similar_asserts::assert_eq!(
+        Some((row_id3, point3)),
+        got,
+        "row_id3 is the most recent write, the older row_id2 must not overwrite it"
+    );
+
+    Ok(())
+}
