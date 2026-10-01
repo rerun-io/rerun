@@ -149,6 +149,7 @@ impl Conversation {
             ui,
             &mut self.session,
             &mut self.input,
+            &mut settings.preferred_mode,
             settings.show_thoughts,
             login_hint,
         );
@@ -534,6 +535,7 @@ impl AgentPanel {
     }
 
     pub fn set_mode(&mut self, mode_id: SessionModeId) {
+        self.settings.preferred_mode = Some(mode_id.clone());
         if let Some(session) = self.session_mut() {
             session.set_mode(mode_id);
         }

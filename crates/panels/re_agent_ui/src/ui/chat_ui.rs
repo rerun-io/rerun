@@ -5,7 +5,7 @@ use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::acp::LineDirection;
-use re_agent::acp::schema::v1::{AuthMethod, PermissionOptionKind, SessionMode};
+use re_agent::acp::schema::v1::{AuthMethod, PermissionOptionKind, SessionMode, SessionModeId};
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
@@ -110,6 +110,7 @@ pub fn chat_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
+    preferred_mode: &mut Option<SessionModeId>,
     show_thoughts: bool,
     login_hint: Option<&str>,
 ) {
@@ -121,7 +122,7 @@ pub fn chat_ui(
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(ui, session, input, login_hint);
+            composer_ui(ui, session, input, preferred_mode, login_hint);
         });
 
     egui::CentralPanel::default()
@@ -146,7 +147,11 @@ pub fn chat_ui(
         });
 }
 
-fn mode_picker_ui(ui: &mut egui::Ui, session: &mut AgentSession) {
+fn mode_picker_ui(
+    ui: &mut egui::Ui,
+    session: &mut AgentSession,
+    preferred_mode: &mut Option<SessionModeId>,
+) {
     let Some(modes) = session.modes() else {
         return;
     };
@@ -186,6 +191,7 @@ fn mode_picker_ui(ui: &mut egui::Ui, session: &mut AgentSession) {
     .on_hover_text("Session mode: how much the agent may do without asking");
 
     if let Some(mode_id) = selected {
+        *preferred_mode = Some(mode_id.clone());
         session.set_mode(mode_id);
     }
 }
@@ -212,6 +218,7 @@ fn composer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
+    preferred_mode: &mut Option<SessionModeId>,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -231,7 +238,7 @@ fn composer_ui(
     queue_ui(ui, session, input);
     input_ui(ui, session, input);
 
-    footer_ui(ui, session, input);
+    footer_ui(ui, session, input, preferred_mode);
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -326,9 +333,14 @@ fn stop_agent(ui: &egui::Ui, session: &mut AgentSession, input: &mut ChatInput) 
 }
 
 /// Mode picker, model, connection status or token usage, and the agent log toggle.
-fn footer_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
+fn footer_ui(
+    ui: &mut egui::Ui,
+    session: &mut AgentSession,
+    input: &mut ChatInput,
+    preferred_mode: &mut Option<SessionModeId>,
+) {
     ui.horizontal(|ui| {
-        mode_picker_ui(ui, session);
+        mode_picker_ui(ui, session, preferred_mode);
 
         if let Some(model) = session.transcript().current_model() {
             ui.weak(model).on_hover_text("The model the agent is using");

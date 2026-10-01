@@ -380,6 +380,7 @@ mod tests {
             log_protocol: false,
             preamble: None,
             model_preferences: Vec::new(),
+            preferred_mode: None,
         };
         let mut analytics = TurnAnalytics::default();
         let config = analytics

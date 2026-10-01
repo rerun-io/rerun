@@ -69,6 +69,9 @@ pub struct LaunchConfig {
     /// first prompt. An agent that offers no model selector, or nothing that matches, keeps
     /// whatever model it would use on its own.
     pub model_preferences: Vec<String>,
+
+    /// Exact session mode id to restore when the agent offers it.
+    pub preferred_mode: Option<SessionModeId>,
 }
 
 /// Something the UI wants the agent to do.
@@ -370,7 +373,7 @@ async fn start_session(
         .mcp_servers(mcp_servers);
 
     match cx.send_request(request).block_task().await {
-        Ok(response) => {
+        Ok(mut response) => {
             let config_options = response.config_options.as_deref().unwrap_or_default();
             select_model(
                 cx,
@@ -379,6 +382,17 @@ async fn start_session(
                 &config.model_preferences,
             )
             .await;
+            if let Some(selected_mode) = select_mode(
+                cx,
+                &response.session_id,
+                response.modes.as_ref(),
+                config.preferred_mode.as_ref(),
+            )
+            .await
+                && let Some(modes) = &mut response.modes
+            {
+                modes.current_mode_id = selected_mode;
+            }
             events.send(AgentEvent::SessionStarted {
                 session_id: response.session_id.clone(),
                 modes: response.modes,
@@ -401,6 +415,42 @@ async fn start_session(
             None
         }
     }
+}
+
+/// Restores the preferred mode before the session can receive its first prompt.
+async fn select_mode(
+    cx: &ConnectionTo<Agent>,
+    session_id: &SessionId,
+    modes: Option<&SessionModeState>,
+    preference: Option<&SessionModeId>,
+) -> Option<SessionModeId> {
+    let mode = pick_mode(modes, preference)?;
+    let request = SetSessionModeRequest::new(session_id.clone(), mode.clone());
+    match cx.send_request(request).block_task().await {
+        Ok(_) => Some(mode),
+        Err(err) => {
+            re_log::debug!("Failed to restore session mode: {}", describe_error(&err));
+            None
+        }
+    }
+}
+
+/// Returns the preferred offered mode when it differs from the agent's default.
+fn pick_mode(
+    modes: Option<&SessionModeState>,
+    preference: Option<&SessionModeId>,
+) -> Option<SessionModeId> {
+    let modes = modes?;
+    let preference = preference?;
+    (&modes.current_mode_id != preference)
+        .then(|| {
+            modes
+                .available_modes
+                .iter()
+                .find(|mode| &mode.id == preference)
+                .map(|mode| mode.id.clone())
+        })
+        .flatten()
 }
 
 /// Switches the session to the first preferred model the agent offers.
@@ -490,7 +540,9 @@ fn describe_error(err: &Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use agent_client_protocol::schema::v1::{SessionConfigSelectGroup, SessionConfigSelectOption};
+    use agent_client_protocol::schema::v1::{
+        SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+    };
 
     use super::*;
 
@@ -510,6 +562,45 @@ mod tests {
 
     fn preferences(models: &[&str]) -> Vec<String> {
         models.iter().map(|model| (*model).to_owned()).collect()
+    }
+
+    #[test]
+    fn picks_an_offered_preferred_mode() {
+        let modes = SessionModeState::new(
+            "manual",
+            vec![
+                SessionMode::new("manual", "Manual"),
+                SessionMode::new("plan", "Plan"),
+            ],
+        );
+        assert_eq!(
+            pick_mode(Some(&modes), Some(&SessionModeId::new("plan")))
+                .expect("preferred mode")
+                .0
+                .as_ref(),
+            "plan"
+        );
+    }
+
+    #[test]
+    fn leaves_the_default_mode_when_the_preference_does_not_apply() {
+        let modes = SessionModeState::new(
+            "manual",
+            vec![
+                SessionMode::new("manual", "Manual"),
+                SessionMode::new("plan", "Plan"),
+            ],
+        );
+        assert_eq!(pick_mode(Some(&modes), None), None);
+        assert_eq!(
+            pick_mode(Some(&modes), Some(&SessionModeId::new("manual"))),
+            None
+        );
+        assert_eq!(
+            pick_mode(Some(&modes), Some(&SessionModeId::new("auto"))),
+            None
+        );
+        assert_eq!(pick_mode(None, Some(&SessionModeId::new("plan"))), None);
     }
 
     #[test]

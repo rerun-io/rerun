@@ -155,6 +155,15 @@ fn mode_picker_requests_the_clicked_mode() {
         session.requested_mode().map(|id| id.0.as_ref()),
         Some("acceptEdits")
     );
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferred_mode
+            .as_ref()
+            .map(|mode| mode.0.as_ref()),
+        Some("acceptEdits")
+    );
 }
 
 /// Enter while the agent is busy queues the message. Escape stops the agent and hands the
