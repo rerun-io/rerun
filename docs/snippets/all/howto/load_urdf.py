@@ -27,6 +27,6 @@ with RecordingStream("rerun_example_load_urdf") as rec:
             rotation=rr.RotationAxisAngle(axis=joint_axis, angle=joint_angle),
             translation=origin_xyz,
             parent_frame="base_link",
-            child_frame="child_link",
+            child_frame="arm_link",
         ),
     )
