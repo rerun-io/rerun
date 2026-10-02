@@ -62,8 +62,11 @@ pub struct FileSink {
     tx: Mutex<Sender<Option<Command>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 
-    /// Only used for diagnostics.
-    target: FileSinkTarget,
+    /// Name of the sinks, only used for diagnostics.
+    name: &'static str,
+
+    /// Target of the sink, only used for diagnostics.
+    target: String,
 }
 
 impl Drop for FileSink {
@@ -107,7 +110,6 @@ impl FileSink {
         path: impl Into<std::path::PathBuf>,
         options: FileSinkOptions,
     ) -> Result<Self, FileSinkError> {
-        // We always compress on disk
         let path = path.into();
         re_log::debug!("Saving file to {path:?}…");
 
@@ -120,8 +122,7 @@ impl FileSink {
             source: err,
         })?;
 
-        let target = FileSinkTarget::File(path);
-        Self::spawn(target, file, options)
+        Self::spawn("file_writer", path.display().to_string(), file, options)
     }
 
     /// Start writing log messages to a [`std::io::Write`] stream.
@@ -144,8 +145,7 @@ impl FileSink {
     ) -> Result<Self, FileSinkError> {
         let name = name.into();
         re_log::debug!("Creating stream sink {name:?}…");
-        let target = FileSinkTarget::Stream(name);
-        Self::spawn(target, stream, options)
+        Self::spawn("stream_writer", format!("stream {name}"), stream, options)
     }
 
     /// Start writing log messages to standard output, with default options.
@@ -156,17 +156,19 @@ impl FileSink {
     /// Start writing log messages to standard output, with the given [`FileSinkOptions`].
     pub fn stdout_with_options(options: FileSinkOptions) -> Result<Self, FileSinkError> {
         re_log::debug!("Writing to stdout…");
-        let target = FileSinkTarget::Stdout;
-        Self::spawn(target, std::io::stdout(), options)
+        Self::spawn("stdout_writer", "stdout", std::io::stdout(), options)
     }
 
     /// Spawn the background thread to write to the given stream.
     fn spawn<W: std::io::Write + Send + 'static>(
-        target: FileSinkTarget,
+        name: &'static str,
+        target: impl Into<String>,
         stream: W,
         options: FileSinkOptions,
     ) -> Result<Self, FileSinkError> {
-        // We always compress on disk
+        let target = target.into();
+
+        // We always compress in the file writer.
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         let mut encoder = crate::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
@@ -179,7 +181,7 @@ impl FileSink {
             // serialized when the encoder is dropped, so leaving it enabled here grows the heap
             // unboundedly (see #12623).
             re_log::warn!(
-                "FileSink ({target}): `write_footer=false` — the resulting .rrd will not \
+                "FileSink ({target}): `write_footer=false` — the resulting RRD stream will not \
                  contain a manifest, which will significantly hurt random-access performance \
                  and some tools (e.g. LazyStore) may not work properly."
             );
@@ -187,11 +189,12 @@ impl FileSink {
         }
 
         let (tx, rx) = crossbeam::channel::bounded(1024);
-        let join_handle = spawn_and_stream(target.clone(), encoder, rx)?;
+        let join_handle = spawn_and_stream(name, target.clone(), encoder, rx)?;
 
         Ok(Self {
             tx: tx.into(),
             join_handle: Some(join_handle),
+            name,
             target,
         })
     }
@@ -221,15 +224,11 @@ impl FileSink {
 }
 
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
-    target: FileSinkTarget,
+    name: &'static str,
+    target: String,
     mut encoder: crate::Encoder<W>,
     rx: Receiver<Option<Command>>,
 ) -> Result<std::thread::JoinHandle<()>, FileSinkError> {
-    let name = match target {
-        FileSinkTarget::Stdout => "stdout",
-        FileSinkTarget::File(_) => "file_writer",
-        FileSinkTarget::Stream(_) => "stream_writer",
-    };
     std::thread::Builder::new()
         .name(name.into())
         .spawn({
@@ -272,24 +271,8 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
+            .field("name", &self.name)
             .field("target", &self.target)
             .finish_non_exhaustive()
-    }
-}
-
-#[derive(Clone, Debug)]
-enum FileSinkTarget {
-    Stdout,
-    File(PathBuf),
-    Stream(String),
-}
-
-impl std::fmt::Display for FileSinkTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Stdout => f.write_str("stdout"),
-            Self::File(path) => write!(f, "{}", path.display()),
-            Self::Stream(name) => write!(f, "stream {name:?}"),
-        }
     }
 }
