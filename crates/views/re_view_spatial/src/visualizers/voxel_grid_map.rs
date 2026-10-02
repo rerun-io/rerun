@@ -306,7 +306,7 @@ impl VoxelGridMapVisualizer {
             max_index = max_index.max(index);
         }
 
-        let local_bbox = macaw::BoundingBox::from_min_max(
+        let local_bbox = re_math::BoundingBox::from_min_max(
             min_index.as_vec3() * voxel_size,
             (max_index + glam::IVec3::ONE).as_vec3() * voxel_size,
         );

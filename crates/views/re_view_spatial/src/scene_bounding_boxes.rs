@@ -10,33 +10,33 @@ use crate::visualizers::iter_spatial_data;
 #[derive(Clone, re_byte_size::SizeBytes)]
 pub struct SceneBoundingBoxes {
     /// Overall bounding box of the scene for the current query.
-    pub current: macaw::BoundingBox,
+    pub current: re_math::BoundingBox,
 
     /// Per-entity bounding boxes for the current query.
-    pub per_entity: IntMap<EntityPathHash, macaw::BoundingBox>,
+    pub per_entity: IntMap<EntityPathHash, re_math::BoundingBox>,
 
     /// Overall region of interest of the scene for the current query.
     ///
     /// For most entities this equals the bounding box, but may exclude outliers.
     /// Used for camera framing and other heuristics.
-    pub region_of_interest_current: macaw::BoundingBox,
+    pub region_of_interest_current: re_math::BoundingBox,
 
     /// A region of interest that smoothly transitions to the current one.
     ///
     /// If discontinuities are detected, this will be reset immediately.
-    pub region_of_interest_smoothed: macaw::BoundingBox,
+    pub region_of_interest_smoothed: re_math::BoundingBox,
 
     /// Per-entity regions of interest for the current query.
-    pub region_of_interest_per_entity: IntMap<EntityPathHash, macaw::BoundingBox>,
+    pub region_of_interest_per_entity: IntMap<EntityPathHash, re_math::BoundingBox>,
 }
 
 impl Default for SceneBoundingBoxes {
     fn default() -> Self {
         Self {
-            current: macaw::BoundingBox::nothing(),
+            current: re_math::BoundingBox::nothing(),
             per_entity: IntMap::default(),
-            region_of_interest_current: macaw::BoundingBox::nothing(),
-            region_of_interest_smoothed: macaw::BoundingBox::nothing(),
+            region_of_interest_current: re_math::BoundingBox::nothing(),
+            region_of_interest_smoothed: re_math::BoundingBox::nothing(),
             region_of_interest_per_entity: IntMap::default(),
         }
     }
@@ -52,9 +52,9 @@ impl SceneBoundingBoxes {
         re_tracing::profile_function!();
 
         let previous_region_of_interest = self.region_of_interest_current;
-        self.current = macaw::BoundingBox::nothing();
+        self.current = re_math::BoundingBox::nothing();
         self.per_entity.clear();
-        self.region_of_interest_current = macaw::BoundingBox::nothing();
+        self.region_of_interest_current = re_math::BoundingBox::nothing();
         self.region_of_interest_per_entity.clear();
 
         for data in iter_spatial_data(system_output) {
@@ -90,13 +90,13 @@ impl SceneBoundingBoxes {
             .per_entity
             .values()
             .copied()
-            .fold(macaw::BoundingBox::nothing(), macaw::BoundingBox::union);
+            .fold(re_math::BoundingBox::nothing(), re_math::BoundingBox::union);
 
         self.region_of_interest_current = self
             .region_of_interest_per_entity
             .values()
             .copied()
-            .fold(macaw::BoundingBox::nothing(), macaw::BoundingBox::union);
+            .fold(re_math::BoundingBox::nothing(), re_math::BoundingBox::union);
 
         // Smooth the region of interest for stable camera behavior.
         let discontinuity =
@@ -127,7 +127,7 @@ impl SceneBoundingBoxes {
                 .lerp(current_size, smoothing_factor);
 
             self.region_of_interest_smoothed =
-                macaw::BoundingBox::from_center_size(new_smoothed_center, new_smoothed_size);
+                re_math::BoundingBox::from_center_size(new_smoothed_center, new_smoothed_size);
 
             let current_diagonal_length = current_size.length();
             let sameness_threshold = current_diagonal_length * (0.1 / 100.0); // 0.1% of the diagonal.
@@ -141,7 +141,7 @@ impl SceneBoundingBoxes {
     }
 }
 
-fn detect_discontinuity(current: macaw::BoundingBox, previous: macaw::BoundingBox) -> bool {
+fn detect_discontinuity(current: re_math::BoundingBox, previous: re_math::BoundingBox) -> bool {
     if !previous.is_finite() {
         // Previous bounding box is not finite, so we can't compare.
         return true;

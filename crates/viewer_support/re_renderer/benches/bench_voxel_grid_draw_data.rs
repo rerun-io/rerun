@@ -66,13 +66,13 @@ fn voxel_instances(
     source: &[SourceVoxel],
     voxel_size: glam::Vec3,
 ) -> (Vec<VoxelGridInstance>, glam::Vec3A) {
-    let mut bbox = macaw::BoundingBox::nothing();
+    let mut bbox = re_math::BoundingBox::nothing();
     let instances = source
         .iter()
         .map(|voxel| {
             let min = voxel.index.as_vec3() * voxel_size;
             let max = (voxel.index + glam::IVec3::ONE).as_vec3() * voxel_size;
-            bbox = bbox.union(macaw::BoundingBox::from_min_max(min, max));
+            bbox = bbox.union(re_math::BoundingBox::from_min_max(min, max));
 
             VoxelGridInstance {
                 index: voxel.index,
@@ -137,8 +137,8 @@ fn cube_gpu_mesh(ctx: &RenderContext) -> Arc<GpuMesh> {
 fn mesh_instances(
     source: &[SourceVoxel],
     cube_mesh: &Arc<GpuMesh>,
-) -> (Vec<GpuMeshInstance>, macaw::BoundingBox) {
-    let mut bbox = macaw::BoundingBox::nothing();
+) -> (Vec<GpuMeshInstance>, re_math::BoundingBox) {
+    let mut bbox = re_math::BoundingBox::nothing();
     let instances = source
         .iter()
         .map(|voxel| {

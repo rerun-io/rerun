@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
         TargetConfiguration {
             name: "gaussian_compare".into(),
             resolution_in_pixel: resolution,
-            view_from_world: macaw::IsoTransform::look_at_rh(pos, target, glam::Vec3::Z)
+            view_from_world: re_math::IsoTransform::look_at_rh(pos, target, glam::Vec3::Z)
                 .ok_or_else(|| anyhow::anyhow!("invalid camera"))?,
             projection_from_view: Projection::Perspective {
                 vertical_fov: fov_y,

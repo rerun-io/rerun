@@ -80,7 +80,7 @@ futures-io = { version = "0.3" }
 futures-sink = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
-glam = { version = "0.30", features = ["bytemuck", "debug-glam-assert", "serde"] }
+glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
@@ -97,7 +97,6 @@ litemap = { version = "0.8", default-features = false, features = ["alloc"] }
 lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
 log = { version = "0.4", default-features = false, features = ["release_max_level_debug", "std"] }
 lz4_flex = { version = "0.13" }
-macaw = { version = "0.30", features = ["serde"] }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
 mime_guess2 = { version = "2" }
@@ -128,6 +127,7 @@ quote = { version = "1" }
 rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
 raw-window-handle = { version = "0.6", default-features = false, features = ["std"] }
+re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
@@ -239,7 +239,7 @@ futures-io = { version = "0.3" }
 futures-sink = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
-glam = { version = "0.30", features = ["bytemuck", "debug-glam-assert", "serde"] }
+glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
@@ -256,7 +256,6 @@ litemap = { version = "0.8", default-features = false, features = ["alloc"] }
 lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
 log = { version = "0.4", default-features = false, features = ["release_max_level_debug", "std"] }
 lz4_flex = { version = "0.13" }
-macaw = { version = "0.30", features = ["serde"] }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
 mime_guess2 = { version = "2" }
@@ -287,6 +286,7 @@ quote = { version = "1" }
 rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
 raw-window-handle = { version = "0.6", default-features = false, features = ["std"] }
+re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }

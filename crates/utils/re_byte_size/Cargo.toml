@@ -25,11 +25,12 @@ egui = ["dep:egui", "ecolor", "emath"]
 egui_plot = ["dep:egui_plot"]
 emath = ["dep:emath"]
 glam = ["dep:glam"]
-macaw = ["dep:macaw"]
+re_math = ["dep:re_math"]
 
 
 [dependencies]
 re_byte_size_derive = { workspace = true }
+re_math = { workspace = true, optional = true }
 
 arrow.workspace = true
 half.workspace = true
@@ -42,7 +43,6 @@ egui = { workspace = true, optional = true }
 egui_plot = { workspace = true, optional = true }
 emath = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
-macaw = { workspace = true, optional = true }
 
 
 [dev-dependencies]

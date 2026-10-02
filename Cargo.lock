@@ -4456,9 +4456,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.30.10"
+version = "0.33.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19fc433e8437a212d1b6f1e68c7824af3aed907da60afa994e7f542d18d12aa9"
+checksum = "35b4e837a1d133645d1dcf283e146a4b9901e390a1c13545f959cfed3a72f24f"
 dependencies = [
  "bytemuck",
  "serde_core",
@@ -4821,9 +4821,9 @@ checksum = "5491a308e0214554f07a81d8944abe45f552871c12e3c3c6e7e5d354039a6c4c"
 
 [[package]]
 name = "hexasphere"
-version = "16.0.0"
+version = "19.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29a164ceff4500f2a72b1d21beaa8aa8ad83aec2b641844c659b190cb3ea2e0b"
+checksum = "163385eff5a0cf606ebe2c10b3a44ab02f4306e83fbd068a64f5e1d72a3049ac"
 dependencies = [
  "constgebra",
  "glam",
@@ -6555,17 +6555,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef0d4ed8669f8f8826eb00dc878084aa8f253506c4fd5e8f58f5bce72ddb97e"
 dependencies = [
  "twox-hash",
-]
-
-[[package]]
-name = "macaw"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c96b82556b0d4aa25cd4771b64ef9bde7c120afb588a083fcb242bf01e4a09b"
-dependencies = [
- "glam",
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -9243,9 +9232,9 @@ dependencies = [
  "glam",
  "half",
  "insta",
- "macaw",
  "parking_lot",
  "re_byte_size_derive",
+ "re_math",
  "re_workspace_hack",
  "smallvec",
  "vec1",
@@ -10231,6 +10220,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_math"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "609679e93d655cdb9aed706a98319a3e3fc65eafff0862fa1f56e1be0474a439"
+dependencies = [
+ "glam",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
 name = "re_mcap"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
@@ -10707,7 +10707,6 @@ dependencies = [
  "gltf",
  "half",
  "itertools 0.15.0",
- "macaw",
  "never",
  "notify",
  "ordered-float 5.3.0",
@@ -10720,6 +10719,7 @@ dependencies = [
  "re_byte_size",
  "re_error",
  "re_log",
+ "re_math",
  "re_mutex",
  "re_quota_channel",
  "re_span",
@@ -10753,11 +10753,11 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.15.0",
- "macaw",
  "pollster 1.0.1",
  "rand 0.9.5",
  "re_async",
  "re_log",
+ "re_math",
  "re_renderer",
  "re_workspace_hack",
  "web-sys",
@@ -10772,7 +10772,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "egui",
  "glam",
- "macaw",
+ "re_math",
  "re_renderer",
  "re_test_context",
  "re_viewer_context",
@@ -10870,7 +10870,6 @@ dependencies = [
  "infer",
  "insta",
  "itertools 0.15.0",
- "macaw",
  "mime_guess2",
  "mint",
  "ndarray",
@@ -10883,6 +10882,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_rvl",
  "re_tracing",
  "re_types_core",
@@ -11580,12 +11580,12 @@ dependencies = [
  "egui",
  "glam",
  "itertools 0.15.0",
- "macaw",
  "re_byte_size",
  "re_data_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_sdk_types",
@@ -11616,7 +11616,6 @@ dependencies = [
  "image",
  "insta",
  "itertools 0.15.0",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "ordered-float 5.3.0",
@@ -11632,6 +11631,7 @@ dependencies = [
  "re_int",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_mp4",
  "re_query",
  "re_renderer",
@@ -11762,7 +11762,6 @@ dependencies = [
  "egui_plot",
  "glam",
  "itertools 0.15.0",
- "macaw",
  "nohash-hasher",
  "rayon",
  "re_byte_size",
@@ -11772,6 +11771,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_plot",
  "re_query",
  "re_renderer",
@@ -11935,7 +11935,6 @@ dependencies = [
  "indexmap 2.14.0",
  "itertools 0.15.0",
  "linked-hash-map",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "parking_lot",
@@ -11959,6 +11958,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_msg",
  "re_log_types",
+ "re_math",
  "re_memory",
  "re_mutex",
  "re_query",
@@ -12199,7 +12199,6 @@ dependencies = [
  "lock_api",
  "log",
  "lz4_flex",
- "macaw",
  "matrixmultiply",
  "memchr",
  "mime_guess2",
@@ -12242,6 +12241,7 @@ dependencies = [
  "rand 0.9.5",
  "rand_distr",
  "raw-window-handle",
+ "re_math",
  "regex",
  "regex-automata",
  "regex-syntax",
@@ -14183,8 +14183,8 @@ dependencies = [
  "clap",
  "glam",
  "image",
- "macaw",
  "pollster 1.0.1",
+ "re_math",
  "re_renderer",
  "re_sdk_types",
  "re_types_core",

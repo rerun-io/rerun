@@ -40,7 +40,7 @@ pub struct LoadedMesh {
     pub mesh_instances: Vec<re_renderer::renderer::GpuMeshInstance>,
 
     #[size_bytes(ignore)]
-    bbox: macaw::BoundingBox,
+    bbox: re_math::BoundingBox,
 }
 
 impl LoadedMesh {
@@ -205,7 +205,7 @@ impl LoadedMesh {
         })
     }
 
-    pub fn bbox(&self) -> macaw::BoundingBox {
+    pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
     }
 }
