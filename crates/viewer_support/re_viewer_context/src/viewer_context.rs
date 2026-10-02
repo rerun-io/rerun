@@ -91,6 +91,11 @@ impl ViewerContext<'_> {
         self.app_ctx.render_ctx
     }
 
+    /// Audio output shared by all views, when the application supports playback.
+    pub fn audio_output(&self) -> Option<&dyn crate::AudioOutput> {
+        self.app_ctx.audio_output
+    }
+
     /// How to configure the renderer.
     #[inline]
     pub fn render_mode(&self) -> re_renderer::RenderMode {

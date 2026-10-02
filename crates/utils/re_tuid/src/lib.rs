@@ -205,6 +205,21 @@ impl Tuid {
         })
     }
 
+    /// Create a new unique [`Tuid`] that is strictly greater than `min`.
+    ///
+    /// Use this when the result must order after an id minted elsewhere, whose clock may be ahead
+    /// of ours.
+    /// Successive calls on the same thread with the same `min` are still strictly increasing.
+    #[inline]
+    pub fn new_after(min: Self) -> Self {
+        let new = Self::new();
+        if min < new {
+            new
+        } else {
+            Self::from_nanos_and_inc(min.nanos_since_epoch().saturating_add(1), new.inc())
+        }
+    }
+
     /// Construct a [`Tuid`] from the upper and lower halves of a u128-bit.
     /// The first should be nano-seconds since epoch.
     #[inline]

@@ -70,12 +70,20 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
 
     let span = entry.rrd_footer_byte_span_from_start_excluding_header;
 
-    // Sanity check: payload must fit within the file.
-    if file_len < span.end() {
+    if span.len > MessageHeader::MAX_PAYLOAD_SIZE_BYTES {
+        return Err(CodecError::MessagePayloadTooLarge { len: span.len });
+    }
+
+    // Sanity check: payload must fit within the file without overflowing its end offset.
+    if span
+        .start
+        .checked_add(span.len)
+        .is_none_or(|end| end > file_len)
+    {
         return Err(CodecError::FrameDecoding(format!(
-            "RrdFooter payload span ({start}..{end}) exceeds file size ({file_len})",
+            "RrdFooter payload span (start {start}, length {len}) exceeds file size ({file_len})",
             start = span.start,
-            end = span.start + span.len,
+            len = span.len,
         )));
     }
 
@@ -151,6 +159,7 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
     let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
     let (version, _options) = stream_header.to_version_and_options()?;
 
+    let file_len = reader.size().await?;
     let mut store_ids = Vec::new();
     let mut default_blueprint_by_app_id = BTreeMap::new();
     let mut app_id_cache = CachingApplicationIdInjector::default();
@@ -170,6 +179,15 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
         };
         offset += MessageHeader::ENCODED_SIZE_BYTES as u64;
         let header = MessageHeader::from_rrd_bytes(&msg_header_buf)?;
+        if offset
+            .checked_add(header.len)
+            .is_none_or(|end| end > file_len)
+        {
+            return Err(CodecError::FrameDecoding(format!(
+                "Message payload (start {offset}, length {}) exceeds file size ({file_len})",
+                header.len,
+            )));
+        }
 
         match header.kind {
             MessageKind::End => break,
@@ -227,6 +245,31 @@ mod tests {
 
     use super::*;
     use crate::rrd::test_util::{encode_test_rrd, encode_test_rrd_to_file, make_test_chunks};
+
+    #[test]
+    fn legacy_metadata_rejects_payload_past_eof_before_reading() {
+        use std::io::{Seek as _, SeekFrom, Write as _};
+
+        let file = tempfile::NamedTempFile::new().unwrap();
+        encode_test_rrd_to_file(file.path(), &make_test_chunks(1), false);
+        let mut file = File::options()
+            .read(true)
+            .write(true)
+            .open(file.path())
+            .unwrap();
+        file.set_len((StreamHeader::ENCODED_SIZE_BYTES + MessageHeader::ENCODED_SIZE_BYTES) as u64)
+            .unwrap();
+        file.seek(SeekFrom::Start(
+            (StreamHeader::ENCODED_SIZE_BYTES + size_of::<u64>()) as u64,
+        ))
+        .unwrap();
+        file.write_all(&(1024_u64 * 1024).to_le_bytes()).unwrap();
+
+        assert!(matches!(
+            futures::executor::block_on(enumerate_legacy_metadata(&file)),
+            Err(CodecError::FrameDecoding(_))
+        ));
+    }
 
     fn set_store_info(store_id: StoreId) -> LogMsg {
         LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {

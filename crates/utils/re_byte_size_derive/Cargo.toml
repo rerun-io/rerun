@@ -29,3 +29,6 @@ proc-macro-crate.workspace = true
 proc-macro2 = { workspace = true, features = ["proc-macro"] }
 quote.workspace = true
 syn.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

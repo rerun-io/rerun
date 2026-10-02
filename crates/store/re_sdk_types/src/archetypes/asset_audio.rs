@@ -199,6 +199,13 @@ impl ::re_types_core::AsComponents for AssetAudio {
 
 impl ::re_types_core::ArchetypeReflectionMarker for AssetAudio {}
 
+impl crate::VisualizableArchetype for AssetAudio {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("AssetAudio").with_overrides(self)
+    }
+}
+
 impl AssetAudio {
     /// Create a new `AssetAudio`.
     #[inline]

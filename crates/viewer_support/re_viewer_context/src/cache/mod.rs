@@ -37,7 +37,8 @@ pub use video_stream_cache::{
 
 // ----
 
-fn filter_blob_removed_events(
+/// The cache keys of all blobs removed by `events`, for caches keyed by [`crate::StoredBlobCacheKey`].
+pub fn filter_blob_removed_events(
     events: &[&re_chunk_store::ChunkStoreEvent],
 ) -> ahash::HashSet<crate::StoredBlobCacheKey> {
     use re_sdk_types::Component as _;

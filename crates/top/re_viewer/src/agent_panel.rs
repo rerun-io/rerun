@@ -154,7 +154,7 @@ impl ViewerAgentPanel {
             return;
         }
 
-        let Some(transcript) = panel.transcript().map(re_agent_ui::Transcript::to_markdown) else {
+        let Some(transcript) = panel.session().map(self_improve::session_dump) else {
             return;
         };
         if transcript.trim().is_empty() {
@@ -484,6 +484,17 @@ mod tests {
                 .text()
                 .contains("Do NOT read the source code of Rerun")
         );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn preamble_snapshot() {
+        let text = preamble::Preamble {
+            agent_dir: Some(Path::new("/opt/rerun-agent")),
+            ..Default::default()
+        }
+        .text();
+        insta::assert_snapshot!("preamble", text);
     }
 
     #[test]

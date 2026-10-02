@@ -8,6 +8,7 @@
 
 mod buffer;
 mod downmix;
+mod output_error;
 mod request;
 mod test_sound;
 mod waveform_envelope;
@@ -23,6 +24,7 @@ mod output;
 mod player;
 
 pub use buffer::{AudioBuffer, ChannelLayout, ChannelPosition};
+pub use output_error::OutputError;
 pub use request::{AUDIBLE_SPEEDS, StreamId, StreamRequest};
 pub use test_sound::test_sound;
 pub use waveform_envelope::WaveformEnvelope;
@@ -30,7 +32,5 @@ pub use waveform_envelope::WaveformEnvelope;
 #[cfg(feature = "decoding")]
 pub use decoding::{AudioDecodeError, decode};
 
-#[cfg(feature = "output")]
-pub use output::OutputError;
 #[cfg(feature = "output")]
 pub use player::AudioPlayer;

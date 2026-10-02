@@ -80,14 +80,17 @@ impl PyCatalogClientInternal {
     }
 
     /// Create a new catalog client object.
+    ///
+    /// `client_name` overrides the client name this connection reports in `x-rerun-client-version`.
     #[new]
-    #[pyo3(signature = (url, token=None, object_store_auth=None))]
-    #[pyo3(text_signature = "(self, url, token=None, object_store_auth=None)")]
+    #[pyo3(signature = (url, token=None, object_store_auth=None, client_name=None))]
+    #[pyo3(text_signature = "(self, url, token=None, object_store_auth=None, client_name=None)")]
     fn new(
         py: Python<'_>,
         url: String,
         token: Option<String>,
         object_store_auth: Option<AnyObjectStoreAuthenticator>,
+        client_name: Option<String>,
     ) -> PyResult<Self> {
         let _span = read_trace_context_from_python(py, "CatalogClient.__new__").entered();
 
@@ -100,8 +103,11 @@ impl PyCatalogClientInternal {
 
         let origin = url.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection_registry =
+        let mut connection_registry =
             re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+        if let Some(client_name) = client_name {
+            connection_registry = connection_registry.with_client_name(client_name);
+        }
 
         let credentials = match token
             .map(TryFrom::try_from)
@@ -173,6 +179,25 @@ impl PyCatalogClientInternal {
         let rtt = std::time::Duration::try_from_secs_f64(rtt_seconds)
             .map_err(|err| PyValueError::new_err(format!("invalid rtt_seconds: {err}")))?;
         connection.bandwidth_bytes_per_sec(py, num_bytes, rtt)
+    }
+
+    #[pyo3(signature = (path, *, key))]
+    fn stage_file(self_: Py<Self>, py: Python<'_>, path: String, key: String) -> PyResult<String> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
+        let connection = self_.borrow(py).connection.clone();
+        connection.stage_file(py, path.into(), key)
+    }
+
+    #[pyo3(signature = (data, *, key))]
+    fn stage_bytes(
+        self_: Py<Self>,
+        py: Python<'_>,
+        data: Vec<u8>,
+        key: String,
+    ) -> PyResult<String> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
+        let connection = self_.borrow(py).connection.clone();
+        connection.stage_bytes(py, &data, key)
     }
 
     /// Get a list of all dataset entries in the catalog.

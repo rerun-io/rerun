@@ -264,7 +264,10 @@ fn relax_fixed_size_list_nullability(
     Ok((new_field, new_list_array))
 }
 
-fn property_column_name(entity_path: &EntityPath, component_desc: &ComponentDescriptor) -> String {
+pub fn property_column_name(
+    entity_path: &EntityPath,
+    component_desc: &ComponentDescriptor,
+) -> String {
     use re_types_core::reflection::ComponentDescriptorExt as _;
     [
         Some("property".to_owned()),

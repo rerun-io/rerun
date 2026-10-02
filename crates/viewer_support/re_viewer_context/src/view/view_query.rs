@@ -106,8 +106,10 @@ impl VisualizerComponentSource {
             } => {
                 if selector.is_empty() {
                     source_component.as_str().to_owned()
-                } else {
+                } else if selector.starts_with('.') {
                     format!("{}{}", source_component.as_str(), selector)
+                } else {
+                    format!("{} {}", source_component.as_str(), selector)
                 }
             }
             Self::AnnotationContext => "Annotation context".to_owned(),

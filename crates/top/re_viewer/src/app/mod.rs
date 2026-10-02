@@ -15,7 +15,7 @@ use re_log_types::{ApplicationId, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
 use re_types_core::reflection::ComponentReflectionMap;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_ui::{ContextExt as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
@@ -457,7 +457,7 @@ impl App {
             .map(ViewerEventDispatcher::new);
 
         if !state.redap_servers.is_empty() {
-            command_sender.send_ui(UICommand::ExpandBlueprintPanel);
+            command_sender.send_system(SystemCommand::ExpandFallbackBlueprintPanel);
         }
 
         creation_context.egui_ctx.on_end_pass(
@@ -472,6 +472,8 @@ impl App {
                 });
             }),
         );
+
+        crate::konami::install(&creation_context.egui_ctx);
 
         {
             // This is a workaround consuming the space and arrow keys so we can use them as timeline shortcuts.

@@ -115,6 +115,7 @@ impl App {
         &self,
         store_hub: &StoreHub,
         request: RunCommandRequest,
+        egui_ctx: &egui::Context,
     ) -> Result<RunCommandResponse, ViewerControlError> {
         let RunCommandRequest {
             id,
@@ -155,9 +156,11 @@ impl App {
             ))
         })?;
 
-        let target = command_target(&command);
+        let described = describe_command(kind, &env, egui_ctx);
         self.command_sender.send_command(command);
-        Ok(RunCommandResponse { id, target })
+        Ok(RunCommandResponse {
+            command: Some(described),
+        })
     }
 }
 

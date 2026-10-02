@@ -83,7 +83,17 @@ impl StatsCommand {
                         COMPRESSION_NONE => {}
 
                         COMPRESSION_LZ4 => {
-                            uncompressed.resize(msg.uncompressed_size as _, 0);
+                            let max = re_protos::common::v1alpha1::ext::max_lz4_decompressed_size(
+                                msg.payload.len(),
+                            );
+                            anyhow::ensure!(
+                                msg.uncompressed_size <= max,
+                                "declared uncompressed size {} exceeds the {max} byte maximum for this payload",
+                                msg.uncompressed_size
+                            );
+                            let uncompressed_size = usize::try_from(msg.uncompressed_size)?;
+                            uncompressed.try_reserve_exact(uncompressed_size)?;
+                            uncompressed.resize(uncompressed_size, 0);
                             re_log_encoding::external::lz4_flex::block::decompress_into(
                                 &msg.payload,
                                 &mut uncompressed,

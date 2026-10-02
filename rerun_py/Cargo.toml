@@ -97,6 +97,7 @@ re_server = { workspace = true, features = ["lance"] }
 
 anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
+bytes.workspace = true
 comfy-table.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true

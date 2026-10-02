@@ -34,14 +34,7 @@ pub struct OutputDeviceParameters {
     pub frames_per_callback: usize,
 }
 
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum OutputError {
-    #[error("Failed to load the system audio library: {0}")]
-    LibraryLoad(String),
-
-    #[error("Audio device error: {0}")]
-    Device(String),
-}
+pub use crate::output_error::OutputError;
 
 /// Fills an interleaved `f32` buffer of exactly `frames_per_callback * num_channels` samples.
 pub type FillCallback = Box<dyn FnMut(&OutputDeviceParameters, &mut [f32]) + Send + 'static>;

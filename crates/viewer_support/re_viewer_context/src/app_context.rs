@@ -12,9 +12,9 @@ use crate::command_sender::{SelectionSource, SetSelection};
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
-    ActiveStoreContext, AppCaches, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item,
-    ItemCollection, Route, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _,
+    ActiveStoreContext, AppCaches, AppOptions, ApplicationSelectionState, AudioOutput,
+    CommandSender, ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget,
+    Item, ItemCollection, Route, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _,
     TableStores, TimeControl, ViewClassRegistry,
 };
 
@@ -61,6 +61,9 @@ pub struct AppContext<'a> {
 
     /// App-level caches for data that is not tied to any particular store.
     pub app_caches: &'a AppCaches,
+
+    /// Audio output shared by all views, or `None` when the application has no audio playback.
+    pub audio_output: Option<&'a dyn AudioOutput>,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,

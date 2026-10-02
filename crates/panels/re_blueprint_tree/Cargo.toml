@@ -51,3 +51,6 @@ re_viewport_blueprint.workspace = true
 egui_kittest.workspace = true
 insta = { workspace = true, features = ["redactions", "yaml"] }
 smallvec = { workspace = true, features = ["serde"] }
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

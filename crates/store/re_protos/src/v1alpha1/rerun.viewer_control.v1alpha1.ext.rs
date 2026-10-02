@@ -3,12 +3,12 @@
 
 use crate::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, DescribeCommandsRequest,
-    DescribeCommandsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest, GetViewerStateResponse,
-    HighlightRectRequest, HighlightRectResponse, ListCommandsRequest, ListCommandsResponse,
-    OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse, SaveScreenshotRequest,
-    SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest,
-    ViewerControlResponse, viewer_control_request, viewer_control_response,
+    DescribeCommandsResponse, GetBlueprintRequest, GetBlueprintResponse, GetRecordingSchemaRequest,
+    GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
+    ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
+    SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -105,6 +105,7 @@ macro_rules! viewer_control_ops {
 viewer_control_ops! {
     "close_recordings" => CloseRecordings(CloseRecordingsRequest, CloseRecordingsResponse),
     "describe_commands" => DescribeCommands(DescribeCommandsRequest, DescribeCommandsResponse),
+    "get_blueprint" => GetBlueprint(GetBlueprintRequest, GetBlueprintResponse),
     "get_recording_schema" => GetRecordingSchema(GetRecordingSchemaRequest, GetRecordingSchemaResponse),
     "get_viewer_logs" => GetViewerLogs(GetViewerLogsRequest, GetViewerLogsResponse),
     "get_viewer_state" => GetViewerState(GetViewerStateRequest, GetViewerStateResponse),

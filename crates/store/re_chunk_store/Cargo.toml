@@ -22,9 +22,6 @@ all-features = true
 [features]
 default = []
 
-## Enables `parking_lot`'s deadlock detection background thread.
-deadlock_detection = ["parking_lot/deadlock_detection"]
-
 [dependencies]
 # Rerun dependencies:
 re_arrow_util.workspace = true
@@ -76,3 +73,6 @@ similar-asserts.workspace = true
 [[bench]]
 name = "gc"
 harness = false
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

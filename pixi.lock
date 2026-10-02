@@ -52,6 +52,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cairo-1.18.4-h3394656_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-hakari-0.9.38-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-llvm-cov-0.8.7-hdab8a38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-nextest-0.9.143-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.0-py311h03d9500_0.conda
@@ -376,6 +377,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/bzip2-1.0.8-h4777abc_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-ares-1.34.8-he30d5cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cairo-1.18.4-h83712da_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-hakari-0.9.38-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-llvm-cov-0.8.7-h1ebd7d5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-nextest-0.9.143-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.0-py311h460c349_0.conda
@@ -725,6 +727,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/bzip2-1.0.8-h500dc9f_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.34.8-ha1e9b39_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cairo-1.18.4-h950ec3b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-hakari-0.9.38-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-llvm-cov-0.8.7-h009cd8f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-nextest-0.9.143-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cctools-1030.6.3-llvm19_1_h67a6458_5.conda
@@ -979,6 +982,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-hd037594_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h84a0fba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cairo-1.18.4-h6a3b0d2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-hakari-0.9.38-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-llvm-cov-0.8.7-h748bcf4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-nextest-0.9.143-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cctools-1030.6.3-llvm19_1_hd01ab73_5.conda
@@ -1232,6 +1236,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/buf-1.66.0-hd02998f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/bzip2-1.0.8-h0ad9c76_9.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cairo-1.18.4-h477c42c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-hakari-0.9.38-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-llvm-cov-0.8.7-h77a83cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-nextest-0.9.143-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cffi-2.1.0-py311h3485c13_0.conda
@@ -1436,6 +1441,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-compiler-1.11.0-h4d9bdce_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cairo-1.18.4-h3394656_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-hakari-0.9.38-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-nextest-0.9.143-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.0-py311h03d9500_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/clang-19-19.1.7-default_h99862b1_9.conda
@@ -1775,6 +1781,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-ares-1.34.8-he30d5cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-compiler-1.11.0-hdceaead_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cairo-1.18.4-h83712da_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-hakari-0.9.38-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-nextest-0.9.143-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.0-py311h460c349_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/clang-19-19.1.7-default_he95a3c9_9.conda
@@ -2138,6 +2145,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.34.8-ha1e9b39_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-compiler-1.11.0-h7a00415_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cairo-1.18.4-h950ec3b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-hakari-0.9.38-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-nextest-0.9.143-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cctools-1030.6.3-llvm19_1_h67a6458_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cctools_impl_osx-64-1030.6.3-llvm19_1_h6ae9dcd_5.conda
@@ -2404,6 +2412,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h84a0fba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-compiler-1.11.0-h61f9b84_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cairo-1.18.4-h6a3b0d2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-hakari-0.9.38-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-nextest-0.9.143-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cctools-1030.6.3-llvm19_1_hd01ab73_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cctools_impl_osx-arm64-1030.6.3-llvm19_1_hc7668c6_5.conda
@@ -2667,6 +2676,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/buf-1.66.0-hd02998f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/bzip2-1.0.8-h0ad9c76_9.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cairo-1.18.4-h477c42c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-hakari-0.9.38-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-nextest-0.9.143-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cffi-2.1.0-py311h3485c13_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/clang-19-19.1.7-default_hac490eb_9.conda
@@ -2871,6 +2881,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cairo-1.18.4-h3394656_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-hakari-0.9.38-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-nextest-0.9.143-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.0-py311h03d9500_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/clang-19-19.1.7-default_h99862b1_9.conda
@@ -3194,6 +3205,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/bzip2-1.0.8-h4777abc_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-ares-1.34.8-he30d5cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cairo-1.18.4-h83712da_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-hakari-0.9.38-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-nextest-0.9.143-h069e38c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.0-py311h460c349_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/clang-19-19.1.7-default_he95a3c9_9.conda
@@ -3542,6 +3554,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/bzip2-1.0.8-h500dc9f_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.34.8-ha1e9b39_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cairo-1.18.4-h950ec3b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-hakari-0.9.38-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-nextest-0.9.143-h19f9e61_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cctools-1030.6.3-llvm19_1_h67a6458_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cctools_impl_osx-64-1030.6.3-llvm19_1_h6ae9dcd_5.conda
@@ -3795,6 +3808,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-hd037594_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h84a0fba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cairo-1.18.4-h6a3b0d2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-hakari-0.9.38-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-nextest-0.9.143-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cctools-1030.6.3-llvm19_1_hd01ab73_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cctools_impl_osx-arm64-1030.6.3-llvm19_1_hc7668c6_5.conda
@@ -4047,6 +4061,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/buf-1.66.0-hd02998f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/bzip2-1.0.8-h0ad9c76_9.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cairo-1.18.4-h477c42c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-hakari-0.9.38-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-nextest-0.9.143-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cffi-2.1.0-py311h3485c13_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/clang-19-19.1.7-default_hac490eb_9.conda
@@ -4483,6 +4498,19 @@ packages:
     - cairo >=1.18.4,<2.0a0
   size: 978114
   timestamp: 1741554591855
+- conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-hakari-0.9.38-hb17b654_0.conda
+  sha256: 232d4c93b36fd87d36ba5a933d148b6b56e2744ad23a88fe9d96d453ffca6cef
+  md5: e32cc06581f9656ef34cea89c6b4a54d
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  constrains:
+  - __glibc >=2.17
+  license: MIT OR Apache-2.0
+  purls: []
+  run_exports: {}
+  size: 1968414
+  timestamp: 1780676770934
 - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-llvm-cov-0.8.7-hdab8a38_0.conda
   sha256: 53c56b26634f024bb0f5959a74a246f1d6636e55153822c36d200f262e8d6a2c
   md5: 111b31aa6e7d28827526d4e4ce904710
@@ -8034,6 +8062,18 @@ packages:
     - cairo >=1.18.4,<2.0a0
   size: 966667
   timestamp: 1741554768968
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-hakari-0.9.38-h069e38c_0.conda
+  sha256: 4da59ef69b1d9342b44021b8583544d697f8a5681b53a7d4a7b3706b194ddea2
+  md5: 0d1279b0aee43502b3750ff4edcebf04
+  depends:
+  - libgcc >=14
+  constrains:
+  - __glibc >=2.17
+  license: MIT OR Apache-2.0
+  purls: []
+  run_exports: {}
+  size: 1854310
+  timestamp: 1780694498547
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cargo-llvm-cov-0.8.7-h1ebd7d5_0.conda
   sha256: 96463914f68926fdc41d13fcd5a2a4c1b0ea634855e7a8c5aaa2bf6e3ae6dc94
   md5: d11eaddabd09979a818b0c923fdb8853
@@ -11903,6 +11943,18 @@ packages:
     - cairo >=1.18.4,<2.0a0
   size: 893252
   timestamp: 1741554808521
+- conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-hakari-0.9.38-h19f9e61_0.conda
+  sha256: 0fe2c2afd9741da0cfb59d98115449be2c9037b2d60015f9841b022afaaed01e
+  md5: a4bf3e65ebc6f5f1c3db1bc7850cca0c
+  depends:
+  - __osx >=11.0
+  constrains:
+  - __osx >=11.0
+  license: MIT OR Apache-2.0
+  purls: []
+  run_exports: {}
+  size: 1891675
+  timestamp: 1780677096659
 - conda: https://conda.anaconda.org/conda-forge/osx-64/cargo-llvm-cov-0.8.7-h009cd8f_0.conda
   sha256: f8c47148aa17505288261f148994bd387c5615d120f0ab6603960e85f2f943f3
   md5: fc649ea1d1063a80d18bb4b56b410513
@@ -14275,6 +14327,18 @@ packages:
     - cairo >=1.18.4,<2.0a0
   size: 896173
   timestamp: 1741554795915
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-hakari-0.9.38-h6fdd925_0.conda
+  sha256: 9f8501488f9a32b10398cababd2ff5029a1d17dc5a99a30bda8a8431c27a48cb
+  md5: 0e9de88125ffb2c233d7824816a2809c
+  depends:
+  - __osx >=11.0
+  constrains:
+  - __osx >=11.0
+  license: MIT OR Apache-2.0
+  purls: []
+  run_exports: {}
+  size: 1759135
+  timestamp: 1780694591707
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cargo-llvm-cov-0.8.7-h748bcf4_0.conda
   sha256: d8414be30616fe78fdea8c4be1011c38f172ea3843b65b4c61ca30256e78508f
   md5: 5fa54e076a5d79033ec79f6336afa3d8
@@ -16635,6 +16699,18 @@ packages:
     - cairo >=1.18.4,<2.0a0
   size: 1537783
   timestamp: 1766416059188
+- conda: https://conda.anaconda.org/conda-forge/win-64/cargo-hakari-0.9.38-h18a1a76_0.conda
+  sha256: ec85117a18de6926e84686781ca4171a71110633acd7ae6e6de24b4d975e75db
+  md5: b1aa1066ee23a60b076ea5cd5bbae9e8
+  depends:
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  license: MIT OR Apache-2.0
+  purls: []
+  run_exports: {}
+  size: 1876983
+  timestamp: 1780676838867
 - conda: https://conda.anaconda.org/conda-forge/win-64/cargo-llvm-cov-0.8.7-h77a83cd_0.conda
   sha256: 1fcae7d44cfe1d8b5e55e5e2f8a4147966bd695e8da7b64a35e5965eae15e95d
   md5: ca4f66f0876f063bf905efdd1e5b51a0

@@ -40,6 +40,7 @@ features = [
   [
     "Catalog server",
     [
+      "howto/catalog_tables",
       "howto/dataframe_operations",
       "howto/dataframe_performance",
       "howto/dataset_resampling",
@@ -149,6 +150,7 @@ backwards_check = [
   # Catalog server examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
+  "howto/catalog_tables",
   "howto/dataframe_operations",
   "howto/dataframe_performance",
   "howto/dataloader",
@@ -303,6 +305,10 @@ backwards_check = [
 "howto/state_remapping" = [
   "cpp", # Blueprint component-mapping API is Python-only
   "rust", # Blueprint component-mapping API is Python-only
+]
+"howto/catalog_tables" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
@@ -620,6 +626,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "concepts/query-and-transform/segment_properties" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/catalog_tables" = [ # Catalog server examples don't generate rrds
   "cpp",
   "py",
   "rust",

@@ -2174,10 +2174,9 @@ impl std::fmt::Display for ObjectKey {
     }
 }
 
-/// Requests authorization to write one object of exactly `size_bytes` bytes at `key`.
+/// Requests authorization to write one object at `key`.
 #[derive(Debug, Clone)]
 pub struct GetWriteAccessGrantRequest {
-    pub size_bytes: u64,
     pub key: ObjectKey,
 
     /// The requested storage location, or the server's default.
@@ -2190,13 +2189,8 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     fn try_from(
         value: crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
     ) -> Result<Self, Self::Error> {
-        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
-            size_bytes,
-            key,
-            location,
-        } = value;
+        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest { key, location } = value;
         Ok(Self {
-            size_bytes,
             key: ObjectKey::try_new(key)?,
             location,
         })
@@ -2205,13 +2199,8 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
 
 impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
     fn from(value: GetWriteAccessGrantRequest) -> Self {
-        let GetWriteAccessGrantRequest {
-            size_bytes,
-            key,
-            location,
-        } = value;
+        let GetWriteAccessGrantRequest { key, location } = value;
         Self {
-            size_bytes,
             key: key.0,
             location,
         }

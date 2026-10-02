@@ -9,11 +9,13 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let dir = ctx.workspace_root().join("docs").join("content");
     for entry in glob::glob(&format!("{dir}/**/*.md"))? {
         let entry = entry?;
-        let path = entry
-            .strip_prefix(&dir)?
-            .with_extension("")
-            .display()
-            .to_string();
+        let path = entry.strip_prefix(&dir)?;
+        // Upcoming changelog entries describe unreleased changes.
+        if path.starts_with("changelog/upcoming") {
+            continue;
+        }
+
+        let path = path.with_extension("").display().to_string();
         progress.set(path.clone(), ctx.is_tty());
         let url = format!("https://rerun.io/docs/{path}");
         let (frontmatter, body) = parse_docs_frontmatter(&entry)?;

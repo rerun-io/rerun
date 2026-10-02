@@ -218,7 +218,7 @@ impl TexturedRect {
     }
 
     /// Returns axis aligned bounding box for this rectangle.
-    pub fn bounding_box(&self) -> macaw::BoundingBox {
+    pub fn bounding_box(&self) -> re_math::BoundingBox {
         let left_top = self.top_left_corner_position;
         let extent_u = self.extent_u;
         let extent_v = self.extent_v;

@@ -6,7 +6,7 @@ use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
 use itertools::Itertools as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{CastTo, Lens, Lenses, OutputMode, Selector};
+use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
 
@@ -126,37 +126,6 @@ fn nullability_chunk() -> Arc<Chunk> {
         )
         .unwrap(),
     )
-}
-
-#[test]
-fn test_destructure_cast() {
-    let original_chunk = nullability_chunk();
-    println!("{original_chunk}");
-
-    let destructure = Lens::derive("structs")
-        .output_entity("nullability/a")
-        .to_component_with_cast(
-            Scalars::descriptor_scalars(),
-            Selector::parse(".a").unwrap(),
-            CastTo::Auto,
-        )
-        .build()
-        .unwrap();
-
-    let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens_with_filter(
-        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
-        destructure,
-    );
-
-    let res: Vec<re_chunk::Chunk> = lenses
-        .apply(original_chunk, &re_lenses::default_runtime())
-        .try_collect()
-        .unwrap();
-
-    assert_eq!(res.len(), 1);
-
-    let chunk = &res[0];
-    insta::assert_snapshot!("destructure_cast", format!("{chunk:-240}"));
 }
 
 #[test]

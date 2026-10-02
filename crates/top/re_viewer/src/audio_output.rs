@@ -10,6 +10,17 @@ pub struct AudioOutput {
     pub player: re_audio::AudioPlayer,
 }
 
+#[cfg(feature = "audio")]
+impl re_viewer_context::AudioOutput for AudioOutput {
+    fn request(&self, request: re_audio::StreamRequest) {
+        self.player.request(request);
+    }
+
+    fn output_error(&self) -> Option<re_audio::OutputError> {
+        self.player.device_status().and_then(Result::err)
+    }
+}
+
 #[cfg(debug_assertions)]
 impl AudioOutput {
     /// Stage a short generated tone for playback.

@@ -34,7 +34,8 @@ use crate::time_axis::TimelineAxis;
 use crate::time_control_ui::TimeControlUi;
 use re_time_ruler::{self, TimeRangesUi};
 
-use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, time_selection_ui};
+use crate::{data_density_graph, time_selection_ui};
+use re_viewer_context::MOVE_TIME_CURSOR_ICON;
 
 #[derive(Debug, Clone, Hash)]
 pub struct TimePanelItem {

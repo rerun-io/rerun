@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use agent_client_protocol::schema::v1::SessionModeId;
+
 use crate::connection::{LaunchConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, find_executable};
 
@@ -89,6 +91,9 @@ pub struct AgentSettings {
     /// Show every JSON-RPC line exchanged with the agent in the log view.
     pub log_protocol: bool,
 
+    /// Session mode to restore when an agent offers it.
+    pub preferred_mode: Option<SessionModeId>,
+
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
 
@@ -176,6 +181,7 @@ impl AgentSettings {
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
             model_preferences: Vec::new(),
+            preferred_mode: self.preferred_mode.clone(),
         })
     }
 }
@@ -190,6 +196,7 @@ impl Default for AgentSettings {
             mcp_servers: Vec::new(),
             show_thoughts: true,
             log_protocol: false,
+            preferred_mode: None,
             share_redacted_prompts: true,
             setup_done: false,
         }
@@ -287,11 +294,12 @@ mod tests {
     }
 
     #[test]
-    fn old_settings_enable_redacted_prompt_sharing() {
+    fn old_settings_use_new_defaults() {
         let Ok(settings) = serde_json::from_str::<AgentSettings>("{}") else {
             panic!("empty settings should deserialize");
         };
         assert!(settings.share_redacted_prompts);
+        assert_eq!(settings.preferred_mode, None);
     }
 
     #[test]

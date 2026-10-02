@@ -191,6 +191,16 @@ export interface WebViewerOptions {
   /** Video decoder config used by the viewer. Either "auto", "prefer_software" or "prefer_hardware". */
   video_decoder?: VideoDecoder;
 
+  /**
+   * An upper limit on how much memory the viewer uses, e.g. "500MB" or "50%".
+   *
+   * When this limit is reached, the viewer drops the oldest data.
+   * A percentage is relative to the 4 GiB a Wasm process can use.
+   * The limit is capped at 2.5 GB, which is also the default.
+   * If not set, uses the limit from the viewer settings.
+   */
+  memory_limit?: string;
+
   /** If set to `true`, hides the welcome screen, which contains our examples. Defaults to `false`. */
   hide_welcome_screen?: boolean;
 

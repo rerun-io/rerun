@@ -20,12 +20,15 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.visible =
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
+        archetype.titlebar =
+            ComponentBatch::empty<rerun::blueprint::components::Enabled>(Descriptor_titlebar)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> ViewBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (class_identifier.has_value()) {
             columns.push_back(class_identifier.value().partitioned(lengths_).value_or_throw());
         }
@@ -37,6 +40,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (visible.has_value()) {
             columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
+        }
+        if (titlebar.has_value()) {
+            columns.push_back(titlebar.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -54,6 +60,9 @@ namespace rerun::blueprint::archetypes {
         if (visible.has_value()) {
             return columns(std::vector<uint32_t>(visible.value().length(), 1));
         }
+        if (titlebar.has_value()) {
+            return columns(std::vector<uint32_t>(titlebar.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::blueprint::archetypes
@@ -66,7 +75,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(5);
 
         if (archetype.class_identifier.has_value()) {
             cells.push_back(archetype.class_identifier.value());
@@ -79,6 +88,9 @@ namespace rerun {
         }
         if (archetype.visible.has_value()) {
             cells.push_back(archetype.visible.value());
+        }
+        if (archetype.titlebar.has_value()) {
+            cells.push_back(archetype.titlebar.value());
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -27,6 +27,7 @@ from rerun._tracing import (
     with_tracing,
 )
 from rerun.catalog import CatalogClient
+from rerun_bindings import CatalogClientInternal
 
 from ._sample_index import IndexValue, _ns_to_datetime64, _ns_to_timedelta64
 from .decoders import DecodeRequest, FieldBatch
@@ -164,6 +165,10 @@ def _warn_if_fork_unsafe(stacklevel: int) -> None:
     )
 
 
+_DATALOADER_CLIENT_NAME = "rerun-py-dataloader"
+"""Reported in `x-rerun-client-version`, so the server can tell dataloader traffic apart from other SDK queries."""
+
+
 class _WorkerConnection:
     """Per-worker catalog connection, view, and decoders, built lazily."""
 
@@ -195,7 +200,9 @@ class _WorkerConnection:
             assert self._view is not None  # always set once `_initialized`
             return self._view, self._decoders
 
-        client = CatalogClient(self._catalog_url)
+        client = CatalogClient._from_internal(
+            CatalogClientInternal(self._catalog_url, client_name=_DATALOADER_CLIENT_NAME)
+        )
         dataset = client.get_dataset(self._dataset_name)
         self._decoders = {k: f.decode for k, f in self._fields.items()}
         # Leave the dataset unscoped here: each query plan narrows contents to its own

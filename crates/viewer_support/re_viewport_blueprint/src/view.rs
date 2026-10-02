@@ -42,6 +42,9 @@ pub struct ViewBlueprint {
     /// True if this view is visible in the UI.
     pub visible: bool,
 
+    /// True if this view shows its title bar, unless it shares a tab container with other views.
+    pub titlebar: bool,
+
     /// Path where these views defaults can be found.
     pub defaults_path: EntityPath,
 
@@ -93,6 +96,7 @@ impl ViewBlueprint {
             space_origin: recommended.origin,
             contents: ViewContents::new(id, view_class, query_filter),
             visible: true,
+            titlebar: true,
             defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),
         }
@@ -162,6 +166,9 @@ impl ViewBlueprint {
         let visible = results.component_mono::<Visible>(
             blueprint_archetypes::ViewBlueprint::descriptor_visible().component,
         );
+        let titlebar = results.component_mono::<blueprint_components::Enabled>(
+            blueprint_archetypes::ViewBlueprint::descriptor_titlebar().component,
+        );
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier = ViewClassIdentifier::try_new(class_identifier.0.as_str()).ok()?;
@@ -172,6 +179,7 @@ impl ViewBlueprint {
         let contents =
             ViewContents::from_db_or_default(id, blueprint_db, query, class_identifier, &space_env);
         let visible = visible.is_none_or(|v| *v.0);
+        let titlebar = titlebar.is_none_or(bool::from);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
 
         Some(Self {
@@ -181,6 +189,7 @@ impl ViewBlueprint {
             space_origin,
             contents,
             visible,
+            titlebar,
             defaults_path,
             pending_writes: Default::default(),
         })
@@ -202,13 +211,15 @@ impl ViewBlueprint {
             space_origin,
             contents,
             visible,
+            titlebar,
             defaults_path: _,
             pending_writes,
         } = self;
 
         let mut arch = blueprint_archetypes::ViewBlueprint::new(class_identifier.as_str())
             .with_space_origin(space_origin)
-            .with_visible(*visible);
+            .with_visible(*visible)
+            .with_titlebar(*titlebar);
 
         if let Some(display_name) = display_name {
             arch = arch.with_display_name(display_name.clone());
@@ -305,6 +316,7 @@ impl ViewBlueprint {
             space_origin: self.space_origin.clone(),
             contents,
             visible: self.visible,
+            titlebar: self.titlebar,
             defaults_path: self.defaults_path.clone(),
             pending_writes,
         }

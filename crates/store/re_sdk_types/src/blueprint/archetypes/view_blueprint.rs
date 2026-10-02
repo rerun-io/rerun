@@ -50,6 +50,13 @@ pub struct ViewBlueprint {
     ///
     /// Defaults to true if not specified.
     pub visible: Option<SerializedComponentBatch>,
+
+    /// Whether this view shows its title bar.
+    ///
+    /// The title bar is always shown when the view shares a tab container with other views.
+    ///
+    /// Defaults to true if not specified.
+    pub titlebar: Option<SerializedComponentBatch>,
 }
 
 impl ViewBlueprint {
@@ -108,6 +115,20 @@ impl ViewBlueprint {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::titlebar`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
+    #[inline]
+    pub fn descriptor_titlebar() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:titlebar".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -116,28 +137,30 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             ViewBlueprint::descriptor_display_name(),
             ViewBlueprint::descriptor_space_origin(),
             ViewBlueprint::descriptor_visible(),
+            ViewBlueprint::descriptor_titlebar(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             ViewBlueprint::descriptor_class_identifier(),
             ViewBlueprint::descriptor_display_name(),
             ViewBlueprint::descriptor_space_origin(),
             ViewBlueprint::descriptor_visible(),
+            ViewBlueprint::descriptor_titlebar(),
         ]
     });
 
 impl ViewBlueprint {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for ViewBlueprint {
@@ -201,11 +224,15 @@ impl ::re_types_core::Archetype for ViewBlueprint {
         let visible = arrays_by_descr
             .get(&Self::descriptor_visible())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
+        let titlebar = arrays_by_descr
+            .get(&Self::descriptor_titlebar())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_titlebar()));
         Ok(Self {
             class_identifier,
             display_name,
             space_origin,
             visible,
+            titlebar,
         })
     }
 }
@@ -219,6 +246,7 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
             self.display_name.clone(),
             self.space_origin.clone(),
             self.visible.clone(),
+            self.titlebar.clone(),
         ]
         .into_iter()
         .flatten()
@@ -240,6 +268,7 @@ impl ViewBlueprint {
             display_name: None,
             space_origin: None,
             visible: None,
+            titlebar: None,
         }
     }
 
@@ -269,6 +298,10 @@ impl ViewBlueprint {
             visible: Some(SerializedComponentBatch::new(
                 crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
+            )),
+            titlebar: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_titlebar(),
             )),
         }
     }
@@ -315,6 +348,20 @@ impl ViewBlueprint {
     #[inline]
     pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
+        self
+    }
+
+    /// Whether this view shows its title bar.
+    ///
+    /// The title bar is always shown when the view shares a tab container with other views.
+    ///
+    /// Defaults to true if not specified.
+    #[inline]
+    pub fn with_titlebar(
+        mut self,
+        titlebar: impl Into<crate::blueprint::components::Enabled>,
+    ) -> Self {
+        self.titlebar = try_serialize_field(Self::descriptor_titlebar(), [titlebar]);
         self
     }
 }

@@ -500,6 +500,38 @@ def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatc
     assert sorted(all_live) == sorted(ANCHORS)  # the ranks partition the dataset: no sample dropped or duplicated
 
 
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_spawned_workers_keep_parent_rank(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A spawned DataLoader worker unpickles the dataset in a process with no process group.
+    strategy, world_size = BlockShuffle(buffer_size=6), 2
+    manifest = _build_manifest(strategy, num_ranks=world_size)
+    monkeypatch.setattr(iterable_dataset, "_resolve_decode_requests_in_block", lambda indexed, **_: indexed)
+    monkeypatch.setattr(
+        iterable_dataset,
+        "_decode_iter",
+        lambda *, prepared, **_: ({"anchor": int(t.index_value), "x": torch.ones(1)} for t in prepared.targets),
+    )
+    _stub_catalog(monkeypatch, fetched_groups=[])
+
+    all_live: list[int] = []
+    for rank in range(world_size):
+        with monkeypatch.context() as m:
+            _patch_rank(m, rank, world_size)
+            live = _build_live(strategy)
+            expected = [cast("int", s["anchor"]) for s in live]
+            pickled_live = pickle.dumps(live)
+            pickled_replay = pickle.dumps(RerunIterableDataset.from_manifest(manifest, _SOURCE, _FIELDS))
+
+        assert not torch.distributed.is_initialized()
+        live_order = [cast("int", s["anchor"]) for s in pickle.loads(pickled_live)]
+        replay_order = [cast("int", s["anchor"]) for s in pickle.loads(pickled_replay)]
+        assert live_order == expected, f"rank {rank} lost its shard across pickling"
+        assert replay_order == expected, f"rank {rank} replay lost its shard across pickling"
+        all_live += live_order
+
+    assert sorted(all_live) == sorted(ANCHORS)  # distinct shards: no sample dropped or duplicated
+
+
 def _stub_map_catalog(monkeypatch: pytest.MonkeyPatch, fetched_groups: list[FetchedGroup]) -> None:
     """Skip the server for the map path: hand back `fetched_groups` in place of the resolved fetch."""
     monkeypatch.setattr(

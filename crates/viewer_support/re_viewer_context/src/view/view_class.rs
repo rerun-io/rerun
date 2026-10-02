@@ -232,17 +232,6 @@ pub trait ViewClass: Send + Sync {
     /// Used for UI display.
     fn display_name(&self) -> &'static str;
 
-    // TODO(RR-4506): Remove this flag (and all sites that branch on it) once the Status view
-    // graduates from experimental.
-    /// Whether this view class is still experimental.
-    ///
-    /// Experimental views are shown in a separate "Experimental" section at the bottom of the
-    /// "add view" picker (with a warning icon), and surface an inline warning banner in the
-    /// selection panel when a view of this kind is selected. They are otherwise fully functional.
-    fn is_experimental(&self) -> bool {
-        false
-    }
-
     /// Icon used to identify this view class.
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::VIEW_GENERIC

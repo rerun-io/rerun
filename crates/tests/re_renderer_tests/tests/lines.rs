@@ -243,7 +243,7 @@ fn re_renderer_lines_ui(ui: &egui::Ui, render_ctx: &RenderContext, rect: egui::R
         re_viewer_context::gpu_bridge::viewport_resolution_in_pixels(rect, pixels_per_point);
 
     // The waves are built in absolute ui coordinates, so shift the camera to the rect corner.
-    let view_from_world = macaw::IsoTransform::from_rotation_translation(
+    let view_from_world = re_math::IsoTransform::from_rotation_translation(
         glam::Quat::IDENTITY,
         glam::vec3(-rect.left(), -rect.top(), 0.0),
     );

@@ -11,6 +11,40 @@ const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 // (kept as a string here to avoid the dependency).
 const RERUN_HTTP_HEADER_REQUEST_TRACE_ID: &str = "x-request-trace-id";
 
+/// Maximum accepted length for an inbound version header value.
+///
+/// Cargo test binaries send their target name plus a 16-hex suffix, already 60 bytes in this repo.
+const VERSION_HEADER_MAX_LEN: usize = 128;
+
+/// Maximum accepted length for a bearer token subject: the RFC 5321 limit for an email address.
+const SUBJECT_MAX_LEN: usize = 254;
+
+/// Maximum accepted length for an inbound entry ID.
+const ENTRY_ID_MAX_LEN: usize = 64;
+
+/// Maximum accepted length for an inbound request path.
+const ENDPOINT_MAX_LEN: usize = 128;
+
+/// Sentinel recorded in logs and metric labels when an inbound value fails validation.
+const ATTRIBUTE_INVALID: &str = "invalid";
+
+/// Returns `value` if it is safe as a log field and a metric label, else [`ATTRIBUTE_INVALID`].
+///
+/// Callers set these before auth. A quote or backslash breaks the Prometheus exposition, and a
+/// space breaks the `key=value` log format.
+fn sanitize_attribute(value: &str, max_len: usize) -> String {
+    if !value.is_empty()
+        && value.len() <= max_len
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_graphic() && !matches!(b, b'"' | b'\\'))
+    {
+        value.to_owned()
+    } else {
+        ATTRIBUTE_INVALID.to_owned()
+    }
+}
+
 // --- Telemetry middlewares ---
 
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
@@ -88,27 +122,33 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         // we have propagation e2e (both client and server side), so change carefully.
         let _guard = parent_ctx.attach();
 
-        let endpoint = request.uri().path().to_owned();
+        let path = request.uri().path();
         // Split "/package.Service/Method" into rpc.service and rpc.method per OTel conventions.
-        let (rpc_service, rpc_method) = endpoint
+        let (rpc_service, rpc_method) = path
             .strip_prefix('/')
             .and_then(|s| s.split_once('/'))
             .unwrap_or(("", ""));
         let url = request
             .uri()
             .to_string()
-            .strip_suffix(&endpoint)
+            .strip_suffix(path)
             .map(ToOwned::to_owned);
+
+        // The span keeps the raw path for debugging: `http` already rejects spaces and control
+        // characters in it, and only the sanitized `SpanMetadata` feeds the metrics.
+        let endpoint = sanitize_attribute(path, ENDPOINT_MAX_LEN);
 
         let client_version = request
             .headers()
             .get(RERUN_HTTP_HEADER_CLIENT_VERSION)
-            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+            .and_then(|v| v.to_str().ok())
+            .map(|v| sanitize_attribute(v, VERSION_HEADER_MAX_LEN));
 
         let server_version = request
             .headers()
             .get(RERUN_HTTP_HEADER_SERVER_VERSION)
-            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+            .and_then(|v| v.to_str().ok())
+            .map(|v| sanitize_attribute(v, VERSION_HEADER_MAX_LEN));
 
         let email = request
             .headers()
@@ -128,12 +168,14 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
                 serde_json::from_slice::<TokenData>(&data)
                     .ok()
                     .map(|data| data.sub)
-            });
+            })
+            .map(|subject| sanitize_attribute(&subject, SUBJECT_MAX_LEN));
 
         let entry_id = request
             .headers()
             .get(RERUN_HTTP_HEADER_ENTRY_ID)
-            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+            .and_then(|v| v.to_str().ok())
+            .map(|v| sanitize_attribute(v, ENTRY_ID_MAX_LEN));
 
         // NOTE: Remember: the span we're creating here will propagate no matter what -- there is
         // no sampling at the `tracing` level, only at the `opentelemetry` level.
@@ -142,7 +184,7 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         let span = tracing::span!(
             tracing::Level::INFO,
             "<request>",
-            otel.name = %endpoint,
+            otel.name = %path,
             url,
             method = %request.method(),
 
@@ -202,9 +244,11 @@ static SPAN_METADATA: std::sync::OnceLock<
 /// Custom state/context/metadata that we associate with the spans we generate in our [`GrpcMakeSpan`] middleware.
 ///
 /// All this state is stored in `SPAN_METADATA`.
+///
+/// Every field is caller-controlled and has been through [`sanitize_attribute`].
 #[derive(Debug, Clone)]
 struct SpanMetadata {
-    /// Which gRPC endpoint? Extracted from h2 headers.
+    /// Which gRPC endpoint? Extracted from the request path.
     endpoint: String,
 
     /// The identity and semantic version advertised by the gRPC client.
@@ -217,7 +261,9 @@ struct SpanMetadata {
     /// Extracted from h2 headers. See also `re_protos::headers::RERUN_HTTP_HEADER_SERVER_VERSION`.
     server_version: Option<String>,
 
-    /// What email, if any? Extracted from h2 auth headers.
+    /// What subject, if any? Extracted from the `sub` claim of the h2 auth header.
+    ///
+    /// Called `email` because dashboards key on it, though a `sub` is only sometimes an address.
     email: Option<String>,
 
     /// What entry ID, if any? Extracted from h2 Rerun extension headers.
@@ -953,5 +999,118 @@ where
 {
     fn on_close(&self, id: Id, _ctx: Context<'_, S>) {
         SpanMetadata::remove_silent(&id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ATTRIBUTE_INVALID, ENDPOINT_MAX_LEN, ENTRY_ID_MAX_LEN, SUBJECT_MAX_LEN,
+        VERSION_HEADER_MAX_LEN, sanitize_attribute,
+    };
+
+    /// Values real callers send, one per attribute.
+    #[test]
+    fn values_real_callers_send_pass_through() {
+        for (value, max_len) in [
+            // `x-rerun-client-version`, as `RerunVersionInterceptor` sends it.
+            ("rerun-py/0.39.0", VERSION_HEADER_MAX_LEN),
+            ("rerun-web/0.27.0-alpha.1+dev", VERSION_HEADER_MAX_LEN),
+            // …or, when the stem is a cargo test binary, the target name plus a 16-hex suffix.
+            (
+                "registration_and_maintenance-a1b2c3d4e5f60718/0.18.0-alpha.1",
+                VERSION_HEADER_MAX_LEN,
+            ),
+            // The `sub` claim: an auth provider user id, an operator-chosen subject, an address.
+            ("user_01JZ8XQK4VN2M7R3PBWY6TCDEF", SUBJECT_MAX_LEN),
+            ("acme-ci", SUBJECT_MAX_LEN),
+            ("first.last+tag@sub.example.co.uk", SUBJECT_MAX_LEN),
+            // `x-rerun-entry-id`, as `EntryId`'s `Display` renders it.
+            ("1811B3CF0D9E4A1C8f2e77aa00000001", ENTRY_ID_MAX_LEN),
+            // Request paths, including plain HTTP routes such as the `/version` readiness probe.
+            (
+                "/rerun.cloud.v1alpha1.RerunCloudService/Version",
+                ENDPOINT_MAX_LEN,
+            ),
+            (
+                "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
+                ENDPOINT_MAX_LEN,
+            ),
+            ("/version", ENDPOINT_MAX_LEN),
+            ("/verify-token", ENDPOINT_MAX_LEN),
+        ] {
+            assert_eq!(sanitize_attribute(value, max_len), value);
+        }
+    }
+
+    /// Quotes and backslashes break the exposition; spaces and control characters break log lines.
+    #[test]
+    fn unsafe_values_collapse_to_the_sentinel() {
+        for value in [
+            "",
+            "rerun_py/0.17.0\"} evil_metric{x=\"1", // quote
+            "rerun\\py/0.17.0",                     // backslash
+            "rerun py/0.17.0",                      // space
+            "someone@example.com\ninjected=1",      // newline
+            "someone@example.com\r\nother_line",    // CRLF
+            "someone@example.com\u{1b}[2Jcleared",  // ANSI escape
+            "/rerun.Service/caf\u{e9}",             // non-ascii: a URI path may carry utf8
+            "1811b3cf\u{7}",                        // BEL
+        ] {
+            assert_eq!(
+                sanitize_attribute(value, SUBJECT_MAX_LEN),
+                ATTRIBUTE_INVALID
+            );
+        }
+    }
+
+    #[test]
+    fn oversized_values_collapse_to_the_sentinel() {
+        for max_len in [
+            VERSION_HEADER_MAX_LEN,
+            SUBJECT_MAX_LEN,
+            ENTRY_ID_MAX_LEN,
+            ENDPOINT_MAX_LEN,
+        ] {
+            let at_limit = "a".repeat(max_len);
+            assert_eq!(sanitize_attribute(&at_limit, max_len), at_limit);
+
+            let over_limit = "a".repeat(max_len + 1);
+            assert_eq!(sanitize_attribute(&over_limit, max_len), ATTRIBUTE_INVALID);
+        }
+    }
+
+    /// Whatever comes out must be safe as a log field and as a label value.
+    #[test]
+    fn sanitized_values_are_log_and_label_safe() {
+        for value in [
+            "rerun-py/0.39.0",
+            "someone@example.com",
+            "1811b3cf0d9e4a1c8f2e77aa00000001",
+            "/rerun.cloud.v1alpha1.RerunCloudService/Version",
+            "rerun_py/0.17.0\"} evil_metric{x=\"1",
+            "someone@example.com\"} evil_metric{x=\"1",
+            "/rerun.Service/Method\"} evil_metric{x=\"1",
+            "a/1.2.3-\n\n\n",
+            "\u{1b}[2J\u{7}",
+            "{{7*7}}<script>alert(1)</script>",
+            &"x".repeat(10_000),
+        ] {
+            for max_len in [
+                VERSION_HEADER_MAX_LEN,
+                SUBJECT_MAX_LEN,
+                ENTRY_ID_MAX_LEN,
+                ENDPOINT_MAX_LEN,
+            ] {
+                let sanitized = sanitize_attribute(value, max_len);
+                assert!(sanitized.len() <= max_len.max(ATTRIBUTE_INVALID.len()));
+                assert!(
+                    sanitized
+                        .bytes()
+                        .all(|b| b.is_ascii_graphic() && !matches!(b, b'"' | b'\\')),
+                    "unsafe sanitized value: {sanitized:?}"
+                );
+            }
+        }
     }
 }

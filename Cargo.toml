@@ -48,6 +48,7 @@ ignored = [
   "re_types_builder",
   "re_protos_builder",
   "re_renderer_examples",
+  "re_workspace_hack", # only depended on for feature unification
 
   # used for specific targets or features
   "profiling",
@@ -79,6 +80,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.39.0-alpha.1", defaul
 rerun_c = { path = "crates/top/rerun_c", version = "=0.39.0-alpha.1", default-features = false }
 
 # crates/views:
+re_view_audio = { path = "crates/views/re_view_audio", version = "=0.39.0-alpha.1", default-features = false }
 re_view_bar_chart = { path = "crates/views/re_view_bar_chart", version = "=0.39.0-alpha.1", default-features = false }
 re_view_dataframe = { path = "crates/views/re_view_dataframe", version = "=0.39.0-alpha.1", default-features = false }
 re_view_graph = { path = "crates/views/re_view_graph", version = "=0.39.0-alpha.1", default-features = false }
@@ -140,6 +142,7 @@ re_parquet = { path = "crates/data_flow/re_parquet", version = "=0.39.0-alpha.1"
 re_redap_client = { path = "crates/data_flow/re_redap_client", version = "=0.39.0-alpha.1", default-features = false }
 
 # crates/store:
+re_arrow_json = { path = "crates/store/re_arrow_json", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk_index = { path = "crates/store/re_chunk_index", version = "=0.39.0-alpha.1", default-features = false }
 re_chunk_optimizer = { path = "crates/store/re_chunk_optimizer", version = "=0.39.0-alpha.1", default-features = false }
@@ -162,6 +165,7 @@ re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.39.
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.39.0-alpha.1", default-features = false }
 re_types_builder_macros = { path = "crates/build/re_types_builder_macros", version = "=0.39.0-alpha.1", default-features = false }
 re_types_builder_prelude = { path = "crates/build/re_types_builder_prelude", version = "=0.39.0-alpha.1", default-features = false }
+re_workspace_hack = "0.0.0" # See `[patch.crates-io]`
 
 # crates/utils:
 re_agent = { path = "crates/utils/re_agent", version = "=0.39.0-alpha.1", default-features = false }
@@ -315,17 +319,14 @@ futures-util = "0.3.34"
 getrandom = "0.3.4"
 getrandom02 = { package = "getrandom", version = "0.2.17" }
 gilrs = "0.11.1" # `gilrs-core` 0.6.8 (pulled by 0.11.2) moves to `nix` 0.31, duplicating the `nix` 0.30 that `zbus` requires, so `gilrs-core` is held at 0.6.7 in `Cargo.lock`. Bump once `zbus` moves to `nix` 0.31.
-glam = { version = "0.30.10", features = [
-  "debug-glam-assert",
-  "serde",
-] } # pinned to 0.30 by `macaw`; 0.33 would duplicate glam. Bump once macaw releases a glam-0.33 version.
+glam = { version = "0.33.11", features = ["debug-glam-assert", "serde"] }
 glob = "0.3.4"
 gltf = "1.4"
 h264-reader = "0.8.0"
 half = { version = "2.7", features = ["bytemuck"] }
 hdf5-pure = "=0.46.1" # Young crate — pin exactly, bump deliberately.
 headless_chrome = "1.0.22"
-hexasphere = "16.0" # Update in tandem with glam
+hexasphere = "19.0" # Update in tandem with glam
 hmac = "0.12.1" # pinned by `jsonwebtoken` (RustCrypto family); bump once jsonwebtoken moves to hmac 0.13/sha2 0.11/signature 3.
 http = "1.5"
 http-body = "1.1"
@@ -349,7 +350,6 @@ libloading = "0.8"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.33"
 lz4_flex = "0.13.1"
-macaw = "0.30.0"
 mcap = "0.25.0"
 memmap2 = "0.9.11"
 memory-stats = "1.2"
@@ -426,6 +426,7 @@ rand_distr = { version = "0.5.1", default-features = false, features = ["std"] }
 raw-window-handle = "0.6.2"
 rayon = "1.12"
 re_cdr = "0.1.0"
+re_math = "0.33.0"
 regex-lite = "0.1.9"
 reqwest = { version = "0.12.28", default-features = false, features = [
   "rustls-tls",
@@ -591,6 +592,7 @@ debug = false
 "re_agent".debug = true
 "re_agent_ui".debug = true
 "re_analytics".debug = true
+"re_arrow_json".debug = true
 "re_arrow_ui".debug = true
 "re_arrow_util".debug = true
 "re_async".debug = true
@@ -684,6 +686,7 @@ debug = false
 "re_uri".debug = true
 "re_video".debug = true
 "re_view".debug = true
+"re_view_audio".debug = true
 "re_view_bar_chart".debug = true
 "re_view_dataframe".debug = true
 "re_view_graph".debug = true
@@ -796,6 +799,7 @@ trivial_numeric_casts = "warn"
 unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unexpected_cfgs = { level = "deny", check-cfg = [
   'cfg(TODO)', # NOLINT allow `#[cfg(TODO)]` to compile (it will still fail CI)
+  'cfg(rerun_workspace_hack)', # Set by `.cargo/config.toml`, see `re_workspace_hack`
 ] }
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
@@ -940,6 +944,9 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 #
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
+
+# crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
+re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }

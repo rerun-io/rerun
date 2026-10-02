@@ -27,6 +27,16 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
 }
 
+/// A [`RowId`] for a static blueprint write that supersedes everything already in `blueprint`.
+///
+/// Static data is resolved by highest [`RowId`], and the existing ids may have been minted by
+/// another process whose clock is ahead of ours.
+fn static_write_row_id(blueprint: &EntityDb) -> RowId {
+    blueprint
+        .latest_row_id()
+        .map_or_else(RowId::new, RowId::new_after)
+}
+
 impl ActiveStoreContext<'_> {
     /// The timepoint to use when writing an update to the blueprint.
     #[inline]
@@ -111,9 +121,10 @@ pub trait BlueprintContext {
         component_batch: SerializedComponentBatch,
     ) {
         let blueprint = self.current_blueprint();
+        let row_id = static_write_row_id(blueprint);
 
         let chunk = match Chunk::builder(entity_path)
-            .with_serialized_batch(RowId::new(), TimePoint::STATIC, component_batch)
+            .with_serialized_batch(row_id, TimePoint::STATIC, component_batch)
             .build()
         {
             Ok(chunk) => chunk,
@@ -190,9 +201,10 @@ pub trait BlueprintContext {
         array: ArrayRef,
     ) {
         let blueprint = self.current_blueprint();
+        let row_id = static_write_row_id(blueprint);
 
         let chunk = match Chunk::builder(entity_path)
-            .with_row(RowId::new(), TimePoint::STATIC, [(component_descr, array)])
+            .with_row(row_id, TimePoint::STATIC, [(component_descr, array)])
             .build()
         {
             Ok(chunk) => chunk,
@@ -331,9 +343,10 @@ pub trait BlueprintContext {
             return;
         };
 
+        let row_id = static_write_row_id(blueprint);
         let chunk = Chunk::builder(entity_path)
             .with_row(
-                RowId::new(),
+                row_id,
                 TimePoint::STATIC,
                 [(
                     component_descr,

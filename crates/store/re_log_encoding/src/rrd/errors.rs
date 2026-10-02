@@ -82,8 +82,22 @@ pub enum CodecError {
     #[error("Missing record batch")]
     MissingRecordBatch,
 
+    #[error(
+        "Message header declares a {len} byte payload, above the {} byte maximum",
+        crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES
+    )]
+    MessagePayloadTooLarge { len: u64 },
+
     #[error("lz4 error: {0}")]
     Lz4(#[from] lz4_flex::block::DecompressError),
+
+    #[error(
+        "Declared uncompressed size {declared} exceeds the {max} byte maximum for this payload"
+    )]
+    InvalidUncompressedSize { declared: u64, max: u64 },
+
+    #[error("Could not allocate the decompression buffer: {0}")]
+    DecompressionAllocation(#[from] std::collections::TryReserveError),
 
     #[error("Sorbet error: {0}")]
     Sorbet(#[from] re_sorbet::SorbetError),

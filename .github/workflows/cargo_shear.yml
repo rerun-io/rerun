@@ -27,7 +27,7 @@ jobs:
       - name: Install Cargo Shear
         uses: taiki-e/install-action@80466ef8efa80486cdfbddf929453a4f3565c791 # v2.62.34
         with:
-          tool: cargo-shear@1.11.2
+          tool: cargo-shear@1.13.4
 
       # TODO(Boshen/cargo-shear#468): enable warnings as errors once we can ignore no (doc) test warnings.
       - name: Run Cargo Shear

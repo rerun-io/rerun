@@ -264,7 +264,9 @@ impl InFlight {
     fn update(&mut self) -> Option<RedactableText> {
         self.redactor.poll_events();
         if !self.prompt_sent && self.redactor.is_ready() {
-            self.prompt_sent = self.redactor.send_prompt(redaction_prompt(&self.report));
+            self.prompt_sent = self
+                .redactor
+                .send_prompt(redaction_prompt(&self.report).into());
         }
 
         if let Some(finished) = self.redactor.take_finished_turns().pop() {
@@ -378,6 +380,7 @@ mod tests {
             log_protocol: false,
             preamble: None,
             model_preferences: Vec::new(),
+            preferred_mode: None,
         };
         let mut analytics = TurnAnalytics::default();
         let config = analytics

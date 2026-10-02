@@ -61,7 +61,7 @@ impl SpatialViewVisualizerData {
     pub fn add_bounding_box_3d(
         &mut self,
         entity: EntityPathHash,
-        bbox: macaw::BoundingBox,
+        bbox: re_math::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
         self.add_bounds(
@@ -79,7 +79,7 @@ impl SpatialViewVisualizerData {
     pub fn add_bounding_box_2d(
         &mut self,
         entity: EntityPathHash,
-        bbox: macaw::BoundingBox,
+        bbox: re_math::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
         self.add_bounds(

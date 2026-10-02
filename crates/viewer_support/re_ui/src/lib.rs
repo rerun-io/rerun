@@ -256,6 +256,8 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     });
 
     set_themes(egui_ctx);
+    // Replaces egui's own text edit theme, which `Context::default` registers.
+    egui_ctx.replace_widget_theme(text_edit::TextEditTheme);
 
     #[cfg(hot_reload_design_tokens)]
     {

@@ -3,7 +3,7 @@
 #![expect(clippy::unwrap_used)] // This is only a test
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use ahash::HashMap;
 use egui::os::OperatingSystem;
@@ -80,6 +80,8 @@ pub struct TestContext {
     /// See [`AppContext::app_caches`].
     pub app_caches: re_viewer_context::AppCaches,
 
+    audio_output: CountingAudioOutput,
+
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
     pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
@@ -109,6 +111,21 @@ pub struct TestContext {
 
     pub egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
+}
+
+#[derive(Default)]
+struct CountingAudioOutput {
+    num_requests: AtomicUsize,
+}
+
+impl re_viewer_context::AudioOutput for CountingAudioOutput {
+    fn request(&self, _request: re_audio::StreamRequest) {
+        self.num_requests.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn output_error(&self) -> Option<re_audio::OutputError> {
+        None
+    }
 }
 
 pub struct TestBlueprintCtx<'a> {
@@ -344,6 +361,7 @@ impl TestContext {
 
             store_hub: Mutex::new(store_hub),
             app_caches: Default::default(),
+            audio_output: Default::default(),
         }
     }
 
@@ -358,6 +376,11 @@ impl TestContext {
         let mut test_context = Self::new();
         test_context.register_view_class::<T>();
         test_context
+    }
+
+    /// Number of audio stream requests issued through this context.
+    pub fn num_audio_requests(&self) -> usize {
+        self.audio_output.num_requests.load(Ordering::Relaxed)
     }
 }
 
@@ -710,6 +733,7 @@ impl TestContext {
                 storage_context: &storage_context,
                 active_store_context: Some(&store_context),
                 app_caches: &self.app_caches,
+                audio_output: Some(&self.audio_output),
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,
@@ -967,6 +991,7 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::ExpandFallbackBlueprintPanel
                 | SystemCommand::RefreshRedapServer(_)
                 | SystemCommand::RefreshRedapEntry { .. }
                 | SystemCommand::RemoveRedapServer(_)

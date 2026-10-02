@@ -760,6 +760,19 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
+    /// A tab container hides its tab bar only when it holds a single view with the title bar off.
+    fn is_tab_bar_visible(&self, _tile_id: egui_tiles::TileId, tabs: &egui_tiles::Tabs) -> bool {
+        let [child] = tabs.children.as_slice() else {
+            return true;
+        };
+        let Some(Contents::View(view_id)) = self.contents_per_tile_id.get(child) else {
+            return true;
+        };
+        self.viewport_blueprint
+            .view(view_id)
+            .is_none_or(|view| view.titlebar)
+    }
+
     /// What are the rules for simplifying the tree?
     ///
     /// These options are applied on every frame by `egui_tiles`.

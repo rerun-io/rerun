@@ -13,7 +13,7 @@ use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSetting
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
-fn ready_panel() -> AgentPanel {
+pub fn ready_panel() -> AgentPanel {
     let agents = AgentProfile::builtin()
         .into_iter()
         .map(|profile| AgentEntry {
@@ -153,6 +153,15 @@ fn mode_picker_requests_the_clicked_mode() {
     let session = harness.state().session().expect("one conversation");
     assert_eq!(
         session.requested_mode().map(|id| id.0.as_ref()),
+        Some("acceptEdits")
+    );
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferred_mode
+            .as_ref()
+            .map(|mode| mode.0.as_ref()),
         Some("acceptEdits")
     );
 }

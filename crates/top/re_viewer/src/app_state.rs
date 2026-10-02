@@ -372,6 +372,10 @@ impl AppState {
             storage_context,
             active_store_context,
             app_caches: &self.app_caches,
+            audio_output: cfg_select! {
+                feature = "audio" => Some(&self.audio_output),
+                _ => None,
+            },
 
             component_ui_registry,
             view_class_registry,

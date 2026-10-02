@@ -160,6 +160,7 @@ A sibling of `crates/panels`: neither depends on the other.
 
 | Crate                  | Description                                                                 |
 | ---------------------- | --------------------------------------------------------------------------- |
+| re_view_audio          | A view that shows the waveform of an audio asset and plays it back.         |
 | re_view_bar_chart      | A view that shows a single bar chart.                                       |
 | re_view_dataframe      | A view that shows the data contained in entities in a table.                |
 | re_view_graph          | A view that shows a graph (node-link diagram).                              |
@@ -247,6 +248,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate              | Description                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------------- |
+| re_arrow_json      | Rerun data as JSON                                                                            |
 | re_chunk           | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_index     | Indexes of Rerun chunks: RRD manifests and the chunk providers that serve them                |
 | re_chunk_optimizer | Analysis and memory-bounded optimization of Rerun chunk layouts                               |
@@ -313,6 +315,7 @@ A sibling of `crates/views`: neither depends on the other.
 | re_tuid             | 128-bit Time-based Unique Identifier                                                                                                                                       |
 | re_video            | Rerun video processing utilities.                                                                                                                                          |
 | re_web              | Utilities for interacting with Web APIs                                                                                                                                    |
+| re_workspace_hack   | Unifies third-party dependency features across the workspace to avoid recompiles. Managed by cargo-hakari.                                                                 |
 
 <!-- crate-tables:end -->
 

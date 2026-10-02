@@ -25,7 +25,7 @@ from google.cloud import storage
 from jinja2 import Template
 
 
-def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
+def generate_pip_index(title: str, dir: str, upload: bool, check: bool, output: str | None) -> None:
     overall_start = time.time()
 
     # Initialize the GCS clients
@@ -77,6 +77,11 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
     buffer.seek(0)
     print(f"Generated index.html ({index_size} bytes)")
 
+    if output is not None:
+        with open(output, "wb") as f:
+            f.write(buffer.getvalue())
+        print(f"Wrote {output}")
+
     if upload:
         upload_blob = wheels_bucket.blob(f"{dir}/index.html")
         # Set no-cache to avoid CDN caching issues when rebuilding for the same commit
@@ -96,10 +101,11 @@ def main() -> None:
     parser.add_argument("--title", required=True, help="Index title")
     parser.add_argument("--dir", required=True, help="GCS directory to search in rerun-builds")
     parser.add_argument("--upload", action="store_true", help="Upload the index to GCS")
+    parser.add_argument("--output", help="Write the index to this local file")
     parser.add_argument("--check", action="store_true", help="Check if all required builds are present")
     args = parser.parse_args()
 
-    generate_pip_index(args.title, args.dir, args.upload, args.check)
+    generate_pip_index(args.title, args.dir, args.upload, args.check, args.output)
 
 
 if __name__ == "__main__":

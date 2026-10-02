@@ -1237,6 +1237,21 @@ fn record_batch_to_ipc_bytes(
     (data, uncompressed_size)
 }
 
+/// Largest payload one message may declare, and the largest size one compressed buffer may
+/// decompress to. Bounds a single message, not a recording.
+pub const MAX_PAYLOAD_SIZE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+
+/// The most `compressed_len` bytes of LZ4 block data can decompress to, capped at
+/// [`MAX_PAYLOAD_SIZE_BYTES`].
+///
+/// Each LZ4 length-extension byte adds at most 255 output bytes:
+/// <https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md>
+pub fn max_lz4_decompressed_size(compressed_len: usize) -> u64 {
+    (compressed_len as u64)
+        .saturating_mul(255)
+        .min(MAX_PAYLOAD_SIZE_BYTES)
+}
+
 /// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
 ///
 /// The arrays are sliced out of the IPC body rather than copied, so the batch is one allocation
@@ -1252,7 +1267,26 @@ fn record_batch_from_ipc_bytes(
         Compression::LZ4 => {
             re_tracing::profile_scope!("LZ4-decompress");
             let _span = tracing::trace_span!("lz4::decompress").entered();
-            let mut uncompressed = vec![0; uncompressed_size as usize];
+            let max = max_lz4_decompressed_size(payload.len());
+            if uncompressed_size > max {
+                return Err(ArrowError::ParseError(format!(
+                    "declared uncompressed size {uncompressed_size} exceeds the {max} byte maximum for this payload"
+                )));
+            }
+            let uncompressed_size = usize::try_from(uncompressed_size).map_err(|err| {
+                ArrowError::MemoryError(format!(
+                    "declared uncompressed size {uncompressed_size} does not fit this platform's address space: {err}"
+                ))
+            })?;
+            let mut uncompressed = Vec::new();
+            uncompressed
+                .try_reserve_exact(uncompressed_size)
+                .map_err(|err| {
+                    ArrowError::MemoryError(format!(
+                        "could not allocate the decompression buffer: {err}"
+                    ))
+                })?;
+            uncompressed.resize(uncompressed_size, 0);
             lz4_flex::block::decompress_into(payload, &mut uncompressed).map_err(|err| {
                 ArrowError::ParseError(format!("LZ4 decompression failure: {err:#}"))
             })?;
@@ -1301,6 +1335,21 @@ mod tests {
         let truncated = payload.slice(..payload.len() - 16);
         assert!(
             record_batch_from_ipc_bytes(&truncated, Compression::Off, uncompressed_size).is_err()
+        );
+    }
+
+    /// A size the compressed bytes could not possibly expand to is rejected before allocating.
+    #[test]
+    fn lz4_payload_cannot_declare_more_than_it_could_decompress_to() {
+        let payload = prost::bytes::Bytes::from_static(&[0; 4]);
+        let max = max_lz4_decompressed_size(payload.len());
+        assert_eq!(max, 4 * 255);
+        for declared in [max + 1, u64::MAX] {
+            assert!(record_batch_from_ipc_bytes(&payload, Compression::LZ4, declared).is_err());
+        }
+        assert_eq!(
+            max_lz4_decompressed_size(usize::MAX),
+            MAX_PAYLOAD_SIZE_BYTES
         );
     }
 

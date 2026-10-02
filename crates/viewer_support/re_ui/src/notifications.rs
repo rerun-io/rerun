@@ -44,6 +44,16 @@ impl NotificationLevel {
         }
     }
 
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Tip => "tip",
+            Self::Info => "info",
+            Self::Success => "success",
+            Self::Warning => "warning",
+            Self::Error => "error",
+        }
+    }
+
     fn image(&self, ui: &egui::Ui) -> egui::Image<'_> {
         let color = self.color(ui);
         let icon = self.icon();
@@ -396,9 +406,15 @@ impl NotificationUi {
         let popup_id = notification_panel_popup_id();
 
         let is_panel_visible = egui::Popup::is_id_open(ui.ctx(), popup_id);
+
+        // The label names the unread level, since the dot that shows it is only painted.
+        let label = match self.unread_notification_level {
+            Some(level) => format!("Notification toggle, unread {}", level.name()),
+            None => "Notification toggle".to_owned(),
+        };
         let button_response = ui.medium_icon_toggle_button(
             &icons::NOTIFICATION,
-            "Notification toggle",
+            label,
             &mut is_panel_visible.clone(),
         );
 

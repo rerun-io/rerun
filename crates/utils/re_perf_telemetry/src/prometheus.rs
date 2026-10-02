@@ -844,13 +844,27 @@ fn sanitize_name(name: &str) -> String {
         .collect()
 }
 
+/// Replaces the characters the text exposition requires escaped in a label value.
+///
+/// `prometheus-client` writes label values verbatim, so one bad value makes the whole target
+/// unscrapable. Delete once <https://github.com/prometheus/client_rust/issues/346> is fixed.
+fn replace_unescaped(value: String) -> String {
+    const MUST_BE_ESCAPED: [char; 3] = ['"', '\\', '\n'];
+
+    if value.contains(MUST_BE_ESCAPED) {
+        value.replace(MUST_BE_ESCAPED, "?")
+    } else {
+        value
+    }
+}
+
 fn create_dynamic_labels(attributes: &[KeyValue]) -> DynamicLabels {
     let mut labels: Vec<(String, String)> = attributes
         .iter()
         .map(|kv| {
             (
                 sanitize_name(kv.key.as_str()),
-                kv.value.as_str().into_owned(),
+                replace_unescaped(kv.value.as_str().into_owned()),
             )
         })
         .collect();
@@ -1131,6 +1145,30 @@ mod tests {
         assert!(
             output.contains("test_bucket{le=\"1.41421"),
             "expected bucket ≈ √2, output: {output}"
+        );
+    }
+
+    /// A hostile label value must not break the exposition. See `replace_unescaped`.
+    #[test]
+    fn hostile_label_value_cannot_break_the_exposition() {
+        let hostile = "a\"} evil_metric{x=\"1\\ and\na newline";
+        let attrs = vec![KeyValue::new("client_version", hostile)];
+        let family = Family::<DynamicLabels, Counter>::default();
+        family.get_or_create(&create_dynamic_labels(&attrs)).inc();
+
+        let mut registry = Registry::default();
+        registry.register("test_counter", "help", family);
+        let mut buf = String::new();
+        encode(&mut buf, &registry).unwrap();
+
+        // Exactly one sample line, and its label set closes where it should.
+        let samples: Vec<&str> = buf
+            .lines()
+            .filter(|line| line.starts_with("test_counter_total"))
+            .collect();
+        assert_eq!(
+            samples,
+            vec![r#"test_counter_total{client_version="a?} evil_metric{x=?1? and?a newline"} 1"#]
         );
     }
 

@@ -29,7 +29,9 @@ pub use agent_client_protocol as acp;
 
 pub use connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
 pub use profiles::{AgentEntry, AgentProfile, find_executable};
-pub use session::{AgentSession, AuthPrompt, LogLine, PendingPermission, Phase};
+pub use session::{
+    AgentSession, AuthPrompt, LogLine, PendingPermission, Phase, Prompt, PromptImage,
+};
 pub use settings::{AgentSettings, McpServerConfig, SessionContext};
 pub use transcript::{ToolCallState, Transcript, TranscriptEntry, TranscriptItem};
 pub use turn::{TurnOutcome, TurnReport};

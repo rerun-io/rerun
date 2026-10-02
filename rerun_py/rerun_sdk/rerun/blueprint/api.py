@@ -64,6 +64,7 @@ class View:
         contents: ViewContentsLike,
         name: Utf8Like | None,
         visible: BoolLike | None = None,
+        titlebar: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
@@ -86,6 +87,12 @@ class View:
             or a list of multiple expressions. See [rerun.blueprint.archetypes.ViewContents][].
         visible:
             Whether this view is visible.
+
+            Defaults to true if not specified.
+        titlebar:
+            Whether this view shows its title bar.
+
+            The title bar is always shown when the view shares a tab container with other views.
 
             Defaults to true if not specified.
         properties
@@ -116,6 +123,7 @@ class View:
         self.origin = origin
         self.contents = contents
         self.visible = visible
+        self.titlebar = titlebar
         self.properties = properties if properties is not None else {}
         self.defaults = list(defaults) if defaults is not None else []
         self.visualizer_overrides = dict(overrides.items()) if overrides is not None else {}
@@ -165,6 +173,7 @@ class View:
             display_name=self.name,
             space_origin=self.origin,
             visible=self.visible,
+            titlebar=self.titlebar,
         )
 
         stream.log(self.blueprint_path(), arch)

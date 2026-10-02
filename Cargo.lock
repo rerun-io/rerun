@@ -289,6 +289,7 @@ dependencies = [
  "anyhow",
  "clap",
  "emath",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -374,6 +375,7 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "windows-sys 0.60.2",
+ "wl-clipboard-rs",
  "x11rb",
 ]
 
@@ -1277,6 +1279,7 @@ name = "blueprint"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "clap",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -1287,6 +1290,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "re_workspace_hack",
  "rerun",
  "serde",
  "serde_json",
@@ -1689,6 +1693,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -1700,7 +1705,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -2227,6 +2232,7 @@ dependencies = [
  "bincode",
  "mimalloc",
  "parking_lot",
+ "re_workspace_hack",
  "rerun",
  "serde",
  "tokio",
@@ -2239,6 +2245,7 @@ dependencies = [
  "crossbeam",
  "re_build_tools",
  "re_quota_channel",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -2247,6 +2254,7 @@ name = "custom_store_subscriber"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "re_build_tools",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -2255,6 +2263,7 @@ name = "custom_view"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -2264,6 +2273,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
  "mimalloc",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -2447,6 +2457,7 @@ name = "dataframe_query"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
+ "re_workspace_hack",
  "rerun",
  "unindent",
 ]
@@ -2988,7 +2999,7 @@ dependencies = [
  "indexmap 2.14.0",
  "itertools 0.14.0",
  "parking_lot",
- "petgraph 0.8.3",
+ "petgraph",
  "tokio",
 ]
 
@@ -3324,7 +3335,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3371,6 +3382,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
  "rand 0.9.5",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -3410,7 +3422,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 [[package]]
 name = "ecolor"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3427,7 +3439,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3465,7 +3477,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3487,7 +3499,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3506,7 +3518,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3574,7 +3586,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "egui",
@@ -3592,7 +3604,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3605,7 +3617,7 @@ dependencies = [
 [[package]]
 name = "egui_inspection"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "egui",
  "image",
@@ -3618,7 +3630,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "dify",
  "eframe",
@@ -3667,7 +3679,7 @@ dependencies = [
 [[package]]
 name = "egui_system_fonts"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "epaint",
  "fontique",
@@ -3692,7 +3704,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.17.1"
-source = "git+https://github.com/rerun-io/egui_tiles?branch=main#9c25536f36750bff28acb044783f74086228b516"
+source = "git+https://github.com/rerun-io/egui_tiles?branch=main#8c239000003c5d422eaad6115b661b5f6076b4de"
 dependencies = [
  "ahash",
  "egui",
@@ -3729,7 +3741,7 @@ checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 [[package]]
 name = "emath"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3842,7 +3854,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3869,7 +3881,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.36.2"
-source = "git+https://github.com/emilk/egui?branch=main#160090b20a3acfc554580eb866e1a0bb91ac44ea"
+source = "git+https://github.com/emilk/egui?branch=main#6e35807686832cfdc68b5934cebd0339a5275f1e"
 
 [[package]]
 name = "equivalent"
@@ -3884,7 +3896,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3933,6 +3945,7 @@ name = "extend_viewer_ui"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -4008,12 +4021,6 @@ dependencies = [
  "serde",
  "typenum",
 ]
-
-[[package]]
-name = "fixedbitset"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "fixedbitset"
@@ -4211,7 +4218,7 @@ version = "7.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "175cd8cca9e1d45b87f18ffa75088f2099e3c4fe5e2f83e42de112560bea8ea6"
 dependencies = [
- "fixedbitset 0.5.7",
+ "fixedbitset",
  "futures-core",
  "futures-lite",
  "pin-project",
@@ -4449,9 +4456,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.30.10"
+version = "0.33.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19fc433e8437a212d1b6f1e68c7824af3aed907da60afa994e7f542d18d12aa9"
+checksum = "35b4e837a1d133645d1dcf283e146a4b9901e390a1c13545f959cfed3a72f24f"
 dependencies = [
  "bytemuck",
  "serde_core",
@@ -4630,6 +4637,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "itertools 0.15.0",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -4813,9 +4821,9 @@ checksum = "5491a308e0214554f07a81d8944abe45f552871c12e3c3c6e7e5d354039a6c4c"
 
 [[package]]
 name = "hexasphere"
-version = "16.0.0"
+version = "19.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29a164ceff4500f2a72b1d21beaa8aa8ad83aec2b641844c659b190cb3ea2e0b"
+checksum = "163385eff5a0cf606ebe2c10b3a44ab02f4306e83fbd068a64f5e1d72a3049ac"
 dependencies = [
  "constgebra",
  "glam",
@@ -5246,6 +5254,7 @@ dependencies = [
  "anyhow",
  "clap",
  "rand 0.9.5",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6250,6 +6259,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6445,6 +6455,7 @@ dependencies = [
  "itertools 0.15.0",
  "rand 0.9.5",
  "re_tracing",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6454,6 +6465,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6543,17 +6555,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef0d4ed8669f8f8826eb00dc878084aa8f253506c4fd5e8f58f5bce72ddb97e"
 dependencies = [
  "twox-hash",
-]
-
-[[package]]
-name = "macaw"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c96b82556b0d4aa25cd4771b64ef9bde7c120afb588a083fcb242bf01e4a09b"
-dependencies = [
- "glam",
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -6740,6 +6741,7 @@ dependencies = [
 name = "minimal"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6756,6 +6758,7 @@ dependencies = [
  "anyhow",
  "clap",
  "glam",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -6763,6 +6766,7 @@ dependencies = [
 name = "minimal_serve"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -7554,6 +7558,7 @@ dependencies = [
  "prost-build",
  "protoc-bin-vendored",
  "re_build_tools",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -7726,6 +7731,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_pipe"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "owo-colors"
 version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7763,10 +7778,8 @@ version = "0.9.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
 dependencies = [
- "backtrace",
  "cfg-if",
  "libc",
- "petgraph 0.6.5",
  "redox_syscall 0.5.18",
  "smallvec",
  "windows-link",
@@ -7941,21 +7954,11 @@ dependencies = [
 
 [[package]]
 name = "petgraph"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
-dependencies = [
- "fixedbitset 0.4.2",
- "indexmap 2.14.0",
-]
-
-[[package]]
-name = "petgraph"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
 dependencies = [
- "fixedbitset 0.5.7",
+ "fixedbitset",
  "hashbrown 0.15.5",
  "indexmap 2.14.0",
  "serde",
@@ -8124,6 +8127,7 @@ dependencies = [
  "rand 0.9.5",
  "rand_distr",
  "re_log",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -8172,6 +8176,7 @@ version = "0.37.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -8397,10 +8402,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
  "heck",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "log",
  "multimap",
- "petgraph 0.8.3",
+ "petgraph",
  "prettyplease 0.2.37",
  "prost",
  "prost-types",
@@ -8416,7 +8421,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -8726,7 +8731,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8928,6 +8933,7 @@ dependencies = [
  "bytes",
  "clap",
  "gltf",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -8962,11 +8968,14 @@ name = "re_agent"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "agent-client-protocol",
+ "base64 0.23.1",
  "futures",
  "re_log",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "shell-words",
+ "tempfile",
 ]
 
 [[package]]
@@ -8980,11 +8989,14 @@ dependencies = [
  "egui_inspection",
  "egui_kittest",
  "egui_tiles",
+ "image",
  "jiff",
  "pulldown-cmark",
  "re_agent",
  "re_log",
+ "re_tracing",
  "re_ui",
+ "re_workspace_hack",
  "serde_json",
 ]
 
@@ -8999,14 +9011,35 @@ dependencies = [
  "re_build_info",
  "re_log",
  "re_quota_channel",
+ "re_workspace_hack",
  "regex-lite",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tempfile",
  "thiserror 2.0.19",
  "url",
  "uuid",
  "web-sys",
+]
+
+[[package]]
+name = "re_arrow_json"
+version = "0.39.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "insta",
+ "re_chunk",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "re_workspace_hack",
+ "serde_json",
+ "thiserror 2.0.19",
+ "uuid",
 ]
 
 [[package]]
@@ -9026,6 +9059,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_ui",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9043,6 +9077,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_tuid",
+ "re_workspace_hack",
  "serde_json",
  "thiserror 2.0.19",
 ]
@@ -9057,6 +9092,8 @@ dependencies = [
  "js-sys",
  "re_span",
  "re_tracing",
+ "re_workspace_hack",
+ "tempfile",
  "thiserror 2.0.19",
  "tokio",
  "wasm-bindgen",
@@ -9076,6 +9113,7 @@ dependencies = [
  "re_log",
  "re_mutex",
  "re_tracing",
+ "re_workspace_hack",
  "symphonia",
  "thiserror 2.0.19",
  "tinyaudio",
@@ -9103,6 +9141,7 @@ dependencies = [
  "re_int",
  "re_log",
  "re_web",
+ "re_workspace_hack",
  "ring",
  "serde",
  "serde_json",
@@ -9126,6 +9165,7 @@ dependencies = [
  "getrandom 0.3.4",
  "rand 0.9.5",
  "re_async",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9151,6 +9191,7 @@ dependencies = [
  "re_view_spatial",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "serde",
  "smallvec",
 ]
@@ -9160,6 +9201,7 @@ name = "re_build_info"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "re_byte_size",
+ "re_workspace_hack",
  "serde",
 ]
 
@@ -9171,6 +9213,7 @@ dependencies = [
  "cargo_metadata",
  "glob",
  "jiff",
+ "re_workspace_hack",
  "regex-lite",
  "sha2 0.10.9",
  "unindent",
@@ -9189,9 +9232,10 @@ dependencies = [
  "glam",
  "half",
  "insta",
- "macaw",
  "parking_lot",
  "re_byte_size_derive",
+ "re_math",
+ "re_workspace_hack",
  "smallvec",
  "vec1",
 ]
@@ -9203,6 +9247,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
+ "re_workspace_hack",
  "syn 3.0.3",
 ]
 
@@ -9213,6 +9258,7 @@ dependencies = [
  "document-features",
  "egui",
  "re_log",
+ "re_workspace_hack",
  "static_assertions",
 ]
 
@@ -9221,6 +9267,7 @@ name = "re_case"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "convert_case 0.11.0",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9264,6 +9311,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "similar-asserts",
  "thiserror 2.0.19",
 ]
@@ -9286,6 +9334,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "sha2 0.10.9",
  "thiserror 2.0.19",
  "tracing",
@@ -9315,6 +9364,7 @@ dependencies = [
  "re_memory",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
 ]
@@ -9351,6 +9401,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "similar-asserts",
  "tempfile",
  "thiserror 2.0.19",
@@ -9375,6 +9426,7 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9386,6 +9438,7 @@ dependencies = [
  "re_sdk_types",
  "re_video",
  "re_viewer_context",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9414,6 +9467,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9435,6 +9489,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "re_web",
+ "re_workspace_hack",
  "smallvec",
  "static_assertions",
 ]
@@ -9450,6 +9505,7 @@ dependencies = [
  "parking_lot",
  "re_analytics",
  "re_build_info",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9472,6 +9528,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "re_web",
+ "re_workspace_hack",
  "url",
  "web-sys",
 ]
@@ -9508,6 +9565,7 @@ dependencies = [
  "re_video",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "rexif",
  "unindent",
 ]
@@ -9535,6 +9593,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "similar-asserts",
  "tokio",
  "tokio-stream",
@@ -9587,6 +9646,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "strum 0.26.3",
  "thiserror 2.0.19",
  "tokio",
@@ -9632,6 +9692,7 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
+ "re_workspace_hack",
  "reqwest",
  "tokio",
  "tokio-stream",
@@ -9654,6 +9715,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_format",
+ "re_workspace_hack",
  "roxmltree 0.20.0",
  "serde",
  "serde_json",
@@ -9670,6 +9732,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "puffin",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "tempfile",
@@ -9708,6 +9771,7 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
+ "re_workspace_hack",
  "serde",
  "similar-asserts",
  "static_assertions",
@@ -9722,6 +9786,7 @@ name = "re_error"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9733,6 +9798,7 @@ dependencies = [
  "num-traits",
  "re_int",
  "re_log",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9743,6 +9809,7 @@ dependencies = [
  "glam",
  "parking_lot",
  "re_log",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -9763,6 +9830,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
+ "re_workspace_hack",
  "rerun-tonic-web-wasm-client",
  "thiserror 2.0.19",
  "tokio",
@@ -9778,6 +9846,7 @@ dependencies = [
  "http",
  "pin-project-lite",
  "re_tuid",
+ "re_workspace_hack",
  "tonic",
  "tower",
 ]
@@ -9808,6 +9877,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
+ "re_workspace_hack",
  "similar-asserts",
  "tokio",
  "tokio-stream",
@@ -9832,6 +9902,7 @@ dependencies = [
  "re_log_types",
  "re_sdk_types",
  "re_tracing",
+ "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
 ]
@@ -9874,6 +9945,7 @@ dependencies = [
  "re_sdk_types",
  "re_span",
  "re_tracing",
+ "re_workspace_hack",
  "serde",
  "tempfile",
  "thiserror 2.0.19",
@@ -9885,6 +9957,9 @@ dependencies = [
 [[package]]
 name = "re_int"
 version = "0.39.0-alpha.1+dev"
+dependencies = [
+ "re_workspace_hack",
+]
 
 [[package]]
 name = "re_integration_test"
@@ -9932,6 +10007,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "re_web_viewer_server",
+ "re_workspace_hack",
  "reqwest",
  "serde",
  "tempfile",
@@ -9957,6 +10033,7 @@ dependencies = [
  "re_log_types",
  "re_sdk_types",
  "re_tracing",
+ "re_workspace_hack",
  "strum 0.26.3",
 ]
 
@@ -9976,6 +10053,7 @@ dependencies = [
  "re_log_types",
  "re_sdk_types",
  "re_span",
+ "re_workspace_hack",
  "thiserror 2.0.19",
  "vec1",
 ]
@@ -9998,6 +10076,7 @@ dependencies = [
  "re_parquet",
  "re_sdk_types",
  "re_span",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "tempfile",
@@ -10011,6 +10090,7 @@ dependencies = [
  "crossbeam",
  "log",
  "parking_lot",
+ "re_workspace_hack",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -10032,6 +10112,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
+ "re_workspace_hack",
  "serde",
  "thiserror 2.0.19",
 ]
@@ -10071,6 +10152,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "sha2 0.10.9",
  "similar-asserts",
  "tempfile",
@@ -10093,6 +10175,7 @@ dependencies = [
  "re_log_types",
  "re_sorbet",
  "re_tuid",
+ "re_workspace_hack",
  "thiserror 2.0.19",
 ]
 
@@ -10125,6 +10208,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "re_workspace_hack",
  "serde",
  "similar-asserts",
  "static_assertions",
@@ -10133,6 +10217,17 @@ dependencies = [
  "uuid",
  "web-time",
  "xxhash-rust",
+]
+
+[[package]]
+name = "re_math"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "609679e93d655cdb9aed706a98319a3e3fc65eafff0862fa1f56e1be0474a439"
+dependencies = [
+ "glam",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -10161,6 +10256,7 @@ dependencies = [
  "re_sdk_types",
  "re_span",
  "re_tracing",
+ "re_workspace_hack",
  "regex-lite",
  "serde",
  "serde_json",
@@ -10182,6 +10278,7 @@ dependencies = [
  "re_log",
  "re_quota_channel",
  "re_tracing",
+ "re_workspace_hack",
  "serde",
  "smallvec",
  "sysinfo",
@@ -10197,6 +10294,7 @@ dependencies = [
  "egui",
  "re_byte_size",
  "re_format",
+ "re_workspace_hack",
  "wgpu",
 ]
 
@@ -10227,6 +10325,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_video",
+ "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
 ]
@@ -10238,6 +10337,7 @@ dependencies = [
  "parking_lot",
  "re_byte_size",
  "re_log",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -10258,6 +10358,7 @@ dependencies = [
  "re_sdk_types",
  "re_span",
  "re_tracing",
+ "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
 ]
@@ -10286,6 +10387,7 @@ dependencies = [
  "re_grpc_headers",
  "re_log",
  "re_test_mocks",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "tokio",
@@ -10307,6 +10409,7 @@ dependencies = [
  "egui_plot",
  "indexmap 2.14.0",
  "re_ui",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -10337,6 +10440,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "thiserror 2.0.19",
@@ -10355,6 +10459,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "camino",
  "re_log",
+ "re_workspace_hack",
  "tonic-prost-build",
 ]
 
@@ -10386,6 +10491,7 @@ dependencies = [
  "re_sdk_types",
  "re_tracing",
  "re_types_core",
+ "re_workspace_hack",
  "seq-macro",
  "similar-asserts",
  "thiserror 2.0.19",
@@ -10400,6 +10506,7 @@ dependencies = [
  "re_byte_size",
  "re_format",
  "re_log",
+ "re_workspace_hack",
  "tokio",
 ]
 
@@ -10447,6 +10554,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_workspace_hack",
  "serde",
 ]
 
@@ -10478,6 +10586,7 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "re_web",
+ "re_workspace_hack",
  "rfd",
  "serde",
  "serde_json",
@@ -10526,6 +10635,7 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
+ "re_workspace_hack",
  "rerun-tonic-web-wasm-client",
  "serde",
  "thiserror 2.0.19",
@@ -10569,6 +10679,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "re_uri",
+ "re_workspace_hack",
  "tempfile",
  "tokio",
  "tonic",
@@ -10596,7 +10707,6 @@ dependencies = [
  "gltf",
  "half",
  "itertools 0.15.0",
- "macaw",
  "never",
  "notify",
  "ordered-float 5.3.0",
@@ -10609,12 +10719,14 @@ dependencies = [
  "re_byte_size",
  "re_error",
  "re_log",
+ "re_math",
  "re_mutex",
  "re_quota_channel",
  "re_span",
  "re_tracing",
  "re_video",
  "re_web",
+ "re_workspace_hack",
  "regex-lite",
  "serde",
  "slotmap",
@@ -10641,12 +10753,13 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.15.0",
- "macaw",
  "pollster 1.0.1",
  "rand 0.9.5",
  "re_async",
  "re_log",
+ "re_math",
  "re_renderer",
+ "re_workspace_hack",
  "web-sys",
  "web-time",
  "wgpu",
@@ -10659,10 +10772,11 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "egui",
  "glam",
- "macaw",
+ "re_math",
  "re_renderer",
  "re_test_context",
  "re_viewer_context",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -10677,6 +10791,7 @@ dependencies = [
  "re_cdr",
  "re_log",
  "re_span",
+ "re_workspace_hack",
  "strum 0.26.3",
  "thiserror 2.0.19",
 ]
@@ -10686,6 +10801,7 @@ name = "re_rvl"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "byteorder",
+ "re_workspace_hack",
  "thiserror 2.0.19",
 ]
 
@@ -10726,6 +10842,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "re_web_viewer_server",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "similar-asserts",
@@ -10753,7 +10870,6 @@ dependencies = [
  "infer",
  "insta",
  "itertools 0.15.0",
- "macaw",
  "mime_guess2",
  "mint",
  "ndarray",
@@ -10766,10 +10882,12 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_rvl",
  "re_tracing",
  "re_types_core",
  "re_video",
+ "re_workspace_hack",
  "serde",
  "similar-asserts",
  "smallvec",
@@ -10808,6 +10926,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "serde",
  "smallvec",
  "static_assertions",
@@ -10864,6 +10983,7 @@ dependencies = [
  "re_types_core",
  "re_uri",
  "re_web",
+ "re_workspace_hack",
  "serde",
  "sha2 0.10.9",
  "tempfile",
@@ -10895,6 +11015,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "re_workspace_hack",
  "semver",
  "strum 0.26.3",
  "thiserror 2.0.19",
@@ -10907,6 +11028,7 @@ name = "re_span"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "num-traits",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -10918,6 +11040,7 @@ dependencies = [
  "parking_lot",
  "paste",
  "re_byte_size",
+ "re_workspace_hack",
  "serde",
  "static_assertions",
 ]
@@ -10935,6 +11058,7 @@ dependencies = [
  "parking_lot",
  "pollster 1.0.1",
  "re_arrow_ui",
+ "re_audio",
  "re_build_info",
  "re_chunk",
  "re_chunk_index",
@@ -10954,6 +11078,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_workspace_hack",
  "wgpu",
 ]
 
@@ -10964,6 +11089,7 @@ dependencies = [
  "axum",
  "opentelemetry-proto",
  "parking_lot",
+ "re_workspace_hack",
  "reqwest",
  "serde_json",
  "tokio",
@@ -10988,6 +11114,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11015,6 +11142,7 @@ dependencies = [
  "re_mutex",
  "re_sdk_types",
  "re_tracing",
+ "re_workspace_hack",
  "thiserror 2.0.19",
 ]
 
@@ -11048,6 +11176,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "serde",
  "smallvec",
  "vec1",
@@ -11066,6 +11195,7 @@ dependencies = [
  "re_tracing",
  "re_ui",
  "re_viewer_context",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11076,6 +11206,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_log",
+ "re_workspace_hack",
  "rfd",
  "wayland-sys",
 ]
@@ -11091,6 +11222,7 @@ dependencies = [
  "rand 0.9.5",
  "re_byte_size",
  "re_log",
+ "re_workspace_hack",
  "serde",
  "thiserror 2.0.19",
  "web-time",
@@ -11101,6 +11233,7 @@ name = "re_type_definitions"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "re_types_builder_prelude",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11124,6 +11257,7 @@ dependencies = [
  "re_log",
  "re_quota_channel",
  "re_tracing",
+ "re_workspace_hack",
  "regex-lite",
  "serde",
  "strum 0.26.3",
@@ -11140,6 +11274,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "proc-macro2",
  "quote",
+ "re_workspace_hack",
  "syn 3.0.3",
 ]
 
@@ -11149,6 +11284,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "half",
  "re_types_builder_macros",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11173,6 +11309,7 @@ dependencies = [
  "re_string_interner",
  "re_tracing",
  "re_tuid",
+ "re_workspace_hack",
  "serde",
  "serde_json",
  "similar-asserts",
@@ -11216,6 +11353,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_uri",
+ "re_workspace_hack",
  "ron",
  "serde",
  "smallvec",
@@ -11240,6 +11378,7 @@ dependencies = [
  "re_log_types",
  "re_tuid",
  "re_types_core",
+ "re_workspace_hack",
  "serde",
  "static_assertions",
  "thiserror 2.0.19",
@@ -11278,6 +11417,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_web",
+ "re_workspace_hack",
  "scuffle-av1",
  "scuffle-bytes-util",
  "serde",
@@ -11317,7 +11457,35 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "re_view_audio"
+version = "0.39.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "egui",
+ "nohash-hasher",
+ "re_audio",
+ "re_byte_size",
+ "re_chunk",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_test_context",
+ "re_test_viewport",
+ "re_tracing",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "re_workspace_hack",
+ "web-time",
 ]
 
 [[package]]
@@ -11341,6 +11509,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11371,6 +11540,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11399,6 +11569,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11409,12 +11580,12 @@ dependencies = [
  "egui",
  "glam",
  "itertools 0.15.0",
- "macaw",
  "re_byte_size",
  "re_data_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_sdk_types",
@@ -11425,6 +11596,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "walkers",
 ]
 
@@ -11444,7 +11616,6 @@ dependencies = [
  "image",
  "insta",
  "itertools 0.15.0",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "ordered-float 5.3.0",
@@ -11460,6 +11631,7 @@ dependencies = [
  "re_int",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_mp4",
  "re_query",
  "re_renderer",
@@ -11475,6 +11647,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "serde",
  "smallvec",
  "thiserror 2.0.19",
@@ -11501,6 +11674,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11526,6 +11700,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "thiserror 2.0.19",
  "wgpu",
 ]
@@ -11547,6 +11722,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11556,7 +11732,6 @@ dependencies = [
  "egui",
  "egui_table",
  "itertools 0.15.0",
- "nohash-hasher",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
@@ -11574,6 +11749,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -11586,7 +11762,6 @@ dependencies = [
  "egui_plot",
  "glam",
  "itertools 0.15.0",
- "macaw",
  "nohash-hasher",
  "rayon",
  "re_byte_size",
@@ -11596,6 +11771,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_plot",
  "re_query",
  "re_renderer",
@@ -11607,6 +11783,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "smallvec",
  "vec1",
 ]
@@ -11642,9 +11819,11 @@ dependencies = [
  "num-traits",
  "parking_lot",
  "poll-promise",
+ "rand 0.9.5",
  "rayon",
  "re_agent_ui",
  "re_analytics",
+ "re_arrow_json",
  "re_async",
  "re_audio",
  "re_auth",
@@ -11696,6 +11875,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_view",
+ "re_view_audio",
  "re_view_bar_chart",
  "re_view_dataframe",
  "re_view_graph",
@@ -11710,6 +11890,7 @@ dependencies = [
  "re_viewport",
  "re_viewport_blueprint",
  "re_web",
+ "re_workspace_hack",
  "rfd",
  "ron",
  "serde",
@@ -11754,7 +11935,6 @@ dependencies = [
  "indexmap 2.14.0",
  "itertools 0.15.0",
  "linked-hash-map",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "parking_lot",
@@ -11762,6 +11942,7 @@ dependencies = [
  "rayon",
  "re_arrow_util",
  "re_async",
+ "re_audio",
  "re_byte_size",
  "re_capabilities",
  "re_chunk",
@@ -11777,6 +11958,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_msg",
  "re_log_types",
+ "re_math",
  "re_memory",
  "re_mutex",
  "re_query",
@@ -11794,6 +11976,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_web",
+ "re_workspace_hack",
  "rfd",
  "serde",
  "slotmap",
@@ -11821,6 +12004,7 @@ dependencies = [
  "prost-reflect",
  "re_log",
  "re_protos",
+ "re_workspace_hack",
  "rmcp",
  "schemars 1.2.2",
  "serde",
@@ -11848,6 +12032,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_workspace_hack",
  "web-time",
 ]
 
@@ -11876,6 +12061,7 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "re_workspace_hack",
  "slotmap",
  "smallvec",
  "thiserror 2.0.19",
@@ -11892,6 +12078,7 @@ dependencies = [
  "re_async",
  "re_span",
  "re_tuid",
+ "re_workspace_hack",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
@@ -11905,6 +12092,7 @@ dependencies = [
  "argh",
  "cargo_metadata",
  "re_server",
+ "re_workspace_hack",
  "serde_json",
  "tokio",
 ]
@@ -11917,10 +12105,222 @@ dependencies = [
  "re_analytics",
  "re_build_tools",
  "re_log",
+ "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
  "tiny_http",
  "zip",
+]
+
+[[package]]
+name = "re_workspace_hack"
+version = "0.0.0"
+dependencies = [
+ "accesskit",
+ "ahash",
+ "aho-corasick",
+ "anyhow",
+ "argh_shared",
+ "arrayvec",
+ "arrow",
+ "arrow-array",
+ "arrow-cast",
+ "arrow-ipc",
+ "arrow-schema",
+ "axum",
+ "axum-core",
+ "bit-vec",
+ "bitflags 2.13.1",
+ "bytemuck",
+ "bytes",
+ "camino",
+ "cc",
+ "chrono",
+ "clap",
+ "clap_builder",
+ "comfy-table",
+ "concurrent-queue",
+ "console 0.16.4",
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-epoch",
+ "crossbeam-queue",
+ "crossbeam-utils",
+ "datafusion-common",
+ "datafusion-expr",
+ "digest 0.10.7",
+ "ecolor",
+ "eframe",
+ "egui",
+ "egui-wgpu",
+ "egui-winit",
+ "egui_extras",
+ "ehttp",
+ "either",
+ "emath",
+ "epaint",
+ "errno",
+ "event-listener",
+ "event-listener-strategy",
+ "fastrand",
+ "flate2",
+ "foldhash 0.2.0",
+ "font-types",
+ "form_urlencoded",
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+ "getrandom 0.3.4",
+ "getrandom 0.4.3",
+ "gimli",
+ "glam",
+ "gpu-allocator",
+ "half",
+ "hashbrown 0.16.1",
+ "hashbrown 0.17.1",
+ "http",
+ "httparse",
+ "hyper-rustls",
+ "hyper-util",
+ "icu_locale_core",
+ "icu_provider",
+ "image",
+ "indexmap 2.14.0",
+ "insta",
+ "itertools 0.13.0",
+ "jiff",
+ "libc",
+ "linux-raw-sys 0.12.1",
+ "litemap",
+ "lock_api",
+ "log",
+ "lz4_flex",
+ "matrixmultiply",
+ "memchr",
+ "mime_guess2",
+ "miniz_oxide",
+ "mio",
+ "naga",
+ "ndarray",
+ "num-complex",
+ "num-traits",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.2.2",
+ "objc2-app-kit 0.3.2",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-foundation 0.3.2",
+ "objc2-io-kit",
+ "object_store",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry-proto",
+ "opentelemetry_sdk",
+ "ordered-float 5.3.0",
+ "parking_lot",
+ "peg-runtime",
+ "percent-encoding",
+ "petgraph",
+ "phf_shared 0.13.1",
+ "pico-args",
+ "poll-promise",
+ "potential_utf",
+ "proc-macro2",
+ "profiling",
+ "prost",
+ "prost-reflect",
+ "prost-types",
+ "puffin",
+ "quick-xml 0.36.2",
+ "quiver",
+ "quote",
+ "rand 0.9.5",
+ "rand_distr",
+ "raw-window-handle",
+ "re_math",
+ "regex",
+ "regex-automata",
+ "regex-syntax",
+ "reqwest",
+ "rfd",
+ "rustix 1.1.4",
+ "rustls",
+ "rustls-webpki",
+ "schemars 1.2.2",
+ "semver",
+ "serde",
+ "serde_core",
+ "serde_json",
+ "serde_spanned",
+ "serde_with",
+ "serde_with_macros",
+ "simd-adler32",
+ "similar",
+ "slab",
+ "smallvec",
+ "stable_deref_trait",
+ "syn 2.0.119",
+ "syn 3.0.3",
+ "sync_wrapper",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tinystr",
+ "tokio",
+ "tokio-rustls",
+ "tokio-stream",
+ "tokio-util",
+ "toml",
+ "toml_datetime",
+ "toml_parser",
+ "tonic",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-subscriber",
+ "twox-hash",
+ "typenum",
+ "ureq",
+ "url",
+ "uuid",
+ "vello_common",
+ "vello_cpu",
+ "wayland-sys",
+ "wgpu",
+ "wgpu-core",
+ "wgpu-core-deps-apple",
+ "wgpu-core-deps-windows-linux-android",
+ "wgpu-hal",
+ "wgpu-types",
+ "winapi",
+ "windows",
+ "windows-collections",
+ "windows-core",
+ "windows-future",
+ "windows-numerics",
+ "windows-strings",
+ "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
+ "winit",
+ "winnow",
+ "writeable",
+ "xxhash-rust",
+ "yoke",
+ "zerocopy 0.8.55",
+ "zerofrom",
+ "zeroize",
+ "zerotrie",
+ "zerovec",
+ "zstd",
+ "zstd-safe",
+ "zstd-sys",
 ]
 
 [[package]]
@@ -12163,6 +12563,7 @@ dependencies = [
  "re_viewer",
  "re_viewer_mcp",
  "re_web_viewer_server",
+ "re_workspace_hack",
  "similar-asserts",
  "tempfile",
  "tokio",
@@ -12183,6 +12584,7 @@ dependencies = [
  "re_log",
  "re_memory",
  "re_server",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -12192,6 +12594,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "argh",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -12237,6 +12640,7 @@ dependencies = [
  "re_log",
  "re_sdk",
  "re_video",
+ "re_workspace_hack",
 ]
 
 [[package]]
@@ -12245,6 +12649,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "bytes",
  "comfy-table",
  "crossbeam",
  "datafusion",
@@ -12493,6 +12898,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "cargo-run-wasm",
  "pico-args",
+ "re_workspace_hack",
  "webbrowser",
 ]
 
@@ -12556,7 +12962,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -13007,6 +13413,7 @@ dependencies = [
 name = "shared_recording"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13228,6 +13635,7 @@ dependencies = [
  "rand 0.9.5",
  "rand_distr",
  "re_build_tools",
+ "re_workspace_hack",
  "rerun",
  "similar-asserts",
 ]
@@ -13239,7 +13647,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -13257,6 +13665,7 @@ dependencies = [
 name = "spawn_viewer"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13353,6 +13762,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13373,6 +13783,7 @@ name = "stdio"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13730,16 +14141,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
 name = "template"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13759,6 +14171,7 @@ dependencies = [
  "anyhow",
  "rand 0.9.5",
  "re_log",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13770,11 +14183,12 @@ dependencies = [
  "clap",
  "glam",
  "image",
- "macaw",
  "pollster 1.0.1",
+ "re_math",
  "re_renderer",
  "re_sdk_types",
  "re_types_core",
+ "re_workspace_hack",
  "wgpu",
 ]
 
@@ -13785,6 +14199,7 @@ dependencies = [
  "mimalloc",
  "re_format",
  "re_memory",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13795,6 +14210,7 @@ dependencies = [
  "anyhow",
  "clap",
  "re_log",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13806,6 +14222,7 @@ dependencies = [
  "clap",
  "glam",
  "re_log",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -13816,6 +14233,7 @@ dependencies = [
  "anyhow",
  "clap",
  "re_log",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -14469,6 +14887,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree_magic_mini"
+version = "3.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8765b90061cba6c22b5831f675da109ae5561588290f9fa2317adab2714d5a6"
+dependencies = [
+ "memchr",
+ "nom 8.0.0",
+ "petgraph",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14810,6 +15239,7 @@ name = "viewer_callbacks"
 version = "0.39.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_workspace_hack",
  "rerun",
 ]
 
@@ -15130,9 +15560,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols-wlr"
-version = "0.3.8"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cb6cdc73399c0e06504c437fe3cf886f25568dd5454473d565085b36d6a8bbf"
+checksum = "eb04e52f7836d7c7976c78ca0250d61e33873c34156a2a1fc9474828ec268234"
 dependencies = [
  "bitflags 2.13.1",
  "wayland-backend",
@@ -15435,7 +15865,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -15786,7 +16216,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -15794,6 +16224,24 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
+
+[[package]]
+name = "wl-clipboard-rs"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9651471a32e87d96ef3a127715382b2d11cc7c8bb9822ded8a7cc94072eb0a3"
+dependencies = [
+ "libc",
+ "log",
+ "os_pipe",
+ "rustix 1.1.4",
+ "thiserror 2.0.19",
+ "tree_magic_mini",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
+ "wayland-protocols-wlr",
+]
 
 [[package]]
 name = "writeable"

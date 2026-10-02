@@ -24,14 +24,12 @@ type Grant = String;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 struct UploadClaims {
-    size_bytes: u64,
     object_key: String,
     expires_at: jiff::Timestamp,
 }
 
 type HmacSha256 = Hmac<Sha256>;
 
-const MAX_UPLOAD_SIZE_BYTES: u64 = 100_000_000_000;
 const GRANT_VALIDITY: jiff::SignedDuration = jiff::SignedDuration::from_mins(15);
 
 #[derive(Clone)]
@@ -56,23 +54,15 @@ impl WriteAccessGrants {
     pub fn issue(
         &self,
         object_key: &ObjectKey,
-        size_bytes: u64,
     ) -> tonic::Result<re_protos::cloud::v1alpha1::ext::GetWriteAccessGrantResponse> {
         use re_protos::cloud::v1alpha1::ext::{
             AccessGrant, GetWriteAccessGrantResponse, HttpRequest, Redemption,
         };
 
-        if size_bytes > MAX_UPLOAD_SIZE_BYTES {
-            return Err(tonic::Status::invalid_argument(format!(
-                "object size exceeds the maximum of {MAX_UPLOAD_SIZE_BYTES} bytes"
-            )));
-        }
-
         let expires_at = jiff::Timestamp::now()
             .checked_add(GRANT_VALIDITY)
             .map_err(|err| tonic::Status::internal(format!("failed to set grant expiry: {err}")))?;
         let claims = bincode::serialize(&UploadClaims {
-            size_bytes,
             object_key: object_key.to_string(),
             expires_at,
         })
@@ -120,7 +110,6 @@ fn verify_signature(
 async fn write_upload(
     storage_dir: &std::path::Path,
     object_key: &ObjectKey,
-    size_bytes: u64,
     body: Body,
 ) -> Result<(), (StatusCode, String)> {
     let destination_path = storage_dir.join(object_key.to_string());
@@ -165,7 +154,7 @@ async fn write_upload(
     let file = tokio::fs::File::from_std(file);
 
     let result = async {
-        write_upload_body(file, size_bytes, body)
+        write_upload_body(file, body)
             .await
             .map_err(|(status, message)| {
                 (
@@ -200,11 +189,9 @@ async fn write_upload(
 
 async fn write_upload_body(
     mut file: tokio::fs::File,
-    size_bytes: u64,
     body: Body,
 ) -> Result<(), (StatusCode, String)> {
     let mut body = body.into_data_stream();
-    let mut bytes_written = 0_u64;
     while let Some(chunk) = body.next().await {
         let chunk = chunk.map_err(|err| {
             (
@@ -212,20 +199,6 @@ async fn write_upload_body(
                 format!("Failed to read upload body: {err:#}"),
             )
         })?;
-        bytes_written = bytes_written
-            .checked_add(chunk.len() as u64)
-            .ok_or_else(|| {
-                (
-                    StatusCode::PAYLOAD_TOO_LARGE,
-                    "Upload size exceeds u64::MAX bytes".to_owned(),
-                )
-            })?;
-        if bytes_written > size_bytes {
-            return Err((
-                StatusCode::PAYLOAD_TOO_LARGE,
-                format!("Upload exceeds the granted size of {size_bytes} bytes"),
-            ));
-        }
         file.write_all(&chunk).await.map_err(|err| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -234,12 +207,6 @@ async fn write_upload_body(
         })?;
     }
 
-    if bytes_written != size_bytes {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Upload size mismatch: expected {size_bytes} bytes, received {bytes_written}"),
-        ));
-    }
     file.flush().await.map_err(|err| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -298,7 +265,6 @@ async fn put_upload(
     })?;
 
     let UploadClaims {
-        size_bytes,
         object_key,
         expires_at,
     } = bincode::deserialize(&decoded_claims).map_err(|err| {
@@ -317,7 +283,7 @@ async fn put_upload(
         return Err((StatusCode::FORBIDDEN, "Upload grant has expired".to_owned()));
     }
 
-    write_upload(&state.storage_dir, &object_key, size_bytes, body)
+    write_upload(&state.storage_dir, &object_key, body)
         .await
         .map_err(|err| {
             re_log::warn!(%object_key, status = %err.0, "Upload failed: {}", err.1);
@@ -337,11 +303,11 @@ mod tests {
         let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
         let object_key = ObjectKey::try_new("project/recording.rrd").expect("valid object key");
 
-        write_upload(storage_dir.path(), &object_key, 7, Body::from("content"))
+        write_upload(storage_dir.path(), &object_key, Body::from("content"))
             .await
             .expect("upload should succeed");
 
-        let (status, _) = write_upload(storage_dir.path(), &object_key, 3, Body::from("new"))
+        let (status, _) = write_upload(storage_dir.path(), &object_key, Body::from("new"))
             .await
             .expect_err("overwriting should fail");
         assert_eq!(status, StatusCode::CONFLICT);
@@ -362,10 +328,7 @@ mod tests {
         let grants =
             WriteAccessGrants::new(storage_dir.path().to_owned()).expect("failed to create grants");
         let grant = grants
-            .issue(
-                &ObjectKey::try_new("project/recording.rrd").expect("valid object key"),
-                7,
-            )
+            .issue(&ObjectKey::try_new("project/recording.rrd").expect("valid object key"))
             .expect("failed to issue grant");
         let Redemption::HttpRequest(HttpRequest::SameOrigin { path_and_query, .. }) =
             grant.grant.redemption
@@ -394,7 +357,7 @@ mod tests {
             Err(std::io::Error::other("interrupted upload")),
         ]));
 
-        let (status, message) = write_upload(storage_dir.path(), &object_key, 10, body)
+        let (status, message) = write_upload(storage_dir.path(), &object_key, body)
             .await
             .expect_err("upload should fail");
         assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -412,30 +375,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn accepts_maximum_and_rejects_oversized_grants() {
-        let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
-        let grants =
-            WriteAccessGrants::new(storage_dir.path().to_owned()).expect("failed to create grants");
-        let object_key = ObjectKey::try_new("recording.rrd").expect("valid object key");
-
-        grants
-            .issue(&object_key, MAX_UPLOAD_SIZE_BYTES)
-            .expect("maximum-sized grant should be accepted");
-
-        let err = grants
-            .issue(&object_key, MAX_UPLOAD_SIZE_BYTES + 1)
-            .expect_err("oversized grant should be rejected");
-        assert_eq!(err.code(), tonic::Code::InvalidArgument);
-    }
-
     #[tokio::test]
     async fn rejects_invalid_and_expired_grants() {
         let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
         let grants =
             WriteAccessGrants::new(storage_dir.path().to_owned()).expect("failed to create grants");
         let object_key = ObjectKey::try_new("recording.rrd").expect("valid object key");
-        let grant = grants.issue(&object_key, 7).expect("failed to issue grant");
+        let grant = grants.issue(&object_key).expect("failed to issue grant");
         let Redemption::HttpRequest(HttpRequest::SameOrigin { path_and_query, .. }) =
             grant.grant.redemption
         else {
@@ -471,7 +417,6 @@ mod tests {
         assert_eq!(status, StatusCode::BAD_REQUEST);
 
         let claims = UploadClaims {
-            size_bytes: 7,
             object_key: object_key.to_string(),
             expires_at: jiff::Timestamp::now()
                 .checked_sub(GRANT_VALIDITY)
@@ -490,28 +435,5 @@ mod tests {
             .expect_err("expired grant should be rejected");
         assert_eq!(status, StatusCode::FORBIDDEN);
         assert!(!storage_dir.path().join(object_key.to_string()).exists());
-    }
-
-    #[tokio::test]
-    async fn rejects_upload_with_wrong_size() {
-        for (claimed_size, expected_status) in [
-            (8, StatusCode::BAD_REQUEST),
-            (6, StatusCode::PAYLOAD_TOO_LARGE),
-        ] {
-            let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
-            let object_key = ObjectKey::try_new("recording.rrd").expect("valid object key");
-
-            let (status, _) = write_upload(
-                storage_dir.path(),
-                &object_key,
-                claimed_size,
-                Body::from("content"),
-            )
-            .await
-            .expect_err("upload should fail");
-
-            assert_eq!(status, expected_status);
-            assert!(!storage_dir.path().join("recording.rrd").exists());
-        }
     }
 }

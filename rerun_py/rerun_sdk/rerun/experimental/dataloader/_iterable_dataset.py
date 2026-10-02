@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -139,6 +139,13 @@ def _count_yields(
         samples.close()
 
 
+def _live_ddp_topology() -> tuple[int, int] | None:
+    """`(rank, world_size)` of this process's default process group, or `None` outside DDP."""
+    if torch.distributed.is_available() and torch.distributed.is_initialized():
+        return torch.distributed.get_rank(), torch.distributed.get_world_size()
+    return None
+
+
 class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     """
     Iterable dataset backed by a catalog server.
@@ -218,6 +225,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         self._shuffle_buffer = self._shuffle_strategy.emission_buffer()
         self._epoch = 0
         self._manifest: Manifest | None = None
+        self._parent_ddp_topology: tuple[int, int] | None = None
 
         self._sample_index = SampleIndex.build(
             source,
@@ -267,6 +275,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         self._index = manifest.metadata.index_name
         self._epoch = 0
         self._manifest = manifest
+        self._parent_ddp_topology = None
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
         self._connection = _WorkerConnection.from_source(source, fields)
         return self
@@ -285,6 +294,16 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     def set_epoch(self, epoch: int) -> None:
         """Set the epoch for shuffling (like `DistributedSampler.set_epoch`)."""
         self._epoch = epoch
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Carry the parent's DDP rank into spawned workers, which have no process group of their own."""
+        state = self.__dict__.copy()
+        state["_parent_ddp_topology"] = _live_ddp_topology() or self._parent_ddp_topology
+        return state
+
+    def _ddp_topology(self) -> tuple[int, int]:
+        """`(rank, world_size)` to shard by: this process's group, else the one captured when pickled."""
+        return _live_ddp_topology() or self._parent_ddp_topology or (0, 1)
 
     def __iter__(self) -> Iterator[DecodedSample]:
         """Yield this worker's samples: replayed from a manifest, or fetched live from the catalog."""
@@ -362,8 +381,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
                 max_consecutive_skipped_samples=self._max_consecutive_skipped_samples,
             )
             if self._shuffle_buffer is not None:
-                distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
-                rank = torch.distributed.get_rank() if distributed else 0
+                rank, _ = self._ddp_topology()
                 worker_info = torch.utils.data.get_worker_info()
                 worker_id = worker_info.id if worker_info is not None else 0
                 # Must match the build-time buffer seed in `_manifest_build._emit_rank`
@@ -384,9 +402,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             view, decoders = self._connection.ensure()
             meta = self._manifest.metadata
 
-            distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
-            rank = torch.distributed.get_rank() if distributed else 0
-            world_size = torch.distributed.get_world_size() if distributed else 1
+            rank, world_size = self._ddp_topology()
             worker_info = torch.utils.data.get_worker_info()
             worker = worker_info.id if worker_info is not None else 0
             num_workers = worker_info.num_workers if worker_info is not None else 1
@@ -450,13 +466,9 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         # Partition across distributed ranks first (DDP), then across
         # DataLoader workers within this rank. Contiguous (not interleaved)
         # slices keep a worker on a small set of segments.
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            indices, block_bounds = _contiguous_shard(
-                indices,
-                block_bounds,
-                rank=torch.distributed.get_rank(),
-                world_size=torch.distributed.get_world_size(),
-            )
+        rank, world_size = self._ddp_topology()
+        if world_size > 1:
+            indices, block_bounds = _contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size)
 
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is not None:

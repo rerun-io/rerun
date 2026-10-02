@@ -1,7 +1,12 @@
 //! Aggregation of [`PlotPoint`]s for time series visualization.
 //!
 //! Points are only aggregated within the same window if they share the same
-//! visual attributes (color, series kind) and fall within the window's time span.
+//! visual attributes (color, series kind) and fall within the same time bucket.
+//!
+//! Buckets are anchored on the timeline, not on the view: bucket `k` covers
+//! `[k * bucket_width, (k + 1) * bucket_width)`. A point therefore always lands in the same bucket
+//! regardless of which part of the timeline is visible, so panning a plot does not make the
+//! aggregated line crawl.
 //!
 //! All aggregators share the same non-finite handling contract:
 //! Non-finite values (`NaN`, `+inf`, `-inf`) are **non-aggregatable**: they always form their own
@@ -17,6 +22,8 @@
 //! Variances are aggregated exactly like the value they belong to, so the band always
 //! wraps the line that is actually drawn.
 
+use std::num::NonZeroU64;
+
 use egui::emath::fast_midpoint;
 
 use crate::{PlotPoint, PlotPointAttrs};
@@ -25,21 +32,17 @@ use crate::{PlotPoint, PlotPointAttrs};
 pub struct AverageAggregator;
 
 impl AverageAggregator {
-    /// `aggregation_factor`: the width of the aggregation window.
+    /// `bucket_width`: the width of each timeline-anchored aggregation bucket, in time units.
     ///
     /// Adjacent plot points may have the same `PlotPoint::time`,
     /// if data was logged multiple times on the same time stamp.
     #[inline]
-    pub fn aggregate(aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
+    pub fn aggregate(bucket_width: NonZeroU64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
         let mut aggregated =
-            Vec::with_capacity((points.len() as f64 / aggregation_factor) as usize);
-
-        // NOTE: `floor()` since we handle fractional tails separately.
-        let window_size = usize::max(1, aggregation_factor.floor() as usize);
-        let aggregation_factor_fract = aggregation_factor.fract();
+            Vec::with_capacity((points.len() as u64 / bucket_width.get()) as usize);
 
         let mut i = 0;
         while i < points.len() {
@@ -53,15 +56,14 @@ impl AverageAggregator {
             // How many points to combine together this time.
             let mut j = 0;
 
-            let mut ratio = 0.0;
-            let mut acc = points[i + j].clone();
+            let mut acc = points[i].clone();
             acc.value = 0.0;
             acc.attrs.radius_ui = 0.0;
             acc.variance = 0.0;
 
             while i + j < points.len()
                 && points[i + j].value.is_finite()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+                && are_aggregatable(&points[i], &points[i + j], bucket_width)
             {
                 let point = &points[i + j];
 
@@ -69,30 +71,13 @@ impl AverageAggregator {
                 acc.attrs.radius_ui += point.attrs.radius_ui;
                 acc.variance += point.variance;
 
-                ratio += 1.0;
                 j += 1;
             }
 
-            // Do a weighted average for the fractional tail.
-            if aggregation_factor_fract > 0.0
-                && i + j < points.len()
-                && points[i + j].value.is_finite()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
-            {
-                let point = &points[i + j];
-
-                let w = aggregation_factor_fract;
-                acc.value += point.value * w;
-                acc.attrs.radius_ui += (point.attrs.radius_ui as f64 * w) as f32;
-                acc.variance += (point.variance as f64 * w) as f32;
-
-                ratio += aggregation_factor_fract;
-                j += 1;
-            }
-
-            acc.value /= ratio;
-            acc.attrs.radius_ui = (acc.attrs.radius_ui as f64 / ratio) as _;
-            acc.variance = (acc.variance as f64 / ratio) as _;
+            let count = j as f64;
+            acc.value /= count;
+            acc.attrs.radius_ui = (acc.attrs.radius_ui as f64 / count) as _;
+            acc.variance = (acc.variance as f64 / count) as _;
 
             aggregated.push(acc);
 
@@ -129,17 +114,16 @@ pub enum MinMaxAggregator {
 }
 
 impl MinMaxAggregator {
+    /// `bucket_width`: the width of each timeline-anchored aggregation bucket, in time units.
+    ///
     /// Adjacent plot points may have the same `PlotPoint::time`,
     /// if data was logged multiple times on the same time stamp.
     #[inline]
-    pub fn aggregate(&self, aggregation_window_size: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
-        // NOTE: `round()` since this can only handle discrete window sizes.
-        let window_size = usize::max(1, aggregation_window_size.round() as usize);
-
+    pub fn aggregate(&self, bucket_width: NonZeroU64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
-        let capacity = (points.len() as f64 / window_size as f64) as usize;
+        let capacity = (points.len() as u64 / bucket_width.get()) as usize;
         let mut aggregated = match self {
             Self::MinMax => Vec::with_capacity(capacity * 2),
             _ => Vec::with_capacity(capacity),
@@ -163,7 +147,7 @@ impl MinMaxAggregator {
 
             while i + j < points.len()
                 && points[i + j].value.is_finite()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+                && are_aggregatable(&points[i], &points[i + j], bucket_width)
             {
                 let point = &points[i + j];
 
@@ -240,7 +224,7 @@ impl MinMaxAggregator {
 }
 
 /// Are two [`PlotPoint`]s safe to aggregate?
-fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) -> bool {
+fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, bucket_width: NonZeroU64) -> bool {
     let PlotPoint {
         time,
         value: _,
@@ -253,9 +237,8 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
         kind,
     } = attrs;
 
-    // We cannot aggregate two points that don't live in the same aggregation window to start with.
-    // This is very common with e.g. sparse datasets.
-    time.abs_diff(point2.time) <= window_size as u64
+    let bucket_width = i64::try_from(bucket_width.get()).unwrap_or(i64::MAX);
+    time.div_euclid(bucket_width) == point2.time.div_euclid(bucket_width)
         && *color == point2.attrs.color
         && *kind == point2.attrs.kind
 }
@@ -263,6 +246,10 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn width(bucket_width: u64) -> NonZeroU64 {
+        NonZeroU64::new(bucket_width).expect("bucket width must be non-zero")
+    }
     use crate::PlotSeriesKind;
 
     fn pt(time: i64, value: f64) -> PlotPoint {
@@ -313,14 +300,21 @@ mod tests {
         }
     }
 
-    /// Run all aggregator types on `points` with given window size.
+    /// Run all aggregator types on `points` with the given bucket width.
     /// Returns `(label, result)` pairs covering Average + all [`MinMaxAggregator`] variants.
-    fn aggregate_all(window: f64, points: &[PlotPoint]) -> Vec<(&'static str, Vec<PlotPoint>)> {
-        let mut results = vec![("average", AverageAggregator::aggregate(window, points))];
+    fn aggregate_all(
+        bucket_width: u64,
+        points: &[PlotPoint],
+    ) -> Vec<(&'static str, Vec<PlotPoint>)> {
+        let bucket_width = width(bucket_width);
+        let mut results = vec![(
+            "average",
+            AverageAggregator::aggregate(bucket_width, points),
+        )];
         for variant in ALL_MIN_MAX_AGGREGATORS {
             results.push((
                 min_max_aggreagtor_label(variant),
-                variant.aggregate(window, points),
+                variant.aggregate(bucket_width, points),
             ));
         }
         results
@@ -332,7 +326,7 @@ mod tests {
 
     #[test]
     fn all_empty_input() {
-        for (label, result) in aggregate_all(2.0, &[]) {
+        for (label, result) in aggregate_all(2, &[]) {
             assert!(result.is_empty(), "{label}: expected empty output");
         }
     }
@@ -340,7 +334,7 @@ mod tests {
     #[test]
     fn all_single_point_preserves_value() {
         let points = vec![pt(0, 42.0)];
-        for (label, result) in aggregate_all(2.0, &points) {
+        for (label, result) in aggregate_all(2, &points) {
             assert_eq!(result.len(), 1, "{label}: expected 1 output point");
             assert_eq!(result[0].value, 42.0, "{label}: value mismatch");
         }
@@ -351,7 +345,7 @@ mod tests {
         // Non-finite at start should be emitted solo, remaining points aggregated separately.
         for &(nf_name, nf) in NON_FINITE_VALUES {
             let points = vec![pt(0, nf), pt(1, 5.0), pt(2, 3.0)];
-            for (label, result) in aggregate_all(3.0, &points) {
+            for (label, result) in aggregate_all(3, &points) {
                 assert!(
                     result.len() >= 2,
                     "{label}/{nf_name}: non-finite should break into separate window"
@@ -372,7 +366,7 @@ mod tests {
     fn all_each_non_finite_emitted_individually() {
         for &(nf_name, nf) in NON_FINITE_VALUES {
             let points = vec![pt(0, nf), pt(1, nf)];
-            for (label, result) in aggregate_all(2.0, &points) {
+            for (label, result) in aggregate_all(2, &points) {
                 assert_eq!(
                     result.len(),
                     2,
@@ -394,7 +388,7 @@ mod tests {
     fn all_single_non_finite_emits_non_finite() {
         for &(nf_name, nf) in NON_FINITE_VALUES {
             let points = vec![pt(0, nf)];
-            for (label, result) in aggregate_all(2.0, &points) {
+            for (label, result) in aggregate_all(2, &points) {
                 assert_eq!(
                     result.len(),
                     1,
@@ -411,7 +405,7 @@ mod tests {
     #[test]
     fn all_preserve_time_bounds() {
         let points = vec![pt(100, 1.0), pt(101, 2.0), pt(102, 3.0), pt(103, 4.0)];
-        for (label, result) in aggregate_all(2.0, &points) {
+        for (label, result) in aggregate_all(2, &points) {
             assert_eq!(
                 result.first().unwrap().time,
                 100,
@@ -438,7 +432,7 @@ mod tests {
                 pt(20, 3.0),
                 pt(21, 4.0),
             ];
-            for (label, result) in aggregate_all(2.0, &points) {
+            for (label, result) in aggregate_all(2, &points) {
                 let vals: Vec<bool> = result.iter().map(|p| !p.value.is_finite()).collect();
 
                 // Structure: [finite…, non-finite, non-finite, finite…]
@@ -482,7 +476,7 @@ mod tests {
             pt_with_variance(0, 4.0, 4.0),
             pt_with_variance(1, 6.0, 16.0),
         ];
-        let result = AverageAggregator::aggregate(2.0, &points);
+        let result = AverageAggregator::aggregate(width(2), &points);
 
         assert_eq!(values(&result), vec![5.0]);
         // Mean of the variances, i.e. (4 + 16) / 2 -- not the mean of the deviations 2 and 4.
@@ -492,15 +486,15 @@ mod tests {
     #[test]
     fn average_window_of_two() {
         let points = vec![pt(0, 4.0), pt(1, 6.0)];
-        let result = AverageAggregator::aggregate(2.0, &points);
+        let result = AverageAggregator::aggregate(width(2), &points);
         assert_eq!(values(&result), vec![5.0]);
     }
 
     #[test]
     fn average_multiple_windows() {
-        // window_size=2 → groups: [10, 20], [30, 40]
-        let points = vec![pt(0, 10.0), pt(1, 20.0), pt(3, 30.0), pt(4, 40.0)];
-        let result = AverageAggregator::aggregate(2.0, &points);
+        // bucket_width=2 → buckets: [0, 2) = [10, 20], [2, 4) = [30, 40]
+        let points = vec![pt(0, 10.0), pt(1, 20.0), pt(2, 30.0), pt(3, 40.0)];
+        let result = AverageAggregator::aggregate(width(2), &points);
         assert_eq!(values(&result), vec![15.0, 35.0]);
     }
 
@@ -509,7 +503,7 @@ mod tests {
         // [non-finite, 10.0, 20.0] → non-finite solo, then [10.0, 20.0] averaged.
         for &(nf_name, nf) in NON_FINITE_VALUES {
             let points = vec![pt(0, nf), pt(1, 10.0), pt(2, 20.0)];
-            let result = AverageAggregator::aggregate(3.0, &points);
+            let result = AverageAggregator::aggregate(width(3), &points);
             assert_eq!(result.len(), 2, "{nf_name}");
             assert!(!result[0].value.is_finite(), "{nf_name}");
             assert_eq!(result[1].value, 15.0, "{nf_name}"); // (10+20)/2
@@ -520,7 +514,7 @@ mod tests {
     fn average_non_finite_window_then_real_window() {
         for &(nf_name, nf) in NON_FINITE_VALUES {
             let points = vec![pt(0, nf), pt(1, nf), pt(10, 6.0), pt(11, 8.0)];
-            let result = AverageAggregator::aggregate(2.0, &points);
+            let result = AverageAggregator::aggregate(width(2), &points);
             assert_eq!(result.len(), 3, "{nf_name}"); // nf, nf, avg(6,8)
             assert!(!result[0].value.is_finite(), "{nf_name}");
             assert!(!result[1].value.is_finite(), "{nf_name}");
@@ -535,35 +529,98 @@ mod tests {
     #[test]
     fn min_picks_minimum() {
         let points = vec![pt(0, 10.0), pt(1, 3.0), pt(2, 7.0)];
-        let result = MinMaxAggregator::Min.aggregate(3.0, &points);
+        let result = MinMaxAggregator::Min.aggregate(width(3), &points);
         assert_eq!(values(&result), vec![3.0]);
     }
 
     #[test]
     fn max_picks_maximum() {
         let points = vec![pt(0, 10.0), pt(1, 3.0), pt(2, 7.0)];
-        let result = MinMaxAggregator::Max.aggregate(3.0, &points);
+        let result = MinMaxAggregator::Max.aggregate(width(3), &points);
         assert_eq!(values(&result), vec![10.0]);
     }
 
     #[test]
     fn minmax_emits_two_points() {
         let points = vec![pt(0, 10.0), pt(1, 3.0), pt(2, 7.0)];
-        let result = MinMaxAggregator::MinMax.aggregate(3.0, &points);
+        let result = MinMaxAggregator::MinMax.aggregate(width(3), &points);
         assert_eq!(values(&result), vec![3.0, 10.0]);
     }
 
     #[test]
     fn minmax_single_point_no_duplicate() {
         let points = vec![pt(0, 5.0)];
-        let result = MinMaxAggregator::MinMax.aggregate(3.0, &points);
+        let result = MinMaxAggregator::MinMax.aggregate(width(3), &points);
         assert_eq!(values(&result), vec![5.0]);
     }
 
     #[test]
     fn minmax_average_averages_extremes() {
         let points = vec![pt(0, 10.0), pt(1, 2.0), pt(2, 7.0)];
-        let result = MinMaxAggregator::MinMaxAverage.aggregate(3.0, &points);
+        let result = MinMaxAggregator::MinMaxAverage.aggregate(width(3), &points);
         assert_eq!(values(&result), vec![6.0]); // (2+10)/2
+    }
+
+    // =======================================================================
+    // Bucket anchoring
+    // =======================================================================
+
+    #[test]
+    fn average_buckets_are_anchored_on_the_timeline() {
+        // Buckets of width 4 are [0, 4), [4, 8), …, so starting the input at t=1
+        // must not shift the bucket boundaries to [1, 5), [5, 9), ….
+        let points = vec![pt(1, 1.0), pt(2, 2.0), pt(3, 3.0), pt(4, 4.0), pt(5, 5.0)];
+        let result = AverageAggregator::aggregate(width(4), &points);
+        assert_eq!(values(&result), vec![2.0, 4.5]);
+    }
+
+    #[test]
+    fn all_panning_keeps_interior_buckets_stable() {
+        let points: Vec<PlotPoint> = (0..100).map(|t| pt(t, ((t * 7919) % 13) as f64)).collect();
+
+        // Simulate panning: the visible slice starts one point later each time.
+        let reference: Vec<Vec<PlotPoint>> = aggregate_all(8, &points)
+            .into_iter()
+            .map(|(_, r)| r)
+            .collect();
+        for offset in 1..8 {
+            for ((label, result), reference) in
+                std::iter::zip(aggregate_all(8, &points[offset..]), &reference)
+            {
+                // Skip the (partial) first and (time-aligned) last outputs.
+                let interior = |r: &[PlotPoint]| -> Vec<(i64, f64)> {
+                    r.iter()
+                        .filter(|p| 16 <= p.time && p.time < 96)
+                        .map(|p| (p.time, p.value))
+                        .collect()
+                };
+                assert_eq!(
+                    interior(&result),
+                    interior(reference),
+                    "{label}: offset {offset} changed interior buckets"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn average_negative_times_use_floor_buckets() {
+        // With width 2, t=-1 is in [-2, 0) and t=0 is in [0, 2): they must not merge.
+        let points = vec![pt(-2, 1.0), pt(-1, 3.0), pt(0, 5.0), pt(1, 7.0)];
+        let result = AverageAggregator::aggregate(width(2), &points);
+        assert_eq!(values(&result), vec![2.0, 6.0]);
+    }
+
+    #[test]
+    fn all_huge_bucket_width() {
+        // Wider than `u32::MAX`, so a cast to a 32-bit `usize` would truncate it to zero.
+        let points = vec![pt(0, 1.0), pt(1, 3.0)];
+        for (label, result) in aggregate_all(1 << 40, &points) {
+            assert!(
+                (1..=2).contains(&result.len()),
+                "{label}: expected a single bucket, got {} points",
+                result.len()
+            );
+        }
     }
 }

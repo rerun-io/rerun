@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/enabled.hpp"
 #include "../../blueprint/components/view_class.hpp"
 #include "../../blueprint/components/view_origin.hpp"
 #include "../../collection.hpp"
@@ -45,6 +46,13 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true if not specified.
         std::optional<ComponentBatch> visible;
 
+        /// Whether this view shows its title bar.
+        ///
+        /// The title bar is always shown when the view shares a tab container with other views.
+        ///
+        /// Defaults to true if not specified.
+        std::optional<ComponentBatch> titlebar;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewBlueprint";
@@ -68,6 +76,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_visible = ComponentDescriptor(
             ArchetypeName, "ViewBlueprint:visible",
             Loggable<rerun::components::Visible>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `titlebar` field.
+        static constexpr auto Descriptor_titlebar = ComponentDescriptor(
+            ArchetypeName, "ViewBlueprint:titlebar",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
 
       public:
@@ -130,6 +143,17 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true if not specified.
         ViewBlueprint with_visible(const rerun::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Whether this view shows its title bar.
+        ///
+        /// The title bar is always shown when the view shares a tab container with other views.
+        ///
+        /// Defaults to true if not specified.
+        ViewBlueprint with_titlebar(const rerun::blueprint::components::Enabled& _titlebar) && {
+            titlebar =
+                ComponentBatch::from_loggable(_titlebar, Descriptor_titlebar).value_or_throw();
             return std::move(*this);
         }
 

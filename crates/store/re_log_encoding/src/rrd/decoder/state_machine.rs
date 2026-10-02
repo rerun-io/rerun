@@ -267,6 +267,10 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             return self.try_read();
                         }
 
+                        Err(err @ CodecError::MessagePayloadTooLarge { .. }) => {
+                            self.state = DecoderState::Aborted;
+                            return Err(err.into());
+                        }
                         Err(err) => Err(err)?,
                     };
 
@@ -286,7 +290,16 @@ impl<T: DecoderEntrypoint> Decoder<T> {
             DecoderState::WaitingForMessagePayload(header) => {
                 let start_offset = self.byte_chunks.num_read() as u64;
 
-                if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
+                // On 32-bit targets, a length under the cap can still exceed the address space.
+                let len = match usize::try_from(header.len) {
+                    Ok(len) => len,
+                    Err(err) => {
+                        self.state = DecoderState::Aborted;
+                        return Err(CodecError::Overflow(err).into());
+                    }
+                };
+
+                if let Some(bytes) = self.byte_chunks.try_read(len) {
                     let bytes_len = bytes.len() as u64;
                     let byte_span = re_chunk::Span::from_start_len(start_offset, bytes_len);
                     let message = match T::decode(
@@ -417,12 +430,8 @@ pub struct ByteChunkBuffer {
     /// Any incoming byte chunks are queued until they are emptied.
     queue: VecDeque<ByteChunk>,
 
-    /// This buffer is used as scratch space for any read bytes, so that we can return a contiguous
-    /// slice from `try_read`.
-    buffer: Vec<u8>,
-
-    /// How many bytes of valid data are currently in `self.buffer`.
-    buffer_fill: usize,
+    /// Number of unread bytes in the queue.
+    queued_len: usize,
 
     /// How many bytes have been read with [`Self::try_read`] so far?
     num_read: usize,
@@ -432,8 +441,7 @@ impl ByteChunkBuffer {
     fn new() -> Self {
         Self {
             queue: VecDeque::with_capacity(16),
-            buffer: Vec::with_capacity(1024),
-            buffer_fill: 0,
+            queued_len: 0,
             num_read: 0,
         }
     }
@@ -442,6 +450,7 @@ impl ByteChunkBuffer {
         if byte_chunk.is_empty() {
             return;
         }
+        self.queued_len += byte_chunk.len();
         self.queue.push_back(ByteChunk::new(byte_chunk));
     }
 
@@ -452,50 +461,30 @@ impl ByteChunkBuffer {
 
     /// Attempt to read exactly `n` bytes out of the queued byte chunks.
     ///
-    /// Returns `None` if there is not enough data to return a slice of `n` bytes.
-    ///
-    /// NOTE: `try_read` *must* be called with the same `n` until it returns `Some`,
-    /// otherwise this will discard any previously buffered data.
+    /// Returns `None` without allocating or consuming bytes if fewer than `n` are queued.
     fn try_read(&mut self, n: usize) -> Option<bytes::Bytes> {
-        // resize the buffer if the target has changed
-        if self.buffer.len() != n {
-            assert_eq!(
-                self.buffer_fill, 0,
-                "`try_read` called with different `n` for incomplete read"
-            );
-            self.buffer.resize(n, 0);
-            self.buffer_fill = 0;
+        if self.queued_len < n {
+            return None;
         }
 
-        // try to read some bytes from the front of the queue,
-        // until either:
-        // - we've read enough to return a slice of `n` bytes
-        // - we run out of byte chunks to read
-        // while also discarding any empty byte chunks
-        while self.buffer_fill != n {
-            if let Some(byte_chunk) = self.queue.front_mut() {
-                let remainder = &mut self.buffer[self.buffer_fill..];
-                self.buffer_fill += byte_chunk
-                    .read(remainder)
-                    .expect("failed to read from byte chunk");
-                if is_byte_chunk_empty(byte_chunk) {
-                    self.queue.pop_front();
-                }
-            } else {
-                break;
+        let mut buffer = vec![0; n];
+        let mut filled = 0;
+        while filled < n {
+            let byte_chunk = self
+                .queue
+                .front_mut()
+                .expect("queued_len counts queued bytes");
+            filled += byte_chunk
+                .read(&mut buffer[filled..])
+                .expect("failed to read from byte chunk");
+            if is_byte_chunk_empty(byte_chunk) {
+                self.queue.pop_front();
             }
         }
 
-        if self.buffer_fill == n {
-            // ensure that a successful call to `try_read(N)`
-            // followed by another call to `try_read(N)` with the same `N`
-            // won't erroneously return the same bytes
-            self.buffer_fill = 0;
-            self.num_read += n;
-            Some(std::mem::take(&mut self.buffer).into())
-        } else {
-            None
-        }
+        self.queued_len -= n;
+        self.num_read += n;
+        Some(buffer.into())
     }
 
     /// Attempt to peek exactly `n` bytes from of the queued byte chunks.
@@ -509,14 +498,6 @@ impl ByteChunkBuffer {
 
         let mut out = std::io::Cursor::new(out);
         let mut n = 0;
-
-        // `try_read` will never read from the active buffer if `n` changes, so we must emulate the
-        // same behavior.
-        if target_len == self.buffer.len() {
-            n += out
-                .write(&self.buffer[..self.buffer_fill])
-                .expect("memcpy, cannot fail");
-        }
 
         for byte_chunk in &self.queue {
             if n == target_len {
@@ -546,7 +527,7 @@ mod tests {
 
     use super::*;
     use crate::Encoder;
-    use crate::rrd::EncodingOptions;
+    use crate::rrd::{EncodingOptions, StreamHeader};
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
@@ -602,6 +583,56 @@ mod tests {
                 }
             }
         }};
+    }
+
+    /// A corrupt or hostile `len` must be rejected before anything is allocated for it.
+    /// `MessageHeader` is `kind: u64` then `len: u64`, directly after the 12-byte `StreamHeader`.
+    #[test]
+    fn oversized_declared_payload_is_rejected() {
+        const LEN_OFFSET: usize = StreamHeader::ENCODED_SIZE_BYTES + size_of::<u64>();
+
+        for declared in [u64::MAX, MessageHeader::MAX_PAYLOAD_SIZE_BYTES + 1] {
+            let (_, mut data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 1);
+            data[LEN_OFFSET..LEN_OFFSET + size_of::<u64>()]
+                .copy_from_slice(&declared.to_le_bytes());
+
+            let mut decoder = DecoderApp::new();
+            decoder.push_byte_chunk(data);
+
+            match decoder.try_read() {
+                Err(DecodeError::Codec(CodecError::MessagePayloadTooLarge { len })) => {
+                    assert_eq!(len, declared);
+                }
+                other => panic!("expected MessagePayloadTooLarge for {declared}, got {other:?}"),
+            }
+        }
+    }
+
+    /// The cap must not reject a message that is merely large but legal.
+    #[test]
+    fn payload_at_the_cap_is_accepted() {
+        let (_, mut data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 1);
+        const LEN_OFFSET: usize = StreamHeader::ENCODED_SIZE_BYTES + size_of::<u64>();
+        data[LEN_OFFSET..LEN_OFFSET + size_of::<u64>()]
+            .copy_from_slice(&MessageHeader::MAX_PAYLOAD_SIZE_BYTES.to_le_bytes());
+
+        let mut decoder = DecoderApp::new();
+        decoder.push_byte_chunk(data);
+
+        assert!(decoder.try_read().unwrap().is_none());
+        assert!(matches!(
+            decoder.state,
+            DecoderState::WaitingForMessagePayload(_)
+        ));
+        assert_eq!(
+            decoder.byte_chunks.queued_len,
+            decoder
+                .byte_chunks
+                .queue
+                .iter()
+                .map(|chunk| chunk.get_ref().len() - chunk.position() as usize)
+                .sum::<usize>()
+        );
     }
 
     #[test]
@@ -800,5 +831,23 @@ mod tests {
         buffer.push(data.to_vec());
         assert_eq!(data, buffer.try_read(4).as_deref().unwrap());
         assert_eq!(None, buffer.try_read(4));
+    }
+
+    #[test]
+    fn incomplete_read_preserves_queued_bytes() {
+        let mut buffer = ByteChunkBuffer::new();
+        buffer.push(vec![1, 2]);
+        buffer.push(vec![3]);
+
+        assert!(buffer.try_read(usize::MAX).is_none());
+        assert_eq!(buffer.queued_len, 3);
+        assert_eq!(buffer.num_read(), 0);
+        let mut peeked = [0; 3];
+        assert_eq!(buffer.try_peek(&mut peeked), 3);
+        assert_eq!(peeked, [1, 2, 3]);
+        assert_eq!(buffer.try_read(2).as_deref(), Some(&[1, 2][..]));
+        assert_eq!(buffer.try_read(1).as_deref(), Some(&[3][..]));
+        assert_eq!(buffer.queued_len, 0);
+        assert_eq!(buffer.num_read(), 3);
     }
 }

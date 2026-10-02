@@ -4,9 +4,9 @@ use re_span::Span;
 
 use crate::{ApiError, ConnectionHandle};
 
-/// An error writing an object to a catalog's storage.
+/// An error staging an object in a catalog's storage.
 #[derive(Debug, thiserror::Error)]
-pub enum WriteObjectError {
+pub enum StagingError {
     #[error(transparent)]
     Api(#[from] ApiError),
 
@@ -24,31 +24,27 @@ pub enum WriteObjectError {
 }
 
 impl ConnectionHandle {
-    /// Writes `source` to the catalog's storage under `key` and returns the credential-free URL
-    /// that names the object.
-    ///
-    /// Writing does not register the object: pass the returned URL to
-    /// [`Self::register_with_dataset`], which is a separate operation and may happen much later.
-    ///
-    /// The source must return stable contents for the duration of the upload.
-    ///
-    /// TODO(RR-5715): Stream the request body instead of buffering the whole source so large
-    /// uploads do not need equivalent memory.
+    /// Stages `source` in the catalog's storage under `key` and returns its credential-free URL
+    /// after the upload succeeds.
+    //
+    // TODO(RR-5715): Streaming and multipart uploads:
+    // - Stream bounded ranges with backpressure on native and web; keep exact-size grants.
+    // - Support sequential sources without requiring AsyncReadAt.
+    // - Bound multipart concurrency and buffers; retry parts and refresh expired grants.
+    // - Abort failed/cancelled uploads; expire abandoned sessions server-side.
+    // - Return the URL only after completion; keep registration separate.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn write_object(
+    pub async fn stage(
         &self,
         key: ObjectKey,
         source: impl AsyncReadAt,
-    ) -> Result<url::Url, WriteObjectError> {
+    ) -> Result<url::Url, StagingError> {
         let size = source.size().await?;
-        let GetWriteAccessGrantResponse { storage_url, grant } = self
-            .client()
-            .await?
-            .get_write_access_grant(key, size)
-            .await?;
+        let GetWriteAccessGrantResponse { storage_url, grant } =
+            self.client().await?.get_write_access_grant(key).await?;
 
         if jiff::Timestamp::now() >= grant.expires_at {
-            return Err(WriteObjectError::Expired {
+            return Err(StagingError::Expired {
                 expires_at: grant.expires_at,
             });
         }
@@ -74,7 +70,7 @@ impl ConnectionHandle {
             } => {
                 let url = url::Url::parse(&self.origin().as_url())
                     .and_then(|base_url| base_url.join(path_and_query.as_str()))
-                    .map_err(|err| WriteObjectError::Request(err.to_string()))?;
+                    .map_err(|err| StagingError::Request(err.to_string()))?;
                 (method, url, headers)
             }
         };
@@ -82,8 +78,7 @@ impl ConnectionHandle {
         // The whole object is in memory here, so take the buffer rather than copying it again:
         // `Bytes` that uniquely owns its allocation converts back into a `Vec` for free.
         let mut request = ehttp::Request::post(url.as_str(), Vec::from(body));
-        request.method =
-            ehttp::Method::parse(method.as_str()).map_err(WriteObjectError::Request)?;
+        request.method = ehttp::Method::parse(method.as_str()).map_err(StagingError::Request)?;
         request.headers = ehttp::Headers {
             headers: headers
                 .iter()
@@ -106,9 +101,9 @@ impl ConnectionHandle {
                 let response = ehttp::fetch_async(request).await;
             }
         }
-        let response = response.map_err(WriteObjectError::Request)?;
+        let response = response.map_err(StagingError::Request)?;
         if !response.ok {
-            return Err(WriteObjectError::Rejected {
+            return Err(StagingError::Rejected {
                 status: response.status,
                 status_text: response.status_text,
             });

@@ -42,6 +42,7 @@ pub mod env_vars;
 pub mod event;
 mod external_memory;
 mod history;
+mod konami;
 mod latency_tracker;
 mod navigation;
 mod open_url_description;

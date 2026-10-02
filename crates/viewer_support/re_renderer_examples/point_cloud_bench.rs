@@ -33,7 +33,7 @@
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
 
 use clap::Parser as _;
-use macaw::IsoTransform;
+use re_math::IsoTransform;
 use re_renderer::mesh::GpuMesh;
 use re_renderer::renderer::gpu_data::PositionRadius;
 use re_renderer::renderer::{GenericSkyboxDrawData, GpuMeshInstance, MeshDrawData};

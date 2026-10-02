@@ -31,4 +31,12 @@ pub struct ViewBlueprint {
     /// Defaults to true if not specified.
     #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
+
+    /// Whether this view shows its title bar.
+    ///
+    /// The title bar is always shown when the view shares a tab container with other views.
+    ///
+    /// Defaults to true if not specified.
+    #[rerun(optional)]
+    pub titlebar: Option<rerun::blueprint::components::Enabled>,
 }

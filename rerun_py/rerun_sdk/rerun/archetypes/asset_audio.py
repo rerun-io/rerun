@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -17,14 +17,18 @@ from .._baseclasses import (
     ComponentColumnList,
     ComponentDescriptor,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .asset_audio_ext import AssetAudioExt
+
+if TYPE_CHECKING:
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["AssetAudio"]
 
 
 @define(str=False, repr=False, init=False)
-class AssetAudio(AssetAudioExt, Archetype):
+class AssetAudio(AssetAudioExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: An audio file, stored as-is (`.aac`, `.flac`, `.m4a`, `.mp3`, `.ogg`, `.wav`).
 
@@ -262,3 +266,18 @@ class AssetAudio(AssetAudioExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("AssetAudio", overrides=self.as_component_batches(), mappings=mappings)

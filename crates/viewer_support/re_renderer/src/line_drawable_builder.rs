@@ -343,7 +343,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
     /// Returns None for empty and non-finite boxes.
     pub fn add_box_outline(
         &mut self,
-        bbox: &macaw::BoundingBox,
+        bbox: &re_math::BoundingBox,
     ) -> Option<LineStripBuilder<'_, 'ctx>> {
         if !bbox.is_something() || !bbox.is_finite() {
             return None;

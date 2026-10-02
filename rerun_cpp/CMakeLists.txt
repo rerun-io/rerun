@@ -90,16 +90,16 @@ elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
     target_link_libraries(rerun_c INTERFACE
-        Crypt32
-        Iphlpapi
-        Ncrypt
-        Netapi32
+        crypt32
+        iphlpapi
+        ncrypt
+        netapi32
         ntdll
-        Pdh
-        PowrProf
-        Psapi
-        Secur32
-        Userenv
+        pdh
+        powrprof
+        psapi
+        secur32
+        userenv
         ws2_32
     )
 endif()

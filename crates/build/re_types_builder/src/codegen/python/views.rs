@@ -58,6 +58,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: encodings.BoolLike | None = None,
+    titlebar: encodings.BoolLike | None = None,
     defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
     overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     "#
@@ -124,6 +125,15 @@ See [rerun.blueprint.archetypes.ViewContents][]."
         (
             "visible",
             "Whether this view is visible.
+
+Defaults to true if not specified."
+                .to_owned(),
+        ),
+        (
+            "titlebar",
+            "Whether this view shows its title bar.
+
+The title bar is always shown when the view shares a tab container with other views.
 
 Defaults to true if not specified."
                 .to_owned(),
@@ -215,7 +225,7 @@ This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
     }
     code.push_indented(
         1,
-        format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults, overrides=overrides)"#),
+        format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, titlebar=titlebar, properties=properties, defaults=defaults, overrides=overrides)"#),
         1,
     );
 

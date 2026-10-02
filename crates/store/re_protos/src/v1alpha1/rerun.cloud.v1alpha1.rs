@@ -309,16 +309,12 @@ impl ::prost::Name for Error {
 /// Requests authorization to write one object.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteAccessGrantRequest {
-    /// The exact size of the object in bytes.
-    /// The client may upload incrementally, but it must send exactly this many bytes.
-    #[prost(uint64, tag = "1")]
-    pub size_bytes: u64,
     /// The full object key, including the file name, relative to the location's base.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
     /// The requested storage location.
     /// The request fails if this is absent and the server has no default location.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub location: ::core::option::Option<Location>,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
@@ -585,41 +581,6 @@ impl ::prost::Name for UnregisterFromDatasetResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.UnregisterFromDatasetResponse".into()
-    }
-}
-/// One chunk pushed by `WriteChunks`.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct WriteChunksRequest {
-    /// The chunk to write. Its target segment comes from the chunk's own schema-level
-    /// `rerun:segment_id` metadata (legacy alias: `rerun:partition_id`); a chunk without it is
-    /// rejected with `INVALID_ARGUMENT`. Chunks are always written to the `base` layer.
-    ///
-    /// Not all servers implement `WriteChunks`; Rerun Hub currently returns
-    /// `UNIMPLEMENTED`.
-    #[prost(message, optional, tag = "1")]
-    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
-}
-impl ::prost::Name for WriteChunksRequest {
-    const NAME: &'static str = "WriteChunksRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.WriteChunksRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.WriteChunksRequest".into()
-    }
-}
-/// Response for `WriteChunks`. Empty: an error is reported as a gRPC status instead.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct WriteChunksResponse {}
-impl ::prost::Name for WriteChunksResponse {
-    const NAME: &'static str = "WriteChunksResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.WriteChunksResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.WriteChunksResponse".into()
     }
 }
 /// Identifies the dataset and revision associated with this response.
@@ -3102,7 +3063,7 @@ pub mod rerun_cloud_service_client {
         }
         /// Returns authorization to write one object at the requested key.
         ///
-        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// The grant expires at the time in the response.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         pub async fn get_write_access_grant(
             &mut self,
@@ -3171,30 +3132,6 @@ pub mod rerun_cloud_service_client {
                 "UnregisterFromDataset",
             ));
             self.inner.server_streaming(req, path, codec).await
-        }
-        /// Write chunks to one or more segments.
-        ///
-        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
-        ///
-        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-        pub async fn write_chunks(
-            &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
-        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/WriteChunks",
-            );
-            let mut req = request.into_streaming_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "WriteChunks",
-            ));
-            self.inner.client_streaming(req, path, codec).await
         }
         /// Returns the schema of the segment table.
         ///
@@ -3878,7 +3815,7 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
         /// Returns authorization to write one object at the requested key.
         ///
-        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// The grant expires at the time in the response.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         async fn get_write_access_grant(
             &self,
@@ -3906,15 +3843,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UnregisterFromDatasetRequest>,
         ) -> std::result::Result<tonic::Response<Self::UnregisterFromDatasetStream>, tonic::Status>;
-        /// Write chunks to one or more segments.
-        ///
-        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
-        ///
-        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-        async fn write_chunks(
-            &self,
-            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
-        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
         /// Returns the schema of the segment table.
         ///
         /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
@@ -4924,48 +4852,6 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/WriteChunks" => {
-                    #[allow(non_camel_case_types)]
-                    struct WriteChunksSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::ClientStreamingService<super::WriteChunksRequest>
-                        for WriteChunksSvc<T>
-                    {
-                        type Response = super::WriteChunksResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::write_chunks(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = WriteChunksSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.client_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

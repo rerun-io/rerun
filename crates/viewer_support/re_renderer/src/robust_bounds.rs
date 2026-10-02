@@ -47,7 +47,7 @@ fn mean_and_sigma(
 #[derive(Clone, Copy, Debug, re_byte_size::SizeBytes)]
 pub struct RobustBounds {
     /// The exact bounding box, containing everything.
-    pub exact: macaw::BoundingBox,
+    pub exact: re_math::BoundingBox,
 
     /// Region of interest that excludes spatial outliers.
     ///
@@ -61,13 +61,13 @@ pub struct RobustBounds {
     /// so `mean ± 2σ` reaches ~1.15× the actual extent.
     /// Only heavy-tailed distributions (a dense cluster plus far-away outliers)
     /// give a region of interest smaller than the exact box.
-    pub region_of_interest: macaw::BoundingBox,
+    pub region_of_interest: re_math::BoundingBox,
 }
 
 impl RobustBounds {
     /// A bounding box without any outliers, i.e. the region of interest is the whole box.
     #[inline]
-    pub fn from_bbox(bbox: macaw::BoundingBox) -> Self {
+    pub fn from_bbox(bbox: re_math::BoundingBox) -> Self {
         Self {
             exact: bbox,
             region_of_interest: bbox,
@@ -108,7 +108,7 @@ impl RobustBounds {
             return Self::from_bbox(exact);
         };
 
-        let region_of_interest = macaw::BoundingBox::from_min_max(
+        let region_of_interest = re_math::BoundingBox::from_min_max(
             (mean - 2.0 * sigma).as_vec3(),
             (mean + 2.0 * sigma).as_vec3(),
         );
@@ -204,11 +204,11 @@ mod tests {
 
         assert_eq!(
             bounds.exact,
-            macaw::BoundingBox::from_min_max(Vec3::ZERO, Vec3::ONE)
+            re_math::BoundingBox::from_min_max(Vec3::ZERO, Vec3::ONE)
         );
         assert_eq!(
             bounds.region_of_interest,
-            macaw::BoundingBox::from_min_max(Vec3::splat(-0.5), Vec3::splat(1.5)),
+            re_math::BoundingBox::from_min_max(Vec3::splat(-0.5), Vec3::splat(1.5)),
             "the region of interest may be larger than the exact bounds",
         );
     }

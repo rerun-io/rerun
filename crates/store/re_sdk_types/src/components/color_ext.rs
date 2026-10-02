@@ -44,6 +44,16 @@ impl Color {
     pub fn to_u32(self) -> u32 {
         self.0.0
     }
+
+    /// `"#rrggbb"` when fully opaque, else `"#rrggbbaa"`.
+    pub fn to_hex(self) -> String {
+        let rgba = self.to_u32();
+        if rgba & 0xff == 0xff {
+            format!("#{:06x}", rgba >> 8)
+        } else {
+            format!("#{rgba:08x}")
+        }
+    }
 }
 
 impl Color {
@@ -78,5 +88,16 @@ impl Default for Color {
         // White is best since multiplicative it does nothing and is visible in more cases than black would be.
         // Most of the time, the `FallbackProviderRegistry` should provide a better value.
         Self::WHITE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Color;
+
+    #[test]
+    fn to_hex_leaves_out_opaque_alpha() {
+        assert_eq!(Color::from_rgb(255, 0, 16).to_hex(), "#ff0010");
+        assert_eq!(Color::from_u32(0xff00_1080).to_hex(), "#ff001080");
     }
 }

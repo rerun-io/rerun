@@ -60,6 +60,7 @@ pub fn generate_reflection(
                 ComponentReflection,
                 ComponentReflectionMap,
                 ComponentTypeSet,
+                EnumVariantReflection,
                 Reflection,
                 ViewApplicability,
                 ViewReflection,
@@ -196,7 +197,20 @@ fn generate_component_reflection(
             quote! { None }
         };
 
-        let is_enum = obj.is_enum();
+        let enum_variants = if obj.is_enum() {
+            let variants = obj.fields.iter().map(|field| {
+                let name = &field.name;
+                let value = proc_macro2::Literal::u64_unsuffixed(
+                    field
+                        .enum_or_union_variant_value
+                        .expect("enum variants must have a value"),
+                );
+                quote! { EnumVariantReflection { value: #value, name: #name } }
+            });
+            quote! { Some(&[#(#variants,)*]) }
+        } else {
+            quote! { None }
+        };
         let own_chunk = obj.attrs.has(RerunAttr::OwnChunk);
         let quoted_reflection = quote! {
             ComponentReflection {
@@ -204,7 +218,7 @@ fn generate_component_reflection(
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_data_type(),
-                is_enum: #is_enum,
+                enum_variants: #enum_variants,
                 own_chunk: #own_chunk,
                 verify_arrow_array: #type_name::verify_arrow_array,
             }

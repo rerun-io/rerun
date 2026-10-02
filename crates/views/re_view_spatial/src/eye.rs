@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Rect};
 use glam::{Mat4, Quat, Vec3, vec3};
-use macaw::IsoTransform;
 use re_log_types::EntityPath;
+use re_math::IsoTransform;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::{AngularSpeed, Eye3DKind};
 use re_sdk_types::components::{LinearSpeed, Position3D, Vector3D};
@@ -66,9 +66,9 @@ impl Eye {
         let aspect_ratio = space2d_rect.width() / space2d_rect.height();
 
         let projection = if let Some(fov_y) = self.fov_y {
-            Mat4::perspective_infinite_rh(fov_y, aspect_ratio, self.near())
+            glam::camera::rh::proj::directx::perspective_infinite(fov_y, aspect_ratio, self.near())
         } else {
-            Mat4::orthographic_rh(
+            glam::camera::rh::proj::directx::orthographic(
                 space2d_rect.left(),
                 space2d_rect.right(),
                 space2d_rect.bottom(),
@@ -94,7 +94,7 @@ impl Eye {
 
     /// Picking ray for a given pointer in the parent space
     /// (i.e. prior to camera transform, "world" space)
-    pub fn picking_ray(&self, screen_rect: Rect, pointer: glam::Vec2) -> macaw::Ray3 {
+    pub fn picking_ray(&self, screen_rect: Rect, pointer: glam::Vec2) -> re_math::Ray3 {
         if let Some(fov_y) = self.fov_y {
             let (w, h) = (screen_rect.width(), screen_rect.height());
             let aspect_ratio = w / h;
@@ -104,7 +104,7 @@ impl Eye {
             let ray_dir = self
                 .world_from_rub_view
                 .transform_vector3(glam::vec3(px, py, -1.0));
-            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
+            re_math::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
         } else {
             // The ray originates on the camera plane, not from the camera position
             let ray_dir = self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Z);
@@ -113,7 +113,7 @@ impl Eye {
                 + self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
                 + ray_dir * self.near();
 
-            macaw::Ray3::from_origin_dir(origin, ray_dir)
+            re_math::Ray3::from_origin_dir(origin, ray_dir)
         }
     }
 
@@ -165,7 +165,7 @@ impl Eye {
 /// not what is on screen.
 #[derive(Clone, Copy, Debug)]
 pub struct ExtendedEyeFrustum {
-    planes: [macaw::Plane3; 5],
+    planes: [re_math::Plane3; 5],
 }
 
 impl ExtendedEyeFrustum {
@@ -203,11 +203,11 @@ impl ExtendedEyeFrustum {
         Some(Self {
             planes: [
                 // The near plane sits at the eye itself.
-                macaw::Plane3::from_normal_point(forward, origin),
-                macaw::Plane3::from_normal_point(forward * sin_x + right * cos_x, origin),
-                macaw::Plane3::from_normal_point(forward * sin_x - right * cos_x, origin),
-                macaw::Plane3::from_normal_point(forward * sin_y + up * cos_y, origin),
-                macaw::Plane3::from_normal_point(forward * sin_y - up * cos_y, origin),
+                re_math::Plane3::from_normal_point(forward, origin),
+                re_math::Plane3::from_normal_point(forward * sin_x + right * cos_x, origin),
+                re_math::Plane3::from_normal_point(forward * sin_x - right * cos_x, origin),
+                re_math::Plane3::from_normal_point(forward * sin_y + up * cos_y, origin),
+                re_math::Plane3::from_normal_point(forward * sin_y - up * cos_y, origin),
             ],
         })
     }
@@ -223,7 +223,7 @@ impl ExtendedEyeFrustum {
     /// Is the entire box on the outside of one of the planes?
     ///
     /// Boxes straddling two planes without entering the frustum still count as inside.
-    pub fn is_fully_outside(&self, bbox: &macaw::BoundingBox) -> bool {
+    pub fn is_fully_outside(&self, bbox: &re_math::BoundingBox) -> bool {
         if !bbox.is_finite() {
             // Non-finite bounds count as inside.
             return false;
@@ -493,7 +493,7 @@ impl EyeController {
     }
 
     fn rotation(&self) -> Quat {
-        Quat::look_to_rh(self.fwd(), self.up()).inverse()
+        glam::camera::rh::view::look_to_quat(self.fwd(), self.up()).inverse()
     }
 
     fn apply_rotation_and_radius(&mut self, rot: Quat, d: f32) {
@@ -598,7 +598,7 @@ impl EyeController {
     }
 
     /// Handle zoom/scroll input.
-    fn handle_zoom(&mut self, egui_ctx: &egui::Context, scene_bounding_box: &macaw::BoundingBox) {
+    fn handle_zoom(&mut self, egui_ctx: &egui::Context, scene_bounding_box: &re_math::BoundingBox) {
         let zoom_factor = egui_ctx.input(|input| {
             // egui's default horizontal_scroll_modifier is shift, which is also our speed-up modifier.
             // This means that a user who wants to speed up scroll-to-zoom will generate a horizontal scroll delta.
@@ -751,7 +751,7 @@ impl EyeController {
         eye_state: &mut EyeState,
         response: &egui::Response,
         drag_threshold: f32,
-        scene_bounding_box: &macaw::BoundingBox,
+        scene_bounding_box: &re_math::BoundingBox,
         enable_gamepad_navigation: bool,
     ) -> GamepadNavigationStatus {
         // Modify speed based on modifiers:
@@ -796,7 +796,7 @@ impl EyeController {
 ///
 /// Returns `1.0e17` (a large fallback that avoids infinities downstream) when no usable scene
 /// bounding box is available.
-fn max_orbital_radius(scene_bounding_box: &macaw::BoundingBox) -> f32 {
+fn max_orbital_radius(scene_bounding_box: &re_math::BoundingBox) -> f32 {
     // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
     let fallback = 1.0e17;
 
@@ -1348,8 +1348,8 @@ mod tests {
         .expect("a perspective eye has a frustum")
     }
 
-    fn unit_box_at(center: Vec3) -> macaw::BoundingBox {
-        macaw::BoundingBox::from_center_size(center, Vec3::ONE)
+    fn unit_box_at(center: Vec3) -> re_math::BoundingBox {
+        re_math::BoundingBox::from_center_size(center, Vec3::ONE)
     }
 
     #[test]
@@ -1370,7 +1370,8 @@ mod tests {
     /// corners sits outside some plane.
     #[test]
     fn box_enclosing_the_eye_is_inside() {
-        let big = macaw::BoundingBox::from_center_size(vec3(0.0, 0.0, -10.0), Vec3::splat(1000.0));
+        let big =
+            re_math::BoundingBox::from_center_size(vec3(0.0, 0.0, -10.0), Vec3::splat(1000.0));
         assert!(!frustum().is_fully_outside(&big));
     }
 

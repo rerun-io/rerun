@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,11 +13,9 @@ use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{
-    Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
-};
+use re_chunk_store::{Chunk, ChunkId, ChunkTrackingMode, LatestAtQuery, RangeQuery};
 use re_log_encoding::ToTransport as _;
-use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
     AssetMode, QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
     ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
@@ -36,7 +34,9 @@ use re_protos::cloud::v1alpha1::{
     ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter,
     WatchEventsResponse, segment_id_filter, watch_events_response,
 };
-use re_protos::common::v1alpha1::ext::{DatasetKind, IfDuplicateBehavior, SegmentId};
+#[cfg(not(target_arch = "wasm32"))]
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -60,11 +60,11 @@ use self::register_with_dataset::{RegisterWithDatasetResult, do_register_with_da
 use crate::NamedPath;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
+use crate::store::TASK_ID_SUCCESS;
 use crate::store::{
     ChunkKey, Dataset, InMemoryStore, ResolvedStore, SegmentProperties, StoreSlotId, Table,
     TaskResult,
 };
-use crate::store::{LayerInfo, TASK_ID_SUCCESS};
 
 #[derive(Debug)]
 #[cfg_attr(target_arch = "wasm32", derive(Clone, Copy, Default))]
@@ -197,14 +197,6 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
-    pub fn with_eager_chunk_store_config(
-        mut self,
-        config: re_chunk_store::ChunkStoreConfig,
-    ) -> Self {
-        self.store.set_eager_chunk_store_config(config);
-        self
-    }
-
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build(self) -> RerunCloudHandler {
         RerunCloudHandler::new(self.settings, self.store, None)
@@ -234,7 +226,6 @@ pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
     #[cfg(not(target_arch = "wasm32"))]
     write_access_grants: Option<crate::routes::WriteAccessGrants>,
-    eager_chunk_store_config: re_chunk_store::ChunkStoreConfig,
     store: tokio::sync::RwLock<InMemoryStore>,
     events_tx: tokio::sync::broadcast::Sender<WatchEventsResponse>,
 }
@@ -249,14 +240,12 @@ impl RerunCloudHandler {
     ) -> Self {
         #[cfg(target_arch = "wasm32")]
         let _ = settings;
-        let eager_chunk_store_config = store.eager_chunk_store_config();
         let (events_tx, _) = tokio::sync::broadcast::channel(1024);
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             settings,
             #[cfg(not(target_arch = "wasm32"))]
             write_access_grants,
-            eager_chunk_store_config,
             store: tokio::sync::RwLock::new(store),
             events_tx,
         }
@@ -1014,11 +1003,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
-        let ext::GetWriteAccessGrantRequest {
-            size_bytes,
-            key,
-            location,
-        } = request.into_inner().try_into()?;
+        let ext::GetWriteAccessGrantRequest { key, location } = request.into_inner().try_into()?;
         if location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
@@ -1027,7 +1012,7 @@ impl RerunCloudService for RerunCloudHandler {
         let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
             tonic::Status::unimplemented("write access grants are not configured")
         })?;
-        let response = write_access_grants.issue(&key, size_bytes)?;
+        let response = write_access_grants.issue(&key)?;
         Ok(tonic::Response::new(response.try_into()?))
     }
 
@@ -1120,110 +1105,6 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::UnregisterFromDatasetStream
-        ))
-    }
-
-    // TODO(RR-2017): This endpoint is in need of a deep redesign. For now it defaults to
-    // overwriting the "base" layer.
-    async fn write_chunks(
-        &self,
-        request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>> {
-        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
-        #[expect(deprecated)]
-        let application_id = re_log_types::ApplicationId::from_entry_id(entry_id);
-
-        let mut request = request.into_inner();
-
-        let mut chunk_stores: HashMap<_, _> = HashMap::default();
-
-        while let Some(chunk_msg) = request.next().await {
-            let chunk_msg = chunk_msg?;
-
-            let record_batch: RecordBatch = chunk_msg
-                .chunk
-                .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
-                .try_into()
-                .map_err(|err| {
-                    tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
-                })?;
-
-            // Support both new "rerun:segment_id" and legacy "rerun:partition_id" keys
-            let schema = record_batch.schema();
-            let metadata = schema.metadata();
-            let segment_id: SegmentId = metadata
-                .get("rerun:segment_id")
-                .or_else(|| metadata.get("rerun:partition_id"))
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(
-                        "Received chunk without 'rerun:segment_id' metadata",
-                    )
-                })?
-                .clone()
-                .into();
-
-            let chunk_batch = re_sorbet::ChunkBatch::try_from(&record_batch).map_err(|err| {
-                tonic::Status::internal(format!("error parsing chunk record batch: {err:#}"))
-            })?;
-            let chunk = Arc::new(Chunk::from_chunk_batch(&chunk_batch).map_err(|err| {
-                tonic::Status::internal(format!("error decoding chunk from chunk batch: {err:#}"))
-            })?);
-
-            chunk_stores
-                .entry(segment_id.clone())
-                .or_insert_with(|| {
-                    ChunkStore::new(
-                        StoreId::new(
-                            StoreKind::Recording,
-                            application_id.clone(),
-                            segment_id.clone(),
-                        ),
-                        self.eager_chunk_store_config.clone(),
-                    )
-                })
-                .insert_chunk(&chunk)
-                .map_err(|err| {
-                    tonic::Status::internal(format!("error adding chunk to store: {err:#}"))
-                })?;
-        }
-
-        let mut store = self.store.write().await;
-
-        // Build handles and register in pool first
-        let handles: Vec<_> = chunk_stores
-            .into_iter()
-            .map(|(segment_id, chunk_store)| {
-                let resolved = ResolvedStore::Eager(ChunkStoreHandle::new(chunk_store));
-                let store_slot_id = store.register_store(&resolved);
-                (segment_id, store_slot_id, resolved)
-            })
-            .collect();
-
-        let dataset = store.dataset_mut(entry_id)?;
-
-        for (entity_path, store_slot_id, resolved) in handles {
-            // These chunks have no file behind them, so the store slot is the layer's only address.
-            let storage_url = url::Url::parse(&format!("memory:///store/{store_slot_id}"))
-                .map_err(|err| {
-                    tonic::Status::internal(format!("failed to build memory URL: {err}"))
-                })?;
-
-            dataset
-                .add_source(
-                    entity_path,
-                    Arc::new(LayerInfo {
-                        name: LayerName::base(),
-                    }),
-                    store_slot_id,
-                    resolved,
-                    storage_url,
-                    IfDuplicateBehavior::Error,
-                )
-                .await?;
-        }
-
-        Ok(tonic::Response::new(
-            re_protos::cloud::v1alpha1::WriteChunksResponse {},
         ))
     }
 

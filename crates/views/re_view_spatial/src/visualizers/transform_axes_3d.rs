@@ -282,13 +282,13 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
 ///
 /// Explicit axis lengths include the full gizmo.
 /// Fallback axis lengths depend on scene bounds, so they must remain origin-only to avoid a feedback loop.
-fn axis_bounding_box(axis_length: f32, axis_length_is_fallback: bool) -> macaw::BoundingBox {
+fn axis_bounding_box(axis_length: f32, axis_length_is_fallback: bool) -> re_math::BoundingBox {
     if axis_length_is_fallback {
-        return macaw::BoundingBox::ZERO;
+        return re_math::BoundingBox::ZERO;
     }
 
     let axis_end = glam::Vec3::splat(axis_length);
-    macaw::BoundingBox::from_min_max(
+    re_math::BoundingBox::from_min_max(
         glam::Vec3::ZERO.min(axis_end),
         glam::Vec3::ZERO.max(axis_end),
     )
@@ -366,13 +366,13 @@ mod tests {
     fn explicit_axis_arrows_expand_the_bounding_box() {
         assert_eq!(
             axis_bounding_box(2.0, false),
-            macaw::BoundingBox::from_min_max(glam::Vec3::ZERO, glam::Vec3::splat(2.0)),
+            re_math::BoundingBox::from_min_max(glam::Vec3::ZERO, glam::Vec3::splat(2.0)),
         );
     }
 
     /// Checks that fallback axis lengths only contribute their origin to the bounding box.
     #[test]
     fn fallback_axis_arrows_do_not_expand_the_bounding_box() {
-        assert_eq!(axis_bounding_box(2.0, true), macaw::BoundingBox::ZERO);
+        assert_eq!(axis_bounding_box(2.0, true), re_math::BoundingBox::ZERO);
     }
 }

@@ -52,9 +52,10 @@ import-ply = ["dep:ply-rs-bw"]
 import-stl = ["dep:stl_io"]
 
 [dependencies]
-re_byte_size = { workspace = true, features = ["macaw"] }
+re_byte_size = { workspace = true, features = ["re_math"] }
 re_error.workspace = true
 re_log.workspace = true
+re_math.workspace = true
 re_mutex.workspace = true
 re_quota_channel.workspace = true
 re_span.workspace = true
@@ -75,7 +76,6 @@ enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools.workspace = true
-macaw.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
@@ -137,3 +137,6 @@ cfg_aliases.workspace = true
 clean-path.workspace = true
 pathdiff.workspace = true
 walkdir.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

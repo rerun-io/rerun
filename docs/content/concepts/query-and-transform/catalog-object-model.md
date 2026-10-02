@@ -56,6 +56,7 @@ Tables support the following mutation operations through the Catalog SDK:
 - _upsert_: replace existing rows (based on an index column) with new data
 
 Thanks to [DataFusion](https://datafusion.apache.org/), tables also support most database operations such as querying, filtering, joining, etc.
+See [Storing query results in catalog tables](../../howto/query-and-transform/catalog-tables.md) for a complete example using these operations.
 
 ## Datasets
 
@@ -169,4 +170,3 @@ print(asset_dataset.schema())
 # Assets only hold static data, so there is no index to read along.
 df = asset_dataset.reader(index=None)
 ```
-

@@ -15,7 +15,11 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
     let eye_position = glam::vec3(0.0, -1.0, 0.2);
     let camera_extrincis = archetypes::Transform3D::from_mat3x3(
         // Look at the middle box.
-        glam::Mat3::look_at_rh(eye_position, glam::vec3(0.0, 1.0, 0.0), glam::Vec3::Z),
+        glam::camera::rh::view::look_at_mat3(
+            eye_position,
+            glam::vec3(0.0, 1.0, 0.0),
+            glam::Vec3::Z,
+        ),
     )
     .with_translation(eye_position);
     let camera_intrinsics =

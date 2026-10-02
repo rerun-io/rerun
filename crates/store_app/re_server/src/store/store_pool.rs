@@ -49,14 +49,10 @@ pub struct StorePool {
 }
 
 impl StorePool {
-    /// Register a store, returning its new [`StoreSlotId`].
-    pub fn register(&mut self, resolved: &ResolvedStore) -> StoreSlotId {
-        let id = StoreSlotId::new();
-        self.stores.insert(id, resolved.downgrade());
-        id
-    }
-
-    /// Register under an existing ID (e.g. for `memory://` re-registration).
+    /// Register a store under a caller-chosen [`StoreSlotId`], replacing any previous entry.
+    ///
+    /// The caller owns the ID so that a `memory:///store/{id}` URL stays valid across
+    /// re-registration of the same slot.
     pub fn register_with_id(&mut self, id: StoreSlotId, resolved: &ResolvedStore) {
         self.stores.insert(id, resolved.downgrade());
     }
@@ -95,20 +91,11 @@ mod tests {
     }
 
     #[test]
-    fn register_and_get() {
-        let mut pool = StorePool::default();
-        let resolved = test_resolved_store();
-        let id = pool.register(&resolved);
-
-        let retrieved = pool.get(&id).expect("should find store");
-        assert_eq!(resolved.store_id(), retrieved.store_id());
-    }
-
-    #[test]
     fn get_returns_none_after_drop() {
         let mut pool = StorePool::default();
         let resolved = test_resolved_store();
-        let id = pool.register(&resolved);
+        let id = StoreSlotId::new();
+        pool.register_with_id(id, &resolved);
         drop(resolved);
         assert!(pool.get(&id).is_none(), "should be expired");
     }
@@ -117,7 +104,7 @@ mod tests {
     fn cleanup_removes_expired() {
         let mut pool = StorePool::default();
         let resolved = test_resolved_store();
-        let _ = pool.register(&resolved);
+        pool.register_with_id(StoreSlotId::new(), &resolved);
         drop(resolved);
         pool.cleanup();
         assert!(pool.stores.is_empty(), "should have been cleaned up");
@@ -127,7 +114,8 @@ mod tests {
     fn cleanup_keeps_alive() {
         let mut pool = StorePool::default();
         let resolved = test_resolved_store();
-        let id = pool.register(&resolved);
+        let id = StoreSlotId::new();
+        pool.register_with_id(id, &resolved);
         pool.cleanup();
         assert!(pool.get(&id).is_some(), "should NOT have been cleaned up");
     }

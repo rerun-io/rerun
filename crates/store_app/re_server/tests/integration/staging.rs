@@ -1,7 +1,4 @@
-//! Client-side write grants against a running `re_server`.
-//!
-//! Exercises the intended API end to end: acquire a grant, redeem it with an in-memory RRD, then
-//! register the credential-free storage URL with a dataset.
+//! Staging and registration are separate operations: uploading an RRD must not register it.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -14,13 +11,13 @@ use re_log_types::{EntityPath, EntryName, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{DataSource, ObjectKey};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::ConnectionRegistry;
+use re_redap_client::{ConnectionRegistry, StagingError};
 use re_server::{RerunCloudHandlerBuilder, ServerBuilder};
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[tokio::test(flavor = "multi_thread")]
-async fn write_and_register_roundtrip() -> anyhow::Result<()> {
+async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
     let rrd = bytes::Bytes::from(encode_rrd()?);
 
     let listener = re_grpc_server::ServerListener::bind((std::net::Ipv4Addr::LOCALHOST, 0).into())?;
@@ -37,16 +34,28 @@ async fn write_and_register_roundtrip() -> anyhow::Result<()> {
     let origin = format!("rerun+http://{}", handle.connect_addr()).parse()?;
     let connection = ConnectionRegistry::new_without_stored_credentials().connection_handle(origin);
 
-    let storage_url = connection
-        .write_object(ObjectKey::try_new("user/project/recording.rrd")?, rrd)
-        .await?;
-
     let dataset_name = EntryName::new("uploads")?;
     let dataset_id = connection
         .client()
         .await?
         .find_or_create_dataset(&dataset_name)
         .await?;
+
+    let key = ObjectKey::try_new("user/project/recording.rrd")?;
+    let storage_url = connection.stage(key.clone(), rrd.clone()).await?;
+    assert!(
+        connection
+            .client()
+            .await?
+            .get_dataset_segment_ids(dataset_id)
+            .await?
+            .is_empty()
+    );
+    assert!(matches!(
+        connection.stage(key, rrd).await,
+        Err(StagingError::Rejected { status: 409, .. })
+    ));
+
     let segment_ids = connection
         .register_with_dataset(
             dataset_id,
@@ -63,7 +72,7 @@ async fn write_and_register_roundtrip() -> anyhow::Result<()> {
 }
 
 fn encode_rrd() -> anyhow::Result<Vec<u8>> {
-    let store_id = StoreId::random(StoreKind::Recording, "write_grant_test");
+    let store_id = StoreId::random(StoreKind::Recording, "staging_test");
     let points = MyPoint::from_iter(0..1);
     let chunk = Chunk::builder(EntityPath::from("/test/entity"))
         .with_sparse_component_batches(

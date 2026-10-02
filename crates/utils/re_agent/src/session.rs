@@ -5,11 +5,12 @@
 
 use std::collections::VecDeque;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 use agent_client_protocol::schema::v1::{
-    AuthMethod, AuthMethodId, ContentBlock, PermissionOption, PermissionOptionId,
-    PermissionOptionKind, RequestPermissionOutcome, RequestPermissionRequest,
+    AuthMethod, AuthMethodId, ContentBlock, ImageContent, PermissionOption, PermissionOptionId,
+    PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome, RequestPermissionRequest,
     RequestPermissionResponse, SelectedPermissionOutcome, SessionModeId, SessionModeState,
     SessionUpdate, StopReason, TextContent, ToolCallStatus, ToolKind,
 };
@@ -20,6 +21,47 @@ use crate::transcript::{ToolCallState, Transcript, TranscriptItem};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// An image the user attached to a prompt, already encoded as `mime_type`.
+#[derive(Clone, Debug)]
+pub struct PromptImage {
+    /// The encoded image, as `mime_type` describes it.
+    ///
+    /// Shared, because the transcript, the queue and the renderer all hold the same image, and
+    /// a screenshot runs to megabytes.
+    pub bytes: Arc<[u8]>,
+
+    /// The MIME type of `bytes`, e.g. `image/png`.
+    pub mime_type: String,
+
+    /// Width and height of the encoded image, in pixels.
+    pub size: [usize; 2],
+}
+
+/// What a single prompt carries: the text as typed, and any images attached to it.
+#[derive(Clone, Debug, Default)]
+pub struct Prompt {
+    /// The prompt as typed.
+    pub text: String,
+
+    /// Images attached to it.
+    pub images: Vec<PromptImage>,
+}
+
+impl From<String> for Prompt {
+    fn from(text: String) -> Self {
+        Self {
+            text,
+            images: Vec::new(),
+        }
+    }
+}
+
+impl From<&str> for Prompt {
+    fn from(text: &str) -> Self {
+        text.to_owned().into()
+    }
+}
 
 /// Where we are in the lifetime of an agent connection.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -104,7 +146,18 @@ pub struct AgentSession {
     requested_mode: Option<SessionModeId>,
 
     /// Prompts typed while a turn was running. Sent one per turn, in order.
-    queue: VecDeque<String>,
+    queue: VecDeque<Prompt>,
+
+    /// What the agent accepts in a prompt, as it reported on initialization. An agent that takes
+    /// no images gets the paths of files instead — see [`Self::send_prompt`].
+    prompt_capabilities: PromptCapabilities,
+
+    /// Holds the images written out for an agent that cannot take them inline. Deleting it with
+    /// the session is the point: the files are only meant to outlive the prompt that names them.
+    image_dir: Option<tempfile::TempDir>,
+
+    /// Images written to [`Self::image_dir`] so far, so their file names stay unique.
+    images_written: usize,
 
     /// The turn started by the last prompt, until the agent finishes it.
     current_turn: Option<TurnStart>,
@@ -213,51 +266,162 @@ impl AgentSession {
         self.transcript.push_note(message, true);
     }
 
+    /// Whether the agent takes images in a prompt, as it reported on initialization.
+    ///
+    /// It is not a precondition of [`Self::send_prompt`]: an agent that says no gets
+    /// file paths instead. A UI can still use it to say which of the two will happen.
+    pub fn accepts_images(&self) -> bool {
+        self.prompt_capabilities.image
+    }
+
+    /// Sends `prompt`, or queues it if a turn is running.
+    ///
+    /// An agent that reported no image support gets each image written to a temporary directory
+    /// and named in the prompt text instead, because a stray `ContentBlock::Image` is a protocol
+    /// violation, while a path costs the agent one read.
+    ///
     /// Returns `false` if the prompt was not sent because the agent is not ready.
     #[must_use]
-    pub fn send_prompt(&mut self, text: impl Into<String>) -> bool {
-        let text = text.into();
-        if text.trim().is_empty() || self.phase != Phase::Ready {
+    pub fn send_prompt(&mut self, prompt: Prompt) -> bool {
+        if (prompt.text.trim().is_empty() && prompt.images.is_empty()) || self.phase != Phase::Ready
+        {
             return false;
         }
         if self.current_turn.is_some() {
-            self.queue.push_back(text);
+            self.queue.push_back(prompt);
             return true;
         }
         if self.connection.is_none() {
             return false;
         }
-        self.begin_turn(text.clone());
+
+        let (prompt_text, image_blocks, unsaved) = self.attach_images(&prompt.text, &prompt.images);
+        // The transcript shows the prompt as typed, not `prompt_text`: the file paths appended
+        // for an agent that cannot take images inline are plumbing, and the images themselves
+        // are in the transcript entry.
+        self.begin_turn(prompt);
+        if 0 < unsaved {
+            // The image is in the transcript either way, so without this the user would think
+            // the agent got something it never did.
+            let what = if unsaved == 1 {
+                "An image".to_owned()
+            } else {
+                format!("{unsaved} images")
+            };
+            self.transcript.push_note(
+                format!("{what} could not be saved for the agent to read"),
+                true,
+            );
+        }
 
         // The preamble goes only with the first prompt: the agent keeps its own history.
-        let mut prompt = Vec::new();
+        let mut blocks = Vec::new();
         if self.prompts_sent == 0
             && let Some(preamble) = &self.preamble
         {
-            prompt.push(ContentBlock::Text(TextContent::new(preamble.clone())));
+            blocks.push(ContentBlock::Text(TextContent::new(preamble.clone())));
         }
-        prompt.push(ContentBlock::Text(TextContent::new(text)));
+        if !prompt_text.is_empty() {
+            blocks.push(ContentBlock::Text(TextContent::new(prompt_text)));
+        }
+        blocks.extend(image_blocks);
         self.prompts_sent += 1;
 
         if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::Prompt(prompt));
+            connection.send(AgentCommand::Prompt(blocks));
         }
         true
     }
 
+    /// Turns `images` into what the prompt carries: the text to send, the blocks to append, and
+    /// how many images never reached the agent because they could not be written to disk.
+    fn attach_images(
+        &mut self,
+        text: &str,
+        images: &[PromptImage],
+    ) -> (String, Vec<ContentBlock>, usize) {
+        use std::fmt::Write as _;
+
+        let mut prompt_text = text.to_owned();
+        let mut blocks = Vec::new();
+        let mut paths = Vec::new();
+        let mut unsaved = 0;
+
+        for image in images {
+            if self.prompt_capabilities.image {
+                let data = base64::Engine::encode(
+                    &base64::engine::general_purpose::STANDARD,
+                    &image.bytes,
+                );
+                blocks.push(ContentBlock::Image(ImageContent::new(
+                    data,
+                    image.mime_type.clone(),
+                )));
+            } else if let Some(path) = self.write_image(image) {
+                paths.push(path);
+            } else {
+                unsaved += 1;
+            }
+        }
+
+        if !paths.is_empty() {
+            prompt_text
+                .push_str("\n\nThe user pasted the following image(s). Read them if they matter:");
+            for path in paths {
+                _ = write!(prompt_text, "\n- `{}`", path.display());
+            }
+        }
+
+        (prompt_text, blocks, unsaved)
+    }
+
+    /// Writes `image` into the session's image directory, for an agent that cannot take it inline.
+    ///
+    /// The directory is added to the readable ones, so reading back what the user just pasted
+    /// does not raise a permission prompt.
+    fn write_image(&mut self, image: &PromptImage) -> Option<PathBuf> {
+        if self.image_dir.is_none() {
+            match tempfile::Builder::new()
+                .prefix("rerun-agent-images")
+                .tempdir()
+            {
+                Ok(dir) => {
+                    self.readable_directories.push(dir.path().to_path_buf());
+                    self.image_dir = Some(dir);
+                }
+                Err(err) => {
+                    re_log::warn!("Could not create a directory for pasted images: {err}");
+                    return None;
+                }
+            }
+        }
+        let dir = self.image_dir.as_ref()?.path();
+
+        self.images_written += 1;
+        let extension = image.mime_type.rsplit('/').next().unwrap_or("png");
+        let path = dir.join(format!("pasted-{}.{extension}", self.images_written));
+        match std::fs::write(&path, &image.bytes) {
+            Ok(()) => Some(path),
+            Err(err) => {
+                re_log::warn!(?path, "Could not save a pasted image: {err}");
+                None
+            }
+        }
+    }
+
     /// Prompts waiting for the current turn to finish, in the order they will be sent.
-    pub fn queued_prompts(&self) -> &VecDeque<String> {
+    pub fn queued_prompts(&self) -> &VecDeque<Prompt> {
         &self.queue
     }
 
     /// Takes a prompt out of the queue, e.g. to put it back into the input.
-    pub fn remove_queued(&mut self, index: usize) -> Option<String> {
+    pub fn remove_queued(&mut self, index: usize) -> Option<Prompt> {
         self.queue.remove(index)
     }
 
     /// Empties the queue. Call before [`Self::cancel`], so stopping the agent does not
     /// let the next queued prompt start a new turn.
-    pub fn take_queued(&mut self) -> Vec<String> {
+    pub fn take_queued(&mut self) -> Vec<Prompt> {
         self.queue.drain(..).collect()
     }
 
@@ -266,10 +430,11 @@ impl AgentSession {
         std::mem::take(&mut self.finished_turns)
     }
 
-    fn begin_turn(&mut self, prompt: String) {
-        self.transcript.push_user(prompt.clone());
+    fn begin_turn(&mut self, prompt: Prompt) {
+        let text = prompt.text.clone();
+        self.transcript.push_user(prompt);
         self.current_turn = Some(TurnStart {
-            prompt,
+            prompt: text,
             started: Instant::now(),
             transcript_start: self.transcript.items.len(),
             permissions_requested: 0,
@@ -456,8 +621,13 @@ impl AgentSession {
                     self.phase = Phase::Connecting { status };
                 }
             }
-            AgentEvent::Initialized { agent_info, .. } => {
+            AgentEvent::Initialized {
+                agent_info,
+                capabilities,
+                ..
+            } => {
                 self.agent_name = agent_info.map(|info| info.title.unwrap_or(info.name));
+                self.prompt_capabilities = capabilities.prompt_capabilities;
             }
             AgentEvent::SessionStarted {
                 modes,
@@ -742,7 +912,7 @@ mod tests {
             agent_name: Some("Test Agent".to_owned()),
             ..Default::default()
         };
-        session.begin_turn("do the thing".to_owned());
+        session.begin_turn("do the thing".into());
         if let Some(turn) = &mut session.current_turn {
             turn.permissions_requested = 2;
             turn.permissions_rejected = 1;
@@ -793,7 +963,7 @@ mod tests {
         assert!(session.take_finished_turns().is_empty());
 
         // A turn cut short by the agent going away is still reported.
-        session.begin_turn("again".to_owned());
+        session.begin_turn("again".into());
         session.handle_event(AgentEvent::Disconnected);
         let reports = session.take_finished_turns();
         assert_eq!(reports.len(), 1);

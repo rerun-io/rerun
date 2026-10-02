@@ -226,7 +226,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-        let mut world_space_bounding_box = macaw::BoundingBox::nothing();
+        let mut world_space_bounding_box = re_math::BoundingBox::nothing();
 
         let world_from_instances = std::iter::chain(
             &target_from_instances,

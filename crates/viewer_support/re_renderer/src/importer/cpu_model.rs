@@ -26,11 +26,20 @@ struct CpuMeshInstance {
 /// a series of [`GpuMeshInstance`]s that can be rendered.
 ///
 /// This is meant as a useful intermediate structure for doing post-processing steps on the model prior to gpu upload.
-#[derive(Default)]
 pub struct CpuModel {
     meshes: SlotMap<CpuModelMeshKey, CpuMesh>,
     instances: Vec<CpuMeshInstance>,
-    bbox: macaw::BoundingBox,
+    bbox: re_math::BoundingBox,
+}
+
+impl Default for CpuModel {
+    fn default() -> Self {
+        Self {
+            meshes: SlotMap::default(),
+            instances: Vec::new(),
+            bbox: re_math::BoundingBox::nothing(),
+        }
+    }
 }
 
 impl CpuModel {
@@ -63,7 +72,7 @@ impl CpuModel {
     }
 
     /// The bounding box of the model, accumulated from all instances and their transforms.
-    pub fn bbox(&self) -> macaw::BoundingBox {
+    pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
     }
 

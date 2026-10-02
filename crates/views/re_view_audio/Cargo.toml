@@ -1,0 +1,50 @@
+[package]
+authors.workspace = true
+description = "A view that shows the waveform of an audio asset and plays it back."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_view_audio"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+
+[dependencies]
+re_audio = { workspace = true, default-features = false, features = ["decoding"] }
+re_byte_size.workspace = true
+re_chunk.workspace = true
+re_chunk_store.workspace = true
+re_entity_db.workspace = true
+re_format.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
+re_sdk_types.workspace = true
+re_tracing.workspace = true
+re_ui.workspace = true
+re_view.workspace = true
+re_viewer_context.workspace = true
+re_viewport_blueprint.workspace = true
+
+arrow.workspace = true
+egui.workspace = true
+nohash-hasher.workspace = true
+web-time.workspace = true
+
+[dev-dependencies]
+re_test_context.workspace = true
+re_test_viewport.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

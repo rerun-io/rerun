@@ -60,7 +60,9 @@ crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
-egui.workspace = true
+egui = { workspace = true, features = [
+  "experimental", # The theme API, for `TextEditTheme`
+] }
 getrandom.workspace = true
 itertools.workspace = true
 jiff.workspace = true
@@ -106,3 +108,6 @@ tonic.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

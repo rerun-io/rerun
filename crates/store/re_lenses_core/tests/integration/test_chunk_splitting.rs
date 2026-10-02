@@ -250,49 +250,6 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
     "#);
 }
 
-/// A mutate-only lens modifies the prefix without producing a separate output chunk.
-#[test]
-fn mutate_only_modifies_prefix() {
-    let chunk = three_component_chunk();
-    let original_row_ids = chunk.row_ids_slice();
-
-    let lens = Lens::mutate("alpha", example_selector()).build();
-
-    let lenses = Lenses::new(OutputMode::ForwardUnmatched).add_lens(lens);
-    let results: Vec<_> = lenses
-        .apply(Arc::clone(&chunk), &empty_runtime())
-        .try_collect()
-        .unwrap();
-
-    // Single chunk: the prefix with alpha modified in-place + beta + gamma.
-    assert_eq!(results.len(), 1);
-    assert_ne!(results[0].id(), chunk.id());
-    assert_ne!(results[0].row_ids_slice(), original_row_ids);
-    insta::assert_snapshot!(format!("{:-240}", results[0]), @r#"
-    ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    │ METADATA:                                                                                                                       │
-    │ * entity_path: /test/entity                                                                                                     │
-    │ * id: [**REDACTED**]                                                                                                            │
-    │ * version: [**REDACTED**]                                                                                                       │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ ┌──────────────────────────────────────────────┬──────────────────┬───────────────────┬───────────────────┬───────────────────┐ │
-    │ │ RowId                                        ┆ tick             ┆ alpha             ┆ beta              ┆ gamma             │ │
-    │ │ ---                                          ┆ ---              ┆ ---               ┆ ---               ┆ ---               │ │
-    │ │ type: non-null FixedSizeBinary(16)           ┆ type: Int64      ┆ type: List(Int32) ┆ type: List(Int32) ┆ type: List(Int32) │ │
-    │ │ ARROW:extension:metadata:                    ┆ index_name: tick ┆ component: alpha  ┆ component: beta   ┆ component: gamma  │ │
-    │ │ {"namespace":"row"}                          ┆ is_sorted: true  ┆ kind: data        ┆ kind: data        ┆ kind: data        │ │
-    │ │ ARROW:extension:name: TUID                   ┆ kind: index      ┆                   ┆                   ┆                   │ │
-    │ │ is_sorted: true                              ┆                  ┆                   ┆                   ┆                   │ │
-    │ │ kind: control                                ┆                  ┆                   ┆                   ┆                   │ │
-    │ ╞══════════════════════════════════════════════╪══════════════════╪═══════════════════╪═══════════════════╪═══════════════════╡ │
-    │ │ row_[**REDACTED**]                           ┆ 0                ┆ [42]              ┆ [10]              ┆ [100]             │ │
-    │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-    │ │ row_[**REDACTED**]                           ┆ 1                ┆ [84]              ┆ [20]              ┆ [200]             │ │
-    │ └──────────────────────────────────────────────┴──────────────────┴───────────────────┴───────────────────┴───────────────────┘ │
-    └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    "#);
-}
-
 /// `mutate_keep_row_ids` preserves the original chunk's `RowIds`.
 #[test]
 fn mutate_keep_row_ids_preserves_row_ids() {

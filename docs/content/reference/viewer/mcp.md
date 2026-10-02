@@ -105,6 +105,21 @@ Both ids may contain a colon, so the application id's are escaped as `\:`: the k
 The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
 For a recording that is not in the catalog, such as one streamed from an SDK or imported from another file format, the agent is told to read the file directly with `rerun.chunk.RrdReader` instead.
 
+## Reading the blueprint
+
+`rerun_get_blueprint` returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
+The JSON mirrors the blueprint store row for row, so it matches what the SDKs log and what the blueprint panel shows:
+
+```json
+{
+  "/container/4a8c…": { "ContainerBlueprint": { "container_kind": "Horizontal", "contents": ["/view/1f2e…", "/view/9b3d…"] } },
+  "/view/1f2e…": { "ViewBlueprint": { "class_identifier": "3D", "space_origin": "/world" } },
+  "/view/1f2e…/ViewContents": { "ViewContents": { "query": "+ /world/**" } },
+  "/view/1f2e…/ViewContents/overrides/world/points": { "Points3D": { "colors": "#ff0010" } },
+  "/viewport": { "ViewportBlueprint": { "root_container": "4a8c…" } }
+}
+```
+
 ## Closing recordings
 
 The `rerun_close_recordings` tool removes one, many, or all recordings from the Viewer.
