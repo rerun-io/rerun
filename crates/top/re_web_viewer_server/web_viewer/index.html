@@ -381,6 +381,8 @@
           notebook: Option<bool>,
           persist: Option<bool>,
           theme: Option<String>,
+          start_time: Option<string>,
+          start_timeline: Option<String>,
         */
         const options = {
           url: query.getAll("url"),
@@ -395,6 +397,8 @@
           persist: get_query_bool(query, "persist", true),
           fallback_token: query.get("token"),
           theme: query.get("theme"),
+          start_time: query.get("start_time"),
+          start_timeline: query.get("start_timeline"),
           login: {
             signed_in_url: location.origin + "/signed-in",
             signed_out_url: location.origin + "/signed-out",

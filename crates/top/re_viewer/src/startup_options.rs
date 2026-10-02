@@ -1,6 +1,31 @@
 use crate::app_blueprint::PanelStateOverrides;
 use crate::event::ViewerEventCallback;
 
+/// The initial time cursor to use when opening a recording.
+#[derive(Clone, Copy, Debug)]
+pub struct InitialTime {
+    /// The timeline to activate first, or the recording's default timeline when omitted.
+    pub timeline: Option<re_chunk::TimelineName>,
+
+    /// The requested time in the timeline's native units.
+    pub time: re_log_types::TimeReal,
+}
+
+pub(crate) fn parse_initial_time(value: &str) -> Result<re_log_types::TimeReal, String> {
+    if let Ok(value) = value.parse::<i64>() {
+        return Ok(value.into());
+    }
+
+    let value = value
+        .parse::<f64>()
+        .map_err(|err| format!("invalid start_time: {err}"))?;
+    if value.is_finite() {
+        Ok(value.into())
+    } else {
+        Err("start_time must be finite".to_owned())
+    }
+}
+
 /// `OAuth` login configuration for the web viewer.
 ///
 /// On native, login is always available via the callback server
@@ -21,6 +46,11 @@ pub struct LoginOptions {
 #[derive(Clone)]
 pub struct StartupOptions {
     pub persist_state: bool,
+
+    /// The initial time cursor to use for each recording opened at startup.
+    ///
+    /// The cursor is clamped to the recording's time range and playback starts paused.
+    pub initial_time: Option<InitialTime>,
 
     /// Overrides the saved startup update-check preference when set.
     pub check_for_updates_on_startup: Option<bool>,
@@ -164,6 +194,7 @@ impl Default for StartupOptions {
     fn default() -> Self {
         Self {
             persist_state: true,
+            initial_time: None,
             check_for_updates_on_startup: None,
             is_in_notebook: false,
 
@@ -199,5 +230,19 @@ impl Default for StartupOptions {
 
             viewer_base_url: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_large_start_time_without_losing_precision() {
+        let value = 9_007_199_254_740_993_i64;
+        assert_eq!(
+            parse_initial_time(&value.to_string()).map(|time| time.floor().as_i64()),
+            Ok(value)
+        );
     }
 }

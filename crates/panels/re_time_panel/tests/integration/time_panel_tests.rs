@@ -8,6 +8,7 @@ use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr};
 use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::blueprint::components::PlayState;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_time_panel::TimePanel;
@@ -324,6 +325,75 @@ fn with_unloaded_chunks() {
             expand_all: false,
             mark_chunks_used_or_missing: used_ids,
         },
+    );
+}
+
+#[test]
+fn plain_mouse_wheel_scrubs_and_pauses() {
+    TimePanel::ensure_registered_subscribers();
+    let mut test_context = TestContext::new();
+    test_context.add_chunks(create_sparse_chunks());
+    test_context.set_active_timeline("frame_nr");
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetTimeClamped(TimeReal::from(11_i64)),
+            TimeControlCommand::SetPlayState(PlayState::Playing),
+        ],
+    );
+    test_context.handle_system_commands(&egui::Context::default());
+
+    let mut time_panel = TimePanel::default();
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([700.0, 300.0])
+        .build_ui(|ui| {
+            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                let blueprint = ViewportBlueprint::from_db(
+                    viewer_ctx.store_context.blueprint,
+                    &LatestAtQuery::latest(blueprint_timeline()),
+                );
+                let mut time_commands = Vec::new();
+                let store_ctx = viewer_ctx.active_recording_store_view_context();
+                time_panel.show_expanded_with_header(
+                    viewer_ctx,
+                    &store_ctx,
+                    &blueprint,
+                    ui,
+                    &mut time_commands,
+                );
+                test_context.send_time_commands(viewer_ctx.store_id().clone(), time_commands);
+            });
+            test_context.handle_system_commands(ui.ctx());
+        });
+
+    harness.run();
+    let time_before_scroll = test_context
+        .time_ctrl
+        .read()
+        .time()
+        .expect("the test recording should have an active time");
+    harness.hover_at(egui::pos2(500.0, 100.0));
+    harness.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Line,
+        delta: egui::vec2(0.0, 1.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+    });
+    harness.run();
+
+    let time_after_scroll = {
+        let time_ctrl = test_context.time_ctrl.read();
+        assert_ne!(time_ctrl.time(), Some(time_before_scroll));
+        assert_eq!(time_ctrl.play_state(), PlayState::Paused);
+        time_ctrl.time()
+    };
+    for _ in 0..5 {
+        harness.run();
+    }
+    assert_eq!(
+        test_context.time_ctrl.read().time(),
+        time_after_scroll,
+        "one wheel event must only step once"
     );
 }
 

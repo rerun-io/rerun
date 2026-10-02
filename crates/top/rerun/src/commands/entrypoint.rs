@@ -237,6 +237,17 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
 
+    /// Start each opened recording at this time, in the active timeline's native units.
+    ///
+    /// Use `--start-timeline` to select a specific timeline. The value is clamped to the
+    /// recording's time range and playback starts paused.
+    #[clap(long, value_name = "TIME")]
+    start_time: Option<i64>,
+
+    /// The timeline to activate before applying `--start-time`.
+    #[clap(long, value_name = "TIMELINE", requires = "start_time")]
+    start_timeline: Option<String>,
+
     /// This will host a web-viewer over HTTP, and a gRPC server,
     /// unless one or more URIs are provided that can be viewed directly in the web viewer.
     ///
@@ -927,6 +938,8 @@ fn should_relaunch_detached(args: &Args) -> bool {
         new: _,
         profile: _,
         screenshot_to: _,
+        start_time: _,
+        start_timeline: _,
         connect: _,
         expect_data_soon: _,
         threads: _,
@@ -1146,6 +1159,8 @@ fn run_impl(
                     args.web_viewer_port,
                     args.renderer,
                     args.video_decoder,
+                    args.start_time,
+                    args.start_timeline,
                     server_addr,
                     server_options,
                     open_browser,
@@ -1417,6 +1432,14 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
         hide_welcome_screen: args.hide_welcome_screen,
         detach_process: args.detach_process,
         persist_state: args.persist_state && !args.integration_test,
+        initial_time: args.start_time.map(|time| re_viewer::InitialTime {
+            timeline: args
+                .start_timeline
+                .as_deref()
+                .map(re_chunk::TimelineName::try_new)
+                .transpose()?,
+            time: time.into(),
+        }),
         is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
@@ -1484,6 +1507,8 @@ fn serve_web(
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
+    start_time: Option<i64>,
+    start_timeline: Option<String>,
     server_addr: std::net::SocketAddr,
     server_options: re_sdk::ServerOptions,
     open_browser: bool,
@@ -1540,6 +1565,8 @@ fn serve_web(
         connect_to: urls_to_pass_on_to_viewer,
         force_wgpu_backend,
         video_decoder,
+        start_time,
+        start_timeline,
         open_browser,
         assets_archive_path: None,
     }
@@ -2074,6 +2101,8 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
         // Not logged
         assets: _,
+        start_time: _,
+        start_timeline: _,
         detached_process_child: _,
         threads: _,
         url_or_paths: _,
@@ -2179,6 +2208,29 @@ mod cli_data_source_tests {
         let args = Args::try_parse_from(args)?;
         let recordings = local_recordings_for_assets(&args.url_or_paths, &args.assets)?;
         Ok((recordings, args.assets))
+    }
+
+    #[test]
+    fn parses_start_time_and_timeline() {
+        let args = Args::try_parse_from([
+            "rerun",
+            "--start-time",
+            "42",
+            "--start-timeline",
+            "frame_nr",
+            "capture.rrd",
+        ])
+        .unwrap();
+
+        assert_eq!(args.start_time, Some(42));
+        assert_eq!(args.start_timeline.as_deref(), Some("frame_nr"));
+    }
+
+    #[test]
+    fn start_timeline_requires_start_time() {
+        assert!(
+            Args::try_parse_from(["rerun", "--start-timeline", "frame_nr", "capture.rrd"]).is_err()
+        );
     }
 
     #[cfg(feature = "server")]
