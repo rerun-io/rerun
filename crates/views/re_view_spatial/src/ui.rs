@@ -1,8 +1,8 @@
 use egui::text::TextWrapping;
 use egui::{NumExt as _, WidgetText};
 use egui::{emath::OrderedFloat, epaint::text::ByteRangeExt as _, text::ByteRange};
-use macaw::BoundingBox;
 use re_format::format_f32;
+use re_math::BoundingBox;
 use re_sdk_types::blueprint::components::VisualBounds2D;
 use re_sdk_types::components::Radius;
 use re_sdk_types::image::ImageKind;
@@ -201,7 +201,7 @@ pub fn create_labels(
     labels: &[UiLabel],
     ui_from_scene: egui::emath::RectTransform,
     ui_from_world_3d: glam::Mat4,
-    view_from_world_3d: macaw::IsoTransform,
+    view_from_world_3d: re_math::IsoTransform,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
     spatial_kind: SpaceKind,
@@ -366,7 +366,7 @@ fn resolve_label_positions(
     labels: &[UiLabel],
     ui_from_scene: &egui::emath::RectTransform,
     ui_from_world_3d: &glam::Mat4,
-    view_from_world_3d: macaw::IsoTransform,
+    view_from_world_3d: re_math::IsoTransform,
     spatial_kind: SpaceKind,
 ) -> Vec<(UiLabel, f32, egui::Pos2)> {
     let viewport = ui_from_scene.to().expand(100.0);

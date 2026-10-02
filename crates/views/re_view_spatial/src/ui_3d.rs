@@ -1,8 +1,8 @@
 use egui::emath::RectTransform;
 use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
-use macaw::BoundingBox;
 use re_chunk_store::MissingChunkReporter;
+use re_math::BoundingBox;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, Size};
 use re_sdk_types::blueprint::archetypes::{
@@ -651,7 +651,7 @@ fn show_projections_from_2d_space(
                 let origin = cam.position();
 
                 if let Some(dir) = (stop_in_world - origin).try_normalize() {
-                    let ray = macaw::Ray3::from_origin_dir(origin, dir);
+                    let ray = re_math::Ray3::from_origin_dir(origin, dir);
 
                     let thick_ray_length = (stop_in_world - origin).length();
                     add_picking_ray(
@@ -675,8 +675,10 @@ fn show_projections_from_2d_space(
             {
                 let cam_to_pos = *pos - tracked_camera.position();
                 let distance = cam_to_pos.length();
-                let ray =
-                    macaw::Ray3::from_origin_dir(tracked_camera.position(), cam_to_pos / distance);
+                let ray = re_math::Ray3::from_origin_dir(
+                    tracked_camera.position(),
+                    cam_to_pos / distance,
+                );
                 add_picking_ray(
                     line_builder,
                     ray,
@@ -694,7 +696,7 @@ fn show_projections_from_2d_space(
 
 fn add_picking_ray(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    ray: macaw::Ray3,
+    ray: re_math::Ray3,
     scene_bbox: &BoundingBox,
     thick_ray_length: f32,
     ray_color: egui::Color32,

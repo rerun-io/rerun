@@ -7,10 +7,10 @@ use std::sync::Arc;
 use glam::{Vec3, Vec3A, uvec3, vec3};
 use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
-use macaw::MeshGen;
 use ordered_float::NotNan;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::external::re_chunk::external::re_byte_size;
+use re_math::MeshGen;
 use re_renderer::RenderContext;
 use re_renderer::mesh::{self, GpuMesh, MeshError};
 use re_viewer_context::Cache;
@@ -88,21 +88,23 @@ pub enum ProcMeshKey {
 impl ProcMeshKey {
     /// Returns the bounding box which can be computed from the mathematical shape,
     /// without regard for its exact approximation as a mesh.
-    pub fn simple_bounding_box(&self) -> macaw::BoundingBox {
+    pub fn simple_bounding_box(&self) -> re_math::BoundingBox {
         match self {
             Self::Sphere {
                 subdivisions: _,
                 axes_only: _,
             } => {
                 // sphere’s radius is 1, so its size is 2
-                macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
+                re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
             }
-            Self::Cube => macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0)),
+            Self::Cube => {
+                re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0))
+            }
             Self::Capsule {
                 subdivisions: _,
                 axes_only: _,
                 length,
-            } => macaw::BoundingBox::from_min_max(
+            } => re_math::BoundingBox::from_min_max(
                 Vec3::new(-1.0, -1.0, -1.0),
                 Vec3::new(1.0, 1.0, 1.0 + length.into_inner()),
             ),
@@ -111,7 +113,7 @@ impl ProcMeshKey {
                 axes_only: _,
             } => {
                 // cylinder's radius is 1, so its size is 2
-                macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
+                re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
             }
         }
     }
@@ -122,7 +124,7 @@ impl ProcMeshKey {
 #[derive(Debug, re_byte_size::SizeBytes)]
 pub struct WireframeMesh {
     #[size_bytes(ignore)]
-    pub bbox: macaw::BoundingBox,
+    pub bbox: re_math::BoundingBox,
 
     pub vertex_count: usize,
 
@@ -141,7 +143,7 @@ pub struct WireframeMesh {
 #[derive(Clone)]
 pub struct SolidMesh {
     #[expect(unused)]
-    pub bbox: macaw::BoundingBox,
+    pub bbox: re_math::BoundingBox,
 
     /// Mesh to render. Note that its colors are set to black, so that the
     /// `MeshInstance::additive_tint` can be used to set the color per instance.
@@ -531,8 +533,8 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
 
     let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
-            let mut mg = macaw::MeshGen::new();
-            mg.push_cube(Vec3::splat(0.5), macaw::IsoTransform::IDENTITY);
+            let mut mg = re_math::MeshGen::new();
+            mg.push_cube(Vec3::splat(0.5), re_math::IsoTransform::IDENTITY);
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
         ProcMeshKey::Sphere {
@@ -579,18 +581,19 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             subdivisions,
             axes_only: _, // no effect on solid mesh
         } => {
-            // Design note: there are two reasons why this uses `macaw` instead of `hexasphere`.
+            // Design note: there are two reasons why this uses `re_math::MeshGen` instead of
+            // `hexasphere`.
             //
-            // First, `macaw` already has a capsule routine, whereas we'd have to postprocess the
-            // output of `hexasphere`.
+            // First, `re_math::MeshGen` already has a capsule routine, whereas we'd have to
+            // postprocess the output of `hexasphere`.
             //
-            // Second, one design perspective is that we should in the long run extend `macaw`
-            // to do *all* our mesh generation, and this is an experiment in that. How exactly that
-            // will handle wireframes is yet undecided.
+            // Second, one design perspective is that we should in the long run extend
+            // `re_math::MeshGen` to do *all* our mesh generation, and this is an experiment in that.
+            // How exactly that will handle wireframes is yet undecided.
 
             let mg_subdivisions = (subdivisions + 1) * 4;
 
-            let mut mg = macaw::MeshGen::new();
+            let mut mg = re_math::MeshGen::new();
             mg.push_capsule(
                 1.0,
                 length.into_inner(),
@@ -598,7 +601,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 mg_subdivisions,
                 // rotate from the Y axis (baked into MeshGen) onto the Z axis (our choice of
                 // default orientation, aligned with Rerun’s default of Z-up).
-                macaw::IsoTransform::from_quat(glam::Quat::from_rotation_x(
+                re_math::IsoTransform::from_quat(glam::Quat::from_rotation_x(
                     std::f32::consts::FRAC_PI_2,
                 )),
             );
@@ -610,7 +613,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         } => {
             let mg_subdivisions = (subdivisions + 1) * 4;
 
-            let mut mg = macaw::MeshGen::new();
+            let mut mg = re_math::MeshGen::new();
 
             push_cylinder_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
@@ -700,7 +703,7 @@ fn mesh_from_mesh_gen(
     label: re_renderer::Label,
     mg: MeshGen,
     render_ctx: &RenderContext,
-    bbox: macaw::BoundingBox,
+    bbox: re_math::BoundingBox,
 ) -> mesh::CpuMesh {
     let num_vertices = mg.positions.len();
 

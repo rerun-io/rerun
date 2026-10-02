@@ -131,7 +131,7 @@ impl GaussianSplatBatchBuilder<'_, '_> {
     #[inline]
     pub fn object_space_bounding_box(
         mut self,
-        object_space_bounding_box: macaw::BoundingBox,
+        object_space_bounding_box: re_math::BoundingBox,
     ) -> Self {
         self.batch_mut().object_space_bounding_box = object_space_bounding_box;
         self

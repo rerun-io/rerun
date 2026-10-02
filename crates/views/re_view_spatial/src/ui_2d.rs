@@ -1,8 +1,8 @@
 use egui::emath::RectTransform;
 use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
-use macaw::IsoTransform;
 use re_chunk_store::MissingChunkReporter;
 use re_log::ResultExt as _;
+use re_math::IsoTransform;
 use re_renderer::LineDrawableBuilder;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_sdk_types::blueprint::archetypes::{
@@ -145,7 +145,7 @@ fn clamp_zoom_out(
     current: Rect,
     candidate: Rect,
     zoom_center: Vec2,
-    scene_bbox: &macaw::BoundingBox,
+    scene_bbox: &re_math::BoundingBox,
 ) -> Rect {
     // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
     let fallback = Vec2::splat(1.0e17);
@@ -476,7 +476,7 @@ fn setup_target_config(
     };
 
     // Position the camera looking straight at the principal point:
-    let view_from_world = macaw::IsoTransform::look_at_rh(
+    let view_from_world = re_math::IsoTransform::look_at_rh(
         pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,

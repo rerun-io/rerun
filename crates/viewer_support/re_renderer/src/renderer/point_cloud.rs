@@ -263,7 +263,7 @@ pub struct PointCloudBatchInfo {
     pub point_count: u32,
 
     /// Object-space bounds used to place the batch in the draw-phase distance ordering.
-    pub object_space_bounding_box: macaw::BoundingBox,
+    pub object_space_bounding_box: re_math::BoundingBox,
 
     /// Optional outline mask setting for the entire batch.
     pub overall_outline_mask_ids: OutlineMaskPreference,
@@ -306,7 +306,7 @@ impl Default for PointCloudBatchInfo {
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
-            object_space_bounding_box: macaw::BoundingBox::nothing(),
+            object_space_bounding_box: re_math::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
@@ -364,7 +364,7 @@ impl PointCloudDrawData {
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
             point_count: num_vertices as _,
-            object_space_bounding_box: macaw::BoundingBox::nothing(),
+            object_space_bounding_box: re_math::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),

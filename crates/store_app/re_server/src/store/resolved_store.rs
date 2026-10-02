@@ -14,7 +14,7 @@ use re_log_types::{EntityPath, StoreId, StoreKind};
 /// Both variants are `Arc`-based, so `Clone` is cheap.
 #[derive(Clone)]
 pub enum ResolvedStore {
-    /// Fully in-memory store (e.g. from `write_chunks` or legacy RRD without footer).
+    /// Fully in-memory store for an RRD without a footer.
     Eager(ChunkStoreHandle),
 
     /// Provider-backed store with on-demand chunk loading.

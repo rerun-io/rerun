@@ -355,7 +355,8 @@ fn run_view_ui_and_save_snapshot(
                 property.save_blueprint_component(
                     &ctx,
                     &EyeControls3D::descriptor_position(),
-                    &Position3D::new(12.0, 5.0, 12.0),
+                    // Off-grid, so box edges don't project exactly onto grid lines and flip on rounding.
+                    &Position3D::new(12.4, 4.6, 11.7),
                 );
                 property.save_blueprint_component(
                     &ctx,

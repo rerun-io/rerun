@@ -311,7 +311,7 @@ impl Volume3DVisualizer {
 
         data.add_bounding_box_3d(
             ctx.target_entity_path.hash(),
-            macaw::BoundingBox::from_min_max(glam::Vec3::ZERO, glam::Vec3::ONE),
+            re_math::BoundingBox::from_min_max(glam::Vec3::ZERO, glam::Vec3::ONE),
             world_from_volume,
         );
 

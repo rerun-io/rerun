@@ -84,7 +84,7 @@ disallowed-methods = [
   { path = "lock_api::RwLock::try_upgradable_read_until", reason = "See `lock_api::RwLock::upgradable_read`" },
   { path = "lock_api::RwLock::try_upgradable_read", reason = "See `lock_api::RwLock::upgradable_read`" },
   { path = "lock_api::RwLock::upgradable_read", reason = "An upgradable read excludes both writers and other upgradable readers, so unless there are plain `read`s to run alongside it, it is as serializing as a `write` from the start. Instead take a plain `read`, drop it, then take a `write` and re-check what you read." },
-  { path = "macaw::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
+  { path = "re_math::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
   { path = "opentelemetry::metrics::HistogramBuilder::with_boundaries", reason = "We have automatic bucketing - with_boundaries has no effect" },
   { path = "re_mutex::RwLock::read_upgradable", reason = "See `lock_api::RwLock::upgradable_read`" },
   { path = "re_mutex::RwLock::upgradable_read", reason = "See `lock_api::RwLock::upgradable_read`" },

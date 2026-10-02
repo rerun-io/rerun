@@ -69,7 +69,7 @@ pub struct CpuMesh {
     pub materials: SmallVec<[Material; 1]>,
 
     /// Object space bounding box.
-    pub bbox: macaw::BoundingBox,
+    pub bbox: re_math::BoundingBox,
 }
 
 impl CpuMesh {
@@ -161,7 +161,7 @@ pub enum MeshError {
     ZeroIndices,
 
     #[error("Mesh has an invalid bounding box {0:?}")]
-    InvalidBbox(macaw::BoundingBox),
+    InvalidBbox(re_math::BoundingBox),
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
@@ -215,7 +215,7 @@ pub struct GpuMesh {
     /// Object space bounding box.
     ///
     /// Needed for distance sorting.
-    pub bbox: macaw::BoundingBox,
+    pub bbox: re_math::BoundingBox,
 }
 
 impl GpuMesh {

@@ -177,13 +177,6 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
   rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {}
 
-  // Write chunks to one or more segments.
-  //
-  // The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
-  //
-  // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
-
   /* Query schemas */
 
   // Returns the schema of the segment table.
@@ -526,6 +519,11 @@ enum ErrorCode {
 
 // --- Grants ---
 
+// TODO(RR-5715): Extend grants for multipart uploads:
+// - Negotiate support; add initiate, part grant/renewal, complete, and abort.
+// - Define idempotency and size limits; keep long-lived credentials server-side.
+// - Represent unknown lengths explicitly; size_bytes=0 means an empty object.
+
 // Requests authorization to write one object.
 message GetWriteAccessGrantRequest {
   // The full object key, including the file name, relative to the location's base.
@@ -691,20 +689,6 @@ message UnregisterFromDatasetResponse {
   // Id of the task that performs the unregistration. The data is not deleted until the task completes.
   rerun.common.v1alpha1.TaskId task_id = 2;
 }
-
-// One chunk pushed by `WriteChunks`.
-message WriteChunksRequest {
-  // The chunk to write. Its target segment comes from the chunk's own schema-level
-  // `rerun:segment_id` metadata (legacy alias: `rerun:partition_id`); a chunk without it is
-  // rejected with `INVALID_ARGUMENT`. Chunks are always written to the `base` layer.
-  //
-  // Not all servers implement `WriteChunks`; Rerun Hub currently returns
-  // `UNIMPLEMENTED`.
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
-}
-
-// Response for `WriteChunks`. Empty: an error is reported as a gRPC status instead.
-message WriteChunksResponse {}
 
 /* Query schemas */
 

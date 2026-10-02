@@ -466,7 +466,7 @@ fn execute_video_stream_like(
             );
 
             if ctx.context_systems.view_class_identifier == SpatialView2D::identifier() {
-                let bounding_box = macaw::BoundingBox::from_min_size(
+                let bounding_box = re_math::BoundingBox::from_min_size(
                     world_from_entity.transform_point3(glam::Vec3::ZERO),
                     video_resolution.extend(0.0),
                 );
@@ -834,7 +834,7 @@ fn show_video_frame(
 fn video_frame_bounds(
     world_from_entity: glam::Affine3A,
     video_resolution: glam::Vec2,
-) -> macaw::BoundingBox {
+) -> re_math::BoundingBox {
     let top_left = world_from_entity.transform_point3(glam::Vec3::ZERO);
     let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_resolution.x);
     let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
@@ -901,7 +901,7 @@ fn depth_cloud_bounds(
     tree_root_frame: TransformFrameIdHash,
     depth_config: &DepthTextureConfig,
     depth_resolution: glam::Vec2,
-) -> Option<macaw::BoundingBox> {
+) -> Option<re_math::BoundingBox> {
     let dimensions = depth_resolution.as_uvec2();
     if dimensions.x == 0 || dimensions.y == 0 {
         return None;
@@ -928,7 +928,7 @@ fn register_video_bounds_with_bounding_box(
 
     visualizer_data.add_bounding_box_2d(
         entity_path,
-        macaw::BoundingBox {
+        re_math::BoundingBox {
             min: top_left,
             max: top_left + glam::Vec3::new(video_size.x, video_size.y, 0.0),
         },

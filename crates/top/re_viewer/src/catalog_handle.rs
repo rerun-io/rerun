@@ -3,11 +3,7 @@ use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use re_redap_client::{ConnectionHandle, ConnectionRegistryHandle};
 
-/// A [`ConnectionHandle`] that knows whether its origin is the internal catalog.
-///
-/// The distinction matters for writes: the internal catalog runs in-process, so it can read a
-/// local file where it already lies on native and out of OPFS in the browser, while a remote
-/// catalog hands out write access grants (see [`ConnectionHandle::write_object`]).
+/// A [`ConnectionHandle`] tagged with whether its origin is the internal catalog.
 #[derive(Clone, Debug)]
 pub enum CatalogHandle {
     Internal {
@@ -56,7 +52,9 @@ impl CatalogHandle {
     /// Makes `file` available to the catalog and returns its credential-free URL.
     ///
     /// On native, the internal catalog reads the file in place instead of copying it.
-    pub async fn write_file(
+    /// In the browser, it reuses an existing OPFS copy with the same fingerprint and size.
+    /// Remote catalogs determine their own existing-key behavior.
+    pub async fn stage_file(
         &self,
         fingerprint: re_log_encoding::RrdFingerprint,
         #[cfg(not(target_arch = "wasm32"))] file: std::path::PathBuf,
@@ -70,11 +68,10 @@ impl CatalogHandle {
                     Self::Internal { storage_dir, .. } => {
                         write_to_opfs(storage_dir, key, file).await
                     }
-                    // TODO(RR-5489, RR-5490): Implement `GetWriteAccessGrant` on the server.
                     Self::Remote(connection) => {
-                        connection.write_object(key, source).await.map_err(|err| {
+                        connection.stage(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
-                                "failed to upload file to {}: {err}",
+                                "failed to stage file: {err}\nCatalog: {}",
                                 connection.origin()
                             )
                         })
@@ -98,7 +95,6 @@ impl CatalogHandle {
                             )
                         })
                     }
-                    // TODO(RR-5489, RR-5490): Implement `GetWriteAccessGrant` on the server.
                     Self::Remote(connection) => {
                         let source = std::fs::File::open(&file).map_err(|err| {
                             anyhow::anyhow!(
@@ -107,9 +103,9 @@ impl CatalogHandle {
                             )
                         })?;
                         let key = object_key(fingerprint)?;
-                        connection.write_object(key, source).await.map_err(|err| {
+                        connection.stage(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
-                                "failed to upload file to {}: {err}",
+                                "failed to stage file: {err}\nCatalog: {}",
                                 connection.origin()
                             )
                         })

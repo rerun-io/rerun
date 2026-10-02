@@ -32,8 +32,8 @@ pub struct Source {
 
     /// The URI this layer was registered from.
     ///
-    /// A layer registered from a file keeps its `file://` URI. A layer written straight into the
-    /// server by `write_chunks` has no file behind it and gets `memory:///store/{store_slot_id}`.
+    /// Re-registering a store through a `memory://` URI keeps that URI, even if the store
+    /// was originally loaded from a file.
     storage_url: Url,
 
     /// All sources in the same layer share the same [`LayerInfo`].

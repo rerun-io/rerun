@@ -273,9 +273,9 @@ pub struct GaussianSplatBatchInfo {
 
     /// Object-space bounding box of the gaussian centers in this batch.
     ///
-    /// [`macaw::BoundingBox::nothing`] means "unknown": the bounds are then computed from
+    /// [`re_math::BoundingBox::nothing`] means "unknown": the bounds are then computed from
     /// [`Self::sort_positions`] instead.
-    pub object_space_bounding_box: macaw::BoundingBox,
+    pub object_space_bounding_box: re_math::BoundingBox,
 
     /// Optional outline mask setting for the entire batch.
     pub overall_outline_mask_ids: OutlineMaskPreference,
@@ -311,7 +311,7 @@ impl Default for GaussianSplatBatchInfo {
             flags: GaussianSplatBatchFlags::empty(),
             sh_num_coefficients: 0,
             gaussian_count: 0,
-            object_space_bounding_box: macaw::BoundingBox::nothing(),
+            object_space_bounding_box: re_math::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
@@ -543,7 +543,7 @@ impl GaussianSplatDrawData {
                         .sort_positions
                         .as_ref()
                         .map(|p| crate::util::bounding_box_from_points(p.iter().copied()))
-                        .unwrap_or_else(macaw::BoundingBox::nothing)
+                        .unwrap_or_else(re_math::BoundingBox::nothing)
                 };
                 let object_center = if object_bbox.is_finite() {
                     object_bbox.center()
@@ -903,7 +903,7 @@ mod tests {
             TargetConfiguration {
                 name: "gaussian_picking".into(),
                 resolution_in_pixel: resolution,
-                view_from_world: macaw::IsoTransform::look_at_rh(
+                view_from_world: re_math::IsoTransform::look_at_rh(
                     glam::Vec3::new(0.0, 0.0, 3.0),
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,

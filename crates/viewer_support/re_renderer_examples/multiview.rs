@@ -5,8 +5,8 @@ use std::f32::consts::TAU;
 use framework::Example;
 use glam::Vec3;
 use itertools::Itertools as _;
-use macaw::IsoTransform;
 use rand::Rng as _;
+use re_math::IsoTransform;
 use re_renderer::renderer::{
     GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
     TestTriangleDrawData,

@@ -117,7 +117,7 @@ impl CamerasVisualizer {
                 pinhole_child_frame_id,
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
-                world_from_camera: macaw::IsoTransform::IDENTITY,
+                world_from_camera: re_math::IsoTransform::IDENTITY,
                 pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
@@ -131,7 +131,8 @@ impl CamerasVisualizer {
             return Err("Pinhole is not connected to the view's target frame.".to_owned());
         };
         let world_from_camera = world_from_camera.as_affine3a();
-        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
+        let Some(world_from_camera_iso) =
+            re_math::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
@@ -221,7 +222,11 @@ impl CamerasVisualizer {
         }
 
         // world_from_camera is the transform to the pinhole origin.
-        data.add_bounding_box_3d(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
+        data.add_bounding_box_3d(
+            ent_path.hash(),
+            re_math::BoundingBox::ZERO,
+            world_from_camera,
+        );
 
         Ok(())
     }

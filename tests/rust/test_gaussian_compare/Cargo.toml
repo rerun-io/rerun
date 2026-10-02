@@ -7,6 +7,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+re_math.workspace = true
 re_renderer.workspace = true
 re_sdk_types = { workspace = true, features = ["default"] }
 re_types_core.workspace = true
@@ -15,7 +16,6 @@ anyhow.workspace = true
 clap.workspace = true
 glam.workspace = true
 image = { workspace = true, features = ["png"] }
-macaw.workspace = true
 pollster.workspace = true
 wgpu.workspace = true
 

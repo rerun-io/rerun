@@ -181,6 +181,25 @@ impl PyCatalogClientInternal {
         connection.bandwidth_bytes_per_sec(py, num_bytes, rtt)
     }
 
+    #[pyo3(signature = (path, *, key))]
+    fn stage_file(self_: Py<Self>, py: Python<'_>, path: String, key: String) -> PyResult<String> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
+        let connection = self_.borrow(py).connection.clone();
+        connection.stage_file(py, path.into(), key)
+    }
+
+    #[pyo3(signature = (data, *, key))]
+    fn stage_bytes(
+        self_: Py<Self>,
+        py: Python<'_>,
+        data: Vec<u8>,
+        key: String,
+    ) -> PyResult<String> {
+        let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
+        let connection = self_.borrow(py).connection.clone();
+        connection.stage_bytes(py, &data, key)
+    }
+
     /// Get a list of all dataset entries in the catalog.
     fn datasets(
         self_: Py<Self>,

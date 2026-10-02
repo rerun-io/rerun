@@ -83,5 +83,5 @@ impl_size_bytes_pod!(
     glam::DAffine3
 );
 
-#[cfg(feature = "macaw")]
-impl_size_bytes_pod!(macaw::BoundingBox, macaw::IsoTransform);
+#[cfg(feature = "re_math")]
+impl_size_bytes_pod!(re_math::BoundingBox, re_math::IsoTransform);
