@@ -721,7 +721,8 @@ impl Dataset {
 
         for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind).await? {
             let segment_id = SegmentId::new(store_id.recording_id().to_string());
-            let slot_id = pool.register(&resolved);
+            let slot_id = StoreSlotId::new();
+            pool.register_with_id(slot_id, &resolved);
 
             self.add_source(
                 segment_id.clone(),
