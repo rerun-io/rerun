@@ -119,6 +119,9 @@ pub trait HarnessExt<'h>: ViewerHarnessExt {
     // Click at a position in the UI.
     fn click_at(&mut self, pos: egui::Pos2);
 
+    /// [`Self::click_at`], stepping one frame at a time instead of running until the UI settles.
+    fn step_click_at(&mut self, pos: egui::Pos2);
+
     fn right_click_at(&mut self, pos: egui::Pos2);
 
     // Gets the cursor icon
@@ -428,6 +431,20 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 modifiers: Modifiers::NONE,
             });
             self.run();
+        }
+    }
+
+    fn step_click_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerMoved(pos));
+        self.step();
+        for pressed in [true, false] {
+            self.event(egui::Event::PointerButton {
+                pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+            self.step();
         }
     }
 

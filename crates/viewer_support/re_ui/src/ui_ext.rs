@@ -1252,9 +1252,22 @@ pub trait UiExt {
         &mut self,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
+        self.selectable_toggle_sized(None, content)
+    }
+
+    /// [`Self::selectable_toggle`], with the whole widget fitted into `height`.
+    ///
+    /// The outline and the margin sit inside `height`, so the values take what is left. Without
+    /// a height the values keep the size they have anywhere else.
+    fn selectable_toggle_sized<R>(
+        &mut self,
+        height: Option<f32>,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
         let margin = 3;
+        let stroke_width = ui.visuals().widgets.noninteractive.bg_stroke.width;
 
         egui::Frame {
             inner_margin: Margin::same(margin),
@@ -1281,6 +1294,11 @@ pub trait UiExt {
 
             ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
             ui.spacing_mut().item_spacing.x = 3.0;
+
+            if let Some(height) = height {
+                ui.spacing_mut().interact_size.y = height - 2.0 * (margin as f32 + stroke_width);
+                ui.spacing_mut().button_padding.y = 0.0;
+            }
 
             ui.horizontal(content).inner
         })

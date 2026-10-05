@@ -23,12 +23,25 @@ type ViewStateKey = (StoreId, ViewId);
 #[derive(re_byte_size::SizeBytes)]
 pub struct ActivePreview {
     pub time_control: TimeControl,
+
+    /// Whether this one preview plays, apart from the shared play state.
+    ///
+    /// Set by the play button and by the pointer entering the preview, cleared by the pointer
+    /// leaving it and by [`PreviewState::set_playing`].
+    pub play_override: Option<bool>,
+
+    /// Whether the preview was drawn since the last [`PreviewState::tick`].
+    ///
+    /// Only a preview that is being drawn advances its time.
+    rendered_last_frame: bool,
 }
 
 impl Default for ActivePreview {
     fn default() -> Self {
         Self {
             time_control: TimeControl::preview_time_control(),
+            play_override: None,
+            rendered_last_frame: false,
         }
     }
 }
@@ -36,8 +49,17 @@ impl Default for ActivePreview {
 /// Shared playback state for all preview recordings shown in grid or table cards.
 ///
 /// All active previews have their own [`TimeControl`].
-#[derive(Default, re_byte_size::SizeBytes)]
+#[derive(re_byte_size::SizeBytes)]
 pub struct PreviewState {
+    /// Whether every preview plays, as set by the play-all button.
+    ///
+    /// A single preview can be different from this if its button is pressed or
+    /// it started being hovered.
+    playing: bool,
+
+    /// Playback speed of every preview, as a multiple of real time.
+    speed: f32,
+
     /// The previews that are currently active.
     active_previews: ahash::HashMap<StoreId, ActivePreview>,
 
@@ -45,7 +67,49 @@ pub struct PreviewState {
     pub requested_uris: ahash::HashSet<re_uri::DatasetUri>,
 }
 
+impl Default for PreviewState {
+    fn default() -> Self {
+        Self {
+            playing: false,
+            speed: 1.0,
+            active_previews: Default::default(),
+            requested_uris: Default::default(),
+        }
+    }
+}
+
 impl PreviewState {
+    /// Whether every preview plays, as set by the play-all button.
+    pub fn playing(&self) -> bool {
+        self.playing
+    }
+
+    /// Playback speed of every preview, as a multiple of real time.
+    pub fn speed(&self) -> f32 {
+        self.speed
+    }
+
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = speed;
+    }
+
+    /// Play or pause every preview, including the ones that are not on screen.
+    pub fn set_playing(&mut self, playing: bool) {
+        self.playing = playing;
+        let play_state = if playing {
+            re_sdk_types::blueprint::components::PlayState::Playing
+        } else {
+            re_sdk_types::blueprint::components::PlayState::Paused
+        };
+        #[expect(clippy::iter_over_hash_type)] // Each preview is updated independently.
+        for preview in self.active_previews.values_mut() {
+            preview.play_override = None;
+            preview
+                .time_control
+                .set_play_state(None, play_state, None::<&AppBlueprintCtx<'_>>);
+        }
+    }
+
     /// Register a recording as an active preview clip.
     ///
     /// Called each frame by the view renderer when a preview is shown.
@@ -54,7 +118,10 @@ impl PreviewState {
         store_id: &StoreId,
         store_bundle: &re_entity_db::StoreBundle,
     ) {
-        self.active_previews.entry(store_id.clone()).or_default();
+        self.active_previews
+            .entry(store_id.clone())
+            .or_default()
+            .rendered_last_frame = true;
 
         if let Some(db) = store_bundle.get(store_id)
             && let Some(re_entity_db::LogSource::RedapGrpcStream { uri, .. }) = &db.data_source
@@ -79,6 +146,12 @@ impl PreviewState {
 
         #[expect(clippy::iter_over_hash_type)] // Fine here, we're updating each one individually.
         for (id, active_preview) in &mut self.active_previews {
+            // Set `rendered_last_frame` to false again, it's set each
+            // frame.
+            if !std::mem::take(&mut active_preview.rendered_last_frame) {
+                continue;
+            }
+
             let Some(db) = resolve(id) else {
                 continue;
             };
@@ -104,14 +177,24 @@ impl PreviewState {
         self.active_previews.iter()
     }
 
-    pub fn recording_time_control(&self, store_id: &StoreId) -> Option<&TimeControl> {
-        self.active_previews.get(store_id).map(|p| &p.time_control)
+    pub fn iter_active_previews_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&StoreId, &mut ActivePreview)> {
+        self.active_previews.iter_mut()
     }
 
-    pub fn recording_time_control_mut(&mut self, store_id: &StoreId) -> Option<&mut TimeControl> {
-        self.active_previews
-            .get_mut(store_id)
-            .map(|p| &mut p.time_control)
+    pub fn active_preview(&self, store_id: &StoreId) -> Option<&ActivePreview> {
+        self.active_previews.get(store_id)
+    }
+
+    /// Whether one preview is playing, `None` if no such preview is registered.
+    pub fn is_recording_playing(&self, store_id: &StoreId) -> Option<bool> {
+        let play_state = self.active_preview(store_id)?.time_control.play_state();
+        Some(play_state == re_sdk_types::blueprint::components::PlayState::Playing)
+    }
+
+    pub fn active_preview_mut(&mut self, store_id: &StoreId) -> Option<&mut ActivePreview> {
+        self.active_previews.get_mut(store_id)
     }
 }
 

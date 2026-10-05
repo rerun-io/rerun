@@ -797,6 +797,30 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        let blueprint_db = blueprint_ctx.current_blueprint();
+        let view_renderers = blueprint
+            .iter_visible_columns(layout_kind)
+            .filter(|column| column.configured_cell_kind() == TableCellKind::Preview)
+            .filter_map(|column| {
+                let data_column_index =
+                    data_columns.index_by_physical_name(column.physical_name())?;
+                crate::preview_renderer::RecordingPreviewRenderer::from_previews_config(
+                    blueprint_db,
+                    column.physical_name().clone(),
+                    data_column_index,
+                    column.preview_views_blueprint_paths(),
+                    &blueprint.previews_config,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let flag_column = blueprint
+            .card_layout
+            .as_ref()
+            .and_then(|layout| layout.flag())
+            .map(|field| field.physical_name());
+        let marked_rows = marked_rows(&data_columns, &display_record_batches, flag_column);
+
         let blueprint_columns = blueprint.iter_columns(layout_kind);
         let layout_kind_ref = if card_layout_available {
             MaybeMutRef::MutRef(&mut layout_kind)
@@ -808,12 +832,17 @@ impl<'a> DataFusionTableWidget<'a> {
             ctx,
             &blueprint_ctx,
             blueprint_columns,
-            &mut column_display_mode,
-            self.title.as_deref(),
-            self.toolbar_summary_fn.as_deref(),
-            self.table_ref.url().map(|url| url.to_string()).as_deref(),
-            should_show_loading_indicator,
-            layout_kind_ref,
+            ToolbarContent {
+                column_display_mode: &mut column_display_mode,
+                title: self.title.as_deref(),
+                summary_ui: self.toolbar_summary_fn.as_deref(),
+                url: self.table_ref.url().map(|url| url.to_string()).as_deref(),
+                should_show_loading_indicator,
+                layout_kind: layout_kind_ref,
+                preview_state: (!view_renderers.is_empty())
+                    .then(|| view_states.preview_state.get_or_insert_default()),
+                num_marked_rows: marked_rows.iter().filter(|marked| **marked).count(),
+            },
         );
         if column_display_mode != blueprint.column_display_mode {
             TableBlueprint::save_column_display_mode(&blueprint_ctx, column_display_mode);
@@ -833,23 +862,6 @@ impl<'a> DataFusionTableWidget<'a> {
             ctx.app_options.timestamp_format,
             &mut query_data.column_filters,
         );
-
-        let blueprint_db = blueprint_ctx.current_blueprint();
-        let view_renderers = blueprint
-            .iter_visible_columns(layout_kind)
-            .filter(|column| column.configured_cell_kind() == TableCellKind::Preview)
-            .filter_map(|column| {
-                let data_column_index =
-                    data_columns.index_by_physical_name(column.physical_name())?;
-                crate::preview_renderer::RecordingPreviewRenderer::from_previews_config(
-                    blueprint_db,
-                    column.physical_name().clone(),
-                    data_column_index,
-                    column.preview_views_blueprint_paths(),
-                    &blueprint.previews_config,
-                )
-            })
-            .collect::<Vec<_>>();
 
         let migrated_fields = query_result
             .sorbet_schema
@@ -997,6 +1009,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         view_states,
                         num_rows,
                         &flag_columns,
+                        &marked_rows,
                     );
                 } else {
                     // Should never happen.
@@ -1095,19 +1108,65 @@ fn id_from_session_context_and_table(
     egui::Id::unique((session_ctx.session_id(), table_ref))
 }
 
+/// Width of the play-all button, fitting either of its two labels.
+fn play_all_button_width(ui: &egui::Ui) -> f32 {
+    let font_id = egui::TextStyle::Button.resolve(ui.style());
+    let label_width = ["Play all", "Pause all"]
+        .into_iter()
+        .map(|label| {
+            ui.painter()
+                .layout_no_wrap(
+                    label.to_owned(),
+                    font_id.clone(),
+                    egui::Color32::PLACEHOLDER,
+                )
+                .size()
+                .x
+        })
+        .fold(0.0_f32, f32::max);
+
+    let size = re_ui::Size::Small;
+    label_width
+        + ui.tokens().small_icon_size.x
+        + ui.spacing().item_spacing.x
+        + 2.0 * size.padding().x
+}
+
+/// What the toolbar shows, beyond the columns it always has.
+struct ToolbarContent<'a> {
+    column_display_mode: &'a mut ColumnDisplayMode,
+    title: Option<&'a str>,
+    summary_ui: Option<&'a dyn Fn(&mut Ui)>,
+    url: Option<&'a str>,
+    should_show_loading_indicator: bool,
+    layout_kind: MaybeMutRef<'a, TableLayoutKind>,
+
+    /// Set when the table shows previews, which puts the playback controls in the toolbar.
+    preview_state: Option<&'a mut re_viewer_context::PreviewState>,
+
+    /// How many rows have their flag set.
+    num_marked_rows: usize,
+}
+
 /// The row above the table, with an optional title and the display controls.
 fn toolbar_ui<'a>(
     ui: &mut egui::Ui,
     ctx: &AppContext<'_>,
     blueprint_ctx: &AppBlueprintCtx<'_>,
     blueprint_columns: impl Iterator<Item = &'a TableColumn<'a>>,
-    column_display_mode: &mut ColumnDisplayMode,
-    title: Option<&str>,
-    summary_ui: Option<&dyn Fn(&mut Ui)>,
-    url: Option<&str>,
-    should_show_loading_indicator: bool,
-    mut layout_kind: MaybeMutRef<'_, TableLayoutKind>,
+    content: ToolbarContent<'_>,
 ) {
+    let ToolbarContent {
+        column_display_mode,
+        title,
+        summary_ui,
+        url,
+        should_show_loading_indicator,
+        mut layout_kind,
+        preview_state,
+        num_marked_rows,
+    } = content;
+
     // A row of small buttons needs less room around it than a heading does. Without a title this
     // is the row under a tab bar, so it uses `TAB_TOOLBAR_MARGIN_Y` like every other tab.
     let inner_margin = if title.is_some() {
@@ -1122,15 +1181,13 @@ fn toolbar_ui<'a>(
     };
 
     // Fixed, so the row is the same height whatever it holds.
-    let row_height = title.is_none().then_some(re_ui::TAB_TOOLBAR_HEIGHT);
+    let row_height = re_ui::TAB_TOOLBAR_HEIGHT;
 
     Frame::new().inner_margin(inner_margin).show(ui, |ui| {
         egui::Sides::new().show(
             ui,
             |ui| {
-                if let Some(row_height) = row_height {
-                    ui.set_height(row_height);
-                }
+                ui.set_height(row_height);
 
                 if let Some(title) = title {
                     ui.heading(RichText::new(title).strong());
@@ -1154,13 +1211,11 @@ fn toolbar_ui<'a>(
                 }
             },
             |ui| {
-                if let Some(row_height) = row_height {
-                    ui.set_height(row_height);
-                }
+                ui.set_height(row_height);
 
                 ui.horizontal_centered(|ui| {
                     if let Some(layout_kind) = layout_kind.as_mut() {
-                        ui.selectable_toggle(|ui| {
+                        ui.selectable_toggle_sized(Some(row_height), |ui| {
                             ui.icon_selectable_value(
                                 &icons::TABLE_ROW_VIEW,
                                 "Table view",
@@ -1176,13 +1231,59 @@ fn toolbar_ui<'a>(
                         });
                     }
 
-                    columns_edit_menu_ui(
+                    re_ui::ReButton::wrap_widget(
                         ui,
-                        blueprint_ctx,
-                        *layout_kind,
-                        column_display_mode,
-                        blueprint_columns,
+                        re_ui::Variant::Ghost,
+                        re_ui::Size::Small,
+                        false,
+                        |ui| {
+                            columns_edit_menu_ui(
+                                ui,
+                                blueprint_ctx,
+                                *layout_kind,
+                                column_display_mode,
+                                blueprint_columns,
+                            );
+                        },
                     );
+
+                    if let Some(state) = preview_state {
+                        ui.add_space(12.0);
+
+                        let playing = state.playing();
+                        let (icon, label) = if playing {
+                            (&icons::PAUSE, "Pause all")
+                        } else {
+                            (&icons::PLAY, "Play all")
+                        };
+                        let width = play_all_button_width(ui);
+                        if ui
+                            .add_sized(
+                                egui::vec2(width, row_height),
+                                re_ui::ReButton::new((icon.as_image(), label))
+                                    .small()
+                                    .outlined()
+                                    .selected(playing),
+                            )
+                            .clicked()
+                        {
+                            state.set_playing(!playing);
+                        }
+
+                        // `Sides` lays its right-hand side out right to left, so the fastest
+                        // speed is listed first.
+                        let mut speed = state.speed();
+                        ui.selectable_toggle_sized(Some(row_height), |ui| {
+                            for value in [2.0, 1.0, 0.5] {
+                                ui.selectable_value(&mut speed, value, format!("{value}×"));
+                            }
+                        });
+                        state.set_speed(speed);
+                    }
+
+                    if num_marked_rows > 0 {
+                        ui.label(RichText::new(format!("{num_marked_rows} marked")).weak());
+                    }
                 });
             },
         );
@@ -1202,6 +1303,38 @@ pub fn find_row_batch(
         row_index -= row_count;
     }
     None
+}
+
+/// Whether each row has its flag set, indexed by row.
+///
+/// Reads the flag column of each batch in one pass.
+pub fn marked_rows(
+    columns: &DataColumns<'_>,
+    batches: &[DisplayRecordBatch],
+    flag_column: Option<&ColumnName>,
+) -> Vec<bool> {
+    let Some(column_index) = flag_column.and_then(|name| columns.index_by_physical_name(name))
+    else {
+        return Vec::new();
+    };
+
+    let mut marked = Vec::with_capacity(batches.iter().map(DisplayRecordBatch::num_rows).sum());
+    for batch in batches {
+        let Some(DisplayColumn::Component(column)) = batch.columns().get(column_index) else {
+            marked.resize(marked.len() + batch.num_rows(), false);
+            continue;
+        };
+
+        marked.extend((0..batch.num_rows()).map(|row| {
+            column.row_value_at(row).is_some_and(|value| {
+                value
+                    .downcast_array_ref::<arrow::array::BooleanArray>()
+                    .is_some_and(|value| !value.is_empty() && !value.is_null(0) && value.value(0))
+            })
+        }));
+    }
+
+    marked
 }
 
 pub fn value_at(
@@ -1555,6 +1688,12 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 .map_or(TableCellKind::Auto, |table_column| {
                     table_column.value_resolved_cell_kind(Some(column), batch_index)
                 });
+
+            if cell_kind == TableCellKind::Flag {
+                // The flag button fills the height the cell gives its content.
+                ui.spacing_mut().interact_size.y =
+                    ui.tokens().table_content_height(self.table_style);
+            }
 
             let instance_index = None; // Only used in dataframe views.
             let edited = column.data_ui(

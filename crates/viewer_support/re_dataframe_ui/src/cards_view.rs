@@ -17,6 +17,9 @@ use crate::preview_renderer::RecordingPreviewRenderer;
 /// Height of the segment preview area inside each card.
 const PREVIEW_HEIGHT: f32 = 200.0;
 
+/// Room around the card content above and below the preview.
+const CARD_MARGIN: egui::Margin = egui::Margin::symmetric(16, 12);
+
 pub struct FlagChangeEvent {
     pub row: u64,
     pub physical_column: ColumnName,
@@ -45,6 +48,7 @@ pub fn cards_ui(
     view_states: &mut ViewStates,
     num_table_rows: u64,
     editable_flag_columns: &[ResolvedFlagColumn],
+    marked_rows: &[bool],
 ) -> Vec<FlagChangeEvent> {
     let mut flag_changes = Vec::new();
 
@@ -69,9 +73,7 @@ pub fn cards_ui(
         .unwrap_or(1);
     let card_min_width = tokens.table_grid_view_card_min_width * max_num_views_horizontal as f32;
 
-    let inner_margin = egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
-        .inner_margin(inner_margin)
         .fill(tokens.card_fill)
         .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
@@ -96,27 +98,33 @@ pub fn cards_ui(
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(card_spacing, card_spacing);
 
-            re_ui::egui_ext::card_layout::CardLayout::uniform(
-                num_table_rows as usize,
-                card_min_width + card_spacing,
-                card_frame,
-            )
-            .all_rows_use_available_width(false)
-            .hover_fill(tokens.card_hover_fill)
-            .hover_stroke(tokens.card_hover_stroke)
-            .show(ui, |ui, index, card_hovered| {
-                flag_changes.extend(card_content_ui(
-                    ctx,
-                    &card_config,
-                    ui,
-                    view_renderers,
-                    view_states,
-                    index as u64,
-                    columns,
-                    display_record_batches,
-                    card_hovered,
-                ));
-            });
+            let items = (0..num_table_rows as usize)
+                .map(|row| re_ui::egui_ext::card_layout::CardLayoutItem {
+                    min_width: card_min_width + card_spacing,
+                    frame: marked_rows
+                        .get(row)
+                        .copied()
+                        .unwrap_or(false)
+                        .then_some(card_frame.fill(tokens.card_marked_fill)),
+                    clickable: None,
+                })
+                .collect();
+            re_ui::egui_ext::card_layout::CardLayout::new(items, card_frame)
+                .all_rows_use_available_width(false)
+                .hover_stroke(tokens.card_hover_stroke)
+                .show(ui, |ui, index, card_hovered| {
+                    flag_changes.extend(card_content_ui(
+                        ctx,
+                        &card_config,
+                        ui,
+                        view_renderers,
+                        view_states,
+                        index as u64,
+                        columns,
+                        display_record_batches,
+                        card_hovered,
+                    ));
+                });
         });
 
     flag_changes
@@ -160,13 +168,8 @@ fn card_content_ui(
 
     let mut flag_change_event = None;
 
-    // Register a click sense over the whole card area *before* drawing content so that
-    // interactive child widgets (flag button, etc.) take click priority.
-    let card_click_response = ui.interact(
-        ui.max_rect(),
-        ui.make_persistent_id(("card_click", row_idx)),
-        egui::Sense::click(),
-    );
+    // Set when the title is clicked, to whether the recording opens in a new tab.
+    let mut open_recording: Option<bool> = None;
 
     // Read the title value for this row from the pre-resolved title column.
     let title_text = title_col_index.and_then(|idx| {
@@ -180,62 +183,92 @@ fn card_content_ui(
     // CardLayout calls us inside a horizontal row — we need vertical layout for card content.
     ui.vertical(|ui| {
         ui.set_max_width(ui.available_width());
+        ui.spacing_mut().item_spacing.y = 0.0;
 
         // Title row: title on the left (truncate if needed), flag toggle on the right.
-        egui::Sides::new().shrink_left().truncate().show(
-            ui,
-            |ui| {
-                if let Some(title_text) = title_text {
-                    ui.label(
-                        RichText::new(title_text)
-                            .size(14.0)
-                            .color(ui.tokens().text_default),
-                    );
-                }
-            },
-            |ui| {
-                if let Some(flag_column) = flag_column
-                    && let Some(column_index) = data_columns.index_by_physical_name(flag_column)
-                {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if let Some(column) = display_record_batch.columns().get(column_index) {
-                            let cell_kind = card_layout
-                                .fields()
-                                .iter()
-                                .find(|field| field.physical_name() == flag_column)
-                                .map_or(TableCellKind::Auto, |field| {
-                                    field.value_resolved_cell_kind(Some(column), batch_index)
-                                });
+        Frame::new().inner_margin(CARD_MARGIN).show(ui, |ui| {
+            egui::Sides::new().shrink_left().truncate().show(
+                ui,
+                |ui| {
+                    if let Some(title_text) = title_text {
+                        let response = ui.add(
+                            egui::Label::new(
+                                RichText::new(title_text)
+                                    .monospace()
+                                    .strong()
+                                    .size(14.5)
+                                    .color(ui.tokens().text_default),
+                            )
+                            .truncate()
+                            .sense(egui::Sense::click()),
+                        );
+                        if response.hovered() {
+                            ui.painter().line_segment(
+                                [response.rect.left_bottom(), response.rect.right_bottom()],
+                                egui::Stroke::new(1.0, ui.tokens().text_default),
+                            );
+                        }
+                        let response = response
+                            .on_hover_cursor(egui::CursorIcon::PointingHand)
+                            .on_hover_text("Open recording");
 
-                            if let Some(edited) = column.data_ui(
-                                ctx,
-                                ui,
-                                batch_index,
-                                None,
-                                UiLayout::List,
-                                cell_kind,
-                                flag_editable,
-                            ) {
-                                let new_value = edited
-                                    .downcast_array_ref::<arrow::array::BooleanArray>()
-                                    .and_then(|edited| {
-                                        (!edited.is_empty() && !edited.is_null(0))
-                                            .then(|| edited.value(0))
+                        // The usual modifiers open the recording in a new tab.
+                        open_recording = if response.clicked_with_open_in_background() {
+                            Some(true)
+                        } else if response.clicked() {
+                            Some(false)
+                        } else {
+                            None
+                        };
+                    }
+                },
+                |ui| {
+                    if let Some(flag_column) = flag_column
+                        && let Some(column_index) = data_columns.index_by_physical_name(flag_column)
+                    {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            // The card header has room for the flag button at full size.
+                            ui.spacing_mut().interact_size.y = re_ui::FLAG_BUTTON_SIZE;
+
+                            if let Some(column) = display_record_batch.columns().get(column_index) {
+                                let cell_kind = card_layout
+                                    .fields()
+                                    .iter()
+                                    .find(|field| field.physical_name() == flag_column)
+                                    .map_or(TableCellKind::Auto, |field| {
+                                        field.value_resolved_cell_kind(Some(column), batch_index)
                                     });
 
-                                if let Some(new_value) = new_value {
-                                    flag_change_event = Some(FlagChangeEvent {
-                                        row: row_idx,
-                                        physical_column: flag_column.clone(),
-                                        new_value,
-                                    });
+                                if let Some(edited) = column.data_ui(
+                                    ctx,
+                                    ui,
+                                    batch_index,
+                                    None,
+                                    UiLayout::List,
+                                    cell_kind,
+                                    flag_editable,
+                                ) {
+                                    let new_value = edited
+                                        .downcast_array_ref::<arrow::array::BooleanArray>()
+                                        .and_then(|edited| {
+                                            (!edited.is_empty() && !edited.is_null(0))
+                                                .then(|| edited.value(0))
+                                        });
+
+                                    if let Some(new_value) = new_value {
+                                        flag_change_event = Some(FlagChangeEvent {
+                                            row: row_idx,
+                                            physical_column: flag_column.clone(),
+                                            new_value,
+                                        });
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
-            },
-        );
+                        });
+                    }
+                },
+            );
+        });
 
         // TODO(RR-4510): loading indication if we're not ready to draw
         for renderer in view_renderers {
@@ -246,6 +279,7 @@ fn card_content_ui(
 
             let mut child_ui = ui.new_child(
                 egui::UiBuilder::new()
+                    .id_salt(("preview", renderer.data_column_index()))
                     .max_rect(rect)
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
@@ -260,42 +294,57 @@ fn card_content_ui(
             );
         }
 
-        ui.horizontal_wrapped(|ui| {
-            for field in card_layout.fields() {
-                let Some(col_idx) = data_columns.index_by_physical_name(field.physical_name())
-                else {
-                    continue;
-                };
-                if !field.is_visible(TableLayoutKind::Cards) {
-                    continue;
+        // The fields shown under the preview, with the cell that renders each one.
+        let fields = card_layout
+            .fields()
+            .iter()
+            .filter(|field| field.is_visible(TableLayoutKind::Cards))
+            .filter_map(|field| {
+                let col_idx = data_columns.index_by_physical_name(field.physical_name())?;
+                if Some(col_idx) == title_col_index {
+                    return None;
                 }
-                let Some(column) = display_record_batch.columns().get(col_idx) else {
-                    continue;
-                };
+                let column = display_record_batch.columns().get(col_idx)?;
 
-                // Skip preview and flag cells as they are handled separately.
+                // Preview and flag cells are handled separately.
                 let cell_kind = field.value_resolved_cell_kind(Some(column), batch_index);
                 if matches!(cell_kind, TableCellKind::Preview | TableCellKind::Flag) {
-                    continue;
+                    return None;
                 }
 
-                ui.spacing_mut().item_spacing.x = 8.0;
-                ui.label(RichText::new(field.display_name()).monospace());
-                ui.spacing_mut().item_spacing.x = 20.0;
-                column.data_ui(
-                    ctx,
-                    ui,
-                    batch_index,
-                    None,
-                    UiLayout::Inline,
-                    cell_kind,
-                    false,
-                );
-            }
-        });
+                Some((field.display_name(), column, cell_kind))
+            })
+            .collect::<Vec<_>>();
+
+        if fields.is_empty() {
+            // The card ends with its bottom margin under the preview.
+            ui.add_space(CARD_MARGIN.bottom as f32);
+        } else {
+            Frame::new().inner_margin(CARD_MARGIN).show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing = egui::vec2(14.0, 8.0);
+                    ui.style_mut().override_font_id = Some(egui::FontId::monospace(12.5));
+
+                    for (display_name, column, cell_kind) in fields {
+                        ui.spacing_mut().item_spacing.x = 6.0;
+                        ui.label(RichText::new(display_name).weak());
+                        ui.spacing_mut().item_spacing.x = 14.0;
+                        column.data_ui(
+                            ctx,
+                            ui,
+                            batch_index,
+                            None,
+                            UiLayout::Inline,
+                            cell_kind,
+                            false,
+                        );
+                    }
+                });
+            });
+        }
     });
 
-    if card_click_response.clicked()
+    if let Some(new_tab) = open_recording
         && let Some(idx) = url_col_index
         && let Some(DisplayColumn::Component(comp)) = display_record_batch.columns().get(idx)
         && let Some(value) = comp.string_value_at(batch_index)
@@ -304,7 +353,10 @@ fn card_content_ui(
             None => re_uri::RedapUri::from_str(&value),
         }
     {
-        ui.open_url(egui::OpenUrl::same_tab(uri.to_string()));
+        ui.open_url(egui::OpenUrl {
+            url: uri.to_string(),
+            new_tab,
+        });
     }
 
     flag_change_event

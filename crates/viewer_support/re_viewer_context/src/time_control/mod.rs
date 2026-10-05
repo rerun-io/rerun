@@ -312,7 +312,7 @@ impl TimeControl {
     /// This will also always wait for data while buffering.
     pub fn preview_time_control() -> Self {
         Self {
-            playing: true,
+            playing: false,
             following: false,
             loop_mode: LoopMode::All,
             ..Self::default()

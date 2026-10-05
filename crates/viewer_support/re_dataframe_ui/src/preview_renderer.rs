@@ -16,10 +16,10 @@ use re_ui::UiExt as _;
 
 use re_view::execute_systems_for_view;
 use re_viewer_context::{
-    ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, StoreCache,
-    SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass,
-    ViewContextSystemOncePerFrameResult, ViewId, ViewStates, ViewSystemIdentifier, ViewerContext,
-    blueprint_timeline,
+    ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, NeedsRepaint,
+    PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
+    TimeControlCommand, ViewClass, ViewContextSystemOncePerFrameResult, ViewId, ViewStates,
+    ViewSystemIdentifier, ViewerContext, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -30,6 +30,24 @@ use crate::display_record_batch::DisplayColumn;
 
 /// Result of running all once-per-frame context systems for a given recording.
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
+
+/// Height of the scrub bar at the bottom of a preview, at rest.
+const TIMELINE_HEIGHT: f32 = 4.0;
+
+/// Height of the scrub bar while it is hovered or dragged.
+const TIMELINE_HEIGHT_ACTIVE: f32 = 10.0;
+
+/// Room above and below the scrub bar that takes clicks for it.
+const TIMELINE_INTERACT_PADDING: f32 = 4.0;
+
+/// How far up from the bottom of a preview the scrub bar takes clicks.
+const TIMELINE_INTERACT_HEIGHT: f32 = TIMELINE_HEIGHT_ACTIVE + TIMELINE_INTERACT_PADDING;
+
+/// Diameter of the round play button on a preview.
+const PLAY_BUTTON_SIZE: f32 = 34.0;
+
+/// Room between the playback controls and the edges of the preview.
+const CONTROLS_MARGIN: f32 = 10.0;
 
 // Only used to pass between logic.
 #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
@@ -233,10 +251,13 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
                 // Register this recording so the shared preview `TimeControl` knows about it
                 // and can advance its loop bounds based on the longest registered clip.
+                let is_new = preview_state.active_preview(rec.store_id()).is_none();
                 preview_state.register_recording(rec.store_id(), hub.bundle);
 
                 // Request redraw whenever a new preview is registered to start advancing time for it.
-                ui.request_repaint();
+                if is_new {
+                    ui.request_repaint();
+                }
 
                 (rec, caches)
             }
@@ -279,15 +300,14 @@ impl<'a> RecordingPreviewRenderer<'a> {
         let indicated_entities_per_visualizer = caches.indicated_entities_per_visualizer();
 
         let store_id = recording.store_id();
-        let time_ctrl =
-            if let Some(time_control) = preview_state.recording_time_control_mut(store_id) {
-                apply_configured_timeline(time_control, self.timeline, recording);
-                time_control.clone()
-            } else {
-                let mut time_control = TimeControl::preview_time_control();
-                apply_configured_timeline(&mut time_control, self.timeline, recording);
-                time_control
-            };
+        let time_ctrl = if let Some(preview) = preview_state.active_preview_mut(store_id) {
+            apply_configured_timeline(&mut preview.time_control, self.timeline, recording);
+            preview.time_control.clone()
+        } else {
+            let mut time_control = TimeControl::preview_time_control();
+            apply_configured_timeline(&mut time_control, self.timeline, recording);
+            time_control
+        };
 
         let store_context = ActiveStoreContext {
             blueprint: self.blueprint,
@@ -384,8 +404,8 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
         let mut views_rect = egui::Rect::NOTHING;
 
-        // Split the available width equally across the views, left-to-right, with no gap.
-        ui.spacing_mut().item_spacing.x = 0.0;
+        // Split the available width equally across the views, left-to-right, with a narrow gap.
+        ui.spacing_mut().item_spacing.x = 2.0;
         ui.columns(resolved.len(), |cols| {
             for (col_ui, resolved) in std::iter::zip(cols, resolved) {
                 let Some(Resolved {
@@ -459,17 +479,186 @@ impl<'a> RecordingPreviewRenderer<'a> {
             }
         });
 
+        let timeline_id = ui.make_persistent_id(("timeline", &self.column_name, row_nr));
+
+        let state = view_states.preview_state.get_or_insert_default();
         preview_timeline(
             app_ctx,
-            view_states,
+            state,
             ui,
-            &self.column_name,
-            row_nr,
+            timeline_id,
             row_hovered,
             recording,
-            &time_ctrl,
             views_rect,
         );
+
+        preview_playback_ui(ui, state, recording, row_hovered, views_rect);
+    }
+}
+
+/// The elapsed time and the length of the clip, as shown next to the play button.
+fn elapsed_label(time_control: &TimeControl, recording: &EntityDb) -> Option<String> {
+    let time = time_control.time()?;
+    let range = recording.time_range_for(time_control.timeline_name())?;
+
+    let elapsed = (time.as_f64() - range.min.as_f64()).max(0.0);
+    let duration = range.abs_length() as f64;
+
+    if time_control
+        .timeline()
+        .is_some_and(|timeline| timeline.typ() == re_log_types::TimeType::Sequence)
+    {
+        Some(format!("{elapsed:.0} / {duration:.0}"))
+    } else {
+        Some(format!("{:.1} / {:.1}s", elapsed / 1e9, duration / 1e9))
+    }
+}
+
+/// Shows the play button and the elapsed time over the bottom of a preview.
+fn preview_playback_ui(
+    ui: &mut egui::Ui,
+    state: &mut PreviewState,
+    recording: &EntityDb,
+    hovered: bool,
+    rect: egui::Rect,
+) {
+    if !rect.is_finite() {
+        return;
+    }
+
+    let tokens = ui.tokens();
+
+    // TODO(RR-4810): Read the speed from `PreviewsConfig` and show the actual speed in the UI.
+    let speed = state.speed();
+
+    let all_playing = state.playing();
+
+    let Some(preview) = state.active_preview_mut(recording.store_id()) else {
+        return;
+    };
+
+    let mut commands = Vec::new();
+    let mut play_pause_all = None;
+
+    if preview.time_control.speed() != speed {
+        commands.push(TimeControlCommand::SetSpeed(speed));
+    }
+
+    let id = ui.make_persistent_id(("preview_playback", recording.store_id()));
+
+    let mut playing = preview.play_override.unwrap_or(all_playing || hovered);
+
+    let label = elapsed_label(&preview.time_control, recording);
+
+    // Sensed before the controls are added, so they take clicks over the preview body.
+    let body = ui.interact(
+        rect.with_max_y(rect.max.y - TIMELINE_INTERACT_HEIGHT),
+        id.with("body"),
+        egui::Sense::click(),
+    );
+
+    let mut controls_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(id)
+            .max_rect(egui::Rect::from_min_max(
+                egui::pos2(
+                    rect.left() + CONTROLS_MARGIN,
+                    rect.bottom() - TIMELINE_INTERACT_HEIGHT - PLAY_BUTTON_SIZE,
+                ),
+                egui::pos2(
+                    rect.right() - CONTROLS_MARGIN,
+                    rect.bottom() - TIMELINE_INTERACT_HEIGHT,
+                ),
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    controls_ui.spacing_mut().item_spacing.x = 8.0;
+
+    let (icon, action) = if playing {
+        (&re_ui::icons::PAUSE, "Pause preview")
+    } else {
+        (&re_ui::icons::PLAY, "Play preview")
+    };
+    let button_widget = controls_ui
+        .image_button_widget(icon.as_image(), action)
+        .fill(tokens.preview_controls_fill)
+        .corner_radius(egui::CornerRadius::same((PLAY_BUTTON_SIZE / 2.0) as u8));
+    let button = controls_ui.add_sized(egui::Vec2::splat(PLAY_BUTTON_SIZE), button_widget);
+
+    let button = button.on_hover_ui(|ui| {
+        ui.label(action);
+        egui::WidgetAtom::new((
+            re_ui::IconText::from_modifiers(ui.ctx().os(), egui::Modifiers::COMMAND),
+            if playing {
+                "+ click to pause all previews"
+            } else {
+                "+ click to play all previews"
+            },
+        ))
+        .show(ui);
+    });
+
+    if body.clicked() || button.clicked() {
+        playing = !playing;
+        // If holding command, play all previews
+        if ui.input(|input| input.modifiers.command) {
+            play_pause_all = Some(playing);
+        } else {
+            preview.play_override = Some(playing);
+        }
+    } else if !hovered && preview.play_override == Some(all_playing) {
+        // Don't keep play override if it's the same as the `play all` state.
+        preview.play_override = None;
+    }
+
+    let wanted_play_state = if playing {
+        re_sdk_types::blueprint::components::PlayState::Playing
+    } else {
+        re_sdk_types::blueprint::components::PlayState::Paused
+    };
+
+    if wanted_play_state != preview.time_control.play_state() {
+        commands.push(TimeControlCommand::SetPlayState(wanted_play_state));
+    }
+
+    if let Some(label) = label {
+        egui::Frame::new()
+            .inner_margin(egui::Margin::symmetric(7, 4))
+            .corner_radius(6)
+            .fill(tokens.preview_controls_fill)
+            .show(&mut controls_ui, |ui| {
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(label)
+                            .monospace()
+                            .size(11.0)
+                            .color(tokens.text_default),
+                    )
+                    .truncate(),
+                );
+            });
+    }
+
+    if !commands.is_empty() {
+        let res = preview.time_control.handle_time_commands(
+            None::<&ViewerContext<'_>>,
+            recording,
+            &commands,
+        );
+
+        if res.needs_repaint == NeedsRepaint::Yes {
+            ui.request_repaint();
+        }
+    }
+
+    if let Some(play_pause_all) = play_pause_all {
+        state.set_playing(play_pause_all);
+
+        // The clicked preview is under the pointer, so its `play_override` holds the new play
+        // state until the pointer leaves.
+        if let Some(preview) = state.active_preview_mut(recording.store_id()) {
+            preview.play_override = Some(play_pause_all);
+        }
     }
 }
 
@@ -497,38 +686,67 @@ fn apply_configured_timeline(
 /// This timeline can be interacted with to set the time of the preview.
 fn preview_timeline(
     app_ctx: &re_viewer_context::AppContext<'_>,
-    view_states: &ViewStates,
+    state: &mut PreviewState,
     ui: &egui::Ui,
-    column_name: &ColumnName,
-    row_nr: u64,
+    id: egui::Id,
     row_hovered: bool,
     recording: &EntityDb,
-    time_ctrl: &TimeControl,
     views_rect: egui::Rect,
 ) {
-    let id = ui.make_persistent_id(("timeline", column_name, row_nr));
+    let Some(preview) = state.active_preview_mut(recording.store_id()) else {
+        return;
+    };
 
     // Do this outside the if to keep showing the timeline when dragged.
     let was_active = ui.read_response(id).is_some_and(|last_response| {
         last_response.hovered() || last_response.dragged() || last_response.clicked()
     });
 
+    // `egui::Id` for memory if the user has used cmd/ctrl drag
+    // on the timeline.
+    //
+    // Used to know if we should always show the hint or not.
+    let mem_id = egui::Id::unique("preview-has_multi_dragged");
+
     let command_pressed = ui.input(|i| i.modifiers.command);
     if command_pressed || was_active || (views_rect != egui::Rect::NOTHING && row_hovered) {
-        let width = egui::lerp(4.0..=10.0, ui.animate_bool(id, was_active));
-        let timeline_rect = views_rect.with_min_y(views_rect.max.y - width);
+        let height = egui::lerp(
+            TIMELINE_HEIGHT..=TIMELINE_HEIGHT_ACTIVE,
+            ui.animate_bool(id, was_active),
+        );
+        let timeline_rect = views_rect.with_min_y(views_rect.max.y - height);
 
         ui.painter()
             .rect_filled(timeline_rect, 0.0, ui.tokens().preview_timeline_track_color);
 
-        if let Some(time) = time_ctrl.time()
-            && let Some(range) = recording.time_range_for(time_ctrl.timeline_name())
+        if let Some(time) = preview.time_control.time()
+            && let Some(range) = recording.time_range_for(preview.time_control.timeline_name())
         {
             let response = ui.interact(
-                timeline_rect.expand2(egui::vec2(0.0, 4.0)),
+                timeline_rect.expand2(egui::vec2(0.0, TIMELINE_INTERACT_PADDING)),
                 id,
                 egui::Sense::click_and_drag(),
             );
+
+            let show_hint = response.dragged()
+                && ui.memory_mut(|mem| !mem.data.get_persisted::<bool>(mem_id).unwrap_or(false));
+
+            let mut tooltip = egui::Tooltip::for_widget(&response);
+            tooltip.popup = tooltip
+                .popup
+                .open(show_hint)
+                .anchor(timeline_rect)
+                .align(egui::RectAlign::TOP)
+                .align_alternatives(&[egui::RectAlign::BOTTOM]);
+
+            tooltip.show(|ui| {
+                egui::WidgetAtom::new((
+                    "Hold",
+                    re_ui::IconText::from_modifiers(ui.ctx().os(), egui::Modifiers::COMMAND),
+                    "to scrub all previews",
+                ))
+                .show(ui);
+            });
 
             // Set time to where we clicked/dragged.
             if (response.clicked() || response.dragged())
@@ -541,17 +759,28 @@ fn preview_timeline(
                 let time_offset = p as f64 * range.abs_length() as f64;
                 let time = range.min.as_f64() + time_offset;
 
-                app_ctx.command_sender.send_system(
-                    re_viewer_context::SystemCommand::TimeControlCommands {
-                        store_id: recording.store_id().clone(),
-                        time_commands: vec![re_viewer_context::TimeControlCommand::SetTime(
-                            re_log_types::TimeReal::from(time),
-                        )],
-                    },
+                let mut needs_repaint = NeedsRepaint::No;
+
+                let res = preview.time_control.handle_time_commands(
+                    None::<&ViewerContext<'_>>,
+                    recording,
+                    &[TimeControlCommand::SetTime(time.into())],
                 );
 
-                if command_pressed && let Some(preview_state) = &view_states.preview_state {
-                    for (store_id, active_preview) in preview_state.iter_active_previews() {
+                needs_repaint = needs_repaint.or(res.needs_repaint);
+
+                if command_pressed {
+                    // Remember that the user has done the multidrag action to not show the hint anymore.
+                    ui.memory_mut(|mem| {
+                        mem.data.insert_persisted(mem_id, true);
+                    });
+
+                    for (store_id, active_preview) in state.iter_active_previews_mut() {
+                        if store_id == recording.store_id() {
+                            // We already set the time for the dragged recording.
+                            continue;
+                        }
+
                         let Some(db) = app_ctx.store_bundle().get(store_id) else {
                             continue;
                         };
@@ -564,21 +793,26 @@ fn preview_timeline(
 
                         let time = range.min.as_f64() + time_offset.min(range.abs_length() as f64);
 
-                        app_ctx.command_sender.send_system(
-                            re_viewer_context::SystemCommand::TimeControlCommands {
-                                store_id: store_id.clone(),
-                                time_commands: vec![
-                                    re_viewer_context::TimeControlCommand::SetTime(
-                                        re_log_types::TimeReal::from(time),
-                                    ),
-                                ],
-                            },
+                        let res = active_preview.time_control.handle_time_commands(
+                            None::<&ViewerContext<'_>>,
+                            db,
+                            &[TimeControlCommand::SetTime(time.into())],
                         );
+
+                        needs_repaint = needs_repaint.or(res.needs_repaint);
                     }
+                }
+
+                if needs_repaint == NeedsRepaint::Yes {
+                    ui.request_repaint();
                 }
             }
 
-            let p = (time.as_f64() - range.min.as_f64()) / range.abs_length() as f64;
+            let p = if range.abs_length() == 0 {
+                0.0
+            } else {
+                ((time.as_f64() - range.min.as_f64()) / range.abs_length() as f64).clamp(0.0, 1.0)
+            };
             if p > 0.0 {
                 ui.painter().rect_filled(
                     timeline_rect
@@ -593,7 +827,206 @@ fn preview_timeline(
 
 #[cfg(test)]
 mod tests {
+    use egui_kittest::kittest::Queryable as _;
+
     use super::*;
+
+    /// What the playback tests drive from the outside.
+    struct PlaybackTestState {
+        view_states: ViewStates,
+
+        /// Index of the preview the pointer is over, as the card layout passes it to the renderer.
+        hovered_preview: Option<usize>,
+    }
+
+    /// Shows the playback controls of each recording, side by side.
+    fn playback_harness(
+        recordings: Vec<EntityDb>,
+        hovered_preview: Option<usize>,
+    ) -> egui_kittest::Harness<'static, PlaybackTestState> {
+        let mut view_states = ViewStates::default();
+        let preview_state = view_states.preview_state.get_or_insert_default();
+        for recording in &recordings {
+            preview_state
+                .register_recording(recording.store_id(), &re_entity_db::StoreBundle::default());
+        }
+
+        egui_kittest::Harness::builder()
+            .with_size(egui::vec2(400.0 * recordings.len() as f32, 240.0))
+            .build_ui_state(
+                move |ui, state: &mut PlaybackTestState| {
+                    let PlaybackTestState {
+                        view_states,
+                        hovered_preview,
+                    } = state;
+
+                    re_ui::apply_style_and_install_loaders(ui.ctx());
+                    ui.columns(recordings.len(), |columns| {
+                        for (index, (ui, recording)) in
+                            std::iter::zip(columns.iter_mut(), &recordings).enumerate()
+                        {
+                            let Some(preview_state) = &mut view_states.preview_state else {
+                                continue;
+                            };
+
+                            // The renderer picks the timeline each frame before it draws the
+                            // controls.
+                            if let Some(preview) =
+                                preview_state.active_preview_mut(recording.store_id())
+                            {
+                                apply_configured_timeline(
+                                    &mut preview.time_control,
+                                    Some(re_log_types::TimelineName::from_static_str(
+                                        TEST_TIMELINE,
+                                    )),
+                                    recording,
+                                );
+                            }
+
+                            let rect = ui.available_rect_before_wrap();
+                            preview_playback_ui(
+                                ui,
+                                preview_state,
+                                recording,
+                                *hovered_preview == Some(index),
+                                rect,
+                            );
+                        }
+                    });
+                },
+                PlaybackTestState {
+                    view_states,
+                    hovered_preview,
+                },
+            )
+    }
+
+    fn is_playing(
+        harness: &egui_kittest::Harness<'_, PlaybackTestState>,
+        store_id: &StoreId,
+    ) -> bool {
+        harness
+            .state()
+            .view_states
+            .preview_state
+            .as_ref()
+            .and_then(|state| state.is_recording_playing(store_id))
+            .expect("the preview is registered")
+    }
+
+    /// Whether the play-all button is on.
+    fn shared_playing(harness: &egui_kittest::Harness<'_, PlaybackTestState>) -> bool {
+        harness
+            .state()
+            .view_states
+            .preview_state
+            .as_ref()
+            .is_some_and(|state| state.playing())
+    }
+
+    /// Clicks the first button with this label, with the play-all modifier held.
+    fn modifier_click_first(
+        harness: &mut egui_kittest::Harness<'_, PlaybackTestState>,
+        label: &str,
+    ) {
+        harness
+            .get_all_by_label(label)
+            .next()
+            .unwrap_or_else(|| panic!("no button labelled {label:?}"))
+            .click_modifiers(egui::Modifiers::COMMAND);
+        harness.run();
+    }
+
+    /// The timeline [`playback_harness`] selects for each preview.
+    const TEST_TIMELINE: &str = "frame";
+
+    /// A preview plays while the pointer is over it, the play button overrides that for one
+    /// preview, and the play-all button overrides it for every preview.
+    #[test]
+    fn preview_plays_on_hover_and_follows_the_shared_controls() {
+        let recording = EntityDb::new(StoreId::random(StoreKind::Recording, "test"));
+        let store_id = recording.store_id().clone();
+        let mut harness = playback_harness(vec![recording], None);
+
+        // With the pointer elsewhere, the preview holds still.
+        harness.run();
+        assert!(!is_playing(&harness, &store_id));
+
+        // The pointer over the preview starts it.
+        harness.state_mut().hovered_preview = Some(0);
+        harness.run();
+        assert!(is_playing(&harness, &store_id));
+
+        // The button pauses this one preview, although the pointer is still over it.
+        harness.get_by_label("Pause preview").click();
+        harness.run();
+        assert!(!is_playing(&harness, &store_id));
+
+        // It stays paused once the pointer leaves.
+        harness.state_mut().hovered_preview = None;
+        harness.run();
+        assert!(!is_playing(&harness, &store_id));
+
+        // Play-all takes over from the button, and sets the speed of every preview.
+        let preview_state = harness
+            .state_mut()
+            .view_states
+            .preview_state
+            .as_mut()
+            .expect("the preview is registered");
+        preview_state.set_playing(true);
+        preview_state.set_speed(2.0);
+        harness.run();
+
+        assert!(is_playing(&harness, &store_id));
+        assert_eq!(
+            harness
+                .state()
+                .view_states
+                .preview_state
+                .as_ref()
+                .and_then(|state| state.active_preview(&store_id))
+                .map(|p| p.time_control.speed()),
+            Some(2.0)
+        );
+    }
+
+    /// Clicking the hovered preview's play button with the modifier held plays or pauses every
+    /// preview. The previews stay that way on the frames that follow, including after the pointer
+    /// leaves.
+    #[test]
+    fn modifier_click_controls_all_previews() {
+        let recordings = vec![
+            EntityDb::new(StoreId::random(StoreKind::Recording, "first")),
+            EntityDb::new(StoreId::random(StoreKind::Recording, "second")),
+        ];
+        let store_ids = recordings
+            .iter()
+            .map(|recording| recording.store_id().clone())
+            .collect::<Vec<_>>();
+
+        // Only the hovered first preview plays.
+        let mut harness = playback_harness(recordings, Some(0));
+        harness.run();
+        assert!(is_playing(&harness, &store_ids[0]));
+        assert!(!is_playing(&harness, &store_ids[1]));
+
+        // Pausing the first preview with the modifier held pauses both, although the pointer is
+        // still over the first one.
+        modifier_click_first(&mut harness, "Pause preview");
+        assert!(!shared_playing(&harness));
+        assert!(store_ids.iter().all(|id| !is_playing(&harness, id)));
+
+        // Playing it with the modifier held plays both.
+        modifier_click_first(&mut harness, "Play preview");
+        assert!(shared_playing(&harness));
+        assert!(store_ids.iter().all(|id| is_playing(&harness, id)));
+
+        // They keep playing once the pointer leaves.
+        harness.state_mut().hovered_preview = None;
+        harness.run();
+        assert!(store_ids.iter().all(|id| is_playing(&harness, id)));
+    }
 
     #[test]
     fn renderer_keeps_column_specific_views() {

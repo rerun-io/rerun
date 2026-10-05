@@ -83,27 +83,9 @@ pub async fn preview_table() {
     harness.get_by_label("Cards view").click();
     harness.run_ok();
 
-    // Clicking the first card opens its recording, navigating away from the table.
-    //
-    // We have to drive this click by hand rather than via `.click()` / `click_at`:
-    // - `click_at` calls `run()`, which never settles while the previews keep repainting.
-    // - `.click()` presses and releases in a single frame, which the card's click region
-    //   doesn't register.
-    // The card registers its click area behind its content, so a click on the title label or
-    // the preview never reaches it. We click the empty space to the right of the title.
+    // The card title is a link that opens the recording.
     let title = harness.get_by_label("segment 0").rect();
-    let click_pos = egui::pos2(title.right() + 150.0, title.center().y);
-    harness.event(egui::Event::PointerMoved(click_pos));
-    harness.step();
-    for pressed in [true, false] {
-        harness.event(egui::Event::PointerButton {
-            pos: click_pos,
-            button: egui::PointerButton::Primary,
-            pressed,
-            modifiers: egui::Modifiers::NONE,
-        });
-        harness.step();
-    }
+    harness.step_click_at(title.center());
 
     let opened_segment = preview_uris[0].clone();
     viewer_test_utils::step_until_with_custom_timeout(

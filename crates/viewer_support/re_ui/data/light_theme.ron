@@ -200,6 +200,11 @@
       "width": 1
     },
 
+    // How a card marks that its flag is set.
+    "card_marked_fill": {
+      "color": "{Gray.950}"
+    },
+
     "drag_pill_droppable_fill": {
       "color": "{Blue.725}"
     },
@@ -387,32 +392,16 @@
     },
 
     "flag_untoggled_bg": {
-      "color": "{Gray.800}",
-      "alpha": 0
-    },
-    "flag_untoggled_bg_card_hover": {
       "color": "{Gray.800}"
     },
     "flag_untoggled_bg_hover": {
       "color": "{Gray.750}"
-    },
-    "flag_toggled_bg": {
-      "color": "#FDDCCC"
-    },
-    "flag_toggled_bg_card_hover": {
-      "color": "#F9C4A8"
-    },
-    "flag_toggled_bg_hover": {
-      "color": "#F5AB85"
     },
     "flag_untoggled_icon": {
       "color": "{Gray.600}"
     },
     "flag_untoggled_icon_hover": {
       "color": "{Gray.500}"
-    },
-    "flag_toggled_icon": {
-      "color": "#E8722A"
     },
 
     "bg_fill_inverse": {
@@ -433,7 +422,11 @@
       "alpha": 100
     },
     "preview_timeline_progress_color": {
-      "color": "#FF0000"
+      "color": "{Blue.500}"
+    },
+    "preview_controls_fill": {
+      "color": "{Gray.1000}",
+      "alpha": 230
     },
   },
 

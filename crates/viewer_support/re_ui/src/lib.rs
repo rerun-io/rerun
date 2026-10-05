@@ -92,6 +92,9 @@ use re_log::debug_assert;
 
 // ---------------------------------------------------------------------------
 
+/// Width of the flag button, and the height it takes where the row has room for it.
+pub const FLAG_BUTTON_SIZE: f32 = 30.0;
+
 /// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
 /// See <https://github.com/emilk/egui/pull/2049>
 pub fn fullsize_content(os: egui::os::OperatingSystem) -> bool {

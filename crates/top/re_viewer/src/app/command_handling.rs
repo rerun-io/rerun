@@ -99,11 +99,10 @@ impl App {
 
                         if usage.was_preview()
                             && let Some(preview_state) = &mut self.state.view_states.preview_state
-                            && let Some(time_control) =
-                                preview_state.recording_time_control_mut(&store_id)
+                            && let Some(preview) = preview_state.active_preview_mut(&store_id)
                             && let Some(db) = store_hub.entity_db(&store_id)
                         {
-                            let response = time_control.handle_time_commands(
+                            let response = preview.time_control.handle_time_commands(
                                 None::<&AppBlueprintCtx<'_>>,
                                 db,
                                 &time_commands,

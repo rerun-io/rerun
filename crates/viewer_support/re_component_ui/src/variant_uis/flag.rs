@@ -35,30 +35,42 @@ pub fn table_flag(
 }
 
 fn flag_button(ui: &mut egui::Ui, is_flagged: bool) -> egui::Response {
+    use egui::NumExt as _;
     use re_ui::UiExt as _;
 
+    /// Largest the flag icon gets.
+    const ICON_SIZE: f32 = 16.0;
+
+    /// Room between the icon and the edge of the button.
+    const ICON_MARGIN: f32 = 3.0;
+
     let tokens = ui.tokens();
-    let size = egui::vec2(30.0, 24.0);
-    let icon_size = egui::vec2(14.0, 14.0);
+
+    // The button is as tall as `interact_size.y`, so it and its icon shrink to fit a table row.
+    let height = ui
+        .spacing()
+        .interact_size
+        .y
+        .at_most(re_ui::FLAG_BUTTON_SIZE);
+    let size = egui::vec2(re_ui::FLAG_BUTTON_SIZE, height);
+    let icon_size = egui::Vec2::splat((height - 2.0 * ICON_MARGIN).clamp(0.0, ICON_SIZE));
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), is_flagged, "Flag")
     });
 
-    // Three visual tiers based on hover context:
-    // - **Idle** (mouse away from card): transparent bg, muted icon — flag "melts" into the card.
-    // - **Card hovered**: subtle bg appears, icon becomes legible — flag is *revealed*.
-    // - **Flag hovered**: stronger bg, same icon — flag is clearly *actionable*.
     if ui.is_rect_visible(rect) {
         let hovered = response.hovered() && ui.is_enabled();
         let (background, tint) = if is_flagged {
+            // A set flag reads as a blue button, so it takes the blue button's colors.
+            let blue = &tokens.button_blue;
             (
                 if hovered {
-                    tokens.flag_toggled_bg_hover
+                    blue.fill_hovered
                 } else {
-                    tokens.flag_toggled_bg
+                    blue.fill
                 },
-                tokens.flag_toggled_icon,
+                blue.text,
             )
         } else {
             (
@@ -76,13 +88,15 @@ fn flag_button(ui: &mut egui::Ui, is_flagged: bool) -> egui::Response {
         };
 
         if background.a() > 0 {
-            ui.painter().rect_filled(rect, 4.0, background);
+            ui.painter().rect(
+                rect,
+                8.0,
+                background,
+                tokens.card_stroke,
+                egui::StrokeKind::Inside,
+            );
         }
-        let icon = if is_flagged {
-            &re_ui::icons::FLAG_TOGGLED
-        } else {
-            &re_ui::icons::FLAG_UNTOGGLED
-        };
+        let icon = &re_ui::icons::FLAG_UNTOGGLED;
         icon.as_image()
             .tint(tint)
             .paint_at(ui, egui::Rect::from_center_size(rect.center(), icon_size));

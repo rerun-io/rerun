@@ -339,4 +339,3 @@ pub const TABLE_ROW_VIEW: Icon = icon_from_path!("../data/icons/table_row_view.s
 pub const TABLE_GRID_VIEW: Icon = icon_from_path!("../data/icons/table_grid_view.svg");
 pub const TABLE_COLUMNS: Icon = icon_from_path!("../data/icons/columns.svg");
 pub const FLAG_UNTOGGLED: Icon = icon_from_path!("../data/icons/flag_untoggled.svg");
-pub const FLAG_TOGGLED: Icon = icon_from_path!("../data/icons/flag_toggled.svg");

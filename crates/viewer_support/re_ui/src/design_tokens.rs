@@ -525,16 +525,15 @@ pub struct DesignTokens {
     /// Outline of a card the pointer is over.
     pub card_hover_stroke: Stroke,
 
-    // Flag button — three visual tiers: idle, card-hovered, flag-hovered
+    /// Fill of a card whose flag is set.
+    pub card_marked_fill: Color32,
+
+    // Flag button when it is not set, at rest and hovered. A set flag takes
+    // [`Self::button_blue`].
     pub flag_untoggled_bg: Color32,
-    pub flag_untoggled_bg_card_hover: Color32,
     pub flag_untoggled_bg_hover: Color32,
-    pub flag_toggled_bg: Color32,
-    pub flag_toggled_bg_card_hover: Color32,
-    pub flag_toggled_bg_hover: Color32,
     pub flag_untoggled_icon: Color32,
     pub flag_untoggled_icon_hover: Color32,
-    pub flag_toggled_icon: Color32,
 
     pub bg_fill_inverse: Color32,
     pub bg_fill_inverse_hover: Color32,
@@ -546,6 +545,9 @@ pub struct DesignTokens {
 
     /// Elapsed-time fill of the small timeline scrubber shown under preview thumbnails.
     pub preview_timeline_progress_color: Color32,
+
+    /// Translucent fill behind the play button and elapsed-time label on top of a preview.
+    pub preview_controls_fill: Color32,
 }
 
 impl DesignTokens {
@@ -769,16 +771,12 @@ impl DesignTokens {
             card_stroke: get_stroke("card_stroke"),
             card_hover_fill: get_color("card_hover_fill"),
             card_hover_stroke: get_stroke("card_hover_stroke"),
+            card_marked_fill: get_color("card_marked_fill"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
-            flag_untoggled_bg_card_hover: get_color("flag_untoggled_bg_card_hover"),
             flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
-            flag_toggled_bg: get_color("flag_toggled_bg"),
-            flag_toggled_bg_card_hover: get_color("flag_toggled_bg_card_hover"),
-            flag_toggled_bg_hover: get_color("flag_toggled_bg_hover"),
             flag_untoggled_icon: get_color("flag_untoggled_icon"),
             flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
-            flag_toggled_icon: get_color("flag_toggled_icon"),
 
             bg_fill_inverse: get_color("bg_fill_inverse"),
             bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
@@ -787,6 +785,7 @@ impl DesignTokens {
 
             preview_timeline_track_color: get_color("preview_timeline_track_color"),
             preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
+            preview_controls_fill: get_color("preview_controls_fill"),
         })
     }
 
