@@ -11,8 +11,9 @@ use std::time::Instant;
 use agent_client_protocol::schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, ImageContent, PermissionOption, PermissionOptionId,
     PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome, RequestPermissionRequest,
-    RequestPermissionResponse, SelectedPermissionOutcome, SessionModeId, SessionModeState,
-    SessionUpdate, StopReason, TextContent, ToolCallStatus, ToolKind,
+    RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigId, SessionConfigValueId,
+    SessionModeId, SessionModeState, SessionUpdate, StopReason, TextContent, ToolCallStatus,
+    ToolKind,
 };
 use agent_client_protocol::{LineDirection, Responder};
 
@@ -549,6 +550,13 @@ impl AgentSession {
         self.requested_mode = Some(mode_id.clone());
         if let Some(connection) = &self.connection {
             connection.send(AgentCommand::SetMode(mode_id));
+        }
+    }
+
+    /// Asks the agent to switch the session to another model, e.g. from [`Transcript::model_selector`].
+    pub fn set_config_option(&self, config_id: SessionConfigId, value: SessionConfigValueId) {
+        if let Some(connection) = &self.connection {
+            connection.send(AgentCommand::SetConfigOption { config_id, value });
         }
     }
 

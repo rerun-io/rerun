@@ -6,10 +6,11 @@ use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
 use re_agent_ui::acp::LineDirection;
 use re_agent_ui::acp::schema::v1::{
-    AuthMethod, AuthMethodTerminal, ContentBlock, ContentChunk, Diff, PermissionOption,
-    PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
-    RequestPermissionRequest, SessionId, SessionMode, SessionModeState, SessionUpdate, TextContent,
-    ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
+    AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
+    PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
+    RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigSelectOption, SessionId, SessionMode, SessionModeState, SessionUpdate,
+    TextContent, ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
     ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 use re_agent_ui::{
@@ -474,4 +475,35 @@ fn chat_queued_prompts() {
     assert!(session.send_prompt("And update the README:\n- mention the new entity path".into()));
 
     snapshot("chat_queued_prompts", panel);
+}
+
+/// The footer names the concrete model behind the agent's default, and opens a list of the others.
+#[test]
+fn chat_model_picker() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+    let models = vec![
+        SessionConfigSelectOption::new("default", "Default (recommended)")
+            .description("Opus 5.5".to_owned()),
+        SessionConfigSelectOption::new("opus", "Opus 5.5")
+            .description("For complex work and everyday tasks".to_owned()),
+        SessionConfigSelectOption::new("sonnet", "Sonnet 5.5")
+            .description("Most efficient for simpler tasks".to_owned()),
+        SessionConfigSelectOption::new("haiku", "Haiku 4.5")
+            .description("Fastest for quick answers".to_owned()),
+    ];
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select("model", "Model", "default", models)
+                .category(SessionConfigOptionCategory::Model),
+        ]),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.get_by_value("Opus 5.5").click();
+    harness.run_steps(4);
+    harness.snapshot("chat_model_picker");
 }

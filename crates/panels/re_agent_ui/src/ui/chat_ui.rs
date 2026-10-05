@@ -5,7 +5,10 @@ use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::acp::LineDirection;
-use re_agent::acp::schema::v1::{AuthMethod, PermissionOptionKind, SessionMode, SessionModeId};
+use re_agent::acp::schema::v1::{
+    AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
+    SessionMode, SessionModeId,
+};
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
@@ -196,6 +199,59 @@ fn mode_picker_ui(
     }
 }
 
+/// The model the agent is using, as a drop-down to switch to another one it offers.
+fn model_picker_ui(ui: &mut egui::Ui, session: &AgentSession) {
+    let transcript = session.transcript();
+    let (Some((config_id, select)), Some(current_name)) =
+        (transcript.model_selector(), transcript.current_model())
+    else {
+        return;
+    };
+
+    let model_item = |ui: &mut egui::Ui, model: &SessionConfigSelectOption| {
+        let response = ui
+            .list_item()
+            .selected(model.value == select.current_value)
+            .show_flat(ui, re_ui::list_item::LabelContent::new(&model.name));
+        let response = match &model.description {
+            Some(description) => response.on_hover_text(description),
+            None => response,
+        };
+        response.clicked()
+    };
+
+    let mut selected = None;
+    ui.drop_down_menu("agent_model", current_name.to_owned(), |ui| {
+        match &select.options {
+            SessionConfigSelectOptions::Ungrouped(models) => {
+                for model in models {
+                    if model_item(ui, model) {
+                        selected = Some(model.value.clone());
+                    }
+                }
+            }
+            SessionConfigSelectOptions::Grouped(groups) => {
+                for group in groups {
+                    ui.weak(&group.name);
+                    for model in &group.options {
+                        if model_item(ui, model) {
+                            selected = Some(model.value.clone());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    })
+    .on_hover_text("The model the agent is using");
+
+    if let Some(value) = selected
+        && value != select.current_value
+    {
+        session.set_config_option(config_id.clone(), value);
+    }
+}
+
 /// Modes that let the agent act without asking are shown in warning colors.
 ///
 /// ACP has no flag for this, so we go by the mode's id and name.
@@ -342,9 +398,7 @@ fn footer_ui(
     ui.horizontal(|ui| {
         mode_picker_ui(ui, session, preferred_mode);
 
-        if let Some(model) = session.transcript().current_model() {
-            ui.weak(model).on_hover_text("The model the agent is using");
-        }
+        model_picker_ui(ui, session);
 
         match session.phase() {
             Phase::Connecting { status } => {

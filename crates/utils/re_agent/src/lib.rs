@@ -35,5 +35,5 @@ pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingPermission, Phase, Prompt, PromptImage,
 };
 pub use settings::{AgentSettings, McpServerConfig, SessionContext};
-pub use transcript::{ToolCallState, Transcript, TranscriptEntry, TranscriptItem};
+pub use transcript::{ToolCallState, Transcript, TranscriptEntry, TranscriptItem, model_name};
 pub use turn::{TurnOutcome, TurnReport};

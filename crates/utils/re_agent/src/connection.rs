@@ -4,12 +4,12 @@ use std::sync::Arc;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, AuthenticateRequest, CancelNotification,
-    ContentBlock, CurrentModeUpdate, Implementation, InitializeRequest, McpServer, McpServerStdio,
-    NewSessionRequest, PromptRequest, RequestPermissionRequest, RequestPermissionResponse,
-    SessionConfigId, SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory,
-    SessionConfigSelectOption, SessionConfigSelectOptions, SessionConfigValueId, SessionId,
-    SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
-    SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
+    ConfigOptionUpdate, ContentBlock, CurrentModeUpdate, Implementation, InitializeRequest,
+    McpServer, McpServerStdio, NewSessionRequest, PromptRequest, RequestPermissionRequest,
+    RequestPermissionResponse, SessionConfigId, SessionConfigKind, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
+    SessionConfigValueId, SessionId, SessionModeId, SessionModeState, SessionNotification,
+    SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
 };
 use agent_client_protocol::{
     AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, LineDirection, Responder,
@@ -80,6 +80,10 @@ pub enum AgentCommand {
     Prompt(Vec<ContentBlock>),
     Cancel,
     SetMode(SessionModeId),
+    SetConfigOption {
+        config_id: SessionConfigId,
+        value: SessionConfigValueId,
+    },
     Authenticate(AuthMethodId),
     Shutdown,
 }
@@ -314,6 +318,30 @@ async fn drive(
                             )),
                             Err(err) => events.send(AgentEvent::Error(format!(
                                 "Failed to set mode: {}",
+                                describe_error(&err)
+                            ))),
+                        }
+                        Ok(())
+                    })?;
+            }
+
+            AgentCommand::SetConfigOption { config_id, value } => {
+                let Some(session_id) = &session_id else {
+                    continue;
+                };
+                let events = events.clone();
+                let request =
+                    SetSessionConfigOptionRequest::new(session_id.clone(), config_id, value);
+                cx.send_request(request)
+                    .on_receiving_result(move |result| async move {
+                        match result {
+                            Ok(response) => {
+                                events.send(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+                                    ConfigOptionUpdate::new(response.config_options),
+                                )));
+                            }
+                            Err(err) => events.send(AgentEvent::Error(format!(
+                                "Failed to change the session configuration: {}",
                                 describe_error(&err)
                             ))),
                         }

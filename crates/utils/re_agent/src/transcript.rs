@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use agent_client_protocol::schema::v1::{
-    AvailableCommand, ContentBlock, Plan, SessionConfigKind, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionModeId, SessionUpdate, TextContent, ToolCall, ToolCallContent, ToolCallId,
-    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
+    AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
+    SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
+    ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
+    ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
 use crate::{McpStartupFailure, Prompt, PromptImage};
@@ -203,15 +204,21 @@ impl Transcript {
         });
     }
 
-    /// The name of the model the agent says it is using, if it offers a model selector.
-    pub fn current_model(&self) -> Option<&str> {
+    /// The agent's model selector and its config id, if it offers one.
+    pub fn model_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
         let selector = self
             .config_options
             .iter()
             .find(|option| option.category == Some(SessionConfigOptionCategory::Model))?;
-        let SessionConfigKind::Select(select) = &selector.kind else {
-            return None;
-        };
+        match &selector.kind {
+            SessionConfigKind::Select(select) => Some((&selector.id, select)),
+            _ => None,
+        }
+    }
+
+    /// The name of the model the agent says it is using, if it offers a model selector.
+    pub fn current_model(&self) -> Option<&str> {
+        let (_, select) = self.model_selector()?;
         let mut models: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options
         {
             SessionConfigSelectOptions::Ungrouped(models) => Box::new(models.iter()),
@@ -226,10 +233,7 @@ impl Transcript {
         Some(
             models
                 .find(|model| model.value == select.current_value)
-                .map_or_else(
-                    || select.current_value.0.as_ref(),
-                    |model| model.name.as_str(),
-                ),
+                .map_or_else(|| select.current_value.0.as_ref(), model_name),
         )
     }
 
@@ -593,6 +597,24 @@ fn truncate_bytes(text: &str, max_bytes: usize) -> String {
     format!("{kept}…\n[truncated: {} bytes in all]", text.len())
 }
 
+/// The most specific name for a model option, e.g. "Opus 5.5" rather than "Default (recommended)".
+///
+/// Agents may give an alias a versionless name and put the concrete model in the description,
+/// either alone or as the first ` · `-separated part.
+pub fn model_name(model: &SessionConfigSelectOption) -> &str {
+    let has_version = |text: &str| text.chars().any(|c| c.is_ascii_digit());
+    if has_version(&model.name) {
+        return &model.name;
+    }
+    let concrete = model
+        .description
+        .as_deref()
+        .and_then(|description| description.split(" · ").next())
+        .map(str::trim)
+        .filter(|head| has_version(head) && head.split_whitespace().count() <= 3);
+    concrete.unwrap_or(&model.name)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -654,6 +676,19 @@ mod tests {
             transcript(vec![model_selector("haiku")]).current_model(),
             Some("haiku")
         );
+    }
+
+    #[test]
+    fn a_versionless_name_falls_back_to_a_versioned_description() {
+        let name = |name: &str, description: &str| {
+            let model =
+                SessionConfigSelectOption::new("id", name).description(description.to_owned());
+            model_name(&model).to_owned()
+        };
+        assert_eq!(name("Model 2", "Model 3"), "Model 2");
+        assert_eq!(name("Default", "Model 2"), "Model 2");
+        assert_eq!(name("Default", "Model 2 · Fast"), "Model 2");
+        assert_eq!(name("Default", "Fast"), "Default");
     }
 
     #[test]
