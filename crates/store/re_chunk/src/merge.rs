@@ -1,13 +1,14 @@
 use std::ops::Range;
 
 use arrow::array::{
-    Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
-    Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
+    Array as ArrowArray, ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef,
+    FixedSizeBinaryArray, Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
 };
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_span::Span;
 use re_types_core::SerializedComponentColumn;
 
 use crate::chunk::ChunkComponents;
@@ -275,9 +276,12 @@ impl Chunk {
 
     /// Gathers rows from several chunks into a new chunk, in `indices` order.
     ///
-    /// Each index is `(chunk, row)`. Every row is copied at most once, whereas folding
-    /// [`Self::concat_and_sort`] over the inputs copies each row once per merge. A component
-    /// missing from a chunk is null on that chunk's rows.
+    /// Each index is `(chunk, row)`. A component missing from a chunk is null on that chunk's rows.
+    ///
+    /// The result is deep, like [`Self::row_sliced_deep`]: its buffers are freshly allocated and
+    /// hold exactly its rows, so it keeps no input alive and its byte size measures its own rows.
+    /// Every row is copied exactly once, whereas folding [`Self::concat_and_sort`] over the inputs
+    /// copies each row once per merge.
     ///
     /// The result is not sorted: it is [`crate::RowId`]-sorted iff `indices` are, which the store
     /// requires.
@@ -516,25 +520,43 @@ fn runs_of(indices: &[(usize, usize)]) -> Vec<Run> {
     runs
 }
 
-/// Slices every run out of `arrays`, one array per source, and concatenates the slices: the only
-/// copy, with buffers sized up front. A single run is not copied at all.
+/// Copies every run out of `arrays`, one array per source, into one deep array: freshly allocated
+/// buffers holding exactly the runs' rows.
+///
+/// `concat` returns a single input as-is, a shallow slice that keeps its whole source alive, so
+/// zero or one run is deep-sliced instead.
 ///
 /// `arrays` must not be empty.
-fn concat_runs<A: ArrowArray + Clone + 'static>(arrays: &[&A], runs: &[Run]) -> ChunkResult<A> {
-    let slices: Vec<ArrowArrayRef> = if runs.is_empty() {
-        vec![arrays[0].slice(0, 0)]
-    } else {
-        runs.iter()
-            .map(|run| arrays[run.source].slice(run.rows.start, run.rows.len()))
-            .collect()
+fn concat_runs<A: ArrowArray + From<ArrowArrayData> + Clone + 'static>(
+    arrays: &[&A],
+    runs: &[Run],
+) -> ChunkResult<A> {
+    let deep_sliced = |source: usize, rows: &Range<usize>| {
+        re_arrow_util::deep_slice_array(
+            arrays[source],
+            Span {
+                start: rows.start,
+                len: rows.len(),
+            },
+        )
     };
-    let slices: Vec<&dyn ArrowArray> = slices.iter().map(|slice| slice.as_ref()).collect();
-    re_arrow_util::concat_arrays(&slices)?
-        .downcast_array_ref::<A>()
-        .cloned()
-        .ok_or_else(|| ChunkError::Malformed {
-            reason: "concatenation changed the array type".to_owned(),
-        })
+    match runs {
+        [] => Ok(deep_sliced(0, &(0..0))),
+        [run] => Ok(deep_sliced(run.source, &run.rows)),
+        _ => {
+            let slices: Vec<ArrowArrayRef> = runs
+                .iter()
+                .map(|run| arrays[run.source].slice(run.rows.start, run.rows.len()))
+                .collect();
+            let slices: Vec<&dyn ArrowArray> = slices.iter().map(|slice| slice.as_ref()).collect();
+            re_arrow_util::concat_arrays(&slices)?
+                .downcast_array_ref::<A>()
+                .cloned()
+                .ok_or_else(|| ChunkError::Malformed {
+                    reason: "concatenation changed the array type".to_owned(),
+                })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -592,14 +614,9 @@ mod tests {
             vec![false, true, true]
         );
 
-        // A single source: the identity gather, which reuses the source buffers, and one that
-        // reorders rows.
+        // A single source: the identity gather, and one that reorders rows.
         let got = Chunk::interleaved(&[&left], &[(0, 0), (0, 1)])?;
         assert_eq!(got.row_ids().collect_vec(), vec![r1, r3]);
-        assert_eq!(
-            got.row_ids.value_data().as_ptr(),
-            left.row_ids.value_data().as_ptr()
-        );
         let got = Chunk::interleaved(&[&left], &[(0, 1), (0, 0)])?;
         got.sanity_check()?;
         assert_eq!(got.row_ids().collect_vec(), vec![r3, r1]);
@@ -643,6 +660,123 @@ mod tests {
             Err(ChunkError::Malformed { .. })
         );
 
+        Ok(())
+    }
+
+    /// Every path of `interleaved` is deep: the result measures as its own rows and shares no
+    /// buffer with its source, even when that source is itself a shallow slice.
+    #[test]
+    fn interleaved_is_deep() -> anyhow::Result<()> {
+        use re_byte_size::SizeBytes as _;
+
+        /// Address ranges of every buffer of `data` and its children.
+        fn buffer_ranges(data: &ArrowArrayData) -> Vec<Range<usize>> {
+            let own = data.buffers().iter().map(|buffer| {
+                let start = buffer.as_ptr() as usize;
+                start..start + buffer.len()
+            });
+            std::iter::chain(own, data.child_data().iter().flat_map(buffer_ranges)).collect()
+        }
+
+        fn chunk_buffer_ranges(chunk: &Chunk) -> Vec<Range<usize>> {
+            let mut ranges = buffer_ranges(&chunk.row_ids.to_data());
+            for time_column in chunk.timelines.values() {
+                let start = time_column.times.inner().as_ptr() as usize;
+                ranges.push(start..start + time_column.times.inner().len());
+            }
+            for column in chunk.components.values() {
+                ranges.extend(buffer_ranges(&column.list_array.to_data()));
+            }
+            ranges.retain(|range| !range.is_empty());
+            ranges
+        }
+
+        let frame = Timeline::new_sequence("frame");
+        let labels = [MyLabel(
+            "a label long enough to dominate the chunk size".to_owned(),
+        )];
+        let mut builder = Chunk::builder("/interleaved");
+        for time in 0..8 {
+            builder = builder.with_component_batch(
+                RowId::new(),
+                [(frame, time)],
+                (MyPoints::descriptor_labels(), &labels),
+            );
+        }
+        let source = builder.build()?;
+        let three_rows = Span { start: 2, len: 3 };
+        let shallow = source.row_sliced_shallow(three_rows);
+        assert!(
+            shallow.total_size_bytes() > source.row_sliced_deep(three_rows).total_size_bytes(),
+            "a shallow slice measures larger, so the size checks can tell the two apart"
+        );
+
+        struct Case<'a> {
+            name: &'static str,
+            input: &'a Chunk,
+            indices: Vec<(usize, usize)>,
+
+            /// A span of `source` whose deep slice measures the same as the result. Every row of
+            /// `source` has the same size, so any span of the right length does.
+            rows: Span<usize>,
+        }
+        let cases = [
+            Case {
+                name: "no rows",
+                input: &source,
+                indices: vec![],
+                rows: Span { start: 0, len: 0 },
+            },
+            Case {
+                name: "part of one source",
+                input: &source,
+                indices: vec![(0, 2), (0, 3), (0, 4)],
+                rows: three_rows,
+            },
+            Case {
+                name: "all of a shallow source",
+                input: &shallow,
+                indices: vec![(0, 0), (0, 1), (0, 2)],
+                rows: three_rows,
+            },
+            Case {
+                name: "all of one source",
+                input: &source,
+                indices: (0..8).map(|row| (0, row)).collect(),
+                rows: Span { start: 0, len: 8 },
+            },
+            Case {
+                name: "several runs",
+                input: &source,
+                indices: vec![(0, 2), (0, 4), (0, 6)],
+                rows: three_rows,
+            },
+        ];
+        let source_ranges = chunk_buffer_ranges(&source);
+        for Case {
+            name,
+            input,
+            indices,
+            rows,
+        } in cases
+        {
+            let got = Chunk::interleaved(&[input], &indices)?;
+
+            got.sanity_check()?;
+            assert_eq!(
+                got.total_size_bytes(),
+                source.row_sliced_deep(rows).total_size_bytes(),
+                "{name}: the result must measure as its own rows"
+            );
+            for range in chunk_buffer_ranges(&got) {
+                assert!(
+                    source_ranges
+                        .iter()
+                        .all(|source| range.end <= source.start || source.end <= range.start),
+                    "{name}: the result must not share a buffer with its source"
+                );
+            }
+        }
         Ok(())
     }
 
