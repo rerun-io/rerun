@@ -131,31 +131,7 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     for (entity_path, entity) in &view.entities {
         let own = own_columns_of(entity_path);
         for group in &entity.timeline_sets {
-            let order = sweep_order(view, group, settings.target_timeline.as_ref());
-            for &idx in &order {
-                claimed[idx.as_usize()] = true;
-            }
-
-            let mut own_runs: BTreeMap<ComponentIdentifier, Vec<ChunkSlice>> = BTreeMap::new();
-            let mut rest = Vec::new();
-            for &idx in &order {
-                let meta = view.chunk(idx);
-                let present = present_own_columns(meta, own);
-                for &column in &present {
-                    own_runs
-                        .entry(column)
-                        .or_default()
-                        .push(ChunkSlice::only(idx, [column]));
-                }
-                rest.extend(rest_slice(idx, meta, present));
-            }
-
-            for (column, inputs) in own_runs {
-                emit(&mut units, inputs, own[&column]);
-            }
-            if !rest.is_empty() {
-                emit(&mut units, rest, settings.merge_split);
-            }
+            plan_group(view, group, own, settings, &mut units, &mut claimed);
         }
     }
 
@@ -183,6 +159,42 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     );
 
     units
+}
+
+/// Plan one group: own runs, then the rest run, in sweep order.
+fn plan_group(
+    view: &ChunkIndexView,
+    group: &TimelineSetGroup,
+    own: &OwnColumns,
+    settings: &OptimizationSettings,
+    units: &mut Vec<PlanUnit>,
+    claimed: &mut [bool],
+) {
+    let order = sweep_order(view, group, settings.target_timeline.as_ref());
+    for &idx in &order {
+        claimed[idx.as_usize()] = true;
+    }
+
+    let mut own_runs: BTreeMap<ComponentIdentifier, Vec<ChunkSlice>> = BTreeMap::new();
+    let mut rest = Vec::new();
+    for &idx in &order {
+        let meta = view.chunk(idx);
+        let present = present_own_columns(meta, own);
+        for &column in &present {
+            own_runs
+                .entry(column)
+                .or_default()
+                .push(ChunkSlice::only(idx, [column]));
+        }
+        rest.extend(rest_slice(idx, meta, present));
+    }
+
+    for (column, inputs) in own_runs {
+        emit(units, inputs, own[&column]);
+    }
+    if !rest.is_empty() {
+        emit(units, rest, settings.merge_split);
+    }
 }
 
 fn emit(units: &mut Vec<PlanUnit>, inputs: Vec<ChunkSlice>, target: Option<MergeSplitSettings>) {

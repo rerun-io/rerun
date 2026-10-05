@@ -2,6 +2,7 @@
 
 pub mod merge_split;
 
+mod accumulator;
 mod cut;
 mod size_estimate;
 
@@ -35,8 +36,13 @@ pub struct Executor {
     /// The remaining plan units to execute, consumed one at a time.
     units: std::vec::IntoIter<PlanUnit>,
 
-    /// State of the in-flight merge/split run, if any.
-    run: Option<MergeSplitRunState>,
+    /// State of the in-flight run, if any.
+    run: Option<RunState>,
+}
+
+/// The run in flight: one unit that emits its outputs over several steps.
+enum RunState {
+    MergeSplit(MergeSplitRunState),
 }
 
 impl Executor {
@@ -62,9 +68,12 @@ impl Executor {
             }
 
             if let Some(run) = &mut self.run {
-                let flow = run
-                    .step(self.provider.as_ref(), &self.view, &mut self.ready)
-                    .await?;
+                let flow = match run {
+                    RunState::MergeSplit(run) => {
+                        run.step(self.provider.as_ref(), &self.view, &mut self.ready)
+                            .await?
+                    }
+                };
                 if flow.is_break() {
                     self.run = None;
                 }
@@ -83,7 +92,9 @@ impl Executor {
                 }
 
                 PlanUnit::MergeSplitRun { inputs, target } => {
-                    self.run = Some(MergeSplitRunState::new(inputs, target));
+                    self.run = Some(RunState::MergeSplit(MergeSplitRunState::new(
+                        inputs, target,
+                    )));
                 }
             }
         }
@@ -127,6 +138,24 @@ pub async fn load_in_order(
         chunks.push(select_columns(Arc::clone(chunk), &slice.columns)?);
     }
     Ok(chunks)
+}
+
+/// Minimum on-disk bytes (`rrd_byte_size`) requested per `load_chunks` call within a run, to
+/// give the provider a chance to coalesce reads. (Note: this is an IO floor, not a memory
+/// budget.)
+const MIN_LOAD_CHUNK_BATCH: u64 = 8 * 1024 * 1024;
+
+/// The end of the next IO batch of `slices` starting at `from`: the shortest prefix of the
+/// remaining slices whose on-disk size reaches [`MIN_LOAD_CHUNK_BATCH`]. Always at least one slice,
+/// so progress is guaranteed.
+fn io_batch_end(view: &ChunkIndexView, slices: &[ChunkSlice], from: usize) -> usize {
+    let mut end = from;
+    let mut batch_bytes = 0_u64;
+    while end < slices.len() && batch_bytes < MIN_LOAD_CHUNK_BATCH {
+        batch_bytes = batch_bytes.saturating_add(view.chunk(slices[end].chunk).rrd_byte_size);
+        end += 1;
+    }
+    end
 }
 
 /// The input chunk a column selection keeps of a decoded chunk.
