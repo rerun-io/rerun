@@ -870,12 +870,12 @@ impl Chunk {
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
                         if column.list_array.is_valid(i) {
-                            row_id_min = Some(row_id);
+                            row_id_max = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
                         if column.list_array.is_valid(i) {
-                            row_id_max = Some(row_id);
+                            row_id_min = Some(row_id);
                         }
                     }
 
@@ -890,12 +890,12 @@ impl Chunk {
                     let mut row_id_max = Some(RowId::ZERO);
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
-                        if column.list_array.is_valid(i) && Some(row_id) > row_id_min {
+                        if column.list_array.is_valid(i) && Some(row_id) < row_id_min {
                             row_id_min = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                        if column.list_array.is_valid(i) && Some(row_id) < row_id_max {
+                        if column.list_array.is_valid(i) && Some(row_id) > row_id_max {
                             row_id_max = Some(row_id);
                         }
                     }
