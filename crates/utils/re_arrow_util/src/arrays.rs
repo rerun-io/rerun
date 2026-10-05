@@ -472,7 +472,7 @@ where
     if indices.len() == array.len() {
         let indices = indices.values();
 
-        let starts_at_zero = || indices[0] == O::Native::ZERO;
+        let starts_at_zero = || indices.first().is_none_or(|&i| i == O::Native::ZERO);
         let is_consecutive = || {
             indices
                 .array_windows()
@@ -713,6 +713,13 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+
+    #[test]
+    fn take_array_empty() {
+        let array = Int32Array::from(Vec::<i32>::new());
+        let indices = Int32Array::from(Vec::<i32>::new());
+        assert_eq!(take_array(&array, &indices).len(), 0);
+    }
 
     /// The error message must name the array type the way we write it in code, not the full
     /// generic `arrow_array::…` path that `std::any::type_name` hands us.

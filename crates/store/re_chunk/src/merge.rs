@@ -1,4 +1,9 @@
-use arrow::array::{Array as _, FixedSizeBinaryArray, ListArray as ArrowListArray};
+use std::ops::Range;
+
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
+    Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
+};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
@@ -268,6 +273,117 @@ impl Chunk {
         Ok(chunk)
     }
 
+    /// Gathers rows from several chunks into a new chunk, in `indices` order.
+    ///
+    /// Each index is `(chunk, row)`. Every row is copied at most once, whereas folding
+    /// [`Self::concat_and_sort`] over the inputs copies each row once per merge. A component
+    /// missing from a chunk is null on that chunk's rows.
+    ///
+    /// The result is not sorted: it is [`crate::RowId`]-sorted iff `indices` are, which the store
+    /// requires.
+    ///
+    /// The chunks must share their entity path and timelines, and agree on the datatype of every
+    /// component they have in common.
+    pub fn interleaved(chunks: &[&Self], indices: &[(usize, usize)]) -> ChunkResult<Self> {
+        re_tracing::profile_function!(format!("{} rows", re_format::format_uint(indices.len())));
+
+        let Some(first) = chunks.first() else {
+            return Err(ChunkError::Malformed {
+                reason: "cannot interleave zero chunks".to_owned(),
+            });
+        };
+        if let Some(other) = chunks
+            .iter()
+            .find(|chunk| !first.same_entity_paths(chunk) || !first.same_timelines(chunk))
+        {
+            return Err(ChunkError::Malformed {
+                reason: format!(
+                    "cannot interleave chunks with different entity paths or timelines:\n{first}\n{other}"
+                ),
+            });
+        }
+
+        if let Some(&(source, row)) = indices.iter().find(|&&(source, row)| {
+            chunks
+                .get(source)
+                .is_none_or(|chunk| chunk.num_rows() <= row)
+        }) {
+            return Err(ChunkError::Malformed {
+                reason: format!("cannot interleave out-of-range index (chunk {source}, row {row})"),
+            });
+        }
+
+        let runs = runs_of(indices);
+
+        let row_ids = concat_runs(
+            &chunks.iter().map(|chunk| &chunk.row_ids).collect_vec(),
+            &runs,
+        )?;
+
+        let timelines = first
+            .timelines
+            .iter()
+            .map(|(name, time_column)| {
+                let times: Vec<ArrowInt64Array> = chunks
+                    .iter()
+                    .map(|chunk| ArrowInt64Array::new(chunk.timelines[name].times.clone(), None))
+                    .collect();
+                let times = concat_runs(&times.iter().collect_vec(), &runs)?;
+                Ok((
+                    *name,
+                    TimeColumn::new(None, *time_column.timeline(), times.values().clone()),
+                ))
+            })
+            .collect::<ChunkResult<IntMap<_, _>>>()?;
+
+        let mut descriptors: IntMap<_, _> = IntMap::default();
+        for chunk in chunks {
+            for column in chunk.components.values() {
+                let datatype = column.list_array.data_type();
+                let (descriptor, expected) = descriptors
+                    .entry(column.descriptor.component)
+                    .or_insert_with(|| (column.descriptor.clone(), datatype));
+                if *expected != datatype {
+                    return Err(ChunkError::Malformed {
+                        reason: format!(
+                            "cannot interleave chunks with different datatypes for {descriptor}: {expected} != {datatype}"
+                        ),
+                    });
+                }
+            }
+        }
+        let components = descriptors
+            .into_values()
+            .map(|(descriptor, datatype)| {
+                let arrays: Vec<ArrowListArray> = chunks
+                    .iter()
+                    .map(
+                        |chunk| match chunk.components.get_array(descriptor.component) {
+                            Some(list_array) => Ok(list_array.clone()),
+                            None => arrow::array::new_null_array(datatype, chunk.num_rows())
+                                .downcast_array_ref::<ArrowListArray>()
+                                .cloned()
+                                .ok_or_else(|| ChunkError::Malformed {
+                                    reason: format!("{descriptor} is not a ListArray"),
+                                }),
+                        },
+                    )
+                    .collect::<ChunkResult<_>>()?;
+                let list_array = concat_runs(&arrays.iter().collect_vec(), &runs)?;
+                Ok(SerializedComponentColumn::new(list_array, descriptor))
+            })
+            .collect::<ChunkResult<ChunkComponents>>()?;
+
+        Self::new(
+            ChunkId::new(),
+            first.entity_path.clone(),
+            None,
+            row_ids,
+            timelines,
+            components,
+        )
+    }
+
     /// Returns `true` if `self` and `rhs` overlap on their `RowId` range.
     #[inline]
     pub fn overlaps_on_row_id(&self, rhs: &Self) -> bool {
@@ -379,6 +495,48 @@ impl TimeColumn {
     }
 }
 
+/// Consecutive rows of one source that are also consecutive in the output, gathered as one slice.
+struct Run {
+    source: usize,
+    rows: Range<usize>,
+}
+
+/// Cuts `(source, row)` indices into runs, each as long as possible.
+fn runs_of(indices: &[(usize, usize)]) -> Vec<Run> {
+    let mut runs: Vec<Run> = Vec::new();
+    for &(source, row) in indices {
+        match runs.last_mut() {
+            Some(run) if run.source == source && run.rows.end == row => run.rows.end += 1,
+            _ => runs.push(Run {
+                source,
+                rows: row..row + 1,
+            }),
+        }
+    }
+    runs
+}
+
+/// Slices every run out of `arrays`, one array per source, and concatenates the slices: the only
+/// copy, with buffers sized up front. A single run is not copied at all.
+///
+/// `arrays` must not be empty.
+fn concat_runs<A: ArrowArray + Clone + 'static>(arrays: &[&A], runs: &[Run]) -> ChunkResult<A> {
+    let slices: Vec<ArrowArrayRef> = if runs.is_empty() {
+        vec![arrays[0].slice(0, 0)]
+    } else {
+        runs.iter()
+            .map(|run| arrays[run.source].slice(run.rows.start, run.rows.len()))
+            .collect()
+    };
+    let slices: Vec<&dyn ArrowArray> = slices.iter().map(|slice| slice.as_ref()).collect();
+    re_arrow_util::concat_arrays(&slices)?
+        .downcast_array_ref::<A>()
+        .cloned()
+        .ok_or_else(|| ChunkError::Malformed {
+            reason: "concatenation changed the array type".to_owned(),
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64, MyPoints};
@@ -386,6 +544,107 @@ mod tests {
 
     use super::*;
     use crate::{Chunk, RowId, Timeline};
+
+    /// Rows come out in `indices` order; a component missing from a source is null on its rows;
+    /// chunks with different timelines or component datatypes are refused.
+    #[test]
+    fn interleaved() -> anyhow::Result<()> {
+        let entity_path = "/interleaved";
+        let frame = Timeline::new_sequence("frame");
+        let [r1, r2, r3, r4] = std::array::from_fn(|_| RowId::new());
+        let points = &[MyPoint::new(1.0, 2.0)];
+        let colors = &[MyColor::from_rgb(1, 2, 3)];
+
+        let left = Chunk::builder(entity_path)
+            .with_component_batch(r1, [(frame, 1)], (MyPoints::descriptor_points(), points))
+            .with_component_batches(
+                r3,
+                [(frame, 3)],
+                [
+                    (MyPoints::descriptor_points(), points as _),
+                    (MyPoints::descriptor_colors(), colors as _),
+                ],
+            )
+            .build()?;
+        let right = Chunk::builder(entity_path)
+            .with_component_batch(r2, [(frame, 2)], (MyPoints::descriptor_colors(), colors))
+            .with_component_batch(r4, [(frame, 4)], (MyPoints::descriptor_colors(), colors))
+            .build()?;
+
+        let got = Chunk::interleaved(&[&left, &right], &[(0, 0), (1, 0), (0, 1)])?;
+        got.sanity_check()?;
+        assert_eq!(got.row_ids().collect_vec(), vec![r1, r2, r3]);
+        assert_eq!(got.timelines()[frame.name()].times_raw(), &[1, 2, 3]);
+        assert!(got.is_row_ids_sorted());
+        assert!(got.all_timelines_sorted());
+        let validity = |descriptor: re_types_core::ComponentDescriptor| {
+            let list_array = got.components().get_array(descriptor.component).unwrap();
+            (0..got.num_rows())
+                .map(|row| list_array.is_valid(row))
+                .collect_vec()
+        };
+        assert_eq!(
+            validity(MyPoints::descriptor_points()),
+            vec![true, false, true]
+        );
+        assert_eq!(
+            validity(MyPoints::descriptor_colors()),
+            vec![false, true, true]
+        );
+
+        // A single source: the identity gather, which reuses the source buffers, and one that
+        // reorders rows.
+        let got = Chunk::interleaved(&[&left], &[(0, 0), (0, 1)])?;
+        assert_eq!(got.row_ids().collect_vec(), vec![r1, r3]);
+        assert_eq!(
+            got.row_ids.value_data().as_ptr(),
+            left.row_ids.value_data().as_ptr()
+        );
+        let got = Chunk::interleaved(&[&left], &[(0, 1), (0, 0)])?;
+        got.sanity_check()?;
+        assert_eq!(got.row_ids().collect_vec(), vec![r3, r1]);
+        assert!(!got.is_row_ids_sorted());
+        assert!(!got.all_timelines_sorted());
+
+        let other_timeline = Chunk::builder(entity_path)
+            .with_component_batch(
+                RowId::new(),
+                [(Timeline::new_sequence("other"), 0)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .build()?;
+        assert_matches!(
+            Chunk::interleaved(&[&left, &other_timeline], &[(0, 0), (1, 0)]),
+            Err(ChunkError::Malformed { .. })
+        );
+
+        // No indices yield an empty chunk; out-of-range indices are refused.
+        for chunks in [&[&left][..], &[&left, &right]] {
+            let got = Chunk::interleaved(chunks, &[])?;
+            got.sanity_check()?;
+            assert_eq!(got.num_rows(), 0);
+            for indices in [[(2, 0)], [(0, 2)]] {
+                assert_matches!(
+                    Chunk::interleaved(chunks, &indices),
+                    Err(ChunkError::Malformed { .. })
+                );
+            }
+        }
+
+        let points64 = Chunk::builder(entity_path)
+            .with_component_batch(
+                RowId::new(),
+                [(frame, 5)],
+                (MyPoints::descriptor_points(), &[MyPoint64::new(1.0, 2.0)]), // "wrong" dtype
+            )
+            .build()?;
+        assert_matches!(
+            Chunk::interleaved(&[&left, &points64], &[(0, 0), (1, 0)]),
+            Err(ChunkError::Malformed { .. })
+        );
+
+        Ok(())
+    }
 
     #[test]
     fn concat_and_sort_sorts_and_doesnt_warn_about_intermediate_steps() -> anyhow::Result<()> {
