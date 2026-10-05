@@ -121,6 +121,7 @@ mod tests {
     fn output_for(encodings: &[&str]) -> Chunk {
         let outputs = image_chunk(encodings)
             .apply_lenses(&[image().unwrap()], &default_runtime())
+            .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(outputs.len(), 1);
         outputs.into_iter().next().unwrap()
@@ -186,6 +187,7 @@ mod tests {
         assert!(
             image_chunk(&["rgb8", "16UC1"])
                 .apply_lenses(&[image().unwrap()], &default_runtime())
+                .collect::<Result<Vec<_>, _>>()
                 .is_err()
         );
     }

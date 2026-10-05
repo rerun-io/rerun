@@ -65,7 +65,10 @@ fn auto_casts_to_canonical_scalar_float64() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     // Scalar's canonical Arrow type is Float64, so the Int64 input is cast (values preserved).
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
@@ -92,7 +95,10 @@ fn to_component_defaults_to_no_cast() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     // Without a cast the Int64 input is emitted as-is, even though Scalar is Float64.
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
@@ -121,7 +127,10 @@ fn explicit_type_cast_to_float32() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
     ┌─────────────────────┐
@@ -150,7 +159,10 @@ fn auto_casts_fixed_size_list_f64_to_f32() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
     ┌─────────────────────────────────────────────────┐
@@ -178,7 +190,10 @@ fn cast_preserves_nulls() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
     ┌─────────────────────┐
@@ -206,7 +221,10 @@ fn scatter_path_casts_each_exploded_row() {
         .build()
         .unwrap();
 
-    let chunks = chunk.apply_lenses(&[lens], &runtime()).unwrap();
+    let chunks = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     insta::assert_snapshot!(DisplayRB(output_column(&chunks, descr.component)), @r"
     ┌─────────────────────┐
@@ -240,7 +258,10 @@ fn uncastable_type_errors() {
         .build()
         .unwrap();
 
-    let err = chunk.apply_lenses(&[lens], &runtime()).unwrap_err();
+    let err = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_err();
     assert!(
         err.errors()
             .any(|e| matches!(e, LensRuntimeError::ComponentCastFailed { .. })),
@@ -264,7 +285,10 @@ fn auto_cast_to_unregistered_component_errors() {
         .build()
         .unwrap();
 
-    let err = chunk.apply_lenses(&[lens], &runtime()).unwrap_err();
+    let err = chunk
+        .apply_lenses(&[lens], &runtime())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_err();
     assert!(
         err.errors()
             .any(|e| matches!(e, LensRuntimeError::UnknownComponentType { .. })),

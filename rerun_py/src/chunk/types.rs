@@ -197,27 +197,21 @@ impl PyChunkInternal {
 
         let lenses: Vec<_> = lenses
             .iter()
-            .map(|l| l.build(py))
+            .map(|lens| lens.build(py))
             .collect::<PyResult<Vec<_>>>()?;
-        match self
-            .chunk
+
+        Arc::clone(&self.chunk)
             .apply_lenses(&lenses, &re_lenses::default_runtime())
-        {
-            Ok(chunks) => Ok(chunks
-                .into_iter()
-                .map(|chunk| Self {
-                    chunk: Arc::new(chunk),
-                })
-                .collect()),
-            Err(partial) => {
+            .map(|result| result.map(|chunk| Self::new(Arc::new(chunk))))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|partial| {
                 let reason = partial
                     .errors()
                     .map(|e| e.to_string())
                     .collect::<Vec<_>>()
                     .join("; ");
-                Err(PyValueError::new_err(reason))
-            }
-        }
+                PyValueError::new_err(reason)
+            })
     }
 
     /// Apply a selector to a single component, returning a new chunk with the component transformed.

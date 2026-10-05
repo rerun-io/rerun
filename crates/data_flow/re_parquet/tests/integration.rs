@@ -891,8 +891,9 @@ fn transform3d_from_struct_via_lens() {
         .build()
         .unwrap();
 
-    let transformed = a_chunk
+    let transformed: Vec<_> = Chunk::clone(a_chunk)
         .apply_lenses(&[lens], &re_lenses::default_runtime())
+        .try_collect()
         .unwrap();
     let pose = transformed
         .iter()

@@ -120,6 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &[extract_x, extract_y, simplify_accel, scale_x],
             &rerun::lenses::default_runtime(),
         )
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|partial| {
             let errors: Vec<_> =
                 partial.errors().map(|e| e.to_string()).collect();
