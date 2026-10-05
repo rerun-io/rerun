@@ -7,7 +7,7 @@ use agent_client_protocol::schema::v1::{
     ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
-use crate::{Prompt, PromptImage};
+use crate::{McpStartupFailure, Prompt, PromptImage};
 
 /// The accumulated state of one tool call, patched by later updates.
 #[derive(Clone, Debug)]
@@ -133,6 +133,8 @@ pub enum TranscriptItem {
 
     ToolCall(ToolCallState),
 
+    McpStartupFailure(McpStartupFailure),
+
     /// Something the UI wants to say inline: an error, a cancelled turn, …
     Note {
         text: String,
@@ -188,6 +190,10 @@ impl Transcript {
 
     pub fn push_user(&mut self, prompt: Prompt) {
         self.push(TranscriptItem::User(prompt));
+    }
+
+    pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
+        self.push(TranscriptItem::McpStartupFailure(failure));
     }
 
     pub fn push_note(&mut self, text: impl Into<String>, is_error: bool) {
@@ -392,6 +398,16 @@ impl Transcript {
                 TranscriptItem::ToolCall(call) => {
                     writeln!(out, "[{:?} {:?}] {}", call.kind, call.status, call.title).ok();
                 }
+                TranscriptItem::McpStartupFailure(failure) => {
+                    writeln!(out, "MCP startup failure: {}", failure.server_name).ok();
+                    if let Some(command) = failure.requested_command_line() {
+                        writeln!(out, "Requested: {command}").ok();
+                    }
+                    writeln!(out, "Error: {}", failure.error).ok();
+                    if let Some(hint) = &failure.hint {
+                        writeln!(out, "Hint: {hint}").ok();
+                    }
+                }
                 TranscriptItem::Note { text, is_error } => {
                     let prefix = if *is_error { "Error" } else { "Note" };
                     writeln!(out, "{prefix}: {text}").ok();
@@ -473,6 +489,22 @@ impl Transcript {
                             json_excerpt(raw_output)
                         )
                         .ok();
+                    }
+                }
+
+                TranscriptItem::McpStartupFailure(failure) => {
+                    writeln!(
+                        out,
+                        "## MCP startup failure{elapsed}: `{}`\n",
+                        failure.server_name
+                    )
+                    .ok();
+                    if let Some(command) = failure.requested_command_line() {
+                        writeln!(out, "Requested by the host: `{command}`\n").ok();
+                    }
+                    writeln!(out, "{}\n", failure.error).ok();
+                    if let Some(hint) = &failure.hint {
+                        writeln!(out, "{hint}\n").ok();
                     }
                 }
 

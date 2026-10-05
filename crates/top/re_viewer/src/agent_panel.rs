@@ -347,11 +347,29 @@ impl ViewerAgentPanel {
 /// custom viewer or one of our examples, and only the `rerun` binary has a `viewer-mcp` subcommand.
 /// It is case-insensitive because the macOS bundle names the executable `Rerun`.
 fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
-    let current_exe = std::env::current_exe().ok().filter(|exe| {
-        exe.file_stem()
-            .is_some_and(|stem| stem.to_string_lossy().to_lowercase().starts_with("rerun"))
-    });
-    let rerun = current_exe.or_else(|| re_agent_ui::find_executable("rerun"))?;
+    let current_exe = std::env::current_exe();
+    let rerun = match &current_exe {
+        Ok(exe)
+            if exe
+                .file_stem()
+                .is_some_and(|stem| stem.to_string_lossy().to_lowercase().starts_with("rerun")) =>
+        {
+            exe.clone()
+        }
+        _ => {
+            let rerun = re_agent_ui::find_executable("rerun")?;
+            let current_exe = match &current_exe {
+                Ok(exe) => exe.display().to_string(),
+                Err(err) => format!("unknown ({err})"),
+            };
+            re_log::warn_once!(
+                "The agent's MCP server runs a `rerun` from PATH instead of this executable, so it may be a different version. \
+                 Current executable: {current_exe}\nMCP server executable: {}",
+                rerun.display()
+            );
+            rerun
+        }
+    };
 
     let mut args = vec!["viewer-mcp".to_owned()];
     if let Some(endpoint) = viewer_endpoint {

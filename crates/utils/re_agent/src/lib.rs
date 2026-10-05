@@ -19,6 +19,7 @@
 //! Neither removes anything the agent would otherwise have.
 
 mod connection;
+mod error;
 mod profiles;
 mod session;
 mod settings;
@@ -28,6 +29,7 @@ mod turn;
 pub use agent_client_protocol as acp;
 
 pub use connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+pub use error::McpStartupFailure;
 pub use profiles::{AgentEntry, AgentProfile, find_executable};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingPermission, Phase, Prompt, PromptImage,

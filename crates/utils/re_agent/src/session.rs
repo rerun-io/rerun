@@ -3,7 +3,7 @@
 //!
 //! No egui in here, so a host can drive it from any UI or from a headless test.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -16,7 +16,8 @@ use agent_client_protocol::schema::v1::{
 };
 use agent_client_protocol::{LineDirection, Responder};
 
-use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig};
+use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+use crate::error::McpStartupFailure;
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
@@ -138,6 +139,9 @@ pub struct AgentSession {
     log: VecDeque<LogLine>,
     auto_approve: bool,
 
+    /// MCP definitions supplied by the host when this session was started.
+    requested_mcp_servers: Vec<McpStdioServer>,
+
     /// Markdown sent ahead of the first prompt, so the agent knows where it is running.
     preamble: Option<String>,
     prompts_sent: usize,
@@ -186,6 +190,7 @@ impl AgentSession {
                 status: format!("Starting {}…", config.command.display()),
             },
             auto_approve: self.auto_approve,
+            requested_mcp_servers: config.mcp_servers.clone(),
             preamble: config.preamble.clone(),
             readable_directories: config.additional_directories.clone(),
             off_limits_directories: config.off_limits_directories.clone(),
@@ -468,7 +473,7 @@ impl AgentSession {
             .map(|entry| &entry.item);
         let mut tool_calls = 0;
         let mut failed_tool_calls = Vec::new();
-        let mut off_limits_paths = Vec::new();
+        let mut off_limits_paths = BTreeSet::new();
         let mut errors = Vec::new();
         let mut response = String::new();
         for item in items {
@@ -498,9 +503,12 @@ impl AgentSession {
                         response = text;
                     }
                 }
-                TranscriptItem::User { .. } | TranscriptItem::Note { .. } => {}
+                TranscriptItem::User { .. }
+                | TranscriptItem::McpStartupFailure(_)
+                | TranscriptItem::Note { .. } => {}
             }
         }
+        let off_limits_paths: Vec<PathBuf> = off_limits_paths.into_iter().collect();
 
         if !off_limits_paths.is_empty() {
             re_log::warn!(
@@ -649,7 +657,13 @@ impl AgentSession {
                 if let SessionUpdate::CurrentModeUpdate(_) = &update {
                     self.requested_mode = None;
                 }
-                self.transcript.apply(update);
+                if let Some(failure) =
+                    McpStartupFailure::from_codex_update(&update, &self.requested_mcp_servers)
+                {
+                    self.transcript.push_mcp_startup_failure(failure);
+                } else {
+                    self.transcript.apply(update);
+                }
             }
             AgentEvent::PermissionRequest { request, responder } => {
                 self.transcript
@@ -970,6 +984,65 @@ mod tests {
         assert_eq!(reports[0].outcome, TurnOutcome::Aborted);
         assert_eq!(reports[0].response, "");
         assert_eq!(reports[0].tool_calls, 0);
+    }
+
+    #[test]
+    fn codex_mcp_startup_failures_keep_the_requested_definition_out_of_tool_reports() {
+        let requested = McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
+            args: vec!["viewer-mcp".to_owned()],
+        };
+        let mut session = AgentSession {
+            requested_mcp_servers: vec![requested.clone()],
+            ..Default::default()
+        };
+        session.begin_turn("show the recording".into());
+
+        let error = "[codex-acp forwarded startup error] MCP server rerun failed to start";
+        session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("mcp_startup.rerun", "mcp__rerun__startup")
+                .status(ToolCallStatus::Failed)
+                .content(vec![ToolCallContent::from(ContentBlock::Text(
+                    TextContent::new(error),
+                ))]),
+        )));
+
+        let TranscriptItem::McpStartupFailure(failure) = &session.transcript.items[1].item else {
+            panic!("expected a dedicated MCP startup failure");
+        };
+        assert_eq!(failure.server_name, "rerun");
+        assert_eq!(failure.requested_command.as_ref(), Some(&requested.command));
+        assert_eq!(failure.requested_args, requested.args);
+        assert_eq!(failure.error, error);
+        assert!(
+            failure
+                .hint
+                .as_deref()
+                .is_some_and(|hint| hint.contains("~/.codex/config.toml"))
+        );
+        let markdown = session.transcript.to_markdown();
+        assert!(markdown.contains("MCP startup failure"));
+        assert!(markdown.contains("viewer-mcp"));
+        assert!(markdown.contains("~/.codex/config.toml"));
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        let report = session.take_finished_turns().pop().unwrap();
+        assert_eq!(report.tool_calls, 0);
+        assert!(report.failed_tool_calls.is_empty());
+    }
+
+    #[test]
+    fn ordinary_failed_tools_are_not_classified_as_mcp_startup_failures() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("call-1", "mcp__rerun__startup").status(ToolCallStatus::Failed),
+        )));
+
+        assert!(matches!(
+            session.transcript.items[0].item,
+            TranscriptItem::ToolCall(_)
+        ));
     }
 
     fn call(

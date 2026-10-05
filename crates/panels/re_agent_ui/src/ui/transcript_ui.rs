@@ -3,7 +3,7 @@ use re_agent::acp::schema::v1::{Plan, PlanEntryStatus};
 use re_ui::{UiExt as _, icons};
 
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
-use re_agent::{Prompt, PromptImage, Transcript, TranscriptItem};
+use re_agent::{McpStartupFailure, Prompt, PromptImage, Transcript, TranscriptItem};
 
 pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: bool) {
     ui.spacing_mut().item_spacing.y = 10.0;
@@ -23,6 +23,9 @@ pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: 
                     }
                 }
                 TranscriptItem::ToolCall(call) => tool_call_ui(ui, call),
+                TranscriptItem::McpStartupFailure(failure) => {
+                    mcp_startup_failure_ui(ui, failure);
+                }
                 TranscriptItem::Note { text, is_error } => {
                     if *is_error {
                         ui.error_label(text.clone());
@@ -34,6 +37,21 @@ pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: 
             .response;
         response.on_hover_text(format_timestamp(entry.created_at));
     }
+}
+
+fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
+    let mut lines = vec![format!(
+        "MCP server `{}` failed to start.",
+        failure.server_name
+    )];
+    if let Some(command) = failure.requested_command_line() {
+        lines.push(format!("Requested by Rerun: `{command}`"));
+    }
+    lines.push(failure.error.clone());
+    if let Some(hint) = &failure.hint {
+        lines.push(hint.clone());
+    }
+    ui.error_label(lines.join("\n"));
 }
 
 /// Local wall-clock time, with the date, e.g. `2026-09-08 14:03:12`.
