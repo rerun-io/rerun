@@ -331,6 +331,13 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         requests: Sequence[DecodeRequest],
     ) -> Sequence[Yuv420Frame | None]: ...
 
+    @overload
+    def decode(
+        self,
+        batch: FieldBatch,
+        requests: Sequence[DecodeRequest],
+    ) -> Sequence[DecodedValue | None]: ...
+
     @with_tracing("VideoFrameDecoder.decode")
     def decode(
         self,

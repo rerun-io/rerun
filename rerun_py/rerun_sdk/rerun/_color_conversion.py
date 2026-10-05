@@ -26,12 +26,11 @@ def u8_array_to_rgba(arr: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint32]:
     b = arr[:, 2]
     a = arr[:, 3] if arr.shape[1] == 4 else np.repeat(0xFF, len(arr))
     # Reverse the byte order because this is how we encode into uint32
-    arr = np.vstack([a, b, g, r]).T
+    abgr = np.vstack([a, b, g, r]).T
     # Make contiguous and then reinterpret
-    arr = np.ascontiguousarray(arr, dtype=np.uint8)
-    arr = arr.view(np.uint32)
-    arr = np.squeeze(arr, axis=1)
-    return arr  # type: ignore[return-value]
+    abgr = np.ascontiguousarray(abgr, dtype=np.uint8)
+    packed = abgr.view(np.uint32)
+    return np.squeeze(packed, axis=1)
 
 
 def linear_to_gamma_u8_value(linear: npt.NDArray[np.float32 | np.float64]) -> npt.NDArray[np.uint8]:
