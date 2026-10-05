@@ -173,6 +173,18 @@ message ViewerControlRequest {
     //
     // `NOT_FOUND` if the recording is not open or has no active blueprint.
     GetBlueprintRequest get_blueprint = 12;
+
+    // Record a puffin profile of the next frames the viewer paints, and write it to disk as a
+    // `.puffin` file.
+    //
+    // The viewer keeps repainting while it records, so this finishes even when nothing changes on
+    // screen. It answers when the file is written. Use the `investigate-puffin` skill
+    // to analyze the trace.
+    //
+    // Fails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if
+    // another profile capture is still running or on the web viewer, and `INTERNAL` if the write
+    // to disk failed.
+    CaptureProfileTraceRequest capture_profile_trace = 13;
   }
 }
 
@@ -215,6 +227,9 @@ message ViewerControlResponse {
 
     // Result of `get_blueprint`.
     GetBlueprintResponse get_blueprint = 12;
+
+    // Result of `capture_profile_trace`.
+    CaptureProfileTraceResponse capture_profile_trace = 13;
   }
 }
 
@@ -717,6 +732,31 @@ message SaveScreenshotRequest {
 //
 // The response is only sent once the screenshot has actually been written to disk.
 message SaveScreenshotResponse {}
+
+// ----------------------------------------------------------------------------
+// CaptureProfileTrace
+
+// Request for `CaptureProfileTrace`.
+message CaptureProfileTraceRequest {
+  // Path at which the `.puffin` file will be saved.
+  // This path is relative to the current working directory of the viewer process.
+  string file_path = 1;
+
+  // How many frames to record, between 1 and 300. Defaults to 5.
+  // Ask for more to average over steady work like playback.
+  optional uint32 num_frames = 2;
+}
+
+// Response for `CaptureProfileTrace`.
+//
+// The response is only sent once the profile has actually been written to disk.
+message CaptureProfileTraceResponse {
+  // How many frames the file holds.
+  uint32 num_frames = 1;
+
+  // Absolute path of the written `.puffin` file.
+  string file_path = 2;
+}
 
 // ----------------------------------------------------------------------------
 // SetTimeCursor

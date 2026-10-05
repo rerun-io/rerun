@@ -54,6 +54,7 @@ pub fn run_headless_app(
         let repaint_signal = repaint_signal.clone();
         egui_kittest::Harness::<App>::builder()
             .with_size(size)
+            .with_accessibility_check(false)
             .wgpu_setup(wgpu_setup)
             .build_eframe(move |cc| {
                 let repaint_signal = repaint_signal.clone();
@@ -79,6 +80,7 @@ pub fn run_headless_app(
         let frame_start = Instant::now();
 
         harness.step();
+        re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
 
         if has_pending_close(&harness) {
             re_log::info!("Headless viewer received close request, shutting down.");

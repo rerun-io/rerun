@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -118,6 +118,18 @@ pub mod viewer_control_request {
         /// `NOT_FOUND` if the recording is not open or has no active blueprint.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintRequest),
+        /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
+        /// `.puffin` file.
+        ///
+        /// The viewer keeps repainting while it records, so this finishes even when nothing changes on
+        /// screen. It answers when the file is written. Use the `investigate-puffin` skill
+        /// to analyze the trace.
+        ///
+        /// Fails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if
+        /// another profile capture is still running or on the web viewer, and `INTERNAL` if the write
+        /// to disk failed.
+        #[prost(message, tag = "13")]
+        CaptureProfileTrace(super::CaptureProfileTraceRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -136,7 +148,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -181,6 +193,9 @@ pub mod viewer_control_response {
         /// Result of `get_blueprint`.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintResponse),
+        /// Result of `capture_profile_trace`.
+        #[prost(message, tag = "13")]
+        CaptureProfileTrace(super::CaptureProfileTraceResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -1054,6 +1069,50 @@ impl ::prost::Name for SaveScreenshotResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.SaveScreenshotResponse".into()
+    }
+}
+/// Request for `CaptureProfileTrace`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CaptureProfileTraceRequest {
+    /// Path at which the `.puffin` file will be saved.
+    /// This path is relative to the current working directory of the viewer process.
+    #[prost(string, tag = "1")]
+    pub file_path: ::prost::alloc::string::String,
+    /// How many frames to record, between 1 and 300. Defaults to 5.
+    /// Ask for more to average over steady work like playback.
+    #[prost(uint32, optional, tag = "2")]
+    pub num_frames: ::core::option::Option<u32>,
+}
+impl ::prost::Name for CaptureProfileTraceRequest {
+    const NAME: &'static str = "CaptureProfileTraceRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.CaptureProfileTraceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.CaptureProfileTraceRequest".into()
+    }
+}
+/// Response for `CaptureProfileTrace`.
+///
+/// The response is only sent once the profile has actually been written to disk.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CaptureProfileTraceResponse {
+    /// How many frames the file holds.
+    #[prost(uint32, tag = "1")]
+    pub num_frames: u32,
+    /// Absolute path of the written `.puffin` file.
+    #[prost(string, tag = "2")]
+    pub file_path: ::prost::alloc::string::String,
+}
+impl ::prost::Name for CaptureProfileTraceResponse {
+    const NAME: &'static str = "CaptureProfileTraceResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.CaptureProfileTraceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.CaptureProfileTraceResponse".into()
     }
 }
 /// Request for `SetTimeCursor`.

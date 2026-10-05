@@ -1,5 +1,6 @@
 ---
 source: crates/top/re_viewer_mcp/src/lib.rs
+assertion_line: 603
 expression: surface
 ---
 # Server instructions
@@ -676,6 +677,31 @@ Conventions:
     "destructiveHint": true,
     "idempotentHint": false,
     "openWorldHint": false
+  }
+}
+
+## rerun_capture_profile_trace
+
+{
+  "name": "rerun_capture_profile_trace",
+  "description": "Record a puffin profile of the next frames the viewer paints, and write it to disk as a\n`.puffin` file.\n\nThe viewer keeps repainting while it records, so this finishes even when nothing changes on\nscreen. It answers when the file is written. Use the `investigate-puffin` skill\nto analyze the trace.\n\nFails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if\nanother profile capture is still running or on the web viewer, and `INTERNAL` if the write\nto disk failed.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "file_path": {
+        "type": "string",
+        "description": "Path at which the `.puffin` file will be saved.\nThis path is relative to the current working directory of the viewer process."
+      },
+      "num_frames": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many frames to record, between 1 and 300. Defaults to 5.\nAsk for more to average over steady work like playback."
+      }
+    },
+    "required": [
+      "file_path"
+    ],
+    "description": "Request for `CaptureProfileTrace`."
   }
 }
 

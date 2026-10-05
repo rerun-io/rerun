@@ -37,8 +37,13 @@ mod add_data_source;
 mod assets;
 mod command_handling;
 mod logic;
+#[cfg(not(target_arch = "wasm32"))]
+mod profile_capture;
 mod ui;
 mod viewer_control;
+
+#[cfg(not(target_arch = "wasm32"))]
+use self::profile_capture::PendingProfileCapture;
 
 /// Only `web.rs` needs this by name; on native, `logic` calls it directly.
 #[cfg(target_arch = "wasm32")]
@@ -116,7 +121,7 @@ pub struct App {
 
     /// Active in-memory profile capture, if any.
     #[cfg(not(target_arch = "wasm32"))]
-    profile_capture: Option<re_tracing::ProfileCapture>,
+    profile_capture: Option<PendingProfileCapture>,
 
     /// Listens to the local text log stream
     text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
@@ -1388,17 +1393,7 @@ impl eframe::App for App {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some(capture) = &self.profile_capture {
-            if capture.is_done() {
-                if let Some(capture) = self.profile_capture.take()
-                    && let Err(err) = save_profile_trace(&capture.finish())
-                {
-                    re_log::error!("Failed to save profile trace: {err}");
-                }
-            } else {
-                ui.ctx().request_repaint();
-            }
-        }
+        PendingProfileCapture::poll(&mut self.profile_capture, ui.ctx());
 
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
@@ -1765,26 +1760,6 @@ impl eframe::App for App {
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(&mut *self)
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn save_profile_trace(view: &re_tracing::reexports::puffin::FrameView) -> anyhow::Result<()> {
-    let Some(path) = rfd::FileDialog::new()
-        .set_file_name("rerun.puffin")
-        .set_title("Save profile trace")
-        .add_filter("Puffin profile", &["puffin"])
-        .save_file()
-    else {
-        re_log::info!("Profile trace capture cancelled by user.");
-        return Ok(());
-    };
-
-    let file = std::fs::File::create(&path)?;
-    let mut writer = std::io::BufWriter::new(file);
-    view.write(&mut writer)?;
-
-    re_log::info!("Saved profile trace to {}", path.display());
-    Ok(())
 }
 
 impl MemUsageTreeCapture for App {

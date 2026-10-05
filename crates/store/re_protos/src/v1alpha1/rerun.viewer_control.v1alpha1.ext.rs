@@ -2,8 +2,9 @@
 //! That file lists every place an operation has to be added.
 
 use crate::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, DescribeCommandsRequest,
-    DescribeCommandsResponse, GetBlueprintRequest, GetBlueprintResponse, GetRecordingSchemaRequest,
+    CaptureProfileTraceRequest, CaptureProfileTraceResponse, CloseRecordingsRequest,
+    CloseRecordingsResponse, DescribeCommandsRequest, DescribeCommandsResponse,
+    GetBlueprintRequest, GetBlueprintResponse, GetRecordingSchemaRequest,
     GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
     GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
     ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
@@ -103,6 +104,7 @@ macro_rules! viewer_control_ops {
 }
 
 viewer_control_ops! {
+    "capture_profile_trace" => CaptureProfileTrace(CaptureProfileTraceRequest, CaptureProfileTraceResponse),
     "close_recordings" => CloseRecordings(CloseRecordingsRequest, CloseRecordingsResponse),
     "describe_commands" => DescribeCommands(DescribeCommandsRequest, DescribeCommandsResponse),
     "get_blueprint" => GetBlueprint(GetBlueprintRequest, GetBlueprintResponse),

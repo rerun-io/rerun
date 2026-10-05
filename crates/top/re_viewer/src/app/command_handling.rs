@@ -1049,7 +1049,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::CaptureProfileTrace => {
                 if self.profile_capture.is_none() {
-                    self.profile_capture = Some(re_tracing::ProfileCapture::start(5));
+                    self.profile_capture = Some(super::PendingProfileCapture::to_save_dialog());
                     egui_ctx.request_repaint();
                 }
             }

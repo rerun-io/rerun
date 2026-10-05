@@ -6,7 +6,7 @@ description: Investigate Puffin profiler recordings (.puffin files), find slow s
 # Investigate puffin traces
 
 Analyze a `.puffin` recording from an application instrumented with Puffin.
-Use the recording path supplied by the user.
+Use the recording path supplied by the user. Or use the `capture_profile_trace` message if using the rerun MCP.
 
 ## Setup
 

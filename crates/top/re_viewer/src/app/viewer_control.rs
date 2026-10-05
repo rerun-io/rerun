@@ -49,8 +49,8 @@ impl App {
     /// Run one operation of the `ViewerControlService` API on the UI thread.
     ///
     /// Every transport lands here: the request arrives decoded, and `on_done` carries the matching
-    /// response or a coded failure back to whoever asked. Only `save_screenshot` answers later
-    /// than this call, once the image has been written.
+    /// response or a coded failure back to whoever asked. Only `save_screenshot` and
+    /// `capture_profile_trace` answer later than this call, once their file has been written.
     pub(super) fn serve_viewer_control(
         &mut self,
         request: ViewerControlRequest,
@@ -68,6 +68,20 @@ impl App {
         };
 
         match kind {
+            Kind::CaptureProfileTrace(request) => {
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        _ = request;
+                        on_done.call(Err(ViewerControlError::failed_precondition(
+                            "The web viewer cannot capture profile traces",
+                        )));
+                    }
+                    _ => {
+                        self.begin_profile_capture(request, on_done);
+                    }
+                }
+            }
+
             Kind::CloseRecordings(request) => {
                 let result = close_recordings_target(request)
                     .and_then(|target| {
