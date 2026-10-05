@@ -62,10 +62,11 @@ pub struct FileSink {
     tx: Mutex<Sender<Option<Command>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 
-    /// Only used for diagnostics, not for access after `new()`.
-    ///
-    /// `None` indicates stdout.
-    path: Option<PathBuf>,
+    /// Name of the sinks, only used for diagnostics.
+    name: &'static str,
+
+    /// Target of the sink, only used for diagnostics.
+    target: String,
 }
 
 impl Drop for FileSink {
@@ -109,13 +110,7 @@ impl FileSink {
         path: impl Into<std::path::PathBuf>,
         options: FileSinkOptions,
     ) -> Result<Self, FileSinkError> {
-        // We always compress on disk
-        let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-
-        let (tx, rx) = crossbeam::channel::bounded(1024);
-
         let path = path.into();
-
         re_log::debug!("Saving file to {path:?}…");
 
         // TODO(andreas): Can we ensure that a single process doesn't
@@ -126,27 +121,31 @@ impl FileSink {
             path: path.clone(),
             source: err,
         })?;
-        let mut encoder =
-            crate::Encoder::new_eager(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
-        if !options.write_footer {
-            // The SDK's `FileSink` may stream for the entire lifetime of the host process.
-            // The footer's RRD manifest accumulates per-chunk metadata in memory and is only
-            // serialized when the encoder is dropped, so leaving it enabled here grows the heap
-            // unboundedly (see #12623).
-            re_log::warn!(
-                "FileSink at {path:?}: `write_footer=false` — the resulting .rrd will not \
-                 contain a manifest, which will significantly hurt random-access performance \
-                 and some tools (e.g. LazyStore) may not work properly."
-            );
-            encoder.do_not_emit_footer();
-        }
-        let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
-        Ok(Self {
-            tx: tx.into(),
-            join_handle: Some(join_handle),
-            path: Some(path),
-        })
+        Self::spawn("file_writer", path.display().to_string(), file, options)
+    }
+
+    /// Start writing log messages to a [`std::io::Write`] stream.
+    ///
+    /// The name of the stream is used purely for debugging purposes.
+    pub fn new_stream<W: std::io::Write + Send + 'static>(
+        stream: W,
+        name: impl Into<String>,
+    ) -> Result<Self, FileSinkError> {
+        Self::new_stream_with_options(stream, name, FileSinkOptions::default())
+    }
+
+    /// Start writing log messages to a [`std::io::Write`] stream, with the given [`FileSinkOptions`].
+    ///
+    /// The name of the stream is used purely for debugging purposes.
+    pub fn new_stream_with_options<W: std::io::Write + Send + 'static>(
+        stream: W,
+        name: impl Into<String>,
+        options: FileSinkOptions,
+    ) -> Result<Self, FileSinkError> {
+        let name = name.into();
+        re_log::debug!("Creating stream sink {name:?}…");
+        Self::spawn("stream_writer", format!("stream {name}"), stream, options)
     }
 
     /// Start writing log messages to standard output, with default options.
@@ -156,32 +155,47 @@ impl FileSink {
 
     /// Start writing log messages to standard output, with the given [`FileSinkOptions`].
     pub fn stdout_with_options(options: FileSinkOptions) -> Result<Self, FileSinkError> {
-        let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-
-        let (tx, rx) = crossbeam::channel::bounded(1024);
-
         re_log::debug!("Writing to stdout…");
+        Self::spawn("stdout_writer", "stdout", std::io::stdout(), options)
+    }
 
+    /// Spawn the background thread to write to the given stream.
+    fn spawn<W: std::io::Write + Send + 'static>(
+        name: &'static str,
+        target: impl Into<String>,
+        stream: W,
+        options: FileSinkOptions,
+    ) -> Result<Self, FileSinkError> {
+        let target = target.into();
+
+        // We always compress in the file writer.
+        let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         let mut encoder = crate::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
-            std::io::stdout(),
+            stream,
         )?;
         if !options.write_footer {
-            // See `Self::with_options` for why we disable footer emission on streaming sinks.
+            // The SDK's `FileSink` may stream for the entire lifetime of the host process.
+            // The footer's RRD manifest accumulates per-chunk metadata in memory and is only
+            // serialized when the encoder is dropped, so leaving it enabled here grows the heap
+            // unboundedly (see #12623).
             re_log::warn!(
-                "FileSink (stdout): `write_footer=false` — the resulting stream will not \
+                "FileSink ({target}): `write_footer=false` — the resulting RRD stream will not \
                  contain a manifest, which will significantly hurt random-access performance \
                  and some tools (e.g. LazyStore) may not work properly."
             );
             encoder.do_not_emit_footer();
         }
-        let join_handle = spawn_and_stream(None, encoder, rx)?;
+
+        let (tx, rx) = crossbeam::channel::bounded(1024);
+        let join_handle = spawn_and_stream(name, target.clone(), encoder, rx)?;
 
         Ok(Self {
             tx: tx.into(),
             join_handle: Some(join_handle),
-            path: None,
+            name,
+            target,
         })
     }
 
@@ -209,17 +223,12 @@ impl FileSink {
     }
 }
 
-/// Set `filepath` to `None` to stream to standard output.
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
-    filepath: Option<&std::path::Path>,
+    name: &'static str,
+    target: String,
     mut encoder: crate::Encoder<W>,
     rx: Receiver<Option<Command>>,
 ) -> Result<std::thread::JoinHandle<()>, FileSinkError> {
-    let (name, target) = if let Some(filepath) = filepath {
-        ("file_writer", filepath.display().to_string())
-    } else {
-        ("stdout_writer", "stdout".to_owned())
-    };
     std::thread::Builder::new()
         .name(name.into())
         .spawn({
@@ -262,10 +271,8 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
-            .field(
-                "path",
-                &self.path.clone().unwrap_or_else(|| "stdout".into()),
-            )
+            .field("name", &self.name)
+            .field("target", &self.target)
             .finish_non_exhaustive()
     }
 }
