@@ -29,12 +29,13 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "log_setup",
 ] }
 
-bincode.workspace = true
+axum = { workspace = true, features = ["ws"] }
+futures-util.workspace = true
 mimalloc.workspace = true
 parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 tokio = { workspace = true, features = [
-  "io-util",
   "macros",
   "net",
   "rt-multi-thread",
@@ -42,6 +43,7 @@ tokio = { workspace = true, features = [
   "sync",
   "time",
 ] }
+tokio-tungstenite.workspace = true
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
 re_workspace_hack.workspace = true

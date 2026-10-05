@@ -12,13 +12,17 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut app = ControlApp::bind("127.0.0.1:8888").await?.run();
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback")
-        .connect_grpc_opts("rerun+http://127.0.0.1:9877/proxy")?;
+    re_log::setup_logging();
+
+    // Both control panels connect here: the native viewer, and the browser page this also serves.
+    let app = ControlApp::bind("127.0.0.1:9091").await?.run();
+
+    // Both viewers connect here as well. A browser cannot host a server, so the app must be the one serving.
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback").serve_grpc()?;
 
     // Add a handler for incoming messages
     let add_rec = rec.clone();
-    app.add_handler(move |msg| handle_message(&add_rec, msg))?;
+    app.add_handler(move |msg| handle_message(&add_rec, msg));
 
     // spawn a task to log a point every 100ms
     // we then use a channel to control the point's position and radius using the control panel
@@ -28,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let snake_handle = tokio::spawn(animated_snake(rx, rec));
 
     // Add a handler for dynamic updates
-    app.add_handler(move |msg| handle_dynamic_update(tx.clone(), msg))?;
+    app.add_handler(move |msg| handle_dynamic_update(tx.clone(), msg));
 
     // Keep the server running
     tokio::signal::ctrl_c().await?;
@@ -62,11 +66,7 @@ fn handle_message(rec: &RecordingStream, message: &Message) {
             path.to_string(),
             &rerun::Boxes3D::from_half_sizes([half_size]).with_centers([position]),
         ),
-        Message::Disconnect => {
-            re_log::info!("Client disconnected");
-            Ok(())
-        }
-        _ => Ok(()),
+        Message::DynamicPosition { .. } => Ok(()),
     }
     .expect("failed to handle message");
 }
@@ -77,8 +77,8 @@ async fn animated_snake(mut rx: UnboundedReceiver<Message>, rec: RecordingStream
 
     let mut t = 0.0_f32;
     loop {
-        // update the position and radius
-        if let Ok(Message::DynamicPosition { radius, offset }) = rx.try_recv() {
+        // Dragging a slider sends many updates per tick; only the newest one matters.
+        while let Ok(Message::DynamicPosition { radius, offset }) = rx.try_recv() {
             // ensure these values are never zero
             current_offset = offset.max(0.01);
             current_radius = radius.max(0.01);
@@ -104,7 +104,7 @@ async fn animated_snake(mut rx: UnboundedReceiver<Message>, rec: RecordingStream
         // log the point
         rec.log(
             "dynamic".to_string(),
-            &rerun::Points3D::new(points).with_radii(vec![current_radius; num_spheres as usize]),
+            &rerun::Points3D::new(points).with_radii([current_radius]),
         )
         .expect("failed to log dynamic");
 

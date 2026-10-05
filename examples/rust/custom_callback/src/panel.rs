@@ -79,6 +79,10 @@ impl Control {
             app,
             states: ControlStates {
                 entity_path: "foo".to_string(),
+                radius: 0.1,
+                half_size: (0.5, 0.5, 0.5),
+                // Must match the initial values in `animated_snake`.
+                dynamic_offset: 0.5,
                 dynamic_radius: 0.1,
                 ..Default::default()
             },

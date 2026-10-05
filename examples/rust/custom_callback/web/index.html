@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rerun Control Panel</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.classless.min.css"
+    />
+    <style>
+      /* Pico sizes everything in `rem` and scales the root font up on wide screens; pin it for a compact panel. */
+      :root {
+        --pico-font-size: 75%;
+        --pico-line-height: 1.3;
+        --pico-spacing: 0.75rem;
+        --pico-typography-spacing-vertical: 0.5rem;
+        --pico-form-element-spacing-vertical: 0.35rem;
+        --pico-form-element-spacing-horizontal: 0.5rem;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: flex;
+      }
+
+      #viewer {
+        flex: 1;
+        min-width: 0;
+      }
+
+      aside {
+        width: 320px;
+        flex-shrink: 0;
+        overflow-y: auto;
+        padding: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer"></div>
+
+    <aside>
+      <hgroup>
+        <h3>Control panel</h3>
+        <p id="status">Connecting…</p>
+      </hgroup>
+
+      <details open>
+        <summary>Message properties</summary>
+
+        <label>
+          Message kind
+          <select id="kind">
+            <option value="Point3d">Point3d</option>
+            <option value="Box3d">Box3d</option>
+          </select>
+        </label>
+
+        <label>
+          Entity path
+          <input id="path" type="text" value="foo" />
+        </label>
+
+        <fieldset>
+          <legend>Position</legend>
+          <fieldset role="group">
+            <input
+              id="pos-x"
+              type="number"
+              step="0.1"
+              value="0"
+              aria-label="x"
+            />
+            <input
+              id="pos-y"
+              type="number"
+              step="0.1"
+              value="0"
+              aria-label="y"
+            />
+            <input
+              id="pos-z"
+              type="number"
+              step="0.1"
+              value="0"
+              aria-label="z"
+            />
+          </fieldset>
+        </fieldset>
+
+        <label data-kind="Point3d">
+          Radius
+          <input id="radius" type="number" step="0.1" value="0.1" />
+        </label>
+
+        <fieldset data-kind="Box3d" hidden>
+          <legend>Half size</legend>
+          <fieldset role="group">
+            <input
+              id="half-x"
+              type="number"
+              step="0.1"
+              value="0.5"
+              aria-label="x"
+            />
+            <input
+              id="half-y"
+              type="number"
+              step="0.1"
+              value="0.5"
+              aria-label="y"
+            />
+            <input
+              id="half-z"
+              type="number"
+              step="0.1"
+              value="0.5"
+              aria-label="z"
+            />
+          </fieldset>
+        </fieldset>
+
+        <button id="send">Send message</button>
+      </details>
+
+      <details open>
+        <summary>Dynamic position</summary>
+
+        <!-- Initial values must match `animated_snake` in `src/app.rs`. -->
+        <label>
+          Offset: <output for="offset"></output>
+          <input
+            id="offset"
+            type="range"
+            min="0.1"
+            max="10"
+            step="0.01"
+            value="0.5"
+          />
+        </label>
+
+        <label>
+          Radius: <output for="dyn-radius"></output>
+          <input
+            id="dyn-radius"
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.01"
+            value="0.1"
+          />
+        </label>
+      </details>
+    </aside>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

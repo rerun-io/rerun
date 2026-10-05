@@ -1,8 +1,10 @@
-use std::io::{self, ErrorKind};
-
 use serde::{Deserialize, Serialize};
 
-/// Messages that can be sent between the client and server.
+/// Commands that a control panel sends to the app.
+///
+/// Each WebSocket text frame carries one message as JSON, in serde's default externally tagged form,
+/// e.g. `{"DynamicPosition": {"radius": 0.2, "offset": 1.0}}`.
+/// The browser panel builds these by hand in `web/main.js`, so renaming a variant or field breaks it.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Message {
     Point3d {
@@ -19,20 +21,4 @@ pub enum Message {
         radius: f32,
         offset: f32,
     },
-    Disconnect,
-}
-
-impl Message {
-    pub fn encode(&self) -> io::Result<Vec<u8>> {
-        bincode::serialize(self).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
-    }
-
-    pub fn encode_into(&self, buffer: &mut [u8]) -> io::Result<()> {
-        bincode::serialize_into(buffer, self)
-            .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
-    }
-
-    pub fn decode(data: &[u8]) -> io::Result<Self> {
-        bincode::deserialize(data).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
-    }
 }

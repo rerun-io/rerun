@@ -41,7 +41,7 @@ arrow-array = { version = "58", default-features = false, features = ["chrono-tz
 arrow-cast = { version = "58", default-features = false, features = ["prettyprint"] }
 arrow-ipc = { version = "58", features = ["lz4", "zstd"] }
 arrow-schema = { version = "58", default-features = false, features = ["canonical_extension_types", "ffi"] }
-axum = { version = "0.8" }
+axum = { version = "0.8", features = ["ws"] }
 axum-core = { version = "0.5", default-features = false, features = ["tracing"] }
 bit-vec = { version = "0.9" }
 bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
@@ -166,6 +166,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 tracing-log = { version = "0.2" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
 ureq = { version = "3", features = ["json", "socks-proxy"] }
@@ -199,7 +200,7 @@ arrow-array = { version = "58", default-features = false, features = ["chrono-tz
 arrow-cast = { version = "58", default-features = false, features = ["prettyprint"] }
 arrow-ipc = { version = "58", features = ["lz4", "zstd"] }
 arrow-schema = { version = "58", default-features = false, features = ["canonical_extension_types", "ffi"] }
-axum = { version = "0.8" }
+axum = { version = "0.8", features = ["ws"] }
 axum-core = { version = "0.5", default-features = false, features = ["tracing"] }
 bit-vec = { version = "0.9" }
 bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
@@ -326,6 +327,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 tracing-log = { version = "0.2" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
 ureq = { version = "3", features = ["json", "socks-proxy"] }

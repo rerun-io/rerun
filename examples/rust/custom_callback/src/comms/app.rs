@@ -1,187 +1,99 @@
-use std::error::Error;
-use std::result::Result;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::extract::State;
+use axum::extract::ws::{self, WebSocket, WebSocketUpgrade};
+use axum::response::Response;
+use axum::routing::get;
 use parking_lot::RwLock;
 use rerun::external::{re_error, re_log};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::net::TcpListener;
 
 use super::protocol::Message;
+use super::web;
 
 type HandlerFn = Box<dyn Fn(&Message) + Send + Sync + 'static>;
 
+/// An HTTP server that accepts control panels on `/ws` and also hosts the browser control panel.
+///
+/// Both the native viewer and the browser panel connect to `/ws`.
+/// Every message from every connection runs all handlers registered with [`ControlAppHandle::add_handler`].
 pub struct ControlApp {
     listener: TcpListener,
-    handlers: RwLock<Vec<HandlerFn>>,
-    clients: Arc<Mutex<Vec<UnboundedSender<Message>>>>,
+    addr: SocketAddr,
 }
 
 impl ControlApp {
-    pub async fn bind(addr: &str) -> tokio::io::Result<ControlApp> {
-        let socket = TcpSocket::new_v4()?;
-        socket.set_reuseaddr(true)?;
-        socket.bind(addr.parse().unwrap())?;
-
-        let listener = socket.listen(1024)?;
-        Ok(Self {
-            listener,
-            handlers: RwLock::new(Vec::new()),
-            clients: Arc::new(Mutex::new(Vec::new())),
-        })
-    }
-
-    pub fn add_handler(&self, handler: HandlerFn) -> Result<(), Box<dyn Error>> {
-        let mut handlers = self.handlers.write();
-        handlers.push(handler);
-        Ok(())
-    }
-
-    pub async fn broadcast(&self, message: Message) -> tokio::io::Result<()> {
-        let clients = self.clients.lock().await;
-        clients.iter().for_each(|client| {
-            client.send(message.clone()).ok();
-        });
-
-        Ok(())
+    pub async fn bind(addr: &str) -> std::io::Result<Self> {
+        let listener = TcpListener::bind(addr).await?;
+        let addr = listener.local_addr()?;
+        Ok(Self { listener, addr })
     }
 
     pub fn run(self) -> ControlAppHandle {
-        re_log::info!(
-            "Server running on {:?}",
-            self.listener.local_addr().unwrap()
-        );
+        let handle = ControlAppHandle::default();
 
-        let app = Arc::new(self);
-        let handle = app.clone();
+        let router = web::routes()
+            .route("/ws", get(ws_upgrade))
+            .with_state(handle.clone());
+
+        re_log::info!("Control server running on http://{}", self.addr);
 
         tokio::spawn(async move {
-            loop {
-                re_log::info!("Waiting for connection…");
-                let app = app.clone();
-                match app.listener.accept().await {
-                    Ok((socket, addr)) => {
-                        re_log::info!("Accepted connection from {:?}", addr);
-
-                        tokio::spawn(async move {
-                            app.handle_connection(socket).await;
-                        });
-                    }
-                    Err(err) => {
-                        re_log::error!(
-                            "Error accepting connection: {}",
-                            re_error::format_ref(&err)
-                        );
-                    }
-                }
+            if let Err(err) = axum::serve(self.listener, router).await {
+                re_log::error!("Control server stopped: {}", re_error::format_ref(&err));
             }
         });
 
-        ControlAppHandle { app: handle }
-    }
-
-    async fn handle_connection(&self, socket: TcpStream) {
-        let (read_half, write_half) = tokio::io::split(socket);
-
-        #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
-        let (tx, rx) = unbounded_channel();
-
-        // Add the client to the list
-        {
-            self.clients.lock().await.push(tx.clone());
-        }
-
-        // Spawn reader and writer tasks
-        let reader_task = self.handle_reader(read_half);
-        let writer_task = self.handle_writer(write_half, rx);
-
-        let _ = tokio::join!(reader_task, writer_task);
-
-        // Remove the client when the connection ends
-        {
-            let mut clients = self.clients.lock().await;
-            if let Some(pos) = clients.iter().position(|x| x.same_channel(&tx)) {
-                clients.remove(pos);
-            }
-        }
-    }
-
-    async fn handle_reader(&self, mut read_half: ReadHalf<TcpStream>) {
-        let mut buf = [0; 1024];
-        loop {
-            match read_half.read(&mut buf).await {
-                Ok(0) => {
-                    re_log::info!("Connection closed by client");
-                    break;
-                }
-                Ok(n) => match Message::decode(&buf[..n]) {
-                    Ok(message) => {
-                        re_log::info!("Received message: {:?}", message);
-                        let handlers = &self.handlers.read();
-                        for handler in handlers.iter() {
-                            handler(&message);
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to decode message: {}", re_error::format_ref(&err));
-                    }
-                },
-                Err(err) => {
-                    re_log::error!(
-                        "Error reading from socket: {:?}",
-                        re_error::format_ref(&err),
-                    );
-                    break;
-                }
-            }
-        }
-    }
-
-    async fn handle_writer(
-        &self,
-        mut write_half: WriteHalf<TcpStream>,
-        mut rx: UnboundedReceiver<Message>,
-    ) {
-        while let Some(message) = rx.recv().await {
-            if matches!(message, Message::Disconnect) {
-                re_log::info!("Received disconnect message, closing connection");
-                break;
-            }
-
-            // Encode and send response
-            if let Ok(data) = message.encode()
-                && write_half.write_all(&data).await.is_err()
-            {
-                re_log::info!("Failed to send response to client");
-                break;
-            }
-        }
+        handle
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ControlAppHandle {
-    app: Arc<ControlApp>,
+    handlers: Arc<RwLock<Vec<HandlerFn>>>,
 }
 
 impl ControlAppHandle {
-    pub fn add_handler<H>(
-        &mut self,
-        handler: H,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>>
-    where
-        H: Fn(&Message) + Send + Sync + 'static,
-    {
-        self.app.add_handler(Box::new(handler))
+    pub fn add_handler(&self, handler: impl Fn(&Message) + Send + Sync + 'static) {
+        self.handlers.write().push(Box::new(handler));
     }
 
-    pub async fn broadcast(&self, message: Message) {
-        let clients = self.app.clients.lock().await;
-
-        clients.iter().for_each(|client| {
-            client.send(message.clone()).ok();
-        });
+    fn dispatch(&self, message: &Message) {
+        re_log::info!("Received message: {message:?}");
+        for handler in self.handlers.read().iter() {
+            handler(message);
+        }
     }
+}
+
+async fn ws_upgrade(ws: WebSocketUpgrade, State(app): State<ControlAppHandle>) -> Response {
+    ws.on_upgrade(move |socket| handle_socket(socket, app))
+}
+
+async fn handle_socket(mut socket: WebSocket, app: ControlAppHandle) {
+    re_log::info!("Control panel connected");
+
+    while let Some(frame) = socket.recv().await {
+        match frame {
+            Ok(ws::Message::Text(text)) => match serde_json::from_str::<Message>(&text) {
+                Ok(message) => app.dispatch(&message),
+                Err(err) => re_log::error!(
+                    "Failed to decode message: {}\nPayload: {text}",
+                    re_error::format_ref(&err)
+                ),
+            },
+            Ok(ws::Message::Close(_)) => break,
+            Ok(_) => {}
+            Err(err) => {
+                re_log::error!(
+                    "Error reading from WebSocket: {}",
+                    re_error::format_ref(&err)
+                );
+                break;
+            }
+        }
+    }
+
+    re_log::info!("Control panel disconnected");
 }

@@ -1,6 +1,6 @@
 use custom_callback::comms::viewer::ControlViewer;
 use custom_callback::panel::Control;
-use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer};
+use rerun::external::{eframe, re_crash_handler, re_log, re_memory, re_viewer};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -9,8 +9,9 @@ use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memor
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
-/// Port used for control messages
-const CONTROL_PORT: u16 = 8888;
+/// Both served by `custom_callback_app`.
+const RECORDING_URL: &str = "rerun+http://127.0.0.1:9876/proxy";
+const CONTROL_URL: &str = "ws://127.0.0.1:9091/ws";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,22 +23,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
-    let (rx_log, _grpc_server_handle) = re_grpc_server::spawn_with_recv(
-        re_grpc_server::ServerListener::bind("0.0.0.0:9877".parse()?)?,
-        Default::default(),
-        re_grpc_server::shutdown::never(),
-    );
-
-    // First we attempt to connect to the external application
-    let viewer = ControlViewer::connect(format!("127.0.0.1:{CONTROL_PORT}")).await?;
+    // Connect to the external application in the background, retrying until it is up.
+    let viewer = ControlViewer::new(CONTROL_URL);
     let handle = viewer.handle();
-
-    // Spawn the viewer client in a separate task
-    tokio::spawn(async move {
-        viewer.run().await;
-    });
+    tokio::spawn(viewer.run());
 
     // Then we start the Rerun viewer
     let mut native_options = re_viewer::native::eframe_options(None);
@@ -56,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| {
             re_viewer::customize_eframe_and_setup_renderer(cc)?;
 
-            let mut rerun_app = re_viewer::App::new(
+            let rerun_app = re_viewer::App::new(
                 main_thread_token,
                 re_viewer::build_info(),
                 app_env,
@@ -66,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
 
-            rerun_app.add_log_receiver(rx_log);
+            rerun_app.open_url_or_file(RECORDING_URL);
 
             Ok(Box::new(Control::new(rerun_app, handle)))
         }),
