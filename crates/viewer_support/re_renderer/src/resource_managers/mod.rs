@@ -6,12 +6,14 @@
 //! This is in contrast to the pools in `crate::wgpu_resources` which are exclusively concerned with
 //! low level gpu resources and their efficient allocation.
 
+mod bayer_converter;
 mod frame_retained_cache;
 mod image_data_to_texture;
 mod texture_3d;
 mod texture_manager;
 mod yuv_converter;
 
+pub use bayer_converter::BayerPattern;
 pub use image_data_to_texture::{
     ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat, transfer_image_data_to_texture,
 };
@@ -26,4 +28,5 @@ pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
 
 pub fn register_renderers(renderers: &mut crate::Renderers) {
     renderers.register::<yuv_converter::YuvFormatConverter>();
+    renderers.register::<bayer_converter::BayerFormatConverter>();
 }

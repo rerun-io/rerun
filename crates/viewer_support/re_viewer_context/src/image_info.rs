@@ -5,7 +5,7 @@ use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_sdk_types::components::{self, Colormap};
 use re_sdk_types::encodings::{Blob, ChannelDatatype, ColorModel, ImageFormat};
-use re_sdk_types::image::{ImageKind, rgb_from_yuv};
+use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
 use re_sdk_types::{ComponentIdentifier, archetypes};
 
@@ -248,6 +248,21 @@ impl ImageInfo {
         self.format.color_model()
     }
 
+    /// The raw sample of a Bayer image at the given pixel, together with the channel it samples.
+    ///
+    /// The channel is 0 for red, 1 for green and 2 for blue.
+    /// Returns `None` if this isn't a Bayer image or the pixel is out of bounds.
+    pub fn bayer_sample_at(&self, x: u32, y: u32) -> Option<(usize, u8)> {
+        let pattern = self.format.pixel_format?.bayer_pattern()?;
+        if self.width() <= x || self.height() <= y {
+            return None;
+        }
+        let value = *self
+            .buffer
+            .get(y as usize * self.width() as usize + x as usize)?;
+        Some((pattern.channel_at([x, y]), value))
+    }
+
     /// Get the value of the element at the given index.
     ///
     /// Return `None` if out-of-bounds.
@@ -260,58 +275,45 @@ impl ImageInfo {
             return None;
         }
 
+        // Handle YUV and bayer.
         if let Some(pixel_format) = self.format.pixel_format {
-            // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-            let [luma, u, v] = pixel_format.decode_yuv_at(&self.buffer, [w, h], [x, y])?;
-
-            match pixel_format.color_model() {
-                ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
-
-                // Shouldn't hit BGR and BGRA, but we'll handle it like RGB and RGBA here for completeness.
-                ColorModel::RGB | ColorModel::RGBA | ColorModel::BGR | ColorModel::BGRA => {
-                    if channel < 3 {
-                        let rgb = rgb_from_yuv(
-                            luma,
-                            u,
-                            v,
-                            pixel_format.is_limited_yuv_range(),
-                            pixel_format.yuv_matrix_coefficients(),
-                        );
-                        Some(TensorElement::U8(rgb[channel as usize]))
-                    } else if channel == 4 {
-                        Some(TensorElement::U8(255))
-                    } else {
-                        None
-                    }
-                }
-            }
-        } else {
-            let num_channels = self.format.color_model().num_channels();
-
-            re_log::debug_assert!(channel < num_channels as u32);
-            if num_channels as u32 <= channel {
-                return None;
+            if pixel_format.color_model() == ColorModel::L {
+                let [luma, _, _] = pixel_format.decode_yuv_at(&self.buffer, [w, h], [x, y])?;
+                return (channel == 0).then_some(TensorElement::U8(luma));
             }
 
-            let stride = w; // TODO(#6008): support stride
-            let offset =
-                (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
-
-            match self.format.datatype() {
-                ChannelDatatype::U8 => self.buffer.get(offset).copied().map(TensorElement::U8),
-                ChannelDatatype::U16 => get(&self.buffer, offset).map(TensorElement::U16),
-                ChannelDatatype::U32 => get(&self.buffer, offset).map(TensorElement::U32),
-                ChannelDatatype::U64 => get(&self.buffer, offset).map(TensorElement::U64),
-
-                ChannelDatatype::I8 => get(&self.buffer, offset).map(TensorElement::I8),
-                ChannelDatatype::I16 => get(&self.buffer, offset).map(TensorElement::I16),
-                ChannelDatatype::I32 => get(&self.buffer, offset).map(TensorElement::I32),
-                ChannelDatatype::I64 => get(&self.buffer, offset).map(TensorElement::I64),
-
-                ChannelDatatype::F16 => get(&self.buffer, offset).map(TensorElement::F16),
-                ChannelDatatype::F32 => get(&self.buffer, offset).map(TensorElement::F32),
-                ChannelDatatype::F64 => get(&self.buffer, offset).map(TensorElement::F64),
+            if channel == 4 {
+                return Some(TensorElement::U8(255));
             }
+
+            let rgb = pixel_format.decode_rgb_at(&self.buffer, [w, h], [x, y])?;
+            return rgb.get(channel as usize).copied().map(TensorElement::U8);
+        }
+
+        let num_channels = self.format.color_model().num_channels();
+
+        re_log::debug_assert!(channel < num_channels as u32);
+        if num_channels as u32 <= channel {
+            return None;
+        }
+
+        let stride = w; // TODO(#6008): support stride
+        let offset = (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
+
+        match self.format.datatype() {
+            ChannelDatatype::U8 => self.buffer.get(offset).copied().map(TensorElement::U8),
+            ChannelDatatype::U16 => get(&self.buffer, offset).map(TensorElement::U16),
+            ChannelDatatype::U32 => get(&self.buffer, offset).map(TensorElement::U32),
+            ChannelDatatype::U64 => get(&self.buffer, offset).map(TensorElement::U64),
+
+            ChannelDatatype::I8 => get(&self.buffer, offset).map(TensorElement::I8),
+            ChannelDatatype::I16 => get(&self.buffer, offset).map(TensorElement::I16),
+            ChannelDatatype::I32 => get(&self.buffer, offset).map(TensorElement::I32),
+            ChannelDatatype::I64 => get(&self.buffer, offset).map(TensorElement::I64),
+
+            ChannelDatatype::F16 => get(&self.buffer, offset).map(TensorElement::F16),
+            ChannelDatatype::F32 => get(&self.buffer, offset).map(TensorElement::F32),
+            ChannelDatatype::F64 => get(&self.buffer, offset).map(TensorElement::F64),
         }
     }
 

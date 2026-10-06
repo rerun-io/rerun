@@ -1291,6 +1291,7 @@ force_capitalized = [
     "API",
     "APIs",
     "April",
+    "Bayer",
     "Bevy",
     "C",
     "C++",

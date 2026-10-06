@@ -1,6 +1,7 @@
 mod annotation_context_update;
 mod annotations;
 mod axes_property;
+mod bayer_images;
 mod bgr_images;
 mod blueprint_2d;
 mod chroma_subsampling;

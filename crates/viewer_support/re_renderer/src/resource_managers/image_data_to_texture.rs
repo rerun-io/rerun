@@ -1,5 +1,6 @@
 //! For an overview of image data interpretation check `re_video`'s decoder docs!
 
+use super::bayer_converter::{BayerFormatConversionTask, BayerPattern};
 use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
@@ -28,6 +29,11 @@ pub enum SourceImageDataFormat {
         coefficients: YuvMatrixCoefficients,
         range: YuvRange,
     },
+
+    /// Raw 8 bit Bayer color filter array data with a single sample per pixel.
+    ///
+    /// Converted to RGB using bilinear demosaicing.
+    Bayer(BayerPattern),
     //
     // TODO(#10648): Add rgb (3 channels!) formats.
 }
@@ -94,6 +100,24 @@ pub enum ImageDataToTextureError {
         label: Label,
         actual_format: wgpu::TextureFormat,
         required_format: wgpu::TextureFormat,
+    },
+
+    #[error(
+        "Source texture {label:?} has invalid texture format: {actual_format:?}, expected {required_format:?}"
+    )]
+    InvalidSourceTextureFormat {
+        label: Label,
+        actual_format: wgpu::TextureFormat,
+        required_format: wgpu::TextureFormat,
+    },
+
+    #[error(
+        "Source texture {label:?} has invalid size: {actual_size:?}, expected {expected_size:?}"
+    )]
+    InvalidSourceTextureSize {
+        label: Label,
+        actual_size: wgpu::Extent3d,
+        expected_size: wgpu::Extent3d,
     },
 
     // TODO(andreas): As we stop using `wgpu::TextureFormat` for input, this should become obsolete.
@@ -196,6 +220,7 @@ impl ImageDataDesc<'_> {
             SourceImageDataFormat::Yuv { layout: format, .. } => {
                 format.num_data_buffer_bytes(*width_height)
             }
+            SourceImageDataFormat::Bayer(_) => BayerPattern::num_data_buffer_bytes(*width_height),
         };
 
         // TODO(andreas): Nv12 needs height divisible by 2?
@@ -217,6 +242,9 @@ impl ImageDataDesc<'_> {
             SourceImageDataFormat::Yuv { .. } => {
                 YuvFormatConversionTask::REQUIRED_TARGET_TEXTURE_USAGE_FLAGS
             }
+            SourceImageDataFormat::Bayer(_) => {
+                BayerFormatConversionTask::REQUIRED_TARGET_TEXTURE_USAGE_FLAGS
+            }
         }
     }
 
@@ -225,6 +253,7 @@ impl ImageDataDesc<'_> {
         match self.format {
             SourceImageDataFormat::WgpuCompatible(format) => format,
             SourceImageDataFormat::Yuv { .. } => YuvFormatConversionTask::OUTPUT_FORMAT,
+            SourceImageDataFormat::Bayer(_) => BayerFormatConversionTask::OUTPUT_FORMAT,
         }
     }
 
@@ -290,7 +319,9 @@ pub fn transfer_image_data_to_texture(
     // Determine size of the texture the image data is uploaded into.
     // Reminder: We can't use raw buffers because of WebGL compatibility.
     let [data_texture_width, data_texture_height] = match source_format {
-        SourceImageDataFormat::WgpuCompatible(_) => output_width_height,
+        SourceImageDataFormat::WgpuCompatible(_) | SourceImageDataFormat::Bayer(_) => {
+            output_width_height
+        }
         SourceImageDataFormat::Yuv { layout, .. } => {
             layout.data_texture_width_height(output_width_height)
         }
@@ -298,32 +329,37 @@ pub fn transfer_image_data_to_texture(
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
         SourceImageDataFormat::Yuv { layout, .. } => layout.data_texture_format(),
+        SourceImageDataFormat::Bayer(_) => BayerPattern::DATA_TEXTURE_FORMAT,
     };
 
     // Allocate gpu belt data and upload it.
     let data_texture_label = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => label.clone(),
-        SourceImageDataFormat::Yuv { .. } => format!("{label}_source_data").into(),
+        SourceImageDataFormat::Yuv { .. } | SourceImageDataFormat::Bayer(_) => {
+            format!("{label}_source_data").into()
+        }
     };
 
     let data_texture = match source_format {
         // Needs intermediate data texture.
-        SourceImageDataFormat::Yuv { .. } => ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: data_texture_label,
-                size: wgpu::Extent3d {
-                    width: data_texture_width,
-                    height: data_texture_height,
-                    depth_or_array_layers: 1,
+        SourceImageDataFormat::Yuv { .. } | SourceImageDataFormat::Bayer(_) => {
+            ctx.gpu_resources.textures.alloc(
+                &ctx.device,
+                &TextureDesc {
+                    label: data_texture_label,
+                    size: wgpu::Extent3d {
+                        width: data_texture_width,
+                        height: data_texture_height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1, // We don't have mipmap level generation yet!
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: data_texture_format,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 },
-                mip_level_count: 1, // We don't have mipmap level generation yet!
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: data_texture_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            },
-        ),
+            )
+        }
 
         // Target is directly written to.
         SourceImageDataFormat::WgpuCompatible(_) => target_texture.clone(),
@@ -331,8 +367,12 @@ pub fn transfer_image_data_to_texture(
 
     copy_data_to_texture(ctx, &data_texture, data.as_ref())?;
 
-    // Build a converter task, feeding in the raw data.
-    let converter_task = match source_format {
+    // Build a converter task, feeding in the raw data, and run it.
+    //
+    // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.
+    // Note that we execute the task right away, but the way things are set up (by means of using the `Renderer` framework)
+    // it would be fairly easy to schedule this differently!
+    let conversion_result = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => {
             // No further conversion needed, we're done here!
             return Ok(());
@@ -348,15 +388,15 @@ pub fn transfer_image_data_to_texture(
             coefficients,
             &data_texture,
             target_texture,
-        )?,
+        )?
+        .convert_input_data_to_texture(ctx),
+        SourceImageDataFormat::Bayer(pattern) => {
+            BayerFormatConversionTask::new(ctx, pattern, &data_texture, target_texture)?
+                .convert_input_data_to_texture(ctx)
+        }
     };
 
-    // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.
-    // Note that we execute the task right away, but the way things are set up (by means of using the `Renderer` framework)
-    // it would be fairly easy to schedule this differently!
-    converter_task
-        .convert_input_data_to_texture(ctx)
-        .map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })
+    conversion_result.map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })
 }
 
 fn copy_data_to_texture(

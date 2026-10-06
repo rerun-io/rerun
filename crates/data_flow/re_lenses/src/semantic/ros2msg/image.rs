@@ -62,9 +62,10 @@ mod tests {
             .with_field(Arc::new(Field::new_list_field(DataType::UInt8, false)));
         for encoding in encodings {
             data.values().append_slice(match *encoding {
-                "rgb8" => &[0, 0, 0], // One 8-bit red, green, and blue channel.
-                "16UC1" => &[0, 0],   // One 16-bit unsigned single channel.
-                _ => unreachable!("test helper only supports rgb8 and 16UC1"),
+                "rgb8" => &[0, 0, 0],  // One 8-bit red, green, and blue channel.
+                "16UC1" => &[0, 0],    // One 16-bit unsigned single channel.
+                "bayer_rggb8" => &[0], // One 8-bit Bayer sample.
+                _ => unreachable!("test helper only supports rgb8, 16UC1 and bayer_rggb8"),
             });
             data.append(true);
         }
@@ -178,6 +179,28 @@ mod tests {
             output
                 .components()
                 .contains_component("DepthImage:buffer".into())
+        );
+    }
+
+    /// Checks that Bayer images emit regular image components, even though they have a single sample per pixel.
+    #[test]
+    fn bayer_images_are_color_images() {
+        let output = output_for(&["bayer_rggb8", "bayer_rggb8"]);
+
+        assert!(
+            output
+                .components()
+                .contains_component("Image:format".into())
+        );
+        assert!(
+            output
+                .components()
+                .contains_component("Image:buffer".into())
+        );
+        assert!(
+            !output
+                .components()
+                .contains_component("DepthImage:format".into())
         );
     }
 

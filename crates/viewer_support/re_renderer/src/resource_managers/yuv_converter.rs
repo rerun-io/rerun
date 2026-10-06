@@ -1,5 +1,6 @@
 use smallvec::smallvec;
 
+use super::ImageDataToTextureError;
 use crate::allocator::create_and_fill_uniform_buffer;
 use crate::renderer::{
     DrawData, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
@@ -375,8 +376,7 @@ impl YuvFormatConversionTask {
 
     /// Creates a new conversion task that can be used with [`YuvFormatConverter`].
     ///
-    /// Does *not* validate that the input data has the expected format,
-    /// see methods of [`YuvPixelLayout`] for details.
+    /// The input data texture has the format and size given by the methods of [`YuvPixelLayout`].
     pub fn new(
         ctx: &RenderContext,
         yuv_layout: YuvPixelLayout,
@@ -384,7 +384,32 @@ impl YuvFormatConversionTask {
         yuv_matrix_coefficients: YuvMatrixCoefficients,
         input_data: &GpuTexture,
         target_texture: &GpuTexture,
-    ) -> Result<Self, crate::RendererRegistrationError> {
+    ) -> Result<Self, ImageDataToTextureError> {
+        let input_desc = &input_data.creation_desc;
+        let required_format = yuv_layout.data_texture_format();
+        if input_desc.format != required_format {
+            return Err(ImageDataToTextureError::InvalidSourceTextureFormat {
+                label: input_desc.label.clone(),
+                actual_format: input_desc.format,
+                required_format,
+            });
+        }
+        let target_size = target_texture.creation_desc.size;
+        let [expected_width, expected_height] =
+            yuv_layout.data_texture_width_height([target_size.width, target_size.height]);
+        let expected_size = wgpu::Extent3d {
+            width: expected_width,
+            height: expected_height,
+            depth_or_array_layers: 1,
+        };
+        if input_desc.size != expected_size {
+            return Err(ImageDataToTextureError::InvalidSourceTextureSize {
+                label: input_desc.label.clone(),
+                actual_size: input_desc.size,
+                expected_size,
+            });
+        }
+
         let target_label = target_texture.creation_desc.label.clone();
         let renderer = ctx.renderer::<YuvFormatConverter>()?;
 

@@ -360,6 +360,13 @@ fn pixel_value_ui(
             {
                 show_depth_at_hover(ui, raw_value.as_f64(), meter);
             }
+
+            if let Some((channel, value)) = image.bayer_sample_at(x, y) {
+                let color = ["R", "G", "B"][channel];
+                ui.label(format!("Bayer ({color}):"));
+                ui.monospace(format!("{value: >3}"));
+                ui.end_row();
+            }
         }
 
         if let PixelValueSource::GpuTexture(texture) = &pixel_value_source

@@ -46,6 +46,14 @@ enum ImageEncoding {
     #[strum(serialize = "yuv422_yuy2")]
     Yuv422Yuy2,
     Nv12,
+    #[strum(serialize = "bayer_rggb8")]
+    BayerRggb8,
+    #[strum(serialize = "bayer_bggr8")]
+    BayerBggr8,
+    #[strum(serialize = "bayer_gbrg8")]
+    BayerGbrg8,
+    #[strum(serialize = "bayer_grbg8")]
+    BayerGrbg8,
     #[strum(serialize = "8UC1")]
     Cv8UC1,
     #[strum(serialize = "8UC3")]
@@ -118,6 +126,11 @@ impl ImageEncoding {
                 ImageFormat::from_pixel_format(dimensions, PixelFormat::YUY2)
             }
             Self::Nv12 => ImageFormat::from_pixel_format(dimensions, PixelFormat::NV12),
+            // https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/include/sensor_msgs/image_encodings.hpp
+            Self::BayerRggb8 => ImageFormat::from_pixel_format(dimensions, PixelFormat::BayerRGGB8),
+            Self::BayerBggr8 => ImageFormat::from_pixel_format(dimensions, PixelFormat::BayerBGGR8),
+            Self::BayerGbrg8 => ImageFormat::from_pixel_format(dimensions, PixelFormat::BayerGBRG8),
+            Self::BayerGrbg8 => ImageFormat::from_pixel_format(dimensions, PixelFormat::BayerGRBG8),
             Self::Cv8UC1 => ImageFormat::depth(dimensions, ChannelDatatype::U8),
             Self::Cv8SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I8),
             Self::Cv16UC1 => ImageFormat::depth(dimensions, ChannelDatatype::U16),
@@ -274,6 +287,25 @@ mod tests {
     fn parses_all_image_encoding_names() {
         for name in ImageEncoding::VARIANTS {
             parse_encoding(name).unwrap();
+        }
+    }
+
+    /// Checks that ROS Bayer encodings map to the Bayer pixel format with the same pattern.
+    #[test]
+    fn bayer_encodings_map_to_bayer_pixel_formats() {
+        for (name, pixel_format) in [
+            ("bayer_rggb8", PixelFormat::BayerRGGB8),
+            ("bayer_bggr8", PixelFormat::BayerBGGR8),
+            ("bayer_gbrg8", PixelFormat::BayerGBRG8),
+            ("bayer_grbg8", PixelFormat::BayerGRBG8),
+        ] {
+            let encoding = parse_encoding(name).unwrap();
+            assert!(!encoding.is_single_channel(), "{name}");
+            assert_eq!(
+                encoding.to_image_format([4, 2]).pixel_format,
+                Some(pixel_format),
+                "{name}"
+            );
         }
     }
 }

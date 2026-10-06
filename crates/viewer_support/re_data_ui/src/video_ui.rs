@@ -710,6 +710,13 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
                 .on_hover_text("Matrix coefficients used to convert the pixel data to RGB.");
             });
         }
+
+        SourceImageDataFormat::Bayer(pattern) => {
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new(label).value_text(format!("Bayer {pattern}")),
+            )
+            .on_hover_text("Raw 8 bit Bayer data with the given color filter arrangement.");
+        }
     }
 }
 

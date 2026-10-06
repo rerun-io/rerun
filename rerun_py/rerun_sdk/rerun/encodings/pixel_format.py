@@ -135,6 +135,46 @@ class PixelFormat(Enum):
     the horizontal resolution of the Y plane.
     """
 
+    BayerRGGB8 = 128
+    """
+    Raw Bayer image with 8 bits per pixel, using the RGGB color filter pattern.
+
+    Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    with red and green in even rows, and green and blue in odd rows.
+
+    The viewer reconstructs RGB using bilinear demosaicing.
+    """
+
+    BayerBGGR8 = 129
+    """
+    Raw Bayer image with 8 bits per pixel, using the BGGR color filter pattern.
+
+    Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    with blue and green in even rows, and green and red in odd rows.
+
+    The viewer reconstructs RGB using bilinear demosaicing.
+    """
+
+    BayerGBRG8 = 130
+    """
+    Raw Bayer image with 8 bits per pixel, using the GBRG color filter pattern.
+
+    Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    with green and blue in even rows, and red and green in odd rows.
+
+    The viewer reconstructs RGB using bilinear demosaicing.
+    """
+
+    BayerGRBG8 = 131
+    """
+    Raw Bayer image with 8 bits per pixel, using the GRBG color filter pattern.
+
+    Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    with green and red in even rows, and blue and green in odd rows.
+
+    The viewer reconstructs RGB using bilinear demosaicing.
+    """
+
     @classmethod
     def auto(cls, val: str | int | PixelFormat) -> PixelFormat:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -159,6 +199,10 @@ class PixelFormat(Enum):
 PixelFormatLike = (
     PixelFormat
     | Literal[
+        "BayerBGGR8",
+        "BayerGBRG8",
+        "BayerGRBG8",
+        "BayerRGGB8",
         "NV12",
         "Y8_FullRange",
         "Y8_LimitedRange",
@@ -169,6 +213,10 @@ PixelFormatLike = (
         "Y_U_V16_LimitedRange",
         "Y_U_V24_FullRange",
         "Y_U_V24_LimitedRange",
+        "bayerbggr8",
+        "bayergbrg8",
+        "bayergrbg8",
+        "bayerrggb8",
         "nv12",
         "y8_fullrange",
         "y8_limitedrange",
@@ -187,6 +235,10 @@ PixelFormatLike = (
 PixelFormatArrayLike = (
     PixelFormat
     | Literal[
+        "BayerBGGR8",
+        "BayerGBRG8",
+        "BayerGRBG8",
+        "BayerRGGB8",
         "NV12",
         "Y8_FullRange",
         "Y8_LimitedRange",
@@ -197,6 +249,10 @@ PixelFormatArrayLike = (
         "Y_U_V16_LimitedRange",
         "Y_U_V24_FullRange",
         "Y_U_V24_LimitedRange",
+        "bayerbggr8",
+        "bayergbrg8",
+        "bayergrbg8",
+        "bayerrggb8",
         "nv12",
         "y8_fullrange",
         "y8_limitedrange",

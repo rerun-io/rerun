@@ -129,6 +129,42 @@ pub enum PixelFormat {
     /// the horizontal resolution of the Y plane.
     #[allow(clippy::upper_case_acronyms)]
     Y_U_V16_FullRange = 50,
+
+    /// Raw Bayer image with 8 bits per pixel, using the RGGB color filter pattern.
+    ///
+    /// Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    /// with red and green in even rows, and green and blue in odd rows.
+    ///
+    /// The viewer reconstructs RGB using bilinear demosaicing.
+    #[allow(clippy::upper_case_acronyms)]
+    BayerRGGB8 = 128,
+
+    /// Raw Bayer image with 8 bits per pixel, using the BGGR color filter pattern.
+    ///
+    /// Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    /// with blue and green in even rows, and green and red in odd rows.
+    ///
+    /// The viewer reconstructs RGB using bilinear demosaicing.
+    #[allow(clippy::upper_case_acronyms)]
+    BayerBGGR8 = 129,
+
+    /// Raw Bayer image with 8 bits per pixel, using the GBRG color filter pattern.
+    ///
+    /// Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    /// with green and blue in even rows, and red and green in odd rows.
+    ///
+    /// The viewer reconstructs RGB using bilinear demosaicing.
+    #[allow(clippy::upper_case_acronyms)]
+    BayerGBRG8 = 130,
+
+    /// Raw Bayer image with 8 bits per pixel, using the GRBG color filter pattern.
+    ///
+    /// Every pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,
+    /// with green and red in even rows, and blue and green in odd rows.
+    ///
+    /// The viewer reconstructs RGB using bilinear demosaicing.
+    #[allow(clippy::upper_case_acronyms)]
+    BayerGRBG8 = 131,
 }
 
 ::re_types_core::macros::impl_into_cow!(PixelFormat);
@@ -222,6 +258,10 @@ impl std::fmt::Display for PixelFormat {
             Self::Y_U_V12_FullRange => write!(f, "Y_U_V12_FullRange"),
             Self::Y_U_V16_LimitedRange => write!(f, "Y_U_V16_LimitedRange"),
             Self::Y_U_V16_FullRange => write!(f, "Y_U_V16_FullRange"),
+            Self::BayerRGGB8 => write!(f, "BayerRGGB8"),
+            Self::BayerBGGR8 => write!(f, "BayerBGGR8"),
+            Self::BayerGBRG8 => write!(f, "BayerGBRG8"),
+            Self::BayerGRBG8 => write!(f, "BayerGRBG8"),
         }
     }
 }
@@ -242,6 +282,10 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
             Self::Y_U_V12_FullRange,
             Self::Y_U_V16_LimitedRange,
             Self::Y_U_V16_FullRange,
+            Self::BayerRGGB8,
+            Self::BayerBGGR8,
+            Self::BayerGBRG8,
+            Self::BayerGRBG8,
         ]
     }
 
@@ -278,6 +322,18 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
             Self::Y_U_V16_FullRange => {
                 "`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe horizontal resolution of the Y plane."
             }
+            Self::BayerRGGB8 => {
+                "Raw Bayer image with 8 bits per pixel, using the RGGB color filter pattern.\n\nEvery pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,\nwith red and green in even rows, and green and blue in odd rows.\n\nThe viewer reconstructs RGB using bilinear demosaicing."
+            }
+            Self::BayerBGGR8 => {
+                "Raw Bayer image with 8 bits per pixel, using the BGGR color filter pattern.\n\nEvery pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,\nwith blue and green in even rows, and green and red in odd rows.\n\nThe viewer reconstructs RGB using bilinear demosaicing."
+            }
+            Self::BayerGBRG8 => {
+                "Raw Bayer image with 8 bits per pixel, using the GBRG color filter pattern.\n\nEvery pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,\nwith green and blue in even rows, and red and green in odd rows.\n\nThe viewer reconstructs RGB using bilinear demosaicing."
+            }
+            Self::BayerGRBG8 => {
+                "Raw Bayer image with 8 bits per pixel, using the GRBG color filter pattern.\n\nEvery pixel holds a single color sample, in one plane. The pattern repeats every 2x2 pixels,\nwith green and red in even rows, and blue and green in odd rows.\n\nThe viewer reconstructs RGB using bilinear demosaicing."
+            }
         }
     }
 
@@ -294,6 +350,10 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
             44 => Some(Self::Y_U_V12_FullRange),
             49 => Some(Self::Y_U_V16_LimitedRange),
             50 => Some(Self::Y_U_V16_FullRange),
+            128 => Some(Self::BayerRGGB8),
+            129 => Some(Self::BayerBGGR8),
+            130 => Some(Self::BayerGBRG8),
+            131 => Some(Self::BayerGRBG8),
             _ => None,
         }
     }

@@ -179,9 +179,13 @@ namespace rerun {
             case encodings::PixelFormat::NV12:
                 return 12 * num_pixels / 8;
 
-            // Monochrome formats.
+            // Monochrome and Bayer formats, one byte per pixel.
             case encodings::PixelFormat::Y8_LimitedRange:
             case encodings::PixelFormat::Y8_FullRange:
+            case encodings::PixelFormat::BayerRGGB8:
+            case encodings::PixelFormat::BayerBGGR8:
+            case encodings::PixelFormat::BayerGBRG8:
+            case encodings::PixelFormat::BayerGRBG8:
                 return num_pixels;
 
             default:

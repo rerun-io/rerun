@@ -9,8 +9,8 @@ use half::f16;
 use re_renderer::device_caps::DeviceCaps;
 use re_renderer::renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha};
 use re_renderer::resource_managers::{
-    AlphaChannelUsage, ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout,
-    YuvRange,
+    AlphaChannelUsage, BayerPattern, ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients,
+    YuvPixelLayout, YuvRange,
 };
 use re_renderer::{RenderContext, pad_rgb_to_rgba};
 use re_sdk_types::components::ClassId;
@@ -94,7 +94,11 @@ fn color_image_to_gpu(
     // their requested value range and skip the usual sRGB image decoding.
     let colormap_single_channel = colormap.filter(|_| texture_format.components() == 1);
 
-    let decode_srgb = if colormap_single_channel.is_some() {
+    let is_bayer = image_format
+        .pixel_format
+        .is_some_and(|format| format.bayer_pattern().is_some());
+    let decode_srgb = if colormap_single_channel.is_some() || is_bayer {
+        // Raw Bayer samples are interpreted as linear color values.
         false
     } else {
         // TODO(emilk): let the user specify the color space.
@@ -318,6 +322,11 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 range,
                 coefficients,
             },
+
+            PixelFormat::BayerRGGB8 => SourceImageDataFormat::Bayer(BayerPattern::Rggb),
+            PixelFormat::BayerBGGR8 => SourceImageDataFormat::Bayer(BayerPattern::Bggr),
+            PixelFormat::BayerGBRG8 => SourceImageDataFormat::Bayer(BayerPattern::Gbrg),
+            PixelFormat::BayerGRBG8 => SourceImageDataFormat::Bayer(BayerPattern::Grbg),
         };
 
         (data, format)

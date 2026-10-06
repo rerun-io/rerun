@@ -295,6 +295,7 @@ pub mod ply;
 mod transform_frame_id_hash;
 pub use transform_frame_id_hash::TransformFrameIdHash;
 
+pub mod bayer_pattern;
 // TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export
 // additional helpers yet.
 pub mod image;
