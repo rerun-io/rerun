@@ -5,12 +5,16 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import signal
 import subprocess
+import time
 import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, overload
+
+import psutil
 
 from rerun._arrow import to_record_batch
 from rerun.time import to_nanos, to_nanos_since_epoch
@@ -242,6 +246,25 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
         catalog_url=raw.get("catalog_url"),
         viewer_version=raw.get("viewer_version"),
     )
+
+
+def _wait_for_processes(processes: list[psutil.Process], timeout: float) -> list[psutil.Process]:
+    """Reap direct children and wait for descendants to exit, excluding orphan zombies."""
+    deadline = time.monotonic() + timeout
+    alive = []
+    for process in processes:
+        try:
+            process.wait(timeout=max(0.0, deadline - time.monotonic()))
+        except psutil.TimeoutExpired:
+            try:
+                # A terminated grandchild may remain a zombie until its new parent reaps it.
+                if process.status() != psutil.STATUS_ZOMBIE:
+                    alive.append(process)
+            except psutil.NoSuchProcess:
+                pass
+        except psutil.NoSuchProcess:
+            pass
+    return alive
 
 
 class ViewerClient:
@@ -622,17 +645,35 @@ class ViewerClient:
         """
         return _viewer_state_from_json(json.loads(self._internal.viewer_state()))
 
-    def close(self) -> None:
+    def close(self, *, wait: bool = True, timeout: float = 5.0) -> None:
         """
-        Close the client, terminating the spawned viewer.
+        Close the client, waiting for the spawned viewer and its launcher to exit.
+
+        Wait up to `timeout` seconds for termination, then force-kill any remaining
+        processes and wait up to `timeout` seconds again.
+        Raise `RuntimeError` if teardown fails.
 
         Emits a `UserWarning` and is a no-op if there is no spawned viewer to
         terminate (either the client never spawned one, or it has already
         been closed). Safe to call multiple times — only the first call has
         an effect.
+
+        Parameters
+        ----------
+        wait:
+            Wait for shutdown to finish. If `False`, only signal termination:
+            do not wait for process exit or escalate to forced termination.
+            The viewer's port may still be occupied when this method returns.
+        timeout:
+            Maximum seconds for each shutdown wait, not the total duration.
+            Must be finite and greater than zero.
+            On Windows, this also limits the `taskkill` command.
+
         """
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout must be finite and greater than zero")
+
         pid = self._pid
-        self._pid = None
         if pid is None:
             warnings.warn(
                 "ViewerClient.close() called with no viewer to terminate "
@@ -642,6 +683,16 @@ class ViewerClient:
             )
             return
 
+        processes = []
+        if wait:
+            try:
+                launcher = psutil.Process(pid)
+            except psutil.NoSuchProcess:
+                self._pid = None
+                return
+
+            # Capture descendants before signaling the launcher, while parentage is still intact.
+            processes = [*launcher.children(recursive=True), launcher]
         try:
             # The python `rerun` command is a shim (see `rerun_cli/__main__.py`) that spawns the
             # rust cli binary as a child process. Killing only the shim pid would orphan that child
@@ -656,17 +707,29 @@ class ViewerClient:
                     ["taskkill", "/PID", str(pid), "/T", "/F"],
                     check=True,
                     capture_output=True,
+                    timeout=timeout,
                 )
             else:
                 # On unix the shim is launched in its own process group (see `spawn.rs`), and the
                 # viewer child inherits it, so we can kill both cleanly with a single `killpg`.
-                os.killpg(pid, signal.SIGTERM)
-        except (OSError, subprocess.CalledProcessError) as err:
-            warnings.warn(
-                f"ViewerClient.close() could not close pid {pid}: {err}",
-                UserWarning,
-                stacklevel=2,
-            )
+                try:
+                    os.killpg(pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+
+            if wait:
+                alive = _wait_for_processes(processes, timeout=timeout)
+                for process in alive:
+                    try:
+                        process.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+                alive = _wait_for_processes(alive, timeout=timeout)
+                if alive:
+                    raise RuntimeError(f"Viewer processes did not exit: {[process.pid for process in alive]}")
+        except (OSError, psutil.Error, subprocess.SubprocessError) as err:
+            raise RuntimeError(f"Failed to close viewer process {pid}: {err}") from err
+        self._pid = None
 
     def __enter__(self) -> ViewerClient:
         return self

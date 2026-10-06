@@ -55,19 +55,6 @@ def _wait_for_port(port: int, timeout: float) -> None:
     raise TimeoutError(f"viewer never started listening on port {port}")
 
 
-def _wait_for_port_closed(port: int, timeout: float) -> None:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.2)
-            try:
-                s.connect(("127.0.0.1", port))
-            except OSError:
-                return
-        time.sleep(0.1)
-    raise TimeoutError(f"viewer still listening on port {port} after teardown")
-
-
 @pytest.mark.skip(reason="RR-5124: linux wheel CI segfaults in llvmpipe/Mesa after the RunsOn AMI rollout")
 def test_save_screenshot(tmp_path: Path) -> None:
     """Log into a spawned headless viewer, then screenshot it to disk."""
@@ -95,5 +82,13 @@ def test_viewer_dies_on_client_close() -> None:
 
     _wait_for_port(port, timeout=30.0)
     viewer.close()
-    # SIGTERM lands; the viewer should release the port within a few seconds.
-    _wait_for_port_closed(port, timeout=15.0)
+    with socket.socket() as connection:
+        connection.settimeout(0.2)
+        assert connection.connect_ex(("127.0.0.1", port)) != 0
+
+
+def test_viewer_can_restart_on_same_port() -> None:
+    port = _find_free_port()
+    for _ in range(4):
+        with ViewerClient.spawn(headless=True, port=port) as viewer:
+            assert viewer.viewer_state().viewer_version is not None

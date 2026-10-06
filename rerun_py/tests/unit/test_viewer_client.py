@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import os
+import subprocess
 from datetime import datetime, timezone
+from unittest.mock import Mock, call
 
 import datafusion
 import pyarrow as pa
 import pytest
 from rerun._arrow import to_record_batch
-from rerun.experimental import ViewerClient
+from rerun.experimental import ViewerClient, _viewer_client
 from rerun.experimental._viewer_client import _viewer_state_from_json
 
 import rerun_bindings  # noqa: TID251
@@ -26,6 +29,62 @@ def _capturing_viewer(
 
     monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", CapturingViewerClientInternal)
     return ViewerClient.connect(), calls
+
+
+def test_close_without_waiting(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, _calls = _capturing_viewer(monkeypatch)
+    viewer._pid = 123
+    terminate, wait = Mock(), Mock()
+    monkeypatch.setattr(_viewer_client, "_wait_for_processes", wait)
+    if os.name == "posix":
+        monkeypatch.setattr(os, "killpg", terminate)
+    else:
+        monkeypatch.setattr(subprocess, "run", terminate)
+
+    viewer.close(wait=False)
+
+    terminate.assert_called_once()
+    wait.assert_not_called()
+    assert viewer._pid is None
+
+
+def test_close_reports_failed_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, _calls = _capturing_viewer(monkeypatch)
+    launcher = Mock(pid=123)
+    launcher.children.return_value = []
+    viewer._pid = launcher.pid
+    monkeypatch.setattr(_viewer_client.psutil, "Process", Mock(return_value=launcher))
+    wait = Mock(return_value=[launcher])
+    monkeypatch.setattr(_viewer_client, "_wait_for_processes", wait)
+    if os.name == "posix":
+        monkeypatch.setattr(os, "killpg", Mock())
+    else:
+        monkeypatch.setattr(subprocess, "run", Mock())
+
+    with pytest.raises(RuntimeError, match="Viewer processes did not exit"):
+        viewer.close(timeout=0.25)
+
+    assert wait.call_args_list == [call([launcher], timeout=0.25)] * 2
+    launcher.kill.assert_called_once_with()
+    assert viewer._pid == launcher.pid
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("inf"), float("-inf"), float("nan")])
+def test_close_rejects_invalid_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
+    viewer, _calls = _capturing_viewer(monkeypatch)
+    with pytest.raises(ValueError, match="timeout must be finite and greater than zero"):
+        viewer.close(timeout=timeout)
+
+
+@pytest.mark.parametrize("gone", [False, True])
+def test_wait_for_processes_excludes_terminated_descendants(gone: bool) -> None:
+    process = Mock()
+    process.wait.side_effect = _viewer_client.psutil.TimeoutExpired(0)
+    if gone:
+        process.status.side_effect = _viewer_client.psutil.NoSuchProcess(123)
+    else:
+        process.status.return_value = _viewer_client.psutil.STATUS_ZOMBIE
+    assert _viewer_client._wait_for_processes([process], timeout=0) == []
 
 
 def test_to_record_batch_single_record_batch() -> None:
