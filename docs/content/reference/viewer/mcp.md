@@ -105,7 +105,7 @@ Both ids may contain a colon, so the application id's are escaped as `\:`: the k
 The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
 For a recording that is not in the catalog, such as one streamed from an SDK or imported from another file format, the agent is told to read the file directly with `rerun.chunk.RrdReader` instead.
 
-## Reading the blueprint
+## Reading and writing the blueprint
 
 `rerun_get_blueprint` returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
 The JSON mirrors the blueprint store row for row, so it matches what the SDKs log and what the blueprint panel shows:
@@ -119,6 +119,10 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
   "/viewport": { "ViewportBlueprint": { "root_container": "4a8c…" } }
 }
 ```
+
+`rerun_set_blueprint` replaces the whole blueprint with JSON of the same form, and clears anything it leaves out.
+So an agent reads the blueprint, edits it, and sends all of it back.
+The write is a normal blueprint edit, so the user can undo it.
 
 ## Closing recordings
 

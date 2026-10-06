@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -130,6 +130,13 @@ pub mod viewer_control_request {
         /// to disk failed.
         #[prost(message, tag = "13")]
         CaptureProfileTrace(super::CaptureProfileTraceRequest),
+        /// Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.
+        ///
+        /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
+        /// single value may be written as that value or as an array of one.
+        /// `INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.
+        #[prost(message, tag = "14")]
+        SetBlueprint(super::SetBlueprintRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -148,7 +155,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -196,6 +203,9 @@ pub mod viewer_control_response {
         /// Result of `capture_profile_trace`.
         #[prost(message, tag = "13")]
         CaptureProfileTrace(super::CaptureProfileTraceResponse),
+        /// Result of `set_blueprint`.
+        #[prost(message, tag = "14")]
+        SetBlueprint(super::SetBlueprintResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -422,7 +432,7 @@ pub struct GetBlueprintResponse {
     /// The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
     #[prost(string, tag = "1")]
     pub blueprint_id: ::prost::alloc::string::String,
-    /// The blueprint as a JSON object, keyed by blueprint entity path.
+    /// The whole blueprint as a JSON object, as `GetBlueprint` returns it.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
 }
@@ -1113,6 +1123,45 @@ impl ::prost::Name for CaptureProfileTraceResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.CaptureProfileTraceResponse".into()
+    }
+}
+/// Request for `SetBlueprint`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetBlueprintRequest {
+    /// Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.
+    /// If omitted, the active recording is used.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
+    /// returns it.
+    #[prost(string, tag = "2")]
+    pub json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetBlueprintRequest {
+    const NAME: &'static str = "SetBlueprintRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetBlueprintRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetBlueprintRequest".into()
+    }
+}
+/// Response for `SetBlueprint`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetBlueprintResponse {
+    /// The blueprint that was written, as `{kind}:{application_id}:{recording_id}`.
+    #[prost(string, tag = "1")]
+    pub blueprint_id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetBlueprintResponse {
+    const NAME: &'static str = "SetBlueprintResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetBlueprintResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetBlueprintResponse".into()
     }
 }
 /// Request for `SetTimeCursor`.

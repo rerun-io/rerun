@@ -248,7 +248,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate              | Description                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------------- |
-| re_arrow_json      | Rerun data as JSON                                                                            |
+| re_arrow_json      | Rerun data as JSON, and back                                                                  |
 | re_chunk           | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_index     | Indexes of Rerun chunks: RRD manifests and the chunk providers that serve them                |
 | re_chunk_optimizer | Analysis and memory-bounded optimization of Rerun chunk layouts                               |

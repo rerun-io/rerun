@@ -1049,6 +1049,30 @@ Conventions:
   }
 }
 
+## rerun_set_blueprint
+
+{
+  "name": "rerun_set_blueprint",
+  "description": "Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.\n\nThe JSON is the whole blueprint: anything it leaves out is cleared. A field holding a\nsingle value may be written as that value or as an array of one.\n`INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "store_id": {
+        "type": "string",
+        "description": "Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.\nIf omitted, the active recording is used."
+      },
+      "json": {
+        "type": "string",
+        "description": "The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`\nreturns it."
+      }
+    },
+    "required": [
+      "json"
+    ],
+    "description": "Request for `SetBlueprint`."
+  }
+}
+
 ## rerun_set_time_cursor
 
 {

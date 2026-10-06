@@ -22,7 +22,7 @@ use re_sdk_types::blueprint::components::{
 use re_sdk_types::components::Color;
 use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary, Uuid};
 
-use crate::json_from_store;
+use crate::{chunks_from_json, json_from_store};
 
 pub fn empty_blueprint() -> EntityDb {
     EntityDb::new(StoreId::random(StoreKind::Blueprint, "test"))
@@ -35,8 +35,7 @@ pub fn empty_blueprint() -> EntityDb {
 /// * `root_container`, `contents`, `active_tab` and `maximized`, which point at other tiles.
 /// * View properties (`ViewContents`, `EyeControls3D`, `TimeAxis`), component defaults, and an
 ///   entity override with its visualizer instruction.
-/// * Top-level panels, a component logged without an archetype, and cleared and `Null`-typed
-///   components, which are left out.
+/// * Top-level panels, and cleared and `Null`-typed components, which are left out.
 pub fn example_blueprint() -> EntityDb {
     let uuid = |n: u128| uuid::Uuid::from_u128(0x0000_0000_0000_4000_8000_0000_0000_0000 | n);
     let root = uuid(1);
@@ -175,18 +174,14 @@ pub fn example_blueprint() -> EntityDb {
         db.add_chunk(&Arc::new(chunk)).unwrap();
     }
 
-    // A component logged without an archetype, and a `Null`-typed one, as older blueprints
-    // carry for indicators. The latter is left out.
-    let note: ArrayRef = Arc::new(arrow::array::StringArray::from(vec!["hello"]));
+    // A `Null`-typed component logged without an archetype, as older blueprints carry for
+    // indicators. It is left out.
     let indicator: ArrayRef = Arc::new(arrow::array::NullArray::new(1));
     let chunk = Chunk::builder(readme_path.as_str())
         .with_row(
             RowId::new(),
             TimePoint::default(),
-            [
-                (ComponentDescriptor::partial("my_note"), note),
-                (ComponentDescriptor::partial("OldIndicator"), indicator),
-            ],
+            [(ComponentDescriptor::partial("OldIndicator"), indicator)],
         )
         .build()
         .unwrap();
@@ -202,4 +197,17 @@ pub fn read(blueprint: &EntityDb) -> Value {
         &query,
         re_sdk_types::reflection::reflection(),
     )
+}
+
+pub fn write(blueprint: &mut EntityDb, json: &Value) {
+    let chunks = chunks_from_json(
+        json,
+        blueprint.storage_engine().store(),
+        &TimePoint::default(),
+        re_sdk_types::reflection::reflection(),
+    )
+    .unwrap();
+    for chunk in chunks {
+        blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+    }
 }

@@ -338,6 +338,10 @@ pub struct ComponentReflection {
     /// Datatype of the component.
     pub datatype: arrow::datatypes::DataType,
 
+    /// The fully-qualified name of the encoding this component wraps, e.g. `rerun.encodings.Uuid`,
+    /// for a component that wraps one.
+    pub encoding: Option<&'static str>,
+
     /// The variants, if this component is an enum type (as opposed to a struct/union).
     pub enum_variants: Option<&'static [EnumVariantReflection]>,
 
@@ -366,6 +370,14 @@ impl ComponentReflection {
             .iter()
             .find(|variant| variant.value == value)
             .map(|variant| variant.name)
+    }
+
+    /// The integer the enum variant called `name` is stored as, if this is an enum with one.
+    pub fn enum_variant_value(&self, name: &str) -> Option<u64> {
+        self.enum_variants?
+            .iter()
+            .find(|variant| variant.name == name)
+            .map(|variant| variant.value)
     }
 }
 

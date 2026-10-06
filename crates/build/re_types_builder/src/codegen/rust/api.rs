@@ -789,11 +789,9 @@ fn quote_trait_impls_for_encoding_or_component(
 
     let datatype = type_registry.get(fqname);
 
-    let is_forwarded_type = obj.is_arrow_transparent()
-        && !obj.fields[0].is_nullable
-        && matches!(obj.fields[0].typ, Type::Object { .. });
-    let forwarded_type =
-        is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
+    let forwarded_type = obj
+        .forwarded_field()
+        .map(|field| quote_field_type_from_typ(&field.typ, true).0);
 
     let quoted_impl_component = (obj.kind == ObjectKind::Component).then(|| {
         if let Some(forwarded_type) = forwarded_type.as_ref() {

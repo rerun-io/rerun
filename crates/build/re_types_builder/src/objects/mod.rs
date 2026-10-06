@@ -464,6 +464,25 @@ impl Object {
         self.kind == ObjectKind::Component || self.attrs.has(crate::ArrowAttr::Transparent)
     }
 
+    /// The field whose object type this one is a transparent, non-nullable wrapper around.
+    ///
+    /// Such an object shares its Arrow datatype with that field's type, so the generated code
+    /// forwards serialization to it, and the reflection reports the field's type as the encoding.
+    /// The returned field always has a [`Type::Object`] type.
+    pub fn forwarded_field(&self) -> Option<&ObjectField> {
+        if !self.is_arrow_transparent() {
+            return None;
+        }
+        re_log::debug_assert_eq!(
+            self.fields.len(),
+            1,
+            "{}: a transparent object has exactly one field",
+            self.fqname
+        );
+        let field = self.fields.first()?;
+        (!field.is_nullable && matches!(field.typ, Type::Object { .. })).then_some(field)
+    }
+
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         self.fields

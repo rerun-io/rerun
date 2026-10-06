@@ -17,10 +17,10 @@ use re_protos::viewer_control::v1alpha1::{
     GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetViewerLogsRequest,
     GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
     OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema,
-    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetTimeCursorRequest,
-    SetTimeCursorResponse, TimeCursor, ViewerControlRequest, ViewerControlResponse,
-    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerTimeline, ViewerView,
-    viewer_control_request,
+    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetBlueprintRequest,
+    SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
+    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
+    ViewerReport, ViewerTimeline, ViewerView, viewer_control_request,
 };
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
@@ -156,6 +156,13 @@ impl App {
             }
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
+
+            Kind::SetBlueprint(request) => {
+                on_done.call(
+                    self.apply_set_blueprint(store_hub, request)
+                        .map(ViewerControlResponse::from),
+                );
+            }
 
             Kind::SetTimeCursor(request) => {
                 let SetTimeCursorRequest {
@@ -397,34 +404,10 @@ impl App {
         store_hub: &StoreHub,
         request: GetBlueprintRequest,
     ) -> Result<GetBlueprintResponse, ViewerControlError> {
+        re_tracing::profile_function!();
+
         let GetBlueprintRequest { store_id } = request;
-
-        let store_id = store_id
-            .map(|store_id| store_id.parse::<StoreId>())
-            .transpose()
-            .map_err(|err| {
-                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
-            })?
-            .or_else(|| self.state.active_recording_id().cloned())
-            .ok_or_else(|| {
-                ViewerControlError::failed_precondition(
-                    "no active recording to read the blueprint of",
-                )
-            })?;
-
-        if store_hub.entity_db(&store_id).is_none() {
-            return Err(ViewerControlError::not_found(format!(
-                "recording {store_id} is not open"
-            )));
-        }
-
-        let blueprint_db = store_hub
-            .active_blueprint_for_app(store_id.application_id())
-            .ok_or_else(|| {
-                ViewerControlError::not_found(format!(
-                    "recording {store_id} has no active blueprint"
-                ))
-            })?;
+        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
 
         let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
         let json = re_arrow_json::json_from_store(
@@ -437,6 +420,73 @@ impl App {
             blueprint_id: blueprint_db.store_id().to_string(),
             json: json.to_string(),
         })
+    }
+
+    /// Replace the active blueprint of a recording's application with JSON, for the
+    /// `set_blueprint` operation.
+    ///
+    /// Returns once the write is queued; the blueprint changes on the next frame.
+    fn apply_set_blueprint(
+        &self,
+        store_hub: &StoreHub,
+        request: SetBlueprintRequest,
+    ) -> Result<SetBlueprintResponse, ViewerControlError> {
+        re_tracing::profile_function!();
+
+        let SetBlueprintRequest { store_id, json } = request;
+
+        let json: serde_json::Value = serde_json::from_str(&json).map_err(|err| {
+            ViewerControlError::invalid_argument(format!("`json` is not valid JSON: {err}"))
+        })?;
+
+        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
+        let chunks = re_arrow_json::chunks_from_json(
+            &json,
+            blueprint_db.storage_engine().store(),
+            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
+            &self.reflection,
+        )
+        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
+
+        let blueprint_id = blueprint_db.store_id().clone();
+        self.command_sender
+            .send_system(SystemCommand::AppendToStore(blueprint_id.clone(), chunks));
+
+        Ok(SetBlueprintResponse {
+            blueprint_id: blueprint_id.to_string(),
+        })
+    }
+
+    /// The active blueprint of the application of `store_id`, or of the active recording.
+    fn active_blueprint<'hub>(
+        &self,
+        store_hub: &'hub StoreHub,
+        store_id: Option<String>,
+    ) -> Result<&'hub re_entity_db::EntityDb, ViewerControlError> {
+        let store_id = store_id
+            .map(|store_id| store_id.parse::<StoreId>())
+            .transpose()
+            .map_err(|err| {
+                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+            })?
+            .or_else(|| self.state.active_recording_id().cloned())
+            .ok_or_else(|| {
+                ViewerControlError::failed_precondition("no active recording, and no `store_id`")
+            })?;
+
+        if store_hub.entity_db(&store_id).is_none() {
+            return Err(ViewerControlError::not_found(format!(
+                "recording {store_id} is not open"
+            )));
+        }
+
+        store_hub
+            .active_blueprint_for_app(store_id.application_id())
+            .ok_or_else(|| {
+                ViewerControlError::not_found(format!(
+                    "recording {store_id} has no active blueprint"
+                ))
+            })
     }
 
     /// Snapshot a recording's schema for the `get_recording_schema` operation: every entity

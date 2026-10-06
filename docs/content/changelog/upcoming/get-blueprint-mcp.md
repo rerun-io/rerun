@@ -1,10 +1,10 @@
 ---
-title: "Agents can read the active blueprint over MCP"
+title: "Agents can read and write the active blueprint over MCP"
 hidden: true
 type: feature
 ---
 
-### Agents can read the active blueprint over MCP
+### Agents can read and write the active blueprint over MCP
 
 The new `GetBlueprint` operation, served as the `rerun_get_blueprint` MCP tool, returns a recording's active blueprint as JSON, one entry per blueprint entity with its archetypes and their fields:
 
@@ -16,6 +16,6 @@ The new `GetBlueprint` operation, served as the `rerun_get_blueprint` MCP tool, 
 }
 ```
 
-Writing a blueprint back is not supported yet.
+The new `SetBlueprint` operation, served as `rerun_set_blueprint`, replaces the whole blueprint with JSON of the same form.
 
-See the [MCP reference](../reference/viewer/mcp.md#reading-the-blueprint).
+See the [MCP reference](../reference/viewer/mcp.md#reading-and-writing-the-blueprint).

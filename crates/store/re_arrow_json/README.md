@@ -7,8 +7,8 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Rerun data as JSON.
+Rerun data as JSON, and back.
 
 An entity is one JSON object holding one key per archetype, and one key per component of that archetype.
 Component values are encoded from their Arrow datatype with `arrow-json`, with friendlier forms for enums, colors, UUIDs and unions.
-The viewer uses it to read blueprints over `ViewerControl`.
+The viewer uses it to read and write blueprints over `ViewerControl`.

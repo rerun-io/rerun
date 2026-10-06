@@ -8,8 +8,9 @@ use crate::viewer_control::v1alpha1::{
     GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
     GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
     ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
-    SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse,
-    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
+    SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest, SetBlueprintResponse,
+    SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse,
+    viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -116,6 +117,7 @@ viewer_control_ops! {
     "open_url" => OpenUrl(OpenUrlRequest, OpenUrlResponse),
     "run_command" => RunCommand(RunCommandRequest, RunCommandResponse),
     "save_screenshot" => SaveScreenshot(SaveScreenshotRequest, SaveScreenshotResponse),
+    "set_blueprint" => SetBlueprint(SetBlueprintRequest, SetBlueprintResponse),
     "set_time_cursor" => SetTimeCursor(SetTimeCursorRequest, SetTimeCursorResponse),
 }
 

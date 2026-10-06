@@ -45,6 +45,20 @@ impl Color {
         self.0.0
     }
 
+    /// From `"#rrggbb"` (opaque) or `"#rrggbbaa"`, as written by [`Self::to_hex`].
+    pub fn from_hex(hex: &str) -> Option<Self> {
+        let digits = hex.strip_prefix('#')?;
+        if !digits.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        let value = u32::from_str_radix(digits, 16).ok()?;
+        match digits.len() {
+            6 => Some(Self::from_u32((value << 8) | 0xff)),
+            8 => Some(Self::from_u32(value)),
+            _ => None,
+        }
+    }
+
     /// `"#rrggbb"` when fully opaque, else `"#rrggbbaa"`.
     pub fn to_hex(self) -> String {
         let rgba = self.to_u32();
@@ -96,8 +110,17 @@ mod tests {
     use super::Color;
 
     #[test]
-    fn to_hex_leaves_out_opaque_alpha() {
-        assert_eq!(Color::from_rgb(255, 0, 16).to_hex(), "#ff0010");
-        assert_eq!(Color::from_u32(0xff00_1080).to_hex(), "#ff001080");
+    fn hex_round_trip() {
+        let opaque = Color::from_rgb(255, 0, 16);
+        assert_eq!(opaque.to_hex(), "#ff0010");
+        assert_eq!(Color::from_hex("#ff0010"), Some(opaque));
+
+        let translucent = Color::from_u32(0xff00_1080);
+        assert_eq!(translucent.to_hex(), "#ff001080");
+        assert_eq!(Color::from_hex("#ff001080"), Some(translucent));
+
+        assert_eq!(Color::from_hex("ff0010"), None);
+        assert_eq!(Color::from_hex("#ff001"), None);
+        assert_eq!(Color::from_hex("#+f0010"), None);
     }
 }

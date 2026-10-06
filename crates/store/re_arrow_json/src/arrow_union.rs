@@ -28,11 +28,24 @@
 //! ```
 //!
 //! A null boundary is written as `null`.
+//!
+//! `arrow-json` cannot decode a union either, and offers no hook to, so [`array_from_json`] builds
+//! any datatype holding a union itself, and hands the parts without one back to `arrow-json`.
 
-use arrow::array::{Array, AsArray as _, UnionArray};
-use arrow::datatypes::{DataType, FieldRef};
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use arrow::array::{
+    Array, ArrayRef, AsArray as _, FixedSizeListArray, ListArray, NullArray, StructArray,
+    UnionArray,
+};
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, FieldRef, Fields, UnionFields, UnionMode};
 use arrow::error::ArrowError;
 use arrow::json::writer::{Encoder, EncoderFactory, EncoderOptions, NullableEncoder, make_encoder};
+use serde_json::Value;
+
+use crate::from_json::{ValueFromJsonError, arrow_from_json};
 
 /// The variant Rerun's codegen puts at type id 0 of every union, to encode a null value.
 const NULL_MARKERS: &str = "_null_markers";
@@ -127,16 +140,238 @@ impl Encoder for UnionEncoder<'_> {
     }
 }
 
+/// Whether `datatype` holds a union anywhere, which only [`array_from_json`] can decode.
+pub fn contains_union(datatype: &DataType) -> bool {
+    match datatype {
+        DataType::Union(..) => true,
+        DataType::Struct(fields) => fields.iter().any(|field| contains_union(field.data_type())),
+        DataType::List(field) | DataType::LargeList(field) | DataType::FixedSizeList(field, _) => {
+            contains_union(field.data_type())
+        }
+        _ => false,
+    }
+}
+
+/// `values` as an array of `datatype`, which holds a union somewhere, in the form the module docs
+/// describe.
+pub fn array_from_json(
+    datatype: &DataType,
+    values: &[Value],
+) -> Result<ArrayRef, ValueFromJsonError> {
+    // The recursion below only handles what can hold a union; everything else, including the
+    // union-free parts of a type that does hold one, is decoded by `arrow-json`.
+    if contains_union(datatype) {
+        match datatype {
+            DataType::Union(fields, UnionMode::Dense) => union_from_json(fields, values),
+            DataType::Struct(fields) => struct_from_json(fields, values),
+            DataType::List(field) => list_from_json(field, None, values),
+            DataType::FixedSizeList(field, size) => list_from_json(field, Some(*size), values),
+            _ => Err(ValueFromJsonError::UnsupportedDatatype {
+                datatype: datatype.clone(),
+            }),
+        }
+    } else {
+        arrow_from_json(datatype, values)
+    }
+}
+
+fn union_from_json(fields: &UnionFields, values: &[Value]) -> Result<ArrayRef, ValueFromJsonError> {
+    const EXPECTED: &str = r#"a variant: "Variant", { "Variant": value }, or null"#;
+
+    let variant_names = || {
+        fields
+            .iter()
+            .map(|(_, field)| field.name().as_str())
+            .filter(|name| *name != NULL_MARKERS)
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let type_id_of = |name: &str| fields.iter().find(|(_, field)| field.name() == name);
+    let build_error = |err| ValueFromJsonError::BuildArray {
+        datatype: DataType::Union(fields.clone(), UnionMode::Dense),
+        err,
+    };
+
+    let mut type_ids = Vec::with_capacity(values.len());
+    let mut offsets = Vec::with_capacity(values.len());
+    let mut child_values: BTreeMap<i8, Vec<Value>> = BTreeMap::new();
+    for value in values {
+        let (name, data) = match value {
+            Value::Null => (NULL_MARKERS, Value::Null),
+            Value::String(name) => (name.as_str(), Value::Null),
+            Value::Object(object) => match object.iter().next() {
+                Some((name, data)) if object.len() == 1 => (name.as_str(), data.clone()),
+                _ => return Err(ValueFromJsonError::expected(EXPECTED, value)),
+            },
+            _ => return Err(ValueFromJsonError::expected(EXPECTED, value)),
+        };
+        let Some((type_id, field)) = type_id_of(name) else {
+            return Err(ValueFromJsonError::UnknownEnumVariant {
+                name: name.to_owned(),
+                expected: variant_names(),
+            });
+        };
+        // A variant without data is written as its name alone, and one with data as an object.
+        let has_data = field.data_type() != &DataType::Null;
+        if has_data != value.is_object() {
+            return Err(ValueFromJsonError::expected(EXPECTED, value));
+        }
+
+        let child = child_values.entry(type_id).or_default();
+        type_ids.push(type_id);
+        offsets.push(
+            i32::try_from(child.len())
+                .map_err(|err| ArrowError::InvalidArgumentError(format!("too many values: {err}")))
+                .map_err(build_error)?,
+        );
+        child.push(data);
+    }
+
+    let children = fields
+        .iter()
+        .map(|(type_id, field)| {
+            let values = child_values.remove(&type_id).unwrap_or_default();
+            if field.data_type() == &DataType::Null {
+                Ok(Arc::new(NullArray::new(values.len())) as ArrayRef)
+            } else {
+                array_from_json(field.data_type(), &values)
+            }
+        })
+        .collect::<Result<Vec<_>, ValueFromJsonError>>()?;
+
+    Ok(Arc::new(
+        UnionArray::try_new(
+            fields.clone(),
+            type_ids.into(),
+            Some(offsets.into()),
+            children,
+        )
+        .map_err(build_error)?,
+    ))
+}
+
+fn struct_from_json(fields: &Fields, values: &[Value]) -> Result<ArrayRef, ValueFromJsonError> {
+    for value in values {
+        match value {
+            Value::Null => {}
+            Value::Object(object) => {
+                // As strict as `arrow-json` is on structs without a union.
+                if let Some(unknown) = object.keys().find(|key| fields.find(key).is_none()) {
+                    return Err(ValueFromJsonError::UnknownField {
+                        name: unknown.clone(),
+                        expected: fields
+                            .iter()
+                            .map(|field| field.name().as_str())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    });
+                }
+            }
+            _ => return Err(ValueFromJsonError::expected("an object", value)),
+        }
+    }
+    let children = fields
+        .iter()
+        .map(|field| {
+            let column: Vec<Value> = values
+                .iter()
+                .map(|value| value.get(field.name()).cloned().unwrap_or(Value::Null))
+                .collect();
+            array_from_json(field.data_type(), &column)
+        })
+        .collect::<Result<Vec<_>, ValueFromJsonError>>()?;
+    Ok(Arc::new(
+        StructArray::try_new(fields.clone(), children, nulls_of(values)).map_err(|err| {
+            ValueFromJsonError::BuildArray {
+                datatype: DataType::Struct(fields.clone()),
+                err,
+            }
+        })?,
+    ))
+}
+
+/// A list array of `field`, fixed to `size` elements per list if given.
+fn list_from_json(
+    field: &FieldRef,
+    size: Option<i32>,
+    values: &[Value],
+) -> Result<ArrayRef, ValueFromJsonError> {
+    let lists = FlattenedLists::from_json(values)?;
+    if let Some(size) = size
+        && let Some((_, value)) = std::iter::zip(&lists.lengths, values)
+            .find(|(length, value)| !value.is_null() && i32::try_from(**length).ok() != Some(size))
+    {
+        return Err(ValueFromJsonError::expected(
+            format!("an array of {size} elements"),
+            value,
+        ));
+    }
+
+    let elements = array_from_json(field.data_type(), &lists.elements)?;
+    let nulls = nulls_of(values);
+    let built: Result<ArrayRef, ArrowError> = match size {
+        Some(size) => FixedSizeListArray::try_new(field.clone(), size, elements, nulls)
+            .map(|array| Arc::new(array) as ArrayRef),
+        None => ListArray::try_new(
+            field.clone(),
+            OffsetBuffer::from_lengths(lists.lengths),
+            elements,
+            nulls,
+        )
+        .map(|array| Arc::new(array) as ArrayRef),
+    };
+    built.map_err(|err| ValueFromJsonError::BuildArray {
+        datatype: match size {
+            Some(size) => DataType::FixedSizeList(field.clone(), size),
+            None => DataType::List(field.clone()),
+        },
+        err,
+    })
+}
+
+/// A column of JSON arrays, flattened the way Arrow stores a list column.
+struct FlattenedLists {
+    /// How many elements each list has. A null list has none.
+    lengths: Vec<usize>,
+
+    /// Every list's elements, in order.
+    elements: Vec<Value>,
+}
+
+impl FlattenedLists {
+    fn from_json(values: &[Value]) -> Result<Self, ValueFromJsonError> {
+        let mut lengths = Vec::with_capacity(values.len());
+        let mut elements = Vec::new();
+        for value in values {
+            match value {
+                Value::Array(list) => {
+                    lengths.push(list.len());
+                    elements.extend(list.iter().cloned());
+                }
+                Value::Null => lengths.push(0),
+                _ => return Err(ValueFromJsonError::expected("an array", value)),
+            }
+        }
+        Ok(Self { lengths, elements })
+    }
+}
+
+/// Which of `values` are null, if any are.
+fn nulls_of(values: &[Value]) -> Option<NullBuffer> {
+    values
+        .iter()
+        .any(Value::is_null)
+        .then(|| values.iter().map(|value| !value.is_null()).collect())
+}
+
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use arrow::array::{RecordBatch, RecordBatchOptions};
     use arrow::datatypes::{Field, Schema};
     use arrow::json::writer::{JsonArray, WriterBuilder};
 
-    use re_sdk_types::ToArrowOpt as _;
     use re_sdk_types::datatypes::{TimeInt, TimeRangeBoundary};
+    use re_sdk_types::{FromArrowOpt as _, ToArrowOpt as _};
 
     use super::*;
 
@@ -166,6 +401,35 @@ mod tests {
         assert_eq!(
             String::from_utf8(writer.into_inner()).unwrap(),
             r#"[{"b":{"CursorRelative":-100}},{"b":"Infinite"},{"b":null}]"#
+        );
+    }
+
+    #[test]
+    fn every_kind_of_variant_is_decoded() {
+        let expected = TimeRangeBoundary::to_arrow_opt([
+            Some(TimeRangeBoundary::CursorRelative(TimeInt(-100))),
+            Some(TimeRangeBoundary::Infinite),
+            None,
+        ])
+        .unwrap();
+
+        let decoded = array_from_json(
+            expected.data_type(),
+            &[
+                serde_json::json!({ "CursorRelative": -100 }),
+                serde_json::json!("Infinite"),
+                Value::Null,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            TimeRangeBoundary::from_arrow_opt(decoded.as_ref()).unwrap(),
+            vec![
+                Some(TimeRangeBoundary::CursorRelative(TimeInt(-100))),
+                Some(TimeRangeBoundary::Infinite),
+                None,
+            ]
         );
     }
 }

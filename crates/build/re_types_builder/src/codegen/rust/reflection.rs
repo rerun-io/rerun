@@ -7,7 +7,7 @@ use quote::{format_ident, quote};
 
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
-use crate::{DocsAttr, ObjectKind, Objects, Reporter, RerunAttr, RustAttr};
+use crate::{DocsAttr, ObjectKind, Objects, Reporter, RerunAttr, RustAttr, Type};
 
 /// Generate reflection about components, archetypes, and views.
 pub fn generate_reflection(
@@ -211,6 +211,23 @@ fn generate_component_reflection(
         } else {
             quote! { None }
         };
+        let encoding =
+            if let Some(Type::Object { fqname }) = obj.forwarded_field().map(|field| &field.typ) {
+                quote! { Some(#fqname) }
+            } else {
+                // An enum is stored as its variant index, and a list wraps its element encoding
+                // in a `List` datatype, so neither has a datatype that is an encoding's own.
+                re_log::debug_assert!(
+                    obj.is_enum()
+                        || matches!(
+                            obj.fields.as_slice(),
+                            [field] if matches!(field.typ, Type::List { .. })
+                        ),
+                    "{}: a component should be an enum, a list, or forward to an encoding",
+                    obj.fqname
+                );
+                quote! { None }
+            };
         let own_chunk = obj.attrs.has(RerunAttr::OwnChunk);
         let quoted_reflection = quote! {
             ComponentReflection {
@@ -218,6 +235,7 @@ fn generate_component_reflection(
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_data_type(),
+                encoding: #encoding,
                 enum_variants: #enum_variants,
                 own_chunk: #own_chunk,
                 verify_arrow_array: #type_name::verify_arrow_array,

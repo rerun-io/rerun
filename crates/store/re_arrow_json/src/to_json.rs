@@ -11,6 +11,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, ComponentReflectionMap, Reflection};
 
+use crate::archetype_key::json_key_of_archetype;
 use crate::arrow_union::UnionEncoderFactory;
 use crate::special::special_json_from_batch;
 
@@ -74,7 +75,7 @@ pub fn json_from_store(
 
             if let Some(archetype) = descriptor.archetype {
                 archetypes
-                    .entry(archetype.short_name())
+                    .entry(json_key_of_archetype(reflection, archetype))
                     .or_default()
                     .insert(descriptor.archetype_field_name().to_owned(), value);
             } else {

@@ -185,6 +185,13 @@ message ViewerControlRequest {
     // another profile capture is still running or on the web viewer, and `INTERNAL` if the write
     // to disk failed.
     CaptureProfileTraceRequest capture_profile_trace = 13;
+
+    // Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.
+    //
+    // The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
+    // single value may be written as that value or as an array of one.
+    // `INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.
+    SetBlueprintRequest set_blueprint = 14;
   }
 }
 
@@ -230,6 +237,9 @@ message ViewerControlResponse {
 
     // Result of `capture_profile_trace`.
     CaptureProfileTraceResponse capture_profile_trace = 13;
+
+    // Result of `set_blueprint`.
+    SetBlueprintResponse set_blueprint = 14;
   }
 }
 
@@ -352,7 +362,7 @@ message GetBlueprintResponse {
   // The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
   string blueprint_id = 1;
 
-  // The blueprint as a JSON object, keyed by blueprint entity path.
+  // The whole blueprint as a JSON object, as `GetBlueprint` returns it.
   string json = 2;
 }
 
@@ -756,6 +766,26 @@ message CaptureProfileTraceResponse {
 
   // Absolute path of the written `.puffin` file.
   string file_path = 2;
+}
+
+// ----------------------------------------------------------------------------
+// SetBlueprint
+
+// Request for `SetBlueprint`.
+message SetBlueprintRequest {
+  // Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.
+  // If omitted, the active recording is used.
+  optional string store_id = 1;
+
+  // The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
+  // returns it.
+  string json = 2;
+}
+
+// Response for `SetBlueprint`.
+message SetBlueprintResponse {
+  // The blueprint that was written, as `{kind}:{application_id}:{recording_id}`.
+  string blueprint_id = 1;
 }
 
 // ----------------------------------------------------------------------------
