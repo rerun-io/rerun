@@ -1,5 +1,125 @@
 # Rerun changelog
 
+## [0.39.0](https://github.com/rerun-io/rerun/compare/0.38.1...0.39.0) - 2026-10-06
+
+### ✨ Overview & highlights
+
+- Text in any language, and color emoji
+- Raymarched 3D volumes
+- Audio: `AssetAudio` archetype and `AudioView`
+- Raw Bayer images
+- PLY mesh and 2D point support
+- Smoother plot lines
+- Configure the state timeline time axis
+- State timeline hover duration
+- Improved column settings, with search, display mode and bulk hide/show
+- Playback controls for dataset previews
+- Assets can specify what segments they apply to
+- String literals in lens selectors
+- Agents can read and write the active blueprint over MCP
+- Agents can read a recording's schema over MCP
+- `ViewerState` reports what is still loading
+- Import puffin profiler captures
+- `rerun dump-puffin`
+- Support creating a `FileSink` from arbitrary `std::io::Write` streams
+- Disable startup version checks in the web viewer
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-39#highlights
+
+### ⚠️ Breaking changes
+
+- `rerun-sdk` installs `rerun` as a top-level package
+- Catalog staging
+- Breaking changes to custom Rust views
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-39#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Implement additional `hdf5` attributes [f7ee611](https://github.com/rerun-io/rerun/commit/f7ee611475b0a30b5e123b77e1b9f60599b2c69f)
+- Support string literals in lens selectors [7132583](https://github.com/rerun-io/rerun/commit/7132583552a5723a45e9139bbb4c56b68a7ab797)
+- Tag analytics events with the Rerun client type (SDK, viewer, web, dataloader) [600cf81](https://github.com/rerun-io/rerun/commit/600cf812d3eab0d62d6afbfc1cc854b9b93b311b)
+- Add `CatalogClient.stage()` for writing files to server [5fbbd3b](https://github.com/rerun-io/rerun/commit/5fbbd3b7f1648f3d0aec83a2b17c81b42fcf8508)
+- Shutting down viewer via `ViewerClient` now waits for process exit [3c73bca](https://github.com/rerun-io/rerun/commit/3c73bca34c5470fa7fca33989b5820448e1e3837)
+- Simplify rerun_sdk python packaging [9e6a5a7](https://github.com/rerun-io/rerun/commit/9e6a5a718debe6f592f92238287688e483df1117)
+
+#### 🦀 Rust API
+- Complete support for PLY format (add mesh and 2D) also using more performant API of ply-rs-bw 4.0.0 [#12730](https://github.com/rerun-io/rerun/pull/12730) (thanks [@bourumir-wyngs](https://github.com/bourumir-wyngs)!)
+- Support arbitrary `std::io::Write` streams in `FileSink` [#12940](https://github.com/rerun-io/rerun/pull/12940) (thanks [@de-vri-es](https://github.com/de-vri-es)!)
+
+#### 🪳 Bug fixes
+- Fix H.264 views stuck on a loading spinner on machines with many cores [c004401](https://github.com/rerun-io/rerun/commit/c004401730f7b7f9fdb67c1bc3dc3b9f319d78ec)
+- Make 'reset to default bluerint' show up for datasets [feb7d7d](https://github.com/rerun-io/rerun/commit/feb7d7ddb8464a763421cdc719adefd974ea331b)
+- Don't default to visible for new card fields in some cases [7918ed3](https://github.com/rerun-io/rerun/commit/7918ed369ebe862c47980cd10e0436565df1a231)
+- Fix fetching of instance poses [ecf8711](https://github.com/rerun-io/rerun/commit/ecf871126f724a8351f24f365b83e9538f81a408)
+- Retry transient failures of GetDatasetSchema [3eb37e4](https://github.com/rerun-io/rerun/commit/3eb37e420b6ee3fe502d735b8dcea7ccabcdd0f5)
+- Fix missing component warnings on state view [c7e9023](https://github.com/rerun-io/rerun/commit/c7e9023ae13d332e5cbb1a06e6d6c5aa612ea55d)
+- Fix sampling inaccuracies on segmentation images [62c7283](https://github.com/rerun-io/rerun/commit/62c72837e6cd91a09fd6882e0a1f67cdb0430b8e)
+- Add Capsules3D and Cylinders3D projection for Spatial2DView [#12949](https://github.com/rerun-io/rerun/pull/12949) (thanks [@klausondrag](https://github.com/klausondrag)!)
+- Print full anyhow context in re_mcap and re_ros_msg errors [#12942](https://github.com/rerun-io/rerun/pull/12942) (thanks [@DrMkdaddy](https://github.com/DrMkdaddy)!)
+- Fix URL in `rerun analytics details` [534e618](https://github.com/rerun-io/rerun/commit/534e61815f4d1290e6be9c433295a57ace52b27b)
+- Create Viewer catalog layers for recordings with same `StoreId` [2309184](https://github.com/rerun-io/rerun/commit/2309184bbb1d5568a904533b1b548f7a8032a2bf)
+- Fix time series plots of Float32 scalars logged under the native Scalars descriptor [a36c2d3](https://github.com/rerun-io/rerun/commit/a36c2d3e99d86f592b2246286f763d79a61d703d)
+- Fix side panel state being overridden if you had saved servers [cb7f8b4](https://github.com/rerun-io/rerun/commit/cb7f8b43de3165de6be1189e4da1681d1327fb71)
+- Recalculate schema on unregister [1cefee9](https://github.com/rerun-io/rerun/commit/1cefee956d63e1b15842f155223c52df957052cf)
+- Fix DDP rank sharding in spawned DataLoader workers [16c5281](https://github.com/rerun-io/rerun/commit/16c528186d465029f59c6750b755312b21c2cd47)
+- Let viewer static blueprint writes supersede SDK-written values [497b398](https://github.com/rerun-io/rerun/commit/497b398c9eb247a3a5a3150385e4c068cbb9215d)
+- Fix hiding top panel in browser on mac [4b0a3bc](https://github.com/rerun-io/rerun/commit/4b0a3bc1cedcfc76d01de36ce6cdd8b6b2215c68)
+- fix static last-write-wins for chunks with interleaved RowIds [#12957](https://github.com/rerun-io/rerun/pull/12957) (thanks [@mightsleep](https://github.com/mightsleep)!)
+- Fix startup deadlock in serve_grpc and serve_web [176fd87](https://github.com/rerun-io/rerun/commit/176fd87f1a6d80738bf6b33d1edf95c1f84bfa1d)
+
+#### 🌁 Viewer improvements
+- Let agents read a recording's schema, and other viewer-control additions [8d3de3c](https://github.com/rerun-io/rerun/commit/8d3de3c2552cf49b4b4882803abae58ec6b261f7)
+- Show length when hovering a state in the state timeline [735e681](https://github.com/rerun-io/rerun/commit/735e6817e5e31fb78951313126a22a32bf4e9680)
+- Configure state timeline view through blueprint [695b020](https://github.com/rerun-io/rerun/commit/695b0206a2bd091949b1d548b9c9bd1994ae1df8)
+- Puffin file importer [8805757](https://github.com/rerun-io/rerun/commit/88057579d62ae5998145c536ddb2a856fadcdad6)
+- Volume raymarcher [94372cf](https://github.com/rerun-io/rerun/commit/94372cfe6dee6890c697d85ed2c886b841a7e970) (thanks [@aedm](https://github.com/aedm)!)
+- Better view customizable selection panel [3418fa7](https://github.com/rerun-io/rerun/commit/3418fa714f20e0123d7fa8231491d5a286f4dd8f)
+- Expose command palette commands over ViewerControl and MCP [07701de](https://github.com/rerun-io/rerun/commit/07701de3aabc6baf4ce519070df396b2f336b03a)
+- Support URDF 1.1 robot models with quaternions [e5ecaa0](https://github.com/rerun-io/rerun/commit/e5ecaa02a9d243dacc7bd09a50fa7c64a9e2156b)
+- Read the active blueprint as JSON over ViewerControl / MCP [065faa7](https://github.com/rerun-io/rerun/commit/065faa7194f9caff934b46dee7f0a461a105c521)
+- Add the audio view: waveform display and playback [9b14a2e](https://github.com/rerun-io/rerun/commit/9b14a2e89d99f225bcfe690f15589c89d95e778c)
+- re_agent: Add model selection ui [845a6ef](https://github.com/rerun-io/rerun/commit/845a6ef45ca76db35f02e8f0be856befc28ccce4)
+- Bayer image visualization support [1a00b58](https://github.com/rerun-io/rerun/commit/1a00b58a39990a59c8178dde885aa163debdad1e)
+- Write the active blueprint from JSON over ViewerControl / MCP [e7eda6c](https://github.com/rerun-io/rerun/commit/e7eda6cf11edf73f76572648a2bcc58aa977b16b)
+
+#### 🗄️ OSS server
+- Asset dataset properties to filter what segments an asset should apply to [7d79e5b](https://github.com/rerun-io/rerun/commit/7d79e5bdeef40e7a413e644f0aa653b22862a1ff)
+- Remove legacy `WriteChunks` from Catalog APIs [a305975](https://github.com/rerun-io/rerun/commit/a3059759fe5b531eecb5282f70ac2960f124b43f)
+
+#### 🚀 Performance improvements
+- Remove the phase-1 synchronous dataset-manifest writes from registration [d949cde](https://github.com/rerun-io/rerun/commit/d949cde2b741f6db2efc379ee6cc34dd42f4a57b)
+- Don't decode video for pinholes that aren't in frustrum [ea44c8f](https://github.com/rerun-io/rerun/commit/ea44c8f505e5611aee78dd916240e3ff6c857058)
+- Retry dataset reads until the requested revision is promoted [3f1659b](https://github.com/rerun-io/rerun/commit/3f1659b6b07beb9923e0fd5da7a1d51aeda2aa89)
+- Use `egui_table` for `TextLog` visualizer [98f0297](https://github.com/rerun-io/rerun/commit/98f0297aebe18b5362d8f677dd7af2d2f306d7e0)
+
+#### 🧑‍🏫 Examples
+- Make arrows3d_simple snippet consistent across languages [#12947](https://github.com/rerun-io/rerun/pull/12947) (thanks [@klausondrag](https://github.com/klausondrag)!)
+
+#### 🖼 UI improvements
+- Name every panel and icon button in the accessibility tree [84bae5c](https://github.com/rerun-io/rerun/commit/84bae5c405eaf7a5415d7aad309d1dde7ccc12df)
+- Add column display mode setting [c6735bb](https://github.com/rerun-io/rerun/commit/c6735bb47212f32106159f5ab29393ae0c828e93)
+- Paste images into the agent panel [51a0aaa](https://github.com/rerun-io/rerun/commit/51a0aaa77fa6d2ec189adefbddab0211ad20771b)
+- Improve preview UI [9723aa5](https://github.com/rerun-io/rerun/commit/9723aa50d9253d1a29740024343551a39a0f91c3)
+
+#### 🕸️ Web
+- Allow opting out of startup update checks from JS api [64df84f](https://github.com/rerun-io/rerun/commit/64df84f6151b96b9128e6bdaeeac013902c8cf07)
+- Add memory limit parameter to JS API [92cb67d](https://github.com/rerun-io/rerun/commit/92cb67d29da7427708232af463d58b452b2d2d8d)
+
+#### 🎨 Renderer improvements
+- Smoother plot lines [12aad1b](https://github.com/rerun-io/rerun/commit/12aad1b58c216340912c590631b955a05221ec06)
+
+#### 📈 Analytics
+- Tag analytics events with the Rerun client type (SDK, viewer, web, dataloader) [600cf81](https://github.com/rerun-io/rerun/commit/600cf812d3eab0d62d6afbfc1cc854b9b93b311b)
+- Fix duplicated analytics events when several viewers share a data directory [255280a](https://github.com/rerun-io/rerun/commit/255280a11a06d6a97279abd5d9ddf0bc4171006f)
+
+#### 🤷‍ Other
+- Move `dump-puffin` into the workspace and expose it as `rerun dump-puffin` [a134e27](https://github.com/rerun-io/rerun/commit/a134e2754216c83887c96f3d0be61d1a77f7df86)
+- Add `AssetAudio` archetype for storing audio files [72d02d1](https://github.com/rerun-io/rerun/commit/72d02d1e18ef8eda04028fda9e32b0b6e5e56ea6)
+- Add the `AudioView` blueprint view and `AudioPlayback` properties [d79e8c1](https://github.com/rerun-io/rerun/commit/d79e8c172906c796669200a0d6e0c4bf52a052a4)
+- Hiding view titles with blueprint, to enable more minimal UI's [7cf863d](https://github.com/rerun-io/rerun/commit/7cf863d476edc20d985f85e490bfa38c8ec88947)
+
 ## [0.38.1](https://github.com/rerun-io/rerun/compare/0.37.2...0.38.1) - 2026-09-16
 
 ### ✨ Overview & highlights
