@@ -8,11 +8,11 @@ dependencies = [
   "huggingface-hub>=1.0",
   # LeRobot 0.6.0 requires torch<2.12 and setuptools<81. Remove the dependabot
   # ignore ranges once LeRobot supports newer versions
-  "lerobot[dataset]==0.6.0",
+  "lerobot[dataset]==0.6.1",
 ]
 
 [dependency-groups]
-dev = ["mypy==1.19.1"]
+dev = ["mypy==2.4.0"]
 
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
