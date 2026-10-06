@@ -65,7 +65,7 @@ def check_destination_exists(destination: str) -> bool:
         return True
 
     # Handle anchor links
-    base_path = destination.split("#")[0]
+    base_path = destination.split("#", maxsplit=1)[0]
     if not base_path:
         return True  # Same-page anchor
 

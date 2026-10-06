@@ -26,7 +26,7 @@ dev = [
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.14.1",
-  "ruff==0.15.7",
+  "ruff==0.16.9",
   "mypy==1.19.1",
   "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
@@ -359,6 +359,9 @@ ignore = [
   "SIM115", # Use context handler for opening files
   "TRY002", # Create your own exception
   "TRY004", # Prefer `TypeError` exception for invalid type
+
+  # Rules that became active with the ruff upgrade to 0.16:
+  "RUF069", # Exact float equality comparison
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -367,6 +370,10 @@ ignore = [
   "I002",
   # A fixed `/tmp` path, shown for brevity in a documentation snippet:
   "S108",
+]
+"docs/snippets/all/views/tensor.py" = [
+  # Its output must match the backwards-compatibility asset in `tests/assets/rrd/snippets/`, recorded with the legacy RNG.
+  "NPY002",
 ]
 
 "crates/top/re_viewer/data/quick_start_guides/*" = [

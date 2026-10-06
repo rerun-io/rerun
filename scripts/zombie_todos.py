@@ -297,13 +297,12 @@ linear_issue_pattern = re.compile(r"TODO\((RR-\d+)\)")
 
 def collect_external_repos_from_file(path: str) -> set[str]:
     """Scan a file and collect all external repository references."""
-    repos = set()
+    repos: set[str] = set()
     try:
         with open(path, encoding="utf8") as f:
             content = f.read()
             matches = external_issue_pattern.findall(content)
-            for repo_key, _ in matches:
-                repos.add(repo_key)
+            repos.update(repo_key for repo_key, _ in matches)
     except Exception as e:
         print(f"Error reading {path}: {e}")
     return repos
@@ -311,13 +310,12 @@ def collect_external_repos_from_file(path: str) -> set[str]:
 
 def collect_linear_issues_from_file(path: str) -> set[str]:
     """Scan a file and collect all Linear issue references."""
-    issues = set()
+    issues: set[str] = set()
     try:
         with open(path, encoding="utf8") as f:
             content = f.read()
             matches = linear_issue_pattern.findall(content)
-            for issue_id in matches:
-                issues.add(issue_id)
+            issues.update(matches)
     except Exception as e:
         print(f"Error reading {path}: {e}")
     return issues

@@ -1595,7 +1595,7 @@ class SourceFile:
 
     def __init__(self, path: str) -> None:
         self.path = path
-        self.ext = path.split(".")[-1]
+        self.ext = path.rsplit(".", maxsplit=1)[-1]
         with open(path, encoding="utf8") as f:
             self.lines = f.readlines()
         self._update_content()

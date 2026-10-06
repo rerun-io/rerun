@@ -75,7 +75,7 @@ import pyarrow as pa
 
 # Create a sample DataFrame
 dates = pd.date_range("20230101", periods=6)
-df = pd.DataFrame(np.random.randn(6, 4), index=dates, columns=list("ABCD"))
+df = pd.DataFrame(np.random.default_rng(0).standard_normal((6, 4)), index=dates, columns=list("ABCD"))
 
 # Convert to record batch and send to the viewer.
 client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))

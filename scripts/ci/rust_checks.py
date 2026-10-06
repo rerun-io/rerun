@@ -226,19 +226,18 @@ def base_checks(results: list[Result]) -> None:
         # TODO(rust-lang/rustfmt#6934): cargo-fmt passes all target paths for an edition to one
         # rustfmt spawn, which can exceed the Windows command-line length limit in large workspaces.
         fmt_result.success = True
-    results.append(fmt_result)
-
-    results.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
+    results.extend((fmt_result, run_cargo("clippy", "--all-targets --all-features -- --deny warnings")))
 
 
 def sdk_variations(results: list[Result]) -> None:
-    # Check a few important permutations of the feature flags for our `rerun` library:
-    results.append(run_cargo("check", "-p rerun --no-default-features"))
-    results.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
-
-    # `re_server` is built without the optional `lance` feature in many configurations
-    # (e.g. when pulled in by `rerun`'s `--all-features`, which does not propagate `re_server/lance`).
-    results.append(run_cargo("check", "-p re_server"))
+    results.extend([
+        # Check a few important permutations of the feature flags for our `rerun` library:
+        run_cargo("check", "-p rerun --no-default-features"),
+        run_cargo("check", "-p rerun --no-default-features --features sdk"),
+        # `re_server` is built without the optional `lance` feature in many configurations
+        # (e.g. when pulled in by `rerun`'s `--all-features`, which does not propagate `re_server/lance`).
+        run_cargo("check", "-p re_server"),
+    ])
 
 
 # Targets to check for leaked UI dependencies in `denied_sdk_deps`.
@@ -260,9 +259,10 @@ def cargo_deny(results: list[Result]) -> None:
     # platform-conditional `ignore` unused on the other triples and therefore an error
     # under `unused-ignored-advisory = "deny"`.
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
-
-    results.append(run_cargo("deny", "--all-features --exclude-dev --log-level warn check"))
+    results.extend((
+        run_cargo("install", "--locked cargo-deny@^0.19"),
+        run_cargo("deny", "--all-features --exclude-dev --log-level warn check"),
+    ))
 
 
 def denied_sdk_deps(results: list[Result]) -> None:
@@ -315,36 +315,38 @@ def denied_sdk_deps(results: list[Result]) -> None:
 
 
 def wasm(results: list[Result]) -> None:
-    # Check viewer for wasm32
-    results.append(
+    results.extend([
+        # Check viewer for wasm32
         run_cargo(
             "clippy",
             "--all-features --target wasm32-unknown-unknown --target-dir target/wasm -p re_viewer -- --deny warnings",
             clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
         ),
-    )
-    # Check re_renderer examples for wasm32.
-    results.append(
+        # Check re_renderer examples for wasm32.
         run_cargo(
             "clippy",
             "--target wasm32-unknown-unknown --target-dir target/wasm -p re_renderer_examples",
             clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
         ),
-    )
+    ])
 
 
 def individual_examples(results: list[Result]) -> None:
     for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
         package_name = package_name_from_cargo_toml(cargo_toml_path)
-        results.append(run_cargo("check", f"--no-default-features -p {package_name}"))
-        results.append(run_cargo("check", f"--all-features -p {package_name}"))
+        results.extend((
+            run_cargo("check", f"--no-default-features -p {package_name}"),
+            run_cargo("check", f"--all-features -p {package_name}"),
+        ))
 
 
 def individual_crates(results: list[Result]) -> None:
     for cargo_toml_path in glob("./crates/**/Cargo.toml", recursive=True):
         package_name = package_name_from_cargo_toml(cargo_toml_path)
-        results.append(run_cargo("check", f"--no-default-features -p {package_name}"))
-        results.append(run_cargo("check", f"--all-features -p {package_name}"))
+        results.extend((
+            run_cargo("check", f"--no-default-features -p {package_name}"),
+            run_cargo("check", f"--all-features -p {package_name}"),
+        ))
 
 
 def docs(results: list[Result]) -> None:
@@ -356,14 +358,18 @@ def docs(results: list[Result]) -> None:
     # For details see https://github.com/rerun-io/rerun/issues/7387
 
     # These take a few minutes each on CI, but very useful for catching broken doclinks.
-    results.append(run_cargo("doc", "--no-deps --all-features --workspace --exclude rerun"))
-    results.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace --exclude rerun"))
+    results.extend((
+        run_cargo("doc", "--no-deps --all-features --workspace --exclude rerun"),
+        run_cargo("doc", "--document-private-items --no-deps --all-features --workspace --exclude rerun"),
+    ))
 
 
 def docs_slow(results: list[Result]) -> None:
     # See `docs` above, this may take 20min each due to issues in cargo doc.
-    results.append(run_cargo("doc", "--no-deps --all-features -p rerun"))
-    results.append(run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"))
+    results.extend((
+        run_cargo("doc", "--no-deps --all-features -p rerun"),
+        run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"),
+    ))
 
 
 test_failure_message = 'See the "Upload test results" step for a link to the snapshot test artifact.'
@@ -371,8 +377,10 @@ test_failure_message = 'See the "Upload test results" step for a link to the sna
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("nextest", "run --all-targets --all-features --no-run", deny_warnings=False))
-    results.append(run_cargo("nextest", "run --all-targets --all-features --no-fail-fast", deny_warnings=False))
+    results.extend((
+        run_cargo("nextest", "run --all-targets --all-features --no-run", deny_warnings=False),
+        run_cargo("nextest", "run --all-targets --all-features --no-fail-fast", deny_warnings=False),
+    ))
 
     if not results[-1].success:
         print(test_failure_message)
@@ -383,8 +391,10 @@ def tests(results: list[Result]) -> None:
 
 def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("test", "--all-targets --no-run", deny_warnings=False))
-    results.append(run_cargo("nextest", "run --all-targets --no-fail-fast", deny_warnings=False))
+    results.extend((
+        run_cargo("test", "--all-targets --no-run", deny_warnings=False),
+        run_cargo("nextest", "run --all-targets --no-fail-fast", deny_warnings=False),
+    ))
 
     if not results[-1].success:
         print(test_failure_message)

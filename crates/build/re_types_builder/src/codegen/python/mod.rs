@@ -1295,7 +1295,9 @@ fn code_for_union(
     };
 
     let inner_type = if field_types.len() > 1 {
-        field_types.iter().join(" | ")
+        // `None` goes last, as required by ruff's RUF036.
+        let (none, others): (Vec<_>, Vec<_>) = field_types.iter().partition(|t| *t == "None");
+        std::iter::chain(others, none).join(" | ")
     } else {
         field_types.iter().next().unwrap().clone()
     };

@@ -1500,8 +1500,7 @@ class DatasetView:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]
         for index_col in self.schema().index_columns():
-            exprs.append(f"{index_col.name}:start")
-            exprs.append(f"{index_col.name}:end")
+            exprs.extend((f"{index_col.name}:start", f"{index_col.name}:end"))
 
         return self.segment_table().select(*exprs)
 

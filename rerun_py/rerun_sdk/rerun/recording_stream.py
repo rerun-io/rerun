@@ -1260,7 +1260,7 @@ class RecordingStream:
         self,
         batch: pa.RecordBatch,
         *,
-        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
         entity_path: str | None = None,
     ) -> None:
         """
@@ -1290,7 +1290,7 @@ class RecordingStream:
         self,
         df: DataframeLike,
         *,
-        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
         entity_path: str | None = None,
     ) -> None:
         """

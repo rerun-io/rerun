@@ -20,7 +20,7 @@ __all__ = ["ScalarUnion", "ScalarUnionArrayLike", "ScalarUnionBatch", "ScalarUni
 class ScalarUnion:
     # You can define your own __init__ function as a member of ScalarUnionExt in scalar_union_ext.py
 
-    inner: None | float | list[encodings.MixedFields] | npt.NDArray[np.float32] = field()
+    inner: float | list[encodings.MixedFields] | npt.NDArray[np.float32] | None = field()
     """
     Must be one of:
 

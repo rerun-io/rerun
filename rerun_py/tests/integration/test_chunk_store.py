@@ -318,7 +318,7 @@ def test_collect_optimize_video_stream_summary(tmp_path_factory: pytest.TempPath
         num_chunks = sum(1 for _ in s.stream().to_chunks())
         return f"{label}: num_gops={num_gops} num_chunks={num_chunks}\n{s.summary()}"
 
-    sections = []
+    sections: list[str] = []
     for filename, codec in VIDEO_CASES:
         tmp_dir = tmp_path_factory.mktemp("collect_optimize_video")
         rrd_path, num_gops = _build_video_stream_rrd(tmp_dir, filename, codec)
@@ -329,10 +329,12 @@ def test_collect_optimize_video_stream_summary(tmp_path_factory: pytest.TempPath
         # Re-optimize with GoP batching on top of the already-optimized store.
         with_gop = without_gop.stream().collect(optimize=OptimizationProfile(gop_batching=True))
 
-        sections.append(f"=== {filename} ===")
-        sections.append(report("before_gop", num_gops, without_gop))
-        sections.append(report("after_gop", num_gops, with_gop))
-        sections.append("\n")
+        sections.extend((
+            f"=== {filename} ===",
+            report("before_gop", num_gops, without_gop),
+            report("after_gop", num_gops, with_gop),
+            "\n",
+        ))
 
     assert "\n".join(sections) == inline_snapshot("""\
 === Big_Buck_Bunny_1080_10s_av1.mp4 ===

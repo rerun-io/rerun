@@ -426,11 +426,8 @@ def is_already_published(version: str, crate: Crate) -> bool:
         return False
 
     # crate has been uploaded, check every version against what we're uploading
-    versions: list[str] = [version["num"] for version in body["versions"]]
-    for uploaded_version in versions:
-        if uploaded_version == version:
-            return True
-    return False
+    uploaded_versions: list[str] = [uploaded["num"] for uploaded in body["versions"]]
+    return version in uploaded_versions
 
 
 def parse_retry_delay_secs(error_message: str) -> float | None:
@@ -685,16 +682,12 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
 
 def is_valid_version_string(version: str) -> bool:
     # remove metadata -> split into digits
-    parts = version.split("-")[0].split(".")
+    parts = version.split("-", maxsplit=1)[0].split(".")
 
     if len(parts) != 3:
         return False
 
-    for part in parts:
-        if not part.isdigit():
-            return False
-
-    return True
+    return all(part.isdigit() for part in parts)
 
 
 def check_git_branch_name() -> None:

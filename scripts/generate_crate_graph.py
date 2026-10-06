@@ -623,7 +623,7 @@ def layer_arrows(bands: list[Band]) -> str:
     """
     rows = sorted({band.bottom for band in bands}, reverse=True)  # Top row first.
 
-    out = []
+    out: list[str] = []
     for upper, lower in itertools.pairwise(rows):
         above = [band for band in bands if band.bottom == upper]
         below = [band for band in bands if band.bottom == lower]
@@ -633,15 +633,17 @@ def layer_arrows(bands: list[Band]) -> str:
 
         for band in below if len(below) > len(above) else above:
             x = band.left + band.width / 2
-            out.append(
-                f'\n<path d="M {x:.1f},{start:.1f} L {x:.1f},{end - ARROW_HEAD:.1f}" '
-                f'stroke="#00000044" stroke-width="3" fill="none" />'
-            )
-            out.append(
-                f'\n<path d="M {x - ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} '
-                f"L {x + ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} "
-                f'L {x:.1f},{end:.1f} Z" fill="#00000044" />'
-            )
+            out.extend((
+                (
+                    f'\n<path d="M {x:.1f},{start:.1f} L {x:.1f},{end - ARROW_HEAD:.1f}" '
+                    f'stroke="#00000044" stroke-width="3" fill="none" />'
+                ),
+                (
+                    f'\n<path d="M {x - ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} '
+                    f"L {x + ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} "
+                    f'L {x:.1f},{end:.1f} Z" fill="#00000044" />'
+                ),
+            ))
     return "".join(out)
 
 
@@ -654,17 +656,19 @@ def band_boxes(bands: list[Band]) -> str:
     out = [layer_arrows(bands)]
     for band in bands:
         top = -(band.bottom + band.height)
-        out.append(
-            f'\n<rect x="{band.left:.1f}" y="{top:.1f}" '
-            f'width="{band.width:.1f}" height="{band.height:.1f}" '
-            f'rx="8" ry="8" fill="{band.color}" />'
-        )
-        out.append(
-            f'\n<text x="{band.left + BAND_PADDING:.1f}" '
-            f'y="{top + BAND_LABEL_FONT_SIZE + 4:.1f}" '
-            f'font-family="{FONT},sans-serif" font-size="{BAND_LABEL_FONT_SIZE:.0f}" '
-            f'fill="#00000099">{html.escape(band.label)}</text>'
-        )
+        out.extend((
+            (
+                f'\n<rect x="{band.left:.1f}" y="{top:.1f}" '
+                f'width="{band.width:.1f}" height="{band.height:.1f}" '
+                f'rx="8" ry="8" fill="{band.color}" />'
+            ),
+            (
+                f'\n<text x="{band.left + BAND_PADDING:.1f}" '
+                f'y="{top + BAND_LABEL_FONT_SIZE + 4:.1f}" '
+                f'font-family="{FONT},sans-serif" font-size="{BAND_LABEL_FONT_SIZE:.0f}" '
+                f'fill="#00000099">{html.escape(band.label)}</text>'
+            ),
+        ))
     return "".join(out)
 
 

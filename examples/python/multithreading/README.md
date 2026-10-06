@@ -24,9 +24,10 @@ This example showcases logging from multiple threads, starting with the definiti
 
  ```python
  def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:
+     rng = np.random.default_rng()
      for _ in range(1000):
-         rects_xy = np.random.rand(5, 2) * 1024
-         rects_wh = np.random.rand(5, 2) * (1024 - rects_xy + 1)
+         rects_xy = rng.random((5, 2)) * 1024
+         rects_wh = rng.random((5, 2)) * (1024 - rects_xy + 1)
          rects = np.hstack((rects_xy, rects_wh))
          rr.log(
              path, rr.Boxes2D(array=rects, array_format=rr.Box2DFormat.XYWH, colors=color)

@@ -37,7 +37,7 @@ def send_record_batch(
     batch: pa.RecordBatch,
     recording: RecordingStream | None = None,
     *,
-    index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+    index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
     entity_path: str | None = None,
 ) -> None:
     """
@@ -74,7 +74,7 @@ def send_dataframe(
     df: DataframeLike,
     recording: RecordingStream | None = None,
     *,
-    index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+    index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
     entity_path: str | None = None,
 ) -> None:
     """

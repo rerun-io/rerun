@@ -404,7 +404,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
 
     rr.log("video", video_asset, static=True)
 
-    logging.info("Loading input video: %s", str(video_path))
+    logging.info("Loading input video: %s", video_path)
     cap = cv2.VideoCapture(video_path)
     frame_idx = 0
 

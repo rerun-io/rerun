@@ -320,8 +320,7 @@ def print_vulkan_sdk_candidate_locations() -> None:
     # A relative `..` chain that under/overshoots lands the SDK next to some ancestor of
     # the workspace; probe each, using both the casings the action and default use.
     for ancestor in [Path(workspace), *Path(workspace).parents]:
-        candidates.append(ancestor / "vulkan_sdk" / version)
-        candidates.append(ancestor / "VulkanSDK" / version)
+        candidates.extend((ancestor / "vulkan_sdk" / version, ancestor / "VulkanSDK" / version))
 
     print("  candidate locations:")
     seen: set[Path] = set()

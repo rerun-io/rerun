@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 
 import numpy as np
 import numpy.typing as npt
@@ -20,8 +21,9 @@ rr.script_setup(args, "rerun_example_view_coordinates")
 # See https://math.stackexchange.com/a/1586185
 num_points = 5000
 radius = 8
-lamd = np.arccos(2 * np.random.rand(num_points) - 1) - np.pi / 2
-phi = np.random.rand(num_points) * 2 * np.pi
+rng = np.random.default_rng(0)
+lamd = np.arccos(2 * rng.random(num_points) - 1) - np.pi / 2
+phi = rng.random(num_points) * 2 * np.pi
 x = np.cos(lamd) * np.cos(phi)
 y = np.cos(lamd) * np.sin(phi)
 z = np.sin(lamd)
@@ -37,7 +39,7 @@ rgb[0:3, 3:25] = [255, 0, 0]
 # Depth image for testing depth cloud:
 # depth = np.ones((50, 100)) * 0.5
 x, y = np.meshgrid(np.arange(0, 100), np.arange(0, 50))
-depth = 0.5 + 0.005 * x + 0.25 * np.sin(3.14 * y / 50 / 2)
+depth = 0.5 + 0.005 * x + 0.25 * np.sin(math.pi * y / 50 / 2)
 
 
 rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP)

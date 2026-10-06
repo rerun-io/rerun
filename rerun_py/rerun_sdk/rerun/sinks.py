@@ -17,8 +17,6 @@ from ._spawn import _spawn_viewer
 if TYPE_CHECKING:
     import pathlib
 
-    from rerun.recording_stream import RecordingStream
-
 
 # --- Sinks ---
 

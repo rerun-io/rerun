@@ -135,9 +135,10 @@ def log_markov_chain() -> None:
     # We start in state "sunny"
     state = "sunny"
 
+    rng = np.random.default_rng(42)
     for i in range(50):
         current_state_index = state_names.index(state)
-        next_state_index = np.random.choice(range(len(state_names)), p=transition_matrix[current_state_index])
+        next_state_index = rng.choice(len(state_names), p=transition_matrix[current_state_index])
         state = state_names[next_state_index]
         colors = [inactive_color] * len(state_names)
         colors[next_state_index] = active_colors[next_state_index]

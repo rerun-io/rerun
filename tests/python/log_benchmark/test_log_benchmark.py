@@ -124,9 +124,10 @@ def test_bench_transforms_over_time_batched(
 def test_bench_transforms_over_time(benchmark: Any, num_transforms: int, num_transforms_per_batch: int) -> None:
     rr.init("rerun_example_benchmark_transforms_individual")
 
-    rand_trans = np.array(np.random.rand(num_transforms, 3), dtype=np.float32)
-    rand_quats = np.array(np.random.rand(num_transforms, 4), dtype=np.float32)
-    rand_scales = np.array(np.random.rand(num_transforms, 3), dtype=np.float32)
+    rng = np.random.default_rng(0)
+    rand_trans = rng.random((num_transforms, 3), dtype=np.float32)
+    rand_quats = rng.random((num_transforms, 4), dtype=np.float32)
+    rand_scales = rng.random((num_transforms, 3), dtype=np.float32)
 
     print(rand_trans.shape)
 

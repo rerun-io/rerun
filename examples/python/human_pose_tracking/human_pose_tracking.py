@@ -246,11 +246,11 @@ def main() -> None:
         ),
     )
 
-    video_path = args.video_path  # type: str
+    video_path: str = args.video_path
     if not video_path:
         video_path = get_downloaded_video_path(args.dataset_dir, args.video)
 
-    model_path = args.model_path  # type: str
+    model_path: str = args.model_path
     if not args.model_path:
         model_path = get_downloaded_model_path(args.model_dir, args.model)
 

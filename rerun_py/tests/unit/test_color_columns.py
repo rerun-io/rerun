@@ -221,7 +221,7 @@ class TestEdgeCases:
 
     def test_many_rows(self) -> None:
         n = 1000
-        colors = np.random.randint(0, 256, (n, 3), dtype=np.uint8)
+        colors = np.random.default_rng(0).integers(0, 256, (n, 3), dtype=np.uint8)
         result = get_color_column([
             *rr.GeoPoints.columns(
                 positions=np.zeros((n, 2)),

@@ -70,7 +70,6 @@ def get_downloaded_dataset_path(dataset_name: str) -> Path:
         progress = tqdm(zip_ref.infolist(), "Extracting dataset", total=len(zip_ref.infolist()), unit="files")
         for file in progress:
             zip_ref.extract(file, DATASET_DIR)
-            progress.update()
 
     return recording_dir
 

@@ -177,6 +177,7 @@ def rrt(
     neighborhood_size: float,
     num_iter: int | None,
 ) -> list[Point2D] | None:
+    rng = np.random.default_rng(0)
     tree = RRTTree(start)
 
     path = None
@@ -185,7 +186,7 @@ def rrt(
     step_found = None
 
     while (num_iter is not None and step < num_iter) or (step_found is None or step < step_found * 3):
-        random_point = np.multiply(np.random.rand(2), [2, 1])
+        random_point = np.multiply(rng.random(2), [2, 1])
         closest_node = tree.nearest(random_point)
         new_point = steer(closest_node.pos, random_point, max_step_size)
         intersects_obs = mp.intersects_obstacle(closest_node.pos, new_point)

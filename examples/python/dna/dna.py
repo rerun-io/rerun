@@ -41,7 +41,7 @@ def log_data() -> None:
         static=True,
     )
 
-    time_offsets = np.random.rand(NUM_POINTS)
+    time_offsets = np.random.default_rng(0).random(NUM_POINTS)
     for i in range(400):
         time = i * 0.01
         rr.set_time("stable_time", duration=time)

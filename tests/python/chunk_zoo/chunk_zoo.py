@@ -112,8 +112,8 @@ def specimen_many_rows_with_mismatched_instance_count() -> None:
 
     # Useful for dataframe view row expansion testing.
 
-    np.random.seed(0)
-    positions_partitions = np.random.randint(
+    rng = np.random.default_rng(0)
+    positions_partitions = rng.integers(
         3,
         15,
         size=100,
@@ -122,10 +122,10 @@ def specimen_many_rows_with_mismatched_instance_count() -> None:
 
     # Shuffle the color partitions to induce the mismatch
     colors_partitions = positions_partitions.copy()
-    np.random.shuffle(colors_partitions)
+    rng.shuffle(colors_partitions)
 
-    positions = np.random.rand(batch_size, 2)
-    colors = np.random.randint(0, 255, size=(batch_size, 4))
+    positions = rng.random((batch_size, 2))
+    colors = rng.integers(0, 255, size=(batch_size, 4))
 
     rr.send_columns(
         "/many_rows_with_mismatched_instance_count",

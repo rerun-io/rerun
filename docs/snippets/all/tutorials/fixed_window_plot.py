@@ -23,6 +23,7 @@ rr.send_blueprint(
     ),
 )
 
+rng = np.random.default_rng(0)
 cur_time = time.time()
 value = 0.0
 
@@ -32,7 +33,7 @@ while True:
     if sleep_for > 0:
         time.sleep(sleep_for)
 
-    value += np.random.normal()
+    value += rng.normal()
 
     rr.set_time("time", timestamp=cur_time)
 

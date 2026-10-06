@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 def test_segment_url_with_datetime(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment URLs with Python datetime values."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
     url = readonly_test_dataset.segment_url(
         segment_id,
         "real_time",
@@ -30,7 +30,7 @@ def test_segment_url_with_datetime(readonly_test_dataset: DatasetEntry) -> None:
 def test_segment_url_with_timedelta(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment URLs with Python timedelta values."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
     url = readonly_test_dataset.segment_url(
         segment_id,
         "sim_time",
@@ -47,7 +47,7 @@ def test_segment_url_with_timedelta(readonly_test_dataset: DatasetEntry) -> None
 def test_segment_url_with_sequence_start_only(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment URLs with only a sequence start value."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
     url = readonly_test_dataset.segment_url(segment_id, "step", 42)
 
     assert redact_segment_url(url, readonly_test_dataset) == (
@@ -58,7 +58,7 @@ def test_segment_url_with_sequence_start_only(readonly_test_dataset: DatasetEntr
 def test_segment_url_with_datetime_start_only(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment URLs with only a datetime start value."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
     url = readonly_test_dataset.segment_url(
         segment_id,
         "real_time",
@@ -74,7 +74,7 @@ def test_segment_url_with_datetime_start_only(readonly_test_dataset: DatasetEntr
 def test_segment_url_with_timedelta_start_only(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment URLs with only a timedelta start value."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
     url = readonly_test_dataset.segment_url(
         segment_id,
         "sim_time",

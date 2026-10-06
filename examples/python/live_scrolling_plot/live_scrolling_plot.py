@@ -16,10 +16,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
+rng = np.random.default_rng(0)
+
+
 def random_walk_generator() -> Iterator[float]:
     value = 0.0
     while True:
-        value += np.random.normal()
+        value += rng.normal()
         yield value
 
 

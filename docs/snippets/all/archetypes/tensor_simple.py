@@ -4,7 +4,7 @@ import numpy as np
 
 import rerun as rr
 
-tensor = np.random.randint(
+tensor = np.random.default_rng(0).integers(
     0, 256, (8, 6, 3, 5), dtype=np.uint8
 )  # 4-dimensional tensor
 

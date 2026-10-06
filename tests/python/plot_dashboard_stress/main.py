@@ -121,6 +121,7 @@ def main() -> None:
             ),
         )
 
+    rng = np.random.default_rng(0)
     time_per_sim_step = 1.0 / args.freq
     stop_time = args.num_points_per_series * time_per_sim_step
 
@@ -129,7 +130,7 @@ def main() -> None:
     elif args.order == "backwards":
         sim_times = np.arange(0, stop_time, time_per_sim_step)[::-1]
     else:
-        sim_times = np.random.randint(0, args.num_points_per_series)
+        sim_times = rng.permutation(np.arange(0, stop_time, time_per_sim_step))
 
     num_series = len(plot_paths) * len(series_paths)
     time_per_tick = time_per_sim_step
@@ -146,12 +147,12 @@ def main() -> None:
         len(series_paths),
     )
     if args.series_type == "gaussian-random-walk":
-        values = np.cumsum(np.random.normal(size=values_shape), axis=0)
+        values = np.cumsum(rng.normal(size=values_shape), axis=0)
     elif args.series_type == "sin-uniform":
-        values = np.sin(np.random.uniform(0, math.pi, size=values_shape))
+        values = np.sin(rng.uniform(0, math.pi, size=values_shape))
     else:
         # Just generate random numbers rather than crash
-        values = np.random.normal(size=values_shape)
+        values = rng.normal(size=values_shape)
 
     if args.temporal_batch_size is None:
         ticks: Any = enumerate(sim_times)

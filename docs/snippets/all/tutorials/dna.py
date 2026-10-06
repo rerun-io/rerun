@@ -45,7 +45,8 @@ def main() -> None:
     # endregion: scaffolding
 
     # region: beads
-    offsets = np.random.rand(NUM_POINTS)
+    rng = np.random.default_rng(0)
+    offsets = rng.random(NUM_POINTS)
     beads = [
         bounce_lerp(points1[n], points2[n], offsets[n])
         for n in range(NUM_POINTS)
@@ -59,7 +60,7 @@ def main() -> None:
     )
     # endregion: beads
 
-    time_offsets = np.random.rand(NUM_POINTS)
+    time_offsets = rng.random(NUM_POINTS)
 
     # region: time_loop
     for i in range(400):

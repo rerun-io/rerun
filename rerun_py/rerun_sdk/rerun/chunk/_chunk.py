@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     DataframeLike: TypeAlias = "pa.Table | pa.RecordBatch | pa.RecordBatchReader | datafusion.DataFrame"
 
 
-def _resolve_index(index: str | list[str] | None | _AutoIndex) -> tuple[str, list[str]]:
+def _resolve_index(index: str | list[str] | _AutoIndex | None) -> tuple[str, list[str]]:
     """Map the Python `index` argument to the binding's `(index_mode, index_columns)` arguments."""
 
     match index:
@@ -74,7 +74,7 @@ class Chunk:
         cls,
         record_batch: pa.RecordBatch,
         *,
-        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
         entity_path: str | None = None,
     ) -> list[Chunk]:
         """
@@ -187,7 +187,7 @@ class Chunk:
         cls,
         dataframe: DataframeLike,
         *,
-        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        index: str | list[str] | _AutoIndex | None = AUTO_INDEX,
         entity_path: str | None = None,
     ) -> Iterator[Chunk]:
         """

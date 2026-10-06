@@ -99,7 +99,7 @@ def test_segment_url_with_timestamp(readonly_test_dataset: DatasetEntry) -> None
 def test_segment_url_with_literal_segment_id(readonly_test_dataset: DatasetEntry) -> None:
     """Test segment_url UDF with a literal segment_id and multiple timestamps."""
 
-    segment_id = sorted(readonly_test_dataset.segment_ids())[0]
+    segment_id = min(readonly_test_dataset.segment_ids())
 
     ctx = SessionContext()
     ts_batch = pa.RecordBatch.from_pydict({

@@ -25,7 +25,7 @@ class TimeRangeBoundary(TimeRangeBoundaryExt):
 
     # You can define your own __init__ function as a member of TimeRangeBoundaryExt in time_range_boundary_ext.py
 
-    inner: None | encodings.TimeInt = field()
+    inner: encodings.TimeInt | None = field()
     """
     Must be one of:
 
