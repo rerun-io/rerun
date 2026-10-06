@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import os.path
+import re
 import shutil
 import subprocess
 import sys
@@ -229,9 +230,10 @@ class Bump(Enum):
     """
     Automatically determine the next version and bump to it.
 
-    This depends on the latest version published to crates.io:
-    - If it is a pre-release, then bump the pre-release.
-    - If it is not a pre-release, then bump the minor version, and add `-alpha.N+dev`.
+    Starts from the highest of the workspace version and the versions published to crates.io, PyPI, and npm,
+    so that a skipped publish step or an unmerged release PR can't make us reuse an already released version:
+    - If it is a pre-release, then bump the pre-release, e.g. `0.10.0-alpha.5` -> `0.10.0-alpha.6+dev`.
+    - If it is not a pre-release, then bump the minor version, e.g. `0.9.1` -> `0.10.0-alpha.1+dev`.
     """
 
     def __str__(self) -> str:
@@ -254,15 +256,10 @@ class Bump(Enum):
         elif self is Bump.FINALIZE:
             return version.finalize_version()
         elif self is Bump.AUTO:
-            latest_version = get_version(Target.CratesIo)
-            latest_version_finalized = latest_version.finalize_version()
-            if latest_version == latest_version_finalized:
-                # Latest published is not a pre-release, bump minor and add alpha+dev
-                # example: 0.9.1 -> 0.10.0-alpha.1+dev
+            version = max(version, get_latest_released_version())
+            if version.prerelease is None:
                 return version.bump_minor().bump_prerelease(token="alpha").replace(build="dev")
             else:
-                # Latest published is a pre-release, bump prerelease
-                # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
                 return version.bump_prerelease(token="alpha").replace(build="dev")
 
 
@@ -613,6 +610,41 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish()
 
     publish_unpublished_crates_in_parallel(crates, version, token, dry_run)
+
+
+def get_latest_released_version() -> VersionInfo:
+    """The highest version of Rerun published to crates.io, PyPI, or npm, including pre-releases."""
+    versions = [
+        VersionInfo.parse(get_latest_published_version("rerun") or "0.0.0"),
+        get_latest_pypi_version("rerun-sdk"),
+        get_latest_npm_version("@rerun-io/web-viewer"),
+    ]
+    return max(versions)
+
+
+def get_latest_pypi_version(package_name: str) -> VersionInfo:
+    resp = requests.get(f"https://pypi.org/pypi/{package_name}/json", timeout=30)
+    resp.raise_for_status()
+
+    versions = []
+    for release in resp.json()["releases"]:
+        # PEP 440, e.g. `0.39.0a2` -> `0.39.0-alpha.2`. Dev and post releases are ignored.
+        match = re.fullmatch(r"(\d+\.\d+\.\d+)(?:(a|b|rc)(\d+))?", release)
+        if match is None:
+            continue
+        base, pre_id, pre_num = match.groups()
+        if pre_id is None:
+            versions.append(VersionInfo.parse(base))
+        else:
+            pre_id = {"a": "alpha", "b": "beta"}.get(pre_id, pre_id)
+            versions.append(VersionInfo.parse(f"{base}-{pre_id}.{pre_num}"))
+    return max(versions)
+
+
+def get_latest_npm_version(package_name: str) -> VersionInfo:
+    resp = requests.get(f"https://registry.npmjs.org/{package_name}", timeout=30)
+    resp.raise_for_status()
+    return max(VersionInfo.parse(version) for version in resp.json()["versions"])
 
 
 def get_latest_published_version(crate_name: str, skip_prerelease: bool = False) -> str | None:
