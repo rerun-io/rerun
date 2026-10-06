@@ -403,6 +403,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/visible_series" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "views" = [
   "cpp", # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented

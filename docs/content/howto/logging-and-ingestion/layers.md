@@ -77,6 +77,8 @@ The key steps are:
 4. Log the derived data using `send_columns()` for efficient columnar logging
 5. Register all derived `.rrd` files to the dataset with a `"tracking_error"` layer name
 
+If the `recording_id` does not match an existing segment, registration creates a new segment instead.
+
 The `"rerun_layer_names"` column of the segment table confirms the new layer was added:
 
 snippet: howto/layers[check_layer_names]

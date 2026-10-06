@@ -67,6 +67,16 @@ stored_result = summary.reader().sort(col("rerun_segment_id"))
 stored_result.show()
 # endregion: read_result
 
+# region: join_dataset
+segments = (
+    dataset
+    .segment_table(join_meta=summary)
+    .select("rerun_segment_id", "first_observation", "last_observation")
+    .sort(col("rerun_segment_id"))
+)
+segments.show()
+# endregion: join_dataset
+
 # region: update
 batches = result.collect()
 

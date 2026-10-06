@@ -513,7 +513,12 @@ class CatalogClient:
 
     @property
     def ctx(self) -> datafusion.SessionContext:
-        """Returns a DataFusion session context for querying the catalog."""
+        """
+        Returns a DataFusion session context for querying the catalog.
+
+        Catalog tables can be queried by name with `ctx.sql()`.
+        To query a dataset with SQL, register a `reader()` dataframe with `ctx.register_view()`.
+        """
 
         return self._internal.ctx()
 

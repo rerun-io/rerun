@@ -18,7 +18,7 @@ snippet: howto/sub_dataset[setup]
 
 ## Helper function
 
-Query the source dataset's [manifest](../../concepts/query-and-transform/catalog-object-model.md) for storage URLs per (segment, layer) pair and re-register them into a new dataset.
+Query the source dataset's storage [manifest](../../concepts/query-and-transform/catalog-object-model.md), the list of file URLs per (segment, layer) pair, and re-register them into a new dataset.
 
 snippet: howto/sub_dataset[create_sub_dataset]
 

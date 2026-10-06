@@ -14,6 +14,10 @@ is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/type
 this by logging both archetypes to the same path, or alternatively configuring
 the plot-specific archetypes through the blueprint.
 
+Each scalar in a batch is plotted as its own series.
+To show only some of them, set `visible_series` of [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points),
+or click series in the plot legend.
+
 ## Fields
 ### Required
 * `scalars`: [`Scalar`](../components/scalar.md)

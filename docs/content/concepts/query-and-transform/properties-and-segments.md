@@ -57,6 +57,7 @@ Output:
 ```
 
 The segment table contains one row per recording, with each property appearing as a column.
+As with any component column, each row contains a [list of values](dataframe-queries.md#why-are-component-columns-lists).
 The column metadata exposes the fact that properties are stored under the reserved `/__properties` entity path.
 For simplicity, the column names are however prefixed with `property:` instead of the full entity path.
 

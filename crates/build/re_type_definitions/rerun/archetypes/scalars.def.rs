@@ -12,6 +12,10 @@
 /// this by logging both archetypes to the same path, or alternatively configuring
 /// the plot-specific archetypes through the blueprint.
 ///
+/// Each scalar in a batch is plotted as its own series.
+/// To show only some of them, set `visible_series` of [`rerun::archetypes::SeriesLines`] or [`rerun::archetypes::SeriesPoints`],
+/// or click series in the plot legend.
+///
 /// \example archetypes/scalars_simple !api title="Simple line plot" image="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png"
 /// \example archetypes/scalars_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
 /// \example archetypes/scalars_row_updates title="Update a scalar over time" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"

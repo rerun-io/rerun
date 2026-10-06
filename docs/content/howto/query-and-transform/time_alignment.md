@@ -30,4 +30,8 @@ Select the timeline, columns, and episode of interest.
 Extract rows at the specified time points, and fill forward to eliminate sparse entries.
 Finally, filter out nulls for initial sensor state that cannot be resolved with forward fill.
 
+> [!WARNING]
+> Video samples can only be decoded starting from the previous keyframe, so a forward-filled, resampled `VideoStream:sample` column cannot be decoded.
+> For video, use the keyframe-aware approach in [Query video streams](query_videos.md) or the [dataloader](../train/dataloader.md).
+
 snippet: howto/time_alignment[time_align]

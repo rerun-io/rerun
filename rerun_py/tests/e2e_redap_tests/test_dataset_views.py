@@ -452,6 +452,11 @@ def test_using_index_values_with_arrow_types(readonly_test_dataset: DatasetEntry
     )
 
 
+def test_using_index_values_invalid_type(readonly_test_dataset: DatasetEntry) -> None:
+    with pytest.raises(TypeError, match="dict of segment ID to index values"):
+        readonly_test_dataset.reader(index="time_1", using_index_values=pa.table({"time_1": [1]}))
+
+
 def test_content_filter_everything_matches_glob(readonly_test_dataset: DatasetEntry) -> None:
     """ContentFilter.everything() should produce the same schema as filter_contents('/**')."""
     raw = sort_schema(pa.schema(readonly_test_dataset.schema()))

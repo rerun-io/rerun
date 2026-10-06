@@ -52,6 +52,18 @@ Call `reader()` on the table entry to get a DataFusion dataframe that you can fi
 
 snippet: howto/catalog_tables[read_result]
 
+## Join with a dataset
+
+Pass a table as `join_meta` to [`DatasetEntry.segment_table`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_table) to get a dataframe of the segment table joined with the table's columns.
+The table must contain a `rerun_segment_id` column.
+Segments without a matching row get null values.
+The join is lazy and reads the table's current rows when the result is collected.
+It does not modify the dataset.
+
+snippet: howto/catalog_tables[join_dataset]
+
+To query only the segments that match a condition on the table, pass a filtered `reader()` dataframe of the table to [`DatasetEntry.filter_segments`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.filter_segments).
+
 ## Update a table
 
 `write_table` operates on a DataFusion dataframe.

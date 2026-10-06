@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from datetime import datetime, timedelta
 
     import datafusion
+    import numpy as np
+    import numpy.typing as npt
 
     from rerun.chunk import LazyStore
 
@@ -925,7 +927,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
-        good_segments = segment_table.filter(col("success"))
+        good_segments = segment_table.filter(col("property:episode:success")[0])
         view = dataset.filter_segments(good_segments)
 
         # Read data from the filtered view
@@ -1364,7 +1366,14 @@ class DatasetView:
                 # Scalar IndexValuesLike: restrict to segments whose range covers each value
                 if index is None:
                     raise ValueError("index must be provided when using_index_values is specified")
-                df = self._map_index_values_to_ranges(index, index_vals)
+                try:
+                    values = _IndexValuesLikeInternal(index_vals).to_index_values()
+                except TypeError as err:
+                    raise TypeError(
+                        "using_index_values must be index values, a dict of segment ID to index values, "
+                        f"or a datafusion.DataFrame with 'rerun_segment_id' and '{index}' columns: {err}"
+                    ) from err
+                df = self._map_index_values_to_ranges(index, values)
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
@@ -1407,7 +1416,7 @@ class DatasetView:
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
-        good_segments = segment_table.filter(col("success"))
+        good_segments = segment_table.filter(col("property:episode:success")[0])
         view = dataset.filter_segments(good_segments)
 
         # Read data from the filtered view
@@ -1504,7 +1513,7 @@ class DatasetView:
 
         return self.segment_table().select(*exprs)
 
-    def _map_index_values_to_ranges(self, index: str, index_values: IndexValuesLike) -> datafusion.DataFrame:
+    def _map_index_values_to_ranges(self, index: str, values: npt.NDArray[np.int64]) -> datafusion.DataFrame:
         """
         Filter index values to only those within the range of some segment.
 
@@ -1519,7 +1528,6 @@ class DatasetView:
         import datafusion as dfn
 
         ctx = self.dataset.catalog.ctx
-        values = _IndexValuesLikeInternal(index_values).to_index_values()
 
         df_ranges = self.get_index_ranges()
         datatype = df_ranges.schema().field(f"{index}:start").type

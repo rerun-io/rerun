@@ -84,7 +84,11 @@ The content of a dataset can be inspected using the `schema()` method:
 schema = dataset.schema()
 schema.index_columns()  # list of all index columns (timelines)
 schema.component_columns()  # list of all component columns
+schema.column_names()  # list of all column names
 ```
+
+Component column names follow the pattern `$entity_path:$Archetype:$field`, e.g. `/robot/gripper/force:Scalars:scalars`.
+Data logged without an archetype, such as with `rr.AnyValues`, omits the `$Archetype` part, e.g. `/robot/meta:mode`.
 
 ## Querying a dataset using `reader`
 
@@ -96,13 +100,22 @@ df = dataset.reader(index="frame_nr")
 print(df)
 ```
 
+Printing a DataFrame, whether with `print(df)` or `df.show()`, prints every byte of blob columns such as images and video.
+Exclude blob columns with `filter_contents()` or `select()` before printing.
+
 The returned object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
 
 When calling `reader()`, an index column must be specified. It can be any of the recording's timelines. Each row of the view will correspond to a unique value of the index column. It is also possible to query the dataset using `index=None`. In this case, only the `static=True` data will be returned.
 
+`log_time` is added automatically by `rr.log()` and records when each log call was made.
+`send_columns()` does not add it, so querying that data with `index="log_time"` returns no rows.
+
 By default, when performing a query on a dataset, data for all its segments is returned. An additional `"rerun_segment_id"` column is added to the dataframe to indicate which segment each row belongs to.
 
 An often used parameter of the `reader()` method is `fill_latest_at=True`. When used, all `null` data will be filled with a latest-at value, similarly to how the viewer works.
+With `fill_latest_at=True`, the result also has a row at each timestamp of the other entities in the view, filled with the latest values.
+Those entities are fetched even if you don't select their columns, so restrict the view with `filter_contents()`.
+See [Where a query runs](query_performance_tuning.md#where-a-query-runs) for what narrows a query.
 
 ## Querying a subset of a dataset
 
@@ -148,9 +161,28 @@ df = df.filter(col("/world/robot:Position3D:positions").is_not_null())
 df = df.select("frame_nr", "/world/robot:Position3D:positions")
 ```
 
+## Querying with SQL
+
+The dataframes returned by `reader()` belong to the client's DataFusion session, `client.ctx`.
+To query one with SQL, register it as a view:
+
+```python
+ctx = client.ctx
+ctx.register_view("robot", dataset.filter_contents("/robot/**").reader(index="frame_nr"))
+
+df = ctx.sql('SELECT rerun_segment_id, frame_nr, "/robot/gripper/force:Scalars:scalars"[1] AS force FROM robot')
+```
+
+Column names must be double-quoted.
+Component columns are [lists](../../concepts/query-and-transform/dataframe-queries.md#why-are-component-columns-lists), and SQL list indices start at 1.
+Catalog tables can be queried by name without registering them, e.g. `SELECT * FROM "my_table"`.
+
 ## Converting to other formats
 
 Likewise, DataFusion offers a rich set of tools to convert a dataframe to various formats.
+Converting executes the query and loads the full result into memory.
+Filter and aggregate in DataFusion first, so that only the rows you need are converted.
+See [Common Dataframe Operations](dataframe_operations.md) for aggregation examples.
 
 ### Load data to a PyArrow `Table`
 

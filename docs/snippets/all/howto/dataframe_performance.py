@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pyarrow as pa
 from datafusion import col
-from datafusion import functions as F
 
 import rerun as rr
 
@@ -50,25 +49,31 @@ segment_id = dataset.segment_ids()[0]
 second_to_last_timestamp = pa.table(df)["log_time"].to_numpy()[-2]
 with rr.RecordingStream("rerun_example_layer", recording_id=segment_id) as rec:
     rec.save(RRD_PATH)
+    rec.set_log_time_enabled(False)
     rec.set_time("log_time", timestamp=second_to_last_timestamp)
     rec.log("/events", rr.AnyValues(flag=True))
 
 dataset.register([Path(RRD_PATH).as_uri()], layer_name="event_layer")
 
-# Read dataframe including new sparse layer
+# Step 1: read the marker on its own, which fetches no image chunks
+events = (
+    dataset
+    .filter_contents("/events")
+    .reader(index="log_time")
+    .select("rerun_segment_id", "log_time")
+)
+
+# Step 2: fetch the images only at the marker's timestamps
+images_at_events = dataset.filter_contents([
+    "/compressed_images/**",
+    "/raw_images/**",
+]).reader(index="log_time", using_index_values=events)
+
+# vs. one view with the marker and the images, which fetches every image chunk
 df_with_flag = dataset.filter_contents([
     "/compressed_images/**",
     "/raw_images/**",
     "/events/**",
 ]).reader(index="log_time")
-
-# This filter only looks at the single row in events
 df_with_flag.filter(col("/events:flag").is_not_null())
-
-# vs. using row_number which requires scanning all rows
-df_with_row_number = df.with_column(
-    "row_num",
-    F.row_number(order_by="log_time"),
-)
-df_with_row_number.filter(col("row_num") == df_with_row_number.count() - 1)
 # endregion: sparsity

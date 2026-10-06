@@ -45,12 +45,11 @@ The single biggest lever:
 - `filter_contents([entity_globs])` restricts which entity-path columns
   the reader produces. Without it, every entity in the dataset is
   read.
-- For Scalars-typed columns this also reduces array nesting depth from
-  `list<list<double>>` to `list<double>`.
-- Time-window filters (`df.filter(col(index).cast(int64) >= start)
-  .filter(col(index).cast(int64) <= end)`) push down to storage and
-  dramatically reduce bytes scanned. The order matters: filter then
-  reader-bound projection, never the other way around.
+- Time-window filters push down to storage and dramatically reduce
+  bytes scanned when they compare the bare index column with a literal:
+  `df.filter(col(index) >= lit(start)).filter(col(index) <= lit(end))`.
+  Integer, timestamp and duration literals of any unit work. A `cast`
+  or arithmetic on the index column is not pushed down.
 
 Combined: `dataset.filter_segments(seg).filter_contents(entities).reader(...)
 .filter(in_window).select(...)`.

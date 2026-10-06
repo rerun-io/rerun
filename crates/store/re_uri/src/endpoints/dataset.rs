@@ -41,12 +41,13 @@ impl std::str::FromStr for DatasetResource {
 ///
 /// Currently, the following formats are supported:
 /// `<origin>/dataset/$DATASET_ID`
-/// `<origin>/dataset/$DATASET_ID?segment_id=$SEGMENT_ID&time_range=$TIME_RANGE`
+/// `<origin>/dataset/$DATASET_ID?segment_id=$SEGMENT_ID#$FRAGMENT`
 /// `<origin>/dataset/$DATASET_ID/assets`
 /// `<origin>/dataset/$DATASET_ID/assets?segment_id=$ASSET_ID`
 ///
 /// Without `segment_id` the uri points at the dataset as a whole.
-/// `time_range` is optional. In the future we will add richer queries.
+/// The optional `#$FRAGMENT` sets what the viewer focuses on (selection, time, time range)
+/// and does not affect what data is returned, see [`Fragment`].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct DatasetUri {
     pub origin: Origin,

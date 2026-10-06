@@ -28,7 +28,7 @@ The `stats` decoder computes file-level metrics and statistics, creating entitie
 
 ### Semantic interpretation
 
-The `ros2msg` and `foxglove` decoders provide semantic interpretation and visualization of standard ROS 2 and Foxglove message types, creating meaningful Rerun visualization archetypes from data. Unlike the `protobuf` decoder, this decoder understands the semantics of the messages and creates appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
+The `ros2msg` and `foxglove` decoders provide semantic interpretation and visualization of standard ROS 2 and Foxglove message types, creating meaningful Rerun visualization archetypes from data. Unlike the `protobuf` decoder, these decoders understand the semantics of the messages and create appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [Scalars](../../../reference/types/archetypes/scalars.md) plotted over time, and so on.
 
 See [Message Formats](message-formats.md) for the complete list of supported message types.
 
@@ -56,7 +56,7 @@ For general information about how to load URDF files, see [here](../../../howto/
 
 ### Selecting decoders
 
-By default, Rerun processes MCAP files with all decoders active. You can control which decoders are used when [converting MCAP files via the CLI](cli-reference.md) using the `-d` flag:
+By default, all decoders are available and each channel is decoded by the most specific one that supports it. You can control which decoders are used when [converting MCAP files via the CLI](cli-reference.md) using the `-d` flag:
 
 ```bash
 # Use only specific decoders

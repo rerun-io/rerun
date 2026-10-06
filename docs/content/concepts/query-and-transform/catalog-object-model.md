@@ -68,7 +68,8 @@ The recording ID of the `.rrd` file is used as its segment ID.
 
 Recordings registered to a given segment are organized by layers, identified by a layer name.
 By default, the `"base"` layer name is used.
-Registering two `.rrd` files with the same recording ID (that is, with the same segment ID) to the same dataset, and using the same layer name, will result in the second `.rrd` overwriting the first.
+Registering two `.rrd` files with the same recording ID (that is, with the same segment ID) to the same dataset, and using the same layer name, throws an error by default.
+Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite the existing layer, or `SKIP` to leave it in place.
 Additive registration can be achieved by using different layer names for different `.rrd`s with the same recording ID/segment ID.
 
 <div class="d2-diagram">
@@ -79,7 +80,7 @@ Additive registration can be achieved by using different layer names for differe
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
 - _create segment_: by registering a `.rrd` with a "new" recording ID
 - _append to segment_: by registering a `.rrd` with a matching recording ID to a new layer name
-- _overwrite segment layer_: by registering a `.rrd` with a matching recording ID to an existing layer name
+- _overwrite segment layer_: by registering a `.rrd` with a matching recording ID to an existing layer name, with `on_duplicate=OnDuplicateSegmentLayer.REPLACE`
 
 
 ### Schema

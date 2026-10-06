@@ -33,7 +33,7 @@ snippet: tutorials/data_out[query_data]
 
 A lot is happening here, let's go step by step:
 
-1. We first create a _view_ into the recording. The view specifies which content we want to use (in this case the `"/blendshapes/0/jawOpen"` entity). The view defines a subset of all the data contained in the recording where each row has a unique value for the index.
+1. We first create a _view_ into the recording. The view specifies which content we want to use (in this case the `"/blendshapes/0/jawOpen"` entity).
 2. In order to perform queries a view must become a dataframe. We use the `reader()` call to specify this transformation where we specify our index (timeline) of interest.
 3. The object returned by `reader()` is a [`datafusion.Dataframe`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame).
 
@@ -113,6 +113,7 @@ Here is the result:
 Name: /blendshapes/0/jawOpen:Scalars:scalars, dtype: object
 ```
 
+Each value is wrapped in a list because [component columns are lists](../../concepts/query-and-transform/dataframe-queries.md#why-are-component-columns-lists), even when a single scalar was logged per row.
 We note that the data contains empty lists when no face is detected. When the blendshapes entities are [`Clear`](../../reference/types/archetypes/clear.md)ed, this happens for the corresponding timestamps and all further timestamps until a new value is logged.
 
 While this data representation is in general useful, a flat floating point representation with `NaN` for missing values is typically more convenient for scalar data. This is achieved using the [`explode()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.explode.html) method:

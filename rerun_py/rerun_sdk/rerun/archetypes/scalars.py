@@ -36,6 +36,10 @@ class Scalars(Archetype):
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
 
+    Each scalar in a batch is plotted as its own series.
+    To show only some of them, set `visible_series` of [`archetypes.SeriesLines`][rerun.archetypes.SeriesLines] or [`archetypes.SeriesPoints`][rerun.archetypes.SeriesPoints],
+    or click series in the plot legend.
+
     Examples
     --------
     ### Update a scalar over time:
