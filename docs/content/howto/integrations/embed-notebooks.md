@@ -1,7 +1,7 @@
 ---
 title: Embed Rerun in notebooks
 order: 0
-description: How to embed Rerun in notebooks like Jupyter or Colab
+description: How to embed Rerun in notebooks like Jupyter, Colab, or marimo
 ---
 
 Starting with version 0.15.1, Rerun has improved support for embedding the Rerun Viewer directly within IPython-style
@@ -13,6 +13,7 @@ Rerun has been tested with:
 -   [Jupyter Lab](https://jupyter.org/)
 -   [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
 -   [Google Colab](https://colab.research.google.com/)
+-   [marimo](https://marimo.io/)
 
 To begin, install the `rerun-sdk` package with the `notebook` extra:
 ```sh
@@ -199,6 +200,20 @@ We also host a copy of the notebook in [Google Colab](https://colab.research.goo
 
 Note that if you copy and run the notebook yourself, the first Cell installs Rerun into the Colab environment.
 After running this cell you will need to restart the Runtime for the Rerun package to show up successfully.
+
+### Running in marimo
+
+The same example is available as a [marimo notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py):
+
+```bash
+$ cd examples/notebook/notebook
+$ pip install "rerun-sdk[notebook]" marimo
+$ marimo edit cube_marimo.py
+```
+
+marimo handles messages from the viewer only between cells, so a viewer cannot receive data until the cell that created it has finished.
+To stream data live, create the viewer in one cell and log to it from a later one.
+`block_until_ready` has no effect in marimo.
 
 ## Limitations
 

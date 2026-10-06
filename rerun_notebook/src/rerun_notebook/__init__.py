@@ -5,6 +5,7 @@ import importlib.metadata
 import logging
 import os
 import pathlib
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -119,6 +120,17 @@ else:  # remote widget
     if not (ASSET_ENV.endswith("widget.js")):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
     ASSET_IS_URL = True
+
+
+def running_in_marimo() -> bool:
+    """Whether the calling code is executing inside a marimo notebook kernel."""
+    # marimo is always imported by its own kernel, so this avoids importing it anywhere else.
+    if "marimo" not in sys.modules:
+        return False
+
+    import marimo
+
+    return bool(marimo.running_in_notebook())
 
 
 class ErrorWidget:
@@ -238,7 +250,19 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self.send({"type": "table"}, buffers=[data])
 
     def block_until_ready(self, timeout: float = 10.0) -> None:
-        """Block until the viewer is ready."""
+        """
+        Block until the viewer is ready.
+
+        Has no effect in marimo: marimo handles messages from the frontend only between cells,
+        so the viewer's ready message cannot arrive while the calling cell is running.
+        """
+
+        if running_in_marimo():
+            logging.warning(
+                "block_until_ready has no effect in marimo. "
+                "Data logged in this cell is sent to the viewer when the cell finishes."
+            )
+            return
 
         start = time.time()
 

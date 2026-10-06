@@ -74,6 +74,8 @@ dev = [
   "jupyter>=1.0",
   # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive)
   "jupyter-server>=2.20.0",
+  # Runs the marimo example notebooks in `scripts/ci/run_example_notebooks.py`
+  "marimo>=0.25.0",
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
   "tabulate>=0.9.0",
   "types-tabulate>=0.9.0",
@@ -385,6 +387,12 @@ ignore = [
   "PLR0917",
 ]
 
+"examples/notebook/*/*_marimo.py" = [
+  # marimo's notebook format: a cell's last expression is its output, and every cell ends in `return`.
+  "B018",
+  "PLR1711",
+]
+
 "examples/notebook/notebook_neural_field_2d/neural_field_2d.ipynb" = [
   # Intentional use of  `σ`
   "RUF001",
@@ -445,6 +453,8 @@ module = [
   "anywidget.*",
   # TODO(nick): is this blocked on above?
   "jupyter_ui_poll.*",
+  # Optional: only imported when running inside a marimo kernel.
+  "marimo.*",
   # Ignore imports used in tests but not in the SDK.
   "torch.*",
   "torchvision.*",

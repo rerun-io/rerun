@@ -525,6 +525,10 @@ def notebook_show(
     viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
     to the viewer.
 
+    In marimo, the viewer is shown as a cell output instead, and the call does not block.
+    The viewer receives data only after the cell that created it finishes,
+    so log to it from a later cell to stream data live.
+
     Parameters
     ----------
     width:

@@ -67,3 +67,15 @@ jupyter notebook cube.ipynb
 ```
 
 Follow along in the browser that opens.
+
+## Running in marimo
+
+The same example is available as a [marimo](https://marimo.io/) notebook:
+
+```sh
+pip install "rerun-sdk[notebook]" marimo
+marimo edit cube_marimo.py
+```
+
+marimo handles messages from the viewer only between cells, so a viewer cannot receive data until the cell that created it has finished.
+To stream data live, create the viewer in one cell and log to it from a later one.

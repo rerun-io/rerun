@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import os
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -13,7 +14,7 @@ from pyarrow import RecordBatch, ipc
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from datetime import datetime, timedelta
 
     import datafusion
@@ -60,7 +61,7 @@ __all__ = [
 HAS_NOTEBOOK = True
 try:
     from ipywidgets import HTML as _HTML, VBox as _VBox
-    from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+    from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer, running_in_marimo as _running_in_marimo
 except ModuleNotFoundError:
     HAS_NOTEBOOK = False
 
@@ -344,12 +345,7 @@ class Viewer:
         """
         from rerun._arrow import to_record_batch
 
-        self._loading_widget.value = _render_loading_html(id)
-        # Pump the UI event loop so the value change reaches the frontend before
-        # to_record_batch() blocks Python (e.g. a slow datafusion collect).
-        _flush_ui_events()
-
-        try:
+        with self._loading_indicator(id):
             record_batch = to_record_batch(table)
             new_table = self._add_table_id(record_batch, id)
             sink = pyarrow.BufferOutputStream()
@@ -358,8 +354,23 @@ class Viewer:
             writer.close()
             table_as_bytes = sink.getvalue().to_pybytes()
             self._viewer.send_table(table_as_bytes)
-        finally:
-            self._loading_widget.value = ""
+
+    @contextmanager
+    def _loading_indicator(self, table_id: str) -> Iterator[None]:
+        if _running_in_marimo():
+            import marimo as mo
+
+            with mo.status.spinner(title=f"Loading table “{table_id}”…"):
+                yield
+        else:
+            self._loading_widget.value = _render_loading_html(table_id)
+            # Pump the UI event loop so the value change reaches the frontend before
+            # the caller blocks Python (e.g. a slow datafusion collect).
+            _flush_ui_events()
+            try:
+                yield
+            finally:
+                self._loading_widget.value = ""
 
     def display(self, block_until_ready: bool = False) -> None:
         """
@@ -371,22 +382,33 @@ class Viewer:
             Whether to block until the viewer is ready to receive data. If this is `False`, the viewer
             will still be displayed, but logged data will likely be queued until the viewer becomes ready
             at the end of cell execution.
+            Has no effect in marimo, where logged data is sent when the cell finishes.
 
         """
 
-        from IPython.display import display
+        if _running_in_marimo():
+            import marimo as mo
 
-        display(self._error_widget)
-        # Wrap loading + viewer in a VBox so the spinner's rendered height and
-        # positioning are tied to the viewer's own layout box instead of occupying
-        # a separate notebook output cell.
-        display(_VBox([self._loading_widget, self._viewer]))
+            # marimo renders anywidgets but not built-in ipywidgets such as `VBox` and `HTML`.
+            mo.output.append(self._viewer)
+        else:
+            from IPython.display import display
+
+            display(self._error_widget)
+            # Wrap loading + viewer in a VBox so the spinner's rendered height and
+            # positioning are tied to the viewer's own layout box instead of occupying
+            # a separate notebook output cell.
+            display(_VBox([self._loading_widget, self._viewer]))
 
         if block_until_ready:
             self._viewer.block_until_ready()
 
     def _ipython_display_(self) -> None:
         self.display()
+
+    def _display_(self) -> _Viewer:
+        """Called by marimo to render this object as a cell output."""
+        return self._viewer
 
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)

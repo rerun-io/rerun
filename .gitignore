@@ -47,6 +47,7 @@ __pycache__
 *.pyd
 *.so
 **/.ipynb_checkpoints/
+**/__marimo__/
 **/.pytest_cache
 
 # Pixi environment

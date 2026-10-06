@@ -272,16 +272,6 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  # TODO(#9304): make the notebook export work
-  # run-notebook:
-  #   name: "Run Notebook"
-  #   needs: [build-wheel-linux-x64]
-  #   uses: ./.github/workflows/reusable_run_notebook.yml
-  #   with:
-  #     CONCURRENCY: nightly
-  #     WHEEL_ARTIFACT_NAME: linux-x64-wheel
-  #   secrets: inherit
-
   build-examples:
     name: "Build Examples"
     needs: [build-wheel-linux-x64]

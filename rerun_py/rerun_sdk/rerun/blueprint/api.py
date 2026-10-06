@@ -28,6 +28,8 @@ from .visualizers import VisualizableArchetype, Visualizer
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from rerun.notebook import Viewer
+
     from .._memory import MemoryRecording
     from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
@@ -235,6 +237,12 @@ class View:
 
         Viewer(blueprint=self).display()
 
+    def _display_(self) -> Viewer:
+        """Called by marimo to render this object as a cell output."""
+        from rerun.notebook import Viewer
+
+        return Viewer(blueprint=self)
+
 
 class Container:
     """
@@ -359,6 +367,12 @@ class Container:
         from rerun.notebook import Viewer
 
         Viewer(blueprint=self).display()
+
+    def _display_(self) -> Viewer:
+        """Called by marimo to render this object as a cell output."""
+        from rerun.notebook import Viewer
+
+        return Viewer(blueprint=self)
 
 
 def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
@@ -712,6 +726,12 @@ class Blueprint:
         from rerun.notebook import Viewer
 
         Viewer(blueprint=self).display()
+
+    def _display_(self) -> Viewer:
+        """Called by marimo to render this object as a cell output."""
+        from rerun.notebook import Viewer
+
+        return Viewer(blueprint=self)
 
     def connect_grpc(
         self,
