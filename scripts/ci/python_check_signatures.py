@@ -296,7 +296,7 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
     if result > 0:
         print()
         print(
-            f"{result} error(s) found. Please update rerun_py/rerun_bindings/rerun_bindings.pyi to match the runtime."
+            f"{result} error(s) found. Please update rerun_py/rerun_sdk/rerun_bindings/rerun_bindings.pyi to match the runtime."
         )
 
     else:
@@ -307,7 +307,9 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
 
 def main() -> int:
     # load the stub file
-    path_to_stub = Path(__file__).parent.parent.parent / "rerun_py" / "rerun_bindings" / "rerun_bindings.pyi"
+    path_to_stub = (
+        Path(__file__).parent.parent.parent / "rerun_py" / "rerun_sdk" / "rerun_bindings" / "rerun_bindings.pyi"
+    )
     stub_signatures = load_stub_signatures(path_to_stub)
 
     # load the runtime signatures

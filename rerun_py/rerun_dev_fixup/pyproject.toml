@@ -15,8 +15,5 @@ rerun-dev = "rerun_dev_fixup:init"
 [tool.hatch.build.targets.wheel]
 packages = ["rerun_dev_fixup"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"rerun_sdk_fixup.pth" = "rerun_sdk_fixup.pth"
-
 [tool.uv]
-cache-keys = [{ file = "pyproject.toml" }, { file = "rerun_sdk_fixup.pth" }]
+cache-keys = [{ file = "pyproject.toml" }]

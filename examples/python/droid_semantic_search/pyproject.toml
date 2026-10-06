@@ -27,7 +27,7 @@ package = false
 
 # Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
 # After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
-# install the .pth shim that makes `import rerun` resolve to the editable source tree.
+# point the `rerun` CLI at the in-repo `target/debug/rerun` build.
 #
 # Standalone users (e.g. sparse-checkout of just this example) run instead:
 #   uv sync --no-sources --no-dev

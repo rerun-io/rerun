@@ -10,10 +10,10 @@ def _packaged_assets_archive_path() -> str | None:
     Path to the web viewer assets archive shipped in the wheel, or `None` if absent.
 
     Some wheels are built without web viewer assets embedded in the extension module.
-    They instead ship the assets as `rerun_sdk/web_viewer.zip`,
+    They instead ship the assets as `rerun/web_viewer.zip`,
     which is expected to be served from disk.
     """
-    path = Path(__file__).parent.parent / "web_viewer.zip"
+    path = Path(__file__).parent / "web_viewer.zip"
     return str(path) if path.is_file() else None
 
 

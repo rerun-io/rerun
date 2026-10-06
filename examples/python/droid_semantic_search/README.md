@@ -65,7 +65,7 @@ RERUN_ALLOW_MISSING_BIN=1 uv sync
 uv pip install ../../../rerun_py/rerun_dev_fixup
 ```
 
-The second command installs the `.pth` shim that points `import rerun` (and the `rerun` CLI) at the in-repo editable source tree.
+The second command points the `rerun` CLI at the in-repo `target/debug/rerun` build.
 It's a separate `uv pip install` rather than a dev-group dependency because uv resolves all dependency groups unconditionally, so a path-only package in `pyproject.toml` would break the standalone `--no-sources` resolution above.
 
 Then either `source .venv/bin/activate` or prefix subsequent commands with `uv run`.

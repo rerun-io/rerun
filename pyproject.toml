@@ -21,8 +21,7 @@ dev = [
   # This is because they can be slow to build in a clean environment and it's useful to
   # be able to run tools like linting, etc. without having built all the bindings.
   #
-  # This fixup package installs a .pth file that makes `import rerun` work
-  # with editable installs by adding rerun_py/rerun_sdk to the Python path.
+  # This fixup package points the `rerun` CLI of editable installs at `target/debug/rerun`.
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.14.1",
@@ -421,7 +420,7 @@ python_version = "3.10"
 # in ini file adjacent to this.
 files = [
   "rerun_py/rerun_sdk/rerun",
-  "rerun_py/rerun_bindings",
+  "rerun_py/rerun_sdk/rerun_bindings",
   "rerun_py/tests",
   "rerun_notebook/src/rerun_notebook",
   "tests/python",
@@ -467,7 +466,7 @@ extra-paths = ["rerun_py", "rerun_py/rerun_sdk"]
 [tool.ty.src]
 include = [
   "rerun_py/rerun_sdk/rerun",
-  "rerun_py/rerun_bindings",
+  "rerun_py/rerun_sdk/rerun_bindings",
   "rerun_py/tests",
   "rerun_notebook/src/rerun_notebook",
   "tests/python",

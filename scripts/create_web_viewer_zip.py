@@ -5,7 +5,7 @@ Create a zip archive of the web viewer assets.
 The archive can be served by `re_web_viewer_server` at runtime (`WebViewerServer::with_archive`).
 It is used both for appending to CLI binaries built with `RERUN_TRAILING_WEB_VIEWER=1`
 (see `scripts/append_web_viewer.py`) and for shipping inside Python wheels built with
-`RERUN_EXTERNAL_WEB_VIEWER=1` (as `rerun_sdk/web_viewer.zip`).
+`RERUN_EXTERNAL_WEB_VIEWER=1` (as `rerun/web_viewer.zip`).
 
 Usage:
     python3 scripts/create_web_viewer_zip.py <web_viewer_dir> <output_zip>

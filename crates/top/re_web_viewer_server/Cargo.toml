@@ -71,7 +71,7 @@ __trailing_web_viewer = []
 ## When enabled, the binary will NOT include the web viewer assets at compile time.
 ## Instead, they must be loaded at runtime from a zip archive on disk
 ## (see `WebViewerServer::with_archive`).
-## This is used by Python wheels that ship the assets as `rerun_sdk/web_viewer.zip`
+## This is used by Python wheels that ship the assets as `rerun/web_viewer.zip`
 ## instead of embedding them in the extension module.
 ##
 ## WARNING: Creating a `WebViewerServer` without an assets archive path will fail in such builds.

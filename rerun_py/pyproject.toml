@@ -85,7 +85,7 @@ rerun = "rerun_cli.__main__:main"
 ######################
 
 [tool.ruff]
-src = ["rerun_bindings", "rerun_sdk/*", "../rerun_notebook"]
+src = ["rerun_sdk/*", "../rerun_notebook"]
 
 # https://beta.ruff.rs/docs/configuration/
 
@@ -235,10 +235,6 @@ max-positional-args = 3
   # Allow using rerun_bindings
   "TID251",
 ]
-"rerun_bindings/*" = [
-  # Allow using rerun_bindings
-  "TID251",
-]
 
 
 [tool.ruff.lint.isort]
@@ -257,22 +253,20 @@ known-first-party = ["rerun_bindings"]
 
 
 [tool.maturin]
-# We use a python package from inside the rerun_sdk folder to avoid conflicting
-# with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
-# which then allows `import rerun` to work as expected.
-# See https://github.com/rerun-io/rerun/pull/1085 for more details
+# `rerun`, `rerun_cli` and `rerun_bindings` install as top-level packages, so they are
+# importable in a running interpreter right after install, without a `.pth` file.
 # Each platform fetches only one of these — `rerun` (Linux), `rerun.exe` (Windows),
 # or the `Rerun.app` bundle (macOS — see scripts/ci/bundle_macos_app.py).
 # Files missing from this list is not a packaging failure.
 include = [
-  "rerun_sdk.pth",
   "rerun_sdk/rerun_cli/rerun",
   "rerun_sdk/rerun_cli/rerun.exe",
   "rerun_sdk/rerun_cli/Rerun.app/**/*",
 ]
 locked = true
 name = "rerun_bindings"
-python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]
+python-source = "rerun_sdk"
+python-packages = ["rerun", "rerun_cli"]
 
 # Use debug profile for editable installs (uv sync, pip install -e) to match
 # `pixi run py-build` and share the cargo cache.
