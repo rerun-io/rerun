@@ -1839,6 +1839,7 @@ fn serve_grpc(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     cors_allow_origin: Vec<String>,
+    py: Python<'_>,
 ) -> PyResult<String> {
     cfg_select! {
         feature = "server" => {
@@ -1856,22 +1857,27 @@ fn serve_grpc(
             let server_options =
                 server_options(&server_memory_limit, newest_first, &cors_allow_origin)?;
 
-            let sink = re_sdk::grpc_server::GrpcServerSink::new(
-                "0.0.0.0",
-                grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-                server_options,
-            )
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            // The server thread drops messages whose buffers Python owns, and that takes the GIL.
+            py.detach(|| {
+                let sink = re_sdk::grpc_server::GrpcServerSink::new(
+                    "0.0.0.0",
+                    grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+                    server_options,
+                )
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            if let Some(default_blueprint) = default_blueprint {
-                send_mem_sink_as_default_blueprint(&sink, default_blueprint);
-            }
+                if let Some(default_blueprint) = default_blueprint {
+                    send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+                }
 
-            let uri = sink.uri().to_string();
+                let uri = sink.uri().to_string();
 
-            recording.set_sink(Box::new(sink));
+                recording.set_sink(Box::new(sink));
 
-            Ok(uri)
+                flush_garbage_queue();
+
+                Ok(uri)
+            })
         }
         _ => {
             let _ = (
@@ -1881,6 +1887,7 @@ fn serve_grpc(
                 default_blueprint,
                 recording,
                 cors_allow_origin,
+                py,
             );
 
             Err(PyRuntimeError::new_err(
@@ -1943,6 +1950,7 @@ fn serve_web(
     recording: Option<&PyRecordingStream>,
     cors_allow_origin: Vec<String>,
     assets_archive_path: Option<std::path::PathBuf>,
+    py: Python<'_>,
 ) -> PyResult<()> {
     cfg_select! {
         feature = "web_viewer" => {
@@ -1963,23 +1971,28 @@ fn serve_web(
                 cors_allowed_origins: cors_allow_origin,
             };
 
-            let sink = re_sdk::web_viewer::new_sink(
-                open_browser,
-                "0.0.0.0",
-                web_port.map(WebViewerServerPort).unwrap_or_default(),
-                assets_archive_path.as_deref(),
-                grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-                server_options,
-            )
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            // The server thread drops messages whose buffers Python owns, and that takes the GIL.
+            py.detach(|| {
+                let sink = re_sdk::web_viewer::new_sink(
+                    open_browser,
+                    "0.0.0.0",
+                    web_port.map(WebViewerServerPort).unwrap_or_default(),
+                    assets_archive_path.as_deref(),
+                    grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+                    server_options,
+                )
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            if let Some(default_blueprint) = default_blueprint {
-                send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
-            }
+                if let Some(default_blueprint) = default_blueprint {
+                    send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
+                }
 
-            recording.set_sink(sink);
+                recording.set_sink(sink);
 
-            Ok(())
+                flush_garbage_queue();
+
+                Ok(())
+            })
         }
         _ => {
             _ = default_blueprint;
@@ -1990,6 +2003,7 @@ fn serve_web(
             _ = server_memory_limit;
             _ = cors_allow_origin;
             _ = assets_archive_path;
+            _ = py;
             Err(PyRuntimeError::new_err(
                 "The Rerun SDK was not compiled with the 'web_viewer' feature",
             ))
