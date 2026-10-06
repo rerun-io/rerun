@@ -8,14 +8,14 @@ dependencies = [
   "rerun-sdk[catalog,dataloader]",
   "lancedb", # default local vector store + ANN index (--backend lance)
   "qdrant-client", # alternative local vector store (--backend qdrant)
-  "transformers>=5.13.1", # SigLIP-2 model + processor
-  "pyarrow<24", # building the vector-index table
+  "transformers>=5.18.0", # SigLIP-2 model + processor
+  "pyarrow<26", # building the vector-index table
   "huggingface-hub", # prepare_dataset.py: download DROID sample episodes from the Hub
   "tqdm", # progress bars for download/register/ingest
 ]
 
 [dependency-groups]
-dev = ["mypy==1.19.1", "types-tqdm"]
+dev = ["mypy==2.4.0", "types-tqdm"]
 
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.

@@ -16,10 +16,11 @@ convention is in play.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     import pyarrow as pa
+    from lancedb.query import LanceVectorQueryBuilder
 
 BACKENDS = ("lance", "qdrant")
 
@@ -86,7 +87,10 @@ class LanceStore(VectorStore):
         import lancedb
 
         tbl = lancedb.connect(self._path).open_table(self._table)
-        hits = tbl.search(vector).metric("cosine").limit(top_k).to_list()
+        # `Table.search()` is typed as returning the base `LanceQueryBuilder`, but a vector
+        # query always yields a `LanceVectorQueryBuilder`, which is where `.metric()` lives.
+        query = cast("LanceVectorQueryBuilder", tbl.search(vector))
+        hits = query.metric("cosine").limit(top_k).to_list()
         return [
             {
                 "segment_id": h["segment_id"],
