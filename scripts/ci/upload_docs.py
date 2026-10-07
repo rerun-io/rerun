@@ -448,7 +448,7 @@ def make_storage_client(pool_size: int) -> storage.Client:
     """Storage client whose HTTP session has a connection pool big enough
     for `pool_size` concurrent in-flight requests. The default `requests`
     pool is 10, so without this the worker threads serialize behind it."""
-    client = storage.Client()
+    client = storage.Client(project="rerun-open")
     adapter = requests.adapters.HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=3)
     client._http.mount("https://", adapter)
     client._http.mount("http://", adapter)
