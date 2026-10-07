@@ -110,8 +110,6 @@ Previews in the dataset table and card views now have a new UI, which comes with
 
 ### Assets can specify what segments they apply to
 
-// TODO(isse): Add video when viewer UI is merged.
-
 `register_asset` now takes a `mode` and a list of `segments`, so an asset no longer has to apply to every segment of a dataset.
 The default `mode="opt_out"` applies the asset to every segment except the ones listed, while `mode="opt_in"` applies it only to the ones listed.
 
