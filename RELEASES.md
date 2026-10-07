@@ -211,3 +211,22 @@ Create tickets if you think we can improve the process, put them into the `Actio
 
 `uv run scripts/fetch_patch_candidates.py` will show a warning for `consider-patch`-labeled PRs that have been merged before a release.
 Make sure to remove the label from PRs that are already part of a release.
+
+## PyPI project size limit
+
+PyPI rejects every upload to `rerun-sdk` once the project reaches its size limit (50 GiB), which blocks a release halfway through.
+The `Check PyPI project size` step at the start of the release workflow fails when the next release would not fit, and warns when headroom runs low.
+
+To free up space, delete alphas (`aN`) and release candidates (`rcN`) that are older than the latest stable release:
+
+```sh
+pixi run pypi-prune-prereleases                                  # dry run: lists what would be deleted and how much it frees
+pixi run pypi-prune-prereleases --delete --username <pypi-user>  # prompts for the pypi.org password and TOTP code
+```
+
+`<pypi-user>` is your own pypi.org user account, which needs the Owner role on `rerun-sdk`.
+The password prompt is for that account's pypi.org login password, not an API token.
+
+Deletion goes through the PyPI web UI (there is no API for it), so it has to be run by a project owner with TOTP 2FA.
+Owners who only have a security key can delete the listed releases by hand on the [project's release page](https://pypi.org/manage/project/rerun-sdk/releases/).
+Stable releases are never deleted, and a deleted version can never be re-uploaded.

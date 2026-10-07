@@ -111,6 +111,10 @@ jobs:
         with:
           pixi-version: v0.78.0
 
+      # Fails before anything is published, rather than leaving a half-published release.
+      - name: Check PyPI project size
+        run: pixi run pypi-size-check
+
       - name: Update crate versions
         id: versioning
         run: |

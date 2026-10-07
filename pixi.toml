@@ -388,6 +388,13 @@ upload-image = "python scripts/upload_image.py"
 # Upload .rrd to gcloud storage.
 upload-rrd = "python scripts/upload_rrd.py"
 
+# List prereleases of `rerun-sdk` on PyPI that are older than the latest stable release.
+# Dry run unless given `--delete --username <pypi-user>`. See RELEASES.md.
+pypi-prune-prereleases = "python scripts/ci/pypi_cleanup.py cleanup"
+
+# Fail if the next `rerun-sdk` release would likely not fit within the PyPI project size limit.
+pypi-size-check = "python scripts/ci/pypi_cleanup.py check"
+
 # Check whether there's too large files in the repository.
 check-large-files = "python scripts/ci/check_large_files.py"
 
