@@ -39,30 +39,28 @@ unsound = "all"
 ignore = [
   # `paste` is a proc-macro: it expands at compile time and contributes no runtime code, so being
   # unmaintained is a supply-chain concern rather than a reachability one.
-  # Direct parents include DataFusion 54 crates, `lance-bitpacking`, `mcap`, `parquet`, `re_rav1d`,
-  # and our own `re_query` and `re_string_interner`.
-  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 unmaintained — proc-macro only, no runtime code (see comment above). Remove when the upstream crates move to `pastey` and `re_query`/`re_string_interner` follow. No ticket yet." },
-  { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3 unmaintained, via http-cache → http-cache-reqwest → walkers → re_view_map and via puffin, plus direct use by re_server and the custom_callback example. Remove when `walkers` drops the http-cache stack (same exit as RUSTSEC-2026-0186) and our own uses move to bincode 2. No ticket yet." },
-  # pyo3 0.28.3 is reached by `rerun_py`, `re_protos`, `arrow-pyarrow` 58.3.0 and `numpy` 0.28.0,
-  # so both advisories sit in the shipped Python SDK rather than in dev tooling.
-  # The `numpy` half of RR-4865 is done: `numpy` 0.29.0 (2026-06-13) requires `pyo3 ^0.29.0`.
-  # What remains is the Arrow half. `arrow-pyarrow` only moved to `pyo3 ^0.29.0` in 59.1.0, while
-  # DataFusion 54 and Lance 9 still use Arrow 58.3.
-  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 out-of-bounds read in `nth`/`nth_back` for PyList and PyTuple iterators; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
-  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 missing `Sync` bound on `PyCFunction::new_closure` closures; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
-  # Two independent quick-xml paths, both below the 0.41 fix:
-  #  - 0.36.2 via `minidom-14` 0.17 → `dae-parser` 0.11 → `re_renderer`. This one is exercised — it parses
-  #    COLLADA files the user opens. Both advisories are parser denial-of-service, so the exposure is a
-  #    malformed `.dae` stalling or ballooning the Viewer, not memory unsafety.
-  #  - 0.39.4 via `wayland-scanner` 0.31.10, a proc-macro reached through eframe on Linux/Wayland. Build
-  #    time only, and its input is the Wayland protocol XML shipped inside the crate.
-  { id = "RUSTSEC-2026-0194", reason = "quick-xml <0.41 quadratic parse on duplicate attributes, reachable through dae-parser in re_renderer (see comment above). Remove when `minidom-14` and `wayland-scanner` allow 0.41. No ticket yet." },
-  { id = "RUSTSEC-2026-0195", reason = "quick-xml <0.41 unbounded namespace-decl allocation, reachable through dae-parser in re_renderer (see comment above). Remove when `minidom-14` and `wayland-scanner` allow 0.41. No ticket yet." },
-  # memmap2 0.5.10 via cacache -> http-cache -> http-cache-reqwest -> walkers -> re_view_map.
-  # The advisory is scoped to `advise_range`/`unchecked_advise_range`/`flush_range`/`flush_async_range`;
-  # cacache only ever calls `MmapMut::map_mut` (content/write.rs), so none of the affected functions run.
-  # Remove when `cacache` bumps memmap2 to >= 0.9.11, or when `walkers` drops the http-cache stack.
-  { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 unsound in advise/flush range fns, which cacache never calls (see comment above)" },
+  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 via lance-bitpacking 10.0.0, mcap 0.25.0, parquet 58.3.0, re_rav1d 0.1.3, re_query (re-export only) and re_string_interner (one `paste!`). Not exercised because it is a proc-macro with no runtime code. Blocked by lance-bitpacking 12.0.0, mcap 0.25.0 and re_rav1d 0.1.3 (all latest) requiring paste ^1, and by parquet before 59.2.0, which needs arrow 59. Remove when those parents drop paste and re_query/re_string_interner stop using it. No ticket yet." },
+  { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3 via http-cache 0.21.0 <- http-cache-reqwest 0.16.0 <- walkers 0.58.0 <- re_view_map, via puffin 0.20.0 (default `serialization` feature, through profiling <- eframe), and directly in re_server. Exercised: re_server encodes upload claims and chunk keys with it; the advisory is unmaintained status, not a vulnerability, and covers every bincode release including 2.x. Blocked by puffin 0.20.0 (latest) requiring bincode ^1.3 and by our own re_server use. Remove when walkers 0.60.0+ is adopted (its http-cache 1.0 alpha uses postcard), puffin drops bincode, and re_server moves to a maintained encoder. No ticket yet." },
+  # Both pyo3 advisories are scoped to functions we never call. `rerun_py` and `re_protos` contain no
+  # `.nth(`, `.nth_back(` or `new_closure` calls, and their one `PyTuple` is iterated with `for`.
+  # Re-check when `arrow-pyarrow` or `numpy` moves, since they also link pyo3.
+  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.3.0 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `nth`/`nth_back` on PyList or PyTuple iterators (see comment above). Blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
+  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.3.0 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `PyCFunction::new_closure` (see comment above). Blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
+  # Three quick-xml paths below the 0.41 fix. Both advisories are parser denial-of-service, so the
+  # exposure is a malformed model file stalling or ballooning the Viewer, not memory unsafety.
+  #  - 0.36.2 via `minidom-14` 0.17.0 <- `dae-parser` 0.11.0 <- `re_renderer`. Exercised: it parses
+  #    COLLADA files the user opens.
+  #  - 0.39.4 via `urdf-rs` 0.10.0 <- `re_importer`. Exercised: it parses URDF files the user opens.
+  #  - 0.36.2 via `zbus_xml` 5.0.2 <- `zbus-lockstep` 0.5.1 <- `atspi-common` <- `accesskit_unix` (Linux).
+  #    Build time only: `zbus-lockstep-macros` parses the AT-SPI XML shipped in `atspi-common`, and the
+  #    runtime uses are under `#[cfg(test)]`. `zbus_xml` 5.2.1 drops quick-xml and fits `^5.0.1`.
+  # `re_workspace_hack` also lists 0.36.2, as a feature-unification shim only.
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.36.2 via minidom-14 <- dae-parser <- re_renderer and zbus_xml <- zbus-lockstep <- atspi-common, and 0.39.4 via urdf-rs <- re_importer. Exercised: dae-parser and urdf-rs parse user-opened model files, so a malformed file can stall the Viewer (see comment above). Blocked by minidom-14 0.17.0 requiring ^0.36 and urdf-rs 0.10.0 requiring ^0.39, both latest. Remove when both allow 0.41 and zbus_xml is updated to 5.2.1. No ticket yet." },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.36.2 via minidom-14 <- dae-parser <- re_renderer and zbus_xml <- zbus-lockstep <- atspi-common, and 0.39.4 via urdf-rs <- re_importer. Exercised: dae-parser and urdf-rs parse user-opened model files, so a malformed file can exhaust memory (see comment above). Blocked by minidom-14 0.17.0 requiring ^0.36 and urdf-rs 0.10.0 requiring ^0.39, both latest. Remove when both allow 0.41 and zbus_xml is updated to 5.2.1. No ticket yet." },
+  # The advisory is scoped to `advise_range`/`unchecked_advise_range`/`flush_range`/`flush_async_range`.
+  # cacache (content/write.rs) only calls `MmapMut::map_mut` and the whole-map `flush_async()`, whose
+  # range is always the map itself, so none of the affected functions run.
+  { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 via cacache 13.1.0 <- http-cache 0.21.0 <- http-cache-reqwest 0.16.0 <- walkers 0.58.0 <- re_view_map. Not exercised because cacache never calls the affected range functions (see comment above). Blocked by cacache 13.1.0 (latest) requiring memmap2 ^0.5.8; walkers 0.60.0 still uses cacache, so updating walkers does not lift this. Remove when cacache allows memmap2 0.9.11+ or walkers drops cacache. No ticket yet." },
 ]
 
 
