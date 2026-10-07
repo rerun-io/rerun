@@ -1,6 +1,5 @@
 ---
 source: crates/top/re_viewer_mcp/src/lib.rs
-assertion_line: 603
 expression: surface
 ---
 # Server instructions
@@ -15,6 +14,7 @@ Getting oriented:
 - Prefer a `rerun_*` tool whenever one fits, and drop to the low-level tools only for what they do not cover. Clicking through the UI costs several calls and a lot of context to achieve what one `rerun_*` call does, and it breaks whenever the layout moves.
 - Start most tasks with `rerun_get_viewer_state` to see what is loaded, then `widget_tree` to find widgets, and/or `screenshot` to see the rendered frame.
 - Prefer `rerun_run_command` over clicking through menus.
+- To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 
 Targeting widgets:
 - Prefer locators — an `id` from `widget_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.

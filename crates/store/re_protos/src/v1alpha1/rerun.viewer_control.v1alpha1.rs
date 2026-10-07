@@ -702,6 +702,12 @@ pub struct GetViewerStateResponse {
     /// — are not listed: they never finish, and the viewer is idle while they wait.
     #[prost(message, repeated, tag = "7")]
     pub loading: ::prost::alloc::vec::Vec<ViewerLoadingSource>,
+    /// The Redap servers listed in the viewer's left panel, with their catalog entries.
+    ///
+    /// Users name a server by its host or a nickname ("the EU stack"), so this is how a client maps
+    /// that name to a URL it can pass to `OpenUrl`.
+    #[prost(message, repeated, tag = "8")]
+    pub servers: ::prost::alloc::vec::Vec<ViewerServer>,
 }
 impl ::prost::Name for GetViewerStateResponse {
     const NAME: &'static str = "GetViewerStateResponse";
@@ -711,6 +717,52 @@ impl ::prost::Name for GetViewerStateResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetViewerStateResponse".into()
+    }
+}
+/// A Redap server the viewer is connected to.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewerServer {
+    /// The server's origin, as `rerun+<https://<host>:<port>`.>
+    #[prost(string, tag = "1")]
+    pub origin: ::prost::alloc::string::String,
+    /// The server's catalog entries. Empty while the catalog is still loading, or if it failed.
+    #[prost(message, repeated, tag = "2")]
+    pub entries: ::prost::alloc::vec::Vec<ViewerServerEntry>,
+    /// Why the catalog could not be listed, e.g. a missing login.
+    #[prost(string, optional, tag = "3")]
+    pub error: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerServer {
+    const NAME: &'static str = "ViewerServer";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerServer".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerServer".into()
+    }
+}
+/// One catalog entry on a Redap server.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerServerEntry {
+    /// The entry's name, as shown in the left panel.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// What kind of entry this is, as the server reports it.
+    #[prost(enumeration = "super::super::cloud::v1alpha1::EntryKind", tag = "2")]
+    pub kind: i32,
+    /// URL that opens this entry, usable with `OpenUrl`.
+    #[prost(string, tag = "3")]
+    pub url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ViewerServerEntry {
+    const NAME: &'static str = "ViewerServerEntry";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerServerEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerServerEntry".into()
     }
 }
 /// A data source the viewer is currently loading from.

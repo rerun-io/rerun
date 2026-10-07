@@ -5,6 +5,7 @@
 //! That file lists every place an operation has to be added.
 
 use std::collections::BTreeMap;
+use std::task::Poll;
 
 use re_chunk::TimelineName;
 use re_log_channel::{
@@ -20,7 +21,8 @@ use re_protos::viewer_control::v1alpha1::{
     SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetBlueprintRequest,
     SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
     ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerTimeline, ViewerView, viewer_control_request,
+    ViewerReport, ViewerServer, ViewerServerEntry, ViewerTimeline, ViewerView,
+    viewer_control_request,
 };
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
@@ -394,7 +396,40 @@ impl App {
                 .internal_origin()
                 .map(|origin| origin.to_string()),
             viewer_version: Some(self.build_info.version.to_string()),
+            servers: self.collect_servers(),
         }
+    }
+
+    /// The Redap servers in the left panel, each with the catalog entries it has listed so far.
+    fn collect_servers(&self) -> Vec<ViewerServer> {
+        self.state
+            .redap_servers
+            .iter_servers()
+            .map(|server| {
+                let origin = server.origin();
+                let (entries, error) = match server.entries().state() {
+                    Poll::Pending => (Vec::new(), None),
+                    Poll::Ready(Err(err)) => (Vec::new(), Some(err.to_string())),
+                    Poll::Ready(Ok(entries)) => {
+                        let mut entries: Vec<_> = entries
+                            .values()
+                            .map(|entry| ViewerServerEntry {
+                                name: entry.name().to_string(),
+                                kind: entry.details().kind as i32,
+                                url: re_uri::EntryUri::new(origin.clone(), entry.id()).to_string(),
+                            })
+                            .collect();
+                        entries.sort_by(|a, b| a.name.cmp(&b.name));
+                        (entries, None)
+                    }
+                };
+                ViewerServer {
+                    origin: origin.to_string(),
+                    entries,
+                    error,
+                }
+            })
+            .collect()
     }
 
     /// The active blueprint of a recording's application, as JSON, for the `get_blueprint`

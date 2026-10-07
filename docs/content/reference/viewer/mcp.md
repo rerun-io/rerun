@@ -89,6 +89,8 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 - **What is still loading**: `rerun_get_viewer_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
   `rerun_open_url` returns as soon as the load starts, so this is how the agent tells a recording that is still arriving from one that arrived empty.
   It matters most while a large import is running, because the Viewer paints no frames then and the low-level tools all stall — this one keeps answering.
+- **Connected servers**: `rerun_get_viewer_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
+  So "open a dataset on that server" goes straight to `rerun_open_url`, without clicking through the tree.
 
 ## Reading the data
 

@@ -35,6 +35,7 @@ syntax = "proto3";
 
 package rerun.viewer_control.v1alpha1;
 
+import "rerun/v1alpha1/cloud.proto";
 import "rerun/v1alpha1/common.proto";
 
 // Remote control of a running viewer.
@@ -542,6 +543,36 @@ message GetViewerStateResponse {
   // Sources that merely wait for someone else to send data — an SDK connection, a message proxy
   // — are not listed: they never finish, and the viewer is idle while they wait.
   repeated ViewerLoadingSource loading = 7;
+
+  // The Redap servers listed in the viewer's left panel, with their catalog entries.
+  //
+  // Users name a server by its host or a nickname ("the EU stack"), so this is how a client maps
+  // that name to a URL it can pass to `OpenUrl`.
+  repeated ViewerServer servers = 8;
+}
+
+// A Redap server the viewer is connected to.
+message ViewerServer {
+  // The server's origin, as `rerun+https://<host>:<port>`.
+  string origin = 1;
+
+  // The server's catalog entries. Empty while the catalog is still loading, or if it failed.
+  repeated ViewerServerEntry entries = 2;
+
+  // Why the catalog could not be listed, e.g. a missing login.
+  optional string error = 3;
+}
+
+// One catalog entry on a Redap server.
+message ViewerServerEntry {
+  // The entry's name, as shown in the left panel.
+  string name = 1;
+
+  // What kind of entry this is, as the server reports it.
+  rerun.cloud.v1alpha1.EntryKind kind = 2;
+
+  // URL that opens this entry, usable with `OpenUrl`.
+  string url = 3;
 }
 
 // A data source the viewer is currently loading from.
