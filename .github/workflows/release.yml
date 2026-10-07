@@ -87,13 +87,25 @@ jobs:
       release-commit: ${{ steps.commit.outputs.version_bump_commit_sha || github.sha }}
 
     steps:
-      - name: Check alpha release branch
+      # The GitHub UI can silently reset `release-type` when picking a branch,
+      # so the branch name decides whether this is an alpha release.
+      - name: Check release branch and type
         env:
-          BRANCH_NAME: ${{ github.ref_name }}
+          GIT_REF: ${{ github.ref }}
           RELEASE_TYPE: ${{ inputs.release-type }}
         run: |
-          if [[ "$RELEASE_TYPE" == "alpha" && "$BRANCH_NAME" != *"-alpha."* ]]; then
-            echo "::error::Alpha releases must run from a branch whose name contains '-alpha.'. Current branch: $BRANCH_NAME"
+          if [[ ! "$GIT_REF" =~ ^refs/heads/prepare-release-[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+)?$ ]]; then
+            echo "::error::Releases must run from a 'prepare-release-x.y.z' or 'prepare-release-x.y.z-alpha.N' branch. Current ref: $GIT_REF"
+            exit 1
+          fi
+
+          if [[ "$GIT_REF" == *"-alpha."* ]]; then
+            if [[ "$RELEASE_TYPE" != "alpha" ]]; then
+              echo "::error::Branch $GIT_REF is an alpha branch, so the release type must be 'alpha', not '$RELEASE_TYPE'."
+              exit 1
+            fi
+          elif [[ "$RELEASE_TYPE" == "alpha" ]]; then
+            echo "::error::Alpha releases must run from a 'prepare-release-x.y.z-alpha.N' branch. Current ref: $GIT_REF"
             exit 1
           fi
 
@@ -364,11 +376,12 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
-  # Force-pushes `latest` and `docs-latest` to the contents of the release branch.
-  # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
-  update-latest-branch:
-    name: "Update Latest Branch"
-    if: inputs.release-type == 'final' && !cancelled() && !failure()
+  # `!cancelled() && !failure()` treats a cancelled (e.g. timed out) dependency and everything skipped
+  # downstream of it as OK, so jobs that tag, bump versions or publish must gate on this job's result instead.
+  # A plain `success()` is not enough either: it also rejects the intentionally skipped `publish-crates`.
+  all-published:
+    name: "All Published"
+    if: ${{ !cancelled() }}
     needs:
       [
         version,
@@ -380,6 +393,33 @@ jobs:
         publish-rerun-cli,
         publish-js,
       ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that every publish job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          CRATES_SKIP_EXPECTED: ${{ !inputs.publish-crates }}
+        run: |
+          # `RESULTS` maps each job in `needs` to its result (`success`, `failure`, `cancelled` or `skipped`).
+          # List every job that did not succeed, except `publish-crates` when it was skipped
+          # because the `publish-crates` input was turned off.
+          failed=$(echo "$RESULTS" | jq -r --argjson crates_skip_expected "$CRATES_SKIP_EXPECTED" '
+            to_entries[]
+            | select(.value.result != "success")
+            | select(.key == "publish-crates" and .value.result == "skipped" and $crates_skip_expected | not)
+            | "\(.key): \(.value.result)"')
+          if [ -n "$failed" ]; then
+            echo "::error::Some release jobs failed:"
+            echo "$failed"
+            exit 1
+          fi
+
+  # Force-pushes `latest` and `docs-latest` to the contents of the release branch.
+  # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
+  update-latest-branch:
+    name: "Update Latest Branch"
+    if: inputs.release-type == 'final' && !cancelled() && needs.all-published.result == 'success'
+    needs: [version, all-published]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -400,18 +440,8 @@ jobs:
 
   tag-release:
     name: "Tag Release"
-    if: ${{ !cancelled() && !failure() }}
-    needs:
-      [
-        version,
-        update-docs,
-        publish-crates,
-        publish-wheels,
-        publish-web,
-        publish-rerun_c,
-        publish-rerun-cli,
-        publish-js,
-      ]
+    if: ${{ !cancelled() && needs.all-published.result == 'success' }}
+    needs: [version, all-published]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -468,19 +498,11 @@ jobs:
   # so that the release PR can be merged.
   post-release-version-bump:
     name: "Post-Release Version Bump"
-    # We don't need to bump versions for `rc` releases, because we don't merge those.
-    if: (inputs.release-type == 'alpha' || inputs.release-type == 'final') && !cancelled() && !failure()
-    needs:
-      [
-        version,
-        update-docs,
-        publish-crates,
-        publish-wheels,
-        publish-web,
-        publish-rerun_c,
-        publish-rerun-cli,
-        publish-js,
-      ]
+    # The release PR of an alpha or final release is merged into `main`, so its branch must first move past the
+    # published version, or `main` would claim an already-released version.
+    # An rc's release PR is never merged: the same branch goes on to the next rc or the final release instead.
+    if: inputs.release-type != 'rc' && !cancelled() && needs.all-published.result == 'success'
+    needs: [version, all-published]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -535,18 +557,8 @@ jobs:
 
   comment-artifact-links:
     name: "Link to artifacts"
-    if: ${{ !cancelled() && !failure() }}
-    needs:
-      [
-        version,
-        update-docs,
-        publish-crates,
-        publish-wheels,
-        publish-web,
-        publish-rerun_c,
-        publish-rerun-cli,
-        publish-js,
-      ]
+    if: ${{ !cancelled() && needs.all-published.result == 'success' }}
+    needs: [version, all-published]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
