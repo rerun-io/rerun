@@ -502,7 +502,12 @@ impl MessageDecoderRunner {
             // to be deterministic on another thread.
             //
             // Workers pull chunk indices in FIFO order from a shared atomic counter.
-            let (producer_result, ()) = rayon::join(
+            //
+            // Note that we specifically don't use `rayon::join` for the outer completion work here,
+            // as it could cause a deadlock: it would wait for a rayon worker, and the pool can be
+            // fully occupied by jobs that only finish once this decode is done. The importer
+            // forwards the chunks emitted here from such a job.
+            let (producer_result, ()) = join_without_pool(
                 || {
                     let next_idx = std::sync::atomic::AtomicUsize::new(0);
                     let total = selected.len();
@@ -912,6 +917,23 @@ impl DecoderRegistry {
     }
 }
 
+/// Like `rayon::join`, but never waits on the rayon pool, where a waiting worker could pick up a
+/// job that blocks until this very decode finishes (e.g. the importer's forwarding loop).
+#[cfg(not(target_arch = "wasm32"))]
+fn join_without_pool<RA: Send, RB>(
+    a: impl FnOnce() -> RA + Send,
+    b: impl FnOnce() -> RB,
+) -> (RA, RB) {
+    std::thread::scope(|scope| {
+        let a = scope.spawn(a);
+        let rb = b();
+        let ra = a
+            .join()
+            .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
+        (ra, rb)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use std::io;
@@ -1115,6 +1137,75 @@ mod tests {
         assert_eq!(serial, expected);
         assert_eq!(parallel, expected);
         assert_eq!(serial, parallel);
+    }
+
+    /// Tests that decoding runs to completion without acquiring a rayon worker.
+    ///
+    /// The pool can be occupied by jobs that only finish once this decode has emitted
+    /// everything: the file importer forwards the emitted chunks onwards from such a job.
+    /// Decoding therefore uses its own threads and asks the pool for a thread count only. Were it
+    /// to wait for a worker, the two sides would wait on each other and neither would finish.
+    #[test]
+    fn decodes_while_the_rayon_pool_is_saturated() {
+        // Four workers puts us above the threshold for the parallel path. Each test binary runs
+        // in its own process, so sizing the global pool here is safe; if it is already
+        // configured, we use whatever it has.
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build_global()
+            .ok();
+
+        let pool_threads = rayon::current_num_threads();
+        assert!(
+            pool_threads > 2,
+            "the parallel path needs more than 2 workers"
+        );
+
+        // Occupy every worker, so that anything waiting for one waits indefinitely.
+        let (release_tx, release_rx) = crossbeam::channel::bounded::<()>(0);
+        // Large enough that a job never blocks while reporting in.
+        let (started_tx, started_rx) = crossbeam::channel::bounded::<()>(pool_threads);
+        for _ in 0..pool_threads {
+            let release_rx = release_rx.clone();
+            let started_tx = started_tx.clone();
+            rayon::spawn(move || {
+                re_quota_channel::send_crossbeam(&started_tx, ()).ok();
+                release_rx.recv().ok();
+            });
+        }
+        for _ in 0..pool_threads {
+            started_rx
+                .recv_timeout(std::time::Duration::from_secs(30))
+                .expect("a job never started, so the pool is not saturated");
+        }
+
+        let log_times: Vec<u64> = (0..64).map(|i| i * 10).collect();
+        let (summary, buffer) = raw_summary_with_log_times(&log_times, true);
+        let expected: Vec<i64> = log_times
+            .iter()
+            .map(|t| i64::try_from(*t).unwrap())
+            .collect();
+
+        // Decode on a thread outside the pool, as the importer does, and collect the result with
+        // a timeout so that a failure is reported here instead of hanging the test binary.
+        let (done_tx, done_rx) = crossbeam::channel::bounded::<Vec<i64>>(1);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                re_quota_channel::send_crossbeam(
+                    &done_tx,
+                    run_with_time_range(&buffer, &summary, None),
+                )
+                .ok();
+            });
+
+            let times = done_rx
+                .recv_timeout(std::time::Duration::from_mins(1))
+                .expect("decoding did not finish, so it is waiting for a rayon worker");
+            assert_eq!(times, expected);
+
+            // Let the occupying jobs finish.
+            drop(release_tx);
+        });
     }
 
     #[test]
