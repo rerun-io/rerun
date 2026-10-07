@@ -35,8 +35,9 @@ use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt as _,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
-        ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
+        CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
+        Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig,
+        Tool,
     },
     schemars,
     service::{RequestContext, RoleServer},
@@ -465,6 +466,18 @@ fn complete(response: CallToolResponse) -> CallToolResult {
 /// otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("instructions.md");
 
+/// The `tools/list` result, with the cache hints MCP 2026-07-28 (SEP-2549) requires.
+///
+/// Both `ttlMs` and `cacheScope` are mandatory from that protocol version on: a client that
+/// negotiated it rejects the whole list when either is missing, leaving the server with no tools.
+/// The list is fixed for the life of the process and holds nothing user-specific, so it may be
+/// cached and shared freely.
+fn tool_list(tools: Vec<Tool>) -> ListToolsResult {
+    ListToolsResult::with_all_items(tools)
+        .with_ttl_ms(TOOL_LIST_TTL.as_millis() as u64)
+        .with_cache_scope(CacheScope::Public)
+}
+
 impl ServerHandler for ViewerMcpServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
@@ -477,10 +490,7 @@ impl ServerHandler for ViewerMcpServer {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        // The tool list is fixed for the life of the process — it comes from the compiled-in
-        // descriptor set — so a client may hold on to it instead of asking again.
-        Ok(ListToolsResult::with_all_items(self.all_tools())
-            .with_ttl_ms(TOOL_LIST_TTL.as_millis() as u64))
+        Ok(tool_list(self.all_tools()))
     }
 
     async fn call_tool(
@@ -601,5 +611,17 @@ mod tests {
         }
 
         insta::assert_snapshot!("agent_surface", surface);
+    }
+
+    #[test]
+    fn tool_list_carries_both_cache_hints() {
+        let server = ViewerMcpServer::new(None);
+        let result = serde_json::to_value(tool_list(server.all_tools())).expect("serialize");
+        assert!(
+            result["ttlMs"].is_u64(),
+            "ttlMs missing: {}",
+            result["ttlMs"]
+        );
+        assert_eq!(result["cacheScope"], "public");
     }
 }

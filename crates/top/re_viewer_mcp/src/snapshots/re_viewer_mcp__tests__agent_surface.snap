@@ -8,13 +8,14 @@ This MCP drives a live Rerun viewer: it reads the viewer's accessibility tree an
 
 Getting oriented:
 - Call `rerun_connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
-- If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
-- Every Rerun gRPC endpoint serves gRPC server reflection, so `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
-- The tool name tells you which of two families it belongs to. A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) is low level: it drives the widgets one input event at a time, the way a person would.
-- Prefer a `rerun_*` tool whenever one fits, and drop to the low-level tools only for what they do not cover. Clicking through the UI costs several calls and a lot of context to achieve what one `rerun_*` call does, and it breaks whenever the layout moves.
-- Start most tasks with `rerun_get_viewer_state` to see what is loaded, then `widget_tree` to find widgets, and/or `screenshot` to see the rendered frame.
-- Prefer `rerun_run_command` over clicking through menus.
+- A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) drives the widgets one input event at a time, the way a person would. Prefer a `rerun_*` tool whenever one fits, and `rerun_run_command` over clicking through menus: clicking through the UI costs several calls and a lot of context, and breaks whenever the layout moves.
+- Start most tasks with `rerun_get_viewer_state`: it names the recordings, timelines, views and Redap servers that are loaded. Confirm a load with it too, not with `screenshot`; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks.
 - To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
+- Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
+- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
+- Whenever the user asks where something is, answer with `rerun_highlight_rect` (below), not with prose about the layout.
+- If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
+- Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
 
 Targeting widgets:
 - Prefer locators — an `id` from `widget_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
@@ -25,14 +26,12 @@ Pointing the user at something:
 
 Acting and verifying:
 - After an action that changes the UI, confirm it landed: `widget_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
-- Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
-- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
 - `rerun_close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
 
 Reading the data itself:
-- Never guess an entity path or a component name. `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
+- `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
 - That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values through the Python API.
 - `rerun_get_viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
 - A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
