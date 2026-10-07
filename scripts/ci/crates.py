@@ -20,6 +20,7 @@ Use the script:
 from __future__ import annotations
 
 import argparse
+import json
 import os.path
 import re
 import shutil
@@ -47,6 +48,15 @@ if TYPE_CHECKING:
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 MAX_PUBLISH_WORKERS = 3
+
+# How long to keep waiting on the crates.io index to catch up with a freshly published crate.
+# Releases have repeatedly failed after the previous ~40 s retry budget, so this is a generous ceiling
+# that is still small compared to the time a re-run of the whole publish job costs.
+INDEX_LAG_TIMEOUT_SECS = 10 * 60
+# Caps the exponential backoff, so we notice the index catching up within a minute without polling it constantly.
+INDEX_LAG_MAX_DELAY_SECS = 60.0
+
+USER_AGENT = "rerun-publishing-script (rerun.io)"
 
 # Only an empty stub of this is on crates.io, with a fixed version.
 # We treat it as an external dependency: never bump its version, never publish it.
@@ -405,7 +415,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
     crate_name = crate.manifest["package"]["name"]
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
-        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+        headers={"user-agent": USER_AGENT},
         timeout=30,
     )
     body = resp.json()
@@ -449,6 +459,53 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
+def sparse_index_url(crate_name: str) -> str:
+    """See <https://doc.rust-lang.org/cargo/reference/registry-index.html#index-files>."""
+    name = crate_name.lower()
+    if len(name) <= 2:
+        prefix = str(len(name))
+    elif len(name) == 3:
+        prefix = f"3/{name[0]}"
+    else:
+        prefix = f"{name[0:2]}/{name[2:4]}"
+    return f"https://index.crates.io/{prefix}/{name}"
+
+
+def is_in_sparse_index(*, crate_name: str, version: str) -> bool:
+    # This is what `cargo` resolves dependencies against, and it can lag behind the crates.io API.
+    resp = requests.get(
+        sparse_index_url(crate_name),
+        headers={"user-agent": USER_AGENT, "cache-control": "no-cache"},
+        timeout=30,
+    )
+    if resp.status_code == 404:
+        return False
+    resp.raise_for_status()
+    return any(json.loads(line)["vers"] == version for line in resp.text.splitlines() if line.strip())
+
+
+def wait_for_sparse_index(*, crate_name: str, version: str) -> None:
+    """Blocks until `version` of `crate_name` is in the sparse index, so dependents can resolve it."""
+    deadline = time.monotonic() + INDEX_LAG_TIMEOUT_SECS
+    delay = 2.0
+    while not is_in_sparse_index(crate_name=crate_name, version=version):
+        if time.monotonic() + delay > deadline:
+            raise TimeoutError(
+                f"{crate_name}@{version} was published, but did not appear in the crates.io index "
+                f"within {INDEX_LAG_TIMEOUT_SECS} seconds. Re-run the job to resume publishing."
+            )
+        print(f"{R}Waiting for{X} {B}{crate_name}@{version}{X} to appear in the crates.io index…")
+        time.sleep(delay)
+        delay = min(delay * 2, INDEX_LAG_MAX_DELAY_SECS)
+
+
+def is_index_lag_error(error_message: str) -> bool:
+    # A dependency we just published is not yet visible in the index, e.g.:
+    #   failed to select a version for the requirement `re_protos = "^0.35.0"`
+    #   candidate versions found which didn't match: 0.34.1, …
+    return "failed to select a version" in error_message
+
+
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], dry_run: bool) -> None:
     package = crate.manifest["package"]
     name = package["name"]
@@ -468,7 +525,9 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
         publish_cmd += " --dry-run"
 
     print(f"{G}Publishing{X} {B}{name}{X}…")
-    retry_attempts = 5
+    index_lag_deadline = time.monotonic() + INDEX_LAG_TIMEOUT_SECS
+    index_lag_delay = 5.0
+    rate_limit_retry_attempts = 5
     while True:
         try:
             cargo(
@@ -478,38 +537,33 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
                 dry_run=dry_run,
                 capture=True,
             )
-
-            if not dry_run and not is_already_published(version, crate):
-                # Theoretically this shouldn't be needed… but sometimes it is.
-                print(f"{R}Waiting for {name} to become available…")
-                time.sleep(2)  # give crates.io some time to index the new crate
-                num_retries = 0
-                while not is_already_published(version, crate):
-                    time.sleep(3)
-                    num_retries += 1
-                    if num_retries > 10:
-                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
-                        return
-
-            print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
-
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").strip()
-            # if we get a 429, parse the retry delay from it
-            # for any other error, retry after 6 seconds
-            retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
-            if retry_attempts > 0:
-                print(
-                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nRemaining retry attempts: {retry_attempts}.\nRetrying in {retry_delay} seconds."
-                )
-                retry_attempts -= 1
-                time.sleep(retry_delay + 1)
+            rate_limit_delay = parse_retry_delay_secs(error_message)
+
+            if rate_limit_delay is not None and rate_limit_retry_attempts > 0:
+                retry_delay = 1 + rate_limit_delay
+                reason = f"Rate limited; remaining retry attempts: {rate_limit_retry_attempts}."
+                rate_limit_retry_attempts -= 1
+            elif is_index_lag_error(error_message) and time.monotonic() + index_lag_delay <= index_lag_deadline:
+                retry_delay = index_lag_delay
+                index_lag_delay = min(index_lag_delay * 2, INDEX_LAG_MAX_DELAY_SECS)
+                remaining = index_lag_deadline - time.monotonic()
+                reason = f"A dependency is not yet in the crates.io index; giving up in {remaining:.0f} seconds."
             else:
-                print(
-                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish"
-                )
+                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNot retrying; aborting publish")
                 raise
+
+            print(
+                f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\n{reason}\nRetrying in {retry_delay:.0f} seconds."
+            )
+            time.sleep(retry_delay)
+
+    if not dry_run:
+        wait_for_sparse_index(crate_name=name, version=version)
+
+    print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
 
 
 def publish_unpublished_crates_in_parallel(
@@ -521,6 +575,9 @@ def publish_unpublished_crates_in_parallel(
     for name, crate in all_crates.items():
         if is_already_published(version, crate):
             print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+            if not dry_run:
+                # A previous run may have timed out waiting for this crate to reach the index.
+                wait_for_sparse_index(crate_name=name, version=version)
         else:
             unpublished_crates[name] = crate
 
@@ -668,7 +725,7 @@ def get_latest_npm_version(package_name: str) -> VersionInfo:
 def get_latest_published_version(crate_name: str, skip_prerelease: bool = False) -> str | None:
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
-        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+        headers={"user-agent": USER_AGENT},
         timeout=30,
     )
     body = resp.json()
