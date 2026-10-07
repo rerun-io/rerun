@@ -54,3 +54,102 @@ jobs:
             -f event_type=rerun-released \
             -F client_payload[version]="$version" \
             -F client_payload[source_release_url]="${{ github.event.release.html_url }}"
+
+  final-release:
+    name: "Check for final release"
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      is_final: ${{ steps.check.outputs.is_final }}
+    steps:
+      - id: check
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [[ "$PRERELEASE" != "true" && "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            is_final=true
+          else
+            echo "Tag $TAG is not a final X.Y.Z release; skipping the post-release jobs."
+            is_final=false
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "is_final=$is_final" >> "$GITHUB_OUTPUT"
+
+  announce-discord:
+    name: "Announce on Discord"
+    # After the assets are attached, since the release notes link to them.
+    needs: [final-release, sync-release-assets]
+    # Only the first attempt posts: "Re-run all jobs" keeps the `release` event and would announce again.
+    # If the post itself failed, re-post by hand.
+    if: github.event_name == 'release' && github.run_attempt == 1 && needs.final-release.outputs.is_final == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          sparse-checkout: scripts/ci
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_TITLE: ${{ github.event.release.name || github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: python3 scripts/ci/announce_release.py --title "$RELEASE_TITLE" --url "$RELEASE_URL"
+
+  remove-patch-labels:
+    name: "Remove patch labels"
+    needs: [final-release]
+    if: needs.final-release.outputs.is_final == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # `consider-oss-patch` lives on the private reality repo, where the sync app is installed.
+      - name: Create GitHub App token for reality
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: |
+            reality
+
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Remove `consider-patch` and `consider-oss-patch` from released PRs
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+          REALITY_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ needs.final-release.outputs.tag }}
+        run: |
+          python3 scripts/ci/remove_patch_labels.py --tag "$TAG"
+
+  verify-release:
+    name: "Verify release"
+    needs: [final-release, sync-release-assets, dispatch-gradio-rerun-viewer]
+    if: ${{ !cancelled() && needs.final-release.outputs.is_final == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          sparse-checkout: scripts/ci
+
+      - name: Wait for the website, then verify the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.final-release.outputs.tag }}
+        run: |
+          python3 scripts/ci/verify_release.py "$TAG" --wait-minutes 90

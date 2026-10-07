@@ -253,7 +253,7 @@ jobs:
                 - [ ] Web Viewer: does it run and connect to Rerun Hub servers?
               - [ ] Edit and publish the GitHub release:
                 - Do NOT create a GitHub release draft yourself! Let the release job do it.
-                - Populate the release with the changelog and a nice header video/picture
+                - Check the pre-filled description (preamble + changelog) and add a nice header video/picture
                 - Make sure `Set as latest release` is checked
                 - Click `Publish release`
                 - Once published, the release assets will sync to it automatically.
@@ -478,7 +478,18 @@ jobs:
             pre_arg="--prerelease"
           fi
 
-          gh release create $version --verify-tag --draft --title $version $pre_arg
+          git show "$commit:CHANGELOG.md" > release-changelog.md
+          if python3 scripts/ci/release_notes.py \
+              --tag "$version" \
+              --changelog-version "${{ needs.version.outputs.final }}" \
+              --changelog release-changelog.md > release-notes.md; then
+            notes_arg="--notes-file=release-notes.md"
+          else
+            echo "::warning::Could not fill the release draft from CHANGELOG.md; write the description by hand."
+            notes_arg=""
+          fi
+
+          gh release create $version --verify-tag --draft --title $version $pre_arg $notes_arg
 
       - name: Create comment
         if: inputs.release-type == 'rc' || inputs.release-type == 'final'
@@ -493,7 +504,7 @@ jobs:
           cat <<EOF > comment-body.txt
           The GitHub release draft for $version can be found in the [release list](https://github.com/rerun-io/rerun/releases).
 
-          Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
+          Its description is pre-filled from \`CHANGELOG.md\`: check it, add a nice header video/picture, then click 'Publish release'.
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt

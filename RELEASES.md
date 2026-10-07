@@ -178,10 +178,23 @@ The pull request description will tell you what to do next.
 
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
 For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
+The draft's description is pre-filled with the standard preamble (what Rerun is, plus install instructions) and the release's section of `CHANGELOG.md`.
 
-Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, verify that the GitHub release draft contains the summary from `CHANGELOG.md`, not the full website changeset, then click `Publish release`.
+Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, check the draft's description, add a header video or picture, then click `Publish release`.
 Publishing the release triggers the [`GitHub Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml), which syncs the binary assets from `build.rerun.io` onto the published GitHub release.
 **Make sure that workflow also finishes successfully** so the release ends up with all of its assets attached.
+
+For a final release, the same workflow also does the post-release chores:
+
+- Announces the release on Discord, with a link and the first paragraph of the release highlights.
+- Removes `consider-patch` (rerun-io/rerun) and `consider-oss-patch` (rerun-io/reality) from the PRs that shipped in this release.
+- Waits for the website to redeploy, then runs [`scripts/ci/verify_release.py`](./scripts/ci/verify_release.py), which fails the job if anything is missing and writes its summary to the workflow run.
+  It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, `docs-latest`, and the gradio-rerun-viewer release.
+  conda-forge often lags behind by hours, so a missing conda-forge version is only a warning.
+
+Follow up on anything the check reports as failed.
+The `#ship-room` Slack announcement is done by the release captain, or the release agent via the `oss-release` skill.
+To re-run the check later, run `python3 scripts/ci/verify_release.py 0.x.y`.
 
 ### 8. Merge changes to `main`
 
@@ -199,7 +212,7 @@ first place.
   Its version bump commit points documentation links at the alpha version, which must not land on `main`.
   Cherry-pick any fixes made on the release branch into `reality` instead, but not the version bump commit.
 
-Make sure the `consider-patch` label on GitHub is up-to-date. For a full release, this usually means removing it from all PRs.
+The `consider-patch` and `consider-oss-patch` labels are removed automatically from the PRs that shipped in a final release (see step 7).
 
 ### 9. Optional: write a post mortem about the release
 
@@ -209,8 +222,9 @@ Create tickets if you think we can improve the process, put them into the `Actio
 
 ### 10. Clean up PR labels
 
-`uv run scripts/fetch_patch_candidates.py` will show a warning for `consider-patch`-labeled PRs that have been merged before a release.
-Make sure to remove the label from PRs that are already part of a release.
+This is automated for final releases (see step 7).
+`uv run scripts/fetch_patch_candidates.py` still shows a warning for patch-labeled PRs that were merged before a release, e.g. if the `Remove patch labels` job failed.
+Remove the label from PRs that are already part of a release.
 
 ## PyPI project size limit
 
