@@ -106,7 +106,7 @@ jobs:
 
   build-rerun-cli:
     name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
-    timeout-minutes: 60
+    timeout-minutes: ${{ inputs.PLATFORM == 'windows-x64' && 90 || 60 }}
 
     needs: [set-config]
 
