@@ -5,7 +5,7 @@
 
 use egui::{RichText, WidgetText};
 
-use crate::{HasDesignTokens as _, egui_ext::concat_rich_text};
+use crate::HasDesignTokens as _;
 
 /// The text of the "debug only" marker.
 ///
@@ -31,8 +31,9 @@ pub fn debug_only_rich_text(style: &egui::Style) -> RichText {
 
 /// `text`, followed by the orange "debug only" badge.
 pub fn with_debug_only_badge(style: &egui::Style, text: impl Into<RichText>) -> WidgetText {
-    concat_rich_text(
+    WidgetText::concat_with_valign(
         style,
+        egui::Align::Center,
         [
             text.into(),
             SPACE_BEFORE_BADGE.into(),

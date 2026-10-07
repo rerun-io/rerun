@@ -685,6 +685,7 @@ fn test_state_timeline_zoom() {
             delta: egui::vec2(0.0, 1.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::COMMAND,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.run();
     }
@@ -776,6 +777,7 @@ fn test_state_timeline_pan_zoom_preserves_cursor_relative_range() {
             delta,
             phase: egui::TouchPhase::Move,
             modifiers,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.run();
         let after = read_range();
@@ -854,6 +856,7 @@ fn test_state_timeline_pan_past_data() {
             delta: egui::vec2(-2000.0, 0.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.step();
     }
@@ -913,6 +916,7 @@ fn test_state_timeline_pan_before_data() {
             delta: egui::vec2(2000.0, 0.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.step();
     }
@@ -977,6 +981,7 @@ fn test_state_timeline_pan_before_data_ending_in_clear() {
             delta: egui::vec2(2000.0, 0.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.step();
     }
@@ -1182,6 +1187,7 @@ fn test_state_timeline_link_to_global() {
             delta: egui::vec2(-200.0, 0.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.step();
     }

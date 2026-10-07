@@ -59,6 +59,7 @@ pub async fn test_view_entity_picker_scrolls_long_entity_lists() {
             delta: egui::vec2(0.0, -1.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
         });
         harness.run();
     }

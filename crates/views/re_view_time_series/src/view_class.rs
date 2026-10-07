@@ -753,6 +753,13 @@ impl ViewClass for TimeSeriesView {
             }
 
             // Store the transform for next frame's visualizers to use.
+            // They drew this frame with the old one, so if it changed we need another frame.
+            let transform_changed = state.plot_transform.is_none_or(|prev| {
+                prev.frame() != transform.frame() || prev.bounds() != transform.bounds()
+            });
+            if transform_changed {
+                ui.request_repaint();
+            }
             state.plot_transform = Some(transform);
 
             // Update time_per_pixel from the plot transform for use by visualizers next frame.

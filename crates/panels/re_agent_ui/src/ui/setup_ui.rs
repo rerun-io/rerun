@@ -246,8 +246,8 @@ fn warning_ui(ui: &mut egui::Ui) {
         // `show` hugs its content; the panel's blocks all run full-bleed.
         ui.set_min_width(ui.available_width());
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-        let text = re_ui::egui_ext::concat_rich_text(
-            ui.style(),
+        let text = egui::WidgetText::concat(
+            ui,
             [
                 RichText::new("Experimental.").strong(),
                 RichText::new(" Expect rough edges."),

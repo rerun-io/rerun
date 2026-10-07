@@ -116,6 +116,7 @@ pub async fn test_check_focus() {
         delta: egui::vec2(0.0, -1.0),
         phase: egui::TouchPhase::Move,
         modifiers: egui::Modifiers::NONE,
+        source: egui::MouseWheelSource::Unknown,
     });
     harness.snapshot_app("check_focus_6");
 
@@ -132,6 +133,7 @@ pub async fn test_check_focus() {
         delta: egui::vec2(0.0, -1.0),
         phase: egui::TouchPhase::Move,
         modifiers: egui::Modifiers::NONE,
+        source: egui::MouseWheelSource::Unknown,
     });
     harness.snapshot_app("check_focus_8");
 }

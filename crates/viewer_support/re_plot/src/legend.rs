@@ -4,7 +4,6 @@ use egui::{
 use egui_plot::{ItemId, ItemIdSet};
 
 use re_ui::UiExt as _;
-use re_ui::egui_ext::Group;
 
 /// Configuration for the legend container widget.
 pub struct LegendConfig {
@@ -44,8 +43,8 @@ impl LegendWidget {
     pub fn show(&self, ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
         let frame_id = legend_frame_id(self.config.id);
 
-        Group::new(ui.make_persistent_id("legend"))
-            .align2(self.config.position)
+        egui::Aligned::new(self.config.position)
+            .id_salt("legend")
             .show(ui, |ui| {
                 Frame::popup(ui.style())
                     .outer_margin(4)

@@ -94,7 +94,6 @@ deny = [
   #{ name = "insta", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
-  { name = "accesskit_consumer" }, # `egui_mcp` uses a newer version than the viewer's `eframe`/`accesskit_winit`.
   { name = "base64" }, # Too popular
   { name = "bitflags" }, # core-graphics & png uses an older version.
   { name = "block-buffer" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.

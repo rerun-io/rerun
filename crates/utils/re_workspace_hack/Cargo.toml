@@ -30,7 +30,7 @@ workspace = true
 
 ### BEGIN HAKARI SECTION
 [dependencies]
-accesskit = { version = "0.24", default-features = false, features = ["serde"] }
+accesskit = { version = "0.25", default-features = false, features = ["serde"] }
 ahash = { version = "0.8", features = ["no-rng", "serde"] }
 aho-corasick = { version = "1" }
 anyhow = { version = "1" }
@@ -189,7 +189,7 @@ zstd-safe = { version = "7", default-features = false, features = ["arrays", "le
 zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder"] }
 
 [build-dependencies]
-accesskit = { version = "0.24", default-features = false, features = ["serde"] }
+accesskit = { version = "0.25", default-features = false, features = ["serde"] }
 ahash = { version = "0.8", features = ["no-rng", "serde"] }
 aho-corasick = { version = "1" }
 anyhow = { version = "1" }
@@ -353,7 +353,7 @@ zstd-sys = { version = "2", default-features = false, features = ["legacy", "std
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
@@ -364,16 +364,14 @@ gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["tiff"] }
 libc = { version = "0.2" }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
-objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSEvent", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "std"] }
 objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSText", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFAttributedString", "CFBase", "CFCGTypes", "CFCalendar", "CFCharacterSet", "CFData", "CFDate", "CFDictionary", "CFError", "CFFileSecurity", "CFLocale", "CFMachPort", "CFMessagePort", "CFNumber", "CFPlugInCOM", "CFRunLoop", "CFSet", "CFStream", "CFString", "CFURL", "CFUUID", "CFUserNotification", "objc2", "std"] }
-objc2-core-graphics = { version = "0.3", default-features = false, features = ["CGColor", "CGColorSpace", "CGContext", "CGDataProvider", "CGDirectDisplay", "CGEventTypes", "CGFont", "CGImage", "CGPath", "objc2", "std"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
@@ -396,7 +394,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
@@ -407,16 +405,14 @@ gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["tiff"] }
 libc = { version = "0.2" }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
-objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSEvent", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "std"] }
 objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSText", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFAttributedString", "CFBase", "CFCGTypes", "CFCalendar", "CFCharacterSet", "CFData", "CFDate", "CFDictionary", "CFError", "CFFileSecurity", "CFLocale", "CFMachPort", "CFMessagePort", "CFNumber", "CFPlugInCOM", "CFRunLoop", "CFSet", "CFStream", "CFString", "CFURL", "CFUUID", "CFUserNotification", "objc2", "std"] }
-objc2-core-graphics = { version = "0.3", default-features = false, features = ["CGColor", "CGColorSpace", "CGContext", "CGDataProvider", "CGDirectDisplay", "CGEventTypes", "CGFont", "CGImage", "CGPath", "objc2", "std"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
@@ -439,7 +435,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -456,7 +452,7 @@ libc = { version = "0.2", features = ["extra_traits"] }
 linux-raw-sys = { version = "0.12", default-features = false, features = ["auxvec", "elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
-phf_shared = { version = "0.13", default-features = false, features = ["std"] }
+phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
@@ -468,6 +464,7 @@ tower = { version = "0.5", default-features = false, features = ["retry", "timeo
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+wayland-backend = { version = "0.3", default-features = false, features = ["client_system", "dlopen"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -481,7 +478,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -498,7 +495,7 @@ libc = { version = "0.2", features = ["extra_traits"] }
 linux-raw-sys = { version = "0.12", default-features = false, features = ["auxvec", "elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
-phf_shared = { version = "0.13", default-features = false, features = ["std"] }
+phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
@@ -510,6 +507,7 @@ tower = { version = "0.5", default-features = false, features = ["retry", "timeo
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+wayland-backend = { version = "0.3", default-features = false, features = ["client_system", "dlopen"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -523,7 +521,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
@@ -534,15 +532,13 @@ gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["tiff"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
-objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSEvent", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "std"] }
 objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSText", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFAttributedString", "CFBase", "CFCGTypes", "CFCalendar", "CFCharacterSet", "CFData", "CFDate", "CFDictionary", "CFError", "CFFileSecurity", "CFLocale", "CFMachPort", "CFMessagePort", "CFNumber", "CFPlugInCOM", "CFRunLoop", "CFSet", "CFStream", "CFString", "CFURL", "CFUUID", "CFUserNotification", "objc2", "std"] }
-objc2-core-graphics = { version = "0.3", default-features = false, features = ["CGColor", "CGColorSpace", "CGContext", "CGDataProvider", "CGDirectDisplay", "CGEventTypes", "CGFont", "CGImage", "CGPath", "objc2", "std"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
@@ -565,7 +561,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
@@ -576,15 +572,13 @@ gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["tiff"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
-objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSBitmapImageRep", "NSButton", "NSControl", "NSEvent", "NSGraphics", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "NSWorkspace", "block2", "std"] }
 objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSText", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFAttributedString", "CFBase", "CFCGTypes", "CFCalendar", "CFCharacterSet", "CFData", "CFDate", "CFDictionary", "CFError", "CFFileSecurity", "CFLocale", "CFMachPort", "CFMessagePort", "CFNumber", "CFPlugInCOM", "CFRunLoop", "CFSet", "CFStream", "CFString", "CFURL", "CFUUID", "CFUserNotification", "objc2", "std"] }
-objc2-core-graphics = { version = "0.3", default-features = false, features = ["CGColor", "CGColorSpace", "CGContext", "CGDataProvider", "CGDirectDisplay", "CGEventTypes", "CGFont", "CGImage", "CGPath", "objc2", "std"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
@@ -607,7 +601,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -617,7 +611,6 @@ gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -637,10 +630,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
-windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -650,7 +643,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -660,7 +653,6 @@ gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
-image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -680,10 +672,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
-windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -693,7 +685,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -710,7 +702,7 @@ libc = { version = "0.2", features = ["extra_traits"] }
 linux-raw-sys = { version = "0.12", default-features = false, features = ["auxvec", "elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
-phf_shared = { version = "0.13", default-features = false, features = ["std"] }
+phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
@@ -722,6 +714,7 @@ tower = { version = "0.5", default-features = false, features = ["retry", "timeo
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+wayland-backend = { version = "0.3", default-features = false, features = ["client_system", "dlopen"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -735,7 +728,7 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["accesskit", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { git = "https://github.com/emilk/egui", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
@@ -752,7 +745,7 @@ libc = { version = "0.2", features = ["extra_traits"] }
 linux-raw-sys = { version = "0.12", default-features = false, features = ["auxvec", "elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
-phf_shared = { version = "0.13", default-features = false, features = ["std"] }
+phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
@@ -764,6 +757,7 @@ tower = { version = "0.5", default-features = false, features = ["retry", "timeo
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+wayland-backend = { version = "0.3", default-features = false, features = ["client_system", "dlopen"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
