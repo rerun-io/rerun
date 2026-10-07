@@ -659,7 +659,7 @@ ty = "==0.0.84"
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
 wasm-pack = "0.15.*"
-urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
+urllib3 = ">=2.8" # Pinned only to hold a security floor.
 gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
