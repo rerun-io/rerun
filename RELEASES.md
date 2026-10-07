@@ -195,9 +195,9 @@ We want all of this to land back on `main`, so:
 - For a patch release, manually create a new PR from `main` and cherry-pick the commits. This includes at least
 the `CHANGELOG.md` update, plus any other changes made on the release branch that haven't been cherry-picked in the
 first place.
-- For an alpha release, it's should be merged _if and only if_ the release job was successful.
-  Otherwise, do not merge, as this could introduce breakage across the repository, such as in documentation links.
-  If needed, cherry-pick any additional commits made back to `main`.
+- For an alpha release, close the release PR without merging, whether or not the release job succeeded.
+  Its version bump commit points documentation links at the alpha version, which must not land on `main`.
+  Cherry-pick any fixes made on the release branch into `reality` instead, but not the version bump commit.
 
 Make sure the `consider-patch` label on GitHub is up-to-date. For a full release, this usually means removing it from all PRs.
 

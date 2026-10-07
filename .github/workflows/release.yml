@@ -225,9 +225,8 @@ jobs:
                 - [ ] Create the GitHub release manually from the UI
                 - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
                       **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
-            - [ ] Merge or close the release PR
-              - **IFF** the release job succeeds and the link checker is happy, you may merge the PR.
-              - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
+            - [ ] Close the release PR without merging, even if the release job succeeded.
+              - Cherry-pick any fixes made on the release branch into `reality`, but *not* the version bump commit (it would introduce bad links).
           - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'final' mode
