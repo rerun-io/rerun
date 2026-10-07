@@ -165,14 +165,19 @@ fn mode_picker_ui(
         return;
     }
 
-    let current_name = modes
+    let current_mode = modes
         .available_modes
         .iter()
-        .find(|mode| &mode.id == current_id)
-        .map_or_else(|| current_id.0.to_string(), |mode| mode.name.clone());
+        .find(|mode| &mode.id == current_id);
+    let mut current_text = RichText::new(
+        current_mode.map_or_else(|| current_id.0.to_string(), |mode| mode.name.clone()),
+    );
+    if let Some(color) = current_mode.and_then(|mode| mode_warning_color(ui, mode)) {
+        current_text = current_text.color(color);
+    }
 
     let mut selected = None;
-    ui.drop_down_menu("agent_mode", current_name, |ui| {
+    ui.drop_down_menu("agent_mode", current_text, |ui| {
         for mode in &modes.available_modes {
             let mut text = RichText::new(&mode.name);
             if let Some(color) = mode_warning_color(ui, mode) {
@@ -265,6 +270,8 @@ fn mode_warning_color(ui: &egui::Ui, mode: &SessionMode) -> Option<egui::Color32
         Some(tokens.error_fg_color)
     } else if haystack.contains("auto") || haystack.contains("approve") {
         Some(tokens.warn_fg_color)
+    } else if haystack.contains("plan") {
+        Some(tokens.info_text_color)
     } else {
         None
     }

@@ -1178,12 +1178,12 @@ pub trait UiExt {
     fn drop_down_menu(
         &mut self,
         id_salt: impl egui::AsIdSalt,
-        selected_text: String,
+        selected_text: impl Into<egui::WidgetText>,
         content: impl FnOnce(&mut egui::Ui),
     ) -> egui::Response {
         // TODO(emilk): make the button itself a `ListItem2`
         let response = egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(selected_text.clone())
+            .selected_text(selected_text)
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {
                     content(ui);
