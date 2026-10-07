@@ -9,12 +9,12 @@ include_in_manifest = false
 Creates tables whose rows link to recording segment URIs.
 The viewer can load those recordings on demand and render row previews with a registered `.rbl` table blueprint.
 
-The example also adds a boolean `marker_flag` column and configures its `TableColumn` with editing enabled and the `Flag` cell kind.
-The `CardLayout` archetype includes that column as a field alongside the preview field.
+The example also adds a boolean `marker_flag` column and configures its `rrb.table.Column` with `editable=True` and `rrb.table.FlagCell()`.
+The `rrb.table.CardLayout` includes that column as a field alongside the `rrb.table.PreviewCell` field.
 The Viewer renders it as a clickable flag on each card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key.
 The column is still regular table data, so its saved values are what you get back when you query the table later.
 
-Blueprints can also be registered on a dataset's **own segment table** instead of on a separate demo table, using `DatasetEntry.register_blueprint(..., segment_table=True)`. <!-- NOLINT -->
+Blueprints can also be registered on a dataset's **own segment table** instead of on a separate demo table, using `DatasetEntry.register_blueprint(uri, segment_table=True)`.
 Use `--target` to choose (see [Run the code](#run-the-code)):
 
 - `tables`: create the demo tables, each with its own table blueprint.
@@ -22,10 +22,8 @@ Use `--target` to choose (see [Run the code](#run-the-code)):
 - `both`: do both.
 
 The segment-table blueprint configures the generated `recording link` column as a preview and does not configure an interactive flag because segment tables have no demo flag column.
-Flagging does **not** yet work on dataset segment tables: segment tables have no write operations yet, so flag changes cannot be persisted back to the server. Flagging therefore only works on the demo tables created with `--target tables`.
-
-<!-- TODO(#12746): this is still experimental -->
-Table cards and blueprints are experimental.
+Flagging does **not** yet work on dataset segment tables: segment tables have no write operations yet, so flag changes cannot be persisted back to the server.
+Flagging works on the demo tables created with `--target tables` or `--target both`.
 
 ## Dataset-specific setup
 
@@ -33,9 +31,12 @@ This sample contains a small `Dataset-specific customization` section near the t
 Please edit these functions before using it with your own data — the defaults are geared towards RRDs from the DROID dataset and assume that segment-table schema, timeline, entity paths, coordinate frame, and card-title column:
 
 - `extract_dataset_property_columns` — which segment-table columns get copied into the demo tables.
-- `setup_preview_views` — all views (plot, 3D, 2D) shared by the table and segment-table blueprints. Any view type can be used for previews!
-- `make_dataset_blueprints` — the table, card, column, and column-preview archetypes.
+- `setup_preview_views` — all views (plot, 3D, 2D) shared by the table and segment-table blueprints.
+  Any view type can be used for previews.
+- `make_dataset_blueprints` — the `rrb.table.TableBlueprint` layouts, columns, preview cells, and timeline.
 - `make_segment_table_blueprint` — the blueprint registered on the dataset's own segment table (views, timeline).
+
+See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints?speculative-link) for table blueprint API examples.
 
 ## Run the code
 
@@ -43,10 +44,8 @@ The sample has two run modes.
 
 ### Local server mode
 
-Without `--url`, the script starts a temporary local Rerun server, serves a directory of `.rrd` files
-as a dataset named `local`, writes the `.rbl` blueprint files, and (depending on `--target`) creates
-the demo tables and registers their blueprints with
-`TableEntry.register_blueprint(...)` and/or registers a blueprint on the dataset's segment table with `DatasetEntry.register_blueprint(..., segment_table=True)`. <!-- NOLINT -->
+Without `--url`, the script starts a temporary local Rerun server, serves a directory of `.rrd` files as a dataset named `local`, and writes the `.rbl` blueprint files.
+Depending on `--target`, it creates demo tables and registers their blueprints with `TableEntry.register_blueprint(uri)`, registers a blueprint on the dataset's segment table with `DatasetEntry.register_blueprint(uri, segment_table=True)`, or does both.
 
 Run without arguments to serve the checked-in sample files from `tests/assets/rrd/sample_5`:
 

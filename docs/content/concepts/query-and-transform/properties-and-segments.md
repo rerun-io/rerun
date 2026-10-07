@@ -23,6 +23,12 @@ Its `start_time` field is automatically populated, and its `name` field can be s
 
 Internally, properties are logged under a reserved `/__properties` entity path and use [static semantics](../logging-and-ingestion/static.md) since they apply to the entire recording rather than specific points in time.
 
+## Displaying the segment table
+
+To customize how the segment table appears in the Viewer, use a table blueprint.
+You can choose columns, enable cards, and embed recording previews without changing the underlying properties.
+See [Configure table layouts and recording previews](../../howto/visualization/configure-table-blueprints.md) for a Python example and registration instructions.
+
 ## Querying the segment table
 
 Once recordings are registered to a [dataset](catalog-object-model.md#datasets), their properties become visible and queryable through the segment table.

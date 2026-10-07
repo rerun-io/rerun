@@ -13,6 +13,7 @@ from . import (
     archetypes as archetypes,
     components as components,
     experimental as experimental,
+    table as table,
 )
 from .api import (
     Blueprint as Blueprint,
@@ -61,6 +62,7 @@ from .containers import (
     Tabs as Tabs,
     Vertical as Vertical,
 )
+from .table import TableBlueprint as TableBlueprint
 from .views import (
     AudioView as AudioView,
     BarChartView as BarChartView,

@@ -28,36 +28,7 @@ import pyarrow as pa
 
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun import bindings
-from rerun.recording_stream import RecordingStream
 from rerun.server import Server
-
-
-def save_flag_blueprint(path: Path) -> None:
-    with RecordingStream._from_native(
-        bindings.new_blueprint(
-            application_id="embedded",
-            make_default=False,
-            make_thread_default=False,
-            default_enabled=True,
-        ),
-    ) as blueprint_stream:
-        blueprint_stream.save(str(path))
-        blueprint_stream.set_time("blueprint", sequence=0)
-        blueprint_stream.log(
-            "/table/layouts/cards/fields/flagged",
-            rrb.experimental.TableColumn(
-                editable=True,
-                cell_kind=rrb.components.TableCellKind.Flag,
-            ),
-        )
-        blueprint_stream.log(
-            "/table/layouts/cards",
-            rrb.experimental.CardLayout(
-                field_order=["flagged"],
-                title="name",
-            ),
-        )
 
 
 def main() -> None:
@@ -69,6 +40,7 @@ def main() -> None:
         pa.field(
             "id",
             pa.int64(),
+            # Identify which row to update when toggling a flag.
             metadata={rr.SORBET_IS_TABLE_INDEX: "true"},
         ),
         pa.field("name", pa.utf8()),
@@ -92,7 +64,12 @@ def main() -> None:
 
         with TemporaryDirectory() as blueprint_dir:
             blueprint_path = Path(blueprint_dir) / "flags.rbl"
-            save_flag_blueprint(blueprint_path)
+            rrb.table.TableBlueprint(
+                card_layout=rrb.table.CardLayout(
+                    title="name",
+                    fields=[rrb.table.Column("flagged", editable=True, cell=rrb.table.FlagCell())],
+                ),
+            ).save("embedded", blueprint_path)
             table.register_blueprint(blueprint_path.absolute().as_uri())
 
         url = f"{srv.url()}/entry/{table.id}"

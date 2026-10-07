@@ -3,16 +3,12 @@ Demo for table blueprints & segment previews.
 
 Table blueprints allow configuring table layouts and use segment previews.
 
-**TODO(#12745, #12746): This feature is experimental.**
-
 Each row can reference a recording via a URI column. The viewer loads those recordings
-on demand and renders them through the registered blueprint's view definition. A
-preview column uses `TableCellKind.Preview` on its layout-specific `TableColumn` and stores its views
-in `TableColumnPreview` on the same layout-specific blueprint entity. `PreviewsConfig` stores the
-timeline shared by all preview columns.
+on demand and renders them through the views in `rrb.table.PreviewCell`.
+`rrb.table.PreviewsConfig` stores the timeline shared by all preview columns.
 
-The demo also includes a boolean `marker_flag` column. Its `TableColumn` uses the
-`Flag` cell kind with editing enabled, and `CardLayout` includes it as a field.
+The demo also includes a boolean `marker_flag` column. Its `rrb.table.Column` uses an
+editable `rrb.table.FlagCell`, and `rrb.table.CardLayout` includes it as a field.
 Toggling the flag updates the visible table immediately and upserts the new boolean value back to
 the server using the `rerun:is_table_index` column as the row key.
 
@@ -49,110 +45,7 @@ import pyarrow as pa
 
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun import bindings
-from rerun.recording_stream import RecordingStream
 from rerun.server import Server
-
-
-def save_table_blueprint(
-    path: Path,
-    *views: rrb.View,
-    preview_column: str,
-    flag_column: str | None = None,
-    card_title_column: str | None = None,
-    timeline: str | None = None,
-) -> None:
-    """
-    Write a table blueprint with one or more views into a `.rbl` file.
-
-    Parameters
-    ----------
-    path:
-        File path to write the serialized `.rbl` blueprint to.
-    *views:
-        One or more view definitions to embed (e.g. `Spatial3DView`, `TimeSeriesView`).
-    preview_column:
-        Names the column whose values are `rerun://` recording URIs.
-        The viewer loads those recordings and renders inline previews.
-    flag_column:
-        If set, names the boolean column used for flag/annotation toggles.
-        The column must exist in the table schema.
-    card_title_column:
-        If set, names the column to use as card titles.
-        If unset, the first visible string column is used.
-    timeline:
-        If set, selects the timeline used by the previews.
-
-    """
-    if not views:
-        raise ValueError("A table preview requires at least one view")
-
-    blueprint = rrb.Blueprint(*views)
-
-    with RecordingStream._from_native(
-        bindings.new_blueprint(
-            application_id="embedded",
-            make_default=False,
-            make_thread_default=False,
-            default_enabled=True,
-        ),
-    ) as blueprint_stream:
-        blueprint_stream.save(str(path))
-        blueprint_stream.set_time("blueprint", sequence=0)
-        blueprint._log_to_stream(blueprint_stream)
-
-        escaped_preview_column = rr.escape_entity_path_part(preview_column)
-        table_preview_path = f"/table/layouts/table/columns/{escaped_preview_column}"
-        card_preview_path = f"/table/layouts/cards/fields/{escaped_preview_column}"
-        for preview_path in [table_preview_path, card_preview_path]:
-            blueprint_stream.log(
-                preview_path,
-                rrb.experimental.TableColumn(
-                    cell_kind=rrb.components.TableCellKind.Preview,
-                ),
-            )
-            blueprint_stream.log(
-                preview_path,
-                rrb.experimental.TableColumnPreview(
-                    views=[view.blueprint_path() for view in views],
-                ),
-            )
-
-        card_fields = [preview_column]
-        if flag_column is not None:
-            card_fields.append(flag_column)
-            blueprint_stream.log(
-                f"/table/layouts/table/columns/{rr.escape_entity_path_part(flag_column)}",
-                rrb.experimental.TableColumn(
-                    editable=True,
-                    cell_kind=rrb.components.TableCellKind.Flag,
-                ),
-            )
-            blueprint_stream.log(
-                f"/table/layouts/cards/fields/{rr.escape_entity_path_part(flag_column)}",
-                rrb.experimental.TableColumn(
-                    editable=True,
-                    cell_kind=rrb.components.TableCellKind.Flag,
-                ),
-            )
-
-        blueprint_stream.log(
-            "/table",
-            rrb.experimental.PreviewsConfig(timeline=timeline),
-        )
-        blueprint_stream.log(
-            "/table/layouts/table",
-            rrb.experimental.TableLayout(column_order=[preview_column]),
-        )
-        blueprint_stream.log(
-            "/table/layouts/cards",
-            rrb.experimental.CardLayout(
-                field_order=card_fields,
-                title=card_title_column,
-                link=preview_column,
-            ),
-        )
-
 
 # ---------------------------------------------------------------------------
 # Dataset-specific customization
@@ -236,16 +129,9 @@ def make_dataset_blueprints(blueprint_dir: Path) -> dict[str, Path]:
     `make_segment_table_blueprint`.
 
     PLEASE EDIT THIS for your dataset. In particular, update:
-    - `card_title_column` to a string column that exists in your copied properties.
+    - `CardLayout.title` to a string column that exists in your copied properties.
     - `timeline` to the timeline used by your recordings.
     """
-    common_bp_kwargs = {
-        "preview_column": "recording_uri",
-        "flag_column": MARKER_FLAG_COLUMN,
-        "card_title_column": "uuid",
-        "timeline": "real_time",
-    }
-
     views = setup_preview_views()
 
     blueprint_dir.mkdir(parents=True, exist_ok=True)
@@ -253,9 +139,18 @@ def make_dataset_blueprints(blueprint_dir: Path) -> dict[str, Path]:
         name: blueprint_dir / f"{name}.rbl" for name in ("previews_plot", "previews_3d_only", "previews_3d_and_2d")
     }
 
-    save_table_blueprint(paths["previews_plot"], views.plot, **common_bp_kwargs)
-    save_table_blueprint(paths["previews_3d_only"], views.spatial_3d, **common_bp_kwargs)
-    save_table_blueprint(paths["previews_3d_and_2d"], views.spatial_3d, views.spatial_2d, **common_bp_kwargs)
+    for name, preview_views in (
+        ("previews_plot", (views.plot,)),
+        ("previews_3d_only", (views.spatial_3d,)),
+        ("previews_3d_and_2d", (views.spatial_3d, views.spatial_2d)),
+    ):
+        preview = rrb.table.Column("recording_uri", name="Recording", cell=rrb.table.PreviewCell(*preview_views))
+        flag = rrb.table.Column(MARKER_FLAG_COLUMN, name="Reviewed", editable=True, cell=rrb.table.FlagCell())
+        rrb.table.TableBlueprint(
+            table_layout=rrb.table.TableLayout(columns=[preview, flag]),
+            card_layout=rrb.table.CardLayout(title="uuid", link="recording_uri", fields=[preview, flag]),
+            previews_config=rrb.table.PreviewsConfig(timeline="real_time"),
+        ).save("embedded", paths[name])
 
     return paths
 
@@ -275,13 +170,16 @@ def make_segment_table_blueprint(blueprint_dir: Path) -> Path:
     path = blueprint_dir / f"{SEGMENT_TABLE_BLUEPRINT_NAME}.rbl"
 
     views = setup_preview_views()
-    save_table_blueprint(
-        path,
-        views.spatial_3d,
-        views.spatial_2d,
-        preview_column=SEGMENT_RECORDING_LINK_COLUMN,
-        timeline="real_time",
+    preview = rrb.table.Column(
+        SEGMENT_RECORDING_LINK_COLUMN,
+        name="Recording",
+        cell=rrb.table.PreviewCell(views.spatial_3d, views.spatial_2d),
     )
+    rrb.table.TableBlueprint(
+        table_layout=rrb.table.TableLayout(columns=[preview]),
+        card_layout=rrb.table.CardLayout(link=SEGMENT_RECORDING_LINK_COLUMN, fields=[preview]),
+        previews_config=rrb.table.PreviewsConfig(timeline="real_time"),
+    ).save("embedded", path)
 
     return path
 
@@ -321,6 +219,7 @@ def create_table(
     n = len(segment_uris)
 
     fields: list[pa.Field] = [
+        # Identify which row to update when toggling a flag.
         pa.field("id", pa.int64(), metadata={rr.SORBET_IS_TABLE_INDEX: "true"}),
         pa.field("recording_uri", pa.utf8()),
     ]
@@ -375,6 +274,7 @@ def create_demo_tables(
             property_columns=props,
         )
         uri = blueprint_uri(name, blueprint_paths[name], blueprint_uri_base)
+        # Register a file the server can access.
         table.register_blueprint(uri)
         print(f"  {name}: registered table blueprint {uri}")
 
@@ -388,6 +288,7 @@ def apply_segment_table_blueprint(
     """Register the segment-table blueprint on the dataset's own segment table."""
     path = make_segment_table_blueprint(blueprint_dir)
     uri = blueprint_uri(SEGMENT_TABLE_BLUEPRINT_NAME, path, blueprint_uri_base)
+    # Apply to the segment table, not individual recordings.
     dataset.register_blueprint(uri, segment_table=True)
     print(f"  segment table: registered blueprint {uri}")
 

@@ -51,6 +51,7 @@ features = [
       "howto/sub_dataset",
       "howto/time_alignment",
       "howto/view_operations",
+      "howto/visualization/configure_table_blueprints",
     ],
   ],
   [
@@ -165,6 +166,7 @@ backwards_check = [
   "howto/time_alignment",
   "howto/query-and-transform/segment_url",
   "howto/view_operations",
+  "howto/visualization/configure_table_blueprints",
 ]
 
 
@@ -455,6 +457,10 @@ backwards_check = [
   "rust",
   "py",
 ]
+"howto/visualization/configure_table_blueprints" = [
+  "cpp", # Python-only table blueprint API
+  "rust", # Python-only table blueprint API
+]
 "howto/visualization/save_blueprint" = [ # No output
   "cpp",
   "rust",
@@ -727,11 +733,21 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/visualization/configure_table_blueprints" = [ # Registers blueprints instead of producing a comparable recording
+  "cpp",
+  "py",
+  "rust",
+]
 
 # -----------------------------------------------------------------------------
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
+"howto/visualization/configure_table_blueprints" = [
+  "--no-viewer",
+  "--dataset",
+  "$config_dir/../../tests/assets/rrd/sample_5",
+]
 "concepts/send_chunks" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset_audio_simple" = ["$config_dir/../../tests/assets/audio/toreador_song.aac"]
 "views/audio" = ["$config_dir/../../tests/assets/audio/toreador_song.aac"]

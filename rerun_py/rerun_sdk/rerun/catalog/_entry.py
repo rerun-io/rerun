@@ -230,8 +230,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         By default, also set this blueprint as default.
 
-        Set `segment_table=True` (and `set_default=True`) to register it as this dataset's
-        default for the segment table blueprint.
+        Without `segment_table`, `uri` is a viewport blueprint for the dataset's individual recordings.
+        With `segment_table=True`, `uri` is a table blueprint for the dataset's segment table,
+        configuring its columns, cards, and recording previews.
+        `segment_table` has no effect when `set_default=False`.
+
+        The URI is read by the server; this method does not upload a local file.
+        See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
         Deleting this dataset also deletes the associated blueprint dataset and its storage.
@@ -267,7 +273,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return self._internal.set_default_blueprint_segment_id(blueprint_name)
 
     def default_blueprint(self) -> str | None:
-        """Return the name currently set blueprint."""
+        """Return the name of the default blueprint, as listed by `blueprints()`, or `None` if none is set."""
 
         return self._internal.default_blueprint_segment_id()
 
@@ -1607,12 +1613,13 @@ class TableEntry(Entry[TableEntryInternal]):
 
         By default, also set this blueprint as default.
 
+        The URI is read by the server; this method does not upload a local file.
+        See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        for examples of configuring columns, cards, and previews, then saving and registering the result.
+
         The associated blueprint dataset is owned by this table for lifecycle purposes.
         Deleting this table also deletes the associated blueprint dataset and its storage.
 
-        !!! note
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-            TODO(#12746): Stabilize table blueprint APIs.
         """
 
         blueprint_dataset = self.blueprint_dataset()
@@ -1625,35 +1632,17 @@ class TableEntry(Entry[TableEntryInternal]):
             self.set_default_blueprint(segment_id)
 
     def blueprints(self) -> list[str]:
-        """
-        Lists all blueprints currently registered with this table.
-
-        !!! note
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-            TODO(#12746): Stabilize table blueprint APIs.
-        """
+        """Lists all blueprints currently registered with this table."""
 
         return self.blueprint_dataset().segment_ids()
 
     def set_default_blueprint(self, blueprint_name: str | None) -> None:
-        """
-        Set an already-registered blueprint as default for this table.
-
-        !!! note
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-            TODO(#12746): Stabilize table blueprint APIs.
-        """
+        """Set an already-registered blueprint as default for this table."""
 
         return self._internal.set_default_blueprint_segment_id(blueprint_name)
 
     def default_blueprint(self) -> str | None:
-        """
-        Return the name currently set blueprint.
-
-        !!! note
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-            TODO(#12746): Stabilize table blueprint APIs.
-        """
+        """Return the name of the default blueprint, as listed by `blueprints()`, or `None` if none is set."""
 
         return self._internal.default_blueprint_segment_id()
 
@@ -1667,9 +1656,6 @@ class TableEntry(Entry[TableEntryInternal]):
         The associated blueprint dataset is owned by this table for lifecycle purposes.
         Deleting this table also deletes the associated blueprint dataset and its storage.
 
-        !!! note
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-            TODO(#12746): Stabilize table blueprint APIs.
         """
 
         return DatasetEntry(self._internal.blueprint_dataset())

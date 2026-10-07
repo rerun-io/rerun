@@ -51,6 +51,7 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.blueprint.components": ("Blueprint", "Components"),
     "rerun.blueprint.encodings": ("Blueprint", "Encodings"),
     "rerun.blueprint.views": ("Blueprint", "Views"),
+    "rerun.blueprint.table": ("Blueprint", "Tables"),
     "rerun.catalog": ("Catalog",),
     "rerun.chunk": ("Chunk",),
     "rerun.experimental": ("Experimental",),
@@ -370,8 +371,8 @@ def discover_subpackages_and_modules() -> set[str]:
     `__init__.py`), and every non-underscore single-file module at the top
     level only (e.g., `rerun.notebook`, `rerun.server`).
 
-    Single-file `.py` modules nested *inside* subpackages are treated as
-    implementation detail and skipped — these are typically codegen output
+    Single-file `.py` modules nested *inside* subpackages are skipped unless
+    explicitly listed in `DOCUMENTED_PACKAGES` — these are typically codegen output
     (e.g., `rerun.archetypes.points3d` backing `rerun.archetypes.Points3D`)
     that users are not expected to import directly.
     """
@@ -399,6 +400,10 @@ def _walk_nested_subpackages(pkg_dir: Path, dotted: str, found: set[str]) -> Non
             child = f"{dotted}.{entry.name}"
             found.add(child)
             _walk_nested_subpackages(entry, child, found)
+        elif entry.is_file() and entry.suffix == ".py":
+            child = f"{dotted}.{entry.stem}"
+            if child in DOCUMENTED_PACKAGES:
+                found.add(child)
 
 
 # ---------------------------------------------------------------------------

@@ -9,12 +9,16 @@ include_in_manifest = false
 Starts a local server with a table containing an index column and a boolean flag column.
 A registered table blueprint enables the card view and configures the boolean column as an editable flag field.
 
-The flag column remains part of the table data. Its current boolean value controls the flag icon shown on each grid card. Clicking the icon immediately updates the visible table state and sends an upsert back to the server containing the row's table-index value plus the new flag value. The `rerun:is_table_index` column is required so the server knows which row to update.
+The flag column remains part of the table data.
+Its current boolean value controls the flag icon shown on each grid card.
+Clicking the icon immediately updates the visible table state and sends an upsert back to the server containing the row's table-index value plus the new flag value.
+The `rerun:is_table_index` column is required so the server knows which row to update.
 
 Open the printed URL in the viewer.
 
-Flagging works on regular tables, but does **not** yet work on the segment tables of datasets:
-segment tables have no write operations yet, so flag changes cannot be persisted back to the server.
+Flagging works on regular tables, but does **not** yet work on the segment tables of datasets: segment tables have no write operations yet, so flag changes cannot be persisted back to the server.
+
+See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints?speculative-link) for table blueprint API examples.
 
 ## Run the code
 

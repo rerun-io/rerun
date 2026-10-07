@@ -111,6 +111,9 @@ This is done by registering a `.rbl` blueprint file typically stored in object s
 A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
 
+A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded recording previews.
+See [Configure table layouts and recording previews](../../howto/visualization/configure-table-blueprints.md) for the complete save-and-register workflow.
+
 
 ### Assets
 

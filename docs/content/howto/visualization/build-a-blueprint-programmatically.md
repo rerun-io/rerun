@@ -11,6 +11,9 @@ For maximum control and automation, you can define [Blueprints](../../concepts/v
 -   Generating complex layouts that would be tedious to build manually
 -   Sending different blueprints based on runtime conditions
 
+This guide configures the viewport for individual recordings.
+To configure catalog table columns or embedded recording previews instead, see [Configure table layouts and recording previews](configure-table-blueprints.md).
+
 ### Getting started example
 
 This walkthrough demonstrates the Blueprint API using stock market data. We'll start simple and progressively build more complex layouts.
