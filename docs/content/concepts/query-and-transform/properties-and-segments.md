@@ -19,7 +19,7 @@ snippet: concepts/query-and-transform/segment_properties[setup]
 In this example, we use `send_property()` to attach metadata to each recording. Properties are regular Rerun data, so you can use any built-in archetype. Here we use [`GeoPoints`](../../reference/types/archetypes/geo_points.md) to store a geographic location. For arbitrary data that doesn't fit an existing archetype, use [`AnyValues`](../../howto/logging-and-ingestion/custom-data.md).
 
 In addition to user-provided properties, Rerun automatically stores built-in properties using the [`RecordingInfo`](../../reference/types/archetypes/recording_info.md) archetype.
-Its `start_time` field is automatically populated, and its `name` field can be set with `send_recording_name()`.
+Its `start_time` field is automatically set to the time the recording stream was created, and its `name` field can be set with `send_recording_name()`.
 
 Internally, properties are logged under a reserved `/__properties` entity path and use [static semantics](../logging-and-ingestion/static.md) since they apply to the entire recording rather than specific points in time.
 
@@ -66,6 +66,13 @@ The segment table contains one row per recording, with each property appearing a
 As with any component column, each row contains a [list of values](dataframe-queries.md#why-are-component-columns-lists).
 The column metadata exposes the fact that properties are stored under the reserved `/__properties` entity path.
 For simplicity, the column names are however prefixed with `property:` instead of the full entity path.
+
+The segment table also has built-in columns that the catalog fills in:
+
+- `rerun_layer_names` and `rerun_storage_urls`: the segment's layers and the file behind each.
+- `rerun_num_chunks` and `rerun_size_bytes`: how much data the segment holds.
+- `rerun_last_updated_at`: when a layer was last registered to the segment.
+- `<timeline>:start` and `<timeline>:end`: the segment's range on each of the dataset's timelines, such as `frame_index:start`. This gives episode lengths without reading any data.
 
 Since the segment table is a [DataFusion](https://datafusion.apache.org/) DataFrame, you can use standard DataFrame operations for further processing and/or data conversion.
 For example, this is how the segment table can be filtered based on the values of a custom property:

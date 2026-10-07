@@ -66,6 +66,8 @@ class Server:
         ----------
         host:
             The IP address to bind the server to.
+            The default, `"0.0.0.0"`, lets other machines on your network connect.
+            Use `"127.0.0.1"` to allow connections from this machine only.
         port:
             The port to bind the server to, or `None` (or `0`) to let the OS select a random
             available port. Use `url()` to get the address of the running server.

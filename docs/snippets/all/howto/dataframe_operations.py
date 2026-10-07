@@ -30,8 +30,8 @@ observations = dataset.filter_contents(["/observation/**"]).reader(
 first_last = observations.aggregate(
     col("rerun_segment_id"),
     [
-        F.first_value(col("real_time")).alias("start"),
-        F.last_value(col("real_time")).alias("end"),
+        F.min(col("real_time")).alias("start"),
+        F.max(col("real_time")).alias("end"),
     ],
 )
 

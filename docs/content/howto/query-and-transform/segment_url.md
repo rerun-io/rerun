@@ -7,6 +7,9 @@ description: Generate clickable URLs that open segments in the Viewer
 The [`segment_url`](https://ref.rerun.io/docs/python/stable/common/utilities/#rerun.utilities.datafusion.functions.url_generation.segment_url) DataFusion utility can be used to generate Rerun URLs that are clickable within the viewer.
 The generated URLs can optionally seek to a timestamp, select a time range, or select an entity path.
 
+A URL names the dataset by its ID.
+The local `rerun server` keeps catalog metadata in memory, so it assigns new dataset IDs each time it starts, and URLs generated against it stop working once it restarts.
+
 ## Setup
 
 We start by loading sample data in a local catalog server instance and creating a table with some segment metadata.
@@ -33,6 +36,7 @@ Pass `timestamp` and `timeline_name` to generate a URL that tells the viewer to 
 the time cursor to a specific value.
 If `timestamp` is a string, it will be interpreted as a column name.
 Alternatively, any DataFusion expression can be provided, including a literal.
+The value can be a timestamp or an integer on a sequence timeline: on a `frame_index` timeline the fragment reads `#when=frame_index@151`, and a time range reads `#time_selection=frame_index@120..180`.
 
 snippet: howto/query-and-transform/segment_url[timestamp]
 
@@ -62,8 +66,9 @@ rerun+http://localhost:51234/dataset/<DATASET_ID>?segment_id=<SEGMENT_ID_3>#time
 ## Selecting an entity
 
 Pass `selection` to generate a URL that specifies which entity path, instance, and/or component to select.
-The value must be a string using entity path syntax, optionally followed by an instance index in brackets
-and/or a component name after a colon.
+As with the other parameters, a string is read as a column name.
+The values in that column use entity path syntax, optionally followed by an instance index in brackets and/or a component name after a colon.
+To select the same entity in every row, pass a literal instead, such as `lit("/camera/rgb")`.
 For example: `/world/points`, `/world/points[#42]`, `/world/points:Color`, or `/world/points[#42]:Color`.
 
 snippet: howto/query-and-transform/segment_url[selection]

@@ -7,6 +7,7 @@ description: Persist derived data from catalog dataset queries
 Catalog tables let you persist arbitrary tabular data, including results derived from queries on your datasets.
 Examples include per-segment metrics, evaluation results, annotations, and processing status.
 A common use case is to save these results so you can share them with colleagues, then inspect or update them later.
+Use [properties in a layer](../logging-and-ingestion/layers.md#adding-properties-to-segments-using-layers) instead for values that belong to a specific segment and should appear as columns of its segment table.
 
 Catalog tables use Arrow schemas, and catalog query APIs return lazy DataFusion dataframes.
 Unlike datasets, tables use _schema-on-write_: you define the table's Arrow schema before writing rows.
@@ -41,7 +42,7 @@ This example marks `rerun_segment_id` as the table index only to support the ups
 snippet: howto/catalog_tables[store_result]
 
 On a local catalog server, you can pass `url` to [`CatalogClient.create_table`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.CatalogClient.create_table) to choose the storage directory.
-If you omit it, the server uses its configured storage.
+If you omit it, the table goes in a temporary directory that the server deletes when it stops.
 Rerun Hub always uses its configured storage instead, so do not pass `url`.
 
 ## Access the table later

@@ -15,10 +15,11 @@ Dataframe queries are designed to bridge this gap. They allow you to query arbit
 
 ## Where can dataframe queries be used?
 
-Dataframe queries can be used in two contexts:
+Dataframe queries can be used in three contexts:
 
 - **Interactively in the Viewer**: The [dataframe view](../../reference/types/views/dataframe_view.md) displays query results as a table, useful for inspecting raw values and debugging.
 - **Programmatically using the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry) object provides API to filter and query datasets and turn them into dataframes.
+- **On a single recording, without a server**: [`ChunkStore.reader()`](../logging-and-ingestion/chunk-processing-api.md) runs the same query over a recording loaded from an `.rrd` file.
 
 
 ## Understanding dataframe queries

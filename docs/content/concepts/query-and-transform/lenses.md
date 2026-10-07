@@ -106,6 +106,7 @@ The basic syntax elements are:
 * `.field` - access a named field (e.g. `.my.nested.struct.field`)
 * `.sequence[]` - iterate over all elements in a sequence
 * `.sequence[].x` - access a field on each element of a sequence
+* `.sequence[N]` - select the element at index `N`, starting at 0
 * `.optional_field?` - access an optional field, skipping missing values
 * `pack(.x, .y, .z)` - pack several same-typed fields into a fixed-size list (see below)
 * `"foo"` - emit a string constant once per input value

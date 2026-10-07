@@ -65,6 +65,8 @@ These episodes within datasets are called _segments_, which are identified by a 
 
 Segments are added to datasets by the process of _registering_ a [recording](../logging-and-ingestion/recordings.md) (typically stored in some object store such as S3) to the dataset using the Catalog SDK.
 The recording ID of the `.rrd` file is used as its segment ID.
+Keep one recording per registered `.rrd` file.
+Rerun Hub registers each file as a single segment, named after the first recording in it.
 
 Recordings registered to a given segment are organized by layers, identified by a layer name.
 By default, the `"base"` layer name is used.

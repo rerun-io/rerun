@@ -132,6 +132,8 @@ dataset_view = dataset.filter_segments(["recording_001", "recording_002"])
 dataset_view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
 ```
 
+`filter_contents()` takes [entity path filter](../../concepts/logging-and-ingestion/entity-path.md#entity-path-filters) expressions.
+
 `DatasetView` instances have the exact same `reader()` method as the original dataset:
 
 ```python

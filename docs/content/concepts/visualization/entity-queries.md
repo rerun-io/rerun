@@ -13,37 +13,7 @@ include or exclude entire subtrees.
 
 ## Query expression syntax
 
-An entity query is made up of a set of "query expressions." Each query expression
-is either an "inclusion," which starts with an optional `+` or an "exclusion,"
-which always starts with a `-`.
-
-Query expressions are also allowed to end with an optional `/**`. The`/**`
-suffix matches the whole subtree, i.e. self and any child, recursively. For
-example, `/world/**`matches both`/world`and`/world/car/driver`. Other uses of
-`*` are not yet supported.
-
-When combining multiple query expressions, the rules are sorted by entity-path,
-from least to most specific:
-
--   If there are multiple matching rules, the most specific rule wins.
--   If there are multiple rules of the same specificity, the last one wins.
--   If no rules match, the path is excluded.
-
-Consider the following example:
-
-```diff
-+ /world/**
-- /world
-- /world/car/**
-+ /world/car/driver
-```
-
--   The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it
-    is included.
--   The last rule matching `/world/car/hood` is `- /world/car/**`, so it is
-    excluded.
--   The last rule matching `/world` is `- /world`, so it is excluded.
--   The last rule matching `/world/house` is `+ /world/**`, so it is included.
+Query expressions use the [entity path filter](../logging-and-ingestion/entity-path.md#entity-path-filters) syntax.
 
 ## In the Viewer
 

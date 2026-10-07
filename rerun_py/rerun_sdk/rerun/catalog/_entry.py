@@ -960,6 +960,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
+        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+
         Parameters
         ----------
         exprs:
@@ -1038,6 +1040,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         index
             The index (timeline) to use for the view.
             Pass `None` to read only static data.
+            The reader leaves out properties for every index unless the contents include `/__properties/**`,
+            for example with `ContentFilter.include_properties()`.
         include_semantically_empty_columns
             Whether to include columns that are semantically empty.
         include_tombstone_columns
@@ -1303,6 +1307,8 @@ class DatasetView:
         index
             The index (timeline) to use for the view.
             Pass `None` to read only static data.
+            The reader leaves out properties for every index unless the contents include `/__properties/**`,
+            for example with `ContentFilter.include_properties()`.
         include_semantically_empty_columns
             Whether to include columns that are semantically empty.
         include_tombstone_columns
@@ -1448,6 +1454,8 @@ class DatasetView:
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
+
+        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
 
         Parameters
         ----------

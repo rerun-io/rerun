@@ -49,7 +49,14 @@ You can log directly to the viewer, [open](../getting-started/data-in/open-any-f
 </div>
 
 ### Query and transform
-The Rerun file format supports both high performance visualization and querying over the same data source.
+Ask questions across all your recordings at once, down to individual sensor readings:
+
+- Where did the robot miss a grasp?
+- Which episodes dropped camera frames?
+- Does the new checkpoint succeed more often than the old one?
+- What was every sensor reading just before contact?
+
+Results can link straight to the moment in the viewer.
 
 You can use the open source [catalog](../concepts/query-and-transform/catalog-object-model.md) server for running local [laptop scale examples](../getting-started/data-out).
 We also offer **Rerun Hub**, a scalable catalog for robotic data, for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more).

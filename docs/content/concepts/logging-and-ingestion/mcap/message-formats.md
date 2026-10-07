@@ -104,7 +104,8 @@ After adding a new timeseries view via the blueprint panel, we select the Protob
 
 ### View decoded message
 
-Each entity that was decoded from an unknown MCAP message via reflection has an `.message` component, which contains queryable struct fields.
+Each entity that was decoded from an unknown MCAP message via reflection has a `message` component, which contains queryable struct fields.
+The column name includes the message's full type name, so a custom `my_robot.GripperState` message on `/gripper` is queried as the column `/gripper:my_robot.GripperState:message`.
 You can see this also in the selection panel:
 
 <picture>

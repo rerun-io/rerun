@@ -35,7 +35,7 @@ for i, rrd_path in enumerate(rrd_paths):
         )
 
         # recording name is part of the built-in properties
-        rr.send_recording_name(f"segment_{i}")
+        rec.send_recording_name(f"segment_{i}")
 # endregion: setup
 
 
