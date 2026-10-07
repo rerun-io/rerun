@@ -442,18 +442,15 @@ impl DisplayColumn {
             }
 
             Self::Component(component_column) => {
-                // Some component UIs are built from `ListItem`s, which must run in a scope.
-                return re_ui::list_item::list_item_scope_in_place(ui, "component_cell", |ui| {
-                    component_column.data_ui(
-                        ctx,
-                        ui,
-                        row_index,
-                        instance_index,
-                        ui_layout,
-                        cell_kind,
-                        editable,
-                    )
-                });
+                return component_column.data_ui(
+                    ctx,
+                    ui,
+                    row_index,
+                    instance_index,
+                    ui_layout,
+                    cell_kind,
+                    editable,
+                );
             }
         }
         None

@@ -510,7 +510,7 @@ impl ImageUi {
             colormap_with_range.as_ref(),
         );
 
-        if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
+        if ui_layout != UiLayout::SelectionPanel {
             return;
         }
 
