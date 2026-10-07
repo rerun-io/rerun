@@ -109,8 +109,8 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
         let branch = re_build_tools::git_branch()?;
         if branch == "main" || build_env != Environment::RerunCI {
             // on `main` and local builds, use `version/main`
-            // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
-            // on every commit to the `main` branch
+            // this will point to data uploaded by the Buildkite `examples` job
+            // (`.buildkite/jobs/rerun/examples.ts` in the reality repo) on every commit to the `main` branch
             return Ok("https://app.rerun.io/version/main".into());
         }
         parse_release_version(&branch).is_some()
@@ -123,7 +123,7 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
             .ok_or_else(|| anyhow::anyhow!("failed to find workspace root"))?;
 
         // on `release-x.y.z` builds, use `version/{crate_version}`
-        // this will point to data uploaded by `.github/workflows/reusable_build_and_publish_web.yml`
+        // this will point to data uploaded by `.github/workflows/reusable_publish_web.yml`
         return Ok(format!(
             "https://app.rerun.io/version/{}",
             workspace_root.version
@@ -131,7 +131,8 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     }
 
     // any other branch that is not `main`, use `commit/{sha}`
-    // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
+    // this will point to data uploaded by the Buildkite `examples` job
+    // (`.buildkite/jobs/rerun/examples.ts` in the reality repo)
     let sha = re_build_tools::git_commit_short_hash()?;
     Ok(format!("https://app.rerun.io/commit/{sha}"))
 }

@@ -37,7 +37,7 @@ if [ -n "${RUN_ID:-}" ] || [ ! -d "$(git rev-parse --show-toplevel)/.buildkite" 
 else
     COMMIT="${COMMIT:-$(git rev-parse HEAD)}"
     SHORT_COMMIT="${COMMIT:0:7}"
-    URL="https://build.rerun.io/buildkite/commit/$SHORT_COMMIT/snapshots/linux.tar.gz"
+    URL="https://build.rerun.io/commit/$SHORT_COMMIT/snapshots/linux.tar.gz"
     ARCHIVE="$(mktemp)"
     trap 'rm -f "$ARCHIVE"' EXIT
 
