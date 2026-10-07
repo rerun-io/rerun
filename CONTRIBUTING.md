@@ -112,9 +112,6 @@ Be generous with external contributions — credit where credit is due!
 
 #### Other special labels
 
-* `deploy docs`:
-  Cherry-picked to `docs-latest`, triggering a rebuild of the [doc page](https://www.rerun.io/docs).
-  Use this for doc fixes relevant to the latest release.
 * `do-not-merge`:
   Fails CI unconditionally. Useful for PRs targeting non-`main` branches or awaiting test results.
   Alternatively, unticked checkboxes in the PR description will also fail CI ✨
