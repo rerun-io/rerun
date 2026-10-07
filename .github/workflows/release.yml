@@ -13,7 +13,7 @@ on:
           - final
         required: true
       publish-crates:
-        description: "Publish crates (ignored for non-alpha release)"
+        description: "Publish crates"
         type: boolean
         required: false
         default: true
@@ -122,6 +122,10 @@ jobs:
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           pixi-version: v0.78.0
+
+      - name: Check that crates can be published
+        if: inputs.publish-crates
+        run: pixi run python scripts/ci/crates.py check-no-crates-io-patches
 
       # Fails before anything is published, rather than leaving a half-published release.
       - name: Check PyPI project size
@@ -307,7 +311,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    if: inputs.release-type != 'alpha' || inputs.publish-crates
+    if: inputs.publish-crates
     needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:

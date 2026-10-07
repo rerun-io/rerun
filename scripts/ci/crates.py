@@ -595,7 +595,25 @@ def check_dependency_tree() -> None:
         raise
 
 
+def check_no_crates_io_patches() -> None:
+    """`cargo publish` will fail if there is a `[patch.crates-io]`, so we check here that there is no such patch."""
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+    patches = [name for name in root.get("patch", {}).get("crates-io", {}) if name != FEATURE_UNIFICATION_CRATE]
+    if patches:
+        print(f"{R}The root Cargo.toml has a `[patch.crates-io]` for these crates:{X}")
+        for name in patches:
+            print(f"  {name}")
+        print(
+            "`cargo publish` would fail part-way through with a patch. "
+            "Remove the patches, or don't publish crates (`publish-crates: false`)."
+        )
+        sys.exit(1)
+    print("No `[patch.crates-io]` entries that would break publishing.")
+
+
 def publish(dry_run: bool, token: str) -> None:
+    check_no_crates_io_patches()
+
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
@@ -877,6 +895,11 @@ def main() -> None:
         "check-publish-flags", help="Check if any publish=true crates depend on publish=false crates."
     )
 
+    cmds_parser.add_parser(
+        "check-no-crates-io-patches",
+        help="Check that the root Cargo.toml has no `[patch.crates-io]` entries that would break publishing.",
+    )
+
     cmds_parser.add_parser("check-dependency-tree", help="Check that our dependency tree doesn't have any cycles.")
 
     cmds_parser.add_parser(
@@ -889,6 +912,8 @@ def main() -> None:
         check_git_branch_name()
     if args.cmd == "check-publish-flags":
         check_publish_flags()
+    if args.cmd == "check-no-crates-io-patches":
+        check_no_crates_io_patches()
     if args.cmd == "check-dependency-tree":
         check_dependency_tree()
     if args.cmd == "check-feature-unification-deps":
