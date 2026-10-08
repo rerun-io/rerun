@@ -13,14 +13,6 @@ Emoji render in color, the way the rest of your desktop shows them.
 
 This applies to everything the Viewer shows: entity paths, labels, text logs, and any string in your data.
 
-<picture>
-  <img src="https://static.rerun.io/arkit_scenes_emoji/b25fced8733d56288ca37c394af22708d296000a/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/arkit_scenes_emoji/b25fced8733d56288ca37c394af22708d296000a/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/arkit_scenes_emoji/b25fced8733d56288ca37c394af22708d296000a/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arkit_scenes_emoji/b25fced8733d56288ca37c394af22708d296000a/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arkit_scenes_emoji/b25fced8733d56288ca37c394af22708d296000a/1200w.png">
-</picture>
-
 ## New features
 
 ### Experimental raymarched 3D volumes
@@ -287,7 +279,6 @@ The [JavaScript and React web viewer APIs](https://ref.rerun.io/docs/js/) now ac
 - **URDF importer supports quaternions (URDF 1.1)**: Rerun's URDF importer now supports the `quat_xyzw` rotation field that was recently added to the [URDF specification version 1.1](https://github.com/ros/urdfdom#urdf-versioning) as an alternative to the `rpy` field.
 - **HDF5 attributes support more types**: Import HDF5 attributes with 8- and 16-bit integer, 32-bit floating-point, and fixed- or variable-length string types.
 - **OSS server write access grants**: The OSS server can now issue write access grants, which lets clients upload catalog objects through the server.
-- **Analytics events record the sending Rerun client**: Rerun Hub analytics events now record which Rerun client sent them (e.g. `rerun-py`, `rerun-web`, or `rerun-py-dataloader` for the experimental dataloader).
 
 ## Breaking changes
 
