@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -25,13 +26,30 @@ TIMEOUT_SECS = 600
 
 
 def run(notebook: Path) -> subprocess.CompletedProcess[str]:
+    with tempfile.TemporaryDirectory() as socket_dir:
+        return run_in(notebook, Path(socket_dir))
+
+
+def run_in(notebook: Path, socket_dir: Path) -> subprocess.CompletedProcess[str]:
     if notebook.suffix == ".py":
         # `marimo export` exits non-zero when a cell fails.
         cmd = [sys.executable, "-m", "marimo", "export", "html", "--force", f"--output={os.devnull}", notebook.name]
         source = None
     else:
         # Piping the notebook through stdin lets us patch it while the kernel still runs in its directory.
-        cmd = [sys.executable, "-m", "jupyter", "nbconvert", "--stdin", "--stdout", "--to=notebook", "--execute"]
+        # Kernels started in parallel race for TCP ports, so each one gets its own Unix sockets instead.
+        cmd = [
+            sys.executable,
+            "-m",
+            "jupyter",
+            "nbconvert",
+            "--stdin",
+            "--stdout",
+            "--to=notebook",
+            "--execute",
+            "--KernelManager.transport=ipc",
+            f"--KernelManager.ip={socket_dir / 'kernel'}",
+        ]
         source = notebook.read_text(encoding="utf-8")
         if notebook.name == "neural_field_2d.ipynb":
             old, new = NEURAL_FIELD_PATCH
