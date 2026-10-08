@@ -36,7 +36,7 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
             ui.inline_loading_indicator("");
         }
         ToolCallStatus::Completed => {
-            ui.small_icon(&icons::SUCCESS, Some(tokens.success_text_color));
+            ui.small_icon(&icons::SUCCESS, Some(tokens.text_subdued));
         }
         ToolCallStatus::Failed => {
             ui.small_icon(&icons::ERROR, Some(tokens.error_fg_color));
