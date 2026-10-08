@@ -7,7 +7,6 @@
 ///
 /// \example views/audio title="Use a blueprint to show and play an audio asset."
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[rerun(view_identifier = "Audio")]
 #[rerun(state = "unstable")]
 pub struct AudioView {

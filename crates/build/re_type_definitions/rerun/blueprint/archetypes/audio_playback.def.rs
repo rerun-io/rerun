@@ -3,7 +3,6 @@
 
 /// Playback settings for an audio view.
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]
 pub struct AudioPlayback {

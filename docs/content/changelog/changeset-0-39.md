@@ -145,7 +145,7 @@ client.get_table("my_table").register_blueprint(path.as_uri())
 
 The `.rbl` file must be accessible to the server.
 For a remote server, upload it to shared storage and pass that URI to `register_blueprint` instead.
-See [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md?speculative-link) for the full workflow, including dataset and remote storage.
+See [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
 For more configurations, see the [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints).
 
 ### Improved table column settings, with search, display mode and bulk hide/show
@@ -165,7 +165,7 @@ Previews in the table and card views now have a new UI, which comes with more ti
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
 </video>
 
-[Configure table layouts and previews](../howto/visualization/configure-table-blueprints.md?speculative-link)
+[Configure table layouts and previews](../howto/visualization/configure-table-blueprints.md)
 
 ### Assets can specify what segments they apply to
 
