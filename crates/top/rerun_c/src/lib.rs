@@ -673,7 +673,9 @@ thread_local! {
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
     if THREAD_LIFE_TRACKER.try_with(|_v| {}).is_ok() {
-        if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+        // Avoid lock contention during potentially blocking shutdown.
+        let stream = RECORDING_STREAMS.lock().remove(id);
+        if let Some(stream) = stream {
             // Before we called `stream.disconnect()` here`, which unnecessarily replaced the current sink with a
             // buffered sink that would be immediately dropped afterwards. Not only did this cause spam in the
             // log outputs, it also lead to race conditions upon (log) application shutdown.
@@ -731,7 +733,9 @@ pub unsafe extern "C" fn rr_recording_stream_flush_blocking(
     timeout_sec: c_float,
     error: *mut CError,
 ) {
-    if let Some(stream) = RECORDING_STREAMS.lock().get(id) {
+    // Avoid lock contention during a potentially blocking flush.
+    let stream = RECORDING_STREAMS.lock().get(id);
+    if let Some(stream) = stream {
         let timeout = if timeout_sec.is_nan() {
             if let Some(error) = unsafe { error.as_mut() } {
                 *error = CError::new(CErrorCode::InvalidTimeArgument, "NaN timeout");
