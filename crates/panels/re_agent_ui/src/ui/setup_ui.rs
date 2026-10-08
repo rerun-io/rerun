@@ -277,8 +277,10 @@ fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
         };
         ui.horizontal(|ui| {
             ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
-            ui.weak(consequence);
-            analytics_details_button(ui);
+            ui.horizontal_wrapped(|ui| {
+                ui.weak(consequence);
+                analytics_details_button(ui);
+            });
         });
     });
 }
