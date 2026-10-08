@@ -119,6 +119,26 @@ The generated section is a starting point; edit it by hand so readers can find t
 - **Name the actual break.**
   A breaking-change heading (in the changeset and in `CHANGELOG.md`) must say what broke, e.g. "`WriteChunks` removed", not the new feature that replaces it ("Catalog staging").
   Lead the subsection with the removal and migration-guide link, then the replacement.
+- **Flag experimental and unstable features.**
+  Check every new feature in the changeset and `CHANGELOG.md` against these markers (`PREV` is the previous minor release tag, e.g. `0.38.0`):
+
+  ```bash
+  # Types marked unstable whose definitions changed this cycle
+  git diff --name-only $PREV HEAD -- crates/build/re_type_definitions | xargs rg -l 'state = "unstable"'
+  # Python APIs in the `rerun.experimental` module
+  git log --oneline $PREV..HEAD -- rerun_py/rerun_sdk/rerun/experimental
+  # Viewer features behind a flag in `ExperimentalAppOptions`
+  git diff $PREV HEAD -- crates/viewer_support/re_viewer_context/src/app_options.rs
+  # Docs and docstrings that call something experimental
+  git diff --name-only $PREV HEAD -- docs/content rerun_py/rerun_sdk | xargs rg -l -i 'is experimental'
+  ```
+
+  A file showing up in the first command does not mean the type is new: cross-reference the hits with the actual entries.
+  For each matching feature, say so where readers will see it: prefix the changeset heading with "Experimental" (as `### Experimental 3D gaussian splat support` did in 0.36), and add a sentence saying it may change in future releases (for unstable types: that the data may not stay backwards compatible).
+  If the feature is behind a flag, say how to enable it.
+  In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", with a one-line note that they may change and that unstable types may not stay backwards compatible.
+  Order that subsection by impact too, and don't repeat "Experimental" in its entries.
+  Ignore unstable internal blueprint types (e.g. `ViewBlueprint`) that users don't touch directly; label user-facing features that depend on an experimental API (e.g. previews, which only exist through table blueprints).
 - **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
   All media must live on `static.rerun.io`.
   Reuse a PR's media only if it is already on `static.rerun.io` or publicly accessible: `github.com/user-attachments/…` links from the private monorepo return 404 for the public.
@@ -138,6 +158,7 @@ Never add redirects for these temporary entries.
 - [ ] No summaries or other prose were synthesized for existing entries.
 - [ ] The `CHANGELOG.md` overview is ordered by impact, its headline features have `static.rerun.io` media, and its breaking changes link to the changeset subheadings.
 - [ ] Every overview and detail entry that has relevant docs links to them.
+- [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]`) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.
 - [ ] `pixi run lint-rerun CHANGELOG.md docs/content/changelog/changeset-0-XX.md` passes.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).

@@ -23,10 +23,11 @@ This applies to everything the Viewer shows: entity paths, labels, text logs, an
 
 ## New features
 
-### Raymarched 3D volumes
+### Experimental raymarched 3D volumes
 
 The new [`Volume3D`](../reference/types/archetypes/volume3d.md) archetype allows visualizing dense scalar volumes in 3D views.
 This can be useful, for instance, to visualize 3D medical scans.
+`Volume3D` is unstable: it may change in future releases in a way that the data won't be backwards compatible.
 
 Our DICOM loader example has been updated accordingly:
 
@@ -34,13 +35,14 @@ Our DICOM loader example has been updated accordingly:
     <source src="https://static.rerun.io/43abbdb283f0ca73b3b94a835542bde5ca95e8a4_volumes.mp4" type="video/mp4" />
 </video>
 
-### Audio: `AssetAudio` archetype and `AudioView`
+### Experimental audio: `AssetAudio` archetype and `AudioView`
 
 Audio files (`.aac`, `.flac`, `.m4a`, `.mp3`, `.ogg`, `.wav`) can now be logged as-is with the new `AssetAudio` archetype, or imported by opening or dropping them into the viewer.
 The new audio view shows the waveform and plays the audio while time is playing on a temporal timeline, starting from the time the asset was logged.
 Playback follows the playback speed between 0.25x and 4x, and each view has its own volume setting.
 
 AAC is limited to AAC-LC for now.
+`AssetAudio` and `AudioView` are unstable: they may change in future releases in a way that the data won't be backwards compatible.
 
 [`AssetAudio` reference](../reference/types/archetypes/asset_audio.md)
 [`AudioView` reference](../reference/types/views/audio_view.md)
@@ -72,10 +74,11 @@ PLY loading also uses the faster `ply-rs-bw` 4 API.
 
 Plot lines are thicker, no longer dim, better antialiased, and no longer zig-zag on dense data.
 
-### Configure the state timeline time axis
+### Experimental state timeline: configure the time axis
 
 The [state timeline view](../reference/types/views/state_timeline_view.md) now supports configuring its time axis through the blueprint `time_view` property, just like time series.
 Pan and zoom changes are saved to the blueprint, and the view supports explicit time ranges, zoom locking, and a shared time axis with other plots.
+The state timeline view is experimental and may change in future releases.
 
 <picture>
   <img src="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/full.png" alt="">
@@ -83,7 +86,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/768w.png">
 </picture>
 
-### State timeline hover duration
+### Experimental state timeline: hover duration
 
 [State timeline](../howto/visualization/state-timeline.md) hovers now show a human-readable Length.
 
@@ -99,9 +102,10 @@ marimo delivers messages from the Viewer only between cells, so to stream data l
 [Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
-### Python API for table blueprints
+### Experimental Python API for table blueprints
 
 The new `rerun.blueprint.table` Python API lets you conveniently configure table and card layouts.
+This API is experimental and may change in future releases.
 Customize column order, labels, visibility, and cell renderers, including recording previews and editable boolean flags:
 
 ```python
@@ -162,9 +166,10 @@ You can now filter the column list, bulk hide/show columns and set the new displ
     <source src="https://static.rerun.io/bb2e20c67e75e08ac490a223f0e074379f304b6a_table_column_menu.mp4" type="video/mp4" />
 </video>
 
-### Playback controls for dataset previews
+### Experimental playback controls for dataset previews
 
-Previews in the dataset table and card views now have a new UI, which comes with more time controls:
+Previews in the dataset table and card views now have a new UI, which comes with more time controls.
+Previews are configured with the experimental table blueprint API, which may change in future releases.
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
