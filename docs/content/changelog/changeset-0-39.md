@@ -170,6 +170,8 @@ Previews in the dataset table and card views now have a new UI, which comes with
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
 </video>
 
+[Configure table layouts and recording previews](../howto/visualization/configure-table-blueprints.md?speculative-link)
+
 ### Assets can specify what segments they apply to
 
 `register_asset` now takes a `mode` and a list of `segments`, so an asset no longer has to apply to every segment of a dataset.
@@ -295,12 +297,12 @@ If you added `site-packages/rerun_sdk` to `PYTHONPATH` or to a build rule (for e
 
 The `rerun` and `rerun-sdk` packages on PyPI install the same `rerun` directory, so do not install both.
 
-### Catalog staging
-
-Use the experimental [`CatalogClient.stage()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.stage) API to upload local files or bytes to catalog storage before registering them with a dataset.
-This API may change in future versions.
+### `WriteChunks` removed
 
 The legacy `WriteChunks` API has been removed; see the [migration guide](../reference/migration/migration-0-39.md#writechunks-removed).
+
+Instead, use the experimental [`CatalogClient.stage()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.stage) API to upload local files or bytes to catalog storage before registering them with a dataset.
+This API may change in future versions.
 
 ### Breaking changes to custom Rust views
 

@@ -103,7 +103,30 @@ Do this *after* step 1: the script reads the assembled changeset and emits a sum
 `CHANGELOG.md` therefore never duplicates the changeset — if the changeset is missing, the
 script emits an unresolved placeholder instead.
 
-### 4. Empty the inbox
+### 4. Polish the CHANGELOG.md section
+
+The generated section is a starting point; edit it by hand so readers can find their way to the details.
+
+- **Order the overview by impact.**
+  Put the biggest new capabilities first, then integrations and APIs, then format support, then polish, then niche or developer-facing items.
+- **Make entries clickable.**
+  Wherever possible, link an entry (in the overview *and* in the details) to the docs that show how to use the feature: the how-to guide, the archetype/view reference page, the CLI or MCP reference section, the Python/JS ref site, or docs.rs.
+  Reuse the links the changeset already contains, converted to `https://rerun.io/docs/<path without .md>`, and check that each target file and `#anchor` heading exists.
+  Link external names too (e.g. a third-party tool to its docs).
+  In detail entries, link the key term, not the whole line, so the trailing commit/PR link stays distinct.
+- **Link each breaking change** to its subheading in the changeset: `https://rerun.io/docs/changelog/changeset-0-XX#<anchor>`.
+  Anchors are the lowercased heading with backticks and punctuation dropped and spaces turned into hyphens (`rrd::optimize` → `rrdoptimize`).
+- **Name the actual break.**
+  A breaking-change heading (in the changeset and in `CHANGELOG.md`) must say what broke, e.g. "`WriteChunks` removed", not the new feature that replaces it ("Catalog staging").
+  Lead the subsection with the removal and migration-guide link, then the replacement.
+- **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
+  All media must live on `static.rerun.io`.
+  Reuse a PR's media only if it is already on `static.rerun.io` or publicly accessible: `github.com/user-attachments/…` links from the private monorepo return 404 for the public.
+  Download those with `curl -L -H "Authorization: token $(gh auth token)" <url>` and upload them with `pixi run upload-image <file> --name <name>`.
+  GitHub does not render `<video>` from external hosts, so for a video, extract a representative still (`ffmpeg -ss <t> -i video.mp4 -frames:v 1 still.png`), upload it, and link the `.mp4` below it.
+  Look at the frames and pick one without a cursor over the subject.
+
+### 5. Empty the inbox
 
 Delete the merged `upcoming/*.md` entries, keeping `_template.md` and any entries not included in this release.
 Never add redirects for these temporary entries.
@@ -113,6 +136,9 @@ Never add redirects for these temporary entries.
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
 - [ ] No summaries or other prose were synthesized for existing entries.
+- [ ] The `CHANGELOG.md` overview is ordered by impact, its headline features have `static.rerun.io` media, and its breaking changes link to the changeset subheadings.
+- [ ] Every overview and detail entry that has relevant docs links to them.
+- [ ] `pixi run lint-rerun CHANGELOG.md docs/content/changelog/changeset-0-XX.md` passes.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
 - [ ] `python scripts/ci/check_doc_redirects.py --base origin/main` passes (`upcoming/` entries are exempt and DO NOT need a redirect).
