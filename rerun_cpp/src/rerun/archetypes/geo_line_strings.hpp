@@ -53,13 +53,13 @@ namespace rerun::archetypes {
         /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         std::optional<ComponentBatch> line_strings;
 
-        /// Optional radii for the line strings.
+        /// Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
         ///
         /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
         std::optional<ComponentBatch> radii;
 
-        /// Optional colors for the line strings.
+        /// Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
         std::optional<ComponentBatch> colors;
 
       public:
@@ -112,7 +112,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional radii for the line strings.
+        /// Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
         ///
         /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
@@ -121,7 +121,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional colors for the line strings.
+        /// Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
         GeoLineStrings with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             return std::move(*this);

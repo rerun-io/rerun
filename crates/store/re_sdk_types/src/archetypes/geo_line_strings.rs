@@ -67,13 +67,13 @@ pub struct GeoLineStrings {
     /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     pub line_strings: Option<SerializedComponentBatch>,
 
-    /// Optional radii for the line strings.
+    /// Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
     ///
     /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
     /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
     pub radii: Option<SerializedComponentBatch>,
 
-    /// Optional colors for the line strings.
+    /// Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
     pub colors: Option<SerializedComponentBatch>,
 }
 
@@ -335,7 +335,7 @@ impl GeoLineStrings {
         self
     }
 
-    /// Optional radii for the line strings.
+    /// Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
     ///
     /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
     /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
@@ -348,7 +348,7 @@ impl GeoLineStrings {
         self
     }
 
-    /// Optional colors for the line strings.
+    /// Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
     #[inline]
     pub fn with_colors(
         mut self,
