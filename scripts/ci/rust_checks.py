@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -374,26 +375,30 @@ def docs_slow(results: list[Result]) -> None:
 
 test_failure_message = 'See the "Upload test results" step for a link to the snapshot test artifact.'
 
+# glam's NEON backend always fuses multiply-adds, so arm64 transforms drift from the x86 snapshot baseline.
+# Must match the macOS test build on Buildkite.
+glam_features = " --features glam/scalar-math" if sys.platform == "darwin" and platform.machine() == "arm64" else ""
+
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
     results.extend((
-        run_cargo("nextest", "run --all-targets --all-features --no-run", deny_warnings=False),
-        run_cargo("nextest", "run --all-targets --all-features --no-fail-fast", deny_warnings=False),
+        run_cargo("nextest", f"run --all-targets --all-features{glam_features} --no-run", deny_warnings=False),
+        run_cargo("nextest", f"run --all-targets --all-features{glam_features} --no-fail-fast", deny_warnings=False),
     ))
 
     if not results[-1].success:
         print(test_failure_message)
 
     # Cargo nextest doesn't support doc tests yet, run those separately.
-    results.append(run_cargo("test", "--all-features --doc", deny_warnings=False))
+    results.append(run_cargo("test", f"--all-features{glam_features} --doc", deny_warnings=False))
 
 
 def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
     results.extend((
-        run_cargo("test", "--all-targets --no-run", deny_warnings=False),
-        run_cargo("nextest", "run --all-targets --no-fail-fast", deny_warnings=False),
+        run_cargo("test", f"--all-targets{glam_features} --no-run", deny_warnings=False),
+        run_cargo("nextest", f"run --all-targets{glam_features} --no-fail-fast", deny_warnings=False),
     ))
 
     if not results[-1].success:
