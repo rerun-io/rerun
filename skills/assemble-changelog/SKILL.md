@@ -127,8 +127,8 @@ The generated section is a starting point; edit it by hand so readers can find t
   Check every new feature in the changeset and `CHANGELOG.md` against these markers (`PREV` is the previous minor release tag, e.g. `0.38.0`):
 
   ```bash
-  # Types marked unstable whose definitions changed this cycle
-  git diff --name-only $PREV HEAD -- crates/build/re_type_definitions | xargs rg -l 'state = "unstable"'
+  # Non-blueprint types marked unstable whose definitions changed this cycle
+  git diff --name-only $PREV HEAD -- crates/build/re_type_definitions | grep -v /blueprint/ | xargs rg -l 'state = "unstable"'
   # Python APIs in the `rerun.experimental` module
   git log --oneline $PREV..HEAD -- rerun_py/rerun_sdk/rerun/experimental
   # Viewer features behind a flag in `ExperimentalAppOptions`
@@ -142,7 +142,9 @@ The generated section is a starting point; edit it by hand so readers can find t
   If the feature is behind a flag, say how to enable it.
   In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", with a one-line note that they may change and that unstable types may not stay backwards compatible.
   Order that subsection by impact too, and don't repeat "Experimental" in its entries.
-  Ignore unstable internal blueprint types (e.g. `ViewBlueprint`) that users don't touch directly; label user-facing features that depend on an experimental API (e.g. previews, which only exist through table blueprints).
+  Blueprint types (`rerun.blueprint.*`, under `re_type_definitions/rerun/blueprint/`) are an exception: they are all marked unstable, which only means the blueprint data isn't backwards compatible.
+  That alone does not make a feature experimental, so a new view or blueprint setting is only experimental if one of the other markers applies to it (or to the data archetype it shows).
+  Likewise, a Viewer feature is not experimental just because it is configured through an experimental API.
 - **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
   Aim for a few images (roughly three to five), covering the most visual headline features: a picture sells a new view or renderer feature far better than a bullet does.
   Start from the media already in the changeset and the PR descriptions; if a visual feature has none, ask the user for a screenshot rather than skipping it.
@@ -166,7 +168,7 @@ Never add redirects for these temporary entries.
 - [ ] The `CHANGELOG.md` overview is ordered by impact, a few of its most visual headline features have `static.rerun.io` images, and its breaking changes link to the changeset subheadings.
 - [ ] Every overview and detail entry that has relevant docs links to them.
 - [ ] Each details subsection groups entries by feature, most impactful first.
-- [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]`) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.
+- [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]` on a non-blueprint type, or documented as experimental) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.
 - [ ] `pixi run lint-rerun CHANGELOG.md docs/content/changelog/changeset-0-XX.md` passes.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).

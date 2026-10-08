@@ -42,7 +42,7 @@ The new audio view shows the waveform and plays the audio while time is playing 
 Playback follows the playback speed between 0.25x and 4x, and each view has its own volume setting.
 
 AAC is limited to AAC-LC for now.
-`AssetAudio` and `AudioView` are unstable: they may change in future releases in a way that the data won't be backwards compatible.
+`AssetAudio` is unstable: it may change in future releases in a way that the data won't be backwards compatible.
 
 [`AssetAudio` reference](../reference/types/archetypes/asset_audio.md)
 [`AudioView` reference](../reference/types/views/audio_view.md)
@@ -74,11 +74,10 @@ PLY loading also uses the faster `ply-rs-bw` 4 API.
 
 Plot lines are thicker, no longer dim, better antialiased, and no longer zig-zag on dense data.
 
-### Experimental state timeline: configure the time axis
+### Configure the state timeline time axis
 
 The [state timeline view](../reference/types/views/state_timeline_view.md) now supports configuring its time axis through the blueprint `time_view` property, just like time series.
 Pan and zoom changes are saved to the blueprint, and the view supports explicit time ranges, zoom locking, and a shared time axis with other plots.
-The state timeline view is experimental and may change in future releases.
 
 <picture>
   <img src="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/full.png" alt="">
@@ -86,7 +85,7 @@ The state timeline view is experimental and may change in future releases.
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/768w.png">
 </picture>
 
-### Experimental state timeline: hover duration
+### State timeline hover duration
 
 [State timeline](../howto/visualization/state-timeline.md) hovers now show a human-readable Length.
 
@@ -166,10 +165,9 @@ You can now filter the column list, bulk hide/show columns and set the new displ
     <source src="https://static.rerun.io/bb2e20c67e75e08ac490a223f0e074379f304b6a_table_column_menu.mp4" type="video/mp4" />
 </video>
 
-### Experimental playback controls for dataset previews
+### Playback controls for dataset previews
 
-Previews in the dataset table and card views now have a new UI, which comes with more time controls.
-Previews are configured with the experimental table blueprint API, which may change in future releases.
+Previews in the dataset table and card views now have a new UI, which comes with more time controls:
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
