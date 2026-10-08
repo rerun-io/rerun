@@ -101,10 +101,10 @@ marimo delivers messages from the Viewer only between cells, so to stream data l
 [Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
-### New table blueprints with experimental table API
+### New table blueprints with python table API
 
 The new `rerun.blueprint.table` Python API lets you conveniently configure table and card layouts.
-This API is experimental and may change in future releases.
+This API is unstable and may break in future releases.
 Customize column order, labels, visibility, and cell renderers, including segment previews and editable boolean flags:
 
 ```python
