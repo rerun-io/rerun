@@ -68,6 +68,11 @@ jupyter notebook cube.ipynb
 
 Follow along in the browser that opens.
 
+## Running in Google Colab
+
+[`cube_colab.ipynb`](https://colab.research.google.com/github/rerun-io/rerun/blob/latest/examples/notebook/notebook/cube_colab.ipynb) is a version of this example that runs in [Google Colab](https://colab.research.google.com/).
+Its first cell installs the latest Rerun release and restarts the runtime.
+
 ## Running in marimo
 
 The same example is available as a [marimo](https://marimo.io/) notebook:
