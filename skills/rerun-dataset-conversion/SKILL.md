@@ -1,6 +1,6 @@
 ---
 name: rerun-dataset-conversion
-description: "Convert a multi-modal robotics dataset (MCAP, HDF5, LeRobot, parquet, raw video) into layered Rerun recordings (.rrd) and a catalog-ready dataset. Use whenever the user wants a dataset converted or ingested into Rerun, a conversion pipeline reviewed or extended, or a layer added to an existing conversion — even when they only say 'convert X to rrd' or 'ingest this dataset'. Routes to the rerun-* skills for Rerun mechanics."
+description: "Convert a multi-modal robotics dataset (MCAP, HDF5, LeRobot, parquet, raw video) into layered Rerun recordings (.rrd) and a catalog-ready dataset. Use whenever the user wants a dataset converted or ingested into Rerun, a conversion pipeline reviewed or extended, or an existing dataset enriched with a new layer — even when they only say 'convert X to rrd', 'ingest this dataset', 'enrich this dataset', or 'append a layer'. Routes to the rerun-* skills for Rerun mechanics."
 ---
 
 # Dataset conversion
@@ -13,20 +13,20 @@ It also provides DOs and DON'Ts for each stage of the conversion process.
 
 The skill and its references use these terms throughout:
 
-| Term           | Meaning                                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| episode        | The source's natural unit of recording.                                                                   |
-| recording id   | The string that identifies one episode's recordings. All of the episode's layers share it.                |
-| layer          | One `.rrd` file per episode. The viewer and the catalog stack an episode's layers into one recording.     |
-| base layer     | The layer that reflects the source. It is the one record, sufficient without the source.                  |
-| segment        | One episode as the catalog sees it: its layers stacked under one recording id.                            |
-| property       | A per-episode value stored as a recording property. The catalog shows it as a column.                     |
-| census         | A count of decoded rows against the source's own counts, so a silent drop surfaces.                       |
-| survey         | The phase that measures sample diversity before any conversion code exists.                               |
+| Term         | Meaning                                                                                               |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| episode      | The source's natural unit of recording.                                                               |
+| recording id | The string that identifies one episode's recordings. All of the episode's layers share it.            |
+| layer        | One `.rrd` file per episode. The viewer and the catalog stack an episode's layers into one recording. |
+| base layer   | The layer that reflects the source. It is the one record, sufficient without the source.              |
+| segment      | One episode as the catalog sees it: its layers stacked under one recording id.                        |
+| property     | A per-episode value stored as a recording property. The catalog shows it as a column.                 |
+| census       | A count of decoded rows against the source's own counts, so a silent drop surfaces.                   |
+| survey       | The phase that measures sample diversity before any conversion code exists.                           |
 
 ## What this skill adds, and what it routes away
 
-This skill adds how a conversion is shaped, decided, and validated, and which judgment calls recur from one dataset to the next.
+This skill adds how a conversion, or a layer addition, is shaped, decided, and validated, and which judgment calls recur from one dataset to the next.
 
 The `rerun-*` skills cover the Rerun mechanics, and this skill routes to them instead of repeating them.
 Read each one at the stage that needs it:
@@ -45,6 +45,7 @@ A conversion project's conventions belong in that project's own docs. The skill 
 
 - Code that downloads or loads, converts (produces the 'base', a reflection of the source), and enriches (produces other 'layers' and a blueprint).
 - Documentation that helps users run the code, understand the source data, and use the converted data.
+- Optional: code that derives new layers from already-converted data.
 
 ## Principles
 
@@ -95,12 +96,12 @@ For example:
    Understand their underlying format and contents.
 2. Survey the diversity (ranges or distributions) of the samples.
    Common dimensions to look at:
-   - FPS
-   - Image size and format. If video, resolution and encoding spec (GOP, codec)
-   - Missing / extra topics
-   - Empty or invalid values
-   - Anything off from what's expected or very unusual
-   - Metadata consistency
+    - FPS
+    - Image size and format. If video, resolution and encoding spec (GOP, codec)
+    - Missing / extra topics
+    - Empty or invalid values
+    - Anything off from what's expected or very unusual
+    - Metadata consistency
 3. Record the survey in a readable format (markdown) for the user's review as well as future reference.
    Keep a list of exemplar episodes for testing.
    Pause for user to review the survey.
@@ -144,10 +145,16 @@ Pause for user to sign-off on the conversion mapping, properties record, and lay
 
 ### Step 6 [optional]: enrich the data
 
-1. Decide whether to include more visual elements (URDF) or post-processed data as extra layers based on user's needs.
-2. Update the blueprint to include new layers as needed.
+At this step, the user decides whether to enrich the dataset with external data, such as a URDF model, or with data derived from existing layers, such as embeddings.
+Enrichment may run as its own process, with or without a conversion.
 
-> **DO** check the viewer performance and the correctness of labels with the user for every major blueprint update.
+Once the user decides to enrich the dataset, write the new layer module.
+
+Depending on the operation the layer needs, the compute environment (single machine or distributed workers), and how the dataset is managed (RRD files or a registered catalog), the implementation differs.
+See [Guidelines: enrichment](#guidelines-enrichment).
+
+> **DO** update the blueprint to include new layers if the user wants.
+> Check the viewer performance and the correctness of labels with the user for every major blueprint update.
 
 ### Step 7: use the data
 
@@ -212,3 +219,8 @@ See [Why Use Layers](https://rerun.io/docs/howto/logging-and-ingestion/layers#wh
 - Even if the output can be produced at the same time when the base layer is produced, if it is heavily dependent on external resources rather than part of the conversion processing (e.g. URDF layer), write it as a separate layer.
 
 There is no universal rule for when to create a separate layer; make suggestions based on the guidelines above and let the user make the final decision.
+
+### Post-processing converted data
+
+Read `references/post-processing.md` before deriving a layer from data that is already converted.
+It covers what to ask the user, whether the operation needs chunk processing or a dataframe query, and how to write and stage the layer.
