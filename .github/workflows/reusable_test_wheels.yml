@@ -182,6 +182,7 @@ jobs:
           }
           JSON
           echo "LD_LIBRARY_PATH=/opt/mesa/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          echo "RERUN_CI_SOFTWARE_RASTERIZER=lavapipe" >> "$GITHUB_ENV"
 
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
