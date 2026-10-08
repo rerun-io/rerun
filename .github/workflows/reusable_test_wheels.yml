@@ -159,6 +159,30 @@ jobs:
           pixi run uv pip show rerun-sdk
           pixi run uvpy -m rerun --version
 
+      # The headless-viewer integration tests need a Vulkan adapter, but this container is a GPU-less manylinux_2_28 image.
+      # conda-forge's lavapipe is built on a low glibc baseline, so it runs on el8's glibc 2.28,
+      # unlike the gfx-rs mesa that `setup_software_rasterizer.py` installs (which needs glibc 2.29).
+      - name: Install Vulkan loader (linux-x64 only)
+        if: ${{ inputs.PLATFORM == 'linux-x64' }}
+        run: dnf install -y vulkan-loader bzip2
+
+      - name: Set up lavapipe software rasterizer (linux-x64 only)
+        if: ${{ inputs.PLATFORM == 'linux-x64' }}
+        # The container runs as root, so the loader ignores VK_DRIVER_FILES:
+        # register the ICD in a default search dir with an absolute library path instead.
+        run: |
+          export MAMBA_ROOT_PREFIX=/opt/mamba
+          curl -Ls --retry 5 https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj bin/micromamba
+          ./bin/micromamba create -y -p /opt/mesa -c conda-forge mesalib
+          mkdir -p /usr/share/vulkan/icd.d
+          cat > /usr/share/vulkan/icd.d/lvp_icd.x86_64.json <<'JSON'
+          {
+              "ICD": { "api_version": "1.3.255", "library_path": "/opt/mesa/lib/libvulkan_lvp.so" },
+              "file_format_version": "1.0.0"
+          }
+          JSON
+          echo "LD_LIBRARY_PATH=/opt/mesa/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         # Workaround for OpenCV TLS issue, see https://github.com/opencv/opencv/issues/14884#issuecomment-815632861

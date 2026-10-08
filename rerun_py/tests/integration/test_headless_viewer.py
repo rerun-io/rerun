@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # The wheel-test CI installs a software rasterizer only on linux-x64 (see
-# `.github/workflows/rerun_reusable_test_wheels.yml`). On linux-arm64 the
+# `.github/workflows/reusable_test_wheels.yml`). On linux-arm64 the
 # manylinux container has no Vulkan adapter, so the headless viewer panics on
 # startup with "No graphics adapter was found".
 pytestmark = pytest.mark.skipif(
