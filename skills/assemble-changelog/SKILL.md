@@ -144,6 +144,9 @@ The generated section is a starting point; edit it by hand so readers can find t
   Order that subsection by impact too, and don't repeat "Experimental" in its entries.
   Ignore unstable internal blueprint types (e.g. `ViewBlueprint`) that users don't touch directly; label user-facing features that depend on an experimental API (e.g. previews, which only exist through table blueprints).
 - **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
+  Aim for a few images (roughly three to five), covering the most visual headline features: a picture sells a new view or renderer feature far better than a bullet does.
+  Start from the media already in the changeset and the PR descriptions; if a visual feature has none, ask the user for a screenshot rather than skipping it.
+  Don't add images to every entry: API, CLI, and bug-fix items rarely benefit.
   All media must live on `static.rerun.io`.
   Reuse a PR's media only if it is already on `static.rerun.io` or publicly accessible: `github.com/user-attachments/…` links from the private monorepo return 404 for the public.
   Download those with `curl -L -H "Authorization: token $(gh auth token)" <url>` and upload them with `pixi run upload-image <file> --name <name>`.
@@ -160,7 +163,7 @@ Never add redirects for these temporary entries.
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
 - [ ] No summaries or other prose were synthesized for existing entries.
-- [ ] The `CHANGELOG.md` overview is ordered by impact, its headline features have `static.rerun.io` media, and its breaking changes link to the changeset subheadings.
+- [ ] The `CHANGELOG.md` overview is ordered by impact, a few of its most visual headline features have `static.rerun.io` images, and its breaking changes link to the changeset subheadings.
 - [ ] Every overview and detail entry that has relevant docs links to them.
 - [ ] Each details subsection groups entries by feature, most impactful first.
 - [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]`) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.

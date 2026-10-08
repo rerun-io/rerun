@@ -4,7 +4,7 @@
 
 ### ✨ Overview & highlights
 
-- Text in any language, and color emoji
+- Text in any language, and color emoji 🚀 希望你喜欢这个
 - [Rerun Viewer in marimo notebooks](https://rerun.io/docs/howto/integrations/embed-notebooks#running-in-marimo)
 - [Raw Bayer images](https://rerun.io/docs/reference/types/encodings/pixel_format)
 - [PLY mesh and 2D point support](https://rerun.io/docs/getting-started/data-in/open-any-file)
@@ -118,19 +118,19 @@ These may change in future releases, and unstable types may not stay backwards c
 - Remove legacy `WriteChunks` from Catalog APIs ([migration guide](https://rerun.io/docs/reference/migration/migration-0-39#writechunks-removed)) [a305975](https://github.com/rerun-io/rerun/commit/a3059759fe5b531eecb5282f70ac2960f124b43f)
 
 #### 🚀 Performance improvements
-- Remove the phase-1 synchronous dataset-manifest writes from registration [d949cde](https://github.com/rerun-io/rerun/commit/d949cde2b741f6db2efc379ee6cc34dd42f4a57b)
-- Retry dataset reads until the requested revision is promoted [3f1659b](https://github.com/rerun-io/rerun/commit/3f1659b6b07beb9923e0fd5da7a1d51aeda2aa89)
 - Don't decode video for pinholes that aren't in frustum [ea44c8f](https://github.com/rerun-io/rerun/commit/ea44c8f505e5611aee78dd916240e3ff6c857058)
+- Retry dataset reads until the requested revision is promoted [3f1659b](https://github.com/rerun-io/rerun/commit/3f1659b6b07beb9923e0fd5da7a1d51aeda2aa89)
 - Use `egui_table` for [`TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log) visualizer [98f0297](https://github.com/rerun-io/rerun/commit/98f0297aebe18b5362d8f677dd7af2d2f306d7e0)
+- Remove the phase-1 synchronous dataset-manifest writes from registration [d949cde](https://github.com/rerun-io/rerun/commit/d949cde2b741f6db2efc379ee6cc34dd42f4a57b)
 
 #### 🧑‍🏫 Examples
 - Make arrows3d_simple snippet consistent across languages [#12947](https://github.com/rerun-io/rerun/pull/12947) (thanks [@klausondrag](https://github.com/klausondrag)!)
 
 #### 🖼 UI improvements
+- Name every panel and icon button in the accessibility tree [84bae5c](https://github.com/rerun-io/rerun/commit/84bae5c405eaf7a5415d7aad309d1dde7ccc12df)
 - Improve [preview](https://rerun.io/docs/howto/visualization/configure-table-blueprints) UI [9723aa5](https://github.com/rerun-io/rerun/commit/9723aa50d9253d1a29740024343551a39a0f91c3)
 - Add column display mode setting [c6735bb](https://github.com/rerun-io/rerun/commit/c6735bb47212f32106159f5ab29393ae0c828e93)
 - Paste images into the agent panel [51a0aaa](https://github.com/rerun-io/rerun/commit/51a0aaa77fa6d2ec189adefbddab0211ad20771b)
-- Name every panel and icon button in the accessibility tree [84bae5c](https://github.com/rerun-io/rerun/commit/84bae5c405eaf7a5415d7aad309d1dde7ccc12df)
 
 #### 🕸️ Web
 - Allow opting out of startup update checks from [JS API](https://ref.rerun.io/docs/js/) [64df84f](https://github.com/rerun-io/rerun/commit/64df84f6151b96b9128e6bdaeeac013902c8cf07)
