@@ -232,11 +232,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Without `segment_table`, `uri` is a viewport blueprint for the dataset's individual recordings.
         With `segment_table=True`, `uri` is a table blueprint for the dataset's segment table,
-        configuring its columns, cards, and segment previews.
+        configuring its columns, cards, and recording previews.
         `segment_table` has no effect when `set_default=False`.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
         for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
@@ -1622,7 +1622,7 @@ class TableEntry(Entry[TableEntryInternal]):
         By default, also set this blueprint as default.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
         for examples of configuring columns, cards, and previews, then saving and registering the result.
 
         The associated blueprint dataset is owned by this table for lifecycle purposes.

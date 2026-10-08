@@ -1,15 +1,15 @@
 ---
-title: Configure table layouts and segment previews
+title: Configure table layouts and recording previews
 order: 550
 description: Use Python table blueprints to customize catalog tables and dataset segment tables
 ---
 
-Use table blueprints to order, rename, or hide columns, embed segment previews, and display rows as cards in catalog tables and dataset segment tables.
+Use table blueprints to order, rename, or hide columns, embed recording previews, and display rows as cards in catalog tables and dataset segment tables.
 
 > [!NOTE]
 > The `rerun.blueprint.table` API is experimental and may change in future releases.
 
-Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
+Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and recording previews use the same view classes, such as `Spatial3DView`.
 
 The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
@@ -41,8 +41,8 @@ Multiple views are shown side by side.
 
 ### Configuring card and table layouts
 
-A card displays one table row as a tile with a title, selected fields, and optional segment previews.
-Cards provide a visual alternative to rows and columns and are often much better suited to show a series of segment previews.
+A card displays one table row as a tile with a title, selected fields, and optional recording previews.
+Cards provide a visual alternative to rows and columns and are often much better suited to show a series of recording previews.
 
 Let's show previews on cards, and put the recording link and episode metadata first in the table:
 
@@ -54,7 +54,7 @@ snippet: howto/visualization/configure_table_blueprints[layouts]
 - `fields`: the columns to display, in order, including any previews; unlisted fields are hidden.
 
 <picture>
-  <img src="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/full.png" alt="Card layout with the episode UUID as title, a 3D segment preview, and the current task on each card">
+  <img src="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/full.png" alt="Card layout with the episode UUID as title, a 3D recording preview, and the current task on each card">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1024w.png">
@@ -132,7 +132,7 @@ The runnable snippet above covers the basic workflow.
 For more complete examples, including setup and usage instructions, see:
 
 - [Table blueprints](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints/README.md): multiple preview views (3D, 2D, and plots), editable flags, and registration on local or remote catalogs.
-- [Table grid with flags](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_grid_with_flags/README.md): a standalone editable table demonstrating row keys and persisted flag updates, without segment previews.
+- [Table grid with flags](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_grid_with_flags/README.md): a standalone editable table demonstrating row keys and persisted flag updates, without recording previews.
 
 For more about catalog entries and their blueprints, see the [Catalog object model](../../concepts/query-and-transform/catalog-object-model.md).
 For the available configuration options, see the [Python table blueprint API reference](https://ref.rerun.io/docs/python/stable/blueprint_table/).

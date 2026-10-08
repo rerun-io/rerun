@@ -1,5 +1,5 @@
 """
-Configure catalog table layouts, columns, and segment previews.
+Configure catalog table layouts, columns, and recording previews.
 
 ⚠️ **The `rerun.blueprint.table` namespace is _unstable_ and may change significantly.**
 """
@@ -193,12 +193,12 @@ class CardLayout:
 @dataclass(frozen=True, kw_only=True)
 class TableBlueprint:
     """
-    Configure layouts and segment previews for a catalog table.
+    Configure layouts and recording previews for a catalog table.
 
     This configures a table, not a Viewer viewport [`Blueprint`][rerun.blueprint.Blueprint].
     Save it as an `.rbl` file and register its server-accessible URI with
     `TableEntry.register_blueprint(uri)` or `DatasetEntry.register_blueprint(uri, segment_table=True)`.
-    See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints) for the full workflow.
+    See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints) for the full workflow.
 
     Parameters
     ----------

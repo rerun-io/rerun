@@ -12,7 +12,7 @@ For maximum control and automation, you can define [Blueprints](../../concepts/v
 -   Sending different blueprints based on runtime conditions
 
 This guide configures the viewport for individual recordings.
-To configure catalog table columns or embedded segment previews instead, see [Configure table layouts and segment previews](configure-table-blueprints.md).
+To configure catalog table columns or embedded recording previews instead, see [Configure table layouts and recording previews](configure-table-blueprints.md).
 
 ### Getting started example
 

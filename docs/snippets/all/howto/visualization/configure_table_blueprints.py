@@ -1,8 +1,8 @@
 """
-Configure table layouts and segment previews with Python blueprints.
+Configure table layouts and recording previews with Python blueprints.
 
 Creates a table from DROID episode properties and registers blueprints that
-show metadata and recording links in rows, or segment previews on cards.
+show metadata and recording links in rows, or recording previews on cards.
 Both the catalog table and the dataset's segment table use these layouts.
 Also registers an editable-flag blueprint without making it the default.
 

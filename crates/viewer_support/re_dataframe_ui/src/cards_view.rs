@@ -12,7 +12,7 @@ use crate::DisplayRecordBatch;
 use crate::blueprint::CardLayout;
 use crate::datafusion_table_widget::{DataColumns, ResolvedFlagColumn, find_row_batch};
 use crate::display_record_batch::DisplayColumn;
-use crate::preview_renderer::SegmentPreviewRenderer;
+use crate::preview_renderer::RecordingPreviewRenderer;
 
 /// Height of the segment preview area inside each card.
 const PREVIEW_HEIGHT: f32 = 200.0;
@@ -44,7 +44,7 @@ pub fn cards_ui(
     columns: &DataColumns<'_>,
     display_record_batches: &[DisplayRecordBatch],
     card_layout: &CardLayout<'_>,
-    view_renderers: &[SegmentPreviewRenderer<'_>],
+    view_renderers: &[RecordingPreviewRenderer<'_>],
     view_states: &mut ViewStates,
     num_table_rows: u64,
     editable_flag_columns: &[ResolvedFlagColumn],
@@ -68,7 +68,7 @@ pub fn cards_ui(
     // footprint as a single-view card.
     let max_num_views_horizontal = view_renderers
         .iter()
-        .map(SegmentPreviewRenderer::num_views)
+        .map(RecordingPreviewRenderer::num_views)
         .max()
         .unwrap_or(1);
     let card_min_width = tokens.table_grid_view_card_min_width * max_num_views_horizontal as f32;
@@ -146,7 +146,7 @@ fn card_content_ui(
     ctx: &AppContext<'_>,
     config: &CardConfig<'_>,
     ui: &mut Ui,
-    view_renderers: &[SegmentPreviewRenderer<'_>],
+    view_renderers: &[RecordingPreviewRenderer<'_>],
     view_states: &mut ViewStates,
     row_idx: u64,
     data_columns: &DataColumns<'_>,
