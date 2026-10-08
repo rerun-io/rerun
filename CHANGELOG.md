@@ -96,6 +96,8 @@ These may change in future releases, and unstable types may not stay backwards c
 - Fix missing component warnings on state view [c7e9023](https://github.com/rerun-io/rerun/commit/c7e9023ae13d332e5cbb1a06e6d6c5aa612ea55d)
 - Print full anyhow context in re_mcap and re_ros_msg errors [#12942](https://github.com/rerun-io/rerun/pull/12942) (thanks [@DrMkdaddy](https://github.com/DrMkdaddy)!)
 - Fix URL in `rerun analytics details` [534e618](https://github.com/rerun-io/rerun/commit/534e61815f4d1290e6be9c433295a57ace52b27b)
+- Fix: new default table blueprints are loaded by viewer [8073939](https://github.com/rerun-io/rerun/commit/807393946e62770337492b5d8babb0a2c0ed95a7)
+- docs: clarify GeoLineStrings per-line styling [#12958](https://github.com/rerun-io/rerun/pull/12958) (thanks [@mikamikasuki](https://github.com/mikamikasuki)!)
 
 #### 🌁 Viewer improvements
 - [Volume raymarcher](https://rerun.io/docs/reference/types/archetypes/volume3d) [94372cf](https://github.com/rerun-io/rerun/commit/94372cfe6dee6890c697d85ed2c886b841a7e970) (thanks [@aedm](https://github.com/aedm)!)
@@ -122,6 +124,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - Retry dataset reads until the requested revision is promoted [3f1659b](https://github.com/rerun-io/rerun/commit/3f1659b6b07beb9923e0fd5da7a1d51aeda2aa89)
 - Use `egui_table` for [`TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log) visualizer [98f0297](https://github.com/rerun-io/rerun/commit/98f0297aebe18b5362d8f677dd7af2d2f306d7e0)
 - Remove the phase-1 synchronous dataset-manifest writes from registration [d949cde](https://github.com/rerun-io/rerun/commit/d949cde2b741f6db2efc379ee6cc34dd42f4a57b)
+- Cache DataQueryResult for much faster handling of many views & entities [507e5c4](https://github.com/rerun-io/rerun/commit/507e5c4ae40cbc9c2f44ede2f2906dfefb361258)
 
 #### 🧑‍🏫 Examples
 - Make arrows3d_simple snippet consistent across languages [#12947](https://github.com/rerun-io/rerun/pull/12947) (thanks [@klausondrag](https://github.com/klausondrag)!)
