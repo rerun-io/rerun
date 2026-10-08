@@ -101,11 +101,11 @@ marimo delivers messages from the Viewer only between cells, so to stream data l
 [Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
-### Experimental Python API for table blueprints
+### New table blueprints with experimental table API
 
 The new `rerun.blueprint.table` Python API lets you conveniently configure table and card layouts.
 This API is experimental and may change in future releases.
-Customize column order, labels, visibility, and cell renderers, including recording previews and editable boolean flags:
+Customize column order, labels, visibility, and cell renderers, including segment previews and editable boolean flags:
 
 ```python
 from pathlib import Path
@@ -144,7 +144,7 @@ client.get_table("my_table").register_blueprint(path.as_uri())
 ```
 
 <picture>
-  <img src="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/full.png" alt="Card layout with the episode UUID as title, a 3D recording preview, and the current task on each card">
+  <img src="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/full.png" alt="Card layout with the episode UUID as title, a 3D segment preview, and the current task on each card">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1024w.png">
@@ -153,27 +153,27 @@ client.get_table("my_table").register_blueprint(path.as_uri())
 
 The `.rbl` file must be accessible to the server.
 For a remote server, upload it to shared storage and pass that URI to `register_blueprint` instead.
-See [Configure table layouts and recording previews](../howto/visualization/configure-table-blueprints.md?speculative-link) for the full workflow, including dataset segment tables and remote storage.
+See [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md?speculative-link) for the full workflow, including dataset and remote storage.
 For more configurations, see the [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints).
 
-### Improved column settings, with search, display mode and bulk hide/show
+### Improved table column settings, with search, display mode and bulk hide/show
 
-With this update, organizing columns in your dataset table got a lot more convenient!
+With this update, organizing columns in your table got a lot more convenient!
 You can now filter the column list, bulk hide/show columns and set the new display mode to choose if you want to see a short and humanized name or the full physical path.
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/bb2e20c67e75e08ac490a223f0e074379f304b6a_table_column_menu.mp4" type="video/mp4" />
 </video>
 
-### Playback controls for dataset previews
+### Playback controls for segment previews
 
-Previews in the dataset table and card views now have a new UI, which comes with more time controls:
+Previews in the table and card views now have a new UI, which comes with more time controls:
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
 </video>
 
-[Configure table layouts and recording previews](../howto/visualization/configure-table-blueprints.md?speculative-link)
+[Configure table layouts and previews](../howto/visualization/configure-table-blueprints.md?speculative-link)
 
 ### Assets can specify what segments they apply to
 
