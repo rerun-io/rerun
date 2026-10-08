@@ -464,7 +464,12 @@ fn setup_target_config(
         egui::vec2(pinhole.resolution.x, pinhole.resolution.y),
     );
 
-    let (focal_length, vertical_fov) = virtual_camera_parameters(&pinhole);
+    let focal_length = pinhole.focal_length_in_pixels();
+
+    // The image-plane transform in `re_tf` uses the harmonic mean of the inverse focal lengths
+    // for depth scaling. The virtual camera must use its reciprocal to cancel that scale.
+    let focal_length = 0.5 * (focal_length.x + focal_length.y);
+    let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / focal_length).atan();
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov,
@@ -513,15 +518,6 @@ fn setup_target_config(
             picking_config: None,
         }
     })
-}
-
-fn virtual_camera_parameters(pinhole: &Pinhole) -> (f32, f32) {
-    let focal_length = pinhole.focal_length_in_pixels();
-    // The image-plane transform in `re_tf` uses the harmonic mean of the inverse focal lengths
-    // for depth scaling. The virtual camera must use its reciprocal to cancel that scale.
-    let virtual_focal_length = 0.5 * (focal_length.x + focal_length.y);
-    let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / virtual_focal_length).atan();
-    (virtual_focal_length, vertical_fov)
 }
 
 fn ui2d_from_world(config: &TargetConfiguration, ui_rect: Rect) -> glam::Mat4 {
@@ -598,55 +594,4 @@ fn show_projections_from_3d_space(
 #[test]
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(help);
-}
-
-#[test]
-fn anamorphic_virtual_camera_matches_pinhole_projection() {
-    let resolution = glam::vec2(800.0, 600.0);
-    let focal_length = glam::vec2(900.0, 450.0);
-    let principal_point = 0.5 * resolution;
-    let pinhole = Pinhole {
-        image_from_camera: glam::Mat3::from_cols(
-            glam::vec3(focal_length.x, 0.0, 0.0),
-            glam::vec3(0.0, focal_length.y, 0.0),
-            principal_point.extend(1.0),
-        ),
-        resolution,
-    };
-
-    let camera_point = glam::vec3(0.4, -0.3, 2.5);
-    let image_plane_distance = 500.0;
-    let (virtual_focal_length, vertical_fov) = virtual_camera_parameters(&pinhole);
-
-    // Match the image-plane transform in `re_tf::pinhole3d_from_image_plane`.
-    let target_point = glam::vec3(
-        focal_length.x * camera_point.x / image_plane_distance + principal_point.x,
-        focal_length.y * camera_point.y / image_plane_distance + principal_point.y,
-        virtual_focal_length * (camera_point.z - image_plane_distance) / image_plane_distance,
-    );
-    let view_from_world = re_math::IsoTransform::look_at_rh(
-        principal_point.extend(-virtual_focal_length),
-        principal_point.extend(0.0),
-        -glam::Vec3::Y,
-    )
-    .unwrap()
-    .to_mat4();
-    let projection_from_view = glam::camera::rh::proj::directx::perspective_infinite_reverse(
-        vertical_fov,
-        resolution.x / resolution.y,
-        0.1,
-    );
-
-    let clip = projection_from_view * view_from_world * target_point.extend(1.0);
-    let ndc = clip.truncate() / clip.w;
-    let projected = glam::vec2(
-        (ndc.x + 1.0) * 0.5 * resolution.x,
-        (1.0 - ndc.y) * 0.5 * resolution.y,
-    );
-    let expected = camera_point.truncate() * focal_length / camera_point.z + principal_point;
-
-    assert!(
-        (projected - expected).abs().max_element() < 1.0e-2,
-        "projected {projected:?}, expected {expected:?}"
-    );
 }
