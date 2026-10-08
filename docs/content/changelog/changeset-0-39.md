@@ -95,11 +95,11 @@ marimo delivers messages from the Viewer only between cells, so to stream data l
 
 ### New table blueprints with Python table API
 
-Today, there's two types of table in the Rerun catalog, table entries and segment tables associated with datasets.
+Today, there are two types of tables in the Rerun catalog, table entries and segment tables associated with datasets.
 In a recent release we introduced special table blueprints to configure them.
 Tables can be configured with two different layouts: table layouts and card layouts (which are particularly useful for segment previews!).
 
-In these release, we're making table blueprints more powerful and add a `rerun.blueprint.table` Python API to configure them more conveniently!
+In this release, we're making table blueprints more powerful and adding a `rerun.blueprint.table` Python API to configure them more conveniently!
 
 Example:
 
@@ -148,7 +148,7 @@ client.get_table("my_table").register_blueprint(path.as_uri())
 </picture>
 
 There's also a new doc page: [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
-Existing [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints) have of course been updated as well.
+The existing [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints) has of course been updated as well.
 
 ### Improved table column settings, with search, display mode and bulk hide/show
 

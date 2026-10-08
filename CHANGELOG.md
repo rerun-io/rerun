@@ -8,11 +8,11 @@
 - [Rerun Viewer in marimo notebooks](https://rerun.io/docs/howto/integrations/embed-notebooks#running-in-marimo)
 - [Raw Bayer images](https://rerun.io/docs/reference/types/encodings/pixel_format)
 - [PLY mesh and 2D point support](https://rerun.io/docs/getting-started/data-in/open-any-file)
-- [Playback controls for dataset previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+- [Playback controls for segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
 - [Configure the state timeline time axis](https://rerun.io/docs/reference/types/views/state_timeline_view)
 - [State timeline hover duration](https://rerun.io/docs/howto/visualization/state-timeline)
 - [String literals in lens selectors](https://rerun.io/docs/concepts/query-and-transform/lenses)
-- Improved column settings, with search, display mode and bulk hide/show
+- Improved table column settings, with search, display mode and bulk hide/show
 
   <picture>
     <img src="https://static.rerun.io/table-column-settings/8c2a30ef746f130c0e97ceeebbf50d600e7c396e/full.png" alt="Column settings menu with show/hide-all buttons and the column display format submenu" width="843">
@@ -47,7 +47,7 @@ These may change in future releases, and unstable types may not stay backwards c
     <source media="(max-width: 768px)" srcset="https://static.rerun.io/audio-view/6596c044bfbb51ed4b01f3f28891025a8ae1f7b2/768w.png">
   </picture>
 
-- [Python API for table blueprints](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+- [New table blueprints with Python table API](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
 
 📖 Release notes: https://rerun.io/docs/changelog/changeset-0-39#highlights
 
