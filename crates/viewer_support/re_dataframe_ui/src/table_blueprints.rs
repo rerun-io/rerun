@@ -325,6 +325,13 @@ impl TableBlueprints {
         let Some(active_id) = self.active_id(table_ref) else {
             return Ok(());
         };
+
+        // An unedited clone of the default must not be persisted: once loaded, a persisted
+        // blueprint counts as edited and would shadow any later default from the server.
+        if !self.active_is_modified(table_ref, active_id, store_hub.store_bundle()) {
+            return Ok(());
+        }
+
         store_hub.save_persisted_blueprint_if_changed(
             &BlueprintPersistenceKey::Table(Box::new(table_ref.clone())),
             active_id,
@@ -624,6 +631,34 @@ mod tests {
         assert!(hub.store_bundle().get(&default_id).is_some());
     }
 
+    /// A new default from the server must reach a table whose blueprint was never edited,
+    /// both in the same session and after a restart.
+    #[test]
+    fn new_default_replaces_unedited_active() {
+        let (mut hub, persisted) = test_hub();
+        let table_ref = table_ref();
+        let mut blueprints = TableBlueprints::default();
+        register_default(&mut hub, &mut blueprints, &table_ref);
+
+        let second_default = register_default(&mut hub, &mut blueprints, &table_ref);
+        let active_id = blueprints.active_id(&table_ref).unwrap();
+        assert_eq!(
+            hub.store_bundle().get(active_id).unwrap().cloned_from(),
+            Some(&second_default)
+        );
+
+        blueprints.close_table(&table_ref, &mut hub);
+        assert!(persisted.lock().is_empty());
+
+        let mut restarted = TableBlueprints::default();
+        let third_default = register_default(&mut hub, &mut restarted, &table_ref);
+        let active_id = restarted.active_id(&table_ref).unwrap();
+        assert_eq!(
+            hub.store_bundle().get(active_id).unwrap().cloned_from(),
+            Some(&third_default)
+        );
+    }
+
     #[test]
     fn modified_registered_blueprint_round_trips_after_close() {
         let (mut hub, persisted) = test_hub();
@@ -656,6 +691,7 @@ mod tests {
         let table_ref = TableReference::local("local");
         let mut blueprints = TableBlueprints::default();
         register_default(&mut hub, &mut blueprints, &table_ref);
+        edit_active(&mut hub, &blueprints, &table_ref);
 
         blueprints.save_persisted_blueprints(&mut hub).unwrap();
 

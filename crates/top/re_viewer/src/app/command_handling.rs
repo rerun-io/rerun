@@ -525,6 +525,11 @@ impl App {
                             self.state
                                 .redap_servers
                                 .refresh_entry(origin, *entry_id, egui_ctx);
+                            self.state.redap_servers.refresh_entry_default_blueprint(
+                                origin,
+                                *entry_id,
+                                &self.command_sender,
+                            );
                         }
                     }
                     re_ui::TableCommandKind::ResetBlueprintToDefault => {
