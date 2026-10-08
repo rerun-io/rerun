@@ -214,6 +214,7 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 ecolor = "0.36.2"
 eframe = { version = "0.36.2", default-features = false, features = [
   "accesskit",
+  "clipboard",
   "inspection",
   "links",
   "system_fonts",
