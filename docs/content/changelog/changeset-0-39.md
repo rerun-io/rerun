@@ -93,7 +93,7 @@ marimo delivers messages from the Viewer only between cells, so to stream data l
 [Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
-### New table blueprints with python table API
+### New table blueprints with Python table API
 
 Today, there's two types of table in the Rerun catalog, table entries and segment tables associated with datasets.
 In a recent release we introduced special table blueprints to configure them.
