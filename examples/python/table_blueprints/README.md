@@ -36,7 +36,7 @@ Please edit these functions before using it with your own data — the defaults 
 - `make_dataset_blueprints` — the `rrb.table.TableBlueprint` layouts, columns, preview cells, and timeline.
 - `make_segment_table_blueprint` — the blueprint registered on the dataset's own segment table (views, timeline).
 
-See [Configure table layouts and recording previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints?speculative-link) for table blueprint API examples.
+See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints?speculative-link) for table blueprint API examples.
 
 ## Run the code
 

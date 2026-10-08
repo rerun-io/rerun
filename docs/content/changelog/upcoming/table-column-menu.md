@@ -1,12 +1,12 @@
 ---
-title: "Improved column settings, with search, display mode and bulk hide/show"
+title: "Improved table column settings, with search, display mode and bulk hide/show"
 hidden: true
 type: feature
 ---
 
-### Improved column settings, with search, display mode and bulk hide/show
+### Improved table column settings, with search, display mode and bulk hide/show
 
-With this update, organizing columns in your dataset table got a lot more convenient!
+With this update, organizing columns in your table got a lot more convenient!
 You can now filter the column list, bulk hide/show columns and set the new display mode to choose if you want to see a short and humanized name or the full physical path.
 
 <video width="100%" autoplay loop muted controls>

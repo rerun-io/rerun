@@ -26,8 +26,8 @@ Internally, properties are logged under a reserved `/__properties` entity path a
 ## Displaying the segment table
 
 To customize how the segment table appears in the Viewer, use a table blueprint.
-You can choose columns, enable cards, and embed recording previews without changing the underlying properties.
-See [Configure table layouts and recording previews](../../howto/visualization/configure-table-blueprints.md) for a Python example and registration instructions.
+You can choose columns, enable cards, and embed segment previews without changing the underlying properties.
+See [Configure table layouts and segment previews](../../howto/visualization/configure-table-blueprints.md) for a Python example and registration instructions.
 
 ## Querying the segment table
 
