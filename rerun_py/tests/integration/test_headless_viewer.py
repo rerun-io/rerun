@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import socket
 import sys
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # The wheel-test CI installs a software rasterizer only on linux-x64 (see
-# `.github/workflows/rerun_reusable_test_wheels.yml`). On linux-arm64 the
+# `.github/workflows/reusable_test_wheels.yml`). On linux-arm64 the
 # manylinux container has no Vulkan adapter, so the headless viewer panics on
 # startup with "No graphics adapter was found".
 pytestmark = pytest.mark.skipif(
@@ -87,6 +88,10 @@ def test_viewer_dies_on_client_close() -> None:
         assert connection.connect_ex(("127.0.0.1", port)) != 0
 
 
+@pytest.mark.skipif(
+    os.environ.get("RERUN_CI_SOFTWARE_RASTERIZER") == "lavapipe",
+    reason="RR-5124: the viewer segfaults in llvmpipe's LLVM JIT while creating its Vulkan device",
+)
 def test_viewer_can_restart_on_same_port() -> None:
     port = _find_free_port()
     for _ in range(4):

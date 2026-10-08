@@ -2740,7 +2740,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.51.36231-h1b9f54f_39.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_39.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.51.36231-h84cd919_39.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.37.32822-h0123c8e_17.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.44.35207-ha74f236_41.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/wasm-pack-0.15.0-h18a1a76_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/x264-1!164.3095-h8ffe710_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
@@ -18198,13 +18198,13 @@ packages:
   run_exports: {}
   size: 20355
   timestamp: 1781320968804
-- conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.37.32822-h0123c8e_17.conda
-  sha256: 259b5d4ac07b131bf15bf1a2d101eb9eb039e32cfef57de79061cb4c8f1889fe
-  md5: 8b02594cf497f7516a3ed20a164de75e
+- conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.44.35207-ha74f236_41.conda
+  sha256: 9d7d1b43cf4af5a8e8b1646175c9f899ffbcab189a33ac41127a96e7bcf41af0
+  md5: 04190e0ebd886433300ce9343ee98942
   depends:
   - vswhere
   constrains:
-  - vs_win-64 2022.*
+  - vs_win-64 2022.14
   track_features:
   - vc14
   license: BSD-3-Clause
@@ -18213,10 +18213,10 @@ packages:
   run_exports:
     strong:
     - vc >=14.3,<15
-    - vc14_runtime >=14.36.32532
+    - vc14_runtime >=14.44.35208
     - ucrt >=10.0.20348.0
-  size: 19405
-  timestamp: 1694292390059
+  size: 25462
+  timestamp: 1785358620723
 - conda: https://conda.anaconda.org/conda-forge/win-64/wasm-pack-0.15.0-h18a1a76_0.conda
   sha256: 706828365c117cfcc8c4c0e28e2d41d14061152c89a47b4e60dff4319b390651
   md5: c1d45f169e2717a1c22d5d275474df8a

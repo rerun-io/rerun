@@ -733,7 +733,7 @@ c-compiler = "1.11.0.*"
 cxx-compiler = "1.11.0.*"
 
 [feature.cpp.target.win-64.dependencies]
-vs2022_win-64 = "19.37.32822.*"
+vs2022_win-64 = "19.44.35207.*"
 
 [feature.cpp.pypi-dependencies]
 ghp-import = "==2.1.0" # for CI documentation handling

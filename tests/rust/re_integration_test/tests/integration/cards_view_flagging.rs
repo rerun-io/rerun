@@ -79,8 +79,11 @@ pub async fn cards_view_flagging() {
         )),
         ..Default::default()
     });
-    viewer_test_utils::step_until("table data loads", &mut harness, |harness| {
+    // The table blueprint streams in separately from the table data,
+    // and the layout switcher only appears once its card layout has arrived.
+    viewer_test_utils::step_until("table data and blueprint load", &mut harness, |harness| {
         harness.query_by_label_contains("Alice").is_some()
+            && harness.query_by_label("Table view").is_some()
     });
     harness.set_blueprint_panel_opened(false);
     harness.set_selection_panel_opened(false);
