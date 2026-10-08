@@ -24,6 +24,13 @@ impl ViewContents {
         ])
     }
 
+    /// Root of the blueprint subtree that holds all per-entity overrides and visualizer
+    /// instructions of a given view.
+    pub fn blueprint_overrides_path_for_view(view_id: uuid::Uuid) -> EntityPath {
+        Self::blueprint_entity_path_for_view_id(view_id)
+            .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
+    }
+
     /// Base override path for a given entity in a given view.
     ///
     /// Visualizer instruction types and overrides are stored under `<this path>/<visualizer id>`.
@@ -31,8 +38,7 @@ impl ViewContents {
         view_id: uuid::Uuid,
         entity_path: &EntityPath,
     ) -> EntityPath {
-        Self::blueprint_entity_path_for_view_id(view_id)
-            .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
+        Self::blueprint_overrides_path_for_view(view_id)
             .join(entity_path)
             .join(&EntityPath::from_single_string(Self::VISUALIZERS_PREFIX))
     }

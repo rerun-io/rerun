@@ -496,13 +496,10 @@ impl AppState {
                     blueprint_query: blueprint_query.clone(),
                 };
                 let time_ctrl = store_context.time_ctrl;
-                let active_timeline = time_ctrl.timeline();
 
                 // Execute the queries for every `View`
                 let query_results = {
                     re_tracing::profile_wait!("query_results");
-
-                    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
                     for view in viewport_ui.blueprint.views.values() {
                         view_states.ensure_state_exists(
@@ -512,42 +509,17 @@ impl AppState {
                         );
                     }
 
-                    viewport_ui
-                        .blueprint
-                        .views
-                        .values()
-                        .collect::<Vec<_>>()
-                        .into_par_iter()
-                        .map(|view| {
-                            re_tracing::profile_scope!("view", view.display_name_or_default().to_string().as_str());
-
-                            let view_state = view_states
-                                .get(recording.store_id(), view.id)
-                                .expect("View state should exist, we just called ensure_state_exists on it.");
-
-                            let query_range = view.query_range(
-                                app_blueprint_ctx.current_blueprint(),
-                                app_blueprint_ctx.blueprint_query(),
-                                active_timeline,
-                                view_class_registry,
-                                view_state,
-                            );
-
-                            (
-                                view.id,
-                                view.contents.build_data_result_tree(
-                                    store_context,
-                                    active_timeline,
-                                    view_class_registry,
-                                    app_blueprint_ctx.blueprint_query(),
-                                    &query_range,
-                                    &visualizable_entities_per_visualizer,
-                                    &indicated_entities_per_visualizer,
-                                    app_ctx.app_options,
-                                ),
-                            )
-                        })
-                        .collect::<_>()
+                    re_viewport_blueprint::query_results_for_views(
+                        store_context,
+                        app_ctx.app_caches,
+                        viewport_ui.blueprint.views.values(),
+                        view_class_registry,
+                        app_blueprint_ctx.blueprint_query(),
+                        view_states,
+                        &visualizable_entities_per_visualizer,
+                        &indicated_entities_per_visualizer,
+                        app_ctx.app_options,
+                    )
                 };
 
                 let ctx = ViewerContext {
@@ -1324,6 +1296,10 @@ impl re_byte_size::MemUsageTreeCapture for AppState {
         tree.add(
             "view_states",
             re_byte_size::MemUsageTreeCapture::capture_mem_usage_tree(&self.view_states),
+        );
+        tree.add(
+            "app_caches",
+            re_byte_size::MemUsageTreeCapture::capture_mem_usage_tree(&self.app_caches),
         );
         tree.into_tree()
     }

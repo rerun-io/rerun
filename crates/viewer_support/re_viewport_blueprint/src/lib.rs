@@ -4,6 +4,7 @@
 
 mod auto_layout;
 mod container;
+mod data_query_result_cache;
 mod entity_add_info;
 pub mod ui;
 mod view;
@@ -16,6 +17,7 @@ mod viewport_command;
 mod test_view_class;
 
 pub use container::ContainerBlueprint;
+pub use data_query_result_cache::query_results_for_views;
 pub use entity_add_info::{CanAddToView, EntityAddInfo, create_entity_add_info};
 use re_chunk::EntityPath;
 use re_viewer_context::ViewerContext;

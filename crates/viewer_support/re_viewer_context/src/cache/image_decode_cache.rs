@@ -10,7 +10,7 @@ use re_sdk_types::image::{ImageKind, ImageLoadError};
 
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
-use crate::{Cache, ImageInfo};
+use crate::{AppCache, Cache, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -207,6 +207,8 @@ impl Cache for ImageDecodeCache {
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
 }
+
+impl AppCache for ImageDecodeCache {}
 
 impl re_byte_size::MemUsageTreeCapture for ImageDecodeCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {

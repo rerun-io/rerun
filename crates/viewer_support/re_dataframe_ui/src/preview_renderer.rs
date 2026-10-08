@@ -318,8 +318,6 @@ impl<'a> SegmentPreviewRenderer<'a> {
             should_enable_heuristics: false,
         };
 
-        let active_timeline = time_ctrl.timeline();
-
         // Resolve each view's blueprint + class once. Views that fail to resolve are kept as
         // `None` so they still occupy a column slot (rendered as a placeholder rectangle).
         struct Resolved<'b> {
@@ -345,28 +343,20 @@ impl<'a> SegmentPreviewRenderer<'a> {
 
         // Build the per-view data-result trees against the shared store context so that the
         // `ViewerContext` can expose results for all views at once.
-        let mut query_results = AHashMap::default();
         for r in resolved.iter().flatten() {
-            let view_state = view_states.get_mut_or_create(store_id, r.view_id, r.view_class);
-            let query_range = r.view_blueprint.query_range(
-                self.blueprint,
-                &self.blueprint_query,
-                active_timeline,
-                view_class_registry,
-                view_state,
-            );
-            let query_result = r.view_blueprint.contents.build_data_result_tree(
-                &store_context,
-                active_timeline,
-                view_class_registry,
-                &self.blueprint_query,
-                &query_range,
-                &visualizable_entities_per_visualizer,
-                &indicated_entities_per_visualizer,
-                app_ctx.app_options,
-            );
-            query_results.insert(r.view_id, query_result);
+            view_states.get_mut_or_create(store_id, r.view_id, r.view_class);
         }
+        let query_results = re_viewport_blueprint::query_results_for_views(
+            &store_context,
+            app_ctx.app_caches,
+            resolved.iter().flatten().map(|r| &r.view_blueprint),
+            view_class_registry,
+            &self.blueprint_query,
+            view_states,
+            &visualizable_entities_per_visualizer,
+            &indicated_entities_per_visualizer,
+            app_ctx.app_options,
+        );
 
         // One shared `ViewerContext` for all views of this recording.
         let blueprint_time_ctrl = TimeControl::default();

@@ -4,9 +4,10 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 
+use super::Memoizers;
 use crate::view::visualizer_entity_subscriber::VisualizerEntitySubscriber;
 use crate::{
-    Cache, CacheEntryAccess, IndicatedEntities, Memoizers, PerVisualizerType, ViewClassRegistry,
+    Cache, CacheEntryAccess, IndicatedEntities, PerVisualizerType, ViewClassRegistry,
     ViewSystemIdentifier, VisualizableEntities,
 };
 
@@ -15,7 +16,10 @@ use crate::{
 /// This bundles together all per-store caches and subscribers
 /// that the viewer needs beyond the raw [`EntityDb`] data.
 pub struct StoreCache {
-    pub memoizers: Memoizers,
+    /// The store for which these caches are caching data.
+    store_id: StoreId,
+
+    memoizers: Memoizers,
 
     /// Per-visualizer entity subscribers that track which entities are visualizable.
     ///
@@ -30,7 +34,8 @@ impl StoreCache {
     /// Useful as a placeholder/fallback or in tests.
     pub fn empty(view_class_registry: &ViewClassRegistry, store_id: StoreId) -> Self {
         Self {
-            memoizers: Memoizers::new(store_id),
+            store_id,
+            memoizers: Memoizers::default(),
             entity_subscribers: view_class_registry.create_entity_subscribers(),
         }
     }
@@ -48,19 +53,21 @@ impl StoreCache {
         }
 
         Self {
-            memoizers: Memoizers::new(entity_db.store_id().clone()),
+            store_id: entity_db.store_id().clone(),
+            memoizers: Memoizers::default(),
             entity_subscribers,
         }
     }
 
     /// The store for which these caches are caching data.
     pub fn store_id(&self) -> &StoreId {
-        self.memoizers.store_id()
+        &self.store_id
     }
 
     /// Call once per frame to potentially flush the cache.
     pub fn begin_frame(&self) {
         let Self {
+            store_id: _,
             memoizers,
             entity_subscribers: _,
         } = self;
@@ -75,6 +82,7 @@ impl StoreCache {
     /// Called BEFORE `begin_frame` (if at all).
     pub fn purge_memory(&mut self) {
         let Self {
+            store_id: _,
             memoizers,
             entity_subscribers: _,
         } = self;
@@ -84,10 +92,18 @@ impl StoreCache {
     /// React to the chunk store's changelog, e.g. to invalidate unreachable data.
     pub fn on_store_events(&mut self, events: &[ChunkStoreEvent], entity_db: &EntityDb) {
         let Self {
+            store_id,
             memoizers,
             entity_subscribers,
         } = self;
-        memoizers.on_store_events(events, entity_db);
+
+        let relevant_events = events
+            .iter()
+            .filter(|event| event.store_id == *store_id)
+            .collect::<Vec<_>>();
+        if !relevant_events.is_empty() {
+            memoizers.on_store_events(&relevant_events, entity_db);
+        }
 
         #[expect(clippy::iter_over_hash_type)] // This is order-independent
         for subscriber in entity_subscribers.values_mut() {
@@ -103,6 +119,7 @@ impl StoreCache {
     /// and we need to take that into account when budgeting for other things.
     pub fn memory_use_after_last_purge(&self) -> u64 {
         let Self {
+            store_id: _,
             memoizers,
             entity_subscribers: _,
         } = self;
@@ -112,6 +129,7 @@ impl StoreCache {
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
     pub fn vram_usage(&self) -> MemUsageTree {
         let Self {
+            store_id: _,
             memoizers,
             entity_subscribers: _,
         } = self;
@@ -177,6 +195,7 @@ impl MemUsageTreeCapture for StoreCache {
         re_tracing::profile_function!();
 
         let Self {
+            store_id: _,
             memoizers,
             entity_subscribers,
         } = self;

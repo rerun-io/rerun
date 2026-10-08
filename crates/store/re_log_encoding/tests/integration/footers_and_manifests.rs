@@ -877,6 +877,7 @@ fn merge_with_mixed_chunk_keys() {
 
 /// Two manifests that disagree on the type of a column they both have cannot have their schemas
 /// unified. The merge keeps the schema of the first one and still describes every chunk.
+/// The schema hash of the merged manifest, and of later merges with it, is then unknown.
 #[test]
 fn merge_keeps_the_first_schema_when_columns_disagree() {
     use re_log_types::example_components::{MyPoint, MyPoint64, MyPoints};
@@ -924,6 +925,11 @@ fn merge_keeps_the_first_schema_when_columns_disagree() {
 
     assert_eq!(combined.num_chunks(), 2);
     assert_eq!(combined.recording_schema(), first.recording_schema());
+    assert!(first.schema_covers_all_chunks());
+    assert!(!combined.schema_covers_all_chunks());
+
+    let combined_again = RrdManifest::merge(&[&combined, &first]).unwrap();
+    assert!(!combined_again.schema_covers_all_chunks());
 }
 
 /// Filtering a manifest drops the chunk logged under `__properties` and keeps every other chunk.

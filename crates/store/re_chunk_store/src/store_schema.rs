@@ -78,9 +78,41 @@ pub struct StoreSchema {
     ///
     /// Entities are pruned on deletions but not during GC.
     entity_tree: crate::EntityTree,
+
+    /// See [`Self::generation`].
+    generation: u64,
+
+    /// See [`Self::is_from_rrd_manifests_only`].
+    changed_outside_rrd_manifests: bool,
 }
 
 impl StoreSchema {
+    /// Changes on each change to the component columns or the entity tree, and only then.
+    ///
+    /// The new value comes from a counter shared by all stores in the process. A store's
+    /// generation therefore grows by more than one when other stores changed in between, and is
+    /// not the number of changes it had. A generation other than 0 never repeats, also not in a
+    /// new store with the same id. All empty schemas are at generation 0.
+    #[inline]
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    /// True if every column and entity came from an RRD manifest, and nothing was removed since.
+    ///
+    /// The schema then matches the schema of the store's RRD manifest.
+    #[inline]
+    pub fn is_from_rrd_manifests_only(&self) -> bool {
+        !self.changed_outside_rrd_manifests
+    }
+
+    fn on_change(&mut self, from_rrd_manifest: bool) {
+        static NEXT_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+        self.generation = NEXT_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.changed_outside_rrd_manifests |= !from_rrd_manifest;
+    }
+
     /// The hierarchical tree of all entities registered in the store.
     #[inline]
     pub fn entity_tree(&self) -> &crate::EntityTree {
@@ -342,7 +374,7 @@ impl StoreSchema {
         }
 
         let entity_path = chunk.entity_path();
-        self.entity_tree.on_new_entity(entity_path);
+        let new_entity = self.entity_tree.on_new_entity(entity_path);
 
         let mut new_columns = Vec::new();
 
@@ -380,6 +412,10 @@ impl StoreSchema {
             }
         }
 
+        if new_entity || !new_columns.is_empty() {
+            self.on_change(false);
+        }
+
         new_columns
     }
 
@@ -397,8 +433,9 @@ impl StoreSchema {
         }
 
         // Update entity tree
+        let mut new_entity = false;
         for entity in sorbet_schema.all_entities() {
-            self.entity_tree.on_new_entity(entity);
+            new_entity |= self.entity_tree.on_new_entity(entity);
         }
 
         let mut new_per_entity: nohash_hasher::IntMap<EntityPath, Vec<ChunkComponentMeta>> =
@@ -414,6 +451,10 @@ impl StoreSchema {
             }
         }
 
+        if new_entity || !new_per_entity.is_empty() {
+            self.on_change(true);
+        }
+
         new_per_entity.into_iter().collect()
     }
 
@@ -422,14 +463,20 @@ impl StoreSchema {
     /// Called from `ChunkStore::drop_entity_path`.
     pub fn drop_entity(&mut self, entity_path: &EntityPath) {
         self.components.retain(|key, _| key.0 != *entity_path);
-        self.components_per_entity.remove(entity_path);
+        let had_components = self.components_per_entity.remove(entity_path).is_some();
         self.per_column_metadata.remove(entity_path);
+
+        if had_components {
+            self.on_change(false);
+        }
     }
 
     /// Prunes leaf entities from the entity tree that have no indexed data.
     ///
     /// Called after store deletions to keep the tree in sync with actual data.
     pub fn prune_entity_tree(&mut self, entity_has_data: &impl Fn(&EntityPath) -> bool) {
-        self.entity_tree.prune_empty_entities(entity_has_data);
+        if self.entity_tree.prune_empty_entities(entity_has_data) {
+            self.on_change(false);
+        }
     }
 }
