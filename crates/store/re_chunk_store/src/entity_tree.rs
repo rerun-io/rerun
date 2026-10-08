@@ -39,17 +39,24 @@ impl EntityTree {
         self.children.is_empty()
     }
 
-    pub fn on_new_entity(&mut self, entity_path: &EntityPath) {
+    /// Adds the entity and all its parents to the tree.
+    ///
+    /// Returns true if the tree got a new node.
+    pub fn on_new_entity(&mut self, entity_path: &EntityPath) -> bool {
         re_tracing::profile_function!();
+
+        let mut added = false;
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
         for (i, part) in entity_path.iter().enumerate() {
-            tree = tree
-                .children
-                .entry(part.clone())
-                .or_insert_with(|| Self::new(entity_path.as_slice()[..=i].into()));
+            tree = tree.children.entry(part.clone()).or_insert_with(|| {
+                added = true;
+                Self::new(entity_path.as_slice()[..=i].into())
+            });
         }
+
+        added
     }
 
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
@@ -84,13 +91,19 @@ impl EntityTree {
     /// Removes leaf entities that have no children and for which `entity_has_data` returns false.
     ///
     /// This is called after store deletions to keep the tree in sync with the actual data.
-    pub fn prune_empty_entities(&mut self, entity_has_data: &impl Fn(&EntityPath) -> bool) {
+    ///
+    /// Returns true if any node was removed.
+    pub fn prune_empty_entities(&mut self, entity_has_data: &impl Fn(&EntityPath) -> bool) -> bool {
+        let mut removed = false;
         self.children.retain(|_, child| {
-            child.prune_empty_entities(entity_has_data);
+            removed |= child.prune_empty_entities(entity_has_data);
             let has_children = !child.children.is_empty();
             let has_data = entity_has_data(&child.path);
-            has_children || has_data
+            let keep = has_children || has_data;
+            removed |= !keep;
+            keep
         });
+        removed
     }
 
     /// Invokes the `predicate` for `self` and all children recursively,

@@ -6,7 +6,7 @@ use re_sdk_types::image::ImageKind;
 use re_sdk_types::{Component as _, components};
 
 use crate::image_info::StoredBlobCacheKey;
-use crate::{Cache, CacheEntryAccess, ImageInfo, ImageStats};
+use crate::{AppCache, Cache, CacheEntryAccess, ImageInfo, ImageStats};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
@@ -65,6 +65,8 @@ impl Cache for ImageStatsCache {
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
 }
+
+impl AppCache for ImageStatsCache {}
 
 impl re_byte_size::MemUsageTreeCapture for ImageStatsCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {

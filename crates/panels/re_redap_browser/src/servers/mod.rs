@@ -911,6 +911,29 @@ impl RedapServers {
         );
     }
 
+    /// Fetch the entry's current default table blueprint.
+    ///
+    /// The new default only replaces the table's active blueprint if that has no edits.
+    pub fn refresh_entry_default_blueprint(
+        &self,
+        origin: &re_uri::Origin,
+        entry_id: EntryId,
+        command_sender: &re_viewer_context::CommandSender,
+    ) {
+        let Some(server) = self.servers.get(origin) else {
+            return;
+        };
+        let Some(entry) = server.find_entry(entry_id) else {
+            return;
+        };
+        crate::entries::refresh_default_table_blueprint(
+            server.connection.clone(),
+            entry,
+            &server.runtime,
+            command_sender,
+        );
+    }
+
     /// What the catalog says an entry is, or `None` if it isn't loaded yet.
     pub fn entry_kind(
         &self,

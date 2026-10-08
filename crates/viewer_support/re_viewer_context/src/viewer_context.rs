@@ -34,7 +34,7 @@ pub struct ViewerContext<'a> {
     pub indicated_entities_per_visualizer: &'a PerVisualizerType<&'a IndicatedEntities>,
 
     /// All the query results for this frame.
-    pub query_results: &'a HashMap<ViewId, DataQueryResult>,
+    pub query_results: &'a HashMap<ViewId, std::sync::Arc<DataQueryResult>>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
     pub time_ctrl: &'a TimeControl,

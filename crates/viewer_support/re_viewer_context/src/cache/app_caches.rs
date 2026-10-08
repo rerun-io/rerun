@@ -1,17 +1,14 @@
-use re_mutex::RwLock;
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 
-use crate::{Cache as _, ImageDecodeCache, ImageStatsCache};
+use super::Memoizers;
+use crate::AppCache;
 
 /// App-level caches for data that is not tied to any particular store.
 ///
-/// Unlike per-store caches ([`crate::StoreCache`]), these receive no store events
-/// and are not dropped together with a store.
-/// Therefore, only caches whose keys are globally unique (e.g. content-addressed by row id)
-/// and whose entries expire on their own (see [`crate::Cache::begin_frame`]) belong here.
+/// Only caches implementing [`AppCache`] can be stored here.
 #[derive(Default)]
 pub struct AppCaches {
-    pub image_decode: RwLock<ImageDecodeCache>,
-    pub image_stats: RwLock<ImageStatsCache>,
+    memoizers: Memoizers,
 }
 
 impl AppCaches {
@@ -19,12 +16,7 @@ impl AppCaches {
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
 
-        let Self {
-            image_decode,
-            image_stats,
-        } = self;
-        image_decode.write().begin_frame();
-        image_stats.write().begin_frame();
+        self.memoizers.begin_frame();
     }
 
     /// Attempt to free up memory.
@@ -33,11 +25,19 @@ impl AppCaches {
     pub fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 
-        let Self {
-            image_decode,
-            image_stats,
-        } = self;
-        image_decode.get_mut().purge_memory();
-        image_stats.get_mut().purge_memory();
+        self.memoizers.purge_memory();
+    }
+
+    /// Accesses a memoization cache for reading and writing.
+    ///
+    /// Adds the cache lazily if it wasn't already there.
+    pub fn memoizer<C: AppCache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
+        self.memoizers.entry::<C, R>(f)
+    }
+}
+
+impl MemUsageTreeCapture for AppCaches {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        self.memoizers.capture_mem_usage_tree()
     }
 }

@@ -123,7 +123,7 @@ impl TestContextExt for TestContext {
                                 ctx.app_options(),
                             );
 
-                            query_results.insert(*view_id, data_query_result);
+                            query_results.insert(*view_id, std::sync::Arc::new(data_query_result));
                         }
 
                         VisitorControlFlow::Continue

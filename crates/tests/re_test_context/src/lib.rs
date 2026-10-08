@@ -91,7 +91,7 @@ pub struct TestContext {
     pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
-    pub query_results: HashMap<ViewId, DataQueryResult>,
+    pub query_results: HashMap<ViewId, Arc<DataQueryResult>>,
 
     pub blueprint_query: LatestAtQuery,
     pub component_ui_registry: ComponentUiRegistry,

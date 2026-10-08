@@ -185,7 +185,6 @@ jiff.workspace = true
 num-traits.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
-rayon.workspace = true
 rfd = { workspace = true, features = ["file-handle-inner"] }
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }

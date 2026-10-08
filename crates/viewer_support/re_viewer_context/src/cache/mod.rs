@@ -1,6 +1,6 @@
 //! Viewer caches
 //!
-//! Caches are registered lazily upon first use, see [`Memoizers::entry`].
+//! Caches are registered lazily upon first use, see [`StoreCache::memoizer`] and [`AppCaches::memoizer`].
 //! The concrete caches exposed here are always available for all viewer crates.
 
 mod app_caches;
@@ -17,8 +17,8 @@ mod video_asset_cache;
 mod video_stream_cache;
 
 pub use app_caches::AppCaches;
-pub use cache_trait::{Cache, CacheEntryAccess};
-pub use memoizers::Memoizers;
+pub use cache_trait::{AppCache, Cache, CacheEntryAccess};
+use memoizers::Memoizers;
 pub use store_cache::StoreCache;
 // TODO(andreas): Do we _really_ have to have all these caches in `re_viewer_context`?
 // Caches are fully dynamic and registration based, so they can be added at runtime by any crate.

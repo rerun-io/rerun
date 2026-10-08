@@ -75,6 +75,6 @@ fn iter_data_results_for_entity<'a>(
         .iter()
         .filter_map(|(&view_id, query_result)| {
             let data_result = query_result.result_for_entity(entity_path)?;
-            Some((view_id, query_result, data_result))
+            Some((view_id, query_result.as_ref(), data_result))
         })
 }

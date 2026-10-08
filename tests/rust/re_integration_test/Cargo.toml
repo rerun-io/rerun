@@ -69,6 +69,7 @@ re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 
 arrow.workspace = true
+criterion.workspace = true
 datafusion.workspace = true
 directories.workspace = true
 futures.workspace = true
@@ -77,6 +78,10 @@ ndarray.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 serde.workspace = true
 uuid.workspace = true
+
+[[bench]]
+name = "viewer_frame"
+harness = false
 
 [lints]
 workspace = true

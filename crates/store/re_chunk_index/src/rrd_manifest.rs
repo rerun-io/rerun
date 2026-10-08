@@ -67,6 +67,10 @@ pub struct RrdManifest {
     /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
     sorbet_schema_sha256: [u8; 32],
 
+    /// False once a merge kept the schema of the first part because the schemas of the parts
+    /// could not be unified.
+    schema_covers_all_chunks: bool,
+
     chunk_ids: quiver::Column<ChunkId>,
     chunk_entity_paths: quiver::Column<EntityPath>,
     chunk_is_static: quiver::Column<bool>,
@@ -88,6 +92,20 @@ pub struct RrdManifest {
     chunk_rows: OnceLock<ahash::HashMap<ChunkId, usize>>,
 }
 
+/// The schema of [`RrdManifest::merge`].
+struct MergedSchema {
+    recording_schema: SorbetSchema,
+    sorbet_schema: arrow::datatypes::Schema,
+
+    /// Hash of `sorbet_schema`.
+    /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
+    sorbet_schema_sha256: [u8; 32],
+
+    /// False when the schemas of the parts could not be unified and the schema of the first part
+    /// was kept, or when a part's own schema already did not cover all its chunks.
+    covers_all_chunks: bool,
+}
+
 impl PartialEq for RrdManifest {
     fn eq(&self, other: &Self) -> bool {
         // Destructure to get a compile error when new fields are added,
@@ -101,6 +119,7 @@ impl PartialEq for RrdManifest {
             // is not preserved through protobuf round-trips. Its hash is skipped along with it.
             sorbet_schema: _,
             sorbet_schema_sha256: _,
+            schema_covers_all_chunks: _,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -247,6 +266,7 @@ impl RrdManifest {
             recording_schema,
             sorbet_schema: manifest.sorbet_schema.clone(),
             sorbet_schema_sha256: manifest.sorbet_schema_sha256,
+            schema_covers_all_chunks: true,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -320,46 +340,45 @@ impl RrdManifest {
     /// that of the first manifest.
     ///
     /// Manifests that disagree on the type of a column they both have cannot be unified. The schema
-    /// of the first is then used as it is, with a warning.
-    fn merge_schemas(
-        manifests: &[&Self],
-    ) -> ChunkIndexResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+    /// of the first is then used as it is, with a warning, and no longer covers all chunks.
+    fn merge_schemas(manifests: &[&Self]) -> ChunkIndexResult<MergedSchema> {
         let first = manifests
             .first()
             .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
-        let schema_of_first = || {
-            (
-                first.recording_schema.clone(),
-                first.sorbet_schema.clone(),
-                first.sorbet_schema_sha256,
-            )
+        let all_parts_cover_their_chunks = manifests.iter().all(|m| m.schema_covers_all_chunks);
+        let schema_of_first = |covers_all_chunks| MergedSchema {
+            recording_schema: first.recording_schema.clone(),
+            sorbet_schema: first.sorbet_schema.clone(),
+            sorbet_schema_sha256: first.sorbet_schema_sha256,
+            covers_all_chunks,
         };
 
         if manifests
             .iter()
             .all(|m| m.sorbet_schema_sha256 == first.sorbet_schema_sha256)
         {
-            return Ok(schema_of_first());
+            return Ok(schema_of_first(all_parts_cover_their_chunks));
         }
 
         re_tracing::profile_function!();
 
         match Self::unify_columns(manifests) {
-            Ok(unified) => Ok(unified),
+            Ok(mut unified) => {
+                unified.covers_all_chunks = all_parts_cover_their_chunks;
+                Ok(unified)
+            }
             Err(err) => {
                 re_log::warn_once!(
                     "Failed to merge the schemas of the manifests, using the first one: {err}"
                 );
-                Ok(schema_of_first())
+                Ok(schema_of_first(false))
             }
         }
     }
 
     /// The columns of every manifest in one schema, with the metadata of the first.
-    fn unify_columns(
-        manifests: &[&Self],
-    ) -> ChunkIndexResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+    fn unify_columns(manifests: &[&Self]) -> ChunkIndexResult<MergedSchema> {
         let first = manifests
             .first()
             .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
@@ -385,7 +404,12 @@ impl RrdManifest {
         // Sorted for the same reason as in `try_new`: to keep `PartialEq` stable.
         recording_schema.sort_columns();
 
-        Ok((recording_schema, sorbet_schema, sorbet_schema_sha256))
+        Ok(MergedSchema {
+            recording_schema,
+            sorbet_schema,
+            sorbet_schema_sha256,
+            covers_all_chunks: true,
+        })
     }
 
     /// One manifest describing every chunk of every part, in the given order.
@@ -402,8 +426,12 @@ impl RrdManifest {
 
         let any_has_chunk_keys = manifests.iter().any(|m| m.chunk_keys.is_some());
 
-        let (recording_schema, sorbet_schema, sorbet_schema_sha256) =
-            Self::merge_schemas(manifests)?;
+        let MergedSchema {
+            recording_schema,
+            sorbet_schema,
+            sorbet_schema_sha256,
+            covers_all_chunks: schema_covers_all_chunks,
+        } = Self::merge_schemas(manifests)?;
 
         let combined_batches = Self::concat_chunk_fetcher_rb(manifests)?;
 
@@ -483,6 +511,7 @@ impl RrdManifest {
             recording_schema,
             sorbet_schema,
             sorbet_schema_sha256,
+            schema_covers_all_chunks,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -527,6 +556,24 @@ impl RrdManifest {
     #[inline]
     pub fn sorbet_schema(&self) -> &arrow::datatypes::Schema {
         &self.sorbet_schema
+    }
+
+    /// The hash of [`Self::sorbet_schema`], see [`RawRrdManifest::compute_sorbet_schema_sha256`].
+    ///
+    /// Two manifests with the same hash only describe the same columns if
+    /// [`Self::schema_covers_all_chunks`] is true for both.
+    #[inline]
+    pub fn sorbet_schema_sha256(&self) -> &[u8; 32] {
+        &self.sorbet_schema_sha256
+    }
+
+    /// Whether [`Self::sorbet_schema`] has the columns of every chunk in the manifest.
+    ///
+    /// False when [`Self::merge`] could not unify the schemas of its parts and kept the schema of
+    /// the first one.
+    #[inline]
+    pub fn schema_covers_all_chunks(&self) -> bool {
+        self.schema_covers_all_chunks
     }
 
     /// Returns the `RecordBatch` with only the columns needed to do a `FetchChunk` request.

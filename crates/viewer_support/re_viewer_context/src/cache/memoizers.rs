@@ -5,7 +5,6 @@ use ahash::HashMap;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_log_types::StoreId;
 use re_mutex::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{Cache, CacheEntryAccess};
@@ -38,10 +37,8 @@ impl SharedCache {
 }
 
 /// Does memoization of different objects for the immediate mode UI.
+#[derive(Default)]
 pub struct Memoizers {
-    /// The store for which these caches are caching data.
-    store_id: StoreId,
-
     /// Master map from cache type to the cache itself.
     ///
     /// The master lock is only held briefly to look up or insert a cache.
@@ -53,20 +50,6 @@ pub struct Memoizers {
 }
 
 impl Memoizers {
-    /// Creates a new instance of [`Memoizers`] associated with a specific store.
-    pub fn new(store_id: StoreId) -> Self {
-        Self {
-            caches: RwLock::new(HashMap::default()),
-            store_id,
-            memory_use_after_last_purge: 0,
-        }
-    }
-
-    /// The store for which these caches are caching data.
-    pub fn store_id(&self) -> &StoreId {
-        &self.store_id
-    }
-
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
@@ -126,21 +109,13 @@ impl Memoizers {
     /// React to the chunk store's changelog, if needed.
     ///
     /// Useful to e.g. invalidate unreachable data.
-    pub fn on_store_events(&self, events: &[ChunkStoreEvent], entity_db: &EntityDb) {
+    pub fn on_store_events(&self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
-
-        let relevant_events = events
-            .iter()
-            .filter(|event| event.store_id == self.store_id)
-            .collect::<Vec<_>>();
-        if relevant_events.is_empty() {
-            return;
-        }
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.read().values() {
             re_tracing::profile_scope!(cache.name);
-            cache.write().on_store_events(&relevant_events, entity_db);
+            cache.write().on_store_events(events, entity_db);
         }
     }
 
