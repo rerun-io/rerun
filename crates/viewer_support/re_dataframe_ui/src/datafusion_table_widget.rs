@@ -804,7 +804,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .filter_map(|column| {
                 let data_column_index =
                     data_columns.index_by_physical_name(column.physical_name())?;
-                crate::preview_renderer::RecordingPreviewRenderer::from_previews_config(
+                crate::preview_renderer::SegmentPreviewRenderer::from_previews_config(
                     blueprint_db,
                     column.physical_name().clone(),
                     data_column_index,
@@ -1462,7 +1462,7 @@ struct DataFusionTableDelegate<'a> {
     row_height: f32,
 
     /// Renderers for the configured preview columns.
-    view_renderers: Vec<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
+    view_renderers: Vec<crate::preview_renderer::SegmentPreviewRenderer<'a>>,
 
     /// Shared view states for segment preview views, persisted across frames.
     view_states: &'a mut re_viewer_context::ViewStates,

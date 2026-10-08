@@ -63,11 +63,11 @@ pub(crate) enum PreviewRecording<'a> {
 /// Each renderer owns one source column and its ordered view selection while borrowing the view
 /// definitions from the table blueprint.
 ///
-/// A [`RecordingPreviewRenderer`] is constructed fresh at the start of each UI frame; the
+/// A [`SegmentPreviewRenderer`] is constructed fresh at the start of each UI frame; the
 /// cached once-per-frame context-system results live for exactly that long, so
 /// [`Self::show_preview`] runs those systems at most once per recording per frame even when
 /// the same recording is previewed in multiple rows.
-pub(crate) struct RecordingPreviewRenderer<'a> {
+pub(crate) struct SegmentPreviewRenderer<'a> {
     /// Blueprint store defining which view(s) to render.
     blueprint: &'a EntityDb,
 
@@ -91,7 +91,7 @@ pub(crate) struct RecordingPreviewRenderer<'a> {
     once_per_frame_cache: RefCell<AHashMap<StoreId, OncePerFrameResults>>,
 }
 
-impl<'a> RecordingPreviewRenderer<'a> {
+impl<'a> SegmentPreviewRenderer<'a> {
     /// Create a renderer for one preview column.
     pub fn from_previews_config(
         blueprint: &'a EntityDb,
@@ -1038,7 +1038,7 @@ mod tests {
         ];
         let config = PreviewsConfig::default();
 
-        let first = RecordingPreviewRenderer::from_previews_config(
+        let first = SegmentPreviewRenderer::from_previews_config(
             &blueprint,
             "first".into(),
             3,
@@ -1046,7 +1046,7 @@ mod tests {
             &config,
         )
         .unwrap();
-        let second = RecordingPreviewRenderer::from_previews_config(
+        let second = SegmentPreviewRenderer::from_previews_config(
             &blueprint,
             "second".into(),
             5,

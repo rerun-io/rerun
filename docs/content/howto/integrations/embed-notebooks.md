@@ -196,10 +196,10 @@ This will open a browser window showing the notebook where you can follow along.
 
 ### Running in Google Colab
 
-We also host a copy of the notebook in [Google Colab](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_)
+You can [open a copy of this notebook in Google Colab](https://colab.research.google.com/github/rerun-io/rerun/blob/latest/examples/notebook/notebook/cube_colab.ipynb).
 
-Note that if you copy and run the notebook yourself, the first Cell installs Rerun into the Colab environment.
-After running this cell you will need to restart the Runtime for the Rerun package to show up successfully.
+The first cell installs the latest Rerun release into the Colab environment and then restarts the runtime.
+Run the cells again after the restart.
 
 ### Running in marimo
 

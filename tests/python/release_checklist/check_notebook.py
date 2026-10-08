@@ -11,9 +11,9 @@ README = """\
 # Notebook
 
 Make sure to check that Google Colab works properly with the latest release candidate.
-To do that, go to https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_
-change the version at the top to the latest alpha/rc and step through the notebook (running all at once
-might cause some viewers to stay empty).
+To do that, go to https://colab.research.google.com/github/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_colab.ipynb
+change `rerun-sdk[notebook]` in the first cell to pin the latest alpha/rc (e.g. `rerun-sdk[notebook]==0.39.0rc1`)
+and step through the notebook (running all at once might cause some viewers to stay empty).
 """
 
 
