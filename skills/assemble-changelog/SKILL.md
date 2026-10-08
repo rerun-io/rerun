@@ -109,6 +109,10 @@ The generated section is a starting point; edit it by hand so readers can find t
 
 - **Order the overview by impact.**
   Put the biggest new capabilities first, then integrations and APIs, then format support, then polish, then niche or developer-facing items.
+- **Group and order the details.**
+  The script emits each details subsection (🐍 Python API, 🪳 Bug fixes, 🌁 Viewer improvements, …) in commit order.
+  Within each subsection, put entries that touch the same feature next to each other (e.g. all MCP/ViewerControl entries, all state timeline entries, all hangs and deadlocks), order the groups by their most impactful entry, and order entries within a group by impact.
+  Only reorder lines; don't move entries between subsections or drop them.
 - **Make entries clickable.**
   Wherever possible, link an entry (in the overview *and* in the details) to the docs that show how to use the feature: the how-to guide, the archetype/view reference page, the CLI or MCP reference section, the Python/JS ref site, or docs.rs.
   Reuse the links the changeset already contains, converted to `https://rerun.io/docs/<path without .md>`, and check that each target file and `#anchor` heading exists.
@@ -158,6 +162,7 @@ Never add redirects for these temporary entries.
 - [ ] No summaries or other prose were synthesized for existing entries.
 - [ ] The `CHANGELOG.md` overview is ordered by impact, its headline features have `static.rerun.io` media, and its breaking changes link to the changeset subheadings.
 - [ ] Every overview and detail entry that has relevant docs links to them.
+- [ ] Each details subsection groups entries by feature, most impactful first.
 - [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]`) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.
 - [ ] `pixi run lint-rerun CHANGELOG.md docs/content/changelog/changeset-0-XX.md` passes.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
