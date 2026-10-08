@@ -54,7 +54,7 @@
 
 #### 🪳 Bug fixes
 - Fix H.264 views stuck on a loading spinner on machines with many cores [c004401](https://github.com/rerun-io/rerun/commit/c004401730f7b7f9fdb67c1bc3dc3b9f319d78ec)
-- Make 'reset to default bluerint' show up for datasets [feb7d7d](https://github.com/rerun-io/rerun/commit/feb7d7ddb8464a763421cdc719adefd974ea331b)
+- Make 'reset to default blueprint' show up for datasets [feb7d7d](https://github.com/rerun-io/rerun/commit/feb7d7ddb8464a763421cdc719adefd974ea331b)
 - Don't default to visible for new card fields in some cases [7918ed3](https://github.com/rerun-io/rerun/commit/7918ed369ebe862c47980cd10e0436565df1a231)
 - Fix fetching of instance poses [ecf8711](https://github.com/rerun-io/rerun/commit/ecf871126f724a8351f24f365b83e9538f81a408)
 - Retry transient failures of GetDatasetSchema [3eb37e4](https://github.com/rerun-io/rerun/commit/3eb37e420b6ee3fe502d735b8dcea7ccabcdd0f5)
@@ -85,7 +85,7 @@
 - Support URDF 1.1 robot models with quaternions [e5ecaa0](https://github.com/rerun-io/rerun/commit/e5ecaa02a9d243dacc7bd09a50fa7c64a9e2156b)
 - Read the active blueprint as JSON over ViewerControl / MCP [065faa7](https://github.com/rerun-io/rerun/commit/065faa7194f9caff934b46dee7f0a461a105c521)
 - Add the audio view: waveform display and playback [9b14a2e](https://github.com/rerun-io/rerun/commit/9b14a2e89d99f225bcfe690f15589c89d95e778c)
-- re_agent: Add model selection ui [845a6ef](https://github.com/rerun-io/rerun/commit/845a6ef45ca76db35f02e8f0be856befc28ccce4)
+- re_agent: Add model selection UI [845a6ef](https://github.com/rerun-io/rerun/commit/845a6ef45ca76db35f02e8f0be856befc28ccce4)
 - Bayer image visualization support [1a00b58](https://github.com/rerun-io/rerun/commit/1a00b58a39990a59c8178dde885aa163debdad1e)
 - Write the active blueprint from JSON over ViewerControl / MCP [e7eda6c](https://github.com/rerun-io/rerun/commit/e7eda6cf11edf73f76572648a2bcc58aa977b16b)
 - Viewer MCP: list Redap servers in viewer state [02df63c](https://github.com/rerun-io/rerun/commit/02df63cc66132dae1cfd13f5a5af6ccd655b81e1)
@@ -96,7 +96,7 @@
 
 #### 🚀 Performance improvements
 - Remove the phase-1 synchronous dataset-manifest writes from registration [d949cde](https://github.com/rerun-io/rerun/commit/d949cde2b741f6db2efc379ee6cc34dd42f4a57b)
-- Don't decode video for pinholes that aren't in frustrum [ea44c8f](https://github.com/rerun-io/rerun/commit/ea44c8f505e5611aee78dd916240e3ff6c857058)
+- Don't decode video for pinholes that aren't in frustum [ea44c8f](https://github.com/rerun-io/rerun/commit/ea44c8f505e5611aee78dd916240e3ff6c857058)
 - Retry dataset reads until the requested revision is promoted [3f1659b](https://github.com/rerun-io/rerun/commit/3f1659b6b07beb9923e0fd5da7a1d51aeda2aa89)
 - Use `egui_table` for `TextLog` visualizer [98f0297](https://github.com/rerun-io/rerun/commit/98f0297aebe18b5362d8f677dd7af2d2f306d7e0)
 
@@ -110,7 +110,7 @@
 - Improve preview UI [9723aa5](https://github.com/rerun-io/rerun/commit/9723aa50d9253d1a29740024343551a39a0f91c3)
 
 #### 🕸️ Web
-- Allow opting out of startup update checks from JS api [64df84f](https://github.com/rerun-io/rerun/commit/64df84f6151b96b9128e6bdaeeac013902c8cf07)
+- Allow opting out of startup update checks from JS API [64df84f](https://github.com/rerun-io/rerun/commit/64df84f6151b96b9128e6bdaeeac013902c8cf07)
 - Add memory limit parameter to JS API [92cb67d](https://github.com/rerun-io/rerun/commit/92cb67d29da7427708232af463d58b452b2d2d8d)
 
 #### 🎨 Renderer improvements
@@ -124,7 +124,7 @@
 - Move `dump-puffin` into the workspace and expose it as `rerun dump-puffin` [a134e27](https://github.com/rerun-io/rerun/commit/a134e2754216c83887c96f3d0be61d1a77f7df86)
 - Add `AssetAudio` archetype for storing audio files [72d02d1](https://github.com/rerun-io/rerun/commit/72d02d1e18ef8eda04028fda9e32b0b6e5e56ea6)
 - Add the `AudioView` blueprint view and `AudioPlayback` properties [d79e8c1](https://github.com/rerun-io/rerun/commit/d79e8c172906c796669200a0d6e0c4bf52a052a4)
-- Hiding view titles with blueprint, to enable more minimal UI's [7cf863d](https://github.com/rerun-io/rerun/commit/7cf863d476edc20d985f85e490bfa38c8ec88947)
+- Hiding view titles with blueprint, to enable more minimal UIs [7cf863d](https://github.com/rerun-io/rerun/commit/7cf863d476edc20d985f85e490bfa38c8ec88947)
 
 ## [0.38.1](https://github.com/rerun-io/rerun/compare/0.37.2...0.38.1) - 2026-09-16
 
