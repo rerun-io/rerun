@@ -27,9 +27,11 @@ class GeoLineStringsExt:
         lat_lon:
             The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         radii:
-            Optional radii for the line strings.
+            Optional radii for the line strings. Each radius applies to one line string, not to
+            an individual vertex.
         colors:
-            Optional colors for the linestrings.
+            Optional colors for the line strings. Each color applies to one line string, not to
+            an individual vertex.
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.

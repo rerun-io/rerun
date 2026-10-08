@@ -19,14 +19,14 @@ pub struct GeoLineStrings {
     #[rerun(required)]
     pub line_strings: Vec<rerun::components::GeoLineString>,
 
-    /// Optional radii for the line strings.
+    /// Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
     ///
     /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
     /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
     #[rerun(recommended)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
-    /// Optional colors for the line strings.
+    /// Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
     ///
     /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     /// \py As either 0-1 floats or 0-255 integers, with separate alpha.

@@ -107,12 +107,12 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         line_strings:
             The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         radii:
-            Optional radii for the line strings.
+            Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
 
             *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
             the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
         colors:
-            Optional colors for the line strings.
+            Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
@@ -186,12 +186,12 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         line_strings:
             The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         radii:
-            Optional radii for the line strings.
+            Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
 
             *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
             the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
         colors:
-            Optional colors for the line strings.
+            Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
@@ -262,7 +262,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
-    # Optional radii for the line strings.
+    # Optional radii for the line strings. Each radius applies to one line string, not to an individual vertex.
     #
     # *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
     # the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
@@ -274,7 +274,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
-    # Optional colors for the line strings.
+    # Optional colors for the line strings. Each color applies to one line string, not to an individual vertex.
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.
