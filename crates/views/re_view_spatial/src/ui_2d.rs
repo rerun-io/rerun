@@ -468,6 +468,10 @@ fn setup_target_config(
 
     // The image-plane transform in `re_tf` uses the harmonic mean of the inverse focal lengths
     // for depth scaling. The virtual camera must use its reciprocal to cancel that scale.
+    //
+    // TODO(andreas): `re_tf` represents crossing a pinhole as an affine image-plane transform,
+    // conflating projecting 3D into 2D with embedding 2D on a display plane in 3D.
+    // We should preserve these distinct semantics in `re_tf` instead.
     let focal_length = 0.5 * (focal_length.x + focal_length.y);
     let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / focal_length).atan();
 
