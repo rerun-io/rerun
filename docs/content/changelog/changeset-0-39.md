@@ -91,6 +91,68 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
   <img src="https://static.rerun.io/state-hover/d9799638a7e5fc701298caa1357f609107a8cfd1/full.png" alt="">
 </picture>
 
+### Rerun Viewer in marimo notebooks
+
+The notebook Viewer now works in [marimo](https://marimo.io/) notebooks: `rr.notebook_show()`, `Viewer.display()`, and a `Viewer` or blueprint as the last expression of a cell all show an embedded Viewer.
+marimo delivers messages from the Viewer only between cells, so to stream data live, create the Viewer in one cell and log to it from a later one.
+
+[Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
+[marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
+
+### Python API for table blueprints
+
+The new `rerun.blueprint.table` Python API lets you conveniently configure table and card layouts.
+Customize column order, labels, visibility, and cell renderers, including recording previews and editable boolean flags:
+
+```python
+from pathlib import Path
+
+import rerun as rr
+import rerun.blueprint as rrb
+
+blueprint = rrb.TableBlueprint(
+    table_layout=rrb.table.TableLayout(
+        # Hide a column
+        columns=[rrb.table.Column("episode_notes", visible=False)],
+    ),
+    # Cards become the default layout unless default_layout="table".
+    card_layout=rrb.table.CardLayout(
+        title="uuid",  # Use the uuid column as the card title.
+        link="recording_uri",  # Clicking the card should open the recording.
+        fields=[
+            rrb.table.Column(
+                "recording_uri",
+                name="Recording",
+                # Show a 3D view for recordings in this row.
+                cell=rrb.table.PreviewCell(rrb.Spatial3DView()),
+            ),
+            # Columns on the card layout are opt-in.
+            rrb.table.Column("current_task"),
+        ],
+    ),
+    # Configure the timeline used by previews.
+    previews_config=rrb.table.PreviewsConfig(timeline="real_time"),
+)
+path = Path("table.rbl").resolve()
+blueprint.save("my_app", path)
+
+client = rr.catalog.CatalogClient("rerun+http://localhost:51234")
+client.get_table("my_table").register_blueprint(path.as_uri())
+```
+
+<picture>
+  <img src="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/full.png" alt="Card layout with the episode UUID as title, a 3D recording preview, and the current task on each card">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1200w.png">
+</picture>
+
+The `.rbl` file must be accessible to the server.
+For a remote server, upload it to shared storage and pass that URI to `register_blueprint` instead.
+See [Configure table layouts and recording previews](../howto/visualization/configure-table-blueprints.md?speculative-link) for the full workflow, including dataset segment tables and remote storage.
+For more configurations, see the [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints).
+
 ### Improved column settings, with search, display mode and bulk hide/show
 
 With this update, organizing columns in your dataset table got a lot more convenient!
@@ -213,6 +275,7 @@ The [JavaScript and React web viewer APIs](https://ref.rerun.io/docs/js/) now ac
 - **Every panel, button and input has an accessible name**: Every panel, icon button, menu and input in the Viewer now has a name in the accessibility tree, so screen readers, `egui_kittest` queries and the MCP UI tools can reach them by name.
 - **Views can hide their title bar**: Views take a new `titlebar` blueprint option, for example `rrb.Spatial2DView(titlebar=False)`, which hides the view's title bar.
 - **Agents can run any command palette command**: The Viewer MCP server and `ViewerControlService` can now list and run every command of the command palette, such as toggling panels, playback, and blueprint undo ([docs](../reference/viewer/mcp.md)).
+- **Viewer state lists connected servers**: `GetViewerState` — and with it the `rerun_get_viewer_state` MCP tool — now lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, so an agent can open one by name. See the [MCP reference](../reference/viewer/mcp.md).
 - **Pick the agent's model in the agent panel**: The model shown in the agent panel's footer is now a drop-down for switching to any other model the agent offers.
 - **Paste images into the agent panel**: Ctrl/Cmd-V in the agent panel's composer attaches the image on the clipboard.
 - **Set the memory limit of the web viewer**: The JS `WebViewer` has a new `memory_limit` option, e.g. `"500MB"`.

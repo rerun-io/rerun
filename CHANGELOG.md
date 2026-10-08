@@ -12,6 +12,8 @@
 - Smoother plot lines
 - Configure the state timeline time axis
 - State timeline hover duration
+- Rerun Viewer in marimo notebooks
+- Python API for table blueprints
 - Improved column settings, with search, display mode and bulk hide/show
 - Playback controls for dataset previews
 - Assets can specify what segments they apply to
@@ -43,6 +45,8 @@
 - Add `CatalogClient.stage()` for writing files to server [5fbbd3b](https://github.com/rerun-io/rerun/commit/5fbbd3b7f1648f3d0aec83a2b17c81b42fcf8508)
 - Shutting down viewer via `ViewerClient` now waits for process exit [3c73bca](https://github.com/rerun-io/rerun/commit/3c73bca34c5470fa7fca33989b5820448e1e3837)
 - Simplify rerun_sdk python packaging [9e6a5a7](https://github.com/rerun-io/rerun/commit/9e6a5a718debe6f592f92238287688e483df1117)
+- Support Marimo Notebooks [4b82c86](https://github.com/rerun-io/rerun/commit/4b82c86cdd22be9425b63376dd54103b630c6564)
+- Python API for table blueprint [dcd809d](https://github.com/rerun-io/rerun/commit/dcd809d3110e75caba7742257c571f659f590ce6)
 
 #### 🦀 Rust API
 - Complete support for PLY format (add mesh and 2D) also using more performant API of ply-rs-bw 4.0.0 [#12730](https://github.com/rerun-io/rerun/pull/12730) (thanks [@bourumir-wyngs](https://github.com/bourumir-wyngs)!)
@@ -68,6 +72,7 @@
 - Fix hiding top panel in browser on mac [4b0a3bc](https://github.com/rerun-io/rerun/commit/4b0a3bc1cedcfc76d01de36ce6cdd8b6b2215c68)
 - fix static last-write-wins for chunks with interleaved RowIds [#12957](https://github.com/rerun-io/rerun/pull/12957) (thanks [@mightsleep](https://github.com/mightsleep)!)
 - Fix startup deadlock in serve_grpc and serve_web [176fd87](https://github.com/rerun-io/rerun/commit/176fd87f1a6d80738bf6b33d1edf95c1f84bfa1d)
+- Fix MCAP import hanging when the rayon pool is busy [411981a](https://github.com/rerun-io/rerun/commit/411981afddbb586e2f7336b27d1b8c02a6e585b1)
 
 #### 🌁 Viewer improvements
 - Let agents read a recording's schema, and other viewer-control additions [8d3de3c](https://github.com/rerun-io/rerun/commit/8d3de3c2552cf49b4b4882803abae58ec6b261f7)
@@ -83,6 +88,7 @@
 - re_agent: Add model selection ui [845a6ef](https://github.com/rerun-io/rerun/commit/845a6ef45ca76db35f02e8f0be856befc28ccce4)
 - Bayer image visualization support [1a00b58](https://github.com/rerun-io/rerun/commit/1a00b58a39990a59c8178dde885aa163debdad1e)
 - Write the active blueprint from JSON over ViewerControl / MCP [e7eda6c](https://github.com/rerun-io/rerun/commit/e7eda6cf11edf73f76572648a2bcc58aa977b16b)
+- Viewer MCP: list Redap servers in viewer state [02df63c](https://github.com/rerun-io/rerun/commit/02df63cc66132dae1cfd13f5a5af6ccd655b81e1)
 
 #### 🗄️ OSS server
 - Asset dataset properties to filter what segments an asset should apply to [7d79e5b](https://github.com/rerun-io/rerun/commit/7d79e5bdeef40e7a413e644f0aa653b22862a1ff)
