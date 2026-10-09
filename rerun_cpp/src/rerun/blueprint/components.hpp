@@ -42,6 +42,7 @@
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
 #include "blueprint/components/selected_columns.hpp"
+#include "blueprint/components/sql_filter_expression.hpp"
 #include "blueprint/components/table_cell_kind.hpp"
 #include "blueprint/components/table_layout_kind.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"

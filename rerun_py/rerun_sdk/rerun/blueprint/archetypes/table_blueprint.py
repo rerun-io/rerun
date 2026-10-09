@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
@@ -15,6 +15,9 @@ from ..._baseclasses import (
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ... import encodings
 
 __all__ = ["TableBlueprint"]
 
@@ -42,6 +45,7 @@ class TableBlueprint(Archetype):
         *,
         layout: blueprint_components.TableLayoutKindLike | None = None,
         column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
+        filters: encodings.Utf8ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the TableBlueprint archetype.
@@ -58,12 +62,26 @@ class TableBlueprint(Archetype):
 
             Defaults to compact formatting when unset.
             Explicit column display names take precedence.
+        filters:
+            Filters for the table's rows.
+
+            A row in the table is only shown when *all* filters evaluate to true for it.
+            Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+
+            The viewer shows an editable filter for a single column compared to a literal value, for example:
+            * `"score" >= 3`
+            * `"success" = true`
+            * `"task" ILIKE '%pick%'`
+            * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+
+            For a list column, the comparison goes in `any_match("column", x -> …)`.
+            Other expressions still filter the table, and the viewer shows them as SQL text.
 
         """
 
         # You can define your own __init__ function as a member of TableBlueprintExt in table_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(layout=layout, column_display_mode=column_display_mode)
+            self.__attrs_init__(layout=layout, column_display_mode=column_display_mode, filters=filters)
             return
         self.__attrs_clear__()
 
@@ -72,6 +90,7 @@ class TableBlueprint(Archetype):
         self.__attrs_init__(
             layout=None,
             column_display_mode=None,
+            filters=None,
         )
 
     @classmethod
@@ -88,6 +107,7 @@ class TableBlueprint(Archetype):
         clear_unset: bool = False,
         layout: blueprint_components.TableLayoutKindLike | None = None,
         column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
+        filters: encodings.Utf8ArrayLike | None = None,
     ) -> TableBlueprint:
         """
         Update only some specific fields of a `TableBlueprint`.
@@ -106,6 +126,20 @@ class TableBlueprint(Archetype):
 
             Defaults to compact formatting when unset.
             Explicit column display names take precedence.
+        filters:
+            Filters for the table's rows.
+
+            A row in the table is only shown when *all* filters evaluate to true for it.
+            Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+
+            The viewer shows an editable filter for a single column compared to a literal value, for example:
+            * `"score" >= 3`
+            * `"success" = true`
+            * `"task" ILIKE '%pick%'`
+            * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+
+            For a list column, the comparison goes in `any_match("column", x -> …)`.
+            Other expressions still filter the table, and the viewer shows them as SQL text.
 
         """
 
@@ -114,6 +148,7 @@ class TableBlueprint(Archetype):
             kwargs = {
                 "layout": layout,
                 "column_display_mode": column_display_mode,
+                "filters": filters,
             }
 
             if clear_unset:
@@ -146,6 +181,14 @@ class TableBlueprint(Archetype):
             component_type=blueprint_components.ColumnDisplayModeBatch._COMPONENT_TYPE,
         )
 
+    @staticmethod
+    def descriptor_filters() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TableBlueprint:filters",
+            archetype=TableBlueprint.NAME,
+            component_type=blueprint_components.SqlFilterExpressionBatch._COMPONENT_TYPE,
+        )
+
     layout: blueprint_components.TableLayoutKindBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -167,6 +210,27 @@ class TableBlueprint(Archetype):
     #
     # Defaults to compact formatting when unset.
     # Explicit column display names take precedence.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    filters: blueprint_components.SqlFilterExpressionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.SqlFilterExpressionBatch._converter,  # type: ignore[misc]
+    )
+    # Filters for the table's rows.
+    #
+    # A row in the table is only shown when *all* filters evaluate to true for it.
+    # Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    #
+    # The viewer shows an editable filter for a single column compared to a literal value, for example:
+    # * `"score" >= 3`
+    # * `"success" = true`
+    # * `"task" ILIKE '%pick%'`
+    # * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+    #
+    # For a list column, the comparison goes in `any_match("column", x -> …)`.
+    # Other expressions still filter the table, and the viewer shows them as SQL text.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

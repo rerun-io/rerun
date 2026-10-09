@@ -1,9 +1,11 @@
 use std::fmt::Formatter;
+use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, FieldRef};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema};
 use datafusion::prelude::Expr;
+use datafusion::sql::sqlparser::ast::Expr as SqlExpr;
 
-use super::{Filter as _, FilterError, TypedFilter};
+use super::{Filter as _, FilterError, SqlColumn, TypedFilter, leftmost_column};
 
 /// The nullability of a nested arrow datatype.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -96,5 +98,18 @@ impl ColumnFilter {
     /// The expression is used for filtering and should thus evaluate to a boolean.
     pub fn as_filter_expression(&self) -> Result<Expr, FilterError> {
         self.filter.as_filter_expression(&self.field)
+    }
+
+    /// Parse a filter from the SQL a filter type writes, given the schema of the table it filters.
+    pub fn from_sql(expr: &SqlExpr, schema: &Schema) -> Option<Self> {
+        let column_name = leftmost_column(expr, schema)?;
+        let field = schema.field_with_name(&column_name).ok()?;
+        let filter = TypedFilter::from_sql(expr, field)?;
+        Some(Self::new(Arc::new(field.clone()), filter))
+    }
+
+    /// The filter as SQL, or `None` if it selects every row.
+    pub fn to_sql(&self) -> Option<String> {
+        self.filter.to_sql(&SqlColumn::new(&self.field))
     }
 }

@@ -80,6 +80,8 @@ mod root_container;
 mod row_share;
 #[path = "components/selected_columns.def.rs"]
 mod selected_columns;
+#[path = "components/sql_filter_expression.def.rs"]
+mod sql_filter_expression;
 #[path = "components/table_cell_kind.def.rs"]
 mod table_cell_kind;
 #[path = "components/table_layout_kind.def.rs"]
@@ -163,6 +165,7 @@ pub use self::query_expression::*;
 pub use self::root_container::*;
 pub use self::row_share::*;
 pub use self::selected_columns::*;
+pub use self::sql_filter_expression::*;
 pub use self::table_cell_kind::*;
 pub use self::table_layout_kind::*;
 pub use self::tensor_dimension_index_slider::*;

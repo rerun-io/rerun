@@ -4,11 +4,15 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::Column;
 use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
+use datafusion::sql::sqlparser::ast::{BinaryOperator, Expr as SqlExpr};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
-use super::{Filter, FilterError, FilterUiAction};
+use super::{
+    Filter, FilterError, FilterUiAction, SqlColumn, SqlValue, bool_literal, is_same_sql,
+    negated_sql, strip_negation,
+};
 
 /// Filter for non-nullable boolean columns.
 ///
@@ -27,9 +31,31 @@ impl NonNullableBooleanFilter {
             Self::IsFalse => false,
         }
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (predicate, value) = column.match_predicate(expr)?;
+        Some(if bool_comparison_from_sql(predicate, &value)? {
+            Self::IsTrue
+        } else {
+            Self::IsFalse
+        })
+    }
+}
+
+/// Parse `value = true` or `value = false`.
+fn bool_comparison_from_sql(predicate: &SqlExpr, value: &SqlValue) -> Option<bool> {
+    match value.comparison(predicate)? {
+        (BinaryOperator::Eq, right) => bool_literal(right),
+        _ => None,
+    }
 }
 
 impl Filter for NonNullableBooleanFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        Some(column.predicate_sql(|value| format!("{value} = {}", self.as_bool())))
+    }
+
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         match field.data_type() {
             DataType::Boolean => Ok(col(field.name().clone()).eq(lit(self.as_bool()))),
@@ -176,9 +202,59 @@ impl NullableBooleanFilter {
             "null".to_owned()
         }
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (expr, negated) = strip_negation(expr);
+
+        let filter_value = if is_same_sql(expr, &is_null_sql(column)) {
+            NullableBooleanValue::IsNull
+        } else {
+            let (predicate, value) = column.match_predicate(expr)?;
+            if bool_comparison_from_sql(predicate, &value)? {
+                NullableBooleanValue::IsTrue
+            } else {
+                NullableBooleanValue::IsFalse
+            }
+        };
+
+        Some(Self {
+            value: filter_value,
+            operator: if negated {
+                NullableBooleanOperator::IsNot
+            } else {
+                NullableBooleanOperator::Is
+            },
+        })
+    }
+}
+
+/// The SQL selecting null values.
+///
+/// For a list column this selects null rows, empty lists, and lists that contain a null.
+fn is_null_sql(column: &SqlColumn<'_>) -> String {
+    let sql = column.predicate_sql(|value| format!("{value} IS NULL"));
+    if column.is_list() {
+        let column = column.sql();
+        format!("{column} IS NULL OR cardinality({column}) = 0 OR {sql}")
+    } else {
+        sql
+    }
 }
 
 impl Filter for NullableBooleanFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        let sql = match self.value.as_bool() {
+            Some(bool_value) => column.predicate_sql(|value| format!("{value} = {bool_value}")),
+            None => is_null_sql(column),
+        };
+
+        Some(match self.operator {
+            NullableBooleanOperator::Is => sql,
+            NullableBooleanOperator::IsNot => negated_sql(&sql),
+        })
+    }
+
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let column = Column::from(field.name().clone());
 

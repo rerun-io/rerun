@@ -18,7 +18,14 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = []
+
+## Enable anonymized telemetry using our analytics SDK.
+analytics = ["dep:re_analytics"]
+
 [dependencies]
+re_analytics = { workspace = true, optional = true }
 re_arrow_util.workspace = true
 re_async.workspace = true
 re_case.workspace = true

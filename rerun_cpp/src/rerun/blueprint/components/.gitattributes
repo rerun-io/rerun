@@ -53,6 +53,7 @@ query_expression.hpp linguist-generated=true
 root_container.hpp linguist-generated=true
 row_share.hpp linguist-generated=true
 selected_columns.hpp linguist-generated=true
+sql_filter_expression.hpp linguist-generated=true
 table_cell_kind.cpp linguist-generated=true
 table_cell_kind.hpp linguist-generated=true
 table_layout_kind.cpp linguist-generated=true

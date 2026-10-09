@@ -23,6 +23,7 @@ pub use self::column_sorting::{SortBy, SortDirection};
 pub use self::filters::{
     ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+    parse_sql_expr,
 };
 pub use self::header_tooltip::column_header_tooltip_ui;
 pub use self::re_table_utils::{

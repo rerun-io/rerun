@@ -14,11 +14,13 @@ use arrow::datatypes::{
 };
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
-use datafusion::prelude::{DataFrame, SessionContext};
+use datafusion::prelude::{DataFrame, SessionConfig, SessionContext};
+use datafusion::sql::sqlparser::ast::ExprWithAlias;
 use jiff::ToSpan as _;
 use re_dataframe_ui::{
     ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+    parse_sql_expr,
 };
 use re_viewer_context::external::tokio;
 use strum::VariantArray as _;
@@ -311,7 +313,12 @@ struct TestSessionContext {
 
 impl TestSessionContext {
     fn new(columns: impl IntoIterator<Item = TestColumn>) -> Self {
-        let ctx = SessionContext::new();
+        // Relative timestamp filters use the system time zone, so their SQL needs it as well.
+        let mut config = SessionConfig::new();
+        if let Some(time_zone) = jiff::tz::TimeZone::system().iana_name() {
+            config = config.set_str("datafusion.execution.time_zone", time_zone);
+        }
+        let ctx = SessionContext::new_with_config(config);
 
         let (fields, arrays): (Vec<_>, Vec<_>) =
             columns.into_iter().map(|c| (c.field, c.array)).unzip();
@@ -359,9 +366,35 @@ impl TestSessionContext {
 
         assert_eq!(record_batches.len(), 1);
 
-        record_batches
+        let record_batch = record_batches
             .pop()
-            .expect("we just checked that there is one record batch")
+            .expect("we just checked that there is one record batch");
+
+        if let Some(sql) = filter.to_sql() {
+            let df = self.df().await;
+            let sql_expr = parse_sql_expr(&sql)
+                .and_then(|expr| {
+                    self.ctx.state().create_logical_expr_from_sql_expr(
+                        ExprWithAlias { expr, alias: None },
+                        df.schema(),
+                    )
+                })
+                .unwrap_or_else(|err| panic!("couldn't plan the filter SQL: {err}\n{sql}"));
+            let sql_record_batches = df
+                .filter(sql_expr)
+                .expect("failed to apply the filter SQL")
+                .collect()
+                .await
+                .unwrap_or_else(|err| panic!("failed to run the filter SQL: {err}\n{sql}"));
+            assert_eq!(sql_record_batches.len(), 1);
+            assert_eq!(
+                sql_record_batches[0].column(0).as_ref(),
+                record_batch.column(0).as_ref(),
+                "the filter SQL selects other rows than the filter\n{sql}"
+            );
+        }
+
+        record_batch
     }
 }
 

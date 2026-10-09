@@ -560,6 +560,24 @@ impl Properties for SettingsOpened {
 
 // -----------------------------------------------
 
+/// Sent the first time a table filter bar shows a "Custom" filter.
+///
+/// A "Custom" filter is SQL from the table blueprint that the filter bar can't edit.
+/// Sent at most once per viewer session.
+pub struct CustomTableFilterShown {}
+
+impl Event for CustomTableFilterShown {
+    const NAME: &'static str = "custom-table-filter-shown";
+}
+
+impl Properties for CustomTableFilterShown {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
 /// Links the current anonymous analytics ID to an authenticated user.
 ///
 /// This is sent when a user logs in, allowing us to connect their

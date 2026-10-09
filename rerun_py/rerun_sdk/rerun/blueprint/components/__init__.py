@@ -47,6 +47,7 @@ from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
+from .sql_filter_expression import SqlFilterExpression, SqlFilterExpressionBatch
 from .table_cell_kind import TableCellKind, TableCellKindArrayLike, TableCellKindBatch, TableCellKindLike
 from .table_layout_kind import TableLayoutKind, TableLayoutKindArrayLike, TableLayoutKindBatch, TableLayoutKindLike
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
@@ -174,6 +175,8 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
+    "SqlFilterExpression",
+    "SqlFilterExpressionBatch",
     "TableCellKind",
     "TableCellKindArrayLike",
     "TableCellKindBatch",

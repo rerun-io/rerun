@@ -27,7 +27,22 @@ pub struct TableBlueprint {
     /// Explicit column display names take precedence.
     #[rerun(optional)]
     pub column_display_mode: Option<rerun::blueprint::components::ColumnDisplayMode>,
+
+    /// Filters for the table's rows.
+    ///
+    /// A row in the table is only shown when *all* filters evaluate to true for it.
+    /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    ///
+    /// The viewer shows an editable filter for a single column compared to a literal value, for example:
+    /// * `"score" >= 3`
+    /// * `"success" = true`
+    /// * `"task" ILIKE '%pick%'`
+    /// * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+    ///
+    /// For a list column, the comparison goes in `any_match("column", x -> …)`.
+    /// Other expressions still filter the table, and the viewer shows them as SQL text.
+    #[rerun(optional)]
+    pub filters: Option<Vec<rerun::blueprint::components::SqlFilterExpression>>,
     // TODO(andreas): Reject `Cards` without a configured card layout in the ergonomic API.
     // TODO(andreas): Add persisted column sorting.
-    // TODO(andreas): Add persisted column filters.
 }

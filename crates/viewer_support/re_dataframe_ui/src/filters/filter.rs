@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::logical_expr::Expr;
+use datafusion::sql::sqlparser::ast::Expr as SqlExpr;
 use re_log_types::TimestampFormat;
 use re_types_core::{ArrowDataType as _, Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
 use re_ui::SyntaxHighlighting;
@@ -7,7 +10,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{
     FilterUiAction, FloatFilter, IntFilter, NonNullableBooleanFilter, Nullability,
-    NullableBooleanFilter, StringFilter, TimestampFilter, TimestampFormatted,
+    NullableBooleanFilter, SqlColumn, StringFilter, TimestampFilter, TimestampFormatted,
     is_supported_string_datatype,
 };
 
@@ -37,6 +40,11 @@ pub enum FilterError {
 pub trait Filter {
     /// Convert the filter to a datafusion expression.
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
+
+    /// Convert the filter to the SQL stored in the table blueprint.
+    ///
+    /// Returns `None` if the filter selects every row.
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String>;
 
     /// Show the UI of the popup associated with this filter.
     fn popup_ui(
@@ -140,6 +148,25 @@ impl TypedFilter {
         }
     }
 
+    /// Parse the SQL written by `Filter::to_sql` for a filter on this column.
+    pub fn from_sql(expr: &SqlExpr, column_field: &Field) -> Option<Self> {
+        let column = SqlColumn::new(column_field);
+
+        // The column's datatype decides the filter type, as for a filter added in the UI.
+        Some(
+            match Self::default_for_column(&Arc::new(column_field.clone()))? {
+                Self::NullableBoolean(_) => NullableBooleanFilter::from_sql(expr, &column)?.into(),
+                Self::NonNullableBoolean(_) => {
+                    NonNullableBooleanFilter::from_sql(expr, &column)?.into()
+                }
+                Self::Int(_) => IntFilter::from_sql(expr, &column)?.into(),
+                Self::Float(_) => FloatFilter::from_sql(expr, &column)?.into(),
+                Self::String(_) => StringFilter::from_sql(expr, &column)?.into(),
+                Self::Timestamp(_) => TimestampFilter::from_sql(expr, &column)?.into(),
+            },
+        )
+    }
+
     fn as_filter(&self) -> &dyn Filter {
         match self {
             Self::NullableBoolean(inner) => inner,
@@ -166,6 +193,10 @@ impl TypedFilter {
 impl Filter for TypedFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         self.as_filter().as_filter_expression(field)
+    }
+
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        self.as_filter().to_sql(column)
     }
 
     fn popup_ui(

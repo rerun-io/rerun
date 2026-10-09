@@ -48,6 +48,21 @@ pub struct TableBlueprint {
     /// Defaults to compact formatting when unset.
     /// Explicit column display names take precedence.
     pub column_display_mode: Option<SerializedComponentBatch>,
+
+    /// Filters for the table's rows.
+    ///
+    /// A row in the table is only shown when *all* filters evaluate to true for it.
+    /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    ///
+    /// The viewer shows an editable filter for a single column compared to a literal value, for example:
+    /// * `"score" >= 3`
+    /// * `"success" = true`
+    /// * `"task" ILIKE '%pick%'`
+    /// * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+    ///
+    /// For a list column, the comparison goes in `any_match("column", x -> …)`.
+    /// Other expressions still filter the table, and the viewer shows them as SQL text.
+    pub filters: Option<SerializedComponentBatch>,
 }
 
 impl TableBlueprint {
@@ -78,6 +93,20 @@ impl TableBlueprint {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::filters`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::SqlFilterExpression`].
+    #[inline]
+    pub fn descriptor_filters() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:filters".into(),
+                component_type: Some("rerun.blueprint.components.SqlFilterExpression".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -86,25 +115,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
+            TableBlueprint::descriptor_filters(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
+            TableBlueprint::descriptor_filters(),
         ]
     });
 
 impl TableBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for TableBlueprint {
@@ -158,9 +189,13 @@ impl ::re_types_core::Archetype for TableBlueprint {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_column_display_mode())
             });
+        let filters = arrays_by_descr
+            .get(&Self::descriptor_filters())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_filters()));
         Ok(Self {
             layout,
             column_display_mode,
+            filters,
         })
     }
 }
@@ -169,10 +204,14 @@ impl ::re_types_core::AsComponents for TableBlueprint {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.layout.clone(), self.column_display_mode.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.layout.clone(),
+            self.column_display_mode.clone(),
+            self.filters.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -185,6 +224,7 @@ impl TableBlueprint {
         Self {
             layout: None,
             column_display_mode: None,
+            filters: None,
         }
     }
 
@@ -206,6 +246,10 @@ impl TableBlueprint {
             column_display_mode: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::ColumnDisplayMode::arrow_empty(),
                 Self::descriptor_column_display_mode(),
+            )),
+            filters: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::SqlFilterExpression::arrow_empty(),
+                Self::descriptor_filters(),
             )),
         }
     }
@@ -236,6 +280,28 @@ impl TableBlueprint {
             Self::descriptor_column_display_mode(),
             [column_display_mode],
         );
+        self
+    }
+
+    /// Filters for the table's rows.
+    ///
+    /// A row in the table is only shown when *all* filters evaluate to true for it.
+    /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    ///
+    /// The viewer shows an editable filter for a single column compared to a literal value, for example:
+    /// * `"score" >= 3`
+    /// * `"success" = true`
+    /// * `"task" ILIKE '%pick%'`
+    /// * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+    ///
+    /// For a list column, the comparison goes in `any_match("column", x -> …)`.
+    /// Other expressions still filter the table, and the viewer shows them as SQL text.
+    #[inline]
+    pub fn with_filters(
+        mut self,
+        filters: impl IntoIterator<Item = impl Into<crate::blueprint::components::SqlFilterExpression>>,
+    ) -> Self {
+        self.filters = try_serialize_field(Self::descriptor_filters(), filters);
         self
     }
 }

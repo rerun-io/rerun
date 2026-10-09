@@ -22,6 +22,9 @@ use arrow::array::{ArrayRef, BooleanArray};
 use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, not};
+use datafusion::sql::sqlparser::ast::{
+    BinaryOperator, DataType as SqlDataType, Expr as SqlExpr, Value,
+};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 use re_log_types::TimestampFormat;
 use re_types_core::ArrowDataType as _;
@@ -30,7 +33,10 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
-use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
+use super::{
+    Filter, FilterError, FilterUdf, FilterUiAction, SqlColumn, TimestampFormatted, is_same_sql,
+    negated_sql, parse_timestamp, quote_string, strip_negation, strip_nested,
+};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
 enum TimestampFilterKind {
@@ -148,10 +154,162 @@ impl TimestampFilter {
         }
     }
 
+    pub fn last_24_hours() -> Self {
+        Self {
+            kind: TimestampFilterKind::Last24Hours,
+            ..Default::default()
+        }
+    }
+
+    pub fn this_week() -> Self {
+        Self {
+            kind: TimestampFilterKind::ThisWeek,
+            ..Default::default()
+        }
+    }
+
+    pub fn last_week() -> Self {
+        Self {
+            kind: TimestampFilterKind::LastWeek,
+            ..Default::default()
+        }
+    }
+
     pub fn with_is_not(mut self) -> Self {
         self.operator = TimestampOperator::IsNot;
         self
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (expr, negated) = strip_negation(expr);
+        let (predicate, value) = column.match_predicate(expr)?;
+
+        let bound = |expr: &'_ SqlExpr, operator: BinaryOperator| match value.comparison(expr)? {
+            (op, right) if *op == operator => Some(right.clone()),
+            _ => None,
+        };
+        let (low, high) = match predicate {
+            SqlExpr::BinaryOp {
+                left,
+                op: BinaryOperator::And,
+                right,
+            } => (
+                Some(bound(strip_nested(left), BinaryOperator::GtEq)?),
+                Some(bound(strip_nested(right), BinaryOperator::Lt)?),
+            ),
+            predicate => match bound(predicate, BinaryOperator::GtEq) {
+                Some(low) => (Some(low), None),
+                None => (None, Some(bound(predicate, BinaryOperator::Lt)?)),
+            },
+        };
+
+        let relative_kind = RELATIVE_KINDS.iter().find(|(_, low_sql, high_sql)| {
+            low.as_ref().is_some_and(|low| is_same_sql(low, low_sql))
+                && high
+                    .as_ref()
+                    .is_some_and(|high| is_same_sql(high, high_sql))
+        });
+
+        let mut filter = if let Some((kind, _, _)) = relative_kind {
+            Self {
+                kind: *kind,
+                ..Default::default()
+            }
+        } else {
+            let low = match &low {
+                Some(low) => Some(timestamp_from_sql(low)?),
+                None => None,
+            };
+            let high = match &high {
+                Some(high) => Some(timestamp_from_sql(high)?),
+                None => None,
+            };
+            match (low, high) {
+                (Some(low), Some(high)) => Self::between(low, high),
+                (Some(low), None) => Self::after(low),
+                (None, Some(high)) => Self::before(high),
+                (None, None) => return None,
+            }
+        };
+
+        if negated {
+            filter.operator = TimestampOperator::IsNot;
+        }
+
+        Some(filter)
+    }
+
+    /// The SQL of the low and high bounds, or `None` if the filter has no valid bounds.
+    fn sql_bounds(&self) -> Option<(Option<String>, Option<String>)> {
+        if let Some((_, low, high)) = RELATIVE_KINDS
+            .iter()
+            .find(|(kind, _, _)| *kind == self.kind)
+        {
+            return Some((Some((*low).to_owned()), Some((*high).to_owned())));
+        }
+
+        let low = || self.low_bound_timestamp.resolved().ok().map(timestamp_sql);
+        let high = || self.high_bound_timestamp.resolved().ok().map(timestamp_sql);
+        Some(match self.kind {
+            TimestampFilterKind::Before => (None, Some(high()?)),
+            TimestampFilterKind::After => (Some(low()?), None),
+            TimestampFilterKind::Between => (Some(low()?), Some(high()?)),
+            TimestampFilterKind::Today
+            | TimestampFilterKind::Yesterday
+            | TimestampFilterKind::Last24Hours
+            | TimestampFilterKind::ThisWeek
+            | TimestampFilterKind::LastWeek => return None,
+        })
+    }
+}
+
+/// The SQL of the low and high bound of each relative filter kind.
+///
+/// SQL evaluates these in the session time zone.
+const RELATIVE_KINDS: [(TimestampFilterKind, &str, &str); 5] = [
+    (
+        TimestampFilterKind::Today,
+        "date_trunc('day', now())",
+        "date_trunc('day', now()) + INTERVAL '1 day'",
+    ),
+    (
+        TimestampFilterKind::Yesterday,
+        "date_trunc('day', now()) - INTERVAL '1 day'",
+        "date_trunc('day', now())",
+    ),
+    (
+        TimestampFilterKind::Last24Hours,
+        "now() - INTERVAL '24 hours'",
+        "now()",
+    ),
+    (
+        TimestampFilterKind::ThisWeek,
+        "date_trunc('week', now())",
+        "date_trunc('week', now()) + INTERVAL '7 days'",
+    ),
+    (
+        TimestampFilterKind::LastWeek,
+        "date_trunc('week', now()) - INTERVAL '7 days'",
+        "date_trunc('week', now())",
+    ),
+];
+
+fn timestamp_sql(timestamp: jiff::Timestamp) -> String {
+    format!("TIMESTAMP {}", quote_string(&timestamp.to_string()))
+}
+
+fn timestamp_from_sql(expr: &SqlExpr) -> Option<jiff::Timestamp> {
+    let SqlExpr::TypedString(typed_string) = expr else {
+        return None;
+    };
+    if !matches!(typed_string.data_type, SqlDataType::Timestamp(_, _)) {
+        return None;
+    }
+    let Value::SingleQuotedString(value) = &typed_string.value.value else {
+        return None;
+    };
+    jiff::Timestamp::from_str(value).ok()
 }
 
 impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
@@ -195,6 +353,22 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
 }
 
 impl Filter for TimestampFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        let sql = match self.sql_bounds()? {
+            (Some(low), Some(high)) => {
+                column.predicate_sql(|value| format!("{value} >= {low} AND {value} < {high}"))
+            }
+            (Some(low), None) => column.predicate_sql(|value| format!("{value} >= {low}")),
+            (None, Some(high)) => column.predicate_sql(|value| format!("{value} < {high}")),
+            (None, None) => return None,
+        };
+
+        Some(match self.operator {
+            TimestampOperator::Is => sql,
+            TimestampOperator::IsNot => negated_sql(&sql),
+        })
+    }
+
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -795,6 +969,34 @@ mod tests {
     use jiff::civil::date;
 
     use super::*;
+
+    /// A bound filter with a timestamp string that doesn't parse selects every row and has no SQL.
+    #[test]
+    fn invalid_timestamp_filters_have_no_sql() {
+        let field = arrow::datatypes::Field::new(
+            "column",
+            arrow::datatypes::DataType::Timestamp(
+                arrow::datatypes::TimeUnit::Nanosecond,
+                Some("UTC".into()),
+            ),
+            false,
+        );
+        let timestamp = Timestamp::from_second(1000000).unwrap();
+
+        for mut filter in [
+            TimestampFilter::before(timestamp),
+            TimestampFilter::after(timestamp),
+            TimestampFilter::between(timestamp, timestamp),
+        ] {
+            filter
+                .low_bound_timestamp
+                .update_and_resolve_timestamp("not a timestamp", TimestampFormat::utc());
+            filter
+                .high_bound_timestamp
+                .update_and_resolve_timestamp("not a timestamp", TimestampFormat::utc());
+            assert_eq!(filter.to_sql(&SqlColumn::new(&field)), None, "{filter:?}");
+        }
+    }
 
     #[test]
     fn test_before_filter() {

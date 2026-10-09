@@ -9636,6 +9636,7 @@ dependencies = [
  "jiff",
  "nohash-hasher",
  "ordered-float 5.3.0",
+ "re_analytics",
  "re_arrow_util",
  "re_async",
  "re_case",

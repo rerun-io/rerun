@@ -4,12 +4,16 @@ use arrow::array::{Array as _, ArrayRef, BooleanArray};
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, lit, not};
+use datafusion::sql::sqlparser::ast::{BinaryOperator, Expr as SqlExpr};
 use ordered_float::OrderedFloat;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use strum::VariantArray as _;
 
-use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
+use super::{
+    Filter, FilterError, FilterUdf, FilterUiAction, SqlColumn, action_from_text_edit_response,
+    negated_sql, number_literal, quote_string, string_literal, strip_negation, strip_nested,
+};
 
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq, strum::VariantArray)]
 pub enum ComparisonOperator {
@@ -61,6 +65,41 @@ impl ComparisonOperator {
             Self::Ge => left >= right,
         }
     }
+
+    /// The SQL comparing a column to `value`.
+    fn to_sql(self, column: &SqlColumn<'_>, value: &str) -> String {
+        let sql_operator = match self {
+            Self::Ne => {
+                return negated_sql(&Self::Eq.to_sql(column, value));
+            }
+            Self::Eq => "=",
+            Self::Lt => "<",
+            Self::Le => "<=",
+            Self::Gt => ">",
+            Self::Ge => ">=",
+        };
+
+        column.predicate_sql(|column| format!("{column} {sql_operator} {value}"))
+    }
+
+    /// Parse the SQL written by [`Self::to_sql`], returning the operator and the value.
+    fn from_sql<'e>(expr: &'e SqlExpr, column: &SqlColumn<'_>) -> Option<(Self, &'e SqlExpr)> {
+        let (expr, negated) = strip_negation(expr);
+        let (predicate, value) = column.match_predicate(expr)?;
+        let (op, right) = value.comparison(predicate)?;
+
+        let operator = match (op, negated) {
+            (BinaryOperator::Eq, false) => Self::Eq,
+            (BinaryOperator::Eq, true) => Self::Ne,
+            (BinaryOperator::Lt, false) => Self::Lt,
+            (BinaryOperator::LtEq, false) => Self::Le,
+            (BinaryOperator::Gt, false) => Self::Gt,
+            (BinaryOperator::GtEq, false) => Self::Ge,
+            _ => return None,
+        };
+
+        Some((operator, right))
+    }
 }
 
 // ---
@@ -106,9 +145,23 @@ impl IntFilter {
     pub fn rhs_value(&self) -> Option<i128> {
         self.rhs_value
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (operator, value) = ComparisonOperator::from_sql(expr, column)?;
+        Some(Self::new(
+            operator,
+            Some(number_literal(value)?.parse().ok()?),
+        ))
+    }
 }
 
 impl Filter for IntFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        let value = self.rhs_value?;
+        Some(self.operator.to_sql(column, &value.to_string()))
+    }
+
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let Some(rhs_value) = self.rhs_value else {
             return Ok(lit(true));
@@ -263,9 +316,32 @@ impl FloatFilter {
     pub fn rhs_value(&self) -> Option<f64> {
         self.rhs_value.map(|x| x.into_inner())
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (operator, value) = ComparisonOperator::from_sql(expr, column)?;
+        let value = match strip_nested(value) {
+            SqlExpr::Cast { expr, .. } => string_literal(expr)?.parse().ok()?,
+            value => number_literal(value)?.parse().ok()?,
+        };
+        Some(Self::new(operator, Some(value)))
+    }
 }
 
 impl Filter for FloatFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        let value = self.rhs_value?.into_inner();
+
+        // SQL has no literals for infinity and NaN.
+        let value_sql = if value.is_finite() {
+            format!("{value:?}")
+        } else {
+            format!("CAST({} AS DOUBLE)", quote_string(&value.to_string()))
+        };
+
+        Some(self.operator.to_sql(column, &value_sql))
+    }
+
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let Some(rhs_value) = self.rhs_value else {
             return Ok(lit(true));

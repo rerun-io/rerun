@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
-use arrow::datatypes::Field;
+use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference as DataFusionTableReference;
 use egui::containers::menu::MenuConfig;
@@ -31,7 +31,8 @@ use crate::blueprint::{TableBlueprint, TableColumn};
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection};
 use crate::datafusion_adapter::{
-    DataFusionAdapter, DataFusionQueryData, DataFusionQueryResult, EntryLinksSpec, SegmentLinksSpec,
+    DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
+    EntryLinksSpec, SegmentLinksSpec, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -612,44 +613,39 @@ impl<'a> DataFusionTableWidget<'a> {
         // The TableConfig should be persisted across sessions, so we also need a static id.
         let session_id =
             id_from_session_context_and_table(&self.session_ctx, &self.datafusion_table_ref);
+        let initial_query_data = DataFusionQueryData {
+            filters: TableBlueprint::load_filters(
+                &table_blueprints.blueprint_context_for(app_ctx, &self.table_ref),
+            ),
+            ..self.initial_query_data.clone()
+        };
         let mut table_state = DataFusionAdapter::get(
             runtime,
             ui,
             &self.session_ctx,
             self.datafusion_table_ref.clone(),
             session_id,
-            self.initial_query_data.clone(),
+            initial_query_data,
         );
 
-        let requested_query_result = table_state.results.as_ref();
-
         let is_table_update_in_progress;
-        let query_result = match (requested_query_result, &table_state.last_query_results) {
+        let query_result = match (&table_state.results, &table_state.last_query_results) {
+            (Some(Err(err)), _) => {
+                let err = Arc::clone(err);
+                return self.query_error_ui(
+                    app_ctx,
+                    runtime,
+                    ui,
+                    table_blueprints,
+                    session_id,
+                    table_state,
+                    &err,
+                );
+            }
+
             (Some(Ok(query_result)), _) => {
                 is_table_update_in_progress = !query_result.finished;
                 query_result
-            }
-
-            (Some(Err(err)), _) => {
-                let error = format!("Could not load table: {err}");
-
-                ui.horizontal(|ui| {
-                    ui.error_label(&error);
-
-                    if ui
-                        .small_icon_button(&re_ui::icons::RESET, "Refresh")
-                        .clicked()
-                    {
-                        // This will trigger a fresh query on the next frame.
-                        Self::refresh(
-                            runtime,
-                            ui.ctx().clone(),
-                            Arc::clone(&self.session_ctx),
-                            self.datafusion_table_ref.clone(),
-                        );
-                    }
-                });
-                return TableStatus::Error(error);
             }
 
             (None, Some(Ok(last_query_result))) => {
@@ -658,7 +654,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 last_query_result
             }
 
-            (None, None | Some(Err(_))) => {
+            (None, _) => {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
@@ -725,6 +721,92 @@ impl<'a> DataFusionTableWidget<'a> {
         }
     }
 
+    /// UI for a query that failed.
+    ///
+    /// Shows the filter bar above the error, so the filters of the query can still be edited
+    /// and removed. The query runs again when the filters of the table blueprint change.
+    #[expect(clippy::too_many_arguments)]
+    fn query_error_ui(
+        &self,
+        app_ctx: &AppContext<'_>,
+        runtime: &AsyncRuntimeHandle,
+        ui: &mut egui::Ui,
+        table_blueprints: &TableBlueprints,
+        session_id: egui::Id,
+        table_state: DataFusionAdapter,
+        err: &DataFusionQueryError,
+    ) -> TableStatus {
+        let blueprint_ctx = table_blueprints.blueprint_context_for(app_ctx, &self.table_ref);
+        let filters = TableBlueprint::load_filters(&blueprint_ctx);
+
+        // Without a schema every filter shows as a custom filter.
+        let last_schema = match &table_state.last_query_results {
+            Some(Ok(last_query_result)) => Some(&last_query_result.original_schema),
+            _ => None,
+        };
+        let schema = err
+            .original_schema
+            .as_ref()
+            .or(last_schema)
+            .map_or_else(Schema::empty, |schema| schema.as_ref().clone());
+
+        toolbar_ui(
+            ui,
+            app_ctx,
+            ToolbarTitle {
+                title: self.title.as_deref(),
+                summary_ui: self.toolbar_summary_fn.as_deref(),
+                url: self.table_ref.url().map(|url| url.to_string()).as_deref(),
+                should_show_loading_indicator: false,
+            },
+            |_| {},
+        );
+
+        let mut filter_state = FilterState::load(ui.ctx(), session_id, &filters, &schema);
+        let new_filters = filter_state.filter_bar_ui(
+            ui,
+            app_ctx.app_options.timestamp_format,
+            &err.filter_errors,
+        );
+        filter_state.store(ui.ctx(), session_id);
+
+        let error = format!("Could not load table: {}", query_error_message(&err.error));
+        Frame::new()
+            .inner_margin(Margin::symmetric(16, 0))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.error_label(&error);
+
+                    if ui
+                        .small_icon_button(&re_ui::icons::RESET, "Refresh")
+                        .clicked()
+                    {
+                        // This will trigger a fresh query on the next frame.
+                        Self::refresh(
+                            runtime,
+                            ui.ctx().clone(),
+                            Arc::clone(&self.session_ctx),
+                            self.datafusion_table_ref.clone(),
+                        );
+                    }
+                });
+            });
+
+        if let Some(new_filters) = &new_filters {
+            TableBlueprint::save_filters(&blueprint_ctx, new_filters);
+        }
+        let filters = new_filters.unwrap_or(filters);
+        if table_state.query_data().filters != filters {
+            let query_data = DataFusionQueryData {
+                filters,
+                ..table_state.query_data().clone()
+            };
+            table_state.update_query(runtime, ui, query_data);
+        }
+
+        TableStatus::Error(error)
+    }
+
     /// Actual UI code to render a table.
     fn table_ui(
         &self,
@@ -740,12 +822,6 @@ impl<'a> DataFusionTableWidget<'a> {
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableUiOutput {
         let mut query_data = query_data.clone();
-
-        let mut filter_state = FilterState::load_or_init_from_filters(
-            ui.ctx(),
-            session_id,
-            &query_data.column_filters,
-        );
 
         let num_rows = query_result
             .sorbet_batches
@@ -763,6 +839,14 @@ impl<'a> DataFusionTableWidget<'a> {
             &self.additional_column_heuristics,
         );
         let mut column_display_mode = blueprint.column_display_mode;
+
+        query_data.filters.clone_from(&blueprint.filters);
+        let mut filter_state = FilterState::load(
+            ui.ctx(),
+            session_id,
+            &blueprint.filters,
+            &query_result.original_schema,
+        );
 
         let mut layout_kind = blueprint.layout();
         let card_layout_available = blueprint.card_layout.is_some();
@@ -830,18 +914,25 @@ impl<'a> DataFusionTableWidget<'a> {
         toolbar_ui(
             ui,
             ctx,
-            &blueprint_ctx,
-            blueprint_columns,
-            ToolbarContent {
-                column_display_mode: &mut column_display_mode,
+            ToolbarTitle {
                 title: self.title.as_deref(),
                 summary_ui: self.toolbar_summary_fn.as_deref(),
                 url: self.table_ref.url().map(|url| url.to_string()).as_deref(),
                 should_show_loading_indicator,
-                layout_kind: layout_kind_ref,
-                preview_state: (!view_renderers.is_empty())
-                    .then(|| view_states.preview_state.get_or_insert_default()),
-                num_marked_rows: marked_rows.iter().filter(|marked| **marked).count(),
+            },
+            |ui| {
+                toolbar_controls_ui(
+                    ui,
+                    &blueprint_ctx,
+                    blueprint_columns,
+                    ToolbarControls {
+                        column_display_mode: &mut column_display_mode,
+                        layout_kind: layout_kind_ref,
+                        preview_state: (!view_renderers.is_empty())
+                            .then(|| view_states.preview_state.get_or_insert_default()),
+                        num_marked_rows: marked_rows.iter().filter(|marked| **marked).count(),
+                    },
+                );
             },
         );
         if column_display_mode != blueprint.column_display_mode {
@@ -851,17 +942,14 @@ impl<'a> DataFusionTableWidget<'a> {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
         }
 
-        // Under a tab bar the toolbar's own bottom margin is the whole gap to what follows, so
-        // `item_spacing` must not add to it. A titled table keeps the spacing it had.
-        if self.title.is_none() {
-            ui.spacing_mut().item_spacing.y = 0.0;
-        }
-
-        filter_state.filter_bar_ui(
+        if let Some(filters) = filter_state.filter_bar_ui(
             ui,
             ctx.app_options.timestamp_format,
-            &mut query_data.column_filters,
-        );
+            &query_result.filter_errors,
+        ) {
+            TableBlueprint::save_filters(&blueprint_ctx, &filters);
+            query_data.filters = filters;
+        }
 
         let migrated_fields = query_result
             .sorbet_schema
@@ -1132,13 +1220,18 @@ fn play_all_button_width(ui: &egui::Ui) -> f32 {
         + 2.0 * size.padding().x
 }
 
-/// What the toolbar shows, beyond the columns it always has.
-struct ToolbarContent<'a> {
-    column_display_mode: &'a mut ColumnDisplayMode,
+/// What the left side of the toolbar shows.
+#[derive(Clone, Copy)]
+struct ToolbarTitle<'a> {
     title: Option<&'a str>,
     summary_ui: Option<&'a dyn Fn(&mut Ui)>,
     url: Option<&'a str>,
     should_show_loading_indicator: bool,
+}
+
+/// What the right side of the toolbar shows, beyond the columns it always has.
+struct ToolbarControls<'a> {
+    column_display_mode: &'a mut ColumnDisplayMode,
     layout_kind: MaybeMutRef<'a, TableLayoutKind>,
 
     /// Set when the table shows previews, which puts the playback controls in the toolbar.
@@ -1148,28 +1241,12 @@ struct ToolbarContent<'a> {
     num_marked_rows: usize,
 }
 
-/// The row above the table, with an optional title and the display controls.
-fn toolbar_ui<'a>(
-    ui: &mut egui::Ui,
-    ctx: &AppContext<'_>,
-    blueprint_ctx: &AppBlueprintCtx<'_>,
-    blueprint_columns: impl Iterator<Item = &'a TableColumn<'a>>,
-    content: ToolbarContent<'_>,
-) {
-    let ToolbarContent {
-        column_display_mode,
-        title,
-        summary_ui,
-        url,
-        should_show_loading_indicator,
-        mut layout_kind,
-        preview_state,
-        num_marked_rows,
-    } = content;
-
-    // A row of small buttons needs less room around it than a heading does. Without a title this
-    // is the row under a tab bar, so it uses `TAB_TOOLBAR_MARGIN_Y` like every other tab.
-    let inner_margin = if title.is_some() {
+/// The margin around the toolbar.
+///
+/// A row of small buttons needs less room around it than a heading does. Without a title this
+/// is the row under a tab bar, so it uses `TAB_TOOLBAR_MARGIN_Y` like every other tab.
+fn toolbar_margin(title: Option<&str>) -> Margin {
+    if title.is_some() {
         Margin {
             top: 16,
             bottom: 12,
@@ -1178,116 +1255,155 @@ fn toolbar_ui<'a>(
         }
     } else {
         Margin::symmetric(16, re_ui::TAB_TOOLBAR_MARGIN_Y as i8)
-    };
+    }
+}
 
+/// The left side of the toolbar, with the title, its copy URL button, the summary and the
+/// loading indicator.
+fn toolbar_title_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, content: ToolbarTitle<'_>) {
+    let ToolbarTitle {
+        title,
+        summary_ui,
+        url,
+        should_show_loading_indicator,
+    } = content;
+
+    if let Some(title) = title {
+        ui.heading(RichText::new(title).strong());
+        if let Some(url) = url
+            && ui
+                .small_icon_button(&re_ui::icons::COPY, "Copy URL")
+                .on_hover_text(url)
+                .clicked()
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
+        }
+    }
+
+    if let Some(summary_ui) = summary_ui {
+        summary_ui(ui);
+    }
+
+    if should_show_loading_indicator {
+        ui.loading_indicator("Fetching table data");
+    }
+}
+
+/// The row above the table, with an optional title on the left and `controls_ui` on the right.
+fn toolbar_ui(
+    ui: &mut egui::Ui,
+    ctx: &AppContext<'_>,
+    title: ToolbarTitle<'_>,
+    controls_ui: impl FnOnce(&mut egui::Ui),
+) {
     // Fixed, so the row is the same height whatever it holds.
     let row_height = re_ui::TAB_TOOLBAR_HEIGHT;
+    let has_title = title.title.is_some();
 
-    Frame::new().inner_margin(inner_margin).show(ui, |ui| {
-        egui::Sides::new().show(
+    Frame::new()
+        .inner_margin(toolbar_margin(title.title))
+        .show(ui, |ui| {
+            egui::Sides::new().show(
+                ui,
+                |ui| {
+                    ui.set_height(row_height);
+                    toolbar_title_ui(ui, ctx, title);
+                },
+                |ui| {
+                    ui.set_height(row_height);
+                    ui.horizontal_centered(controls_ui);
+                },
+            );
+        });
+
+    // Under a tab bar the toolbar's own bottom margin is the whole gap to what follows, so
+    // `item_spacing` must not add to it. A titled table keeps the spacing it had.
+    if !has_title {
+        ui.spacing_mut().item_spacing.y = 0.0;
+    }
+}
+
+/// The display controls on the right side of the toolbar.
+fn toolbar_controls_ui<'a>(
+    ui: &mut egui::Ui,
+    blueprint_ctx: &AppBlueprintCtx<'_>,
+    blueprint_columns: impl Iterator<Item = &'a TableColumn<'a>>,
+    controls: ToolbarControls<'_>,
+) {
+    let ToolbarControls {
+        column_display_mode,
+        mut layout_kind,
+        preview_state,
+        num_marked_rows,
+    } = controls;
+
+    let row_height = re_ui::TAB_TOOLBAR_HEIGHT;
+
+    if let Some(layout_kind) = layout_kind.as_mut() {
+        ui.selectable_toggle_sized(Some(row_height), |ui| {
+            ui.icon_selectable_value(
+                &icons::TABLE_ROW_VIEW,
+                "Table view",
+                layout_kind,
+                TableLayoutKind::Table,
+            );
+            ui.icon_selectable_value(
+                &icons::TABLE_GRID_VIEW,
+                "Cards view",
+                layout_kind,
+                TableLayoutKind::Cards,
+            );
+        });
+    }
+
+    re_ui::ReButton::wrap_widget(ui, re_ui::Variant::Ghost, re_ui::Size::Small, false, |ui| {
+        columns_edit_menu_ui(
             ui,
-            |ui| {
-                ui.set_height(row_height);
-
-                if let Some(title) = title {
-                    ui.heading(RichText::new(title).strong());
-                    if let Some(url) = url
-                        && ui
-                            .small_icon_button(&re_ui::icons::COPY, "Copy URL")
-                            .on_hover_text(url)
-                            .clicked()
-                    {
-                        ctx.command_sender()
-                            .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
-                    }
-                }
-
-                if let Some(summary_ui) = summary_ui {
-                    summary_ui(ui);
-                }
-
-                if should_show_loading_indicator {
-                    ui.loading_indicator("Fetching table data");
-                }
-            },
-            |ui| {
-                ui.set_height(row_height);
-
-                ui.horizontal_centered(|ui| {
-                    if let Some(layout_kind) = layout_kind.as_mut() {
-                        ui.selectable_toggle_sized(Some(row_height), |ui| {
-                            ui.icon_selectable_value(
-                                &icons::TABLE_ROW_VIEW,
-                                "Table view",
-                                layout_kind,
-                                TableLayoutKind::Table,
-                            );
-                            ui.icon_selectable_value(
-                                &icons::TABLE_GRID_VIEW,
-                                "Cards view",
-                                layout_kind,
-                                TableLayoutKind::Cards,
-                            );
-                        });
-                    }
-
-                    re_ui::ReButton::wrap_widget(
-                        ui,
-                        re_ui::Variant::Ghost,
-                        re_ui::Size::Small,
-                        false,
-                        |ui| {
-                            columns_edit_menu_ui(
-                                ui,
-                                blueprint_ctx,
-                                *layout_kind,
-                                column_display_mode,
-                                blueprint_columns,
-                            );
-                        },
-                    );
-
-                    if let Some(state) = preview_state {
-                        ui.add_space(12.0);
-
-                        let playing = state.playing();
-                        let (icon, label) = if playing {
-                            (&icons::PAUSE, "Pause all")
-                        } else {
-                            (&icons::PLAY, "Play all")
-                        };
-                        let width = play_all_button_width(ui);
-                        if ui
-                            .add_sized(
-                                egui::vec2(width, row_height),
-                                re_ui::ReButton::new((icon.as_image(), label))
-                                    .small()
-                                    .outlined()
-                                    .selected(playing),
-                            )
-                            .clicked()
-                        {
-                            state.set_playing(!playing);
-                        }
-
-                        // `Sides` lays its right-hand side out right to left, so the fastest
-                        // speed is listed first.
-                        let mut speed = state.speed();
-                        ui.selectable_toggle_sized(Some(row_height), |ui| {
-                            for value in [2.0, 1.0, 0.5] {
-                                ui.selectable_value(&mut speed, value, format!("{value}×"));
-                            }
-                        });
-                        state.set_speed(speed);
-                    }
-
-                    if num_marked_rows > 0 {
-                        ui.label(RichText::new(format!("{num_marked_rows} marked")).weak());
-                    }
-                });
-            },
+            blueprint_ctx,
+            *layout_kind,
+            column_display_mode,
+            blueprint_columns,
         );
     });
+
+    if let Some(state) = preview_state {
+        ui.add_space(12.0);
+
+        let playing = state.playing();
+        let (icon, label) = if playing {
+            (&icons::PAUSE, "Pause all")
+        } else {
+            (&icons::PLAY, "Play all")
+        };
+        let width = play_all_button_width(ui);
+        if ui
+            .add_sized(
+                egui::vec2(width, row_height),
+                re_ui::ReButton::new((icon.as_image(), label))
+                    .small()
+                    .outlined()
+                    .selected(playing),
+            )
+            .clicked()
+        {
+            state.set_playing(!playing);
+        }
+
+        // `Sides` lays its right-hand side out right to left, so the fastest
+        // speed is listed first.
+        let mut speed = state.speed();
+        ui.selectable_toggle_sized(Some(row_height), |ui| {
+            for value in [2.0, 1.0, 0.5] {
+                ui.selectable_value(&mut speed, value, format!("{value}×"));
+            }
+        });
+        state.set_speed(speed);
+    }
+
+    if num_marked_rows > 0 {
+        ui.label(RichText::new(format!("{num_marked_rows} marked")).weak());
+    }
 }
 
 /// Find the record batch and local row index for a global row index.

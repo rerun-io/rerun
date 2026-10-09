@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/column_display_mode.hpp"
+#include "../../blueprint/components/sql_filter_expression.hpp"
 #include "../../blueprint/components/table_layout_kind.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -41,6 +42,21 @@ namespace rerun::blueprint::archetypes {
         /// Explicit column display names take precedence.
         std::optional<ComponentBatch> column_display_mode;
 
+        /// Filters for the table's rows.
+        ///
+        /// A row in the table is only shown when *all* filters evaluate to true for it.
+        /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+        ///
+        /// The viewer shows an editable filter for a single column compared to a literal value, for example:
+        /// * `"score">= 3`
+        /// * `"success" = true`
+        /// * `"task" ILIKE '%pick%'`
+        /// * `"created">= TIMESTAMP '2026-01-01T00:00:00Z'`
+        ///
+        /// For a list column, the comparison goes in `any_match("column", x -> …)`.
+        /// Other expressions still filter the table, and the viewer shows them as SQL text.
+        std::optional<ComponentBatch> filters;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TableBlueprint";
@@ -54,6 +70,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_column_display_mode = ComponentDescriptor(
             ArchetypeName, "TableBlueprint:column_display_mode",
             Loggable<rerun::blueprint::components::ColumnDisplayMode>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `filters` field.
+        static constexpr auto Descriptor_filters = ComponentDescriptor(
+            ArchetypeName, "TableBlueprint:filters",
+            Loggable<rerun::blueprint::components::SqlFilterExpression>::ComponentType
         );
 
       public:
@@ -91,6 +112,26 @@ namespace rerun::blueprint::archetypes {
             column_display_mode =
                 ComponentBatch::from_loggable(_column_display_mode, Descriptor_column_display_mode)
                     .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Filters for the table's rows.
+        ///
+        /// A row in the table is only shown when *all* filters evaluate to true for it.
+        /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+        ///
+        /// The viewer shows an editable filter for a single column compared to a literal value, for example:
+        /// * `"score">= 3`
+        /// * `"success" = true`
+        /// * `"task" ILIKE '%pick%'`
+        /// * `"created">= TIMESTAMP '2026-01-01T00:00:00Z'`
+        ///
+        /// For a list column, the comparison goes in `any_match("column", x -> …)`.
+        /// Other expressions still filter the table, and the viewer shows them as SQL text.
+        TableBlueprint with_filters(
+            const Collection<rerun::blueprint::components::SqlFilterExpression>& _filters
+        ) && {
+            filters = ComponentBatch::from_loggable(_filters, Descriptor_filters).value_or_throw();
             return std::move(*this);
         }
 

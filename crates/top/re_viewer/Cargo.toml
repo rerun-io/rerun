@@ -63,7 +63,7 @@ default_web = ["audio", "map_view"]
 agent_context = []
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_ui/analytics"]
+analytics = ["dep:re_analytics", "re_dataframe_ui/analytics", "re_ui/analytics"]
 
 ## Enable the audio view and audio playback.
 audio = ["re_audio/output", "dep:re_view_audio"]

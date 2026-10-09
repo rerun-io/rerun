@@ -42,6 +42,7 @@ query_expression.rs linguist-generated=true
 root_container.rs linguist-generated=true
 row_share.rs linguist-generated=true
 selected_columns.rs linguist-generated=true
+sql_filter_expression.rs linguist-generated=true
 table_cell_kind.rs linguist-generated=true
 table_layout_kind.rs linguist-generated=true
 tensor_dimension_index_slider.rs linguist-generated=true

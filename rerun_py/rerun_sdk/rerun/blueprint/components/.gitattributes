@@ -42,6 +42,7 @@ query_expression.py linguist-generated=true
 root_container.py linguist-generated=true
 row_share.py linguist-generated=true
 selected_columns.py linguist-generated=true
+sql_filter_expression.py linguist-generated=true
 table_cell_kind.py linguist-generated=true
 table_layout_kind.py linguist-generated=true
 tensor_dimension_index_slider.py linguist-generated=true

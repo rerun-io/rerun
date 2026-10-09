@@ -16,17 +16,25 @@ namespace rerun::blueprint::archetypes {
                 Descriptor_column_display_mode
             )
                 .value_or_throw();
+        archetype.filters =
+            ComponentBatch::empty<rerun::blueprint::components::SqlFilterExpression>(
+                Descriptor_filters
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TableBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (layout.has_value()) {
             columns.push_back(layout.value().partitioned(lengths_).value_or_throw());
         }
         if (column_display_mode.has_value()) {
             columns.push_back(column_display_mode.value().partitioned(lengths_).value_or_throw());
+        }
+        if (filters.has_value()) {
+            columns.push_back(filters.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -37,6 +45,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (column_display_mode.has_value()) {
             return columns(std::vector<uint32_t>(column_display_mode.value().length(), 1));
+        }
+        if (filters.has_value()) {
+            return columns(std::vector<uint32_t>(filters.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -50,13 +61,16 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.layout.has_value()) {
             cells.push_back(archetype.layout.value());
         }
         if (archetype.column_display_mode.has_value()) {
             cells.push_back(archetype.column_display_mode.value());
+        }
+        if (archetype.filters.has_value()) {
+            cells.push_back(archetype.filters.value());
         }
 
         return rerun::take_ownership(std::move(cells));

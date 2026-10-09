@@ -741,6 +741,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SqlFilterExpression as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A SQL expression that selects the rows of a table.\n\nThe expression evaluates to a boolean.\nIt is written in the generic SQL dialect of DataFusion, with lambdas such as `x -> x > 1` for list columns.\n\nColumn names are double-quoted, e.g. `\"task\" ILIKE '%pick%'`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SqlFilterExpression::arrow_data_type(),
+                encoding: Some("rerun.encodings.Utf8"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: SqlFilterExpression::verify_arrow_array,
+            },
+        ),
+        (
             <TableCellKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "How a table column value is rendered.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -5738,6 +5751,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Column display mode",
                         component_type: "rerun.blueprint.components.ColumnDisplayMode".into(),
                         docstring_md: "Formatting for column names in table and card layouts.\n\nDefaults to compact formatting when unset.\nExplicit column display names take precedence.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "filters",
+                        display_name: "Filters",
+                        component_type: "rerun.blueprint.components.SqlFilterExpression".into(),
+                        docstring_md: "Filters for the table's rows.\n\nA row in the table is only shown when *all* filters evaluate to true for it.\nEach filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.\n\nThe viewer shows an editable filter for a single column compared to a literal value, for example:\n* `\"score\" >= 3`\n* `\"success\" = true`\n* `\"task\" ILIKE '%pick%'`\n* `\"created\" >= TIMESTAMP '2026-01-01T00:00:00Z'`\n\nFor a list column, the comparison goes in `any_match(\"column\", x -> …)`.\nOther expressions still filter the table, and the viewer shows them as SQL text.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

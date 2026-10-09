@@ -7,11 +7,15 @@ use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ColumnarValue, Expr, ScalarFunctionArgs, TypeSignature, col, lit, not,
 };
+use datafusion::sql::sqlparser::ast::{Expr as SqlExpr, Value};
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use strum::VariantArray as _;
 
-use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
+use super::{
+    Filter, FilterError, FilterUdf, FilterUiAction, SqlColumn, action_from_text_edit_response,
+    negated_sql, quote_string, string_literal, strip_negation,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 pub enum StringOperator {
@@ -54,9 +58,108 @@ impl StringFilter {
             query: query.into(),
         }
     }
+
+    /// Parse the SQL written by `Filter::to_sql`.
+    pub fn from_sql(expr: &SqlExpr, column: &SqlColumn<'_>) -> Option<Self> {
+        let (expr, negated) = strip_negation(expr);
+        let (predicate, value) = column.match_predicate(expr)?;
+        let SqlExpr::ILike {
+            negated: false,
+            any: false,
+            expr,
+            pattern,
+            escape_char,
+        } = predicate
+        else {
+            return None;
+        };
+        if !value.is(expr) {
+            return None;
+        }
+        if let Some(escape_char) = escape_char
+            && escape_char.value != Value::SingleQuotedString(LIKE_ESCAPE.to_owned())
+        {
+            return None;
+        }
+
+        let (any_prefix, query, any_suffix) = split_like_pattern(string_literal(pattern)?)?;
+        let operator = match (any_prefix, any_suffix, negated) {
+            (true, true, false) => StringOperator::Contains,
+            (true, true, true) => StringOperator::DoesNotContain,
+            (false, true, false) => StringOperator::StartsWith,
+            (true, false, false) => StringOperator::EndsWith,
+            _ => return None,
+        };
+
+        Some(Self::new(operator, query))
+    }
+}
+
+/// Escape character in the `LIKE` patterns of string filters.
+const LIKE_ESCAPE: &str = "\\";
+
+fn escape_like_pattern(query: &str) -> String {
+    let mut escaped = String::with_capacity(query.len());
+    for c in query.chars() {
+        if matches!(c, '%' | '_' | '\\') {
+            escaped.push('\\');
+        }
+        escaped.push(c);
+    }
+    escaped
+}
+
+/// Split a `LIKE` pattern into whether it starts with `%`, the unescaped text, and whether it
+/// ends with `%`.
+///
+/// Returns `None` for patterns with wildcards anywhere else.
+fn split_like_pattern(pattern: &str) -> Option<(bool, String, bool)> {
+    let mut chars = pattern.chars().peekable();
+    let any_prefix = chars.next_if_eq(&'%').is_some();
+
+    let mut text = String::with_capacity(pattern.len());
+    let mut any_suffix = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => text.push(chars.next()?),
+            '%' if chars.peek().is_none() => any_suffix = true,
+            '%' | '_' => return None,
+            c => text.push(c),
+        }
+    }
+
+    Some((any_prefix, text, any_suffix))
 }
 
 impl Filter for StringFilter {
+    fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
+        if self.query.is_empty() {
+            return None;
+        }
+
+        let escaped = escape_like_pattern(&self.query);
+        let pattern = match self.operator {
+            StringOperator::Contains | StringOperator::DoesNotContain => format!("%{escaped}%"),
+            StringOperator::StartsWith => format!("{escaped}%"),
+            StringOperator::EndsWith => format!("%{escaped}"),
+        };
+        let escape_clause = if escaped == self.query {
+            String::new()
+        } else {
+            format!(" ESCAPE {}", quote_string(LIKE_ESCAPE))
+        };
+
+        let sql = column.predicate_sql(|value| {
+            format!("{value} ILIKE {}{escape_clause}", quote_string(&pattern))
+        });
+
+        Some(if self.operator == StringOperator::DoesNotContain {
+            negated_sql(&sql)
+        } else {
+            sql
+        })
+    }
+
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         if self.query.is_empty() {
             return Ok(lit(true));

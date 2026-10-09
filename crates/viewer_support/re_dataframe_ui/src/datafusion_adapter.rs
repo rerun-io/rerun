@@ -1,13 +1,18 @@
 use std::mem;
 use std::sync::Arc;
 
+use ahash::HashMap;
 use arrow::datatypes::{DataType, SchemaRef};
+use arrow::error::ArrowError;
 use crossbeam::channel::{Receiver, TryRecvError};
-use datafusion::common::{DataFusionError, TableReference};
+use datafusion::common::{DataFusionError, SchemaError, TableReference};
 use datafusion::execution::SendableRecordBatchStream;
+use datafusion::execution::SessionState;
 use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
+use datafusion::logical_expr::{Expr, LogicalPlanBuilder, binary_expr, col as datafusion_col, lit};
+use datafusion::prelude::DataFrame;
 use datafusion::prelude::{SessionContext, cast, encode};
+use datafusion::sql::sqlparser::parser::ParserError;
 use futures::{StreamExt as _, TryStreamExt as _};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_async::AsyncRuntimeHandle;
@@ -18,9 +23,9 @@ use re_quota_channel::send_crossbeam;
 use re_sdk_types::blueprint::components::ColumnName;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 
-use crate::ColumnFilter;
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::SortBy;
+use crate::filters::filter_expression;
 use crate::table_selection::TableSelectionState;
 
 /// Information required to generate a segment link column.
@@ -75,7 +80,9 @@ pub struct DataFusionQueryData {
     pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
     pub prefilter: Option<datafusion::prelude::Expr>,
-    pub column_filters: Vec<ColumnFilter>,
+
+    /// SQL expressions from the table blueprint that select the shown rows.
+    pub filters: Vec<String>,
 }
 
 /// Result of the async datafusion query process.
@@ -90,7 +97,101 @@ pub struct DataFusionQueryResult {
     /// The migrated schema of the record batches (useful when the list of batches is empty).
     pub sorbet_schema: re_sorbet::SorbetSchema,
 
+    /// The error of each filter that the query left out, by the filter's SQL.
+    pub filter_errors: FilterErrors,
+
     pub finished: bool,
+}
+
+/// Filter errors by the filter's SQL.
+pub type FilterErrors = Arc<HashMap<String, String>>;
+
+/// The message of a query or filter error, for showing in the UI.
+///
+/// Uses the message of the innermost error without the kind of error in front of it, and leaves
+/// out lists of every column or candidate function.
+pub fn query_error_message(err: &DataFusionError) -> String {
+    let message = match err.find_root() {
+        DataFusionError::SQL(parser_error, _) => sql_parser_error_message(parser_error),
+        DataFusionError::Plan(message)
+        | DataFusionError::Execution(message)
+        | DataFusionError::NotImplemented(message) => message.clone(),
+        DataFusionError::ArrowError(arrow_error, _) => match arrow_error.as_ref() {
+            ArrowError::CastError(message)
+            | ArrowError::ComputeError(message)
+            | ArrowError::InvalidArgumentError(message) => message.clone(),
+            arrow_error => arrow_error.to_string(),
+        },
+        DataFusionError::SchemaError(schema_error, _) => schema_error_message(schema_error),
+        root => root.strip_backtrace(),
+    };
+
+    // Lists of candidate functions are on lines that start with a tab.
+    message
+        .lines()
+        .filter(|line| !line.starts_with('\t'))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// A filter is a single line, so a location only needs the column.
+fn sql_parser_error_message(err: &ParserError) -> String {
+    let message = match err {
+        ParserError::TokenizerError(message) | ParserError::ParserError(message) => message.clone(),
+        ParserError::RecursionLimitExceeded => return "The filter is nested too deeply".to_owned(),
+    };
+    message
+        .replacen("Expected: ", "Expected ", 1)
+        .replace(", found: EOF", ", but the filter ended")
+        .replace(", found: ", ", found ")
+        .replace(" at Line: 1, Column: ", " at character ")
+}
+
+/// `SchemaError::FieldNotFound` lists every column of the table.
+fn schema_error_message(err: &SchemaError) -> String {
+    match err {
+        SchemaError::FieldNotFound {
+            field,
+            valid_fields,
+        } => {
+            let name = &field.name;
+            let similar = valid_fields
+                .iter()
+                .find(|column| column.name.eq_ignore_ascii_case(name));
+            if let Some(similar) = similar {
+                format!(
+                    "No column named {name:?}. Column names are case sensitive, did you mean {:?}?",
+                    similar.name
+                )
+            } else {
+                format!("No column named {name:?}")
+            }
+        }
+        SchemaError::AmbiguousReference { field } => {
+            format!("Column name {:?} is ambiguous", field.name)
+        }
+        SchemaError::DuplicateQualifiedField { name, .. }
+        | SchemaError::DuplicateUnqualifiedField { name } => {
+            format!("Duplicate column {name:?}")
+        }
+    }
+}
+
+/// Plan a filter of the filter bar.
+///
+/// Type checks and constant folding of the filter run here, so a filter that fails them returns
+/// an error of its own instead of failing the whole query.
+fn plan_filter(
+    session_state: &SessionState,
+    dataframe: &DataFrame,
+    sql: &str,
+) -> Result<Expr, DataFusionError> {
+    let expr = filter_expression(session_state, dataframe.schema(), sql)?;
+    let plan = LogicalPlanBuilder::from(dataframe.logical_plan().clone())
+        .filter(expr.clone())?
+        .build()?;
+    session_state.optimize(&plan)?;
+    Ok(expr)
 }
 
 impl DataFusionQueryResult {
@@ -142,7 +243,10 @@ impl DataFusionQuery {
         }
     }
 
-    async fn batch_stream(self) -> Result<SendableRecordBatchStream, DataFusionError> {
+    /// Returns the stream of the query, and the errors of the filters it left out.
+    async fn batch_stream(
+        self,
+    ) -> Result<(SendableRecordBatchStream, FilterErrors), DataFusionError> {
         let mut dataframe = self.session_ctx.table(self.table_ref).await?;
 
         let DataFusionQueryData {
@@ -150,7 +254,7 @@ impl DataFusionQuery {
             segment_links,
             entry_links,
             prefilter,
-            column_filters,
+            filters,
         } = &self.query_data;
 
         //
@@ -201,18 +305,19 @@ impl DataFusionQuery {
         // Filters
         //
 
-        let filter_exprs = column_filters
+        let session_state = self.session_ctx.state();
+        let mut filter_errors = HashMap::default();
+        let filter_exprs = filters
             .iter()
-            .filter_map(|filter| {
-                filter
-                    .as_filter_expression()
-                    .inspect_err(|err| {
-                        // TODO(ab): error handling will need to be improved once we introduce non-
-                        // UI means of setting up filters.
-                        re_log::warn_once!("invalid filter: {err}");
-                    })
-                    .ok()
-            })
+            .filter_map(
+                |filter| match plan_filter(&session_state, &dataframe, filter) {
+                    Ok(expr) => Some(expr),
+                    Err(err) => {
+                        filter_errors.insert(filter.clone(), query_error_message(&err));
+                        None
+                    }
+                },
+            )
             .collect();
         let filter_expr =
             balanced_binary_exprs(filter_exprs, datafusion::logical_expr::Operator::And);
@@ -236,7 +341,7 @@ impl DataFusionQuery {
 
         let stream = dataframe.execute_stream().await?;
 
-        Ok(stream)
+        Ok((stream, Arc::new(filter_errors)))
     }
 
     /// Execute the query to produce the data to display.
@@ -246,69 +351,96 @@ impl DataFusionQuery {
     fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
         let (tx, rx) = re_quota_channel::create_crossbeam_channel(1000);
         runtime.spawn_future(async move {
-            if let Ok(stream) = self.batch_stream().await {
-                let schema = stream.schema();
-
-                let mut sorbet_stream = stream.and_then(|s| {
-                    std::future::ready(
-                        SorbetBatch::try_from_record_batch(&s, BatchType::Dataframe)
-                            .map_err(|err| DataFusionError::External(err.into())),
+            match self.batch_stream().await {
+                Err(err) => {
+                    send_crossbeam(
+                        &tx,
+                        QueryEvent::Error(DataFusionQueryError {
+                            error: err,
+                            original_schema: None,
+                            filter_errors: FilterErrors::default(),
+                        }),
                     )
-                });
+                    .ok();
+                }
+                Ok((stream, filter_errors)) => {
+                    let schema = stream.schema();
 
-                let mut sent_schemas = false;
-                let mut sent_error = false;
+                    let mut sorbet_stream = stream.and_then(|s| {
+                        std::future::ready(
+                            SorbetBatch::try_from_record_batch(&s, BatchType::Dataframe)
+                                .map_err(|err| DataFusionError::External(err.into())),
+                        )
+                    });
 
-                while let Some(frame) = sorbet_stream.next().await {
-                    match frame {
-                        Ok(batch) => {
-                            if !sent_schemas {
-                                let sorbet_schema = batch.sorbet_schema().clone();
-                                let original_schema = Arc::clone(&schema);
-                                if send_crossbeam(
-                                    &tx,
-                                    QueryEvent::Schema {
-                                        original_schema,
-                                        sorbet_schema,
-                                    },
-                                )
-                                .is_err()
-                                {
+                    let mut sent_schemas = false;
+                    let mut sent_error = false;
+
+                    while let Some(frame) = sorbet_stream.next().await {
+                        match frame {
+                            Ok(batch) => {
+                                if !sent_schemas {
+                                    let sorbet_schema = batch.sorbet_schema().clone();
+                                    let original_schema = Arc::clone(&schema);
+                                    if send_crossbeam(
+                                        &tx,
+                                        QueryEvent::Schema {
+                                            original_schema,
+                                            sorbet_schema,
+                                            filter_errors: Arc::clone(&filter_errors),
+                                        },
+                                    )
+                                    .is_err()
+                                    {
+                                        return; // Receiver dropped, stop streaming
+                                    }
+                                    sent_schemas = true;
+                                }
+                                if send_crossbeam(&tx, QueryEvent::Batch(batch)).is_err() {
                                     return; // Receiver dropped, stop streaming
                                 }
-                                sent_schemas = true;
                             }
-                            if send_crossbeam(&tx, QueryEvent::Batch(batch)).is_err() {
-                                return; // Receiver dropped, stop streaming
+                            Err(err) => {
+                                sent_error = true;
+                                send_crossbeam(
+                                    &tx,
+                                    QueryEvent::Error(DataFusionQueryError {
+                                        error: err,
+                                        original_schema: Some(Arc::clone(&schema)),
+                                        filter_errors: Arc::clone(&filter_errors),
+                                    }),
+                                )
+                                .ok();
                             }
-                        }
-                        Err(err) => {
-                            sent_error = true;
-                            send_crossbeam(&tx, QueryEvent::Error(err)).ok();
                         }
                     }
-                }
 
-                // We got no results, try to derive the sorbet schema from the raw arrow schema
-                if !sent_schemas && !sent_error {
-                    let sorbet_schema = SorbetSchema::try_from_raw_arrow_schema(schema.clone());
-                    match sorbet_schema {
-                        Ok(sorbet_schema) => {
-                            send_crossbeam(
-                                &tx,
-                                QueryEvent::Schema {
-                                    original_schema: schema,
-                                    sorbet_schema,
-                                },
-                            )
-                            .ok();
-                        }
-                        Err(err) => {
-                            send_crossbeam(
-                                &tx,
-                                QueryEvent::Error(DataFusionError::External(err.into())),
-                            )
-                            .ok();
+                    // We got no results, try to derive the sorbet schema from the raw arrow schema
+                    if !sent_schemas && !sent_error {
+                        let sorbet_schema = SorbetSchema::try_from_raw_arrow_schema(schema.clone());
+                        match sorbet_schema {
+                            Ok(sorbet_schema) => {
+                                send_crossbeam(
+                                    &tx,
+                                    QueryEvent::Schema {
+                                        original_schema: schema,
+                                        sorbet_schema,
+                                        filter_errors,
+                                    },
+                                )
+                                .ok();
+                            }
+                            Err(err) => {
+                                send_crossbeam(
+                                    &tx,
+                                    QueryEvent::Error(DataFusionQueryError {
+                                        error: DataFusionError::External(err.into()),
+                                        original_schema: Some(schema),
+                                        filter_errors,
+                                    }),
+                                )
+                                .ok();
+                            }
                         }
                     }
                 }
@@ -316,6 +448,18 @@ impl DataFusionQuery {
         });
         rx
     }
+}
+
+/// A query that failed.
+#[derive(Debug)]
+pub struct DataFusionQueryError {
+    pub error: DataFusionError,
+
+    /// The arrow schema of the query, if the query failed after planning.
+    pub original_schema: Option<SchemaRef>,
+
+    /// The error of each filter that the query left out, by the filter's SQL.
+    pub filter_errors: FilterErrors,
 }
 
 /// A event produced during the streaming execution of a datafusion query.
@@ -326,9 +470,10 @@ pub enum QueryEvent {
     Schema {
         original_schema: SchemaRef,
         sorbet_schema: re_sorbet::SorbetSchema,
+        filter_errors: FilterErrors,
     },
     Batch(SorbetBatch),
-    Error(DataFusionError),
+    Error(DataFusionQueryError),
 }
 
 impl PartialEq for DataFusionQuery {
@@ -354,13 +499,13 @@ pub struct DataFusionAdapter {
     query: DataFusionQuery,
 
     // Used to have something to display while the new dataframe is being queried.
-    pub last_query_results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
+    pub last_query_results: Option<Result<DataFusionQueryResult, Arc<DataFusionQueryError>>>,
 
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
     pub rx: Arc<Mutex<Receiver<QueryEvent>>>,
 
-    pub results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
+    pub results: Option<Result<DataFusionQueryResult, Arc<DataFusionQueryError>>>,
 
     pub queried_at: Timestamp,
 }
@@ -413,10 +558,12 @@ impl DataFusionAdapter {
                     Ok(QueryEvent::Schema {
                         sorbet_schema,
                         original_schema,
+                        filter_errors,
                     }) => {
                         adapter.results = Some(Ok(DataFusionQueryResult {
                             original_schema,
                             sorbet_schema,
+                            filter_errors,
                             sorbet_batches: vec![],
                             finished: false,
                         }));
@@ -431,14 +578,13 @@ impl DataFusionAdapter {
                             adapter.last_query_results = None;
                         }
                         Some(Err(err)) => {
-                            warn!("Received data after receiving an error: {err}");
+                            warn!("Received data after receiving an error: {}", err.error);
                         }
                         None => {
                             error!("Received data before receiving schema");
                         }
                     },
                     Ok(QueryEvent::Error(err)) => {
-                        error!("DataFusion query error: {err}");
                         adapter.results = Some(Err(Arc::new(err)));
                         changed = true;
                     }
@@ -594,12 +740,114 @@ fn balanced_binary_exprs(
 mod tests {
     use std::sync::Arc;
 
-    use arrow::datatypes::{DataType, Field};
+    use arrow::array::{Int64Array, RecordBatch};
+    use datafusion::prelude::SessionContext;
     use re_log_types::EntryId;
 
-    use super::{DataFusionQueryData, EntryLinksSpec, SegmentLinksSpec};
+    use super::{DataFusionQuery, DataFusionQueryData, EntryLinksSpec, SegmentLinksSpec};
     use crate::column_sorting::SortBy;
-    use crate::filters::{ColumnFilter, StringFilter, StringOperator};
+
+    /// The query leaves out filters that fail to plan and returns their error by SQL.
+    /// SQL that doesn't parse returns the parser message, and an unknown column returns a short
+    /// message that names a column differing only in case.
+    #[tokio::test]
+    async fn invalid_filters_return_errors() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch = RecordBatch::try_from_iter([
+            ("a", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+            ("B", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+        ])
+        .unwrap();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let valid = r#""a" > 1"#;
+        let unknown_column = r#""missing" > 1"#;
+        let wrong_case = "b > 1";
+        let syntax_error = r#""a" >"#;
+
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                filters: vec![
+                    valid.to_owned(),
+                    unknown_column.to_owned(),
+                    wrong_case.to_owned(),
+                    syntax_error.to_owned(),
+                ],
+                ..Default::default()
+            },
+        );
+        let (_stream, filter_errors) = query.batch_stream().await.unwrap();
+
+        assert_eq!(filter_errors.len(), 3, "{filter_errors:?}");
+        assert_eq!(
+            filter_errors[unknown_column],
+            r#"No column named "missing""#
+        );
+        assert_eq!(
+            filter_errors[wrong_case],
+            r#"No column named "b". Column names are case sensitive, did you mean "B"?"#
+        );
+        assert!(
+            !filter_errors[syntax_error].contains("ParserError"),
+            "{filter_errors:?}"
+        );
+    }
+
+    /// Filters that parse but fail type checks, constant folding or use aggregate functions are
+    /// left out with an error of their own, and the query with the other filters still runs.
+    #[tokio::test]
+    async fn filters_that_fail_planning_return_errors() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch =
+            RecordBatch::try_from_iter([("a", Arc::new(Int64Array::from(vec![1, 2, 3])) as _)])
+                .unwrap();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let errors = [
+            (
+                r#""a" + 1"#,
+                "The filter produces Int64 values instead of true or false",
+            ),
+            (
+                r#""a" > 'hello'"#,
+                "Cannot cast string 'hello' to value of Int64 type",
+            ),
+            (
+                r#""a" LIKE '%x%'"#,
+                "There isn't a common type to coerce Int64 and Utf8 in LIKE expression",
+            ),
+            (
+                r#"sum("a") > 1"#,
+                "A filter can't use functions that combine rows, such as sum or count",
+            ),
+            (
+                r#"abs("a", 1)"#,
+                "Function 'abs' expects 1 arguments but received 2. No function matches the given name and argument types 'abs(Int64, Int64)'. You might need to add explicit type casts.",
+            ),
+            (r#"(("a" > 1)"#, "Expected ), but the filter ended"),
+        ];
+
+        let mut filters = vec![r#""a" > 1"#.to_owned()];
+        filters.extend(errors.iter().map(|(filter, _)| (*filter).to_owned()));
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                filters,
+                ..Default::default()
+            },
+        );
+        let (stream, filter_errors) = query.batch_stream().await.unwrap();
+
+        for (filter, error) in errors {
+            assert_eq!(filter_errors.get(filter).map(String::as_str), Some(error));
+        }
+        let batches: Vec<RecordBatch> = futures::TryStreamExt::try_collect(stream).await.unwrap();
+        let num_rows: usize = batches.iter().map(RecordBatch::num_rows).sum();
+        assert_eq!(num_rows, 2);
+    }
 
     #[test]
     fn query_inputs_change_query_fingerprint() {
@@ -614,10 +862,9 @@ mod tests {
         assert_ne!(baseline, changed);
 
         let mut changed = baseline.clone();
-        changed.column_filters.push(ColumnFilter::new(
-            Arc::new(Field::new("filter", DataType::Utf8, true)),
-            StringFilter::new(StringOperator::Contains, "value"),
-        ));
+        changed
+            .filters
+            .push(r#""filter" ILIKE '%value%'"#.to_owned());
         assert_ne!(baseline, changed);
 
         let origin: re_uri::Origin = "rerun+http://127.0.0.1:9876".parse().unwrap();

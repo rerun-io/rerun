@@ -4,7 +4,8 @@ use re_sdk_types::blueprint::archetypes::{
     TableLayout as TableLayoutArchetype,
 };
 use re_sdk_types::blueprint::components::{
-    ColumnDisplayMode, ColumnName, TableLayoutKind, TimelineName as BlueprintTimelineName,
+    ColumnDisplayMode, ColumnName, SqlFilterExpression, TableLayoutKind,
+    TimelineName as BlueprintTimelineName,
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
@@ -31,6 +32,9 @@ pub struct TableBlueprint<'a> {
     layout: Option<TableLayoutKind>,
 
     pub column_display_mode: ColumnDisplayMode,
+
+    /// SQL expressions that select the shown rows.
+    pub filters: Vec<String>,
 
     /// Shared configuration for preview columns in every layout.
     pub previews_config: PreviewsConfig,
@@ -77,6 +81,7 @@ impl<'a> TableBlueprint<'a> {
         // TODO(andreas): Should we only resolve the active layout?
         Self {
             column_display_mode,
+            filters: Self::load_filters(blueprint_ctx),
             layout: results.component_mono(TableBlueprintArchetype::descriptor_layout().component),
             previews_config: PreviewsConfig {
                 timeline: results
@@ -153,6 +158,34 @@ impl<'a> TableBlueprint<'a> {
         blueprint_ctx.save_blueprint_archetype(
             "/table".into(),
             &TableBlueprintArchetype::update_fields().with_column_display_mode(mode),
+        );
+    }
+
+    /// Load the row filters without resolving the rest of the blueprint.
+    pub fn load_filters(blueprint_ctx: &AppBlueprintCtx<'_>) -> Vec<String> {
+        blueprint_ctx
+            .latest_at_in_current_blueprint(
+                &"/table".into(),
+                [TableBlueprintArchetype::descriptor_filters().component],
+            )
+            .component_batch::<SqlFilterExpression>(
+                TableBlueprintArchetype::descriptor_filters().component,
+            )
+            .unwrap_or_default()
+            .into_iter()
+            .map(|filter| filter.as_str().to_owned())
+            .collect()
+    }
+
+    /// Write the row filters, taking effect next frame.
+    pub fn save_filters(blueprint_ctx: &AppBlueprintCtx<'_>, filters: &[String]) {
+        blueprint_ctx.save_blueprint_archetype(
+            "/table".into(),
+            &TableBlueprintArchetype::update_fields().with_filters(
+                filters
+                    .iter()
+                    .map(|filter| SqlFilterExpression::from(filter.as_str())),
+            ),
         );
     }
 
