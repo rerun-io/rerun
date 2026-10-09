@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::{EncodeError, Encoder};
@@ -122,12 +122,21 @@ pub trait LogSink: Send + Sync + 'static + std::any::Any {
     fn finalize_deferred_in_place(&self) -> bool {
         false
     }
+
+    /// Notifies the sink that a shutdown is requested.
+    /// This must be safe to call concurrently with [`Self::send`] and return promptly.
+    /// Composite sinks must forward this to their children.
+    #[doc(hidden)]
+    fn request_shutdown(&self) {}
 }
 
 // ----------------------------------------------------------------------------
 
 /// Stream to multiple sinks at the same time.
-pub struct MultiSink(parking_lot::Mutex<Vec<Box<dyn LogSink>>>);
+///
+/// We use an `RwLock` to allow [`Self::send`] and [`Self::request_shutdown`] read access to the log
+/// sink without blocking each other.
+pub struct MultiSink(RwLock<Vec<Box<dyn LogSink>>>);
 
 impl MultiSink {
     /// Combine multiple sinks into one.
@@ -135,21 +144,21 @@ impl MultiSink {
     /// Messages will be cloned to each sink.
     #[inline]
     pub fn new(sinks: Vec<Box<dyn LogSink>>) -> Self {
-        Self(parking_lot::Mutex::new(sinks))
+        Self(RwLock::new(sinks))
     }
 }
 
 impl LogSink for MultiSink {
     #[inline]
     fn send(&self, msg: LogMsg) {
-        for sink in self.0.lock().iter() {
+        for sink in self.0.read().iter() {
             sink.send(msg.clone());
         }
     }
 
     #[inline]
     fn send_all(&self, messages: Vec<LogMsg>) {
-        for sink in self.0.lock().iter() {
+        for sink in self.0.read().iter() {
             sink.send_all(messages.clone());
         }
     }
@@ -158,7 +167,7 @@ impl LogSink for MultiSink {
     #[inline]
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
         let mut worst_result = Ok(());
-        for sink in self.0.lock().iter() {
+        for sink in self.0.read().iter() {
             if let Err(err) = sink.flush_blocking(timeout)
                 && matches!(worst_result, Ok(()) | Err(SinkFlushError::Timeout))
             {
@@ -178,7 +187,7 @@ impl LogSink for MultiSink {
 
     fn defers_finalization_to_shutdown(&self) -> bool {
         self.0
-            .lock()
+            .read()
             .iter()
             .any(|sink| sink.defers_finalization_to_shutdown())
     }
@@ -188,9 +197,15 @@ impl LogSink for MultiSink {
         // writer threads, which is what actually emits the footer. Non-deferring children (e.g.
         // a long-lived gRPC sink) stay live in this MultiSink.
         self.0
-            .lock()
+            .write()
             .retain(|sink| !sink.defers_finalization_to_shutdown());
         true
+    }
+
+    fn request_shutdown(&self) {
+        for sink in self.0.read().iter() {
+            sink.request_shutdown();
+        }
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
@@ -204,7 +219,7 @@ impl LogSink for MultiSink {
 
         // Use a mix of the existing sinks thus that we flush *less* often.
         // Prefer less flushing since it leads to better chunks.
-        for sink in self.0.lock().iter() {
+        for sink in self.0.read().iter() {
             let config = sink.default_batcher_config();
 
             flush_tick = flush_tick.max(config.flush_tick);
@@ -580,8 +595,15 @@ impl GrpcSink {
     /// ```
     #[inline]
     pub fn new(uri: re_uri::ProxyUri) -> Self {
+        Self::new_with_options(uri, Options::default())
+    }
+
+    /// Connect to the in-memory storage node with custom client options.
+    #[doc(hidden)]
+    #[inline]
+    pub fn new_with_options(uri: re_uri::ProxyUri, options: Options) -> Self {
         Self {
-            client: MessageProxyClient::new(uri, Options::default()),
+            client: MessageProxyClient::new(uri, options),
         }
     }
 
@@ -624,5 +646,9 @@ impl LogSink for GrpcSink {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
+    }
+
+    fn request_shutdown(&self) {
+        self.client.request_shutdown();
     }
 }

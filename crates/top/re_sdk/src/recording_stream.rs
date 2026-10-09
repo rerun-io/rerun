@@ -841,7 +841,29 @@ impl Drop for RecordingStream {
             && Arc::strong_count(strong) == 1
         {
             // Keep the recording alive until all importers are finished.
-            self.with(|inner| inner.wait_for_importers());
+            self.with(|inner| {
+                inner.request_sink_shutdown();
+                inner.wait_for_importers();
+            });
+        }
+    }
+}
+
+/// Tracks the current sink using a weak reference, i.e. without requiring it to remain alive.
+struct ActiveSink(Mutex<Weak<dyn LogSink>>);
+
+impl ActiveSink {
+    fn new(sink: &Arc<dyn LogSink>) -> Self {
+        Self(Mutex::new(Arc::downgrade(sink)))
+    }
+
+    fn set_sink(&self, sink: &Arc<dyn LogSink>) {
+        *self.0.lock() = Arc::downgrade(sink);
+    }
+
+    fn request_shutdown(&self) {
+        if let Some(active_sink) = self.0.lock().upgrade() {
+            active_sink.request_shutdown();
         }
     }
 }
@@ -860,6 +882,10 @@ struct RecordingStreamInner {
 
     batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
+
+    /// Tracks the sink currently used by the forwarding thread independently of the command pipeline.
+    /// Its weak reference does not keep the sink alive after the forwarding thread exits.
+    active_sink: Arc<ActiveSink>,
 
     /// Mirror of the batcher's currently active configuration.
     current_batcher_config: Mutex<ChunkBatcherConfig>,
@@ -893,6 +919,8 @@ impl Drop for RecordingStreamInner {
             );
             return;
         }
+
+        self.request_sink_shutdown();
 
         self.wait_for_importers();
 
@@ -966,10 +994,13 @@ impl RecordingStreamInner {
         batcher_hooks: BatcherHooks,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
+        let sink: Arc<dyn LogSink> = Arc::from(sink);
         let sink_dependent_batcher_config = batcher_config.is_none();
         let batcher_config = resolve_batcher_config(batcher_config, &*sink);
 
         warn_if_problematic_file_sink_config(&batcher_config, &*sink);
+
+        let active_sink = Arc::new(ActiveSink::new(&sink));
 
         let on_release = batcher_hooks.on_release.clone();
         let batcher = ChunkBatcher::new(batcher_config, batcher_hooks)?;
@@ -1000,7 +1031,17 @@ impl RecordingStreamInner {
                 .spawn({
                     let info = store_info.clone();
                     let batcher = batcher.clone();
-                    move || forwarding_thread(info, sink, cmds_rx, batcher.chunks(), on_release)
+                    let active_sink = active_sink.clone();
+                    move || {
+                        forwarding_thread(
+                            info,
+                            sink,
+                            cmds_rx,
+                            batcher.chunks(),
+                            on_release,
+                            active_sink,
+                        );
+                    }
                 })
                 .map_err(|err| RecordingStreamError::SpawnThread {
                     name: NAME.into(),
@@ -1029,6 +1070,7 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            active_sink,
             current_batcher_config: Mutex::new(batcher_config),
             sink_dependent_batcher_config,
             importer_handles: Mutex::new(Vec::new()),
@@ -1039,6 +1081,10 @@ impl RecordingStreamInner {
     #[inline]
     pub fn is_forked_child(&self) -> bool {
         self.pid_at_creation != std::process::id()
+    }
+
+    fn request_sink_shutdown(&self) {
+        self.active_sink.request_shutdown();
     }
 
     /// Make sure all pending top-level importer threads that were started from the SDK run to completion.
@@ -1597,20 +1643,27 @@ impl RecordingStream {
 #[expect(clippy::needless_pass_by_value)]
 fn forwarding_thread(
     store_info: StoreInfo,
-    mut sink: Box<dyn LogSink>,
+    mut sink: Arc<dyn LogSink>,
     cmds_rx: re_quota_channel::Receiver<Command>,
     chunks: re_quota_channel::Receiver<Chunk>,
     on_release: Option<ArrowRecordBatchReleaseCallback>,
+    active_sink: Arc<ActiveSink>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
-    fn handle_cmd(store_info: &StoreInfo, cmd: Command, sink: &mut Box<dyn LogSink>) -> bool {
+    fn handle_cmd(
+        store_info: &StoreInfo,
+        cmd: Command,
+        sink: &mut Arc<dyn LogSink>,
+        active_sink: &ActiveSink,
+    ) -> bool {
         match cmd {
             Command::RecordMsg(msg) => {
                 sink.send(msg);
             }
             Command::SwapSink { new_sink, timeout } => {
                 re_log::trace!("Swapping sink…");
+                let new_sink: Arc<dyn LogSink> = Arc::from(new_sink);
 
                 let backlog = {
                     // Capture the backlog if it exists.
@@ -1623,6 +1676,9 @@ fn forwarding_thread(
 
                     backlog
                 };
+
+                // Register before sending because the new sink may block immediately.
+                active_sink.set_sink(&new_sink);
 
                 // Send the recording info to the new sink. This is idempotent.
                 {
@@ -1669,7 +1725,9 @@ fn forwarding_thread(
                         re_log::error!("Failed to flush previous sink during finalize: {err}");
                     }
 
-                    let new_sink: Box<dyn LogSink> = Box::new(crate::log_sink::BufferedSink::new());
+                    let new_sink: Arc<dyn LogSink> = Arc::new(crate::log_sink::BufferedSink::new());
+                    // Register before sending because the new sink may block immediately.
+                    active_sink.set_sink(&new_sink);
                     new_sink.send(
                         re_log_msg::SetStoreInfo {
                             row_id: *RowId::new(),
@@ -1734,7 +1792,7 @@ fn forwarding_thread(
                     re_log::trace!("Shutting down forwarding_thread: all command senders are gone");
                     break;
                 };
-                if !handle_cmd(&store_info, cmd, &mut sink) {
+                if !handle_cmd(&store_info, cmd, &mut sink, &active_sink) {
                     break; // shutdown
                 }
             }
@@ -2398,6 +2456,8 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
         let f = move |inner: &RecordingStreamInner| {
+            inner.request_sink_shutdown();
+
             // When disconnecting, we need to make sure that pending top-level importer threads that
             // were started from the SDK run to completion.
             inner.wait_for_importers();
@@ -2499,6 +2559,7 @@ impl fmt::Debug for RecordingStream {
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
+                active_sink: _,
                 current_batcher_config,
                 sink_dependent_batcher_config,
                 importer_handles,

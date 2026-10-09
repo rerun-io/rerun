@@ -62,6 +62,8 @@ enum Cmd {
     },
 }
 
+const COMMAND_QUEUE_CAPACITY: usize = 100;
+
 #[derive(Clone)]
 pub struct Options {
     pub compression: Compression,
@@ -72,6 +74,7 @@ pub struct Options {
     /// We will still retry connecting for however long it takes.
     /// But blocking [`Client::flush_blocking`] forever when the
     /// server just isn't there is not a good idea.
+    /// This also bounds the final connection attempt during shutdown.
     pub connect_timeout_on_flush: Duration,
 }
 
@@ -117,14 +120,16 @@ pub struct Client {
     uri: ProxyUri,
     options: Options,
     thread: Option<JoinHandle<()>>,
-    cmd_tx: Sender<Cmd>,
+
+    /// This is the only command sender so dropping it closes the request stream after draining.
+    cmd_tx: Option<Sender<Cmd>>,
     shutdown_tx: Sender<()>,
     status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let (cmd_tx, cmd_rx) = mpsc::channel(100); // TODO(RR-3869): specify size in bytes instead of number of messages
+        let (cmd_tx, cmd_rx) = mpsc::channel(COMMAND_QUEUE_CAPACITY); // TODO(RR-3869): specify size in bytes instead of number of messages
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
         let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {
@@ -146,6 +151,7 @@ impl Client {
                             cmd_rx,
                             shutdown_rx,
                             options.compression,
+                            options.connect_timeout_on_flush,
                             status,
                         ));
                 })
@@ -156,17 +162,29 @@ impl Client {
             uri,
             options,
             thread: Some(thread),
-            cmd_tx,
+            cmd_tx: Some(cmd_tx),
             shutdown_tx,
             status,
         }
+    }
+
+    /// If still connecting, starts the final bounded connection attempt without waiting for the
+    /// command queue.
+    /// This has no effect after a connection is established.
+    #[doc(hidden)]
+    pub fn request_shutdown(&self) {
+        self.shutdown_tx.try_send(()).ok();
     }
 
     /// Send a message asynchronously with backpressure.
     ///
     /// This will block (async) if the channel is full.
     pub async fn send_async(&self, msg: LogMsg) {
-        self.cmd_tx.send(Cmd::LogMsg(msg)).await.ok();
+        if let Some(cmd_tx) = &self.cmd_tx {
+            cmd_tx.send(Cmd::LogMsg(msg)).await.ok();
+        } else {
+            re_log::debug_panic!("Cannot send after gRPC client shutdown");
+        }
     }
 
     /// Send a message with blocking backpressure.
@@ -179,19 +197,21 @@ impl Client {
     fn send_cmd_blocking(&self, cmd: Cmd) -> Result<(), ()> {
         re_tracing::profile_function!();
 
+        let Some(cmd_tx) = &self.cmd_tx else {
+            return Err(());
+        };
+
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             if handle.runtime_flavor() == runtime::RuntimeFlavor::MultiThread {
-                tokio::task::block_in_place(|| {
-                    self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
-                })
+                tokio::task::block_in_place(|| cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ()))
             } else {
                 re_log::warn_once!(
                     "Single-threaded tokio runtime detected - please use a multi-threaded runtime for best performance with Rerun's gRPC client. Falling back to async send."
                 );
-                self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
+                cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
             }
         } else {
-            self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
+            cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
         }
     }
 
@@ -310,16 +330,10 @@ impl Drop for Client {
     fn drop(&mut self) {
         re_log::debug!("Shutting down message proxy client");
 
-        // Wait for flush, blocking forever if needed.
-        if let Err(err) = self.flush_blocking(Duration::MAX) {
-            re_log::error!("Failed to flush gRPC messages during shutdown: {err}");
-        }
+        self.request_shutdown();
 
-        // Quit immediately - no more messages left in the queue
-        if let Err(err) = self.shutdown_tx.try_send(()) {
-            re_log::error!("Failed to gracefully shut down message proxy client: {err}");
-            return;
-        }
+        // Closing the sole sender drains queued commands and then ends the request stream.
+        drop(self.cmd_tx.take());
 
         // Wait for the shutdown
         if let Some(thread) = self.thread.take() {
@@ -335,6 +349,7 @@ async fn message_proxy_client(
     mut cmd_rx: Receiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
+    connect_timeout_on_flush: Duration,
     status: Arc<AtomicCell<ClientConnectionState>>,
 ) {
     let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
@@ -348,27 +363,56 @@ async fn message_proxy_client(
         }
     };
 
-    let mut last_connect_failure_log_time: Option<Instant> = None;
-    let channel = loop {
-        match endpoint.connect().await {
-            Ok(channel) => break channel,
-            Err(err) => {
-                let log_interval = Duration::from_secs(5);
-                if last_connect_failure_log_time
-                    .is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
-                {
-                    re_log::debug!(?uri, "Failed to connect: {err}, retrying…");
-                    last_connect_failure_log_time = Some(Instant::now());
-                }
+    // Connect to the endpoint, retrying failures indefinitely.
+    let connect = async {
+        let mut last_connect_failure_log_time: Option<Instant> = None;
+        // Retry quickly at first, then back off to avoid polling continuously.
+        let mut backoff =
+            re_backoff::BackoffGenerator::new(Duration::from_millis(100), Duration::from_secs(1))
+                .expect("valid backoff bounds");
+        loop {
+            match endpoint.connect().await {
+                Ok(channel) => break channel,
+                Err(err) => {
+                    let log_interval = Duration::from_secs(5);
+                    if last_connect_failure_log_time
+                        .is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
+                    {
+                        re_log::debug!(?uri, "Failed to connect: {err}, retrying…");
+                        last_connect_failure_log_time = Some(Instant::now());
+                    }
 
-                tokio::select! {
-                    _ = shutdown_rx.recv() => {
-                        status.store(ClientConnectionState::Disconnected(Ok(())));
-                        re_log::debug!("Shutting down client without flush");
-                        return;
-                    }
-                    () = tokio::time::sleep(Duration::from_millis(100)) => {
-                    }
+                    backoff.gen_next().sleep().await;
+                }
+            }
+        }
+    };
+    tokio::pin!(connect);
+
+    let channel = tokio::select! {
+        channel = &mut connect => channel,
+
+        // If a shutdown was requested, limit the remaining retry time to
+        // `connect_timeout_on_flush`.
+        _ = shutdown_rx.recv() => {
+            re_log::warn!(
+                "Shutdown requested while connecting; waiting up to {:.1}s for a final connection attempt. URI: {uri}",
+                connect_timeout_on_flush.as_secs_f32(),
+            );
+            tokio::select! {
+                channel = &mut connect => channel,
+                () = tokio::time::sleep(connect_timeout_on_flush) => {
+                    // Returning drops `cmd_rx`, discarding its queue and waking blocked senders.
+                    status.store(ClientConnectionState::Disconnected(Err(
+                        ClientConnectionFailure::FailedToSendMessages(
+                            tonic::Code::DeadlineExceeded,
+                        ),
+                    )));
+                    re_log::error!(
+                        "Failed to connect within {:.1}s during shutdown; dropping all pending gRPC messages. URI: {uri}",
+                        connect_timeout_on_flush.as_secs_f32(),
+                    );
+                    return;
                 }
             }
         }
@@ -420,17 +464,13 @@ async fn message_proxy_client(
                         }
 
                         None => {
-                            // Assume channel closing is intentional, so don't report as error.
-                            re_log::debug!("Shutdown channel closed");
+                            // The sole command sender is dropped after all producers are finished.
+                            re_log::debug!("Command channel closed");
                             break;
                         }
                     }
                 }
 
-                _ = shutdown_rx.recv() => {
-                    re_log::debug!("Shutting down client without flush");
-                    break;
-                }
             }
         }
     };
@@ -449,5 +489,69 @@ async fn message_proxy_client(
     // Don't set error status if we already did so in the stream.
     if !matches!(status.load(), ClientConnectionState::Disconnected(_)) {
         status.store(ClientConnectionState::Disconnected(disconnect_result));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_log_msg() -> LogMsg {
+        LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
+            row_id: *re_chunk::RowId::ZERO,
+            info: re_log_msg::StoreInfo::testing(),
+        })
+    }
+
+    /// Checks that a full queue preserves backpressure until shutdown times out while connecting.
+    #[test]
+    fn unconnected_full_queue_only_stops_blocking_after_shutdown() {
+        // Port 0 cannot identify a listening service, so this endpoint is reliably unreachable.
+        let uri = "rerun+http://127.0.0.1:0/proxy".parse().unwrap();
+        let options = Options {
+            compression: Compression::LZ4,
+            connect_timeout_on_flush: Duration::from_millis(50),
+        };
+        let client = Arc::new(Client::new(uri, options));
+        let msg = test_log_msg();
+
+        // Fill the command queue while the worker retries the unreachable endpoint.
+        for _ in 0..COMMAND_QUEUE_CAPACITY {
+            assert!(client.send_cmd_blocking(Cmd::LogMsg(msg.clone())).is_ok());
+        }
+
+        // One additional send must block instead of dropping data during normal operation.
+        let (done_tx, done_rx) = crossbeam::channel::bounded(1);
+        let blocked_client = client.clone();
+        let sender = thread::Builder::new()
+            .name("blocked_grpc_sender".to_owned())
+            .spawn(move || {
+                blocked_client.send_blocking(msg);
+                re_quota_channel::send_crossbeam(&done_tx, ()).unwrap();
+            })
+            .unwrap();
+
+        // Normal backpressure lasts beyond the configured shutdown timeout.
+        assert_eq!(
+            done_rx.recv_timeout(Duration::from_millis(100)),
+            Err(crossbeam::channel::RecvTimeoutError::Timeout)
+        );
+
+        // Since the connection is not established, shutdown grants one final connection window.
+        client.request_shutdown();
+        assert_eq!(
+            done_rx.recv_timeout(Duration::from_millis(20)),
+            Err(crossbeam::channel::RecvTimeoutError::Timeout)
+        );
+
+        // Timing out drops the receiver, wakes the sender, and records a terminal failure.
+        done_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(
+            client.status(),
+            ClientConnectionState::Disconnected(Err(
+                ClientConnectionFailure::FailedToSendMessages(tonic::Code::DeadlineExceeded)
+            ))
+        );
+        sender.join().unwrap();
     }
 }

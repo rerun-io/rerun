@@ -23,6 +23,7 @@ all-features = true
 
 [dependencies]
 re_async.workspace = true
+re_backoff.workspace = true
 re_chunk.workspace = true
 re_error.workspace = true
 re_log_channel.workspace = true
