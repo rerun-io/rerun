@@ -48,7 +48,9 @@ def main() -> None:
     if args.features:
         flags += f" --features {args.features}"
 
-    cmd = f'cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\\w+ v[0-9.]+" -o | sort -u | wc -l'
+    # An empty `RUSTFLAGS` disables `cfg(rerun_workspace_hack)`, so `re_workspace_hack` (which depends on every
+    # third-party crate in the workspace) is not counted. It is a build-time optimization that users never get.
+    cmd = f'RUSTFLAGS="" cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\\w+ v[0-9.]+" -o | sort -u | wc -l'
     print(f"Running command: {cmd}", file=sys.stderr, flush=True)
     count = int(os.popen(cmd).read().strip())
     assert count > 0, f"Command failed. Maybe unknown crate? cmd: {cmd}"
