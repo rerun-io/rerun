@@ -1052,22 +1052,17 @@ impl EntityDb {
             let mut chunks: Vec<Arc<Chunk>> = engine
                 .store()
                 .iter_physical_chunks()
-                .filter(move |chunk| {
+                .filter_map(move |chunk| {
                     if chunk.is_static() {
-                        return true; // always keep all static data
+                        return Some(Arc::clone(chunk)); // always keep all static data
                     }
 
                     let Some((timeline, time_range)) = time_filter else {
-                        return true; // no filter -> keep all data
+                        return Some(Arc::clone(chunk)); // no filter -> keep all data
                     };
 
-                    // TODO(cmc): chunk.slice_time_selection(time_selection)
-                    chunk
-                        .timelines()
-                        .get(&timeline)
-                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
+                    slice_to_time_range(chunk, &timeline, time_range)
                 })
-                .cloned() // refcount
                 .collect();
 
             // Try to roughly preserve the order of the chunks
@@ -1383,8 +1378,35 @@ impl MemUsageTreeCapture for EntityDb {
     }
 }
 
+/// Keeps only the rows of a temporal `chunk` whose time on `timeline` is within `time_range`.
+///
+/// Returns `None` if the chunk has no such rows, including when it isn't on `timeline` at all.
+fn slice_to_time_range(
+    chunk: &Arc<Chunk>,
+    timeline: &TimelineName,
+    time_range: AbsoluteTimeRange,
+) -> Option<Arc<Chunk>> {
+    let time_column = chunk.timelines().get(timeline)?;
+
+    if !time_range.intersects(time_column.time_range()) {
+        return None;
+    }
+    if time_range.contains_range(time_column.time_range()) {
+        return Some(Arc::clone(chunk)); // no need to copy anything
+    }
+
+    let mask: Vec<bool> = time_column
+        .times()
+        .map(|time| time_range.contains(time))
+        .collect();
+    let sliced = chunk.filtered(&arrow::array::BooleanArray::from(mask))?;
+
+    (!sliced.is_empty()).then(|| Arc::new(sliced))
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
@@ -1439,6 +1461,77 @@ mod tests {
             /parent/child1/grandchild
               example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
         "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_messages_slices_chunks_to_time_selection() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+
+        let timeline_frame = Timeline::new_sequence("frame");
+
+        // One chunk per entity, with one row per timepoint.
+        let mut add_chunk = |entity_path: &str, timepoints: &[TimePoint]| -> anyhow::Result<()> {
+            let mut builder = Chunk::builder(entity_path);
+            for timepoint in timepoints {
+                builder = builder.with_component_batches(
+                    RowId::new(),
+                    timepoint.clone(),
+                    [(
+                        MyPoints::descriptor_points(),
+                        &[MyPoint::new(1.0, 2.0)] as _,
+                    )],
+                );
+            }
+            db.add_chunk(&Arc::new(builder.build()?))?;
+            Ok(())
+        };
+        let frames = |frames: &[i64]| -> Vec<TimePoint> {
+            frames
+                .iter()
+                .map(|&frame| TimePoint::from_iter([(timeline_frame, frame)]))
+                .collect()
+        };
+
+        add_chunk("partially_inside", &frames(&[2, 4, 6, 8, 10]))?;
+        add_chunk("fully_inside", &frames(&[5, 6]))?;
+        add_chunk("outside", &frames(&[20, 22]))?;
+        add_chunk("no_rows_inside", &frames(&[2, 10]))?;
+        add_chunk("static", &[TimePoint::default()])?;
+
+        let time_selection = (*timeline_frame.name(), AbsoluteTimeRangeF::new(4.0, 8.0));
+
+        let mut frames_per_entity: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+        let mut static_entities = Vec::new();
+        for msg in db.to_messages(Some(time_selection)) {
+            let LogMsg::ArrowMsg(_, msg) = msg? else {
+                continue;
+            };
+            let chunk = Chunk::from_arrow_msg(&msg)?;
+            if chunk.is_static() {
+                static_entities.push(chunk.entity_path().to_string());
+            } else if let Some(times) = chunk.timelines().get(timeline_frame.name()) {
+                frames_per_entity
+                    .entry(chunk.entity_path().to_string())
+                    .or_default()
+                    .extend(times.times_raw());
+            }
+        }
+
+        assert_eq!(static_entities, vec!["/static".to_owned()]);
+        assert_eq!(
+            frames_per_entity,
+            BTreeMap::from([
+                ("/fully_inside".to_owned(), vec![5, 6]),
+                ("/partially_inside".to_owned(), vec![4, 6, 8]),
+            ])
+        );
 
         Ok(())
     }
