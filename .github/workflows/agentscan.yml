@@ -1,0 +1,34 @@
+# Checks GitHub accounts for automation signals and flags potential bots.
+# See here for all options: github.com/marketplace/actions/agentscan
+
+name: AgentScan
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+  issues:
+    types:
+      - opened
+
+jobs:
+  agentscan:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: AgentScan
+        uses: MatteoGabriele/agentscan-action@8112fb79b33fafb8506159df20129a34209ac410 # v2.5.0
+        with:
+          scan-pull-requests: true
+          scan-issues: true
+
+          # `full` labels bots and adds a comment.
+          mode: full
+          auto-close: false
+
+          # PR template already has an agent honeypot that works well.
+          honeypot: false
