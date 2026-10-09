@@ -1026,11 +1026,12 @@ impl TestContext {
         use egui::os::OperatingSystem;
         let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
-            let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
-                ui.set_os(os);
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-                help(os).ui(ui);
-            });
+            let mut harness = egui_kittest::Harness::builder()
+                .with_context_setup(re_ui::apply_style_and_install_loaders)
+                .build_ui(|ui| {
+                    ui.set_os(os);
+                    help(os).ui(ui);
+                });
             let help_view = help(os);
             let name = format!(
                 "help_view_{}_{os:?}",

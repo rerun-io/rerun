@@ -26,6 +26,7 @@ pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuil
         .wgpu()
         .with_size(size)
         .with_options(options)
+        .with_context_setup(crate::apply_style_and_install_loaders)
 }
 
 /// Are we running on CI?
