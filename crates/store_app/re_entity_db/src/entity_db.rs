@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use arrow::array::BooleanArray;
 use itertools::chain;
 use nohash_hasher::IntMap;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
@@ -1052,17 +1053,21 @@ impl EntityDb {
             let mut chunks: Vec<Arc<Chunk>> = engine
                 .store()
                 .iter_physical_chunks()
-                .filter_map(move |chunk| {
+                .filter(move |chunk| {
                     if chunk.is_static() {
-                        return Some(Arc::clone(chunk)); // always keep all static data
+                        return true; // always keep all static data
                     }
 
                     let Some((timeline, time_range)) = time_filter else {
-                        return Some(Arc::clone(chunk)); // no filter -> keep all data
+                        return true; // no filter -> keep all data
                     };
 
-                    slice_to_time_range(chunk, &timeline, time_range)
+                    chunk
+                        .timelines()
+                        .get(&timeline)
+                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
                 })
+                .cloned() // refcount
                 .collect();
 
             // Try to roughly preserve the order of the chunks
@@ -1070,10 +1075,20 @@ impl EntityDb {
             // See https://github.com/rerun-io/rerun/issues/7175 for why.
             chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
 
-            chunks.into_iter().map(|chunk| {
-                chunk
-                    .to_arrow_msg()
-                    .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
+            // Slicing copies data, so it happens lazily, after the store lock has been released.
+            chunks.into_iter().filter_map(move |chunk| {
+                let chunk = match time_filter {
+                    Some((timeline, time_range)) if !chunk.is_static() => {
+                        slice_to_time_range(&chunk, &timeline, time_range)?
+                    }
+                    _ => chunk,
+                };
+
+                Some(
+                    chunk
+                        .to_arrow_msg()
+                        .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg)),
+                )
             })
         };
 
@@ -1387,10 +1402,6 @@ fn slice_to_time_range(
     time_range: AbsoluteTimeRange,
 ) -> Option<Arc<Chunk>> {
     let time_column = chunk.timelines().get(timeline)?;
-
-    if !time_range.intersects(time_column.time_range()) {
-        return None;
-    }
     if time_range.contains_range(time_column.time_range()) {
         return Some(Arc::clone(chunk)); // no need to copy anything
     }
@@ -1399,7 +1410,7 @@ fn slice_to_time_range(
         .times()
         .map(|time| time_range.contains(time))
         .collect();
-    let sliced = chunk.filtered(&arrow::array::BooleanArray::from(mask))?;
+    let sliced = chunk.filtered(&BooleanArray::from(mask))?;
 
     (!sliced.is_empty()).then(|| Arc::new(sliced))
 }
@@ -1475,6 +1486,7 @@ mod tests {
         ));
 
         let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_tick = Timeline::new_sequence("tick");
 
         // One chunk per entity, with one row per timepoint.
         let mut add_chunk = |entity_path: &str, timepoints: &[TimePoint]| -> anyhow::Result<()> {
@@ -1495,7 +1507,9 @@ mod tests {
         let frames = |frames: &[i64]| -> Vec<TimePoint> {
             frames
                 .iter()
-                .map(|&frame| TimePoint::from_iter([(timeline_frame, frame)]))
+                .map(|&frame| {
+                    TimePoint::from_iter([(timeline_frame, frame), (timeline_tick, frame + 100)])
+                })
                 .collect()
         };
 
@@ -1503,6 +1517,11 @@ mod tests {
         add_chunk("fully_inside", &frames(&[5, 6]))?;
         add_chunk("outside", &frames(&[20, 22]))?;
         add_chunk("no_rows_inside", &frames(&[2, 10]))?;
+        add_chunk("unsorted", &frames(&[10, 4, 2, 6]))?;
+        add_chunk(
+            "other_timeline",
+            &[TimePoint::from_iter([(timeline_tick, 5)])],
+        )?;
         add_chunk("static", &[TimePoint::default()])?;
 
         let time_selection = (*timeline_frame.name(), AbsoluteTimeRangeF::new(4.0, 8.0));
@@ -1516,7 +1535,13 @@ mod tests {
             let chunk = Chunk::from_arrow_msg(&msg)?;
             if chunk.is_static() {
                 static_entities.push(chunk.entity_path().to_string());
-            } else if let Some(times) = chunk.timelines().get(timeline_frame.name()) {
+            } else {
+                let times = &chunk.timelines()[timeline_frame.name()];
+                // The other timeline must be sliced the same way.
+                let ticks = chunk.timelines()[timeline_tick.name()].times_raw();
+                let expected_ticks: Vec<i64> = times.times_raw().iter().map(|t| t + 100).collect();
+                assert_eq!(ticks, expected_ticks);
+
                 frames_per_entity
                     .entry(chunk.entity_path().to_string())
                     .or_default()
@@ -1530,6 +1555,7 @@ mod tests {
             BTreeMap::from([
                 ("/fully_inside".to_owned(), vec![5, 6]),
                 ("/partially_inside".to_owned(), vec![4, 6, 8]),
+                ("/unsorted".to_owned(), vec![4, 6]),
             ])
         );
 
