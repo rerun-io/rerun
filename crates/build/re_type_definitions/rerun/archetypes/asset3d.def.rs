@@ -8,6 +8,10 @@
 /// If there are multiple [`rerun::archetypes::InstancePoses3D`] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
+/// Meshes, or parts of meshes, without vertex normals get flat normals computed by the Viewer,
+/// i.e. each triangle is shaded with its own face normal.
+/// To render an asset unlit instead, give it all-zero vertex normals.
+///
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]

@@ -125,17 +125,21 @@ pub fn load_ply_from_buffer(
 
     let bbox = crate::util::bounding_box_from_points(parsed.vertex_positions.iter().copied());
     let num_vertices = parsed.vertex_positions.len();
-    let mesh = CpuMesh {
+    let has_normals = parsed.vertex_normals.is_some();
+    let mut mesh = CpuMesh {
         label,
         triangle_indices: parsed.triangle_indices,
         vertex_positions: parsed.vertex_positions,
         vertex_colors: parsed.vertex_colors,
-        vertex_normals: parsed.vertex_normals,
+        vertex_normals: parsed.vertex_normals.unwrap_or_default(),
         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
         materials: smallvec![material],
         bbox,
     };
 
+    if !has_normals {
+        mesh.compute_flat_normals();
+    }
     mesh.sanity_check()?;
 
     Ok(CpuModel::from_single_mesh(mesh))
@@ -408,7 +412,9 @@ fn missing_face_topology_error() -> std::io::Error {
 #[derive(Debug)]
 struct ParsedPlyMesh {
     vertex_positions: Vec<glam::Vec3>,
-    vertex_normals: Vec<glam::Vec3>,
+
+    /// Only present if every vertex has a normal.
+    vertex_normals: Option<Vec<glam::Vec3>>,
     vertex_colors: Vec<Rgba32Unmul>,
     triangle_indices: Vec<glam::UVec3>,
 }
@@ -546,14 +552,7 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
         re_log::warn!("Ignored properties of .ply file: {ignored_props:?}");
     }
 
-    let vertex_normals = if normals.iter().any(Option::is_some) {
-        normals
-            .into_iter()
-            .map(|normal| normal.unwrap_or(glam::Vec3::ZERO))
-            .collect()
-    } else {
-        vec![glam::Vec3::ZERO; positions.len()]
-    };
+    let vertex_normals = normals.into_iter().collect::<Option<Vec<_>>>();
 
     let vertex_colors = if colors.iter().any(Option::is_some) {
         colors
@@ -614,7 +613,10 @@ end_header
                 glam::vec3(0.0, 1.0, 0.0),
             ]
         );
-        assert_eq!(parsed.vertex_normals, vec![glam::vec3(0.0, 0.0, 1.0); 4]);
+        assert_eq!(
+            parsed.vertex_normals,
+            Some(vec![glam::vec3(0.0, 0.0, 1.0); 4])
+        );
         assert_eq!(
             parsed.vertex_colors,
             vec![
@@ -669,6 +671,7 @@ end_header
             parsed.triangle_indices,
             vec![glam::uvec3(0, 1, 2), glam::uvec3(0, 2, 3)]
         );
+        assert_eq!(parsed.vertex_normals, None);
     }
 
     #[test]

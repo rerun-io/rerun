@@ -186,6 +186,8 @@ fn import_mesh(
     let mut vertex_normals = Vec::new();
     let mut vertex_texcoords = Vec::new();
     let mut materials = SmallVec::new();
+    let mut any_primitive_without_normals = false;
+    let mut vertex_ranges_with_normals = Vec::new();
 
     // A GLTF mesh consists of several primitives, each with their own material.
     // Primitives map to vertex/index ranges for us as we store all vertices/indices into the same vertex/index buffer.
@@ -228,8 +230,11 @@ fn import_mesh(
         }
 
         if let Some(primitive_normals) = reader.read_normals() {
+            let start = vertex_normals.len();
             vertex_normals.extend(primitive_normals.map(glam::Vec3::from));
+            vertex_ranges_with_normals.push(start..vertex_normals.len());
         } else {
+            any_primitive_without_normals = true;
             vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
         }
 
@@ -304,7 +309,7 @@ fn import_mesh(
 
     let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
-    let mesh = CpuMesh {
+    let mut mesh = CpuMesh {
         label: mesh.name().into(),
         triangle_indices,
         vertex_positions,
@@ -314,6 +319,10 @@ fn import_mesh(
         materials,
         bbox,
     };
+
+    if any_primitive_without_normals {
+        mesh.compute_flat_normals_except(&vertex_ranges_with_normals);
+    }
 
     mesh.sanity_check()?;
 
@@ -360,7 +369,8 @@ fn gather_instances_recursive(
 
 #[cfg(test)]
 mod tests {
-    use super::{GltfImportError, explain_import_error};
+    use super::{GltfImportError, explain_import_error, import_mesh};
+    use crate::RenderContext;
 
     #[test]
     fn unsupported_required_extension_is_named() {
@@ -375,5 +385,46 @@ mod tests {
             }
             other => panic!("expected UnsupportedRequiredExtensions, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn computes_normals_only_for_primitives_without_normals() {
+        // Two primitives sharing one index accessor: the first has normals (deliberately not
+        // matching its face), the second has none.
+        let json = br#"{
+            "asset": {"version": "2.0"},
+            "buffers": [{"byteLength": 116, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAAAAAAAAAAAABAAIAAAA="}],
+            "bufferViews": [
+                {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+                {"buffer": 0, "byteOffset": 36, "byteLength": 36},
+                {"buffer": 0, "byteOffset": 72, "byteLength": 36},
+                {"buffer": 0, "byteOffset": 108, "byteLength": 6}
+            ],
+            "accessors": [
+                {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0]},
+                {"bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC3"},
+                {"bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 0, 1]},
+                {"bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR"}
+            ],
+            "meshes": [{"primitives": [
+                {"attributes": {"POSITION": 0, "NORMAL": 1}, "indices": 3},
+                {"attributes": {"POSITION": 2}, "indices": 3}
+            ]}]
+        }"#;
+        let (doc, buffers, _) = gltf::import_slice(json).unwrap();
+        let ctx = RenderContext::new_test();
+
+        let mesh = import_mesh(
+            &doc.meshes().next().unwrap(),
+            &buffers,
+            &[],
+            &ctx.texture_manager_2d,
+        )
+        .unwrap();
+
+        assert_eq!(
+            mesh.vertex_normals,
+            [[glam::Vec3::X; 3], [glam::Vec3::Y; 3]].concat()
+        );
     }
 }

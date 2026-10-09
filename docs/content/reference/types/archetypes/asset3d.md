@@ -10,6 +10,10 @@ See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
 If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
+Meshes, or parts of meshes, without vertex normals get flat normals computed by the Viewer,
+i.e. each triangle is shaded with its own face normal.
+To render an asset unlit instead, give it all-zero vertex normals.
+
 ## Fields
 ### Required
 * `blob`: [`Blob`](../components/blob.md)

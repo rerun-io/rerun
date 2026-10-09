@@ -198,6 +198,8 @@ fn import_geometry(
     let mut texcoords = Vec::new();
     let mut tri_indices = Vec::<glam::UVec3>::new();
     let mut materials = SmallVec::<[mesh::Material; 1]>::new();
+    let mut any_group_without_normals = false;
+    let mut vertex_ranges_with_normals = Vec::new();
 
     for triangles in all_triangles {
         let vertex_importer: VertexImporter<'_> = vertices
@@ -213,11 +215,13 @@ fn import_geometry(
             .ok_or(DaeImportError::NoTriangles)?;
 
         let vertex_offset = pos_raw.len() as u32;
+        let mut group_has_normals = true;
 
         for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
             pos_raw.push(v.position);
             normals.push(v.normal);
             texcoords.push(v.texcoord);
+            group_has_normals &= v.has_normal;
 
             // Triangles are grouped in triplets
             if i % 3 == 2 {
@@ -229,6 +233,11 @@ fn import_geometry(
         let group_vertex_count = pos_raw.len() as u32 - vertex_offset;
         if group_vertex_count == 0 {
             continue;
+        }
+        if group_has_normals {
+            vertex_ranges_with_normals.push(vertex_offset as usize..pos_raw.len());
+        } else {
+            any_group_without_normals = true;
         }
 
         let albedo_factor = triangles
@@ -249,7 +258,7 @@ fn import_geometry(
     let vertex_positions = bytemuck::cast_vec(pos_raw);
     let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
-    let cpu_mesh = mesh::CpuMesh {
+    let mut cpu_mesh = mesh::CpuMesh {
         label: label.clone(),
         triangle_indices: tri_indices,
         vertex_positions,
@@ -259,6 +268,10 @@ fn import_geometry(
         materials,
         bbox,
     };
+
+    if any_group_without_normals {
+        cpu_mesh.compute_flat_normals_except(&vertex_ranges_with_normals);
+    }
 
     cpu_mesh.sanity_check()?;
     Ok(cpu_mesh)
@@ -423,6 +436,7 @@ fn gather_instances_recursive(
 struct Vertex {
     position: [f32; 3],
     normal: [f32; 3],
+    has_normal: bool,
     texcoord: [f32; 2],
 }
 
@@ -431,15 +445,75 @@ impl<'a> VertexLoad<'a> for Vertex {
         Self {
             position: reader.get(i as usize),
             normal: [0.0; 3],
+            has_normal: false,
             texcoord: [0.0; 2],
         }
     }
 
     fn add_normal(&mut self, (): &(), reader: &SourceReader<'a, XYZ>, i: u32) {
         self.normal = reader.get(i as usize);
+        self.has_normal = true;
     }
 
     fn add_texcoord(&mut self, (): &(), r: &SourceReader<'a, ST>, i: u32, _set: Option<u32>) {
         self.texcoord = r.get(i as usize);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use dae_parser::{Document, Geometry};
+
+    use super::import_geometry;
+    use crate::RenderContext;
+    use crate::mesh::CpuMesh;
+
+    fn import_first_geometry(dae: &str, ctx: &RenderContext) -> CpuMesh {
+        let document = Document::from_reader(dae.as_bytes()).unwrap();
+        let maps = document.local_maps();
+        let geometry = document.iter::<Geometry>().next().unwrap();
+        let mesh = geometry.element.as_mesh().unwrap();
+        let triangles: Vec<_> = mesh
+            .elements
+            .iter()
+            .filter_map(|p| p.as_triangles())
+            .collect();
+        import_geometry(geometry, mesh, &triangles, &maps, ctx).unwrap()
+    }
+
+    #[test]
+    fn computes_normals_only_for_triangle_groups_without_normals() {
+        // Read at runtime rather than through `env!`, since CI runs the tests from an archive built at
+        // another path and remaps this variable to where they run.
+        let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+            || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            std::path::PathBuf::from,
+        );
+        let dae = std::fs::read_to_string(
+            manifest_dir.join("../../../tests/assets/mesh/multi_triangle_groups.dae"),
+        )
+        .unwrap();
+
+        // Drop the normals of the second (blue) group only.
+        let normal_input = r##"<input semantic="NORMAL" source="#normals" offset="1" />"##;
+        let second_normal_input = dae.rfind(normal_input).unwrap();
+        let mut dae_partial_normals = dae.clone();
+        dae_partial_normals.replace_range(
+            second_normal_input..second_normal_input + normal_input.len(),
+            "",
+        );
+
+        let ctx = RenderContext::new_test();
+        let expected = import_first_geometry(&dae, &ctx).vertex_normals;
+        let actual = import_first_geometry(&dae_partial_normals, &ctx).vertex_normals;
+
+        // The computed face normals of a box match its authored normals.
+        assert_eq!(expected.len(), actual.len());
+        for (expected, actual) in std::iter::zip(&expected, &actual) {
+            assert!(
+                expected.abs_diff_eq(*actual, 1e-6),
+                "{expected} != {actual}"
+            );
+        }
     }
 }

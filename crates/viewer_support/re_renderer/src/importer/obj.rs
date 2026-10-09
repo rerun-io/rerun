@@ -63,12 +63,15 @@ pub fn load_obj_from_buffer(
             .collect();
         vertex_colors.resize(vertex_positions.len(), Rgba32Unmul::WHITE);
 
-        let mut vertex_normals: Vec<glam::Vec3> = mesh
-            .normals
-            .chunks_exact(3)
-            .map(|n| glam::vec3(n[0], n[1], n[2]))
-            .collect();
-        vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
+        let has_normals = mesh.normals.len() == mesh.positions.len();
+        let vertex_normals: Vec<glam::Vec3> = if has_normals {
+            mesh.normals
+                .chunks_exact(3)
+                .map(|n| glam::vec3(n[0], n[1], n[2]))
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         let mut vertex_texcoords: Vec<glam::Vec2> = mesh
             .texcoords
@@ -79,7 +82,7 @@ pub fn load_obj_from_buffer(
 
         let texture = ctx.texture_manager_2d.white_texture_unorm_handle();
 
-        let mesh = CpuMesh {
+        let mut mesh = CpuMesh {
             label: obj_model.name.into(),
             triangle_indices,
             vertex_positions,
@@ -97,6 +100,9 @@ pub fn load_obj_from_buffer(
             }],
         };
 
+        if !has_normals {
+            mesh.compute_flat_normals();
+        }
         mesh.sanity_check()?;
         let key = model.add_mesh(mesh);
         model.add_instance(key, glam::Affine3A::IDENTITY);

@@ -73,6 +73,95 @@ pub struct CpuMesh {
 }
 
 impl CpuMesh {
+    /// Replaces the normals with flat per-triangle face normals.
+    ///
+    /// If there are exactly three vertices per triangle, vertices are assumed to be unshared and
+    /// the normals are written in place.
+    /// Otherwise vertices are un-shared so each triangle gets its own three, which keeps
+    /// [`Material::index_range`] valid.
+    ///
+    /// Triangles with out-of-bounds indices are collapsed to a degenerate triangle.
+    /// Does nothing if the colors or texcoords don't match the positions in length.
+    pub fn compute_flat_normals(&mut self) {
+        self.compute_flat_normals_except(&[]);
+    }
+
+    /// Like [`Self::compute_flat_normals`], but keeps the existing normals of the vertices in
+    /// `ranges_to_keep`, which must be sorted and non-overlapping.
+    pub fn compute_flat_normals_except(&mut self, ranges_to_keep: &[std::ops::Range<usize>]) {
+        re_tracing::profile_function!();
+
+        let num_vertices = self.vertex_positions.len();
+        if self.vertex_colors.len() != num_vertices || self.vertex_texcoords.len() != num_vertices {
+            return;
+        }
+        re_log::debug_assert!(
+            ranges_to_keep.windows(2).all(|w| w[0].end <= w[1].start),
+            "ranges_to_keep must be sorted and non-overlapping"
+        );
+        let keep = |i: usize| {
+            if ranges_to_keep.is_empty() {
+                return false;
+            }
+            let next = ranges_to_keep.partition_point(|range| range.end <= i);
+            ranges_to_keep
+                .get(next)
+                .is_some_and(|range| range.start <= i)
+        };
+        let face_normal = |[a, b, c]: [glam::Vec3; 3]| (b - a).cross(c - a).normalize_or_zero();
+
+        if self.triangle_indices.len() * 3 == num_vertices {
+            self.vertex_normals.resize(num_vertices, glam::Vec3::ZERO);
+            for triangle in &mut self.triangle_indices {
+                let corners = triangle.to_array().map(|i| i as usize);
+                if corners.iter().any(|&i| num_vertices <= i) {
+                    *triangle = glam::UVec3::ZERO;
+                    continue;
+                }
+                let normal = face_normal(corners.map(|i| self.vertex_positions[i]));
+                for i in corners {
+                    if !keep(i) {
+                        self.vertex_normals[i] = normal;
+                    }
+                }
+            }
+            return;
+        }
+
+        let num_corners = self.triangle_indices.len() * 3;
+        let mut positions = Vec::with_capacity(num_corners);
+        let mut colors = Vec::with_capacity(num_corners);
+        let mut normals = Vec::with_capacity(num_corners);
+        let mut texcoords = Vec::with_capacity(num_corners);
+
+        for triangle in &mut self.triangle_indices {
+            let corners = triangle.to_array().map(|i| i as usize);
+            if corners.iter().any(|&i| num_vertices <= i) {
+                *triangle = glam::UVec3::ZERO;
+                continue;
+            }
+            let normal = face_normal(corners.map(|i| self.vertex_positions[i]));
+
+            let first = positions.len() as u32;
+            for i in corners {
+                positions.push(self.vertex_positions[i]);
+                colors.push(self.vertex_colors[i]);
+                normals.push(if keep(i) {
+                    self.vertex_normals.get(i).copied().unwrap_or(normal)
+                } else {
+                    normal
+                });
+                texcoords.push(self.vertex_texcoords[i]);
+            }
+            *triangle = glam::uvec3(first, first + 1, first + 2);
+        }
+
+        self.vertex_positions = positions;
+        self.vertex_colors = colors;
+        self.vertex_normals = normals;
+        self.vertex_texcoords = texcoords;
+    }
+
     #[track_caller]
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
@@ -413,5 +502,111 @@ impl GpuMesh {
             materials,
             bbox: data.bbox,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_mesh(vertex_positions: Vec<glam::Vec3>, triangle_indices: Vec<glam::UVec3>) -> CpuMesh {
+        let num_vertices = vertex_positions.len();
+        CpuMesh {
+            label: "test".into(),
+            triangle_indices,
+            vertex_colors: vec![Rgba32Unmul::WHITE; num_vertices],
+            vertex_normals: Vec::new(),
+            vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+            bbox: crate::util::bounding_box_from_points(vertex_positions.iter().copied()),
+            vertex_positions,
+            materials: SmallVec::new(),
+        }
+    }
+
+    #[test]
+    fn compute_flat_normals_in_place_for_unshared_vertices() {
+        let mut mesh = test_mesh(
+            vec![
+                glam::vec3(0.0, 0.0, 0.0),
+                glam::vec3(1.0, 0.0, 0.0),
+                glam::vec3(0.0, 1.0, 0.0),
+                glam::vec3(0.0, 0.0, 0.0),
+                glam::vec3(0.0, 0.0, 1.0),
+                glam::vec3(1.0, 0.0, 0.0),
+            ],
+            vec![glam::uvec3(0, 1, 2), glam::uvec3(3, 4, 5)],
+        );
+        let positions_ptr = mesh.vertex_positions.as_ptr();
+        let indices_ptr = mesh.triangle_indices.as_ptr();
+
+        mesh.compute_flat_normals();
+
+        assert_eq!(mesh.vertex_positions.as_ptr(), positions_ptr);
+        assert_eq!(mesh.triangle_indices.as_ptr(), indices_ptr);
+        assert_eq!(
+            mesh.vertex_normals,
+            [[glam::Vec3::Z; 3], [glam::Vec3::Y; 3]].concat()
+        );
+    }
+
+    #[test]
+    fn compute_flat_normals_unshares_vertices() {
+        let mut mesh = test_mesh(
+            vec![
+                glam::vec3(0.0, 0.0, 0.0),
+                glam::vec3(1.0, 0.0, 0.0),
+                glam::vec3(0.0, 1.0, 0.0),
+                glam::vec3(0.0, 0.0, 1.0),
+            ],
+            vec![
+                glam::uvec3(0, 1, 2),
+                glam::uvec3(0, 3, 1),
+                glam::uvec3(0, 1, 4),
+            ],
+        );
+
+        mesh.compute_flat_normals();
+        mesh.sanity_check().unwrap();
+
+        assert_eq!(
+            mesh.triangle_indices,
+            vec![
+                glam::uvec3(0, 1, 2),
+                glam::uvec3(3, 4, 5),
+                glam::UVec3::ZERO
+            ]
+        );
+        assert_eq!(
+            mesh.vertex_normals,
+            [[glam::Vec3::Z; 3], [glam::Vec3::Y; 3]].concat()
+        );
+    }
+
+    #[test]
+    fn compute_flat_normals_except_keeps_ranges() {
+        let mut mesh = test_mesh(
+            vec![
+                glam::vec3(0.0, 0.0, 0.0),
+                glam::vec3(1.0, 0.0, 0.0),
+                glam::vec3(0.0, 1.0, 0.0),
+                glam::vec3(0.0, 0.0, 1.0),
+            ],
+            vec![glam::uvec3(0, 1, 2), glam::uvec3(0, 3, 1)],
+        );
+        mesh.vertex_normals = vec![glam::Vec3::X; 4];
+
+        mesh.compute_flat_normals_except(std::slice::from_ref(&(0..3)));
+
+        assert_eq!(
+            mesh.vertex_normals,
+            vec![
+                glam::Vec3::X,
+                glam::Vec3::X,
+                glam::Vec3::X,
+                glam::Vec3::X,
+                glam::Vec3::Y,
+                glam::Vec3::X,
+            ]
+        );
     }
 }
