@@ -8,7 +8,7 @@ An audio file, stored as-is (`.aac`, `.flac`, `.m4a`, `.mp3`, `.ogg`, `.wav`).
 
 The audio starts playing at the time it was logged,
 so log it on a temporal timeline (duration or timestamp) at the point where playback should begin.
-The viewer plays it while time is playing, in an [`views.AudioView`](https://rerun.io/docs/reference/types/views/audio_view?speculative-link).
+The viewer plays it while time is playing, in an [`views.AudioView`](https://rerun.io/docs/reference/types/views/audio_view).
 
 ## Fields
 ### Required
@@ -23,9 +23,9 @@ The viewer plays it while time is playing, in an [`views.AudioView`](https://rer
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `AssetAudio`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetAudio.html?speculative-link)
- * 🐍 [Python API docs for `AssetAudio`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.AssetAudio)
- * 🦀 [Rust API docs for `AssetAudio`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetAudio.html?speculative-link)
+ * 🌊 [C++ API docs for `AssetAudio`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetAudio.html)
+ * 🐍 [Python API docs for `AssetAudio`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetAudio)
+ * 🦀 [Rust API docs for `AssetAudio`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetAudio.html)
 
 ## Example
 

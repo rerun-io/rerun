@@ -10,7 +10,6 @@
 /// \example archetypes/asset_audio_simple title="Simple audio asset"
 #[rerun::rerun_type]
 #[docs(category = "Audio")]
-#[docs(unreleased)]
 #[docs(view_types = "AudioView")]
 #[rerun(state = "unstable")]
 #[rerun(visualizer = "AssetAudio")]

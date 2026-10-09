@@ -1402,6 +1402,24 @@ def test_split_words() -> None:
         assert actual == expected, f"Expected '{input}' to split into {expected}, got {actual}"
 
 
+def header_casing_error(kind: str, old: str, new: str) -> str:
+    """Explain a casing fix: lowercasing title-cased words, capitalizing always-capitalized words, or both."""
+    old_words = old.split()
+    new_words = new.split()
+    if len(old_words) != len(new_words):
+        return f"{kind} have the wrong casing. This should be '{new}'."
+
+    lowered = [o for o, n in zip(old_words, new_words, strict=True) if o != n and o[:1].isupper()]
+    raised = [n for o, n in zip(old_words, new_words, strict=True) if o != n and not o[:1].isupper()]
+
+    reasons = []
+    if lowered:
+        reasons.append(f"should NOT be title cased ({', '.join(lowered)})")
+    if raised:
+        reasons.append(f"should use the canonical casing of {', '.join(raised)}")
+    return f"{kind} {' and '.join(reasons)}. This should be '{new}'."
+
+
 def fix_header_casing(s: str) -> str:
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
@@ -1524,7 +1542,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                     new_header = fix_header_casing(m.group(2))
                     if new_header != m.group(2):
                         errors.append(
-                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'.",
+                            f"{line_nr}: {header_casing_error('Markdown headers', m.group(2), new_header)}",
                         )
                         line = m.group(1) + new_header + "\n"
 
@@ -1533,7 +1551,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_title = fix_header_casing(m.group(1))
                 if new_title != m.group(1):
                     errors.append(
-                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'.",
+                        f"{line_nr}: {header_casing_error('Titles', m.group(1), new_title)}",
                     )
                     line = f'title = "{new_title}"\n'
 

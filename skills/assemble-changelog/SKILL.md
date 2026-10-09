@@ -103,7 +103,59 @@ Do this *after* step 1: the script reads the assembled changeset and emits a sum
 `CHANGELOG.md` therefore never duplicates the changeset — if the changeset is missing, the
 script emits an unresolved placeholder instead.
 
-### 4. Empty the inbox
+### 4. Polish the CHANGELOG.md section
+
+The generated section is a starting point; edit it by hand so readers can find their way to the details.
+
+- **Order the overview by impact.**
+  Put the biggest new capabilities first, then integrations and APIs, then format support, then polish, then niche or developer-facing items.
+- **Group and order the details.**
+  The script emits each details subsection (🐍 Python API, 🪳 Bug fixes, 🌁 Viewer improvements, …) in commit order.
+  Within each subsection, put entries that touch the same feature next to each other (e.g. all MCP/ViewerControl entries, all state timeline entries, all hangs and deadlocks), order the groups by their most impactful entry, and order entries within a group by impact.
+  Only reorder lines; don't move entries between subsections or drop them.
+- **Make entries clickable.**
+  Wherever possible, link an entry (in the overview *and* in the details) to the docs that show how to use the feature: the how-to guide, the archetype/view reference page, the CLI or MCP reference section, the Python/JS ref site, or docs.rs.
+  Reuse the links the changeset already contains, converted to `https://rerun.io/docs/<path without .md>`, and check that each target file and `#anchor` heading exists.
+  Link external names too (e.g. a third-party tool to its docs).
+  In detail entries, link the key term, not the whole line, so the trailing commit/PR link stays distinct.
+- **Link each breaking change** to its subheading in the changeset: `https://rerun.io/docs/changelog/changeset-0-XX#<anchor>`.
+  Anchors are the lowercased heading with backticks and punctuation dropped and spaces turned into hyphens (`rrd::optimize` → `rrdoptimize`).
+- **Name the actual break.**
+  A breaking-change heading (in the changeset and in `CHANGELOG.md`) must say what broke, e.g. "`WriteChunks` removed", not the new feature that replaces it ("Catalog staging").
+  Lead the subsection with the removal and migration-guide link, then the replacement.
+- **Flag experimental and unstable features.**
+  Check every new feature in the changeset and `CHANGELOG.md` against these markers (`PREV` is the previous minor release tag, e.g. `0.38.0`):
+
+  ```bash
+  # Non-blueprint types marked unstable whose definitions changed this cycle
+  git diff --name-only $PREV HEAD -- crates/build/re_type_definitions | grep -v /blueprint/ | xargs rg -l 'state = "unstable"'
+  # Python APIs in the `rerun.experimental` module
+  git log --oneline $PREV..HEAD -- rerun_py/rerun_sdk/rerun/experimental
+  # Viewer features behind a flag in `ExperimentalAppOptions`
+  git diff $PREV HEAD -- crates/viewer_support/re_viewer_context/src/app_options.rs
+  # Docs and docstrings that call something experimental
+  git diff --name-only $PREV HEAD -- docs/content rerun_py/rerun_sdk | xargs rg -l -i 'is experimental'
+  ```
+
+  A file showing up in the first command does not mean the type is new: cross-reference the hits with the actual entries.
+  For each matching feature, say so where readers will see it: prefix the changeset heading with "Experimental" (as `### Experimental 3D gaussian splat support` did in 0.36), and add a sentence saying it may change in future releases (for unstable types: that the data may not stay backwards compatible).
+  If the feature is behind a flag, say how to enable it.
+  In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", with a one-line note that they may change and that unstable types may not stay backwards compatible.
+  Order that subsection by impact too, and don't repeat "Experimental" in its entries.
+  Blueprint types (`rerun.blueprint.*`, under `re_type_definitions/rerun/blueprint/`) are an exception: they are all marked unstable, which only means the blueprint data isn't backwards compatible.
+  That alone does not make a feature experimental, so a new view or blueprint setting is only experimental if one of the other markers applies to it (or to the data archetype it shows).
+  Likewise, a Viewer feature is not experimental just because it is configured through an experimental API.
+- **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
+  Aim for a few images (roughly three to five), covering the most visual headline features: a picture sells a new view or renderer feature far better than a bullet does.
+  Start from the media already in the changeset and the PR descriptions; if a visual feature has none, ask the user for a screenshot rather than skipping it.
+  Don't add images to every entry: API, CLI, and bug-fix items rarely benefit.
+  All media must live on `static.rerun.io`.
+  Reuse a PR's media only if it is already on `static.rerun.io` or publicly accessible: `github.com/user-attachments/…` links from the private monorepo return 404 for the public.
+  Download those with `curl -L -H "Authorization: token $(gh auth token)" <url>` and upload them with `pixi run upload-image <file> --name <name>`.
+  GitHub does not render `<video>` from external hosts, so for a video, extract a representative still (`ffmpeg -ss <t> -i video.mp4 -frames:v 1 still.png`), upload it, and link the `.mp4` below it.
+  Look at the frames and pick one without a cursor over the subject.
+
+### 5. Empty the inbox
 
 Delete the merged `upcoming/*.md` entries, keeping `_template.md` and any entries not included in this release.
 Never add redirects for these temporary entries.
@@ -113,6 +165,11 @@ Never add redirects for these temporary entries.
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
 - [ ] No summaries or other prose were synthesized for existing entries.
+- [ ] The `CHANGELOG.md` overview is ordered by impact, a few of its most visual headline features have `static.rerun.io` images, and its breaking changes link to the changeset subheadings.
+- [ ] Every overview and detail entry that has relevant docs links to them.
+- [ ] Each details subsection groups entries by feature, most impactful first.
+- [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]` on a non-blueprint type, or documented as experimental) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.
+- [ ] `pixi run lint-rerun CHANGELOG.md docs/content/changelog/changeset-0-XX.md` passes.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
 - [ ] `python scripts/ci/check_doc_redirects.py --base origin/main` passes (`upcoming/` entries are exempt and DO NOT need a redirect).

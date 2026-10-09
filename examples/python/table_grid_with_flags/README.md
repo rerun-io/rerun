@@ -18,7 +18,7 @@ Open the printed URL in the viewer.
 
 Flagging works on regular tables, but does **not** yet work on the segment tables of datasets: segment tables have no write operations yet, so flag changes cannot be persisted back to the server.
 
-See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints?speculative-link) for table blueprint API examples.
+See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints) for table blueprint API examples.
 
 ## Run the code
 
