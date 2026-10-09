@@ -93,8 +93,8 @@ class LeRobotReader:
         timeline:
             Overrides the derived timeline name (`frame_index` or `timestamp`).
         video_mode:
-            `"native"` emits video as-is (v2: whole-file asset, v3: stream samples cut
-            to the episode's time window); `"skip"` omits video features.
+            `"native"` emits video as a `VideoStream` (v2: the whole per-episode file,
+            v3: samples cut to the episode's time window); `"skip"` omits video features.
 
         Raises
         ------

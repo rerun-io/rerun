@@ -29,7 +29,7 @@ fn ffmpeg_available() -> bool {
 /// Gate for the tests that need ffmpeg (the fixture's H.264 stream has B-frames, which
 /// forces a re-encode — `VideoStream` cannot model decode-order reordering).
 ///
-/// Locally a missing ffmpeg skips the test; on CI it fails instead, so the v3 video
+/// Locally a missing ffmpeg skips the test; on CI it fails instead, so the video
 /// coverage can never silently disappear (CI gets ffmpeg from the pixi environment).
 fn ffmpeg_available_or_fail_on_ci(test_name: &str) -> bool {
     if ffmpeg_available() {
@@ -38,7 +38,7 @@ fn ffmpeg_available_or_fail_on_ci(test_name: &str) -> bool {
     assert!(
         std::env::var_os("CI").is_none(),
         "{test_name} needs ffmpeg, which the pixi environment provides on CI — \
-         a missing ffmpeg here means the v3 video coverage is gone"
+         a missing ffmpeg here means the video coverage is gone"
     );
     eprintln!("skipping {test_name}: ffmpeg is not available");
     false
@@ -62,21 +62,16 @@ fn load_all_chunks(fixture_name: &str, config: &LeRobotConfig) -> Vec<Chunk> {
 /// Schema-level snapshot.
 ///
 /// Episodes share one store here (each is its own recording in the real importer); for
-/// schema purposes the union across episodes is what matters. v3 videos are skipped:
-/// the fixture's H.264 B-frames force an ffmpeg re-encode, and a snapshot must not depend on the
-/// environment — `v3_video_structure_with_ffmpeg` covers the video half.
+/// schema purposes the union across episodes is what matters. Videos are skipped: the
+/// fixtures' H.264 B-frames force an ffmpeg re-encode, and a snapshot must not depend on the
+/// environment — `native_schema_with_ffmpeg` covers the video half.
 #[test]
 fn test_lerobot_importer_schema() {
+    let config = LeRobotConfig {
+        video: VideoMode::Skip,
+        ..Default::default()
+    };
     for fixture_name in FIXTURES {
-        let config = LeRobotConfig {
-            video: if fixture_name == "v30_apple_storage" {
-                VideoMode::Skip
-            } else {
-                VideoMode::Native
-            },
-            ..Default::default()
-        };
-
         let store_handle = ChunkStoreHandle::new(ChunkStore::new(
             StoreId::random(re_log_types::StoreKind::Recording, "test_lerobot_importer"),
             ChunkStoreConfig::default(),
@@ -94,31 +89,33 @@ fn test_lerobot_importer_schema() {
     }
 }
 
-/// The full v3 output schema with videos on (the default config): the snapshot to diff
+/// The full output schema with videos on (the default config): the snapshot to diff
 /// against when a feature kind is added or changed.
 ///
 /// Schema descriptors carry no encoded bytes, so unlike sample data they are stable
 /// across ffmpeg versions and can be snapshotted.
 #[test]
-fn v3_native_schema_with_ffmpeg() {
-    if !ffmpeg_available_or_fail_on_ci("v3_native_schema_with_ffmpeg") {
+fn native_schema_with_ffmpeg() {
+    if !ffmpeg_available_or_fail_on_ci("native_schema_with_ffmpeg") {
         return;
     }
 
-    let store_handle = ChunkStoreHandle::new(ChunkStore::new(
-        StoreId::random(re_log_types::StoreKind::Recording, "test_lerobot_importer"),
-        ChunkStoreConfig::default(),
-    ));
+    for fixture_name in FIXTURES {
+        let store_handle = ChunkStoreHandle::new(ChunkStore::new(
+            StoreId::random(re_log_types::StoreKind::Recording, "test_lerobot_importer"),
+            ChunkStoreConfig::default(),
+        ));
 
-    {
-        let mut store = store_handle.write();
-        for chunk in load_all_chunks("v30_apple_storage", &LeRobotConfig::default()) {
-            store.insert_chunk(&Arc::new(chunk)).unwrap();
+        {
+            let mut store = store_handle.write();
+            for chunk in load_all_chunks(fixture_name, &LeRobotConfig::default()) {
+                store.insert_chunk(&Arc::new(chunk)).unwrap();
+            }
         }
-    }
 
-    let schema = store_handle.read().schema().chunk_column_descriptors();
-    insta::assert_debug_snapshot!("v30_apple_storage_native_schema", schema);
+        let schema = store_handle.read().schema().chunk_column_descriptors();
+        insta::assert_debug_snapshot!(format!("{fixture_name}_native_schema"), schema);
+    }
 }
 
 /// Two independent `open()`s of the same dataset must stream an episode with the same
@@ -159,33 +156,39 @@ fn independent_opens_stream_identical_structure() {
     }
 }
 
-/// Without ffmpeg, streaming a v3 video that needs a re-encode (here: the fixture's
+/// Without ffmpeg, streaming a video that needs a re-encode (here: the fixtures'
 /// H.264 B-frames) yields an `Err` item that names both
 /// remedies (install ffmpeg / `VideoMode::Skip`) instead of panicking or dying silently.
 ///
 /// Skipped when ffmpeg is available (the transcode then succeeds).
 #[test]
-fn v3_video_without_ffmpeg_yields_actionable_error() {
+fn video_without_ffmpeg_yields_actionable_error() {
     if ffmpeg_available() {
         eprintln!("skipping: ffmpeg is available, the transcode will succeed");
         return;
     }
 
-    let dataset = LeRobotDataset::open(fixture("v30_apple_storage")).expect("fixture opens");
-    let episode = dataset.episodes().next().expect("fixture has episodes");
-    let errors: Vec<String> = dataset
-        .stream(episode, &LeRobotConfig::default())
-        .expect("planning needs no ffmpeg")
-        .filter_map(|result| result.err())
-        .map(|err| err.to_string())
-        .collect();
+    for fixture_name in FIXTURES {
+        let dataset = LeRobotDataset::open(fixture(fixture_name)).expect("fixture opens");
+        let episode = dataset.episodes().next().expect("fixture has episodes");
+        let errors: Vec<String> = dataset
+            .stream(episode, &LeRobotConfig::default())
+            .expect("planning needs no ffmpeg")
+            .filter_map(|result| result.err())
+            .map(|err| err.to_string())
+            .collect();
 
-    assert_eq!(errors.len(), 1, "one error for the one video feature");
-    assert!(
-        errors[0].contains("ffmpeg") && errors[0].contains("VideoMode::Skip"),
-        "the error must name both remedies, got: {}",
-        errors[0]
-    );
+        assert_eq!(
+            errors.len(),
+            1,
+            "{fixture_name}: one error for the one video feature"
+        );
+        assert!(
+            errors[0].contains("ffmpeg") && errors[0].contains("VideoMode::Skip"),
+            "{fixture_name}: the error must name both remedies, got: {}",
+            errors[0]
+        );
+    }
 }
 
 /// Each streamed v3 episode covers exactly its own rows of the shared data file: the
@@ -231,20 +234,26 @@ fn v3_episode_row_ranges_are_exclusive() {
     }
 }
 
-/// The v3 video half, streamed through `re_mp4_reader` with the episode's time window:
-/// one static codec chunk, sample chunks retagged onto the episode's `frame_index`
-/// sequence timeline, and a sparse `IsKeyframe` marker. Structure only — encoded sample
-/// bytes are ffmpeg-version-dependent.
+/// The video half, streamed through `re_mp4_reader` (v3: with the episode's time window
+/// into the shared file, v2: the whole per-episode file): one static codec chunk, sample
+/// chunks retagged onto the episode's `frame_index` sequence timeline, and a sparse
+/// `IsKeyframe` marker. Structure only — encoded sample bytes are ffmpeg-version-dependent.
 ///
-/// Skipped when ffmpeg is not available (the fixture's H.264 B-frames force a re-encode;
+/// Skipped when ffmpeg is not available (the fixtures' H.264 B-frames force a re-encode;
 /// B-frame-free videos such as AV1 would stream directly).
 #[test]
-fn v3_video_structure_with_ffmpeg() {
-    if !ffmpeg_available_or_fail_on_ci("v3_video_structure_with_ffmpeg") {
+fn video_structure_with_ffmpeg() {
+    if !ffmpeg_available_or_fail_on_ci("video_structure_with_ffmpeg") {
         return;
     }
 
-    let dataset = LeRobotDataset::open(fixture("v30_apple_storage")).expect("fixture opens");
+    for fixture_name in FIXTURES {
+        assert_video_structure(fixture_name);
+    }
+}
+
+fn assert_video_structure(fixture_name: &str) {
+    let dataset = LeRobotDataset::open(fixture(fixture_name)).expect("fixture opens");
     let config = LeRobotConfig::default();
     let episode_lengths = [299_i64, 300, 300];
 
@@ -269,7 +278,7 @@ fn v3_video_structure_with_ffmpeg() {
         assert_eq!(
             codec_chunks.len(),
             1,
-            "episode {episode:?}: one codec chunk"
+            "{fixture_name} episode {episode:?}: one codec chunk"
         );
 
         let sample_chunks: Vec<&Chunk> = chunks
@@ -282,7 +291,7 @@ fn v3_video_structure_with_ffmpeg() {
             .collect();
         assert!(
             !sample_chunks.is_empty(),
-            "episode {episode:?}: sample chunks expected"
+            "{fixture_name} episode {episode:?}: sample chunks expected"
         );
 
         let mut times: Vec<i64> = Vec::new();
@@ -301,14 +310,14 @@ fn v3_video_structure_with_ffmpeg() {
         let num_samples = i64::try_from(times.len()).expect("sample count fits");
         assert!(
             times.iter().all(|&t| (0..=expected_len).contains(&t)),
-            "episode {episode:?}: retagged frames must lie within the episode, got range \
+            "{fixture_name} episode {episode:?}: retagged frames must lie within the episode, got range \
              {:?}..={:?} over {num_samples} samples",
             times.iter().min(),
             times.iter().max()
         );
         assert!(
             (expected_len - 5..=expected_len).contains(&num_samples),
-            "episode {episode:?}: expected about {expected_len} samples, got {num_samples}"
+            "{fixture_name} episode {episode:?}: expected about {expected_len} samples, got {num_samples}"
         );
 
         assert!(
@@ -316,7 +325,7 @@ fn v3_video_structure_with_ffmpeg() {
                 c.components()
                     .contains_component(VideoStream::descriptor_is_keyframe().component)
             }),
-            "episode {episode:?}: an IsKeyframe marker chunk is expected"
+            "{fixture_name} episode {episode:?}: an IsKeyframe marker chunk is expected"
         );
     }
 }

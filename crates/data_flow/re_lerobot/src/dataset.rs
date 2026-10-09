@@ -59,22 +59,17 @@ pub struct EpisodeAddress {
     pub videos: HashMap<FeatureKey, VideoSource>,
 }
 
-/// Where a video feature's bytes come from and how they are emitted.
+/// Where a video feature's bytes come from, streamed as a `VideoStream`.
 #[derive(Clone)]
-pub enum VideoSource {
-    /// v2: one file per episode, logged whole as an `AssetVideo`.
-    Asset { file: PathBuf },
+pub struct VideoSource {
+    /// v2: one file per episode; v3: a file shared across episodes.
+    pub file: PathBuf,
 
-    /// v3: a file shared across episodes, streamed as a `VideoStream`.
-    Stream {
-        file: PathBuf,
+    /// The episode's slice of the shared file; `None` streams the whole file.
+    pub window: Option<TimeWindow>,
 
-        /// The episode's slice of the shared file; `None` streams the whole file.
-        window: Option<TimeWindow>,
-
-        /// Maps rebased sample timestamps onto a sequence timeline.
-        fps: f64,
-    },
+    /// Maps rebased sample timestamps onto a sequence timeline.
+    pub fps: f64,
 }
 
 /// Task and subtask descriptions, joined against the `task_index`/`subtask_index` columns.

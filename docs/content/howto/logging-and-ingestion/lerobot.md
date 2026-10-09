@@ -43,10 +43,9 @@ for episode in reader.episodes():
 - The `recording_id` becomes the [segment](../../concepts/query-and-transform/catalog-object-model.md#datasets) ID once the file is registered, so pick one that names the episode.
 - `collect(optimize=profile)` merges chunks into [larger ones for catalog queries](optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api), at the cost of holding the episode in memory.
   Without it, `write_rrd` streams the episode straight to disk.
-- In v3.0 datasets, video without B-frames, such as AV1 (LeRobot's default), is copied as-is.
-  H.264 or H.265 with B-frames is re-encoded, and an episode that starts mid-GOP has its first GOP re-encoded.
+- Video without B-frames, such as AV1 (LeRobot's default), is copied as-is.
+  H.264 or H.265 with B-frames is re-encoded, and a v3.0 episode that starts mid-GOP has its first GOP re-encoded.
   Both need `ffmpeg` on the `PATH`.
-  In v2.1 datasets, each episode's video file is copied as-is into an `AssetVideo`, which the dataloader cannot decode.
 
 Then load the folder into a local catalog with `rerun server -d my_dataset=rrd`, or register the files to an existing [dataset](../../concepts/query-and-transform/catalog-object-model.md#datasets).
 
@@ -58,7 +57,7 @@ Each episode becomes its own [recording](../../concepts/logging-and-ingestion/re
 | --- | --- |
 | `frame_index` column | Sequence [timeline](../../concepts/logging-and-ingestion/timelines.md) `frame_index`. Datasets without it get a duration timeline `timestamp` instead |
 | `float32` / `float64` feature, such as `observation.state` or `action` | [`Scalars`](../../reference/types/archetypes/scalars.md) at `/observation.state`. A vector feature is one list per row, and its `names` metadata becomes a static `SeriesLines:names` column |
-| `video` feature | [`VideoStream`](../../reference/types/archetypes/video_stream.md) for v3.0 datasets, [`AssetVideo`](../../reference/types/archetypes/asset_video.md) with frame references for v2.1 |
+| `video` feature | [`VideoStream`](../../reference/types/archetypes/video_stream.md) |
 | `image` feature | [`EncodedImage`](../../reference/types/archetypes/encoded_image.md) for 3-channel images, [`EncodedDepthImage`](../../reference/types/archetypes/encoded_depth_image.md) for single-channel images. Other channel counts are skipped with a warning |
 | `task_index`, `subtask_index` | [`TextDocument`](../../reference/types/archetypes/text_document.md) at `/task` and `/subtask` holding the description |
 | `string` feature | `TextDocument` at the feature's entity |

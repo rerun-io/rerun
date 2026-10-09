@@ -31,8 +31,8 @@ impl Default for LeRobotConfig {
 /// How video features are emitted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum VideoMode {
-    /// Emit videos in the dataset version's native shape: a whole-file `AssetVideo`
-    /// per episode for v2, the episode's `VideoStream` slice for v3.
+    /// Emit videos as a `VideoStream`: the whole per-episode file for v2, the episode's
+    /// slice of the shared file for v3.
     #[default]
     Native,
 

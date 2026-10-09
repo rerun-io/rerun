@@ -80,12 +80,21 @@ pub fn parse(path: &Path) -> Result<DatasetData, LeRobotError> {
         .filter_map(|(key, feature)| (feature.dtype == DType::Video).then_some(key))
         .collect();
 
+    let fps = f64::from(metadata.info.fps);
     let mut episodes = BTreeMap::new();
     for &index in metadata.episodes.keys() {
         let mut videos = HashMap::default();
         for &key in &video_keys {
             let file = path.join(metadata.info.video_path(key, index)?);
-            videos.insert(key.clone(), VideoSource::Asset { file });
+            // One file per episode, so the whole file is the episode.
+            videos.insert(
+                key.clone(),
+                VideoSource {
+                    file,
+                    window: None,
+                    fps,
+                },
+            );
         }
         episodes.insert(
             index,
@@ -117,7 +126,7 @@ pub fn parse(path: &Path) -> Result<DatasetData, LeRobotError> {
         features: metadata.info.features,
         episodes,
         tasks,
-        fps: f64::from(metadata.info.fps),
+        fps,
         has_frame_index,
     })
 }

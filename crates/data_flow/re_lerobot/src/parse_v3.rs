@@ -459,7 +459,7 @@ fn resolve_video(
         }
         None => None,
     };
-    Ok(VideoSource::Stream { file, window, fps })
+    Ok(VideoSource { file, window, fps })
 }
 
 /// Metadata for a v3 `LeRobot` dataset, as read from the files in its `meta` directory.
@@ -1228,7 +1228,7 @@ mod tests {
         assert!(resolve_video(file(), Some((-1.0, 1.0)), 30.0).is_err());
 
         match resolve_video(file(), Some((1.0, 2.0)), 30.0) {
-            Ok(VideoSource::Stream {
+            Ok(VideoSource {
                 window: Some(window),
                 ..
             }) => {
@@ -1240,7 +1240,7 @@ mod tests {
 
         assert!(matches!(
             resolve_video(file(), None, 30.0),
-            Ok(VideoSource::Stream { window: None, .. })
+            Ok(VideoSource { window: None, .. })
         ));
     }
 
@@ -1288,10 +1288,7 @@ mod tests {
                 address
                     .videos
                     .values()
-                    .find_map(|source| match source {
-                        VideoSource::Stream { window, .. } => *window,
-                        VideoSource::Asset { .. } => None,
-                    })
+                    .find_map(|source| source.window)
                     .expect("fixture episodes resolve a windowed video")
             })
             .collect();

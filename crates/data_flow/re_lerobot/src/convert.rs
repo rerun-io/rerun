@@ -6,19 +6,17 @@ use std::path::Path;
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, ListArray};
-use arrow::buffer::ScalarBuffer;
 use itertools::{Either, Itertools as _};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::ArrowArray as _;
 use re_chunk::{
-    Chunk, ChunkId, ComponentIdentifier, EntityPath, RowId, TimeColumn, TimeInt, TimePoint,
-    Timeline, TimelineName,
+    Chunk, ComponentIdentifier, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    TimelineName,
 };
 use re_log_types::TimeType;
-use re_mp4_reader::{Mode, Mp4Config, Mp4Error, Mp4TranscodeOptions, TimeWindow, load_mp4};
+use re_mp4_reader::{Mode, Mp4Config, Mp4Error, Mp4TranscodeOptions, load_mp4};
 use re_parquet::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
-use re_sdk_types::archetypes::{AssetVideo, SeriesLines, TextDocument, VideoFrameReference};
-use re_sdk_types::datatypes::VideoTimestamp;
+use re_sdk_types::archetypes::{SeriesLines, TextDocument};
 
 use crate::config::LeRobotConfig;
 use crate::dataset::{EpisodeAddress, Tasks, VideoSource};
@@ -79,7 +77,7 @@ pub fn execute(
     let videos = emits
         .videos
         .into_iter()
-        .flat_map(move |emit| video_chunks(&emit, timeline));
+        .flat_map(move |emit| stream_video_chunks(&emit, timeline));
 
     Ok(std::iter::chain(
         tabular,
@@ -357,39 +355,13 @@ fn row_time(row: TimeInt, times: &[i64]) -> TimeInt {
 // ---------------------------------------------------------------------------
 // The video tier: each video streams from its own container
 
-/// Stream one video emit's chunks from its own container.
-fn video_chunks(
-    emit: &VideoEmit,
-    timeline: Timeline,
-) -> impl Iterator<Item = Result<Chunk, LeRobotError>> + use<> {
-    match &emit.source {
-        VideoSource::Stream { file, window, fps } => Either::Left(stream_video_chunks(
-            &emit.entity,
-            file,
-            *window,
-            *fps,
-            timeline,
-        )),
-        VideoSource::Asset { file } => Either::Right(
-            match std::fs::read(file).map_err(|err| LeRobotError::io(err, file)) {
-                Ok(contents) => {
-                    Either::Left(build_video_asset_chunks(&emit.entity, contents, timeline))
-                }
-                Err(err) => Either::Right(std::iter::once(Err(err))),
-            },
-        ),
-    }
-}
-
 /// Stream one episode's slice of an mp4 through [`re_mp4_reader`], one GOP resident at
 /// a time, with sample timestamps placed on the episode's timeline.
 fn stream_video_chunks(
-    entity: &EntityPath,
-    file: &Path,
-    window: Option<TimeWindow>,
-    fps: f64,
+    emit: &VideoEmit,
     timeline: Timeline,
 ) -> impl Iterator<Item = Result<Chunk, LeRobotError>> + use<> {
+    let VideoSource { file, window, fps } = &emit.source;
     // LeRobot episode windows land on GOP boundaries (episodes are recorded whole and
     // concatenated), so the reader serves them directly, no ffmpeg needed. A rare
     // misaligned window smart-cuts its first GOP, which requires ffmpeg.
@@ -397,14 +369,15 @@ fn stream_video_chunks(
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default(),
-            time_window: window,
+            time_window: *window,
         },
         timeline_name: *timeline.name(),
         timeline_type: TimeType::DurationNs,
     };
 
-    let file = file.to_path_buf();
-    let iter = match load_mp4(&file, &config, entity) {
+    let file = file.clone();
+    let fps = *fps;
+    let iter = match load_mp4(&file, &config, &emit.entity) {
         Ok(iter) => iter,
         Err(err) => return Either::Left(std::iter::once(Err(video_error(err, &file)))),
     };
@@ -473,77 +446,13 @@ pub fn build_text_chunk(
     Ok(chunk.build()?)
 }
 
-/// v2 video: a static [`AssetVideo`] chunk plus, when frame timestamps can be read from the
-/// container, a [`VideoFrameReference`] chunk aligning video frames with the episode timeline.
-fn build_video_asset_chunks(
-    entity: &EntityPath,
-    contents: Vec<u8>,
-    timeline: Timeline,
-) -> impl Iterator<Item = Result<Chunk, LeRobotError>> + use<> {
-    match build_video_asset(entity, contents, timeline) {
-        Ok((asset_chunk, frame_ref)) => Either::Left(std::iter::chain(
-            std::iter::once(Ok(asset_chunk)),
-            frame_ref.map(Ok),
-        )),
-        Err(err) => Either::Right(std::iter::once(Err(err))),
-    }
-}
-
-/// The static asset chunk and, when frame timestamps can be read from the container, the
-/// frame reference chunk.
-///
-/// The frame times come from the container itself, not from the episode's parquet rows:
-/// frame indices on a sequence timeline, the mp4's own timestamps on a duration timeline.
-fn build_video_asset(
-    entity: &EntityPath,
-    contents: Vec<u8>,
-    timeline: Timeline,
-) -> Result<(Chunk, Option<Chunk>), LeRobotError> {
-    let video_asset = AssetVideo::new(contents);
-    // Static asset chunk kept separate — it can be large.
-    let asset_chunk = Chunk::builder(entity.clone())
-        .with_archetype(RowId::new(), TimePoint::default(), &video_asset)
-        .build()?;
-
-    let frame_ref = match video_asset.read_frame_timestamps_nanos() {
-        Ok(timestamps) => {
-            let timestamps: ScalarBuffer<i64> = timestamps.into();
-            let times: ScalarBuffer<i64> = match timeline.typ() {
-                #[expect(clippy::cast_possible_wrap)]
-                TimeType::Sequence => (0..timestamps.len() as i64).collect(),
-                _ => timestamps.clone(),
-            };
-            let video_timestamps = timestamps
-                .iter()
-                .copied()
-                .map(VideoTimestamp::from_nanos)
-                .collect::<Vec<_>>();
-            let column = VideoFrameReference::update_fields()
-                .with_many_timestamp(video_timestamps)
-                .columns_of_unit_batches()?;
-            let time_column = TimeColumn::new(None, timeline, times);
-            Some(Chunk::from_auto_row_ids(
-                ChunkId::new(),
-                entity.clone(),
-                std::iter::once((*timeline.name(), time_column)).collect(),
-                column.collect(),
-            )?)
-        }
-        Err(err) => {
-            re_log::warn_once!("Failed to read frame timestamps from {entity} video: {err}");
-            None
-        }
-    };
-
-    Ok((asset_chunk, frame_ref))
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use arrow::array::Int64Array;
     use arrow::datatypes::Field;
+    use re_chunk::ChunkId;
     use re_sdk_types::ComponentDescriptor;
 
     use super::*;

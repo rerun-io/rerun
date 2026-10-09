@@ -339,8 +339,10 @@ mod tests {
         // Only one of the two video features resolved to a source at open.
         let videos: HashMap<FeatureKey, VideoSource> = std::iter::once((
             FeatureKey::from("observation.image"),
-            VideoSource::Asset {
+            VideoSource {
                 file: std::path::PathBuf::from("episode_000000.mp4"),
+                window: None,
+                fps: 30.0,
             },
         ))
         .collect();
@@ -353,7 +355,6 @@ mod tests {
         );
         assert_eq!(emits.videos.len(), 1);
         assert_eq!(emits.videos[0].entity.to_string(), "/observation.image");
-        assert!(matches!(emits.videos[0].source, VideoSource::Asset { .. }));
 
         let config = LeRobotConfig {
             video: VideoMode::Skip,
