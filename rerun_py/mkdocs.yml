@@ -122,6 +122,9 @@ markdown_extensions:
 extra_css:
   - css/mkdocstrings.css
 
+extra_javascript:
+  - javascript/search.js
+
 # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/
 extra:
   version:
