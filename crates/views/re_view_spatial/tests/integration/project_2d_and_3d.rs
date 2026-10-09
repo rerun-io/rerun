@@ -9,21 +9,20 @@ use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
-fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
+fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool, focal_length: [f32; 2]) {
     use ndarray::{Array, ShapeBuilder as _};
 
     let eye_position = glam::vec3(0.0, -1.0, 0.2);
-    let camera_extrincis = archetypes::Transform3D::from_mat3x3(
-        // Look at the middle box.
-        glam::camera::rh::view::look_at_mat3(
-            eye_position,
-            glam::vec3(0.0, 1.0, 0.0),
-            glam::Vec3::Z,
-        ),
-    )
-    .with_translation(eye_position);
+    // Look at the middle box.
+    let camera_rotation = glam::camera::rh::view::look_at_mat3(
+        eye_position,
+        glam::vec3(0.0, 1.0, 0.0),
+        glam::Vec3::Z,
+    );
+    let camera_extrincis =
+        archetypes::Transform3D::from_mat3x3(camera_rotation).with_translation(eye_position);
     let camera_intrinsics =
-        archetypes::Pinhole::from_focal_length_and_resolution([2., 2.], [3., 2.])
+        archetypes::Pinhole::from_focal_length_and_resolution(focal_length, [3., 2.])
             .with_image_plane_distance(1.0);
     let camera_image = {
         let height = 2;
@@ -64,6 +63,50 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
     .with_fill_mode(components::FillMode::Solid)
     .with_labels(["red", "green", "blue"]);
 
+    let origin_from_camera = glam::Affine3A::from_mat3_translation(camera_rotation, eye_position);
+    let principal_point = [1.5, 1.0];
+    // Equal-sized camera-facing circles shrink with depth and become ellipses when fx != fy.
+    // Place them above and left of the middle box, inside the image for both focal-length ratios.
+    let circles_in_camera: Vec<Vec<glam::Vec3>> = [0.8, 1.2, 1.6]
+        .into_iter()
+        .map(|depth| {
+            (0..=128)
+                .map(|i| {
+                    let angle = std::f32::consts::TAU * i as f32 / 128.0;
+                    glam::vec3(
+                        -0.2 * depth + 0.15 * angle.cos(),
+                        -0.16 * depth + 0.15 * angle.sin(),
+                        depth,
+                    )
+                })
+                .collect()
+        })
+        .collect();
+    let circles = archetypes::LineStrips3D::new(circles_in_camera.iter().map(|circle| {
+        circle
+            .iter()
+            .map(|&point| origin_from_camera.transform_point3(point).to_array())
+            .collect::<Vec<_>>()
+    }))
+    .with_colors([0x202020FF_u32, 0xFFFF00FF, 0x00FFFFFF])
+    .with_radii([components::Radius::new_ui_points(1.5)]);
+
+    // Independent pixel-space oracle: projected 3D curves must pass through the centers
+    // of these white crosses. Do not use the viewer's projection helpers.
+    let reference_crosses =
+        archetypes::LineStrips2D::new(circles_in_camera.iter().flat_map(|circle| {
+            circle[..128].iter().step_by(16).flat_map(|point| {
+                let u = focal_length[0] * point.x / point.z + principal_point[0];
+                let v = focal_length[1] * point.y / point.z + principal_point[1];
+                [
+                    vec![[u - 0.035, v], [u + 0.035, v]],
+                    vec![[u, v - 0.035], [u, v + 0.035]],
+                ]
+            })
+        }))
+        .with_colors([0xFFFFFFFF_u32])
+        .with_radii([components::Radius::new_ui_points(1.0)]);
+
     let origin_transform = archetypes::Transform3D::from_rotation(RotationAxisAngle::new(
         glam::Vec3::Z,
         Angle::from_degrees(30.0),
@@ -103,6 +146,19 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
                 .with_archetype_auto_row(TimePoint::STATIC, &points2d)
                 .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new("2D"))
         });
+        test_context.log_entity("circles", |builder| {
+            builder
+                .with_archetype_auto_row(TimePoint::STATIC, &circles)
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::CoordinateFrame::new(origin_frame.clone()),
+                )
+        });
+        test_context.log_entity("reference", |builder| {
+            builder
+                .with_archetype_auto_row(TimePoint::STATIC, &reference_crosses)
+                .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new("2D"))
+        });
         test_context.log_entity("image", |builder| {
             builder
                 .with_archetype_auto_row(TimePoint::STATIC, &camera_image)
@@ -133,6 +189,10 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
             builder.with_archetype_auto_row(TimePoint::STATIC, &boxes)
         });
 
+        test_context.log_entity("origin/circles", |builder| {
+            builder.with_archetype_auto_row(TimePoint::STATIC, &circles)
+        });
+
         test_context.log_entity("origin/camera", |builder| {
             builder
                 .with_archetype_auto_row(TimePoint::STATIC, &camera_extrincis)
@@ -143,13 +203,22 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
         test_context.log_entity("origin/camera/points", |builder| {
             builder.with_archetype_auto_row(TimePoint::STATIC, &points2d)
         });
+
+        test_context.log_entity("origin/camera/reference", |builder| {
+            builder.with_archetype_auto_row(TimePoint::STATIC, &reference_crosses)
+        });
     }
 }
 
-fn test_2d_in_3d(use_named_frames: bool, origin: EntityPath) {
+fn test_2d_in_3d(
+    use_named_frames: bool,
+    origin: EntityPath,
+    focal_length: [f32; 2],
+    name_prefix: &str,
+) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
-    setup_scene(&mut test_context, use_named_frames);
+    setup_scene(&mut test_context, use_named_frames, focal_length);
 
     // Named vs non-named should produce the same images, but easier to deal with test failures if it's separate.
     let origin_name = if origin.is_root() {
@@ -162,9 +231,9 @@ fn test_2d_in_3d(use_named_frames: bool, origin: EntityPath) {
             .to_owned()
     };
     let name = if use_named_frames {
-        format!("2d_in_3d_with_explicit_frames_at_{origin_name}")
+        format!("{name_prefix}_with_explicit_frames_at_{origin_name}")
     } else {
-        format!("2d_in_3d_at_{origin_name}")
+        format!("{name_prefix}_at_{origin_name}")
     };
 
     let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -193,28 +262,56 @@ fn test_2d_in_3d(use_named_frames: bool, origin: EntityPath) {
 
 #[test]
 fn test_2d_in_3d_at_root_with_explicit_frames() {
-    test_2d_in_3d(true, EntityPath::root());
+    test_2d_in_3d(true, EntityPath::root(), [2.0, 2.0], "2d_in_3d");
 }
 
 #[test]
 fn test_2d_in_3d_at_root_without_explicit_frames() {
-    test_2d_in_3d(false, EntityPath::root());
+    test_2d_in_3d(false, EntityPath::root(), [2.0, 2.0], "2d_in_3d");
 }
 
 #[test]
 fn test_2d_in_3d_at_subpath_with_explicit_frames() {
-    test_2d_in_3d(true, EntityPath::from("origin"));
+    test_2d_in_3d(true, EntityPath::from("origin"), [2.0, 2.0], "2d_in_3d");
 }
 
 #[test]
 fn test_2d_in_3d_at_subpath_without_explicit_frames() {
-    test_2d_in_3d(false, EntityPath::from("origin"));
+    test_2d_in_3d(false, EntityPath::from("origin"), [2.0, 2.0], "2d_in_3d");
 }
 
-fn test_3d_in_2d(use_explicit_frames: bool) {
+/// The image plane is compressed horizontally by 1/fx relative to its pixel-space aspect ratio.
+/// Cross centers lie on circles in the image plane: their pixel-space fx/fy scaling cancels
+/// the pinhole's inverse scaling. The cross arms still scale anisotropically.
+/// The viewer's perspective can foreshorten these circles; they need not look circular on screen.
+#[test]
+fn test_anamorphic_2d_in_3d_horizontal_with_explicit_frames() {
+    test_2d_in_3d(
+        true,
+        EntityPath::from("origin"),
+        [3.0, 1.0],
+        "anamorphic_2d_in_3d_horizontal",
+    );
+}
+
+/// The image plane is compressed vertically by 1/fy relative to its pixel-space aspect ratio.
+/// Cross centers lie on circles in the image plane: their pixel-space fx/fy scaling cancels
+/// the pinhole's inverse scaling. The cross arms still scale anisotropically.
+/// The viewer's perspective can foreshorten these circles; they need not look circular on screen.
+#[test]
+fn test_anamorphic_2d_in_3d_vertical_with_explicit_frames() {
+    test_2d_in_3d(
+        true,
+        EntityPath::from("origin"),
+        [1.0, 3.0],
+        "anamorphic_2d_in_3d_vertical",
+    );
+}
+
+fn test_3d_in_2d(use_explicit_frames: bool, focal_length: [f32; 2], snapshot_name: &str) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
-    setup_scene(&mut test_context, use_explicit_frames);
+    setup_scene(&mut test_context, use_explicit_frames, focal_length);
 
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new(
@@ -249,23 +346,32 @@ fn test_3d_in_2d(use_explicit_frames: bool) {
             });
         });
 
-    // Should produce the same images, but easier to deal with test failures if it's separate.
-    let name = if use_explicit_frames {
-        "3d_in_2d_with_explicit_frames"
-    } else {
-        "3d_in_2d"
-    };
-
     harness.run();
-    harness.snapshot(name);
+    harness.snapshot(snapshot_name);
 }
 
 #[test]
 fn test_3d_in_2d_with_explicit_frames() {
-    test_3d_in_2d(true);
+    test_3d_in_2d(true, [2.0, 2.0], "3d_in_2d_with_explicit_frames");
 }
 
 #[test]
 fn test_3d_in_2d_without_explicit_frames() {
-    test_3d_in_2d(false);
+    test_3d_in_2d(false, [2.0, 2.0], "3d_in_2d");
+}
+
+/// Camera-facing 3D circles project to horizontally elongated ellipses (fx/fy = 3).
+/// Farther circles project smaller, and each ellipse passes through its reference cross centers.
+/// The image retains its pixel-space aspect ratio, and the pixel-space cross arms remain equal-sized.
+#[test]
+fn test_anamorphic_3d_in_2d_horizontal() {
+    test_3d_in_2d(false, [3.0, 1.0], "anamorphic_3d_in_2d");
+}
+
+/// Camera-facing 3D circles project to vertically elongated ellipses (fy/fx = 3).
+/// Farther circles project smaller, and each ellipse passes through its reference cross centers.
+/// The image retains its pixel-space aspect ratio, and the pixel-space cross arms remain equal-sized.
+#[test]
+fn test_anamorphic_3d_in_2d_vertical() {
+    test_3d_in_2d(false, [1.0, 3.0], "anamorphic_3d_in_2d_vertical");
 }

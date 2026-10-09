@@ -439,8 +439,6 @@ fn setup_target_config(
     // * a perspective camera *at the origin* for 3D rendering
     // Both share the same view-builder and the same viewport transformation but are independent otherwise.
 
-    // TODO(andreas): Support anamorphic pinhole cameras properly.
-
     let pinhole = if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
@@ -467,10 +465,18 @@ fn setup_target_config(
     );
 
     let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
+
+    // The image-plane transform in `re_tf` uses the harmonic mean of the inverse focal lengths
+    // for depth scaling. The virtual camera must use its reciprocal to cancel that scale.
+    //
+    // TODO(andreas): `re_tf` represents crossing a pinhole as an affine image-plane transform,
+    // conflating projecting 3D into 2D with embedding 2D on a display plane in 3D.
+    // We should preserve these distinct semantics in `re_tf` instead.
+    let focal_length = 0.5 * (focal_length.x + focal_length.y);
+    let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / focal_length).atan();
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
-        vertical_fov: pinhole.fov_y(),
+        vertical_fov,
         near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
         aspect_ratio: pinhole.aspect_ratio(),
     };
