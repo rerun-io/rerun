@@ -1,0 +1,8 @@
+# Config for kitdiff (https://github.com/rerun-io/kitdiff), our visual snapshot diff tool.
+
+[github]
+# kitdiff's "Commit the updated snapshots" button triggers this workflow.
+update_snapshot_workflow_name = "update_kittest_snapshots.yml"
+
+# The GitHub Actions artifacts with snapshots. See `.github/workflows/reusable_checks_rust.yml`.
+artifact_pattern = "test-results-*"
