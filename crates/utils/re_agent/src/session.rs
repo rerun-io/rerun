@@ -19,7 +19,7 @@ use agent_client_protocol::{LineDirection, Responder};
 
 use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
 use crate::error::McpStartupFailure;
-use crate::transcript::{ToolCallState, Transcript, TranscriptItem};
+use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
@@ -492,14 +492,7 @@ impl AgentSession {
                 }
                 TranscriptItem::Note { text, is_error } if *is_error => errors.push(text.clone()),
                 TranscriptItem::Agent { content, .. } => {
-                    let text = content
-                        .iter()
-                        .filter_map(|block| match block {
-                            ContentBlock::Text(text) => Some(text.text.as_str()),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                    let text = message_text(content);
                     if !text.trim().is_empty() {
                         response = text;
                     }

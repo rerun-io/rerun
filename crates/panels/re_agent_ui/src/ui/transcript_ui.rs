@@ -1,14 +1,39 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus};
-use re_ui::{UiExt as _, icons};
+use re_ui::{ReButton, UiExt as _, icons};
 
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
-use re_agent::{McpStartupFailure, Prompt, PromptImage, Transcript, TranscriptItem};
+use re_agent::{
+    AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptItem, message_text,
+};
 
-pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: bool) {
+/// Each ended turn with an agent answer gets a footer that offers to copy that answer.
+///
+/// The copied text is the last agent message of the turn with non-blank text, not the whole turn.
+/// The last turn counts as ended only when no turn is in progress.
+pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: bool) {
+    let transcript = session.transcript();
     ui.spacing_mut().item_spacing.y = 10.0;
 
+    let mut turn_top = None;
+    let mut last_answer: Option<String> = None;
     for (index, entry) in transcript.items.iter().enumerate() {
+        match &entry.item {
+            TranscriptItem::User(_) => {
+                turn_top = Some(ui.cursor().top());
+                last_answer = None;
+            }
+            TranscriptItem::Agent { content, .. } => {
+                let text = message_text(content);
+                if !text.trim().is_empty() {
+                    last_answer = Some(text);
+                }
+            }
+            TranscriptItem::McpStartupFailure(_)
+            | TranscriptItem::Note { .. }
+            | TranscriptItem::ToolCall(_) => {}
+        }
+
         let response = ui
             .push_id(index, |ui| match &entry.item {
                 TranscriptItem::User(prompt) => {
@@ -36,7 +61,39 @@ pub fn transcript_ui(ui: &mut egui::Ui, transcript: &Transcript, show_thoughts: 
             })
             .response;
         response.on_hover_text(format_timestamp(entry.created_at));
+
+        let turn_ends_here = match transcript.items.get(index + 1) {
+            Some(next) => matches!(next.item, TranscriptItem::User(_)),
+            None => !session.turn_in_progress(),
+        };
+        if turn_ends_here && let (Some(turn_top), Some(answer)) = (turn_top, &last_answer) {
+            ui.push_id(("turn_footer", index), |ui| {
+                turn_footer_ui(ui, turn_top, answer);
+            });
+        }
     }
+}
+
+/// The copy button shows only while the pointer is over the turn, from `turn_top` down to the footer itself.
+///
+/// `turn_top` is a y position in the same space as `ui.cursor()`.
+/// The footer takes its space even when the button is hidden, so the transcript does not shift on hover.
+fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str) {
+    let turn_bottom = ui.cursor().top() + re_ui::Size::Small.height();
+    let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
+    let hovered = ui.rect_contains_pointer(turn_rect);
+    ui.horizontal(|ui| {
+        if ui
+            .add_visible(
+                hovered,
+                ReButton::icon(icons::COPY, "Copy response").ghost().small(),
+            )
+            .on_hover_text("Copy response")
+            .clicked()
+        {
+            ui.copy_text(answer.to_owned());
+        }
+    });
 }
 
 fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {

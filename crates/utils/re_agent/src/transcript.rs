@@ -597,6 +597,18 @@ fn truncate_bytes(text: &str, max_bytes: usize) -> String {
     format!("{kept}…\n[truncated: {} bytes in all]", text.len())
 }
 
+/// The text blocks of an agent message, one per line. Images and other blocks are skipped.
+pub fn message_text(content: &[ContentBlock]) -> String {
+    content
+        .iter()
+        .filter_map(|block| match block {
+            ContentBlock::Text(text) => Some(text.text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// The most specific name for a model option, e.g. "Opus 5.5" rather than "Default (recommended)".
 ///
 /// Agents may give an alias a versionless name and put the concrete model in the description,

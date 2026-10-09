@@ -140,7 +140,7 @@ pub fn chat_ui(
                 .auto_shrink(false)
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
-                    transcript_ui(ui, session.transcript(), show_thoughts);
+                    transcript_ui(ui, session, show_thoughts);
 
                     if let Phase::Connecting { status } = session.phase() {
                         ui.add_space(8.0);
