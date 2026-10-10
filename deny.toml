@@ -155,6 +155,7 @@ allow = [
   "0BSD", # https://opensource.org/license/0bsd
   "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
   "Apache-2.0", # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
+  "Bitstream-Vera", # https://spdx.org/licenses/Bitstream-Vera.html (Hack font in re_ui)
   "BSD-2-Clause", # https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
   "BSD-3-Clause", # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
   "BSL-1.0", # https://tldrlegal.com/license/boost-software-license-1.0-explained

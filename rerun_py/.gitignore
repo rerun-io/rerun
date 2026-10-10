@@ -4,6 +4,8 @@ pyo3-build.cfg
 rerun_sdk/rerun_cli/rerun
 rerun_sdk/rerun_cli/rerun.exe
 rerun_sdk/rerun_cli/Rerun.app/
+rerun_sdk/rerun_bindings/THIRD_PARTY_NOTICES.md
+rerun_sdk/rerun_cli/THIRD_PARTY_NOTICES.md
 site/
 venv/
 wheels/

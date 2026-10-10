@@ -83,6 +83,9 @@ def build_and_upload(
     elif mode is BuildMode.EXTRA:
         maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi,extra"
 
+    run("pixi run third-party-notices rerun_py/rerun_sdk/rerun_cli/THIRD_PARTY_NOTICES.md")
+    run("pixi run py-third-party-notices")
+
     dist = f"dist/{target}"
 
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""

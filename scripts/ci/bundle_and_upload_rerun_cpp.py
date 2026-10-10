@@ -54,6 +54,14 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str | None
             blob.download_to_file(f)
 
 
+def download_third_party_notices(target_dir: str, git_hash: str) -> None:
+    gcs = storage.Client("rerun-open")
+    blob = gcs.bucket("rerun-builds").get_blob(f"commit/{git_hash}/rerun_c/THIRD_PARTY_NOTICES.md")
+    if blob is None:
+        raise RuntimeError(f"Blob not found: commit/{git_hash}/rerun_c/THIRD_PARTY_NOTICES.md")
+    blob.download_to_filename(f"{target_dir}/THIRD_PARTY_NOTICES.md")
+
+
 def upload_rerun_cpp_sdk(rerun_zip: str, git_hash: str) -> None:
     logging.info("Uploading to gcloud…")
 
@@ -152,6 +160,7 @@ def main() -> None:
         logging.info("Copying LICENSE files…")
         shutil.copy(src="LICENSE-APACHE", dst=package_dir + "/")
         shutil.copy(src="LICENSE-MIT", dst=package_dir + "/")
+        download_third_party_notices(package_dir, git_hash)
 
         logging.info(f"Packaging {package_dir}.zip…")
         rerun_zip = shutil.make_archive(

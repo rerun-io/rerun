@@ -173,6 +173,10 @@ def fetch_binary_assets(
                 f"Rerun-{tag}-aarch64-apple-darwin.app.tar.gz",
                 f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
             ),
+            (
+                f"rerun-cli-{tag}-THIRD_PARTY_NOTICES.md",
+                f"commit/{commit_short}/rerun-cli/THIRD_PARTY_NOTICES.md",
+            ),
         ]
         for name, blob_url in rerun_cli_blobs:
             blob = bucket.get_blob(blob_url)

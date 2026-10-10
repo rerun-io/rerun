@@ -1,0 +1,43 @@
+accepted = [
+  "0BSD",
+  "Apache-2.0 WITH LLVM-exception",
+  "Apache-2.0",
+  "Bitstream-Vera",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT-0",
+  "MIT",
+  "MPL-2.0",
+  "OFL-1.1",
+  "Ubuntu-font-1.0",
+  "Unicode-3.0",
+  "Zlib",
+]
+ignore-dev-dependencies = true
+ignore-build-dependencies = true
+
+[re_ui.clarify]
+license = "(MIT OR Apache-2.0) AND OFL-1.1 AND MIT AND Bitstream-Vera"
+
+[[re_ui.clarify.files]]
+path = "data/OFL.txt"
+license = "OFL-1.1"
+checksum = "5cfd4b1a4302f0828b4d2756b7927f37008767a0f1ec2c30f1238cbc9c43fdea"
+
+[[re_ui.clarify.files]]
+path = "data/Hack-Regular.txt"
+license = "MIT"
+start = "The work in the Hack project"
+end = "OTHER DEALINGS IN THE SOFTWARE."
+checksum = "0a3a32afbdf4e819812135f5fa523498f3f8abdd5a262fc07bee14dd44b58a24"
+
+[[re_ui.clarify.files]]
+path = "data/Hack-Regular.txt"
+license = "Bitstream-Vera"
+start = "BITSTREAM VERA LICENSE"
+end = "fonts at gnome dot org."
+checksum = "739646565757b63948233563f6c9fb2090befd805e6edead735ddd2dd10f48f5"

@@ -407,6 +407,16 @@ hakari-generate = "cargo hakari generate"
 # Check that `re_workspace_hack` is up to date, and that every crate depends on it.
 hakari-check = "cargo hakari verify && python scripts/ci/crates.py check-feature-unification-deps"
 
+# Licenses of everything linked into the `rerun` CLI.
+third-party-notices = { cmd = "cargo -Zscript scripts/ci/third_party_notices.rs {{ output }} --locked --no-default-features --features release_full -m crates/top/rerun-cli/Cargo.toml", env = { RUSTC_BOOTSTRAP = "1" }, args = [
+  { arg = "output", default = "target/THIRD_PARTY_NOTICES.md" },
+] }
+
+# Licenses of everything linked into the `rerun_bindings` Python extension.
+py-third-party-notices = { cmd = "cargo -Zscript scripts/ci/third_party_notices.rs {{ output }} --locked --all-features -m rerun_py/Cargo.toml", env = { RUSTC_BOOTSTRAP = "1" }, args = [
+  { arg = "output", default = "rerun_py/rerun_sdk/rerun_bindings/THIRD_PARTY_NOTICES.md" },
+] }
+
 # Check that each crate has at most one integration test binary (opt-out via `[package.metadata.rerun] test-binaries`).
 check-test-binaries = "python scripts/ci/check_test_binaries.py"
 

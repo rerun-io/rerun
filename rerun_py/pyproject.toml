@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "maturin"
-requires = ["maturin>=1.8.1"]
+requires = ["maturin>=1.9.3"]
 
 [project]
 classifiers = [
@@ -28,13 +28,12 @@ keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
 requires-python = ">=3.10"
 dynamic = ["version"]
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-APACHE", "LICENSE-MIT"]
 
 [[project.authors]]
 email = "opensource@rerun.io"
 name = "Rerun.io"
-
-[project.license]
-text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = [
@@ -262,6 +261,8 @@ include = [
   "rerun_sdk/rerun_cli/rerun",
   "rerun_sdk/rerun_cli/rerun.exe",
   "rerun_sdk/rerun_cli/Rerun.app/**/*",
+  "rerun_sdk/rerun_cli/THIRD_PARTY_NOTICES.md",
+  "rerun_sdk/rerun_bindings/THIRD_PARTY_NOTICES.md",
 ]
 locked = true
 name = "rerun_bindings"
