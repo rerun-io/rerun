@@ -213,7 +213,11 @@ impl App {
         request: SaveScreenshotRequest,
         on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
     ) {
-        let SaveScreenshotRequest { view_id, file_path } = request;
+        let SaveScreenshotRequest {
+            view_id,
+            file_path,
+            max_size,
+        } = request;
 
         let view_id = match view_id.map(|view_id| {
             uuid::Uuid::parse_str(&view_id)
@@ -252,7 +256,10 @@ impl App {
 
         self.command_sender
             .send_system(SystemCommand::SaveScreenshot {
-                target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
+                target: re_viewer_context::ScreenshotTarget::SaveToPath {
+                    path: file_path,
+                    max_size,
+                },
                 view_id,
                 notify: false,
             });

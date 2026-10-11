@@ -767,6 +767,10 @@ message SaveScreenshotRequest {
   // Path at which the screenshot will be saved.
   // This path is relative to the current working directory of the viewer process.
   string file_path = 2;
+
+  // Longest side of the saved image, in pixels. A larger screenshot is scaled down to fit,
+  // keeping its aspect ratio. If omitted, the screenshot is saved at full resolution.
+  optional uint32 max_size = 3;
 }
 
 // Response for `SaveScreenshot`. Empty: an error is reported as a gRPC status instead.

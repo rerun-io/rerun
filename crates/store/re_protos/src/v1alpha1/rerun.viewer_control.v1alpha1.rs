@@ -1107,6 +1107,10 @@ pub struct SaveScreenshotRequest {
     /// This path is relative to the current working directory of the viewer process.
     #[prost(string, tag = "2")]
     pub file_path: ::prost::alloc::string::String,
+    /// Longest side of the saved image, in pixels. A larger screenshot is scaled down to fit,
+    /// keeping its aspect ratio. If omitted, the screenshot is saved at full resolution.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_size: ::core::option::Option<u32>,
 }
 impl ::prost::Name for SaveScreenshotRequest {
     const NAME: &'static str = "SaveScreenshotRequest";

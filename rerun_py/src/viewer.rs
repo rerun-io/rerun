@@ -221,8 +221,12 @@ impl ViewerConnectionHandle {
         let response = wait_for_future(
             py,
             self.control_client.viewer_control(
-                re_protos::viewer_control::v1alpha1::SaveScreenshotRequest { view_id, file_path }
-                    .into_envelope(),
+                re_protos::viewer_control::v1alpha1::SaveScreenshotRequest {
+                    view_id,
+                    file_path,
+                    max_size: None,
+                }
+                .into_envelope(),
             ),
         )
         .map_err(to_py_err)?;

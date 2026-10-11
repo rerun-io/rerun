@@ -234,7 +234,14 @@ pub enum ScreenshotTarget {
     SaveToPathFromFileDialog,
 
     /// The screenshot will be saved to the specified file path.
-    SaveToPath(camino::Utf8PathBuf),
+    SaveToPath {
+        /// Where to save the image. The extension picks the format.
+        path: camino::Utf8PathBuf,
+
+        /// Longest side of the saved image, in pixels.
+        /// A larger screenshot is scaled down to fit; `None` applies no limit.
+        max_size: Option<u32>,
+    },
 }
 
 // ----------------------------------------------------------------------------------------

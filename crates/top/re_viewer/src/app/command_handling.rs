@@ -871,7 +871,9 @@ impl App {
         target: &re_viewer_context::ScreenshotTarget,
         err: SaveScreenshotError,
     ) {
-        if let re_viewer_context::ScreenshotTarget::SaveToPath(file_path) = target
+        if let re_viewer_context::ScreenshotTarget::SaveToPath {
+            path: file_path, ..
+        } = target
             && let Some(notifier) = self.pending_screenshot_notifiers.remove(file_path)
         {
             notifier.call(Err(err));

@@ -1272,9 +1272,13 @@ impl App {
                 }
             }
 
-            re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
+            re_viewer_context::ScreenshotTarget::SaveToPath {
+                path: file_path,
+                max_size,
+            } => {
                 cfg_select! {
                     target_arch = "wasm32" => {
+                        _ = max_size;
                         re_log::error!(
                             "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
                         );
@@ -1294,9 +1298,20 @@ impl App {
                             return;
                         };
 
+                        let mut image = image::DynamicImage::ImageRgba8(rgba_image);
+                        if let Some(max_size) = max_size
+                            && max_size < image.width().max(image.height())
+                        {
+                            image = image.resize(
+                                max_size,
+                                max_size,
+                                image::imageops::FilterType::Triangle,
+                            );
+                        }
+
                         // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
                         // (There's nothing interesting in the alpha channel anyways.)
-                        let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
+                        let rgb_image = image.to_rgb8();
 
                         let result = match rgb_image.save(&file_path) {
                             Ok(()) => {

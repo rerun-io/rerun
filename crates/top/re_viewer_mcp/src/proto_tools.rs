@@ -37,6 +37,21 @@ const OPERATION_ONEOF: &str = "kind";
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
+/// The screenshot operation, whose `max_size` this server defaults.
+const SCREENSHOT_OPERATION: &str = "save_screenshot";
+
+/// `max_size` for a screenshot request that sets none.
+///
+/// The proto leaves an unset `max_size` at full resolution, which on a large display is several
+/// hundred kilobytes of image an agent reads back into its context. SDK callers keep that
+/// default; only the MCP surface changes it.
+const DEFAULT_SCREENSHOT_MAX_SIZE: u64 = 1024;
+
+/// Replaces the proto's description of `max_size` in the screenshot tool's schema.
+const SCREENSHOT_MAX_SIZE_DESCRIPTION: &str = "Longest side of the saved image, in pixels. \
+    A larger screenshot is scaled down to fit, keeping its aspect ratio. \
+    Defaults to 1024. Pass 0 for full resolution.";
+
 /// Appended to every generated description, since the tools share one connection.
 const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
 
@@ -299,7 +314,18 @@ pub fn tools() -> Vec<Tool> {
 
             let mut visiting = HashSet::default();
             let schema = message_schema(&request, &mut visiting, 0);
-            let schema = schema.as_object().cloned().unwrap_or_default();
+            let mut schema = schema.as_object().cloned().unwrap_or_default();
+            if field.name() == SCREENSHOT_OPERATION
+                && let Some(max_size) = schema
+                    .get_mut("properties")
+                    .and_then(|properties| properties.get_mut("max_size"))
+                    .and_then(Value::as_object_mut)
+            {
+                max_size.insert(
+                    "description".to_owned(),
+                    json!(SCREENSHOT_MAX_SIZE_DESCRIPTION),
+                );
+            }
 
             Tool::new(
                 Cow::Owned(field.name().to_owned()),
@@ -333,7 +359,11 @@ pub fn build_request(
         return Err(format!("operation `{name}` has no request message"));
     };
 
-    let arguments = Value::Object(arguments.unwrap_or_default());
+    let mut arguments = arguments.unwrap_or_default();
+    if name == SCREENSHOT_OPERATION {
+        default_screenshot_max_size(&mut arguments);
+    }
+    let arguments = Value::Object(arguments);
 
     // Protobuf has no required fields, so the `required` and `oneOf` the schema advertises would
     // otherwise go unchecked: an omitted `time` would become 0 and move the cursor to the start
@@ -357,6 +387,25 @@ pub fn build_request(
 
     ViewerControlRequest::decode(envelope.encode_to_vec().as_slice())
         .map_err(|err| format!("failed to build the request envelope for `{name}`: {err}"))
+}
+
+/// Apply [`DEFAULT_SCREENSHOT_MAX_SIZE`] when `max_size` is unset, and turn an explicit 0 into
+/// the proto's "unset", which means full resolution.
+///
+/// Protobuf JSON accepts both the field name and its camel-case JSON name, so both are checked.
+fn default_screenshot_max_size(arguments: &mut Map<String, Value>) {
+    let key = ["max_size", "maxSize"]
+        .into_iter()
+        .find(|key| arguments.get(*key).is_some_and(|value| !value.is_null()));
+    match key {
+        None => {
+            arguments.insert("max_size".to_owned(), json!(DEFAULT_SCREENSHOT_MAX_SIZE));
+        }
+        Some(key) if arguments.get(key).and_then(Value::as_u64) == Some(0) => {
+            arguments.remove(key);
+        }
+        Some(_) => {}
+    }
 }
 
 /// Check the arguments against what the generated schema promises: every `required` field is
@@ -591,6 +640,41 @@ mod tests {
         let err = build("set_time_cursor", &json!({ "time": null }))
             .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
         assert!(err.contains("time"), "{err}");
+    }
+
+    #[test]
+    fn defaults_the_screenshot_size_and_reads_zero_as_full_resolution() {
+        let max_size = |arguments: Value| {
+            match build("save_screenshot", &arguments) {
+            Ok(ViewerControlRequest {
+                kind:
+                    Some(
+                        re_protos::viewer_control::v1alpha1::viewer_control_request::Kind::SaveScreenshot(
+                            screenshot,
+                        ),
+                    ),
+            }) => screenshot.max_size,
+            other => panic!("expected a save_screenshot request, got {other:?}"),
+        }
+        };
+
+        assert_eq!(max_size(json!({ "file_path": "a.png" })), Some(1024));
+        assert_eq!(
+            max_size(json!({ "file_path": "a.png", "max_size": null })),
+            Some(1024)
+        );
+        assert_eq!(
+            max_size(json!({ "file_path": "a.png", "max_size": 0 })),
+            None
+        );
+        assert_eq!(
+            max_size(json!({ "file_path": "a.png", "maxSize": 0 })),
+            None
+        );
+        assert_eq!(
+            max_size(json!({ "file_path": "a.png", "max_size": 400 })),
+            Some(400)
+        );
     }
 
     #[test]
