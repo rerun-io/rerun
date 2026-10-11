@@ -52,6 +52,7 @@ fn panel(turn_in_progress: bool) -> AgentPanel {
     session.handle_event(AgentEvent::Update(SessionUpdate::AgentMessageChunk(
         ContentChunk::new(ContentBlock::Text(TextContent::new(ANSWER.to_owned()))),
     )));
+    crate::pin_entry_times(session);
     panel
 }
 
@@ -70,6 +71,7 @@ fn harness(panel: AgentPanel) -> egui_kittest::Harness<'static, AgentPanel> {
 
 #[test]
 fn hovering_a_finished_turn_offers_to_copy_its_answer() {
+    crate::use_utc();
     let mut harness = harness(panel(false));
     assert!(harness.query_by_label("Copy response").is_none());
 

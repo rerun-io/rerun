@@ -4,7 +4,8 @@ use re_ui::{ReButton, UiExt as _, icons};
 
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
 use re_agent::{
-    AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptItem, message_text,
+    AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry, TranscriptItem,
+    message_text,
 };
 
 /// Each ended turn with an agent answer gets a footer that offers to copy that answer.
@@ -34,7 +35,7 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             | TranscriptItem::ToolCall(_) => {}
         }
 
-        let response = ui
+        let rect = ui
             .push_id(index, |ui| match &entry.item {
                 TranscriptItem::User(prompt) => {
                     user_message_ui(ui, prompt, ui.make_persistent_id("user"));
@@ -59,8 +60,11 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
                     }
                 }
             })
-            .response;
-        response.on_hover_text(format_timestamp(entry.created_at));
+            .response
+            .rect;
+        if ui.rect_contains_pointer(rect) {
+            timestamp_overlay(ui, rect, entry);
+        }
 
         let turn_ends_here = match transcript.items.get(index + 1) {
             Some(next) => matches!(next.item, TranscriptItem::User(_)),
@@ -96,6 +100,44 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str) {
     });
 }
 
+/// Paints the time an entry was created at the right edge of the panel:
+/// vertically centered on a one-line entry, else in the gap above it so it covers no text.
+fn timestamp_overlay(ui: &egui::Ui, entry_rect: egui::Rect, entry: &TranscriptEntry) {
+    let tokens = ui.tokens();
+    let font_id = egui::TextStyle::Small.resolve(ui.style());
+    let painter = ui.painter();
+    let galley = painter.layout_no_wrap(
+        format_timestamp(entry.created_at),
+        font_id,
+        tokens.text_subdued,
+    );
+    let size = galley.size();
+    let padding = 2.0;
+
+    let (entry_background, frame_margin) = match &entry.item {
+        TranscriptItem::User(_) => (tokens.form_field_bg_color, USER_FRAME_MARGIN),
+        _ => (ui.visuals().panel_fill, 0.0),
+    };
+    // Half a line of slack: a wrapped entry is at least a full line taller.
+    let one_line_height = 1.5 * ui.text_style_height(&egui::TextStyle::Body) + 2.0 * frame_margin;
+    let top = if entry_rect.height() <= one_line_height {
+        entry_rect.center().y - 0.5 * size.y
+    } else {
+        // Keep it visible when the gap above is scrolled away, at the cost of covering text.
+        (entry_rect.top() - size.y - padding).max(ui.clip_rect().top() + padding)
+    };
+    let background = if entry_rect.top() <= top {
+        entry_background
+    } else {
+        ui.visuals().panel_fill
+    };
+
+    let right = ui.max_rect().right() - USER_FRAME_MARGIN;
+    let text_rect = egui::Rect::from_min_size(egui::pos2(right - size.x, top), size);
+    painter.rect_filled(text_rect.expand(padding), padding, background);
+    painter.galley(text_rect.min, galley, tokens.text_subdued);
+}
+
 fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
     let mut lines = vec![format!(
         "MCP server `{}` failed to start.",
@@ -111,17 +153,22 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
     ui.error_label(lines.join("\n"));
 }
 
-/// Local wall-clock time, with the date, e.g. `2026-09-08 14:03:12`.
+/// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.
 fn format_timestamp(time: std::time::SystemTime) -> String {
-    jiff::Timestamp::try_from(time)
-        .map(|timestamp| {
-            timestamp
-                .to_zoned(jiff::tz::TimeZone::system())
-                .strftime("%Y-%m-%d %H:%M:%S")
-                .to_string()
-        })
-        .unwrap_or_else(|_| "unknown time".to_owned())
+    let Ok(timestamp) = jiff::Timestamp::try_from(time) else {
+        return "unknown time".to_owned();
+    };
+    let zoned = timestamp.to_zoned(jiff::tz::TimeZone::system());
+    let format = if zoned.date() == jiff::Zoned::now().date() {
+        "%H:%M:%S"
+    } else {
+        "%Y-%m-%d %H:%M:%S"
+    };
+    zoned.strftime(format).to_string()
 }
+
+/// Inner margin of the frame around a user message, in points.
+const USER_FRAME_MARGIN: f32 = 8.0;
 
 fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) {
     let Prompt { text, images } = prompt;
@@ -133,7 +180,7 @@ fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) {
             tokens.widget_noninteractive_bg_stroke,
         ))
         .corner_radius(6)
-        .inner_margin(8)
+        .inner_margin(USER_FRAME_MARGIN)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             if !text.is_empty() {

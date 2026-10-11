@@ -247,6 +247,45 @@ fn chat_conversation() {
     snapshot("chat_conversation", panel);
 }
 
+/// Hovering an entry shows when it was created, at the right edge of the panel.
+#[test]
+fn chat_hover_timestamp() {
+    crate::use_utc();
+
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+    session.transcript_mut().push_user("open a dataset".into());
+    session.handle_event(AgentEvent::Update(SessionUpdate::AgentMessageChunk(
+        ContentChunk::new(text("Check viewer for servers and datasets first.\n")),
+    )));
+    session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+        ToolCall::new("search-1", "ToolSearch")
+            .kind(ToolKind::Search)
+            .status(ToolCallStatus::Completed),
+    )));
+    session.transcript_mut().push_user(
+        "The left camera doesn't show up in the viewer. Fix it. \
+         And here is a much longer sentence so that the prompt wraps over several lines."
+            .into(),
+    );
+    crate::pin_entry_times(session);
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+
+    harness.get_by_label_contains("ToolSearch").hover();
+    harness.try_run_realtime().ok();
+    harness.snapshot("chat_hover_timestamp_one_line");
+
+    harness
+        .get_by_label_contains("much longer sentence")
+        .hover();
+    harness.try_run_realtime().ok();
+    harness.snapshot("chat_hover_timestamp_multi_line");
+}
+
 /// A small solid image, standing in for a pasted screenshot.
 fn pasted_image() -> PromptImage {
     let size = [64, 48];
