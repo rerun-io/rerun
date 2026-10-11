@@ -60,7 +60,6 @@ fn harness(panel: AgentPanel) -> egui_kittest::Harness<'static, AgentPanel> {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             panel,

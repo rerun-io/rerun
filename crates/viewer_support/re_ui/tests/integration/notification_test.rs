@@ -29,8 +29,6 @@ fn test_notification_with_fields() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(400.0, 200.0))
             .build_ui(move |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 let notifications = notifications.get_or_insert_with(|| {
                     let mut notifications = NotificationUi::new(ui.ctx().clone());
                     notifications.add_log(log_msg.clone());
@@ -56,7 +54,6 @@ fn test_notification_with_urls() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(400.0, 220.0))
             .build_ui(move |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 let notifications = notifications.get_or_insert_with(|| {
                     let mut notifications = NotificationUi::new(ui.ctx().clone());
@@ -103,8 +100,6 @@ fn test_notification_with_details_in_field() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(520.0, 280.0))
             .build_ui(move |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 let notifications = notifications.get_or_insert_with(|| {
                     let mut notifications = NotificationUi::new(ui.ctx().clone());
                     notifications.add_log(log_msg.clone());

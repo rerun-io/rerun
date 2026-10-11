@@ -335,11 +335,10 @@ mod tests {
     /// itself.
     fn harness(item_clickable: Option<bool>) -> Harness<'static, Clicks> {
         let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
             .with_size(egui::vec2(300.0, 120.0))
             .build_ui_state(
                 move |ui, clicks| {
-                    crate::apply_style_and_install_loaders(ui.ctx());
-
                     let items = vec![CardLayoutItem {
                         frame: None,
                         min_width: 260.0,
@@ -419,11 +418,10 @@ mod tests {
         const CARD_CONTENT_HEIGHT: f32 = 200.0;
 
         let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
             .with_size(egui::vec2(300.0, 400.0))
             .build_ui_state(
                 |ui, state: &mut ClippedCard| {
-                    crate::apply_style_and_install_loaders(ui.ctx());
-
                     let scroll = egui::ScrollArea::vertical()
                         .max_height(VISIBLE_HEIGHT)
                         .show(ui, |ui| {

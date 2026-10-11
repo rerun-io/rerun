@@ -572,10 +572,9 @@ mod tests {
         let mut snapshot_results = SnapshotResults::new();
         for (filter, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
+                .with_context_setup(re_ui::apply_style_and_install_loaders)
                 .with_size(egui::Vec2::new(800.0, 80.0))
                 .build_ui(|ui| {
-                    re_ui::apply_style_and_install_loaders(ui.ctx());
-
                     let mut filter_state = FilterState::new(vec![TableFilter::Column(
                         ColumnFilter::new(dummy_field("column:name"), filter.clone()),
                     )]);
@@ -600,10 +599,9 @@ mod tests {
         let mut snapshot_results = SnapshotResults::new();
         for (mut filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
+                .with_context_setup(re_ui::apply_style_and_install_loaders)
                 .with_size(egui::Vec2::new(400.0, 400.0))
                 .build_ui(|ui| {
-                    re_ui::apply_style_and_install_loaders(ui.ctx());
-
                     egui::Popup::new(
                         ui.make_persistent_id("popup"),
                         ui.ctx().clone(),
@@ -664,10 +662,9 @@ mod tests {
         let mut filters = FilterState::new(filters.into_iter().map(TableFilter::Column).collect());
 
         let mut harness = egui_kittest::Harness::builder()
+            .with_context_setup(re_ui::apply_style_and_install_loaders)
             .with_size(egui::Vec2::new(700.0, 500.0))
             .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 let _filters_to_save =
                     filters.filter_bar_ui(ui, TimestampFormat::utc(), &Default::default());
             });

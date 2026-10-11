@@ -55,10 +55,9 @@ fn test_column_header_tooltips() {
     ) {
         for show_extras in [false, true] {
             let mut harness = Harness::builder()
+                .with_context_setup(re_ui::apply_style_and_install_loaders)
                 .with_size(vec2(600.0, 600.0))
                 .build_ui(|ui| {
-                    re_ui::apply_style_and_install_loaders(ui.ctx());
-
                     column_header_tooltip_ui(
                         ui,
                         &(&desc).into(),

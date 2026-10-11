@@ -268,38 +268,39 @@ pub mod tests {
 
     #[test]
     pub fn test_combo_item() {
-        let mut harness = Harness::new_ui(|ui| {
-            crate::apply_style_and_install_loaders(ui.ctx());
+        let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
+            .build_ui(|ui| {
+                ComboBox::new("combo_item_example", "")
+                    .selected_text("ComboItem Example")
+                    .popup_style(menu_style())
+                    .height(300.0)
+                    .show_ui(ui, |ui| {
+                        ui.add(ComboItemHeader::new("Recommended:"));
 
-            ComboBox::new("combo_item_example", "")
-                .selected_text("ComboItem Example")
-                .popup_style(menu_style())
-                .height(300.0)
-                .show_ui(ui, |ui| {
-                    ui.add(ComboItemHeader::new("Recommended:"));
+                        ui.add(
+                            ComboItem::new("vertex_normals")
+                                .error(Some("Invalid selector".to_owned()))
+                                .selected(true),
+                        );
 
-                    ui.add(
-                        ComboItem::new("vertex_normals")
-                            .error(Some("Invalid selector".to_owned()))
-                            .selected(true),
-                    );
+                        let mut code = SyntaxHighlightedBuilder::new();
+                        code.append_syntax("[")
+                            .append_primitive("0.000")
+                            .append_syntax(",")
+                            .append_primitive("0.000")
+                            .append_syntax("]");
 
-                    let mut code = SyntaxHighlightedBuilder::new();
-                    code.append_syntax("[")
-                        .append_primitive("0.000")
-                        .append_syntax(",")
-                        .append_primitive("0.000")
-                        .append_syntax("]");
-
-                    ui.add(ComboItemHeader::new("Other values:"));
-                    ui.add(ComboItem::new("vertex_positions"));
-                    ui.add(
-                        ComboItem::new("Rerun default").value(code.into_widget_text(ui.style())),
-                    );
-                })
-                .response
-                .accessible_name("Example");
-        });
+                        ui.add(ComboItemHeader::new("Other values:"));
+                        ui.add(ComboItem::new("vertex_positions"));
+                        ui.add(
+                            ComboItem::new("Rerun default")
+                                .value(code.into_widget_text(ui.style())),
+                        );
+                    })
+                    .response
+                    .accessible_name("Example");
+            });
 
         harness.get_by_value("ComboItem Example").click();
 
@@ -315,34 +316,34 @@ pub mod tests {
     /// long values don't squeeze the label. Used e.g. by the table "Column display format" menu.
     #[test]
     pub fn test_combo_item_value_below() {
-        let mut harness = Harness::new_ui(|ui| {
-            crate::apply_style_and_install_loaders(ui.ctx());
-
-            ComboBox::new("combo_item_value_below_example", "")
-                .selected_text("ComboItem Example")
-                .popup_style(menu_style())
-                .height(300.0)
-                .show_ui(ui, |ui| {
-                    ui.add(
-                        ComboItem::new("Compact")
-                            .value("Start time")
-                            .value_below(true),
-                    );
-                    ui.add(
-                        ComboItem::new("Component")
-                            .value("RecordingInfo:start_time")
-                            .value_below(true),
-                    );
-                    ui.add(
-                        ComboItem::new("Full")
-                            .value("property:RecordingInfo:start_time")
-                            .value_below(true)
-                            .selected(true),
-                    );
-                })
-                .response
-                .accessible_name("Example");
-        });
+        let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
+            .build_ui(|ui| {
+                ComboBox::new("combo_item_value_below_example", "")
+                    .selected_text("ComboItem Example")
+                    .popup_style(menu_style())
+                    .height(300.0)
+                    .show_ui(ui, |ui| {
+                        ui.add(
+                            ComboItem::new("Compact")
+                                .value("Start time")
+                                .value_below(true),
+                        );
+                        ui.add(
+                            ComboItem::new("Component")
+                                .value("RecordingInfo:start_time")
+                                .value_below(true),
+                        );
+                        ui.add(
+                            ComboItem::new("Full")
+                                .value("property:RecordingInfo:start_time")
+                                .value_below(true)
+                                .selected(true),
+                        );
+                    })
+                    .response
+                    .accessible_name("Example");
+            });
 
         harness.get_by_value("ComboItem Example").click();
 

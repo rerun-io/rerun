@@ -223,7 +223,6 @@ pub fn test_list_items_should_match_snapshot() {
             egui::Panel::right("right_panel").show(ctx, |ui| {
                 ui.set_width(650.0);
                 ui.set_max_width(650.0);
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 list_item::list_item_scope(ui, "list_item_scope", &mut test_code);
             });
         });

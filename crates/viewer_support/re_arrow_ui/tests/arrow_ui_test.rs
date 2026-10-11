@@ -7,11 +7,11 @@ mod arrow_test_data;
 
 #[test]
 pub fn test_arrow_ui() {
-    let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
-        re_ui::apply_style_and_install_loaders(ui.ctx());
-
-        arrow_list_ui(ui);
-    });
+    let mut harness = egui_kittest::Harness::builder()
+        .with_context_setup(re_ui::apply_style_and_install_loaders)
+        .build_ui(|ui| {
+            arrow_list_ui(ui);
+        });
 
     harness.run();
 
@@ -98,8 +98,6 @@ fn arrow_tree_ui() {
             egui::Vec2::new(300.0, 500.0),
         )
         .build_ui(|ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
-
             re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, Default::default(), &arrow);
         });
 

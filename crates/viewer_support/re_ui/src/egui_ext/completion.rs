@@ -501,31 +501,33 @@ mod tests {
     fn harness_with<'a>(
         make_text_edit: impl for<'t> Fn(&'t mut dyn TextBuffer) -> TextEdit<'t> + 'a,
     ) -> Harness<'a, State> {
-        let mut harness = Harness::new_ui_state(
-            move |ui, state: &mut State| {
-                // Without any font, `TextEdit` lays out an empty galley and clamps the cursor to 0.
-                crate::apply_style_and_install_loaders(ui.ctx());
+        let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
+            .build_ui_state(
+                move |ui, state: &mut State| {
+                    // Without any font, `TextEdit` lays out an empty galley and clamps the cursor to 0.
 
-                let output = CompletionPopup::new(id()).show(
-                    ui,
-                    &mut state.text,
-                    &make_text_edit,
-                    suggest_commands,
-                );
-                state.popup_open = output.is_open;
-                let response = &output.text_edit.response.response;
-                let enter = response.has_focus()
-                    && ui.input_mut(|input| {
-                        !input.modifiers.shift && input.consume_key(Modifiers::NONE, Key::Enter)
-                    });
-                if response.lost_focus() && ui.input(|input| input.key_pressed(Key::Enter)) || enter
-                {
-                    response.request_focus();
-                    state.submitted = Some(core::mem::take(&mut state.text));
-                }
-            },
-            State::default(),
-        );
+                    let output = CompletionPopup::new(id()).show(
+                        ui,
+                        &mut state.text,
+                        &make_text_edit,
+                        suggest_commands,
+                    );
+                    state.popup_open = output.is_open;
+                    let response = &output.text_edit.response.response;
+                    let enter = response.has_focus()
+                        && ui.input_mut(|input| {
+                            !input.modifiers.shift && input.consume_key(Modifiers::NONE, Key::Enter)
+                        });
+                    if response.lost_focus() && ui.input(|input| input.key_pressed(Key::Enter))
+                        || enter
+                    {
+                        response.request_focus();
+                        state.submitted = Some(core::mem::take(&mut state.text));
+                    }
+                },
+                State::default(),
+            );
         harness.run();
         text_input(&harness).focus();
         harness.run();
@@ -675,11 +677,10 @@ mod tests {
     fn long_descriptions_stay_within_the_text_edit() {
         let mut text = String::new();
         let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
             .with_size(egui::vec2(1600.0, 900.0))
             .build_ui_state(
                 |ui, text_edit_rect: &mut egui::Rect| {
-                    crate::apply_style_and_install_loaders(ui.ctx());
-
                     egui::Panel::right("side")
                         .default_size(420.0)
                         .show(ui, |ui| {

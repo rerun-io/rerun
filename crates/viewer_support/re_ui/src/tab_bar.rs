@@ -254,11 +254,10 @@ mod tests {
 
         for theme in [Theme::Dark, Theme::Light] {
             let mut harness = Harness::builder()
+                .with_context_setup(crate::apply_style_and_install_loaders)
                 .with_theme(theme)
                 .with_size(egui::vec2(400.0, 60.0))
                 .build_ui(|ui| {
-                    crate::apply_style_and_install_loaders(ui.ctx());
-
                     let mut tab = Tab::Assets;
                     TabBar::new(ui)
                         .selectable_value(&mut tab, Tab::Segments, "Segments")
@@ -283,12 +282,11 @@ mod tests {
     #[test]
     fn test_tab_bar_underline_animation() {
         let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
             .with_size(egui::vec2(400.0, 60.0))
             .with_step_dt(1.0 / 60.0)
             .build_ui_state(
                 |ui, tab| {
-                    crate::apply_style_and_install_loaders(ui.ctx());
-
                     TabBar::new(ui)
                         .selectable_value(tab, Tab::Segments, "Segments")
                         .selectable_value(tab, Tab::Assets, "Assets")

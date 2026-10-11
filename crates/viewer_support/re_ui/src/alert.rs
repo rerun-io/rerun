@@ -152,14 +152,15 @@ mod tests {
     fn test_alert() {
         let mut results = SnapshotResults::new();
         for theme in [egui::Theme::Dark, egui::Theme::Light] {
-            let mut harness = Harness::builder().with_theme(theme).build_ui(|ui| {
-                crate::apply_style_and_install_loaders(ui.ctx());
-
-                ui.info_label("This is an info alert.");
-                ui.success_label("This is a success alert.");
-                ui.warning_label("This is a warning alert.");
-                ui.error_label("This is an error alert.");
-            });
+            let mut harness = Harness::builder()
+                .with_context_setup(crate::apply_style_and_install_loaders)
+                .with_theme(theme)
+                .build_ui(|ui| {
+                    ui.info_label("This is an info alert.");
+                    ui.success_label("This is a success alert.");
+                    ui.warning_label("This is a warning alert.");
+                    ui.error_label("This is an error alert.");
+                });
 
             harness.run();
             harness.fit_contents();

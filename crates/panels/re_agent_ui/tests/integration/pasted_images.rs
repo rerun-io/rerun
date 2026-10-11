@@ -36,7 +36,6 @@ fn a_pasted_image_is_attached_to_the_next_prompt() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             queued_panel(),
@@ -83,7 +82,6 @@ fn a_pasted_image_can_be_removed_again() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             ready_panel(),

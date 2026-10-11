@@ -403,10 +403,9 @@ mod tests {
         }
 
         let mut harness = egui_kittest::Harness::builder()
+            .with_context_setup(re_ui::apply_style_and_install_loaders)
             .with_size(egui::Vec2::new(500.0, 300.0))
             .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 test_ctx.run(ui.ctx(), |ctx| {
                     modal.lock().ui(Some(ctx), ui, None);
                 });

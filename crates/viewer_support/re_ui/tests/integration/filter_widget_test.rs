@@ -20,11 +20,10 @@ pub fn test_filter_widget() {
     };
 
     let mut harness = egui_kittest::Harness::builder()
+        .with_context_setup(re_ui::apply_style_and_install_loaders)
         .with_size(Vec2::new(700.0, 150.0))
         .build_ui(|ui| {
             egui::Panel::right("right_panel").show(ui, |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 test_code(ui);
             });
         });

@@ -288,27 +288,27 @@ mod tests {
         }: SnapshotOptions,
         snapshot_results: &mut SnapshotResults,
     ) {
-        let mut harness = Harness::builder().build_ui(|ui| {
-            crate::apply_style_and_install_loaders(ui.ctx());
+        let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
+            .build_ui(|ui| {
+                let start = time_range.start.start_boundary_time(TimeInt(current_time));
+                let end = time_range.end.end_boundary_time(TimeInt(current_time));
 
-            let start = time_range.start.start_boundary_time(TimeInt(current_time));
-            let end = time_range.end.end_boundary_time(TimeInt(current_time));
-
-            ui.list_item_scope("test", |ui| {
-                RelativeTimeRange {
-                    time_drag_value: &TimeDragValue::from_time_range(timeline_range.clone()),
-                    value: &mut time_range,
-                    resolved_range: re_log_types::AbsoluteTimeRange {
-                        min: start.into(),
-                        max: end.into(),
-                    },
-                    time_type,
-                    timestamp_format,
-                    current_time: TimeInt(current_time),
-                }
-                .ui(ui);
+                ui.list_item_scope("test", |ui| {
+                    RelativeTimeRange {
+                        time_drag_value: &TimeDragValue::from_time_range(timeline_range.clone()),
+                        value: &mut time_range,
+                        resolved_range: re_log_types::AbsoluteTimeRange {
+                            min: start.into(),
+                            max: end.into(),
+                        },
+                        time_type,
+                        timestamp_format,
+                        current_time: TimeInt(current_time),
+                    }
+                    .ui(ui);
+                });
             });
-        });
 
         harness.fit_contents();
         harness.snapshot(format!("relative_time_range_{name}_{time_type}"));

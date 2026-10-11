@@ -842,6 +842,7 @@ mod tests {
         }
 
         egui_kittest::Harness::builder()
+            .with_context_setup(re_ui::apply_style_and_install_loaders)
             .with_size(egui::vec2(400.0 * recordings.len() as f32, 240.0))
             .build_ui_state(
                 move |ui, state: &mut PlaybackTestState| {
@@ -850,7 +851,6 @@ mod tests {
                         hovered_preview,
                     } = state;
 
-                    re_ui::apply_style_and_install_loaders(ui.ctx());
                     ui.columns(recordings.len(), |columns| {
                         for (index, (ui, recording)) in
                             std::iter::zip(columns.iter_mut(), &recordings).enumerate()

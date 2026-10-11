@@ -170,8 +170,6 @@ mod tests {
             egui::Vec2::new(500.0, 300.0),
         )
         .build_ui(|ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
-
             modal.ui(ui);
         });
 

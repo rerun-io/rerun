@@ -49,8 +49,6 @@ fn command_palette_enabled_vs_disabled() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(320.0, 100.0))
             .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 let query = FuzzyQuery::new("close".to_owned());
 
                 egui::Frame {
@@ -89,8 +87,6 @@ fn command_palette_wraps_long_paths() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(320.0, 160.0))
             .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 egui::Frame {
                     inner_margin: 4.0.into(),
                     ..Default::default()
@@ -192,8 +188,6 @@ fn command_palette_expand_truncated_group() {
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(500.0, 320.0))
             .build_ui(move |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 let selected = palette.show(ui.ctx(), &mut ManyCommandsProvider);
                 assert!(selected.is_none(), "nothing should get selected");
             });

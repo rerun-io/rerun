@@ -123,7 +123,6 @@ fn link_buttons_match_snapshot() {
             re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [480.0, 360.0])
                 .with_theme(theme)
                 .build_ui(move |ui| {
-                    re_ui::apply_style_and_install_loaders(ui.ctx());
                     UrlDecorator::set(ui.ctx(), make_url_decorator(lookup.clone(), theme));
 
                     egui::Grid::new("link_buttons")
@@ -155,7 +154,6 @@ fn link_button_hovered_reveals_copy_button() {
 
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [320.0, 80.0])
         .build_ui(move |ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
             UrlDecorator::set(
                 ui.ctx(),
                 make_url_decorator(lookup.clone(), ui.ctx().theme()),

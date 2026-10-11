@@ -57,7 +57,6 @@ fn slash_command_popup_keeps_focus_in_the_input() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             ready_panel(),
@@ -81,7 +80,6 @@ fn escape_keeps_focus_in_the_input() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             ready_panel(),
@@ -107,7 +105,6 @@ fn requested_input_focus_is_applied() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             ready_panel(),
@@ -138,7 +135,6 @@ fn mode_picker_requests_the_clicked_mode() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             panel,
@@ -178,7 +174,6 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             panel,

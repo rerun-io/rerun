@@ -56,8 +56,6 @@ fn run_modal_test(
     let mut harness =
         re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(700.0, 700.0))
             .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
                 modal_handler.ui(ui.ctx(), &mut make_modal, |ui| content_ui(ui));
             });
 

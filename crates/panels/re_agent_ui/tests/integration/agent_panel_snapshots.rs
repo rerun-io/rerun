@@ -24,7 +24,6 @@ const SIZE: Vec2 = Vec2::new(RECOMMENDED_WIDTH, 800.0);
 fn harness(panel: AgentPanel) -> egui_kittest::Harness<'static, AgentPanel> {
     re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE).build_ui_state(
         |ui, panel: &mut AgentPanel| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
             panel.ui(ui);
         },
         panel,
@@ -390,7 +389,6 @@ fn chat_agent_log() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             panel,
@@ -463,7 +461,6 @@ fn chat_plan_approval() {
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
                 panel.ui(ui);
             },
             panel,

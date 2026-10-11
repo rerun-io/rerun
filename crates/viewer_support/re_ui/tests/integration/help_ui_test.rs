@@ -11,10 +11,10 @@ fn test_help() {
     // We show different shortcuts based on the OS
     for os in [OperatingSystem::Windows, OperatingSystem::Mac] {
         let mut harness = Harness::builder()
+            .with_context_setup(re_ui::apply_style_and_install_loaders)
             .with_size(vec2(240.0, 420.0))
             .build_ui(|ui| {
                 ui.set_os(os);
-                re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 ui.help_button(|ui| {
                     let mut help = Help::new("Help example")

@@ -96,7 +96,6 @@ fn about_rerun() {
     let render_state = None; // Otherwise we get different results on different platforms
 
     let mut harness = harness.build_ui(|ui| {
-        re_ui::apply_style_and_install_loaders(ui.ctx());
         egui::containers::menu::menu_style(ui.style_mut()); // The about-dialog is in a menu
         re_viewer::about_rerun_ui(ui, &build_info, render_state.as_ref());
     });
@@ -130,8 +129,6 @@ fn colormap_selector_ui() {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([200.0, 250.0])
         .build_ui(|ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
-
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 ui.horizontal(|ui| {
                     ui.label("Colormap:");
