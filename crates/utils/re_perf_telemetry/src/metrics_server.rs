@@ -5,19 +5,18 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::State;
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse as _, Response};
 use axum::routing::get;
 use opentelemetry_sdk::metrics::ManualReader;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use opentelemetry_sdk::metrics::reader::MetricReader as _;
 use parking_lot::Mutex;
+use prometheus_client::encoding::prometheus_protobuf;
 use tokio::net::TcpListener;
 use tracing::error;
 
-use crate::prometheus::{
-    MetricContainer, convert_to_prometheus, encode_registry, encode_registry_protobuf,
-};
+use crate::prometheus::{MetricContainer, convert_to_prometheus};
 
 /// Start a metrics server that binds synchronously and serves asynchronously.
 ///
@@ -56,11 +55,8 @@ pub(crate) async fn start_metrics_server(
     Ok(bound_addr)
 }
 
-/// Content type of the Prometheus protobuf exposition, served when a scraper negotiates it.
 const PROTOBUF_CONTENT_TYPE: &str =
     "application/vnd.google.protobuf; proto=io.prometheus.client.MetricFamily; encoding=delimited";
-
-const TEXT_CONTENT_TYPE: &str = "text/plain; version=0.0.4";
 
 /// Handler for the ManualReader-based /metrics endpoint.
 ///
@@ -69,12 +65,8 @@ const TEXT_CONTENT_TYPE: &str = "text/plain; version=0.0.4";
 /// Exposing metrics is meant to be cheap in every moment.
 /// As long as determining the data to be exposed is not cheap it has to be somewhat cached and made available cheaply.
 ///
-/// The response format is negotiated from `Accept`: protobuf when the client asks for it,
-/// text otherwise.
-async fn manual_metrics_handler(
-    headers: HeaderMap,
-    State(reader): State<Arc<ManualReader>>,
-) -> Response {
+/// Serves the Prometheus protobuf exposition only; scrapers must list `PrometheusProto`.
+async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> Response {
     // This handler is picking up data from telemetry SDK's ManualReader,
     // this is a temporary solution to expose metrics in different ways
     // (pull and push).
@@ -95,20 +87,13 @@ async fn manual_metrics_handler(
     let metrics = Arc::new(Mutex::new(MetricContainer::new()));
     let registry = convert_to_prometheus(&resource_metrics, &metrics);
 
-    let encoded = if wants_protobuf(&headers) {
-        encode_registry_protobuf(&registry)
-            .map(|buffer| (PROTOBUF_CONTENT_TYPE, buffer))
-            .map_err(|err| err.to_string())
-    } else {
-        encode_registry(&registry)
-            .map(|text| (TEXT_CONTENT_TYPE, text.into_bytes()))
-            .map_err(|err| err.to_string())
-    };
-
-    match encoded {
-        Ok((content_type, body)) => {
-            (StatusCode::OK, [(header::CONTENT_TYPE, content_type)], body).into_response()
-        }
+    match prometheus_protobuf::encode_to_vec(&registry) {
+        Ok(body) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, PROTOBUF_CONTENT_TYPE)],
+            body,
+        )
+            .into_response(),
         Err(err) => {
             error!("Failed to encode metrics: {err}");
             (
@@ -118,55 +103,5 @@ async fn manual_metrics_handler(
             )
                 .into_response()
         }
-    }
-}
-
-/// Whether the client can parse the Prometheus protobuf exposition.
-///
-/// Matching the family is enough: Prometheus and Alloy only advertise it when they want
-/// native histograms. Removing `PrometheusProto` turns it off, reordering does not.
-fn wants_protobuf(headers: &HeaderMap) -> bool {
-    headers
-        .get_all(header::ACCEPT)
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .flat_map(|accept| accept.split(','))
-        .any(|entry| {
-            entry.contains("proto=io.prometheus.client.MetricFamily")
-                && entry.contains("encoding=delimited")
-        })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn accept(value: &str) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        headers.insert(header::ACCEPT, value.parse().unwrap());
-        headers
-    }
-
-    /// The accepted header is the one Prometheus and Alloy send for native histograms.
-    #[test]
-    fn protobuf_is_served_only_for_the_prometheus_family() {
-        assert!(wants_protobuf(&accept(
-            "application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;\
-             encoding=delimited;q=0.9,application/openmetrics-text;version=1.0.0;q=0.8,\
-             text/plain;version=0.0.4;q=0.5,*/*;q=0.1"
-        )));
-
-        for header in [
-            "*/*",
-            "text/plain",
-            // The `OpenMetrics` protobuf: same media type, different payload.
-            "application/vnd.google.protobuf;proto=io.openmetrics.MetricSet;encoding=delimited",
-            // Our family, but an encoding we do not produce.
-            "application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=text",
-        ] {
-            assert!(!wants_protobuf(&accept(header)), "{header}");
-        }
-
-        assert!(!wants_protobuf(&HeaderMap::new()));
     }
 }

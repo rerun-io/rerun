@@ -30,8 +30,7 @@ const ATTRIBUTE_INVALID: &str = "invalid";
 
 /// Returns `value` if it is safe as a log field and a metric label, else [`ATTRIBUTE_INVALID`].
 ///
-/// Callers set these before auth. A quote or backslash breaks the Prometheus exposition, and a
-/// space breaks the `key=value` log format.
+/// Callers set these before auth. A quote, backslash or space breaks the `key=value` log format.
 fn sanitize_attribute(value: &str, max_len: usize) -> String {
     if !value.is_empty()
         && value.len() <= max_len
@@ -1043,7 +1042,7 @@ mod tests {
         }
     }
 
-    /// Quotes and backslashes break the exposition; spaces and control characters break log lines.
+    /// Quotes, backslashes, spaces and control characters all break log lines.
     #[test]
     fn unsafe_values_collapse_to_the_sentinel() {
         for value in [

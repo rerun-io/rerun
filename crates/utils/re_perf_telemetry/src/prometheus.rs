@@ -11,14 +11,13 @@ use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use parking_lot::{Mutex, RwLock};
 use prometheus_client::encoding::{
     EncodeLabelSet, EncodeMetric, MetricEncoder, NativeHistogram, NativeHistogramBuckets,
-    NoLabelSet, prometheus_protobuf,
+    NoLabelSet,
 };
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::{Family, MetricConstructor};
 use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::metrics::{MetricType, TypedMetric};
 use prometheus_client::registry::Registry;
-use prost::Message as _;
 
 /// Dynamic labels for metrics that support arbitrary key-value pairs
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -60,43 +59,6 @@ impl MetricContainer {
             histograms: HashMap::new(),
         }
     }
-}
-
-/// Encode a Prometheus registry to text format.
-///
-/// Histograms come out as classic `le` buckets, whose per-series boundaries are not
-/// comparable across label sets.
-pub fn encode_registry(registry: &Registry) -> Result<String, std::fmt::Error> {
-    let mut buffer = String::new();
-    prometheus_client::encoding::text::encode(&mut buffer, registry)?;
-    Ok(buffer)
-}
-
-/// Encode a Prometheus registry to the length-delimited protobuf exposition format.
-pub fn encode_registry_protobuf(
-    registry: &Registry,
-) -> Result<Vec<u8>, prometheus_protobuf::EncodeError> {
-    let mut families = prometheus_protobuf::encode(registry)?;
-
-    // `f64::MAX` is `prometheus-client`'s `+Inf` sentinel, honoured only by its text encoder,
-    // so the classic buckets have it restored here. Left finite, the sentinel counts as a
-    // real bucket and high quantiles resolve into it instead of to the highest real boundary.
-    for bucket in families
-        .iter_mut()
-        .flat_map(|family| family.metric.iter_mut())
-        .filter_map(|metric| metric.histogram.as_mut())
-        .flat_map(|histogram| histogram.bucket.iter_mut())
-    {
-        if bucket.upper_bound == f64::MAX {
-            bucket.upper_bound = f64::INFINITY;
-        }
-    }
-
-    let mut encoded = Vec::new();
-    for family in families {
-        family.encode_length_delimited(&mut encoded)?;
-    }
-    Ok(encoded)
 }
 
 /// Convert `OpenTelemetry` `ResourceMetrics` to Prometheus metrics and return a Registry
@@ -498,9 +460,8 @@ fn register_gauge_from_sum_u64(
     registry.register(name, description, gauge_family);
 }
 
-/// A histogram that holds pre-aggregated data (sum, count, buckets) directly,
-/// avoiding the lossy `observe()` approximation. Implements `EncodeMetric` so
-/// Prometheus text encoding emits exact values from the `OTel` source.
+/// A histogram populated from an `OTel` exponential data point, served as a Prometheus native
+/// histogram.
 #[derive(Debug, Clone)]
 pub struct PreAggregatedHistogram {
     inner: Arc<RwLock<PreAggregatedHistogramInner>>,
@@ -510,12 +471,6 @@ pub struct PreAggregatedHistogram {
 struct PreAggregatedHistogramInner {
     sum: f64,
     count: u64,
-
-    /// `(upper_bound, count)` pairs — non-cumulative per-bucket counts.
-    /// The prometheus-client encoder converts these to cumulative during
-    /// text encoding.
-    buckets: Vec<(f64, u64)>,
-
     native: NativeForm,
 }
 
@@ -625,37 +580,11 @@ impl PreAggregatedHistogram {
         sum: f64,
         count: u64,
     ) {
-        let base = (2.0_f64).powf((2.0_f64).powi(-(scale as i32)));
-
-        let mut buckets: Vec<(f64, u64)> = positive_counts
-            .iter()
-            .enumerate()
-            .map(|(i, &c)| {
-                let upper = base.powi(offset + i as i32 + 1);
-                (upper, c)
-            })
-            .collect();
-
-        // Place zero-count observations into the first bucket (or create one
-        // before +Inf if there are no positive buckets).
-        if zero_count > 0 {
-            if let Some(first) = buckets.first_mut() {
-                first.1 += zero_count;
-            } else {
-                buckets.push((0.0, zero_count));
-            }
-        }
-
-        // Always add +Inf bucket — required by Prometheus exposition format.
-        // Count of 0 is correct here because the encoder accumulates cumulatively.
-        buckets.push((f64::MAX, 0));
-
         let native = NativeForm::new(scale, offset, positive_counts, zero_count);
 
         let mut inner = self.inner.write();
         inner.sum = sum;
         inner.count = count;
-        inner.buckets = buckets;
         inner.native = native;
     }
 }
@@ -666,7 +595,6 @@ impl Default for PreAggregatedHistogram {
             inner: Arc::new(RwLock::new(PreAggregatedHistogramInner {
                 sum: 0.0,
                 count: 0,
-                buckets: Vec::new(),
                 native: NativeForm::default(),
             })),
         }
@@ -681,10 +609,11 @@ impl EncodeMetric for PreAggregatedHistogram {
     fn encode(&self, mut encoder: MetricEncoder<'_>) -> Result<(), std::fmt::Error> {
         let inner = self.inner.read();
 
+        // No classic buckets.
         encoder.encode_histogram_with_native::<NoLabelSet>(
             inner.sum,
             inner.count,
-            &inner.buckets,
+            &[],
             None,
             NativeHistogram {
                 schema: inner.native.schema,
@@ -844,27 +773,13 @@ fn sanitize_name(name: &str) -> String {
         .collect()
 }
 
-/// Replaces the characters the text exposition requires escaped in a label value.
-///
-/// `prometheus-client` writes label values verbatim, so one bad value makes the whole target
-/// unscrapable. Delete once <https://github.com/prometheus/client_rust/issues/346> is fixed.
-fn replace_unescaped(value: String) -> String {
-    const MUST_BE_ESCAPED: [char; 3] = ['"', '\\', '\n'];
-
-    if value.contains(MUST_BE_ESCAPED) {
-        value.replace(MUST_BE_ESCAPED, "?")
-    } else {
-        value
-    }
-}
-
 fn create_dynamic_labels(attributes: &[KeyValue]) -> DynamicLabels {
     let mut labels: Vec<(String, String)> = attributes
         .iter()
         .map(|kv| {
             (
                 sanitize_name(kv.key.as_str()),
-                replace_unescaped(kv.value.as_str().into_owned()),
+                kv.value.as_str().into_owned(),
             )
         })
         .collect();
@@ -875,18 +790,8 @@ fn create_dynamic_labels(attributes: &[KeyValue]) -> DynamicLabels {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prometheus_client::encoding::prometheus_protobuf;
     use prometheus_client::encoding::prometheus_protobuf::prometheus_data_model;
-    use prometheus_client::encoding::text::encode;
-
-    /// Helper: encode a single `PreAggregatedHistogram` registered as "test"
-    /// and return the Prometheus text exposition string.
-    fn encode_histogram(hist: &PreAggregatedHistogram) -> String {
-        let mut registry = Registry::default();
-        registry.register("test", "help", hist.clone());
-        let mut buf = String::new();
-        encode(&mut buf, &registry).unwrap();
-        buf
-    }
 
     /// Encode a registry into the protobuf data model and return the single histogram in it.
     fn encode_native(hist: &PreAggregatedHistogram) -> prometheus_data_model::Histogram {
@@ -920,31 +825,6 @@ mod tests {
         out
     }
 
-    /// A finite top bound makes `histogram_quantile` over the classic buckets read ~1e308.
-    #[test]
-    fn protobuf_classic_buckets_end_at_infinity() {
-        let hist = PreAggregatedHistogram::default();
-        hist.set_from_raw_buckets(0, 0, &[3, 5], 0, 1.0, 8);
-
-        let mut registry = Registry::default();
-        registry.register("test", "help", hist);
-        let bytes = encode_registry_protobuf(&registry).unwrap();
-
-        let family =
-            prometheus_data_model::MetricFamily::decode_length_delimited(bytes.as_slice()).unwrap();
-        let bounds: Vec<f64> = family.metric[0]
-            .histogram
-            .as_ref()
-            .unwrap()
-            .bucket
-            .iter()
-            .map(|bucket| bucket.upper_bound)
-            .collect();
-
-        assert!(bounds.last().unwrap().is_infinite());
-        assert!(bounds[..bounds.len() - 1].iter().all(|b| b.is_finite()));
-    }
-
     #[test]
     fn native_histogram_round_trip_preserves_grid() {
         let hist = PreAggregatedHistogram::default();
@@ -954,6 +834,7 @@ mod tests {
         let histogram = encode_native(&hist);
 
         assert_eq!(histogram.schema, 3, "scale must survive as the schema");
+        assert!(histogram.bucket.is_empty(), "no classic buckets alongside");
         assert_eq!(histogram.sample_count, 11);
         assert!((histogram.sample_sum - 42.0).abs() < f64::EPSILON);
         assert_eq!(histogram.zero_count, 1);
@@ -1036,143 +917,6 @@ mod tests {
     }
 
     #[test]
-    fn pre_aggregated_histogram_basic_encoding() {
-        let hist = PreAggregatedHistogram::default();
-
-        // Scale 0 → base = 2^(2^0) = 2.0
-        // offset = 0, counts = [3, 5, 2]
-        // Bucket boundaries: (0, 2^1=2], (2, 2^2=4], (4, 2^3=8]
-        hist.set_from_raw_buckets(0, 0, &[3, 5, 2], 0, 42.0, 10);
-
-        let output = encode_histogram(&hist);
-        assert!(output.contains("test_sum 42.0"), "output: {output}");
-        assert!(output.contains("test_count 10"), "output: {output}");
-        // Cumulative: le=2 → 3, le=4 → 8, le=8 → 10, le=+Inf → 10
-        assert!(
-            output.contains(r#"test_bucket{le="2.0"} 3"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="4.0"} 8"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="8.0"} 10"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="+Inf"} 10"#),
-            "output: {output}"
-        );
-    }
-
-    #[test]
-    fn pre_aggregated_histogram_with_zero_count() {
-        let hist = PreAggregatedHistogram::default();
-
-        // Scale 0, offset 0, one positive bucket with count 2, plus 3 zeros
-        hist.set_from_raw_buckets(0, 0, &[2], 3, 5.0, 5);
-
-        let output = encode_histogram(&hist);
-        assert!(output.contains("test_count 5"), "output: {output}");
-        assert!(output.contains("test_sum 5.0"), "output: {output}");
-        // Zeros are added to the first bucket: 2 + 3 = 5
-        // Cumulative: le=2 → 5, le=+Inf → 5
-        assert!(
-            output.contains(r#"test_bucket{le="2.0"} 5"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="+Inf"} 5"#),
-            "output: {output}"
-        );
-    }
-
-    #[test]
-    fn pre_aggregated_histogram_zero_only() {
-        let hist = PreAggregatedHistogram::default();
-
-        // No positive buckets, only zeros
-        hist.set_from_raw_buckets(0, 0, &[], 7, 0.0, 7);
-
-        let output = encode_histogram(&hist);
-        assert!(output.contains("test_count 7"), "output: {output}");
-        assert!(output.contains("test_sum 0.0"), "output: {output}");
-        // Zero-only: creates a (0.0, 7) bucket, then +Inf
-        assert!(
-            output.contains(r#"test_bucket{le="0.0"} 7"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="+Inf"} 7"#),
-            "output: {output}"
-        );
-    }
-
-    #[test]
-    fn pre_aggregated_histogram_with_offset() {
-        let hist = PreAggregatedHistogram::default();
-
-        // Scale 0, offset 2, counts = [4]
-        // Bucket boundary: base^(2+0+1) = 2^3 = 8
-        hist.set_from_raw_buckets(0, 2, &[4], 0, 28.0, 4);
-
-        let output = encode_histogram(&hist);
-        assert!(output.contains("test_count 4"), "output: {output}");
-        assert!(
-            output.contains(r#"test_bucket{le="8.0"} 4"#),
-            "output: {output}"
-        );
-        assert!(
-            output.contains(r#"test_bucket{le="+Inf"} 4"#),
-            "output: {output}"
-        );
-    }
-
-    #[test]
-    fn pre_aggregated_histogram_finer_scale() {
-        let hist = PreAggregatedHistogram::default();
-
-        // Scale 1 → base = 2^(2^(-1)) = 2^0.5 ≈ 1.4142
-        // offset 0, counts = [10]
-        // Bucket boundary: base^(0+0+1) = √2 ≈ 1.4142
-        hist.set_from_raw_buckets(1, 0, &[10], 0, 12.0, 10);
-
-        let output = encode_histogram(&hist);
-        assert!(output.contains("test_count 10"), "output: {output}");
-        // Check that the bucket upper bound is approximately √2
-        // The exact value depends on floating point, so just check the prefix
-        assert!(
-            output.contains("test_bucket{le=\"1.41421"),
-            "expected bucket ≈ √2, output: {output}"
-        );
-    }
-
-    /// A hostile label value must not break the exposition. See `replace_unescaped`.
-    #[test]
-    fn hostile_label_value_cannot_break_the_exposition() {
-        let hostile = "a\"} evil_metric{x=\"1\\ and\na newline";
-        let attrs = vec![KeyValue::new("client_version", hostile)];
-        let family = Family::<DynamicLabels, Counter>::default();
-        family.get_or_create(&create_dynamic_labels(&attrs)).inc();
-
-        let mut registry = Registry::default();
-        registry.register("test_counter", "help", family);
-        let mut buf = String::new();
-        encode(&mut buf, &registry).unwrap();
-
-        // Exactly one sample line, and its label set closes where it should.
-        let samples: Vec<&str> = buf
-            .lines()
-            .filter(|line| line.starts_with("test_counter_total"))
-            .collect();
-        assert_eq!(
-            samples,
-            vec![r#"test_counter_total{client_version="a?} evil_metric{x=?1? and?a newline"} 1"#]
-        );
-    }
-
-    #[test]
     fn escape_dot_in_counter_label() {
         let attrs = vec![KeyValue::new("otel.metric.overflow", "true")];
         let labels = create_dynamic_labels(&attrs);
@@ -1181,9 +925,12 @@ mod tests {
 
         let mut registry = Registry::default();
         registry.register("test_counter", "help", family);
-        let mut buf = String::new();
-        encode(&mut buf, &registry).unwrap();
+        let families = prometheus_protobuf::encode(&registry).unwrap();
 
-        assert!(buf.contains(r#"test_counter_total{otel_metric_overflow="true"} 1"#));
+        let label = &families[0].metric[0].label[0];
+        assert_eq!(
+            (label.name.as_str(), label.value.as_str()),
+            ("otel_metric_overflow", "true")
+        );
     }
 }

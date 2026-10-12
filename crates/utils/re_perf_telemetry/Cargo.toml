@@ -43,7 +43,7 @@ tracy = ["dep:tracing-tracy"]
 ##
 ## Enabling it makes the build need `protoc` on the `PATH`, since `prometheus-client`
 ## compiles a `.proto` at build time.
-prometheus = ["dep:prometheus-client", "dep:prost"]
+prometheus = ["dep:prometheus-client"]
 
 ## Enable [`Telemetry::init_with_session_id_reader`].
 ##
@@ -92,7 +92,6 @@ tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "json"] }
 prometheus-client = { workspace = true, features = ["prometheus_protobuf"], optional = true }
-prost = { workspace = true, optional = true }
 tokio.workspace = true
 
 

@@ -10405,7 +10405,6 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
- "prost",
  "rand 0.9.5",
  "re_auth",
  "re_grpc_headers",
