@@ -61,6 +61,7 @@ crossbeam.workspace = true
 datafusion.workspace = true
 egui.workspace = true
 egui_dnd.workspace = true
+egui_extras.workspace = true
 egui_table.workspace = true
 futures.workspace = true
 itertools.workspace = true

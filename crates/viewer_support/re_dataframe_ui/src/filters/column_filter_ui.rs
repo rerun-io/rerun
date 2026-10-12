@@ -422,7 +422,8 @@ fn custom_filter_ui(
 
     let (response, should_delete_filter) = filter_pill_ui(ui, icon, layout_job);
     response.on_hover_ui(|ui| {
-        ui.label(egui::RichText::new(&custom_filter.sql).monospace());
+        let theme = egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style());
+        egui_extras::syntax_highlighting::code_view_ui(ui, &theme, &custom_filter.sql, "sql");
         if let Some(error) = error {
             ui.error_label(error);
         }

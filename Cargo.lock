@@ -9628,6 +9628,7 @@ dependencies = [
  "datafusion",
  "egui",
  "egui_dnd",
+ "egui_extras",
  "egui_kittest",
  "egui_table",
  "futures",
