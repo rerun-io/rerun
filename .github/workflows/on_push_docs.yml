@@ -17,28 +17,23 @@ defaults:
     shell: bash --noprofile --norc -euo pipefail {0}
 
 jobs:
-  # Get latest release version from crates.io
-  # This excludes any prerelease builds, e.g. `0.15.0-alpha.1` or `rc` or similar.
-  # We get it from crates.io because it's the strongest indicator of the latest
-  # fully released version we have available, and there is no better way to retrieve
-  # that in the context of this branch, because we don't want to rely on the contents
-  # of a local `Cargo.toml` or the git branch name.
+  # The latest final release, from PyPI: every release publishes `rerun-sdk` there,
+  # while crates.io is skipped by releases with `publish-crates=false`.
+  # PyPI's `info.version` ignores pre-releases (alpha, rc).
   get-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.versioning.outputs.crate_version }}
+      version: ${{ steps.versioning.outputs.version }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-
-      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
-        with:
-          pixi-version: v0.78.0
-
       - name: Get version
         id: versioning
         run: |
-          crate_version=$(pixi run python scripts/ci/crates.py get-version --from=cratesio --skip-prerelease)
-          echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
+          version=$(curl --fail --silent --show-error https://pypi.org/pypi/rerun-sdk/json | jq -r .info.version)
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected latest rerun-sdk version on PyPI: '$version'"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
   build-search-index:
     runs-on: ubuntu-latest-16-cores
