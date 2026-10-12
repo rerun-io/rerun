@@ -96,6 +96,17 @@ impl CastTarget {
     }
 }
 
+fn recording_chunks_hash(chunks: &[re_chunk_store::Chunk]) -> Hash64 {
+    use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
+
+    let mut hasher = re_log_types::hash::HASH_RANDOM_STATE.build_hasher();
+    chunks.len().hash(&mut hasher);
+    for chunk in chunks {
+        chunk.id().hash(&mut hasher);
+    }
+    Hash64::from_u64(hasher.finish())
+}
+
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
     target: ComponentIdentifier,
@@ -271,6 +282,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// from the chunk's actual source element datatype via the supplied [`ComponentCastRule`],
 /// instead of being read from the target component's reflection-registered datatype.
 ///
+/// Cast rules are not included in query-result hashes. Callers must keep them fixed for a given
+/// query, or separately invalidate caches when the rules change.
+///
 /// This lets a single mapping slot accept heterogeneous source types (e.g. ints, floats, bools,
 /// strings) and canonicalize them according to caller-defined rules without coercing everything
 /// to the target's nominal datatype.
@@ -365,7 +379,9 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
             continue;
         };
 
-        // Process mapping if necessary.
+        // Preserve source identity before transformations allocate new chunk IDs.
+        checked_source.recording_result_hash = recording_chunks_hash(chunks);
+
         let Some(mapping) = checked_source.remapping() else {
             continue;
         };
@@ -406,12 +422,12 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     };
 
     let mut results = BlueprintResolvedRangeResults {
+        annotation_input_hash: Hash64::ZERO,
         overrides,
         store_results,
         query_context,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
-        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
         annotation_resolved: IntMap::default(),
         annotation_context_row_id: annotation_context.map(re_viewer_context::Annotations::row_id),
     };
@@ -453,6 +469,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 /// Like [`latest_at_with_blueprint_resolved_data`] but with per-target polymorphic cast rules.
 ///
 /// See [`range_with_blueprint_resolved_data_polymorphic`] for the cast-rule semantics.
+///
+/// Note that cast rules are not included in query-result hashes.
+/// Callers must keep them fixed for a given query, or separately invalidate caches when the rules change.
 pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     ctx: &'a ViewContext<'a>,
     annotation_context: Option<&re_viewer_context::Annotations>,
@@ -551,6 +570,8 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             continue;
         };
 
+        checked_source.recording_result_hash = Hash64::hash(chunk.row_id());
+
         // Process mapping if necessary.
         let Some(mapping) = checked_source.remapping() else {
             continue;
@@ -559,16 +580,12 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             continue;
         }
 
-        match transform_chunk(
-            *target,
-            mapping,
-            &cast_target_for_remapping(
-                cast_rules.get(target).copied(),
-                target,
-                ctx.viewer_ctx.reflection(),
-            ),
-            chunk,
-        ) {
+        let cast = cast_target_for_remapping(
+            cast_rules.get(target).copied(),
+            target,
+            ctx.viewer_ctx.reflection(),
+        );
+        match transform_chunk(*target, mapping, &cast, chunk) {
             Ok(modified_chunk) => {
                 let chunk = std::sync::Arc::new(modified_chunk)
                     .to_unit()
@@ -590,14 +607,12 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     };
 
     let mut results = BlueprintResolvedLatestAtResults {
+        annotation_input_hash: Hash64::ZERO,
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
         query_context,
         component_sources,
-        component_mappings_hash: Hash64::hash(
-            visualizer_instruction.map(|instruction| &instruction.component_mappings),
-        ),
         annotation_resolved: IntMap::default(),
         annotation_context_row_id: annotation_context.map(re_viewer_context::Annotations::row_id),
     };
@@ -847,7 +862,7 @@ mod tests {
     use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
     use re_log_types::{
         AbsoluteTimeRange, EntityPath, TimePoint, TimelineName, build_frame_nr,
-        external::arrow::datatypes::DataType,
+        external::arrow::datatypes::DataType, hash::Hash64,
     };
     use re_query::LatestAtResults;
     use re_sdk_types::archetypes::{self, Points3D};
@@ -870,6 +885,15 @@ mod tests {
     };
     use crate::blueprint_resolved_results::ComponentSourcesMap;
     use crate::{BlueprintResolvedResults, ComponentMappingError};
+
+    fn test_instruction(mappings: VisualizerComponentMappings) -> VisualizerInstruction {
+        VisualizerInstruction::new(
+            VisualizerInstructionId::new_random(),
+            ViewSystemIdentifier::from_static_str("Test"),
+            &EntityPath::from("override"),
+            mappings,
+        )
+    }
 
     #[test]
     fn auto_determination_keeps_required_components_recording_backed() {
@@ -903,7 +927,6 @@ mod tests {
     #[test]
     fn mapped_component_without_data_for_query_reports_specific_error() {
         let mut test_context = TestContext::new();
-        let egui_ctx = egui::Context::default();
         let entity_path = EntityPath::from("entity");
         let source = archetypes::Scalars::descriptor_scalars().component;
         let target = "target".into();
@@ -912,43 +935,19 @@ mod tests {
             builder.with_archetype_auto_row([build_frame_nr(10)], &archetypes::Scalars::single(1.0))
         });
 
-        let data_result = DataResult {
-            entity_path,
-            any_visualizers_available: true,
-            visualizer_instructions: Vec::new(),
-            tree_prefix_only: false,
-            visible: true,
-            interactive: true,
-            override_base_path: EntityPath::from("override"),
-            query_range: QueryRange::LatestAt,
-        };
-        let instruction = VisualizerInstruction::new(
-            VisualizerInstructionId::new_random(),
-            ViewSystemIdentifier::from_static_str("Test"),
-            &EntityPath::from("override"),
-            VisualizerComponentMappings::from([(
-                target,
-                VisualizerComponentSource::SourceComponent {
-                    source_component: source,
-                    selector: String::new(),
-                },
-            )]),
-        );
+        let data_result = test_data_result(entity_path);
+        let instruction = test_instruction(VisualizerComponentMappings::from([(
+            target,
+            VisualizerComponentSource::SourceComponent {
+                source_component: source,
+                selector: String::new(),
+            },
+        )]));
 
-        test_context.run(&egui_ctx, move |viewer_ctx| {
-            let query_result = DataQueryResult::default();
-            let ctx = ViewContext {
-                viewer_ctx,
-                view_id: ViewId::invalid(),
-                view_class_identifier: ViewClassIdentifier::from_static_str("Test"),
-                space_origin: &EntityPath::root(),
-                view_state: &(),
-                query_result: &query_result,
-            };
-
+        run_with_test_view_context(&test_context, move |ctx| {
             let latest_query = LatestAtQuery::new(TimelineName::log_tick(), 0);
             let latest_results = latest_at_with_blueprint_resolved_data(
-                &ctx,
+                ctx,
                 None,
                 &latest_query,
                 &data_result,
@@ -974,7 +973,7 @@ mod tests {
             let range_query =
                 RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::new(0, 0));
             let range_results = range_with_blueprint_resolved_data(
-                &ctx,
+                ctx,
                 None,
                 &range_query,
                 &data_result,
@@ -1164,16 +1163,7 @@ mod tests {
         });
 
         let annotations = Arc::new(Annotations::missing());
-        let data_result = DataResult {
-            entity_path,
-            any_visualizers_available: true,
-            visualizer_instructions: Vec::new(),
-            tree_prefix_only: false,
-            visible: true,
-            interactive: true,
-            override_base_path: EntityPath::from("override"),
-            query_range: QueryRange::LatestAt,
-        };
+        let data_result = test_data_result(entity_path);
 
         StaticAnnotationData {
             test_context,
@@ -1197,12 +1187,7 @@ mod tests {
             mappings: VisualizerComponentMappings,
         ) -> AnnotationOutcomes {
             run_with_test_view_context(&self.test_context, |ctx| {
-                let instruction = VisualizerInstruction::new(
-                    VisualizerInstructionId::new_random(),
-                    ViewSystemIdentifier::from_static_str("Test"),
-                    &EntityPath::from("override"),
-                    mappings,
-                );
+                let instruction = test_instruction(mappings);
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
                     self.annotations.as_deref(),
@@ -1463,12 +1448,7 @@ mod tests {
                     mapping_pairs[0].clone(),
                 ]),
             ] {
-                let instruction = VisualizerInstruction::new(
-                    VisualizerInstructionId::new_random(),
-                    ViewSystemIdentifier::from_static_str("Test"),
-                    &EntityPath::from("override"),
-                    mappings,
-                );
+                let instruction = test_instruction(mappings);
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
                     None,
@@ -1520,15 +1500,10 @@ mod tests {
         });
 
         let data_result = test_data_result(entity_path);
-        let instruction = VisualizerInstruction::new(
-            VisualizerInstructionId::new_random(),
-            ViewSystemIdentifier::from_static_str("Test"),
-            &EntityPath::from("override"),
-            VisualizerComponentMappings::from([(
-                component,
-                VisualizerComponentSource::identity(component),
-            )]),
-        );
+        let instruction = test_instruction(VisualizerComponentMappings::from([(
+            component,
+            VisualizerComponentSource::identity(component),
+        )]));
         let cast_rules: IntMap<_, ComponentCastRule> =
             std::iter::once((component, cast_to_float64 as ComponentCastRule)).collect();
 
@@ -1564,6 +1539,353 @@ mod tests {
                     .value_type(),
                 DataType::Float64
             );
+
+            // Cast rules are excluded from cache identity; callers must invalidate when they change.
+            let uncast = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING),
+                &data_result,
+                [component],
+                &instruction,
+            );
+            assert_eq!(range.query_result_hash(), uncast.query_result_hash());
+            let latest_uncast = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &LatestAtQuery::new_static(),
+                &data_result,
+                [component],
+                Some(&instruction),
+            );
+            assert_eq!(
+                latest.query_result_hash(),
+                latest_uncast.query_result_hash()
+            );
+        });
+    }
+
+    /// Logs both rows in one source chunk, so different range slices share a recording dependency.
+    /// Remapping `source` to `target` allocates fresh output chunks on each query.
+    fn remapped_color_fixture(
+        second_frame: i64,
+    ) -> (TestContext, DataResult, VisualizerInstruction) {
+        let mut test_context = TestContext::new();
+        let descriptor = ComponentDescriptor::partial("source").with_component_type(Color::name());
+        let instruction = test_instruction(VisualizerComponentMappings::from([(
+            "target".into(),
+            VisualizerComponentSource::simple_map(descriptor.component),
+        )]));
+        test_context.log_entity("entity", |mut builder| {
+            for (frame, color) in [
+                (1, Color::from_rgb(1, 2, 3)),
+                (second_frame, Color::from_rgb(4, 5, 6)),
+            ] {
+                builder = builder.with_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(frame)],
+                    [(descriptor.clone(), &[color] as _)],
+                );
+            }
+            builder
+        });
+        (test_context, test_data_result("entity"), instruction)
+    }
+
+    fn color_defaults(
+        colors: impl IntoIterator<Item = (ComponentIdentifier, Color)>,
+    ) -> LatestAtResults {
+        let mut defaults =
+            LatestAtResults::empty(EntityPath::from("defaults"), LatestAtQuery::new_static());
+        for (component, color) in colors {
+            let unit = re_chunk_store::Chunk::builder("defaults")
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    [(ComponentDescriptor::partial(component), &[color] as _)],
+                )
+                .build()
+                .unwrap()
+                .into_unit()
+                .unwrap();
+            defaults.components.insert(component, unit);
+        }
+        defaults
+    }
+
+    /// Latest-at cache identity follows the selected row and source, not cursor movement between rows.
+    /// Defaults are dependencies only when selected; selecting one makes recording dependencies irrelevant.
+    #[test]
+    fn latest_query_result_hash_tracks_selected_data_not_cursor_or_unused_defaults() {
+        let (test_context, data_result, instruction) = remapped_color_fixture(10);
+        let target = "target".into();
+        let defaults = color_defaults([(target, Color::from_rgb(7, 8, 9))]);
+        run_with_test_view_context(&test_context, |ctx| {
+            let resolve = |time| {
+                let query = LatestAtQuery::new("frame_nr".into(), time);
+                latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &query,
+                    &data_result,
+                    [target],
+                    Some(&instruction),
+                )
+            };
+            let mut first = resolve(2);
+            let original = first.query_result_hash();
+            assert_eq!(original, resolve(3).query_result_hash());
+            assert_ne!(original, resolve(10).query_result_hash());
+            first.view_defaults = &defaults;
+            assert_eq!(original, first.query_result_hash());
+
+            let mut selected_default = resolve(2);
+            selected_default.view_defaults = &defaults;
+            selected_default.component_sources.insert(
+                target,
+                crate::blueprint_resolved_results::CheckedComponentSource::new(
+                    std::borrow::Cow::Owned(VisualizerComponentSource::Default),
+                ),
+            );
+            let default_hash = selected_default.query_result_hash();
+            assert_ne!(original, default_hash);
+            selected_default
+                .component_sources
+                .get_mut(&target)
+                .unwrap()
+                .recording_result_hash = Hash64::from_u64(42);
+            assert_eq!(default_hash, selected_default.query_result_hash());
+        });
+    }
+
+    /// Range cache identity must survive remapping allocations but distinguish query bounds, options,
+    /// and entities, even when the source chunks are identical.
+    /// Mappings for components outside the query must not invalidate it.
+    #[test]
+    fn range_query_result_hash_tracks_selection_and_stable_remapping() {
+        let (test_context, data_result, instruction) = remapped_color_fixture(2);
+        let target = "target".into();
+        run_with_test_view_context(&test_context, |ctx| {
+            let query = RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::EVERYTHING);
+            let resolve = |query: &RangeQuery| {
+                range_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    query,
+                    &data_result,
+                    [target],
+                    &instruction,
+                )
+            };
+            let first = resolve(&query);
+            let second = resolve(&query);
+            assert_ne!(
+                first.store_results.components[&target][0].id(),
+                second.store_results.components[&target][0].id()
+            );
+            assert_eq!(first.query_result_hash(), second.query_result_hash());
+
+            let sliced_query = RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::new(1, 1));
+            let sliced = resolve(&sliced_query);
+            assert_eq!(
+                first.component_sources[&target].recording_result_hash,
+                sliced.component_sources[&target].recording_result_hash
+            );
+            assert_eq!(sliced.store_results.components[&target][0].num_rows(), 1);
+            assert_ne!(first.query_result_hash(), sliced.query_result_hash());
+            assert_ne!(
+                first.query_result_hash(),
+                resolve(&query.clone().keep_extra_timelines(true)).query_result_hash()
+            );
+
+            let mut unrelated_instruction = instruction.clone();
+            unrelated_instruction
+                .component_mappings
+                .insert("unused".into(), VisualizerComponentSource::Default);
+            let unrelated_mapping = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &query,
+                &data_result,
+                [target],
+                &unrelated_instruction,
+            );
+            assert_eq!(
+                first.query_result_hash(),
+                unrelated_mapping.query_result_hash()
+            );
+
+            let mut other_entity = resolve(&query);
+            let other_path = EntityPath::from("other");
+            other_entity.query_context.target_entity_path = &other_path;
+            assert_ne!(first.query_result_hash(), other_entity.query_result_hash());
+        });
+    }
+
+    /// Bootstrap data recovers an empty range, and subsequent changes on either side invalidate it.
+    #[test]
+    fn bootstrapped_hash_preserves_range_and_latest_dependencies() {
+        let mut test_context = TestContext::new();
+        let descriptor = ComponentDescriptor::partial("source").with_component_type(Color::name());
+        let target = "target".into();
+        let data_result = test_data_result("entity");
+        let instruction = test_instruction(VisualizerComponentMappings::from([(
+            target,
+            VisualizerComponentSource::simple_map(descriptor.component),
+        )]));
+        let mut previous = None;
+
+        for frame in [1, 10, 2, 11] {
+            test_context.log_entity("entity", |builder| {
+                builder.with_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(frame)],
+                    [(descriptor.clone(), &[Color::from_rgb(1, 2, 3)] as _)],
+                )
+            });
+
+            let current = run_with_test_view_context(&test_context, |ctx| {
+                let mut range = range_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::new(5, 20)),
+                    &data_result,
+                    [target],
+                    &instruction,
+                );
+                assert_eq!(
+                    range.component_sources[&target].error().is_some(),
+                    frame == 1,
+                    "Only the initial query should need recovery from an empty range"
+                );
+                let latest = latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &LatestAtQuery::new("frame_nr".into(), 4),
+                    &data_result,
+                    [target],
+                    Some(&instruction),
+                );
+                range.merge_bootstrapped_data(latest);
+                let error = range.component_sources[&target].error();
+                assert!(
+                    error.is_none(),
+                    "Bootstrap should resolve the component: {error:?}"
+                );
+                range.query_result_hash()
+            });
+
+            if let Some(previous) = previous {
+                assert_ne!(
+                    previous, current,
+                    "Logging frame {frame} must invalidate the bootstrapped result"
+                );
+            }
+            previous = Some(current);
+        }
+    }
+
+    /// A fixed query must invalidate as data arrives, including the transition from no data.
+    /// Equal values at new timestamps still change the result; writes to another entity do not.
+    #[test]
+    fn range_query_result_hash_tracks_arriving_data() {
+        let mut test_context = TestContext::new();
+        let descriptor = ComponentDescriptor::partial("color").with_component_type(Color::name());
+        let component = descriptor.component;
+        let data_result = test_data_result("entity");
+        let instruction = test_instruction(VisualizerComponentMappings::default());
+        let hash = |test_context: &TestContext| {
+            run_with_test_view_context(test_context, |ctx| {
+                range_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::EVERYTHING),
+                    &data_result,
+                    [component],
+                    &instruction,
+                )
+                .query_result_hash()
+            })
+        };
+        let mut previous = hash(&test_context);
+        for tick in 1..=2 {
+            test_context.log_entity("entity", |builder| {
+                builder.with_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(tick)],
+                    [(descriptor.clone(), &[Color::from_rgb(1, 2, 3)] as _)],
+                )
+            });
+            let current = hash(&test_context);
+            assert_ne!(previous, current);
+            previous = current;
+        }
+        test_context.log_entity("unrelated", |builder| {
+            builder.with_component_batches(
+                RowId::new(),
+                [build_frame_nr(3)],
+                [(descriptor, &[Color::from_rgb(1, 2, 3)] as _)],
+            )
+        });
+        assert_eq!(previous, hash(&test_context));
+    }
+
+    /// Recording-backed ranges depend on relevant defaults because range zipping can use them in gaps.
+    /// An explicit override masks both defaults and recording dependencies, but its own presence matters.
+    #[test]
+    fn range_query_result_hash_only_tracks_consumed_blueprint_inputs() {
+        let mut test_context = TestContext::new();
+        let descriptor = ComponentDescriptor::partial("color").with_component_type(Color::name());
+        let component = descriptor.component;
+        let unrelated = "unrelated".into();
+        test_context.log_entity("entity", |builder| {
+            builder.with_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [(descriptor.clone(), &[Color::from_rgb(1, 2, 3)] as _)],
+            )
+        });
+        let data_result = test_data_result("entity");
+        let instruction = test_instruction(VisualizerComponentMappings::default());
+        let unrelated_defaults = color_defaults([(unrelated, Color::from_rgb(7, 8, 9))]);
+        let mut relevant_defaults = color_defaults([(component, Color::from_rgb(4, 5, 6))]);
+        let unit = relevant_defaults.components[&component].clone();
+        relevant_defaults
+            .components
+            .extend(unrelated_defaults.components.clone());
+        run_with_test_view_context(&test_context, |ctx| {
+            let query = RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING);
+            let mut results = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &query,
+                &data_result,
+                [component],
+                &instruction,
+            );
+            let original = results.query_result_hash();
+            results.view_defaults = &unrelated_defaults;
+            assert_eq!(original, results.query_result_hash());
+            results.view_defaults = &relevant_defaults;
+            assert_ne!(original, results.query_result_hash());
+
+            results.component_sources.insert(
+                component,
+                crate::blueprint_resolved_results::CheckedComponentSource::new(
+                    std::borrow::Cow::Owned(VisualizerComponentSource::Override),
+                ),
+            );
+            results.overrides.components.insert(component, unit);
+            let overridden = results.query_result_hash();
+            results.view_defaults = &unrelated_defaults;
+            results
+                .component_sources
+                .get_mut(&component)
+                .unwrap()
+                .recording_result_hash = Hash64::from_u64(42);
+            assert_eq!(overridden, results.query_result_hash());
+            results.overrides.components.clear();
+            assert_ne!(overridden, results.query_result_hash());
         });
     }
 

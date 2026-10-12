@@ -11458,6 +11458,7 @@ version = "0.39.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "criterion",
  "egui",
  "glam",
  "itertools 0.15.0",

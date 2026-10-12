@@ -10,7 +10,10 @@
 //! Latest-at resolution retains only the final emitted row as a static unit chunk, while range resolution collects every emitted row on the query timeline.
 //! Only targets explicitly mapped to [`ComponentSourceKind::AnnotationContext`] are materialized.
 
+use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
+
 use itertools::Either;
+use re_log_types::hash::{HASH_RANDOM_STATE, Hash64};
 
 use re_chunk_store::external::re_chunk::external::arrow::array::ArrayRef;
 use re_chunk_store::external::re_chunk::{self, RowId, TimeInt, TimelineName};
@@ -19,7 +22,7 @@ use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_sdk_types::components::{ClassId, Color, KeypointId, Text};
 use re_viewer_context::{AnnotationContextTarget, AnnotationContextTargetKind, typed_fallback_for};
 
-use crate::blueprint_resolved_results::ComponentSourcesMap;
+use crate::blueprint_resolved_results::{CheckedComponentSource, ComponentSourcesMap};
 use crate::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResultsExt,
     ChunksWithComponent, ComponentMappingError, MaybeChunksWithComponent,
@@ -252,6 +255,29 @@ fn annotation_targets_to_resolve<'a>(
         .collect()
 }
 
+fn annotation_inputs_hash(
+    query: &re_viewer_context::AnnotationContextQuery,
+    sources: &ComponentSourcesMap<'_>,
+    mut hash_component: impl FnMut(
+        re_chunk::ComponentIdentifier,
+        &CheckedComponentSource<'_>,
+        &mut ahash::AHasher,
+    ),
+) -> Hash64 {
+    let mut hasher = HASH_RANDOM_STATE.build_hasher();
+    for component in [Some(query.class_ids), query.keypoint_ids] {
+        component.hash(&mut hasher);
+        if let Some(component) = component {
+            let checked = sources.get(&component);
+            checked.is_some().hash(&mut hasher);
+            if let Some(checked) = checked {
+                hash_component(component, checked, &mut hasher);
+            }
+        }
+    }
+    Hash64::from_u64(hasher.finish())
+}
+
 impl BlueprintResolvedLatestAtResults<'_> {
     /// Materializes the final annotation-derived row for every selected target.
     ///
@@ -278,6 +304,12 @@ impl BlueprintResolvedLatestAtResults<'_> {
         if targets.is_empty() {
             return;
         }
+
+        self.annotation_input_hash = annotation_inputs_hash(
+            annotation_query,
+            &self.component_sources,
+            |component, checked, hasher| self.hash_component_result(component, checked, hasher),
+        );
 
         // For latest-at there should be just a single event (or two for classids + keypoints).
         // The event logic is mostly important for range queries, but we go through it here as well to share some code.
@@ -339,6 +371,11 @@ impl BlueprintResolvedRangeResults<'_> {
         if targets.is_empty() {
             return;
         }
+        self.annotation_input_hash = annotation_inputs_hash(
+            annotation_query,
+            &self.component_sources,
+            |component, checked, hasher| self.hash_component_result(component, checked, hasher),
+        );
         let events = annotation_component_events(self, annotation_query, timeline);
 
         for target in targets {
