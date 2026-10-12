@@ -545,6 +545,56 @@ impl Properties for AgentTurn {
 
 // -----------------------------------------------
 
+/// The user sent feedback on a conversation in the Rerun Viewer's agent panel.
+///
+/// It carries the user's feedback text and the whole conversation: the user's prompts,
+/// the agent's answers, and its tool calls.
+/// It is only sent when the user clicks Send in the feedback dialog.
+///
+/// Before sending, the viewer redacts all of it with a new session of the user's own agent.
+/// That session runs in an empty directory, without tools, and gets only the JSON to redact.
+/// It replaces names, organizations, project names, contact details, hostnames, ids, and secrets
+/// with placeholders such as `<name>` or `<secret>`, and keeps everything else.
+/// Nothing is sent when the session fails, takes more than two minutes, or returns JSON in
+/// another shape.
+pub struct AgentFeedback {
+    /// What the user typed.
+    pub feedback: String,
+
+    /// Which agent handled the conversation, e.g. "Claude Code".
+    pub agent: String,
+
+    /// The conversation as ATIF JSON, or `None` when it was too large to send.
+    ///
+    /// ATIF is the [Agent Trajectory Interchange Format](https://docs.harborframework.com/agents/atif)
+    /// of the Harbor eval framework.
+    pub trajectory: Option<String>,
+
+    /// Size of the trajectory JSON in bytes, also when [`Self::trajectory`] is left out.
+    pub trajectory_bytes: usize,
+}
+
+impl Event for AgentFeedback {
+    const NAME: &'static str = "agent_feedback";
+}
+
+impl Properties for AgentFeedback {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            feedback,
+            agent,
+            trajectory,
+            trajectory_bytes,
+        } = self;
+        event.insert("feedback", feedback);
+        event.insert("agent", agent);
+        event.insert_opt("trajectory", trajectory);
+        event.insert_opt("trajectory_bytes", i64::try_from(trajectory_bytes).ok());
+    }
+}
+
+// -----------------------------------------------
+
 /// The user opened the settings screen.
 pub struct SettingsOpened {}
 

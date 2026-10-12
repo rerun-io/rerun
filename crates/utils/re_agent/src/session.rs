@@ -235,6 +235,18 @@ impl AgentSession {
         self.current_turn.is_some()
     }
 
+    /// Whether the user has sent a prompt and no turn is running.
+    ///
+    /// A cancelled or failed turn counts as finished.
+    pub fn has_finished_turn(&self) -> bool {
+        !self.turn_in_progress()
+            && self
+                .transcript
+                .items
+                .iter()
+                .any(|entry| matches!(entry.item, TranscriptItem::User(_)))
+    }
+
     /// What the agent calls itself, once it has told us.
     pub fn agent_name(&self) -> Option<&str> {
         self.agent_name.as_deref()

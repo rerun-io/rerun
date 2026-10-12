@@ -37,5 +37,6 @@ pub use session::{
 pub use settings::{AgentSettings, McpServerConfig, SessionContext};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
+    truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

@@ -6,6 +6,7 @@ use std::path::Path;
 use re_agent_ui::{AgentPanel, AgentSettings, HostButton, McpServerConfig, SessionContext};
 use re_ui::UiExt as _;
 
+mod feedback;
 mod preamble;
 mod self_improve;
 
@@ -52,6 +53,8 @@ pub struct ViewerAgentPanel {
 
     /// Counts the self-improvement conversations started, so their transcripts get separate files.
     self_improvements_started: usize,
+
+    feedback: feedback::FeedbackModal,
 
     #[cfg(feature = "analytics")]
     analytics: crate::agent_analytics::TurnAnalytics,
@@ -124,6 +127,16 @@ impl ViewerAgentPanel {
         {
             self.start_self_improvement();
         }
+        if let Some(panel) = self
+            .panel
+            .as_ref()
+            .filter(|panel| panel.feedback_requested())
+            && let Some(session) = panel.session()
+        {
+            let config = panel.launch_config(&SessionContext::default()).ok();
+            self.feedback.open(session, config);
+        }
+        self.feedback.ui(ui.ctx());
 
         self.record_finished_turns();
     }
@@ -243,6 +256,7 @@ impl ViewerAgentPanel {
         let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
 
         let mut panel = AgentPanel::new(settings);
+        panel.set_feedback_enabled(true);
         panel.set_host_button(rerun_workspace.is_some().then(|| {
             HostButton {
                 label: "Self-improve".to_owned(),

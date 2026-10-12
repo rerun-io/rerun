@@ -1,0 +1,68 @@
+---
+source: crates/top/re_viewer/src/agent_panel/feedback.rs
+expression: "serde_json::to_string_pretty(&trajectory).expect(\"serialize\")"
+---
+{
+  "schema_version": "ATIF-v1.7",
+  "agent": {
+    "name": "Test Agent",
+    "version": "unknown"
+  },
+  "steps": [
+    {
+      "step_id": 1,
+      "timestamp": "2027-01-15T08:00:00Z",
+      "source": "user",
+      "message": "What redap servers do we have?"
+    },
+    {
+      "step_id": 2,
+      "timestamp": "2027-01-15T08:00:01Z",
+      "source": "agent",
+      "message": "Let me look.",
+      "reasoning_content": "The saved state lists them.",
+      "tool_calls": [
+        {
+          "tool_call_id": "call-1",
+          "function_name": "Read app.ron",
+          "arguments": {
+            "path": "app.ron"
+          }
+        },
+        {
+          "tool_call_id": "call-2",
+          "function_name": "Fetch",
+          "arguments": {}
+        }
+      ],
+      "observation": {
+        "results": [
+          {
+            "source_call_id": "call-1",
+            "content": "redap_servers: [\"rerun+http://127.0.0.1:51234\"]"
+          },
+          {
+            "source_call_id": "call-2",
+            "content": "Failed: timeout"
+          }
+        ]
+      }
+    },
+    {
+      "step_id": 3,
+      "timestamp": "2027-01-15T08:00:04Z",
+      "source": "agent",
+      "message": "There is one local server."
+    },
+    {
+      "step_id": 4,
+      "timestamp": "2027-01-15T08:00:05Z",
+      "source": "system",
+      "message": "Turn cancelled"
+    }
+  ],
+  "extra": {
+    "feedback": "It should have asked the viewer.",
+    "rerun_version": "0.0.0"
+  }
+}

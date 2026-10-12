@@ -589,7 +589,8 @@ fn json_excerpt(value: &serde_json::Value) -> String {
 ///
 /// The cut lands on the nearest character boundary at or below `max_bytes`, so a multi-byte
 /// character is dropped whole rather than split.
-fn truncate_bytes(text: &str, max_bytes: usize) -> String {
+/// The note comes on top of `max_bytes`, so a cut result is longer than `max_bytes`.
+pub fn truncate_bytes(text: &str, max_bytes: usize) -> String {
     if text.len() <= max_bytes {
         return text.to_owned();
     }

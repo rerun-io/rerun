@@ -227,8 +227,10 @@ struct TabsBehavior<'a> {
     context: &'a SessionContext,
     agents: &'a mut Vec<AgentEntry>,
     host_button: Option<&'a HostButton>,
+    feedback_enabled: bool,
     add_requested: bool,
     host_button_clicked: bool,
+    feedback_requested: bool,
     tab_action: Option<(TileId, TabAction)>,
 }
 
@@ -306,6 +308,16 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
             && host_button_ui(ui, button).clicked()
         {
             self.host_button_clicked = true;
+        }
+        if self.feedback_enabled
+            && conversation.screen == Screen::Chat
+            && conversation.session.has_finished_turn()
+            && ui
+                .add(re_ui::ReButton::new("Feedback").ghost().small())
+                .on_hover_text("Tell us how the agent did in this conversation")
+                .clicked()
+        {
+            self.feedback_requested = true;
         }
         if conversation.screen == Screen::Setup {
             if has_agent
@@ -425,6 +437,12 @@ pub struct AgentPanel {
 
     /// Whether [`Self::host_button`] was clicked during the last [`Self::ui`].
     host_button_clicked: bool,
+
+    /// Set by the host. Shows the feedback button in the tab bar.
+    feedback_enabled: bool,
+
+    /// Whether the feedback button was clicked during the last [`Self::ui`].
+    feedback_requested: bool,
 }
 
 impl AgentPanel {
@@ -452,6 +470,8 @@ impl AgentPanel {
             auto_approve: false,
             host_button: None,
             host_button_clicked: false,
+            feedback_enabled: false,
+            feedback_requested: false,
         }
     }
 
@@ -468,6 +488,19 @@ impl AgentPanel {
     /// Whether the host's own tab-bar button was clicked during the last [`Self::ui`].
     pub fn host_button_clicked(&self) -> bool {
         self.host_button_clicked
+    }
+
+    /// Shows a feedback button in the tab bar while the active conversation is in chat
+    /// and has a finished turn. Off by default.
+    pub fn set_feedback_enabled(&mut self, enabled: bool) {
+        self.feedback_enabled = enabled;
+    }
+
+    /// Whether the feedback button was clicked during the last [`Self::ui`].
+    ///
+    /// The feedback is for the conversation of [`Self::session`].
+    pub fn feedback_requested(&self) -> bool {
+        self.feedback_requested
     }
 
     pub fn settings(&self) -> &AgentSettings {
@@ -646,8 +679,10 @@ impl AgentPanel {
             context: &self.context,
             agents: &mut self.agents,
             host_button: self.host_button.as_ref(),
+            feedback_enabled: self.feedback_enabled,
             add_requested: false,
             host_button_clicked: false,
+            feedback_requested: false,
             tab_action: None,
         };
         self.tree.ui(&mut behavior, ui);
@@ -655,10 +690,12 @@ impl AgentPanel {
         let TabsBehavior {
             add_requested,
             host_button_clicked,
+            feedback_requested,
             tab_action,
             ..
         } = behavior;
         self.host_button_clicked = host_button_clicked;
+        self.feedback_requested = feedback_requested;
 
         if let Some((tile_id, action)) = tab_action
             && let Some(Tile::Pane(conversation)) = self.tree.tiles.get_mut(tile_id)

@@ -8,10 +8,10 @@ use re_agent_ui::{AgentSession, LaunchConfig};
 use serde_json::Value;
 use tempfile::TempDir;
 
-/// How long the redacting agent gets before the turn is sent with its text fields dropped.
+/// How long the redacting agent gets before the redaction fails.
 const REDACTION_TIMEOUT: Duration = Duration::from_mins(2);
 
-/// Maximum number of turns waiting for redaction before new text is dropped.
+/// Maximum number of requests waiting for redaction before new ones fail.
 const REDACTION_QUEUE_CAPACITY: usize = 1024;
 
 /// Models to redact with, best first, matched against whatever the user's agent offers.
@@ -21,7 +21,7 @@ const REDACTION_QUEUE_CAPACITY: usize = 1024;
 /// An agent that offers none of these keeps its default model.
 const REDACTION_MODELS: &[&str] = &["sonnet", "flash", "mini", "haiku"];
 
-/// Instructions for removing sensitive data from agent turn analytics.
+/// Instructions for removing sensitive data from agent analytics.
 const REDACTION_INSTRUCTIONS: &str = r#"# Redact analytics
 
 You receive one JSON object. Return the same object with every sensitive value removed and nothing else: no explanation, no code fence, no extra keys.
