@@ -118,7 +118,7 @@ impl ViewClass for AudioView {
         } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
 
         Help::new("Audio view")
-            .docs_link("https://rerun.io/docs/reference/types/views/audio_view?speculative-link")
+            .docs_link("https://rerun.io/docs/reference/types/views/audio_view")
             .markdown(
                 "Shows the waveform of an audio asset and plays it while time is playing on a \
                  temporal timeline, starting from the time the asset was logged.",

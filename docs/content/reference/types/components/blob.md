@@ -23,7 +23,7 @@ List(non-null UInt8)
 ## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
-* [`AssetAudio`](../archetypes/asset_audio.md?speculative-link)
+* [`AssetAudio`](../archetypes/asset_audio.md)
 * [`AssetVideo`](../archetypes/asset_video.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)

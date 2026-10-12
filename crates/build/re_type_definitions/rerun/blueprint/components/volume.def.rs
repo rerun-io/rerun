@@ -8,7 +8,6 @@
 #[rerun::rerun_type]
 #[python(aliases = "float")]
 #[python(array_aliases = "npt.ArrayLike")]
-#[docs(unreleased)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, PartialOrd))]
 #[rust(repr = "transparent")]
