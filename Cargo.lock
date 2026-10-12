@@ -9365,6 +9365,7 @@ dependencies = [
  "async-trait",
  "clap",
  "futures",
+ "indexmap 2.14.0",
  "insta",
  "itertools 0.15.0",
  "parking_lot",

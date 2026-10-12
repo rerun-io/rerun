@@ -17,6 +17,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use indexmap::IndexMap;
+
 use re_chunk::{ComponentIdentifier, ComponentType};
 use re_log_types::{
     EntityPath, EntityPathFilter, ResolvedEntityPathFilter, Timeline, TimelineName,
@@ -83,6 +85,22 @@ pub enum ColumnSelection {
 
     /// Every column not named here. Never empty: [`plan_covers_view`] rejects an empty set.
     Except(BTreeSet<ComponentIdentifier>),
+}
+
+impl ColumnSelection {
+    /// The columns of `meta`'s chunk that this selection keeps.
+    fn apply(&self, meta: &ChunkMeta) -> BTreeSet<ComponentIdentifier> {
+        match self {
+            Self::All => meta.components.keys().copied().collect(),
+            Self::Only(columns) => columns.clone(),
+            Self::Except(excluded) => meta
+                .components
+                .keys()
+                .filter(|column| !excluded.contains(column))
+                .copied()
+                .collect(),
+        }
+    }
 }
 
 /// How a GoP run cuts its samples into output chunks. A GoP is never split.
@@ -254,8 +272,9 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
 
     // Temporal chunks merge per entity and per exact timeline set — the same grouping the merge
     // gate `Chunk::concatenable` enforces at merge time. Within a group, every own column gets a
-    // run of its own over the chunks that carry it, then the rest of every chunk forms one run.
-    // A matched entity's video columns are left to its GoP run.
+    // run of its own over the chunks that carry it, then the rest of the chunks form runs by
+    // column set (see [`partition_rest`]). A matched entity's video columns are left to its GoP
+    // run.
     let video_columns = [sample_column(), codec_column(), keyframe_column()];
     for (entity_path, entity) in &view.entities {
         let own = own_columns_of(entity_path);
@@ -307,7 +326,7 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     units
 }
 
-/// Plan one group: own runs, then the rest run, in sweep order.
+/// Plan one group: own runs, then rest runs, in sweep order.
 ///
 /// The `excluded_columns` stay out of both; the caller routes them through other units.
 fn plan_group(
@@ -347,8 +366,8 @@ fn plan_group(
     for (column, inputs) in own_runs {
         emit(units, inputs, own[&column]);
     }
-    if !rest.is_empty() {
-        emit(units, rest, settings.merge_split);
+    for inputs in partition_into_run(view, rest) {
+        emit(units, inputs, settings.merge_split);
     }
 }
 
@@ -470,6 +489,105 @@ fn run_timeline(group: &TimelineSetGroup, target_timeline: Option<&TimelineName>
     }
     // Every row of a group is on every timeline of the group, so no score tells them apart.
     Timeline::pick_best_timeline(group.timelines.iter(), |_| 0)
+}
+
+/// Split a group's rest slices into merge runs, so that only slices sharing columns merge.
+///
+/// A merge null-pads every column that some of its inputs lack. Merging slices that share no
+/// column would produce mixed chunks that are mostly nulls, and make a reader of one stream fetch
+/// the other stream's bytes too. So the slices are grouped by column set (the columns a slice
+/// carries), and a run only gathers sets that are linked through shared columns:
+///
+/// - Distinct column sets are taken heaviest first (ties in sweep order), each weighed by the total
+///   rows of its slices. Rows, not bytes: the index has no per-column sizes.
+/// - A set joins the heaviest run it shares a column with, and the run takes on its columns.
+/// - A set sharing no column with any run starts a new run.
+///
+/// A set overlapping several runs (e.g. a few chunks that carry two otherwise separate streams)
+/// joins the heaviest one rather than fusing them. The streams therefore stay apart only as long as
+/// such bridging sets are lighter than both streams.
+///
+/// Returns the runs in order of their first slice, each in sweep order.
+fn partition_into_run(view: &ChunkIndexView, rest: Vec<ChunkSlice>) -> Vec<Vec<ChunkSlice>> {
+    // 1. Extract the columns and weight (aka row count) of every slice.
+    let slice_columns: Vec<(BTreeSet<ComponentIdentifier>, u64)> = rest
+        .iter()
+        .map(|slice| {
+            let meta = view.chunk(slice.chunk);
+            (slice.columns.apply(meta), meta.num_rows)
+        })
+        .collect();
+
+    // 2. Based on their columns, assign every slice to a run.
+    let run_of_slice = assign_runs(&slice_columns);
+
+    // 3. Collect the slices into their assigned runs, in order of first slice.
+    let mut runs: IndexMap<usize, Vec<ChunkSlice>> = IndexMap::new();
+    for (slice, run) in std::iter::zip(rest, run_of_slice) {
+        runs.entry(run).or_default().push(slice);
+    }
+    runs.into_values().collect()
+}
+
+/// Assign slices, in sweep order, to merge runs by column set, as described in
+/// [`partition_into_run`].
+///
+/// Each slice comes as its columns and its weight. Slices with equal columns always land in the
+/// same run.
+///
+/// Returns the run of each slice.
+fn assign_runs(slice_columns: &[(BTreeSet<ComponentIdentifier>, u64)]) -> Vec<usize> {
+    // 1. Gather the distinct column sets, in order of first slice, each weighed by all its slices.
+    let mut sets: IndexMap<&BTreeSet<ComponentIdentifier>, u64> = IndexMap::new();
+    let set_of_slice: Vec<usize> = slice_columns
+        .iter()
+        .map(|(columns, weight)| {
+            let entry = sets.entry(columns);
+            let set = entry.index();
+            let total = entry.or_insert(0);
+            *total = total.saturating_add(*weight);
+            set
+        })
+        .collect();
+
+    let mut by_weight: Vec<usize> = (0..sets.len()).collect();
+    by_weight.sort_by_key(|&set| (std::cmp::Reverse(sets[set]), set));
+
+    // 2. Dispatch sets into runs.
+    struct Run {
+        /// Merged schema of all the sets included in this run.
+        columns: BTreeSet<ComponentIdentifier>,
+
+        weight: u64,
+    }
+
+    let mut runs: Vec<Run> = Vec::new();
+    let mut run_of_set = vec![0; sets.len()];
+    for set in by_weight {
+        let (&columns, &weight) = sets.get_index(set).expect("`set` indexes `sets`");
+        let heaviest_overlapping = runs
+            .iter()
+            .enumerate()
+            .filter(|(_, run)| !run.columns.is_disjoint(columns))
+            // Ties go to the earliest run.
+            .max_by_key(|&(i, run)| (run.weight, std::cmp::Reverse(i)))
+            .map(|(i, _)| i);
+        let run = heaviest_overlapping.unwrap_or_else(|| {
+            runs.push(Run {
+                columns: BTreeSet::new(),
+                weight: 0,
+            });
+            runs.len() - 1
+        });
+        runs[run].columns.extend(columns);
+        runs[run].weight = runs[run].weight.saturating_add(weight);
+        run_of_set[set] = run;
+    }
+
+    set_of_slice
+        .into_iter()
+        .map(|set| run_of_set[set])
+        .collect()
 }
 
 fn emit(units: &mut Vec<PlanUnit>, inputs: Vec<ChunkSlice>, target: Option<MergeSplitSettings>) {
@@ -938,6 +1056,29 @@ mod tests {
         builder.build().unwrap()
     }
 
+    /// A temporal chunk with one point under each of `descriptors` on every row.
+    fn temporal_chunk_with(
+        id: u128,
+        entity: &str,
+        times: &[i64],
+        descriptors: &[&ComponentDescriptor],
+    ) -> Chunk {
+        let frame = Timeline::new_sequence("frame");
+        let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
+        for (i, &time) in times.iter().enumerate() {
+            builder = builder.with_serialized_batches(
+                RowId::from_u128((id << 32) + i as u128 + 1),
+                [(frame, time)],
+                descriptors.iter().map(|descriptor| {
+                    MyPoint::from_iter(0..1)
+                        .try_serialized((*descriptor).clone())
+                        .unwrap()
+                }),
+            );
+        }
+        builder.build().unwrap()
+    }
+
     fn static_chunk(id: u128, entity: &str) -> Chunk {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
@@ -1017,8 +1158,8 @@ mod tests {
         settings
     }
 
-    /// A group's chunks form one merge/split run in sweep order, whatever the byte target —
-    /// output boundaries and splits belong to the executor.
+    /// A group's chunks of one column set form one merge/split run in sweep order, whatever the
+    /// byte target — output boundaries and splits belong to the executor.
     #[test]
     fn group_forms_one_run() {
         let chunks: Vec<Chunk> = (0..7)
@@ -1281,6 +1422,131 @@ mod tests {
             merge_split (1048576 B)
               #5 only[example.MyPoints:colors]
               #6 only[example.MyPoints:colors]
+            ");
+    }
+
+    /// The rest of a group splits into runs by column set: chunks sharing no column never share a
+    /// run, chunks whose columns overlap do, and runs come out in order of their first chunk, not
+    /// by weight.
+    #[test]
+    fn rest_runs_follow_shared_columns() {
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let custom = untyped_descriptor();
+        // The custom run has more rows, but its first chunk comes second.
+        let chunks = vec![
+            temporal_chunk_with(1, "entity", &[0, 1], &[&points]),
+            temporal_chunk_with(2, "entity", &[2, 3, 4, 5], &[&custom]),
+            temporal_chunk_with(3, "entity", &[6, 7], &[&points, &colors]),
+            temporal_chunk_with(4, "entity", &[8, 9, 10, 11], &[&custom]),
+            temporal_chunk_with(5, "entity", &[12, 13], &[&points]),
+        ];
+        let view = view_of(&chunks);
+        let settings = settings(1024 * 1024, 0);
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #3 all
+              #5 all
+            merge_split (1048576 B)
+              #2 all
+              #4 all
+            ");
+    }
+
+    /// A column set overlapping two runs, lighter than both, joins the one with the most rows,
+    /// whichever stream that is, instead of fusing them.
+    #[test]
+    fn bridge_joins_the_heaviest_run() {
+        let points = MyPoints::descriptor_points();
+        let custom = untyped_descriptor();
+        let bridged = |points_rows: i64, custom_rows: i64| {
+            let times = |start: i64, rows: i64| (start..start + rows).collect::<Vec<_>>();
+            vec![
+                temporal_chunk_with(1, "entity", &[0], &[&points, &custom]),
+                temporal_chunk_with(2, "entity", &times(10, points_rows), &[&points]),
+                temporal_chunk_with(3, "entity", &times(10, custom_rows), &[&custom]),
+                temporal_chunk_with(4, "entity", &times(20, points_rows), &[&points]),
+                temporal_chunk_with(5, "entity", &times(20, custom_rows), &[&custom]),
+            ]
+        };
+        let settings = settings(1024 * 1024, 0);
+
+        let chunks = bridged(4, 2);
+        let view = view_of(&chunks);
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #4 all
+            merge_split (1048576 B)
+              #3 all
+              #5 all
+            ");
+
+        let chunks = bridged(2, 4);
+        let view = view_of(&chunks);
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #3 all
+              #5 all
+            merge_split (1048576 B)
+              #2 all
+              #4 all
+            ");
+    }
+
+    /// The rest runs are formed from the rest slices' columns: an own column links nothing.
+    #[test]
+    fn own_columns_do_not_link_rest_runs() {
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let custom = untyped_descriptor();
+        let chunks = vec![
+            temporal_chunk_with(1, "entity", &[0, 1], &[&points, &colors]),
+            temporal_chunk_with(2, "entity", &[2, 3], &[&custom, &colors]),
+            temporal_chunk_with(3, "entity", &[4, 5], &[&points]),
+            temporal_chunk_with(4, "entity", &[6, 7], &[&custom]),
+        ];
+        let view = view_of(&chunks);
+
+        // Without rules, colors links chunks 1 and 2, and with them everything.
+        let global = settings(1024 * 1024, 0);
+        let units = plan(&view, &global);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #3 all
+              #4 all
+            ");
+
+        // With colors as an own column, the rest of chunks 1 and 2 share nothing.
+        let settings = with_rules(
+            global.clone(),
+            vec![OwnChunkRule::new(ColumnSelector::Column(colors.component))],
+        );
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+              #2 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+              #3 all
+            merge_split (1048576 B)
+              #2 except[example.MyPoints:colors]
+              #4 all
             ");
     }
 
