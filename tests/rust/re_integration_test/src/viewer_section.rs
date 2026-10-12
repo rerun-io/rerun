@@ -181,6 +181,10 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
         // the snapshots expect it.
         let pos = egui::pos2(row.left() + 8.0, row.center().y);
         assert!(arrow.rect().contains(pos));
+
+        // Press and release must be flushed by the same `run`. Settling in between lets a busy
+        // viewer hold the button for several frames, and once that exceeds egui's
+        // `max_click_duration` the release is no longer a click.
         for pressed in [true, false] {
             self.harness.queue_event(egui::Event::PointerButton {
                 pos,
@@ -188,8 +192,8 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
                 pressed,
                 modifiers: egui::Modifiers::NONE,
             });
-            self.harness.run();
         }
+        self.harness.run();
     }
 
     /// Helper function to get the node with the given label
