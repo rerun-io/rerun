@@ -208,6 +208,7 @@ pub fn settings_max_row_unsorted(
         }),
         target_timeline: None,
         own_chunk: Vec::new(),
+        gop_batching: Vec::new(),
     }
 }
 

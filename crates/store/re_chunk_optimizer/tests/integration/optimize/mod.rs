@@ -7,6 +7,7 @@
 mod helpers;
 
 mod end_to_end;
+mod gop;
 mod merge;
 mod own_chunk;
 mod sequences;

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
     from rerun.catalog import Schema
     from rerun.experimental._chunk_index import ChunkIndex
-    from rerun.experimental._optimizer_settings import _OwnChunkRule
+    from rerun.experimental._optimizer_settings import _GopBatchingRule, _OwnChunkRule
     from rerun_bindings import LazyStoreInternal
 
     from ._lazy_chunk_stream import LazyChunkStream
@@ -80,20 +80,27 @@ class LazyStore:
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
         own_chunk: Sequence[_OwnChunkRule] | None = None,
+        gop_batching: Sequence[_GopBatchingRule] | None = None,
     ) -> LazyChunkStream:
         """
         Return a lazy stream of optimized chunks.
 
         Private and experimental. Merge and split chunks toward `chunk_max_bytes`, with
         `chunk_max_rows` as a row guard (`0` disables a limit). `chunk_max_rows_if_unsorted`
-        replaces the row guard for outputs with at least one time-unsorted timeline. It is
-        video-unaware and can undo GoP alignment. Defaults are the object-store profile.
+        replaces the row guard for outputs with at least one time-unsorted timeline.
+        `chunk_max_bytes=0` disables merging and splitting; video streams are still re-cut at
+        keyframes under the default GoP rule. Defaults are the object-store profile.
         `target_timeline` orders the merge sweep by time; `None` means file order.
 
         `own_chunk` lists the components that always get a chunk of their own, as
         [`_OwnChunkRule`][rerun.experimental._OwnChunkRule]s tried in order. `None` selects
         every type tagged `own_chunk` in the type definitions, on every entity; an empty
         sequence disables the split.
+
+        `gop_batching` lists the video streams whose chunks are re-cut at keyframes, as
+        [`_GopBatchingRule`][rerun.experimental._GopBatchingRule]s tried in order. `None` batches
+        every entity with a codec and samples, keyframes in chunks of their own; an empty
+        sequence disables GoP batching.
         """
         from ._lazy_chunk_stream import LazyChunkStream
 
@@ -104,6 +111,7 @@ class LazyStore:
                 chunk_max_rows_if_unsorted=chunk_max_rows_if_unsorted,
                 target_timeline=target_timeline,
                 own_chunk=None if own_chunk is None else [rule._to_internal() for rule in own_chunk],
+                gop_batching=None if gop_batching is None else [rule._to_internal() for rule in gop_batching],
             )
         )
 

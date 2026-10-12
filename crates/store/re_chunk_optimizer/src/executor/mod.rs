@@ -4,6 +4,7 @@ pub mod merge_split;
 
 mod accumulator;
 mod cut;
+mod gop;
 mod size_estimate;
 
 use std::collections::{BTreeSet, HashMap, VecDeque};
@@ -18,6 +19,7 @@ use crate::Error;
 use crate::plan::{ChunkSlice, ColumnSelection, PlanUnit};
 use crate::view::ChunkIndexView;
 
+use gop::GopRunState;
 use merge_split::MergeSplitRunState;
 
 /// Pull-based execution of a plan: chunks are loaded on demand as [`Self::next_chunk`] is driven.
@@ -43,6 +45,7 @@ pub struct Executor {
 /// The run in flight: one unit that emits its outputs over several steps.
 enum RunState {
     MergeSplit(MergeSplitRunState),
+    Gop(Box<GopRunState>),
 }
 
 impl Executor {
@@ -73,6 +76,10 @@ impl Executor {
                         run.step(self.provider.as_ref(), &self.view, &mut self.ready)
                             .await?
                     }
+                    RunState::Gop(run) => {
+                        run.step(self.provider.as_ref(), &self.view, &mut self.ready)
+                            .await?
+                    }
                 };
                 if flow.is_break() {
                     self.run = None;
@@ -96,24 +103,44 @@ impl Executor {
                         inputs, target,
                     )));
                 }
+
+                PlanUnit::Drop(_) => {}
+
+                PlanUnit::GopRun {
+                    entity_path,
+                    codec,
+                    inputs,
+                    timeline,
+                    gop_chunking,
+                    keyframes,
+                } => {
+                    self.run = Some(RunState::Gop(Box::new(GopRunState::new(
+                        entity_path,
+                        inputs,
+                        codec,
+                        timeline,
+                        gop_chunking,
+                        keyframes,
+                    ))));
+                }
             }
         }
     }
 }
 
 /// Load the chunks the slices name and return one input chunk per slice, in slice order.
-pub async fn load_in_order(
+pub async fn load_in_order<S: AsRef<ChunkSlice>>(
     provider: &dyn ChunkProvider,
     view: &ChunkIndexView,
-    slices: &[ChunkSlice],
+    slices: &[S],
 ) -> Result<Vec<Arc<Chunk>>, Error> {
-    let Some(first) = slices.first() else {
+    let Some(first) = slices.first().map(AsRef::as_ref) else {
         return Ok(Vec::new());
     };
 
     let mut ids: Vec<ChunkId> = slices
         .iter()
-        .map(|slice| view.chunk(slice.chunk).chunk_id)
+        .map(|slice| view.chunk(slice.as_ref().chunk).chunk_id)
         .collect();
     ids.sort_unstable();
     ids.dedup();
@@ -130,7 +157,7 @@ pub async fn load_in_order(
         .collect();
 
     let mut chunks = Vec::with_capacity(slices.len());
-    for slice in slices {
+    for slice in slices.iter().map(AsRef::as_ref) {
         let meta = view.chunk(slice.chunk);
         let chunk = by_id
             .get(&meta.chunk_id)
@@ -148,11 +175,16 @@ const MIN_LOAD_CHUNK_BATCH: u64 = 8 * 1024 * 1024;
 /// The end of the next IO batch of `slices` starting at `from`: the shortest prefix of the
 /// remaining slices whose on-disk size reaches [`MIN_LOAD_CHUNK_BATCH`]. Always at least one slice,
 /// so progress is guaranteed.
-fn io_batch_end(view: &ChunkIndexView, slices: &[ChunkSlice], from: usize) -> usize {
+pub fn io_batch_end<S: AsRef<ChunkSlice>>(
+    view: &ChunkIndexView,
+    slices: &[S],
+    from: usize,
+) -> usize {
     let mut end = from;
     let mut batch_bytes = 0_u64;
     while end < slices.len() && batch_bytes < MIN_LOAD_CHUNK_BATCH {
-        batch_bytes = batch_bytes.saturating_add(view.chunk(slices[end].chunk).rrd_byte_size);
+        batch_bytes =
+            batch_bytes.saturating_add(view.chunk(slices[end].as_ref().chunk).rrd_byte_size);
         end += 1;
     }
     end

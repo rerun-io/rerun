@@ -6,7 +6,8 @@
 //! cargo run --release -p re_chunk_optimizer --example optimize_rrd -- --help
 //! ```
 //!
-//! Settings default to `OptimizationProfile::OBJECT_STORE`; no own-chunk rules are applied.
+//! Settings default to `OptimizationProfile::OBJECT_STORE`; no own-chunk rules are applied, and
+//! every video stream is GoP-batched unless `--no-rebatch-videos` is passed.
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -20,7 +21,7 @@ use clap::Parser as _;
 use futures::StreamExt as _;
 use parking_lot::Mutex;
 
-use re_chunk_optimizer::{MergeSplitSettings, OptimizationSettings, optimize};
+use re_chunk_optimizer::{GopBatchingRule, MergeSplitSettings, OptimizationSettings, optimize};
 use re_chunk_store::OptimizationProfile;
 use re_log_encoding::{Encoder, EncodingOptions, RrdChunkProvider, read_rrd_footer};
 use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
@@ -40,7 +41,7 @@ struct Args {
     input: PathBuf,
 
     /// Output RRD file.
-    #[arg(required_unless_present = "no_write")]
+    #[arg(required_unless_present = "dry_run")]
     output: Option<PathBuf>,
 
     /// Maximum chunk size in bytes; defaults to the `OBJECT_STORE` profile's value.
@@ -50,6 +51,10 @@ struct Args {
     /// Timeline to sort the output chunks along.
     #[arg(long)]
     timeline: Option<String>,
+
+    /// Disable GoP batching of video streams.
+    #[arg(long)]
+    no_rebatch_videos: bool,
 
     /// Plan and stream the optimized chunks without writing them out.
     #[arg(long)]
@@ -81,6 +86,11 @@ fn main() -> anyhow::Result<()> {
             .map(TimelineName::try_new)
             .transpose()?,
         own_chunk: Vec::new(),
+        gop_batching: if args.no_rebatch_videos {
+            Vec::new()
+        } else {
+            vec![GopBatchingRule::default()]
+        },
     };
 
     let t_start = Instant::now();

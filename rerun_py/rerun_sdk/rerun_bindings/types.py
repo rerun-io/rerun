@@ -52,3 +52,16 @@ class OwnChunkRuleDict(TypedDict):
     component: str | None
     entity_filter: str | None
     merge_split: Literal["inherit", "passthrough"] | MergeSplitSettingsDict
+
+
+class GopBatchingRuleDict(TypedDict):
+    """
+    Wire form of `rerun.experimental._GopBatchingRule`.
+
+    `entity_filter` holds entity path filter rules, newline-separated, or `None` for every entity.
+    `keyframes` is `"inline"`, `"own_chunk"`, or an own-chunk target.
+    """
+
+    entity_filter: str | None
+    samples: Literal["inherit", "passthrough"] | MergeSplitSettingsDict
+    keyframes: Literal["inline", "own_chunk"] | MergeSplitSettingsDict

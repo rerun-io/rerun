@@ -8,7 +8,7 @@ never moves a bin boundary.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pytest
@@ -124,8 +124,8 @@ def legacy_optimized(input_rrd_path: Path) -> ChunkStore:
     """
     Legacy engine output.
 
-    Object-store thresholds; video passes disabled to pair like with like (the new engine is
-    video-unaware).
+    Object-store thresholds; video passes disabled to pair like with like (the fixture has no
+    codec, so the new engine leaves its video untouched too).
     """
     return (
         RrdReader(input_rrd_path)
@@ -343,3 +343,62 @@ def test_own_chunk_rules(tmp_path: Path) -> None:
         )
     with pytest.raises(ValueError):
         RrdReader(rrd_path).store()._optimized_stream(own_chunk=[_OwnChunkRule.for_column("")])
+
+
+def _vp8_sample(keyframe: bool) -> bytes:
+    """A VP8 frame the detector reads as a keyframe or an interframe: ten header bytes and padding."""
+    return bytes([0x00 if keyframe else 0x01, 0, 0, 0x9D, 0x01, 0x2A, 16, 0, 16, 0]) + b"\0" * 54
+
+
+def test_gop_batching(tmp_path: Path) -> None:
+    """The `gop_batching` rules reach the optimizer: video with a codec is GoP-batched by default."""
+    from rerun.experimental import _GopBatchingRule
+
+    rrd_path = tmp_path / "gop.rrd"
+    num_frames, keyframe_period = 24, 4
+    with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+        rec.save(rrd_path)
+        rec.log("/video", rr.VideoStream(codec=rr.VideoCodec.VP8), static=True)
+        for chunk_start in range(0, num_frames, 6):
+            frames = range(chunk_start, chunk_start + 6)
+            rec.send_columns(
+                "/video",
+                indexes=[rr.TimeColumn("frame", sequence=list(frames))],
+                columns=rr.VideoStream.columns(
+                    sample=[_vp8_sample(f % keyframe_period == 0) for f in frames],
+                    # Wrong on purpose: the detector is the only source of truth.
+                    is_keyframe=[f % keyframe_period != 0 for f in frames],
+                ),
+            )
+
+    def optimized(**kwargs: Any) -> list[rr.chunk.Chunk]:
+        return list(RrdReader(rrd_path).store()._optimized_stream(**kwargs))
+
+    def video_chunks(chunks: list[rr.chunk.Chunk], columns: set[str]) -> list[rr.chunk.Chunk]:
+        return [c for c in chunks if str(c.entity_path) == "/video" and _component_columns(c) == columns]
+
+    def keyframe_rows(chunks: list[rr.chunk.Chunk]) -> int:
+        return sum(c.num_rows for c in video_chunks(chunks, {"VideoStream:is_keyframe"}))
+
+    # Default: the markers are regenerated, one per keyframe, and every other cell survives.
+    default = optimized()
+    assert keyframe_rows(default) == num_frames // keyframe_period
+    dropped = ["/video:VideoStream:is_keyframe", "/video:VideoStream:codec"]
+    actual = ChunkStore.from_chunks(default).reader(index="frame").drop(*dropped)
+    expected = ChunkStore.from_chunks(list(RrdReader(rrd_path).stream())).reader(index="frame").drop(*dropped)
+    assert row_multiset(actual) == row_multiset(expected)
+
+    # An empty list disables GoP batching: the logged labels survive.
+    assert keyframe_rows(optimized(gop_batching=[])) == num_frames
+
+    inline = optimized(gop_batching=[_GopBatchingRule(keyframes="inline")])
+    assert video_chunks(inline, {"VideoStream:sample", "VideoStream:is_keyframe"})
+    assert not video_chunks(inline, {"VideoStream:is_keyframe"})
+
+    # Without a global target, the stream's markers form a single chunk.
+    assert len(video_chunks(optimized(chunk_max_bytes=0), {"VideoStream:is_keyframe"})) == 1
+
+    with pytest.raises(ValueError):
+        optimized(gop_batching=[_GopBatchingRule(entity_filter="+ /cams/$origin")])
+    with pytest.raises(ValueError):
+        optimized(gop_batching=[_GopBatchingRule(keyframes="passthrough")])  # type: ignore[arg-type]

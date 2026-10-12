@@ -18,12 +18,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use re_chunk::{ComponentIdentifier, ComponentType};
-use re_log_types::{EntityPath, EntityPathFilter, ResolvedEntityPathFilter, TimelineName};
-
-use crate::settings::{
-    ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
+use re_log_types::{
+    EntityPath, EntityPathFilter, ResolvedEntityPathFilter, Timeline, TimelineName,
 };
-use crate::view::{ChunkIdx, ChunkIndexView, ChunkMeta, TimelineSetGroup};
+use re_sdk_types::archetypes::VideoStream;
+use vec1::Vec1;
+
+use crate::row_merge::MergeInput;
+use crate::settings::{
+    ColumnSelector, GopBatchingRule, KeyframePlacement, MergeSplitOverride, MergeSplitSettings,
+    OptimizationSettings, OwnChunkRule,
+};
+use crate::view::{ChunkIdx, ChunkIndexView, ChunkMeta, EntityView, TimelineSetGroup};
 
 /// A column subset of one chunk of the index.
 // Note: column only for now, will eventually extend to row windows as well.
@@ -31,6 +37,15 @@ use crate::view::{ChunkIdx, ChunkIndexView, ChunkMeta, TimelineSetGroup};
 pub struct ChunkSlice {
     pub chunk: ChunkIdx,
     pub columns: ColumnSelection,
+}
+
+/// This enables the use of shared utilities such as
+/// [`load_in_order`](crate::executor::load_in_order).
+impl AsRef<Self> for ChunkSlice {
+    #[inline]
+    fn as_ref(&self) -> &Self {
+        self
+    }
 }
 
 impl ChunkSlice {
@@ -70,11 +85,44 @@ pub enum ColumnSelection {
     Except(BTreeSet<ComponentIdentifier>),
 }
 
+/// How a GoP run cuts its samples into output chunks. A GoP is never split.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GopChunkingConfig {
+    /// One chunk per GoP.
+    OnePerGop,
+
+    /// Group GoPs toward a target chunk size.
+    Packed(MergeSplitSettings),
+}
+
+/// Where a GoP run puts the `is_keyframe` column it generates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyframePlacementConfig {
+    /// Collocated in the same chunk as the sample column.
+    Inline,
+
+    /// Chunks of its own, packed toward the target.
+    OwnChunk(MergeSplitSettings),
+}
+
+/// The `is_keyframe` target when neither the rule nor the global settings give one: one chunk per
+/// stream.
+pub const KEYFRAMES_UNBOUNDED: MergeSplitSettings = MergeSplitSettings {
+    max_bytes: std::num::NonZeroU64::MAX,
+    max_rows: None,
+    max_rows_if_unsorted: None,
+};
+
 /// One piece of the plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlanUnit {
     /// Emit the slice as-is.
     Passthrough(ChunkSlice),
+
+    /// Discard the slice.
+    ///
+    /// Essentially a no-op, kept only to assess plan coverage completeness.
+    Drop(ChunkSlice),
 
     /// Load the slices in order, merging/splitting them on the way per the target settings.
     ///
@@ -91,11 +139,69 @@ pub enum PlanUnit {
         inputs: Vec<ChunkSlice>,
         target: MergeSplitSettings,
     },
+
+    /// Decide the stream's codec, sort the inputs' rows by `timeline`, cut at detected keyframes,
+    /// pack whole GoPs, and generate the `is_keyframe` column.
+    GopRun {
+        entity_path: EntityPath,
+
+        /// Slices used to determine the stream's codec.
+        ///
+        /// These are read-only, so not used to assess plan completeness. A single static codec chunk
+        /// is produced instead.
+        codec: CodecSource,
+
+        /// One per sample-carrying chunk of the entity, in range-start order on `timeline`. Each
+        /// slice is the chunk's `VideoStream:sample` column, plus its `VideoStream:codec` column,
+        /// if any, when the stream's codec is temporal (see [`CodecSource::Temporal`]): the run
+        /// checks each of those codec cells against the stream's codec.
+        inputs: Vec<MergeInput>,
+
+        timeline: TimelineName,
+        gop_chunking: GopChunkingConfig,
+        keyframes: KeyframePlacementConfig,
+    },
+}
+
+/// The slices a GoP run decides its stream's codec from.
+///
+/// Either way, the stream comes out with one static codec and no temporal one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CodecSource {
+    /// Every static codec slice of the entity. The latest row wins, and shadows every temporal
+    /// codec cell.
+    Static(Vec1<ChunkSlice>),
+
+    /// Every temporal codec slice outside the sample chunks, or else the first sample chunk's.
+    /// Every temporal codec cell must hold the same codec.
+    Temporal(Vec1<ChunkSlice>),
+}
+
+pub fn sample_column() -> ComponentIdentifier {
+    VideoStream::descriptor_sample().component
+}
+
+pub fn codec_column() -> ComponentIdentifier {
+    VideoStream::descriptor_codec().component
+}
+
+pub fn keyframe_column() -> ComponentIdentifier {
+    VideoStream::descriptor_is_keyframe().component
 }
 
 /// The own columns of one entity, each with the target its run merges toward, or `None` when its
 /// slices pass through.
 type OwnColumns = BTreeMap<ComponentIdentifier, Option<MergeSplitSettings>>;
+
+/// The GoP rule of one matched entity, resolved.
+struct GopEntity<'a> {
+    /// The entity's only timeline set with sample-carrying chunks.
+    sample_group: &'a TimelineSetGroup,
+
+    codec: CodecSource,
+    gop_chunking: GopChunkingConfig,
+    keyframes: KeyframePlacementConfig,
+}
 
 /// Build a plan.
 pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanUnit> {
@@ -104,8 +210,16 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     let mut units = Vec::new();
     let mut claimed = vec![false; view.num_chunks()];
 
-    // Resolved for every entity up front: the static and orphan loops below are global.
-    let own_columns_by_entity = resolve_own_columns(view, settings);
+    // The GoP rule owns the sample, codec, and keyframe columns of the entities it matches.
+    let gop_entities = resolve_gop_entities(view, settings);
+    let mut own_columns_by_entity = resolve_own_columns(view, settings);
+    for entity_path in gop_entities.keys() {
+        if let Some(own) = own_columns_by_entity.get_mut(entity_path) {
+            own.remove(&sample_column());
+            own.remove(&codec_column());
+            own.remove(&keyframe_column());
+        }
+    }
     let no_own_columns = OwnColumns::new();
     let own_columns_of = |entity_path: &EntityPath| {
         own_columns_by_entity
@@ -113,14 +227,27 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
             .unwrap_or(&no_own_columns)
     };
 
-    // Static chunks pass through, in chunk-index order, split on their own columns.
+    // Static chunks pass through, in chunk-index order, split on their own columns. A matched
+    // entity's static `is_keyframe` is left to its GoP run.
+    let static_keyframe = [keyframe_column()];
     for (idx, meta) in view.chunks() {
         if meta.is_static {
             claimed[idx.as_usize()] = true;
+            let excluded_columns: &[ComponentIdentifier] =
+                if gop_entities.contains_key(&meta.entity_path) {
+                    &static_keyframe
+                } else {
+                    &[]
+                };
             units.extend(
-                slices_of_chunk(idx, meta, own_columns_of(&meta.entity_path))
-                    .into_iter()
-                    .map(PlanUnit::Passthrough),
+                slices_of_chunk(
+                    idx,
+                    meta,
+                    own_columns_of(&meta.entity_path),
+                    excluded_columns,
+                )
+                .into_iter()
+                .map(PlanUnit::Passthrough),
             );
         }
     }
@@ -128,10 +255,29 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     // Temporal chunks merge per entity and per exact timeline set — the same grouping the merge
     // gate `Chunk::concatenable` enforces at merge time. Within a group, every own column gets a
     // run of its own over the chunks that carry it, then the rest of every chunk forms one run.
+    // A matched entity's video columns are left to its GoP run.
+    let video_columns = [sample_column(), codec_column(), keyframe_column()];
     for (entity_path, entity) in &view.entities {
         let own = own_columns_of(entity_path);
+        let gop = gop_entities.get(entity_path);
+
+        let already_handled_columns: &[ComponentIdentifier] = if let Some(gop) = gop {
+            plan_gop_entity(view, entity_path, entity, gop, settings, &mut units);
+            &video_columns
+        } else {
+            &[]
+        };
+
         for group in &entity.timeline_sets {
-            plan_group(view, group, own, settings, &mut units, &mut claimed);
+            plan_group(
+                view,
+                group,
+                own,
+                already_handled_columns,
+                settings,
+                &mut units,
+                &mut claimed,
+            );
         }
     }
 
@@ -146,7 +292,7 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
                 meta.entity_path,
             );
             units.extend(
-                slices_of_chunk(idx, meta, own_columns_of(&meta.entity_path))
+                slices_of_chunk(idx, meta, own_columns_of(&meta.entity_path), &[])
                     .into_iter()
                     .map(PlanUnit::Passthrough),
             );
@@ -162,10 +308,13 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
 }
 
 /// Plan one group: own runs, then the rest run, in sweep order.
+///
+/// The `excluded_columns` stay out of both; the caller routes them through other units.
 fn plan_group(
     view: &ChunkIndexView,
     group: &TimelineSetGroup,
     own: &OwnColumns,
+    excluded_columns: &[ComponentIdentifier],
     settings: &OptimizationSettings,
     units: &mut Vec<PlanUnit>,
     claimed: &mut [bool],
@@ -179,13 +328,19 @@ fn plan_group(
     let mut rest = Vec::new();
     for &idx in &order {
         let meta = view.chunk(idx);
-        let present = present_own_columns(meta, own);
+        let mut present = present_own_columns(meta, own);
         for &column in &present {
             own_runs
                 .entry(column)
                 .or_default()
                 .push(ChunkSlice::only(idx, [column]));
         }
+        present.extend(
+            excluded_columns
+                .iter()
+                .filter(|column| meta.components.contains_key(column))
+                .copied(),
+        );
         rest.extend(rest_slice(idx, meta, present));
     }
 
@@ -197,6 +352,126 @@ fn plan_group(
     }
 }
 
+/// Plan a matched entity's video columns: `VideoStream:sample`, `VideoStream:codec`, and
+/// `VideoStream:is_keyframe`.
+///
+/// # Samples
+///
+/// The sample slices of one entity are gathered into a single [`PlanUnit::GopRun`]. They must
+/// share one timeline set. If they don't, GoP batching of the entity is skipped with a warning
+/// (enforced by [`resolve_gop_entities`]). The run detects keyframes from the samples, cuts at
+/// them, and packs whole GoPs per [`GopChunkingConfig`].
+///
+/// # Keyframes
+///
+/// The input `is_keyframe` column is entirely dropped, on any timeline set: the run regenerates the
+/// column from detection, placed per [`KeyframePlacementConfig`].
+///
+/// # Codec
+///
+/// The stream must have a single codec, and comes out with it as one static cell (see
+/// [`CodecSource`]).
+///
+/// - With a static codec, the latest one decides and shadows a temporal codec column, which is
+///   dropped unchecked.
+/// - Without one, all temporal codec values must be the same. Those stored outside the sample
+///   chunks, on any timeline set, are read before the run's first output, then dropped. Those
+///   inside the sample chunks ride along in the run's inputs: the run checks them as it loads
+///   those chunks, then drops them (reading them up front would load every sample chunk twice).
+///   With no codec values outside the sample chunks, the first sample chunk's codec column is read
+///   up front instead, to decide the codec before the first keyframe detection.
+///
+/// A codec switch is unsupported: it fails the whole optimization.
+fn plan_gop_entity(
+    view: &ChunkIndexView,
+    entity_path: &EntityPath,
+    entity: &EntityView,
+    gop: &GopEntity<'_>,
+    settings: &OptimizationSettings,
+    units: &mut Vec<PlanUnit>,
+) {
+    let carries = |idx: ChunkIdx, column: ComponentIdentifier| {
+        view.chunk(idx).components.contains_key(&column)
+    };
+    let run_checks_codec = |idx: ChunkIdx| {
+        matches!(gop.codec, CodecSource::Temporal(_)) && carries(idx, sample_column())
+    };
+
+    // A static `is_keyframe` would shadow the regenerated, temporal one.
+    let static_keyframes: Vec<ChunkIdx> = entity
+        .static_chunks
+        .iter()
+        .copied()
+        .filter(|&idx| carries(idx, keyframe_column()))
+        .collect();
+    if !static_keyframes.is_empty() {
+        re_log::warn!(
+            "Dropping the static {} column of a video stream, which would hide the regenerated \
+             keyframes\nEntity: {entity_path}",
+            keyframe_column()
+        );
+    }
+    for idx in static_keyframes {
+        units.push(PlanUnit::Drop(ChunkSlice::only(idx, [keyframe_column()])));
+    }
+
+    for idx in temporal_chunks_in_index_order(entity) {
+        if carries(idx, keyframe_column()) {
+            units.push(PlanUnit::Drop(ChunkSlice::only(idx, [keyframe_column()])));
+        }
+        if carries(idx, codec_column()) && !run_checks_codec(idx) {
+            units.push(PlanUnit::Drop(ChunkSlice::only(idx, [codec_column()])));
+        }
+    }
+
+    let group = gop.sample_group;
+    let timeline = run_timeline(group, settings.target_timeline.as_ref());
+    let inputs = MergeInput::from_group(group, &timeline, |idx| {
+        carries(idx, sample_column()).then(|| {
+            let columns = std::iter::chain(
+                [sample_column()],
+                (run_checks_codec(idx) && carries(idx, codec_column())).then(codec_column),
+            );
+            ChunkSlice::only(idx, columns)
+        })
+    });
+    units.push(PlanUnit::GopRun {
+        entity_path: entity_path.clone(),
+        codec: gop.codec.clone(),
+        inputs,
+        timeline: *timeline.name(),
+        gop_chunking: gop.gop_chunking,
+        keyframes: gop.keyframes,
+    });
+}
+
+/// Whether any chunk of the group carries a `VideoStream:sample` column.
+fn carries_samples(view: &ChunkIndexView, group: &TimelineSetGroup) -> bool {
+    group
+        .per_timeline
+        .values()
+        .next()
+        .into_iter()
+        .flatten()
+        .any(|span| {
+            view.chunk(span.chunk)
+                .components
+                .contains_key(&sample_column())
+        })
+}
+
+/// The timeline a GoP run sorts its rows on: the target timeline when the group has it, else the
+/// best by [`Timeline::pick_best_timeline`]'s priority order.
+fn run_timeline(group: &TimelineSetGroup, target_timeline: Option<&TimelineName>) -> Timeline {
+    if let Some(target) = target_timeline
+        && let Some(timeline) = group.timelines.iter().find(|t| t.name() == target)
+    {
+        return *timeline;
+    }
+    // Every row of a group is on every timeline of the group, so no score tells them apart.
+    Timeline::pick_best_timeline(group.timelines.iter(), |_| 0)
+}
+
 fn emit(units: &mut Vec<PlanUnit>, inputs: Vec<ChunkSlice>, target: Option<MergeSplitSettings>) {
     match target {
         Some(target) => units.push(PlanUnit::MergeSplitRun { inputs, target }),
@@ -204,12 +479,25 @@ fn emit(units: &mut Vec<PlanUnit>, inputs: Vec<ChunkSlice>, target: Option<Merge
     }
 }
 
-fn slices_of_chunk(idx: ChunkIdx, meta: &ChunkMeta, own: &OwnColumns) -> Vec<ChunkSlice> {
-    let present = present_own_columns(meta, own);
+/// The slices of one chunk: one per own column it carries, then the rest. The `excluded_columns`
+/// are in neither; the caller routes them through other units.
+fn slices_of_chunk(
+    idx: ChunkIdx,
+    meta: &ChunkMeta,
+    own: &OwnColumns,
+    excluded_columns: &[ComponentIdentifier],
+) -> Vec<ChunkSlice> {
+    let mut present = present_own_columns(meta, own);
     let mut slices: Vec<ChunkSlice> = present
         .iter()
         .map(|&column| ChunkSlice::only(idx, [column]))
         .collect();
+    present.extend(
+        excluded_columns
+            .iter()
+            .filter(|column| meta.components.contains_key(column))
+            .copied(),
+    );
     slices.extend(rest_slice(idx, meta, present));
     slices
 }
@@ -235,6 +523,138 @@ fn rest_slice(
     } else {
         Some(ChunkSlice::except(idx, present))
     }
+}
+
+/// Resolve [`OptimizationSettings::gop_batching`] per entity.
+///
+/// See [`plan_gop_entity`] for details.
+fn resolve_gop_entities<'a>(
+    view: &'a ChunkIndexView,
+    settings: &OptimizationSettings,
+) -> BTreeMap<EntityPath, GopEntity<'a>> {
+    if settings.gop_batching.is_empty() {
+        return BTreeMap::new();
+    }
+
+    let rules: Vec<(Option<ResolvedEntityPathFilter>, &GopBatchingRule)> = settings
+        .gop_batching
+        .iter()
+        .map(|rule| {
+            (
+                rule.entity_filter
+                    .clone()
+                    .map(EntityPathFilter::resolve_without_substitutions),
+                rule,
+            )
+        })
+        .collect();
+
+    let resolve_chunking = |samples: MergeSplitOverride| match samples {
+        MergeSplitOverride::Inherit => settings
+            .merge_split
+            .map_or(GopChunkingConfig::OnePerGop, GopChunkingConfig::Packed),
+        MergeSplitOverride::Passthrough => GopChunkingConfig::OnePerGop,
+        MergeSplitOverride::MergeSplit(target) => GopChunkingConfig::Packed(target),
+    };
+
+    view.entities
+        .iter()
+        .filter_map(|(entity_path, entity)| {
+            let (_, rule) = rules.iter().find(|(filter, _)| {
+                filter
+                    .as_ref()
+                    .is_none_or(|filter| filter.matches(entity_path))
+            })?;
+
+            let temporal = temporal_chunks_in_index_order(entity);
+            let carries = |idx: &ChunkIdx, column: ComponentIdentifier| {
+                view.chunk(*idx).components.contains_key(&column)
+            };
+            // Chunks on different timeline sets never merge, so samples spread over several
+            // could not form one stream.
+            let mut sample_groups = entity
+                .timeline_sets
+                .iter()
+                .filter(|group| carries_samples(view, group));
+            let sample_group = match (sample_groups.next(), sample_groups.next()) {
+                (None, _) => return None,
+                (Some(group), None) => group,
+                (Some(_), Some(_)) => {
+                    re_log::warn!(
+                        "Skipping GoP batching of a video stream whose samples span several \
+                         timeline sets\nEntity: {entity_path}"
+                    );
+                    return None;
+                }
+            };
+            let codec_slice = |idx: &ChunkIdx| ChunkSlice::only(*idx, [codec_column()]);
+            let static_codecs: Vec<ChunkSlice> = entity
+                .static_chunks
+                .iter()
+                .filter(|idx| carries(idx, codec_column()))
+                .map(codec_slice)
+                .collect();
+            let codec = if let Ok(static_codecs) = Vec1::try_from_vec(static_codecs) {
+                CodecSource::Static(static_codecs)
+            } else {
+                let mut temporal_codecs: Vec<ChunkSlice> = temporal
+                    .iter()
+                    .filter(|idx| carries(idx, codec_column()) && !carries(idx, sample_column()))
+                    .map(codec_slice)
+                    .collect();
+                if temporal_codecs.is_empty() {
+                    temporal_codecs.extend(
+                        temporal
+                            .iter()
+                            .find(|idx| carries(idx, codec_column()))
+                            .map(codec_slice),
+                    );
+                }
+                let Ok(temporal_codecs) = Vec1::try_from_vec(temporal_codecs) else {
+                    re_log::warn!(
+                        "Skipping GoP batching of a video stream without a {} column\nEntity: {entity_path}",
+                        codec_column()
+                    );
+                    return None;
+                };
+                CodecSource::Temporal(temporal_codecs)
+            };
+
+            let keyframes = match rule.keyframes {
+                KeyframePlacement::Inline => KeyframePlacementConfig::Inline,
+                KeyframePlacement::OwnChunk(target) => KeyframePlacementConfig::OwnChunk(
+                    target.or(settings.merge_split).unwrap_or(KEYFRAMES_UNBOUNDED),
+                ),
+            };
+            Some((
+                entity_path.clone(),
+                GopEntity {
+                    sample_group,
+                    codec,
+                    gop_chunking: resolve_chunking(rule.samples),
+                    keyframes,
+                },
+            ))
+        })
+        .collect()
+}
+
+fn temporal_chunks_in_index_order(entity: &EntityView) -> Vec<ChunkIdx> {
+    let mut chunks: Vec<ChunkIdx> = entity
+        .timeline_sets
+        .iter()
+        .flat_map(|group| {
+            group
+                .per_timeline
+                .values()
+                .next()
+                .into_iter()
+                .flatten()
+                .map(|span| span.chunk)
+        })
+        .collect();
+    chunks.sort_unstable();
+    chunks
 }
 
 /// Resolve [`OptimizationSettings::own_chunk`] per entity.
@@ -343,15 +763,24 @@ pub fn plan_covers_view(view: &ChunkIndexView, units: &[PlanUnit]) -> bool {
 
     for unit in units {
         match unit {
-            PlanUnit::Passthrough(slice) => {
+            PlanUnit::Passthrough(slice) | PlanUnit::Drop(slice) => {
                 slices[slice.chunk.as_usize()].push(&slice.columns);
             }
 
-            PlanUnit::MergeSplitRun { inputs, target: _ } => {
+            PlanUnit::MergeSplitRun { inputs, .. } => {
                 if inputs.is_empty() {
                     return false;
                 }
                 for slice in inputs {
+                    slices[slice.chunk.as_usize()].push(&slice.columns);
+                }
+            }
+
+            PlanUnit::GopRun { inputs, .. } => {
+                if inputs.is_empty() {
+                    return false;
+                }
+                for MergeInput { slice, .. } in inputs {
                     slices[slice.chunk.as_usize()].push(&slice.columns);
                 }
             }
@@ -406,22 +835,28 @@ mod tests {
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId};
     use re_chunk_index::RawRrdManifest;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-    use re_log_types::{EntityPathFilter, StoreId, StoreKind, Timeline};
+    use re_log_types::{EntityPathFilter, StoreId, StoreKind, TimeInt, TimePoint, Timeline};
+    use re_sdk_types::archetypes::VideoStream;
+    use re_sdk_types::components::{IsKeyframe, VideoCodec, VideoSample};
     use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};
 
-    use super::{ChunkSlice, PlanUnit, plan, plan_covers_view};
+    use super::{
+        ChunkSlice, CodecSource, GopChunkingConfig, KeyframePlacementConfig, MergeInput, PlanUnit,
+        codec_column, keyframe_column, plan, plan_covers_view, sample_column,
+    };
     use crate::view::{ChunkIdx, ChunkIndexView};
     use crate::{
-        ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
+        ColumnSelector, GopBatchingRule, KeyframePlacement, MergeSplitOverride, MergeSplitSettings,
+        OptimizationSettings, OwnChunkRule,
     };
 
     /// A temporal chunk on the `frame` timeline: one row per time, `points_per_row` points each.
     fn temporal_chunk(id: u128, entity: &str, times: &[i64], points_per_row: u32) -> Chunk {
         let frame = Timeline::new_sequence("frame");
         let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
-        for (i, &time) in times.iter().enumerate() {
+        for &time in times {
             builder = builder.with_serialized_batches(
-                RowId::from_u128((id << 32) + i as u128 + 1),
+                RowId::new(),
                 [(frame, time)],
                 [MyPoint::from_iter(0..points_per_row)
                     .try_serialized(MyPoints::descriptor_points())
@@ -435,9 +870,9 @@ mod tests {
     fn temporal_color_chunk(id: u128, entity: &str, times: &[i64], colors_per_row: u32) -> Chunk {
         let frame = Timeline::new_sequence("frame");
         let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
-        for (i, &time) in times.iter().enumerate() {
+        for &time in times {
             builder = builder.with_serialized_batches(
-                RowId::from_u128((id << 32) + i as u128 + 1),
+                RowId::new(),
                 [(frame, time)],
                 [MyColor::from_iter(0..colors_per_row)
                     .try_serialized(MyPoints::descriptor_colors())
@@ -457,9 +892,9 @@ mod tests {
     ) -> Chunk {
         let frame = Timeline::new_sequence("frame");
         let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
-        for (i, &time) in times.iter().enumerate() {
+        for &time in times {
             builder = builder.with_serialized_batches(
-                RowId::from_u128((id << 32) + i as u128 + 1),
+                RowId::new(),
                 [(frame, time)],
                 [
                     MyPoint::from_iter(0..points_per_row)
@@ -486,9 +921,9 @@ mod tests {
     fn temporal_untyped_chunk(id: u128, entity: &str, times: &[i64]) -> Chunk {
         let frame = Timeline::new_sequence("frame");
         let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
-        for (i, &time) in times.iter().enumerate() {
+        for &time in times {
             builder = builder.with_serialized_batches(
-                RowId::from_u128((id << 32) + i as u128 + 1),
+                RowId::new(),
                 [(frame, time)],
                 [
                     MyPoint::from_iter(0..2)
@@ -506,7 +941,7 @@ mod tests {
     fn static_chunk(id: u128, entity: &str) -> Chunk {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
-                RowId::from_u128(id << 32),
+                RowId::new(),
                 re_log_types::TimePoint::default(),
                 [MyPoint::from_iter(0..1)
                     .try_serialized(MyPoints::descriptor_points())
@@ -519,7 +954,7 @@ mod tests {
     fn static_mixed_chunk(id: u128, entity: &str) -> Chunk {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
-                RowId::from_u128(id << 32),
+                RowId::new(),
                 re_log_types::TimePoint::default(),
                 [
                     MyPoint::from_iter(0..1)
@@ -570,6 +1005,7 @@ mod tests {
             merge_split: Some(merge_split_settings(max_bytes, max_rows)),
             target_timeline: None,
             own_chunk: Vec::new(),
+            gop_batching: Vec::new(),
         }
     }
 
@@ -644,7 +1080,7 @@ mod tests {
             let mut builder = Chunk::builder_with_id(ChunkId::from_u128(3), "entity");
             for i in 0..2_i64 {
                 builder = builder.with_serialized_batches(
-                    RowId::from_u128((3 << 32) + i as u128 + 1),
+                    RowId::new(),
                     [(frame, i), (other, i)],
                     [MyPoint::from_iter(0..64)
                         .try_serialized(MyPoints::descriptor_points())
@@ -695,6 +1131,7 @@ mod tests {
             merge_split: None,
             target_timeline: None,
             own_chunk: Vec::new(),
+            gop_batching: Vec::new(),
         };
         let outputs = plan(&view, &disabled);
         assert!(plan_covers_view(&view, &outputs));
@@ -722,9 +1159,8 @@ mod tests {
         let view = view_of(&chunks);
 
         let with_target = |name: &str| OptimizationSettings {
-            merge_split: settings(1024 * 1024, 0).merge_split,
             target_timeline: Some(re_log_types::TimelineName::try_new(name).unwrap()),
-            own_chunk: Vec::new(),
+            ..settings(1024 * 1024, 0)
         };
 
         // Time order sweeps 0, 10, 20, 30.
@@ -824,7 +1260,7 @@ mod tests {
         let dedicated_on_other = |id: u128| {
             Chunk::builder_with_id(ChunkId::from_u128(id), "entity")
                 .with_serialized_batches(
-                    RowId::from_u128(id << 32),
+                    RowId::new(),
                     [(other, 0_i64)],
                     [MyColor::from_iter(0..4)
                         .try_serialized(MyPoints::descriptor_colors())
@@ -905,6 +1341,7 @@ mod tests {
                 .filter(|unit| match unit {
                     PlanUnit::Passthrough(slice) => is_colors_of_1(slice),
                     PlanUnit::MergeSplitRun { inputs, .. } => inputs.iter().any(is_colors_of_1),
+                    PlanUnit::Drop(_) | PlanUnit::GopRun { .. } => false,
                 })
                 .collect::<Vec<_>>()
         };
@@ -937,6 +1374,7 @@ mod tests {
                     PlanUnit::MergeSplitRun { inputs, .. } => {
                         inputs.iter().any(|s| s.chunk == idx_of(&view, 4))
                     }
+                    PlanUnit::Drop(_) | PlanUnit::GopRun { .. } => false,
                 })
                 .cloned()
                 .collect::<Vec<_>>()
@@ -1173,6 +1611,680 @@ mod tests {
                 },
                 PlanUnit::Passthrough(ChunkSlice::all(idx)),
             ]
+        ));
+    }
+
+    // --- GoP batching ---
+
+    fn frame() -> Timeline {
+        Timeline::new_sequence("frame")
+    }
+
+    /// One `VideoStream:sample` per row at the given time points; with `with_keyframe`, every row
+    /// also carries an `is_keyframe` cell, `true` on the first row only.
+    fn video_rows(
+        id: u128,
+        entity: &str,
+        timepoints: &[Vec<(Timeline, i64)>],
+        with_keyframe: bool,
+    ) -> Chunk {
+        let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
+        for (i, timepoint) in timepoints.iter().enumerate() {
+            let mut batches = vec![
+                vec![VideoSample::from(vec![0_u8; 16])]
+                    .try_serialized(VideoStream::descriptor_sample())
+                    .unwrap(),
+            ];
+            if with_keyframe {
+                batches.push(
+                    vec![IsKeyframe::from(i == 0)]
+                        .try_serialized(VideoStream::descriptor_is_keyframe())
+                        .unwrap(),
+                );
+            }
+            builder = builder.with_serialized_batches(
+                RowId::new(),
+                timepoint.iter().copied().collect::<TimePoint>(),
+                batches,
+            );
+        }
+        builder.build().unwrap()
+    }
+
+    /// Sample rows on `frame`.
+    fn video_chunk(id: u128, entity: &str, times: &[i64], with_keyframe: bool) -> Chunk {
+        let timepoints: Vec<_> = times.iter().map(|&t| vec![(frame(), t)]).collect();
+        video_rows(id, entity, &timepoints, with_keyframe)
+    }
+
+    /// `is_keyframe` rows only, on `frame`, `true` on the first row only.
+    fn keyframe_chunk(id: u128, entity: &str, times: &[i64]) -> Chunk {
+        let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
+        for (i, &time) in times.iter().enumerate() {
+            builder = builder.with_serialized_batches(
+                RowId::new(),
+                [(frame(), time)],
+                [vec![IsKeyframe::from(i == 0)]
+                    .try_serialized(VideoStream::descriptor_is_keyframe())
+                    .unwrap()],
+            );
+        }
+        builder.build().unwrap()
+    }
+
+    fn static_codec_chunk(id: u128, entity: &str) -> Chunk {
+        Chunk::builder_with_id(ChunkId::from_u128(id), entity)
+            .with_serialized_batches(
+                RowId::new(),
+                TimePoint::default(),
+                [vec![VideoCodec::VP8]
+                    .try_serialized(VideoStream::descriptor_codec())
+                    .unwrap()],
+            )
+            .build()
+            .unwrap()
+    }
+
+    /// Sample and codec on every row, on `frame`.
+    fn temporal_codec_chunk(id: u128, entity: &str, times: &[i64]) -> Chunk {
+        let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
+        for &time in times {
+            builder = builder.with_serialized_batches(
+                RowId::new(),
+                [(frame(), time)],
+                [
+                    vec![VideoSample::from(vec![0_u8; 16])]
+                        .try_serialized(VideoStream::descriptor_sample())
+                        .unwrap(),
+                    vec![VideoCodec::VP8]
+                        .try_serialized(VideoStream::descriptor_codec())
+                        .unwrap(),
+                ],
+            );
+        }
+        builder.build().unwrap()
+    }
+
+    fn with_gop_rules(
+        mut settings: OptimizationSettings,
+        rules: Vec<GopBatchingRule>,
+    ) -> OptimizationSettings {
+        settings.gop_batching = rules;
+        settings
+    }
+
+    /// The plan as text, for snapshots: one line per unit, its inputs indented below it, and
+    /// chunks named `#<fixture id>`.
+    //TODO(ab): apply this to pre-existing tests.
+    //TODO(ab): consider rolling some custom `Debug` instead (note: derived `Debug` makes overly
+    //verbose snapshots).
+    fn render_plan(view: &ChunkIndexView, units: &[PlanUnit]) -> String {
+        use std::fmt::Write as _;
+
+        let chunk = |idx: ChunkIdx| format!("#{}", view.chunk(idx).chunk_id.as_u128());
+        let slice = |slice: &ChunkSlice| {
+            let list = |kind: &str, columns: &BTreeSet<ComponentIdentifier>| {
+                let columns: Vec<&str> = columns.iter().map(|column| column.as_str()).collect();
+                format!("{kind}[{}]", columns.join(", "))
+            };
+            let columns = match &slice.columns {
+                super::ColumnSelection::All => "all".to_owned(),
+                super::ColumnSelection::Only(columns) => list("only", columns),
+                super::ColumnSelection::Except(columns) => list("except", columns),
+            };
+            format!("{} {columns}", chunk(slice.chunk))
+        };
+        let target = |target: &MergeSplitSettings| {
+            let MergeSplitSettings {
+                max_bytes,
+                max_rows,
+                max_rows_if_unsorted,
+            } = target;
+            let mut text = format!("{max_bytes} B");
+            if let Some(rows) = max_rows {
+                write!(text, ", {rows} rows").ok();
+            }
+            if let Some(rows) = max_rows_if_unsorted {
+                write!(text, ", {rows} unsorted rows").ok();
+            }
+            text
+        };
+
+        let mut lines = Vec::new();
+        for unit in units {
+            match unit {
+                PlanUnit::Passthrough(s) => lines.push(format!("passthrough {}", slice(s))),
+                PlanUnit::Drop(s) => lines.push(format!("drop {}", slice(s))),
+                PlanUnit::MergeSplitRun {
+                    inputs,
+                    target: run_target,
+                } => {
+                    lines.push(format!("merge_split ({})", target(run_target)));
+                    lines.extend(inputs.iter().map(|s| format!("  {}", slice(s))));
+                }
+                PlanUnit::GopRun {
+                    entity_path,
+                    codec,
+                    inputs,
+                    timeline,
+                    gop_chunking,
+                    keyframes,
+                } => {
+                    let (source, codec_slices) = match codec {
+                        CodecSource::Static(slices) => ("static", slices),
+                        CodecSource::Temporal(slices) => ("temporal", slices),
+                    };
+                    let codec_chunks: Vec<String> =
+                        codec_slices.iter().map(|s| chunk(s.chunk)).collect();
+                    let chunking = match gop_chunking {
+                        GopChunkingConfig::OnePerGop => "one per GoP".to_owned(),
+                        GopChunkingConfig::Packed(t) => format!("packed ({})", target(t)),
+                    };
+                    let keyframes = match keyframes {
+                        KeyframePlacementConfig::Inline => "inline".to_owned(),
+                        KeyframePlacementConfig::OwnChunk(t) => {
+                            format!("own chunk ({})", target(t))
+                        }
+                    };
+                    lines.push(format!("gop_run {entity_path} on {timeline}"));
+                    lines.push(format!("  codec: {source} {}", codec_chunks.join(" ")));
+                    lines.push(format!("  chunking: {chunking}"));
+                    lines.push(format!("  keyframes: {keyframes}"));
+                    lines.extend(inputs.iter().map(|input| {
+                        format!("  {} @{}", slice(&input.slice), input.start.as_i64())
+                    }));
+                }
+            }
+        }
+        lines.join("\n")
+    }
+
+    /// The warnings logged since `log_rx` was registered that name `entity_prefix`, sorted.
+    fn warnings_about(
+        log_rx: &re_log::Receiver<re_log::LogMsg>,
+        entity_prefix: &str,
+    ) -> Vec<String> {
+        let mut warnings: Vec<String> = log_rx
+            .try_iter()
+            .map(|msg| msg.message)
+            .filter(|message| message.contains(entity_prefix))
+            .collect();
+        warnings.sort();
+        warnings
+    }
+
+    fn gop_runs(units: &[PlanUnit]) -> Vec<&PlanUnit> {
+        units
+            .iter()
+            .filter(|unit| matches!(unit, PlanUnit::GopRun { .. }))
+            .collect()
+    }
+
+    fn starts(times: &[i64]) -> Vec<TimeInt> {
+        times.iter().map(|&t| TimeInt::new_temporal(t)).collect()
+    }
+
+    /// A matched entity: the static codec chunk passes through and decides the codec, every
+    /// temporal `is_keyframe` cell is dropped, on any timeline set, the samples form one GoP run in
+    /// start order, and the sample chunks' other columns go to the entity's rest run.
+    #[test]
+    fn gop_plan_units() {
+        let sample_and_point = Chunk::builder_with_id(ChunkId::from_u128(8), "video")
+            .with_serialized_batches(
+                RowId::new(),
+                [(frame(), 50_i64)],
+                [
+                    vec![VideoSample::from(vec![0_u8; 16])]
+                        .try_serialized(VideoStream::descriptor_sample())
+                        .unwrap(),
+                    vec![MyPoint::new(1.0, 2.0)]
+                        .try_serialized(MyPoints::descriptor_points())
+                        .unwrap(),
+                ],
+            )
+            .build()
+            .unwrap();
+        let chunks = vec![
+            static_codec_chunk(1, "video"),
+            video_chunk(2, "video", &[0, 1], false),
+            video_chunk(3, "video", &[10, 11], true),
+            video_chunk(4, "video", &[20, 21], false),
+            video_chunk(5, "video", &[30, 31], true),
+            keyframe_chunk(6, "video", &[40, 41]),
+            Chunk::builder_with_id(ChunkId::from_u128(7), "video")
+                .with_serialized_batches(
+                    RowId::new(),
+                    [(Timeline::new_sequence("other"), 0_i64)],
+                    [vec![IsKeyframe::from(true)]
+                        .try_serialized(VideoStream::descriptor_is_keyframe())
+                        .unwrap()],
+                )
+                .build()
+                .unwrap(),
+            sample_and_point,
+        ];
+        let view = view_of(&chunks);
+        let settings = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
+
+        let units = plan(&view, &settings);
+
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 all
+            drop #3 only[VideoStream:is_keyframe]
+            drop #5 only[VideoStream:is_keyframe]
+            drop #6 only[VideoStream:is_keyframe]
+            drop #7 only[VideoStream:is_keyframe]
+            gop_run /video on frame
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+              #3 only[VideoStream:sample] @10
+              #4 only[VideoStream:sample] @20
+              #5 only[VideoStream:sample] @30
+              #8 only[VideoStream:sample] @50
+            merge_split (1048576 B)
+              #8 except[VideoStream:sample]
+            ");
+    }
+
+    /// Rules are tried in order and the first matching filter decides; an unmatched entity's
+    /// `is_keyframe` follows the own-chunk rules. Own-chunk rules on `sample` and `codec` are
+    /// ignored on a matched entity.
+    #[test]
+    fn gop_rule_matching() {
+        let keyframe_own_rule = OwnChunkRule::new(ColumnSelector::Column(keyframe_column()));
+        let global = with_rules(settings(1024 * 1024, 0), vec![keyframe_own_rule.clone()]);
+        let target = global.merge_split.unwrap();
+        let samples_of = |units: &[PlanUnit]| -> Vec<GopChunkingConfig> {
+            gop_runs(units)
+                .into_iter()
+                .map(|unit| match unit {
+                    PlanUnit::GopRun { gop_chunking, .. } => *gop_chunking,
+                    _ => unreachable!(),
+                })
+                .collect()
+        };
+
+        let chunks = vec![
+            static_codec_chunk(1, "a"),
+            video_chunk(2, "a", &[0, 1], true),
+            static_codec_chunk(3, "b"),
+            video_chunk(4, "b", &[0, 1], true),
+        ];
+        let view = view_of(&chunks);
+        let a_passthrough = GopBatchingRule {
+            samples: MergeSplitOverride::Passthrough,
+            ..GopBatchingRule::default()
+        }
+        .with_entity_filter(EntityPathFilter::parse_forgiving("+ /a"));
+        let plan_with = |rules: Vec<GopBatchingRule>| {
+            let units = plan(&view, &with_gop_rules(global.clone(), rules));
+            assert!(plan_covers_view(&view, &units));
+            units
+        };
+        assert_eq!(
+            samples_of(&plan_with(vec![
+                a_passthrough.clone(),
+                GopBatchingRule::default()
+            ])),
+            vec![
+                GopChunkingConfig::OnePerGop,
+                GopChunkingConfig::Packed(target)
+            ]
+        );
+        assert_eq!(
+            samples_of(&plan_with(vec![
+                GopBatchingRule::default(),
+                a_passthrough.clone()
+            ])),
+            vec![GopChunkingConfig::Packed(target); 2]
+        );
+        // `b` is filtered out: its `is_keyframe` follows the own-chunk rule.
+        let units = plan_with(vec![a_passthrough]);
+        assert_eq!(gop_runs(&units).len(), 1);
+        assert!(units.contains(&only_run(&view, &[4], keyframe_column(), target)));
+
+        let chunks = vec![
+            temporal_codec_chunk(1, "video", &[0, 1]),
+            static_codec_chunk(2, "video"),
+        ];
+        let view = view_of(&chunks);
+        let sample_own_rule = OwnChunkRule::new(ColumnSelector::Column(sample_column()));
+        let codec_own_rule = OwnChunkRule::new(ColumnSelector::Column(codec_column()));
+        let units = plan(
+            &view,
+            &with_gop_rules(
+                with_rules(global, vec![sample_own_rule, codec_own_rule]),
+                vec![GopBatchingRule::default()],
+            ),
+        );
+        assert!(plan_covers_view(&view, &units));
+        assert!(matches!(
+            gop_runs(&units).as_slice(),
+            [PlanUnit::GopRun { inputs, .. }]
+                if inputs.len() == 1
+                    && inputs[0].slice == ChunkSlice::only(idx_of(&view, 1), [sample_column()])
+        ));
+        assert!(units.contains(&passthrough_all(&view, 2)));
+    }
+
+    /// A static codec decides, wherever it is indexed, and shadows every temporal codec cell,
+    /// which is dropped. Without one, the codec-only chunks are read, on any timeline set, or else
+    /// the first sample chunk carrying the codec, and only the sample chunks' codec cells reach
+    /// the run.
+    #[test]
+    fn gop_codec_source() {
+        let codec_only = |id: u128| {
+            Chunk::builder_with_id(ChunkId::from_u128(id), "video")
+                .with_serialized_batches(
+                    RowId::new(),
+                    [(Timeline::new_sequence("other"), 0_i64)],
+                    [vec![VideoCodec::VP8]
+                        .try_serialized(VideoStream::descriptor_codec())
+                        .unwrap()],
+                )
+                .build()
+                .unwrap()
+        };
+        let settings = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
+        let codec_and_inputs = |chunks: &[Chunk]| {
+            let view = view_of(chunks);
+            let units = plan(&view, &settings);
+            assert!(plan_covers_view(&view, &units));
+            let [PlanUnit::GopRun { codec, inputs, .. }] = gop_runs(&units).as_slice() else {
+                panic!("expected one GoP run: {units:?}");
+            };
+            let (source, codec_slices) = match codec {
+                CodecSource::Static(slices) => ("static", slices),
+                CodecSource::Temporal(slices) => ("temporal", slices),
+            };
+            let ids = |slices: &[ChunkSlice]| -> Vec<u128> {
+                slices
+                    .iter()
+                    .map(|slice| view.chunk(slice.chunk).chunk_id.as_u128())
+                    .collect()
+            };
+            let mut codec_dropped_from: Vec<u128> = units
+                .iter()
+                .filter_map(|unit| match unit {
+                    PlanUnit::Drop(slice) => Some(slice),
+                    _ => None,
+                })
+                .filter(|slice| *slice == &ChunkSlice::only(slice.chunk, [codec_column()]))
+                .map(|slice| view.chunk(slice.chunk).chunk_id.as_u128())
+                .collect();
+            codec_dropped_from.sort_unstable();
+            let input_keeps_codec: Vec<bool> = inputs
+                .iter()
+                .map(|MergeInput { slice, .. }| {
+                    *slice == ChunkSlice::only(slice.chunk, [sample_column(), codec_column()])
+                })
+                .collect();
+            (
+                source,
+                ids(codec_slices),
+                codec_dropped_from,
+                input_keeps_codec,
+            )
+        };
+
+        // Indexed after the temporal codec, the static one still decides.
+        assert_eq!(
+            codec_and_inputs(&[
+                temporal_codec_chunk(1, "video", &[0, 1]),
+                codec_only(2),
+                static_codec_chunk(3, "video"),
+            ]),
+            ("static", vec![3], vec![1, 2], vec![false])
+        );
+        assert_eq!(
+            codec_and_inputs(&[
+                temporal_codec_chunk(1, "video", &[0, 1]),
+                temporal_codec_chunk(2, "video", &[2, 3]),
+            ]),
+            ("temporal", vec![1], vec![], vec![true, true])
+        );
+        assert_eq!(
+            codec_and_inputs(&[
+                temporal_codec_chunk(1, "video", &[0, 1]),
+                codec_only(2),
+                codec_only(3),
+            ]),
+            ("temporal", vec![2, 3], vec![2, 3], vec![true])
+        );
+    }
+
+    /// A matched entity's static `is_keyframe` is dropped with a warning, so it cannot hide the
+    /// regenerated keyframes; the rest of its static chunk passes through.
+    #[test]
+    fn gop_static_keyframe_dropped() {
+        re_log::setup_logging();
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+        let static_codec_and_keyframe = Chunk::builder_with_id(ChunkId::from_u128(1), "static_kf")
+            .with_serialized_batches(
+                RowId::new(),
+                TimePoint::default(),
+                [
+                    vec![VideoCodec::VP8]
+                        .try_serialized(VideoStream::descriptor_codec())
+                        .unwrap(),
+                    vec![IsKeyframe::from(true)]
+                        .try_serialized(VideoStream::descriptor_is_keyframe())
+                        .unwrap(),
+                ],
+            )
+            .build()
+            .unwrap();
+        let chunks = vec![
+            static_codec_and_keyframe,
+            video_chunk(2, "static_kf", &[0, 1], false),
+        ];
+        let view = view_of(&chunks);
+        let settings = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
+
+        let units = plan(&view, &settings);
+
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 except[VideoStream:is_keyframe]
+            drop #1 only[VideoStream:is_keyframe]
+            gop_run /static_kf on frame
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+            ");
+        insta::assert_debug_snapshot!(warnings_about(&log_rx, "/static_kf"), @r#"
+            [
+                "Dropping the static VideoStream:is_keyframe column of a video stream, which would hide the regenerated keyframes\nEntity: /static_kf",
+            ]
+            "#);
+    }
+
+    /// Entities with static samples only are not GoP-batched. Those with temporal samples but no
+    /// codec, or with samples on several timeline sets, are skipped with a warning naming them.
+    #[test]
+    fn gop_unmatched_entities() {
+        re_log::setup_logging();
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+        let other = Timeline::new_sequence("other");
+        let chunks = vec![
+            video_chunk(1, "warned_no_codec", &[0, 1], false),
+            static_codec_chunk(2, "warned_two_timeline_sets"),
+            video_chunk(3, "warned_two_timeline_sets", &[0, 1], false),
+            video_rows(
+                4,
+                "warned_two_timeline_sets",
+                &[vec![(frame(), 2), (other, 0)]],
+                false,
+            ),
+            static_codec_chunk(5, "static_samples"),
+            Chunk::builder_with_id(ChunkId::from_u128(6), "static_samples")
+                .with_serialized_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [vec![VideoSample::from(vec![0_u8; 16])]
+                        .try_serialized(VideoStream::descriptor_sample())
+                        .unwrap()],
+                )
+                .build()
+                .unwrap(),
+        ];
+        let view = view_of(&chunks);
+        let settings = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
+
+        let units = plan(&view, &settings);
+
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #2 all
+            passthrough #5 all
+            passthrough #6 all
+            merge_split (1048576 B)
+              #1 all
+            merge_split (1048576 B)
+              #3 all
+            merge_split (1048576 B)
+              #4 all
+            ");
+        insta::assert_debug_snapshot!(warnings_about(&log_rx, "/warned_"), @r#"
+            [
+                "Skipping GoP batching of a video stream whose samples span several timeline sets\nEntity: /warned_two_timeline_sets",
+                "Skipping GoP batching of a video stream without a VideoStream:codec column\nEntity: /warned_no_codec",
+            ]
+            "#);
+    }
+
+    /// Sample and keyframe targets resolve against the global target, with and without one.
+    #[test]
+    fn gop_target_resolution() {
+        let chunks = vec![
+            static_codec_chunk(1, "video"),
+            video_chunk(2, "video", &[0, 1], false),
+        ];
+        let view = view_of(&chunks);
+        let global = settings(1024 * 1024, 0);
+        let target = global.merge_split.unwrap();
+        let disabled = OptimizationSettings {
+            merge_split: None,
+            ..global.clone()
+        };
+        let custom = merge_split_settings(64, 0);
+        let resolved = |settings: &OptimizationSettings,
+                        samples: MergeSplitOverride,
+                        keyframes: KeyframePlacement| {
+            let rule = GopBatchingRule {
+                entity_filter: None,
+                samples,
+                keyframes,
+            };
+            let units = plan(&view, &with_gop_rules(settings.clone(), vec![rule]));
+            match gop_runs(&units).as_slice() {
+                [
+                    PlanUnit::GopRun {
+                        gop_chunking,
+                        keyframes,
+                        ..
+                    },
+                ] => (*gop_chunking, *keyframes),
+                other => panic!("expected one GoP run, got {other:?}"),
+            }
+        };
+        use KeyframePlacement::{Inline, OwnChunk};
+        use MergeSplitOverride::{Inherit, MergeSplit, Passthrough};
+
+        assert_eq!(
+            resolved(&global, Inherit, OwnChunk(None)),
+            (
+                GopChunkingConfig::Packed(target),
+                KeyframePlacementConfig::OwnChunk(target)
+            )
+        );
+        assert_eq!(
+            resolved(&disabled, Inherit, OwnChunk(None)),
+            (
+                GopChunkingConfig::OnePerGop,
+                KeyframePlacementConfig::OwnChunk(super::KEYFRAMES_UNBOUNDED)
+            )
+        );
+        for settings in [&global, &disabled] {
+            assert_eq!(
+                resolved(settings, Passthrough, OwnChunk(Some(custom))),
+                (
+                    GopChunkingConfig::OnePerGop,
+                    KeyframePlacementConfig::OwnChunk(custom)
+                )
+            );
+            assert_eq!(
+                resolved(settings, MergeSplit(custom), Inline),
+                (
+                    GopChunkingConfig::Packed(custom),
+                    KeyframePlacementConfig::Inline
+                )
+            );
+        }
+    }
+
+    /// The run timeline is the target timeline when the group has it, else the best by priority:
+    /// between user timelines, the last in set order, and any user timeline over `log_time`.
+    #[test]
+    fn gop_timeline_choice() {
+        let other = Timeline::new_sequence("other");
+        // Chunk 2 comes first on `frame`, chunk 3 on `other`.
+        let chunks = vec![
+            static_codec_chunk(1, "video"),
+            video_rows(2, "video", &[vec![(frame(), 0), (other, 30)]], false),
+            video_rows(3, "video", &[vec![(frame(), 10), (other, 20)]], false),
+        ];
+        let view = view_of(&chunks);
+        let base = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
+        let run_of = |target_timeline: Option<re_log_types::TimelineName>| {
+            let settings = OptimizationSettings {
+                target_timeline,
+                ..base.clone()
+            };
+            let units = plan(&view, &settings);
+            assert!(plan_covers_view(&view, &units));
+            let [
+                PlanUnit::GopRun {
+                    inputs, timeline, ..
+                },
+            ] = gop_runs(&units).as_slice()
+            else {
+                panic!("expected one GoP run");
+            };
+            let ids: Vec<u128> = inputs
+                .iter()
+                .map(|input| view.chunk(input.slice.chunk).chunk_id.as_u128())
+                .collect();
+            let input_starts: Vec<TimeInt> = inputs.iter().map(|input| input.start).collect();
+            (*timeline, ids, input_starts)
+        };
+
+        let on_other = (*other.name(), vec![3, 2], starts(&[20, 30]));
+        assert_eq!(run_of(Some(*other.name())), on_other);
+        assert_eq!(run_of(None), on_other);
+        assert_eq!(
+            run_of(Some(*frame().name())),
+            (*frame().name(), vec![2, 3], starts(&[0, 10]))
+        );
+
+        let chunks = vec![
+            static_codec_chunk(1, "video"),
+            video_rows(
+                2,
+                "video",
+                &[vec![(frame(), 0), (Timeline::log_time(), 0)]],
+                false,
+            ),
+        ];
+        let view = view_of(&chunks);
+        let units = plan(&view, &base);
+        assert!(matches!(
+            gop_runs(&units).as_slice(),
+            [PlanUnit::GopRun { timeline, .. }] if *timeline == *frame().name()
         ));
     }
 }

@@ -9,8 +9,8 @@ use re_log_types::{EntityPathFilter, TimelineName};
 // distinct.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OptimizationSettings {
-    /// Merge and split chunks toward a target size; `None` disables the optimization entirely and
-    /// every chunk passes through.
+    /// Merge and split chunks toward a target size; `None` disables the optimization and every
+    /// chunk passes through, except for the video streams matched by [`Self::gop_batching`].
     pub merge_split: Option<MergeSplitSettings>,
 
     /// Timeline that orders the merge sweep; `None` means file order.
@@ -19,7 +19,8 @@ pub struct OptimizationSettings {
     /// reordered. A group of chunks that lacks the timeline falls back to file order silently,
     /// and a name that matches no timeline in the recording means every group falls back.
     ///
-    /// Only read when [`Self::merge_split`] is `Some`.
+    /// GoP-batched video streams are the exception: their rows are sorted on this timeline when
+    /// they have it, else on the best of their own timelines.
     pub target_timeline: Option<TimelineName>,
 
     /// Components that always get a chunk of their own.
@@ -29,7 +30,25 @@ pub struct OptimizationSettings {
     ///
     /// An all-null temporal column is invisible to the chunk index and stays with the rest of its
     /// chunk.
+    ///
+    /// Rules selecting `VideoStream:sample`, `VideoStream:codec`, or `VideoStream:is_keyframe` are
+    /// ignored on entities matched by [`Self::gop_batching`].
     pub own_chunk: Vec<OwnChunkRule>,
+
+    /// Video streams whose chunks are cut at keyframes, without ever splitting a GoP.
+    ///
+    /// Rules are tried in order per entity; the first whose entity filter matches decides. Only
+    /// entities with a temporal `VideoStream:sample` column are considered. One without a
+    /// `VideoStream:codec` column, or whose samples have inconsistent sets of timeline, is skipped
+    /// with a warning.
+    ///
+    /// Keyframes are detected from the samples: logged `VideoStream:is_keyframe` cells are dropped
+    /// and regenerated. A sample the detector rejects counts as a non-keyframe, with a warning.
+    ///
+    /// Each stream comes out with its codec as one static `VideoStream:codec` cell. A static codec
+    /// wins over temporal ones, as in the store; temporal codecs that disagree are unsupported and
+    /// fail the whole optimization.
+    pub gop_batching: Vec<GopBatchingRule>,
 }
 
 /// The single vertical optimization: rechunk rows toward a byte target, with row-count guards on
@@ -104,7 +123,7 @@ pub enum ColumnSelector {
     Column(ComponentIdentifier),
 }
 
-/// How the chunks of one [`OwnChunkRule`] are rechunked.
+/// How the chunks of one [`OwnChunkRule`] or [`GopBatchingRule`] are rechunked.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MergeSplitOverride {
     /// Use [`OptimizationSettings::merge_split`].
@@ -115,4 +134,54 @@ pub enum MergeSplitOverride {
 
     /// Use this target instead of the global one, even when the global setting is `None`.
     MergeSplit(MergeSplitSettings),
+}
+
+/// GoP batching of the video streams of the entities the filter matches.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GopBatchingRule {
+    /// If set, which entity path this rule applies to.
+    ///
+    /// We use an option here to avoid the issue of [`EntityPathFilter::all`] excluding the
+    /// `/__properties` subtree.
+    pub entity_filter: Option<EntityPathFilter>,
+
+    /// How whole GoPs pack into sample chunks: `Passthrough` is one chunk per GoP.
+    pub samples: MergeSplitOverride,
+
+    /// Where the regenerated `is_keyframe` column goes.
+    pub keyframes: KeyframePlacement,
+}
+
+impl Default for GopBatchingRule {
+    fn default() -> Self {
+        Self {
+            entity_filter: None,
+            samples: MergeSplitOverride::Inherit,
+            keyframes: KeyframePlacement::OwnChunk(None),
+        }
+    }
+}
+
+impl GopBatchingRule {
+    pub fn with_entity_filter(mut self, entity_filter: EntityPathFilter) -> Self {
+        self.entity_filter = Some(entity_filter);
+        self
+    }
+}
+
+/// Where a [`GopBatchingRule`] puts the `is_keyframe` column it regenerates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyframePlacement {
+    /// A column of the sample chunks: `true` on keyframe rows, null elsewhere.
+    Inline,
+
+    /// Chunks of its own, so readers can find the samples they need without loading the sample
+    /// chunks.
+    ///
+    /// Packed toward this target, or toward [`OptimizationSettings::merge_split`] when `None`;
+    /// with neither, each stream's `is_keyframe` cells form a single chunk.
+    ///
+    /// Unlike [`MergeSplitOverride`], there is no passthrough: the cells are generated, one per
+    /// GoP, so there are no input chunks to pass through.
+    OwnChunk(Option<MergeSplitSettings>),
 }

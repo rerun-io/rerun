@@ -5,14 +5,16 @@ mod error;
 mod executor;
 mod optimize;
 mod plan;
+mod row_merge;
 mod settings;
 mod view;
 
 pub use self::analysis::{ChunkIndexAnalysis, MergeAssessment, analyze_chunk_index};
-pub use self::error::Error;
+pub use self::error::{Error, VideoStreamErrorSource};
 pub use self::optimize::optimize;
 pub use self::settings::{
-    ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
+    ColumnSelector, GopBatchingRule, KeyframePlacement, MergeSplitOverride, MergeSplitSettings,
+    OptimizationSettings, OwnChunkRule,
 };
 
 /// For testing purposes only.

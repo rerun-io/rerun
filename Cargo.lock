@@ -9373,16 +9373,20 @@ dependencies = [
  "re_chunk",
  "re_chunk_index",
  "re_chunk_store",
+ "re_format",
  "re_log",
  "re_log_encoding",
  "re_log_msg",
  "re_log_types",
  "re_memory",
+ "re_sdk_types",
  "re_tracing",
  "re_types_core",
+ "re_video",
  "re_workspace_hack",
  "tempfile",
  "thiserror 2.0.19",
+ "vec1",
 ]
 
 [[package]]

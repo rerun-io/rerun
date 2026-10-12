@@ -12,6 +12,7 @@ import numpy.typing as npt
 import pyarrow as pa
 
 from .types import (
+    GopBatchingRuleDict as GopBatchingRuleDict,
     IndexValuesLike as IndexValuesLike,
     MergeSplitSettingsDict as MergeSplitSettingsDict,
     OwnChunkRuleDict as OwnChunkRuleDict,
@@ -1626,6 +1627,7 @@ class ChunkStoreInternal:
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
         own_chunk: Sequence[OwnChunkRuleDict] | None = None,
+        gop_batching: Sequence[GopBatchingRuleDict] | None = None,
     ) -> LazyChunkStreamInternal: ...
     def reader(
         self,
@@ -1654,6 +1656,7 @@ class LazyStoreInternal:
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
         own_chunk: Sequence[OwnChunkRuleDict] | None = None,
+        gop_batching: Sequence[GopBatchingRuleDict] | None = None,
     ) -> LazyChunkStreamInternal: ...
     @property
     def _chunks_loaded(self) -> int: ...

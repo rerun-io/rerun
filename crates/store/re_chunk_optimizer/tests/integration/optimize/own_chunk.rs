@@ -256,6 +256,7 @@ fn own_chunk_passthrough() {
         merge_split: None,
         target_timeline: None,
         own_chunk: vec![colors_own_chunk_rule()],
+        gop_batching: Vec::new(),
     };
 
     let outputs = collect(optimize(provider_of(inputs.clone()), &settings).unwrap());

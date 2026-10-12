@@ -1,6 +1,9 @@
 use re_chunk::{ChunkError, ChunkId, ComponentIdentifier};
 use re_chunk_index::{ChunkIndexError, ChunkProviderError};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimelineName};
+use re_sdk_types::components::VideoCodec;
+
+use crate::plan::{codec_column, sample_column};
 
 /// Errors of this crate.
 ///
@@ -69,6 +72,37 @@ pub enum Error {
     EmptySelection {
         chunk_id: ChunkId,
         entity_path: EntityPath,
+    },
+
+    /// The decoded chunk lacks a timeline the chunk index records for it.
+    #[error(
+        "Chunk {chunk_id} has no {timeline:?} timeline, but the index records one\nEntity: {entity_path}"
+    )]
+    MissingTimeline {
+        chunk_id: ChunkId,
+        entity_path: EntityPath,
+        timeline: TimelineName,
+    },
+
+    /// The codec or sample column of a video stream cannot be GoP-batched.
+    #[error(
+        "Cannot GoP-batch the video stream: {source}\nEntity: {entity_path}\nChunk: {chunk_id}"
+    )]
+    VideoStream {
+        entity_path: EntityPath,
+        chunk_id: ChunkId,
+        source: VideoStreamErrorSource,
+    },
+
+    /// A chunk the optimizer generates itself failed [`re_chunk::Chunk::sanity_check`].
+    ///
+    /// Its inputs are built to be valid, so this is a bug in the optimizer.
+    #[error(
+        "Bug in the chunk optimizer: a chunk it generated is malformed: {source}\nEntity: {entity_path}"
+    )]
+    MalformedGeneratedChunk {
+        entity_path: EntityPath,
+        source: ChunkError,
     },
 }
 
@@ -139,4 +173,76 @@ impl Error {
             entity_path: entity_path.clone(),
         }
     }
+
+    pub fn missing_timeline(
+        chunk_id: ChunkId,
+        entity_path: &EntityPath,
+        timeline: TimelineName,
+    ) -> Self {
+        Self::MissingTimeline {
+            chunk_id,
+            entity_path: entity_path.clone(),
+            timeline,
+        }
+    }
+
+    pub fn video_stream(
+        entity_path: &EntityPath,
+        chunk_id: ChunkId,
+        source: VideoStreamErrorSource,
+    ) -> Self {
+        Self::VideoStream {
+            entity_path: entity_path.clone(),
+            chunk_id,
+            source,
+        }
+    }
+
+    /// Panics in debug builds.
+    pub fn malformed_generated_chunk(entity_path: &EntityPath, source: ChunkError) -> Self {
+        re_log::debug_panic!("the chunk optimizer generated a malformed chunk: {source}");
+        Self::MalformedGeneratedChunk {
+            entity_path: entity_path.clone(),
+            source,
+        }
+    }
+}
+
+/// Why [`Error::VideoStream`] cannot GoP-batch a video stream.
+#[derive(thiserror::Error, Debug)]
+pub enum VideoStreamErrorSource {
+    /// No codec cell of the stream holds a value.
+    #[error("the {} column holds no value", codec_column())]
+    NoCodec,
+
+    /// The stream's temporal codec cells disagree, and no static codec shadows them.
+    #[error(
+        "the {} column holds several values: {first:?} and {second:?}",
+        codec_column()
+    )]
+    SeveralCodecs {
+        first: VideoCodec,
+        second: VideoCodec,
+    },
+
+    /// A codec cell stored next to the samples disagrees with the codec decided up front.
+    #[error(
+        "the {} column holds {found:?}, but the stream's codec is {expected:?}",
+        codec_column()
+    )]
+    CodecMismatch {
+        found: VideoCodec,
+        expected: VideoCodec,
+    },
+
+    /// The deciding static codec cell cannot be deserialized.
+    #[error("the {} column cannot be read: {source}", codec_column())]
+    UnreadableCodec { source: ChunkError },
+
+    /// The sample column has an Arrow datatype the keyframe detection cannot read samples from.
+    #[error(
+        "the {column} column has datatype {0:?}, which the sample reader does not handle",
+        column = sample_column()
+    )]
+    UnsupportedSampleDatatype(arrow::datatypes::DataType),
 }

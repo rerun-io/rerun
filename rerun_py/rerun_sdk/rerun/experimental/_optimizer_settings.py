@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from rerun_bindings.types import MergeSplitSettingsDict, OwnChunkRuleDict
+    from rerun_bindings.types import GopBatchingRuleDict, MergeSplitSettingsDict, OwnChunkRuleDict
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -86,4 +86,50 @@ class _OwnChunkRule:
             "component": self.component,
             "entity_filter": entity_filter,
             "merge_split": merge_split,
+        }
+
+
+@dataclass(frozen=True, kw_only=True)
+class _GopBatchingRule:
+    """
+    GoP batching of the video streams of the entities the filter matches.
+
+    Output chunks hold the `VideoStream:sample` column (plus `is_keyframe` when `keyframes` is
+    `"inline"`), start at a keyframe, and never split a GoP; the entity's other columns are
+    rechunked as on any entity. Keyframes are detected from the samples: logged
+    `VideoStream:is_keyframe` values are dropped (static ones with a warning) and regenerated, and a
+    sample the detector rejects counts as a non-keyframe, with a warning. Each stream comes out with
+    its codec as one static `VideoStream:codec` value; temporal codecs that disagree are unsupported
+    and fail the whole optimization, so exclude such streams through `entity_filter`. Entities
+    without a codec, or whose samples span several timeline sets, are skipped with a warning.
+
+    `entity_filter` follows [`_OwnChunkRule`][rerun.experimental._OwnChunkRule].
+
+    `samples` packs whole GoPs toward the global target (`"inherit"`), one chunk per GoP
+    (`"passthrough"`), or toward a target of its own (`_MergeSplitSettings`).
+
+    `keyframes` is `"inline"` to add the column to the sample chunks. Otherwise the column gets
+    chunks of its own, so readers can find the samples they need without loading the sample
+    chunks: `"own_chunk"` packs them toward the global target (one chunk per stream without one),
+    a `_MergeSplitSettings` toward a target of its own.
+    """
+
+    entity_filter: str | Sequence[str] | None = None
+    samples: Literal["inherit", "passthrough"] | _MergeSplitSettings = "inherit"
+    keyframes: Literal["inline", "own_chunk"] | _MergeSplitSettings = "own_chunk"
+
+    def _to_internal(self) -> GopBatchingRuleDict:
+        entity_filter = self.entity_filter
+        if entity_filter is not None and not isinstance(entity_filter, str):
+            entity_filter = "\n".join(entity_filter)
+        samples: Literal["inherit", "passthrough"] | MergeSplitSettingsDict = (
+            self.samples if isinstance(self.samples, str) else self.samples._to_internal()
+        )
+        keyframes: Literal["inline", "own_chunk"] | MergeSplitSettingsDict = (
+            self.keyframes if isinstance(self.keyframes, str) else self.keyframes._to_internal()
+        )
+        return {
+            "entity_filter": entity_filter,
+            "samples": samples,
+            "keyframes": keyframes,
         }
