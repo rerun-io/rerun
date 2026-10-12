@@ -2,6 +2,11 @@
 
 This document describes the current release and versioning strategy. This strategy is likely to change as Rerun matures.
 
+> [!IMPORTANT]
+> All releases are run by Rerun maintainers with the `oss-release` Claude Code skill, which lives in our private monorepo (`.claude/skills/oss-release/`).
+> The skill drives the whole process: pre-flight checks, confirmation points, triggering the release workflow, verifying the published packages, and the post-release chores.
+> This document describes the mechanics the skill relies on: versioning, branches, and what the release workflow does.
+
 ## See also
 
 -   [`ARCHITECTURE.md`](ARCHITECTURE.md)
@@ -55,13 +60,13 @@ As of 0.23, we automatically migrate data from older versions, with an N-1 compa
 
 # Release process
 
-Before doing anything, read all the steps in full!
+These are the steps of a release, and what has to be true after each one.
+The `oss-release` skill runs them in order, with the checks and confirmations around them.
 
 ### 1. Determine what the next version should be
 
 There usually isn't any ambiguity, as releases are planned ahead of time.
-
-You can always find the latest release on our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease) page.
+See [library versioning](#library-versioning-and-release-cadence) for the version scheme.
 
 ### 2. Create a release branch
 
@@ -79,15 +84,8 @@ The _base_ of the branch should depends on what kind of release it is:
 - For a _patch_ release, the branch is created from `docs-latest` ( :warning: branching off `docs-latest` instead of the latest release tag ensures that documentation patches will be included)
 - For an _alpha_ release, the branch is created from `main`.
 
-You can do this either using `git` on your command line, or through the UI:
-
-![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
-
-Once the branch has been created, push it to the remote repository.
-
 **NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC (release candidate) should preferably be created before testing.
-The release workflow section below explains how you can create an RC.
-Do this once you have prepared your patch-release branch and it's ready for testing.
+Create the RC (`rc` release type, see step 6) once the patch-release branch is ready for testing.
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
@@ -124,13 +122,9 @@ does it end to end:
     the redirect target, so this must land together with the new changeset).
 -   Deletes the merged files from `upcoming/` (leaving `_template.md`).
 
-Then review the result:
-
--   Resolve every `TODO(name)` in the changeset (docs links, example links, screenshots/GIFs, migration guides).
-    **The release is blocked until all of these are resolved.**
--   Sanity-check the `## Highlights` section reads well as a whole. (Feature leads write their own items per PR;
-    here you just make sure the one-line and multi-line summary of the release hang together.)
--   Check that `## Other`, if present, contains exactly one list item per miscellaneous entry, with no headings or prose outside the list.
+Every `TODO(name)` in the changeset (docs links, example links, screenshots/GIFs, migration guides) must then be resolved.
+**The release is blocked until all of these are resolved.**
+A maintainer reviews and approves the assembled changelog on the release branch before the final release.
 
 The changeset is *not* copied into `CHANGELOG.md`. The script summarizes it instead — the section
 headings plus links to the changeset on the website — so the full prose lives in exactly one place.
@@ -155,26 +149,24 @@ Once you're done, commit and push onto the release branch.
 
 ### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml)
 
-In the UI:
+The workflow is dispatched on the release branch from step 2, with these inputs:
 
--   Set `Use workflow from` to the release branch you created in step (2).
--   Then choose one of the following values in the dropdown:
+-   `release-type`:
     - `alpha` if the branch name is `prepare-release-x.y.z-alpha.N`.
-        This will create a one-off alpha release.
-
+      This will create a one-off alpha release.
     - `rc` if the branch name is `prepare-release-x.y.z`.
       This will publish a release candidate.
-
     - `final` for the final public release.
+-   `publish-crates` (default `true`): `false` skips publishing to crates.io.
+    With `true`, the workflow fails before publishing anything if `Cargo.toml` has a `[patch.crates-io]` override, since crates.io cannot resolve it.
 
+The workflow refuses to run when the branch name and `release-type` disagree.
 In all three cases, the workflow opens (or updates) a release pull request against `main`.
-
-![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
 ### 7. Wait for the release workflow to finish
 
 Once the release workflow is started, it will create a pull request for the release.
-The pull request description will tell you what to do next.
+The pull request description lists the follow-up steps.
 
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
 For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
@@ -202,25 +194,18 @@ The release branch will contain a post-release version bump commit made by the r
 For example, `prepare-release-0.25.0` will be bumped to `0.26.0-alpha.1+dev` once everything has been released.
 Additionally, it's common for us to push small changes and bug fixes directly to the release branch.
 
-We want all of this to land back on `main`, so:
+We want all of this to land back on `main`.
+This happens in our internal monorepo, which `main` is exported from, not by merging the release PR: the version bump also changes lockfiles that only exist there.
 
-- For a minor release, merge the release branch to `main`.
-- For a patch release, manually create a new PR from `main` and cherry-pick the commits. This includes at least
-the `CHANGELOG.md` update, plus any other changes made on the release branch that haven't been cherry-picked in the
-first place.
+- For a minor or patch release, the release branch's commits are cherry-picked onto `main`, except the release bot's version bumps and fixes that are already on `main`.
+  `main` then gets bumped to the next `-alpha.N+dev` version, and its lockfiles are refreshed.
 - For an alpha release, close the release PR without merging, whether or not the release job succeeded.
   Its version bump commit points documentation links at the alpha version, which must not land on `main`.
   Cherry-pick any fixes made on the release branch into `reality` instead, but not the version bump commit.
 
 The `consider-patch` and `consider-oss-patch` labels are removed automatically from the PRs that shipped in a final release (see step 7).
 
-### 9. Optional: write a post mortem about the release
-
-Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
-
-Create tickets if you think we can improve the process, put them into the `Actionable items` section.
-
-### 10. Clean up PR labels
+### 9. Clean up PR labels
 
 This is automated for final releases (see step 7).
 `uv run scripts/fetch_patch_candidates.py` still shows a warning for patch-labeled PRs that were merged before a release, e.g. if the `Remove patch labels` job failed.

@@ -70,6 +70,12 @@ Drop the per-entry frontmatter.
 Relative doc links in entries were written as if from `changelog/` (e.g.
 `../reference/migration/...`), which is correct once merged — keep them as-is.
 
+Images and videos must live on `static.rerun.io` (upload with `scripts/upload_image.py`), never as
+GitHub attachments: attachments uploaded in the private monorepo cannot be shown on the website.
+
+Feature leads write their `## Highlights` entries per PR, so read the section as a whole and
+flag to the human anything that does not hang together, rather than rewriting it yourself.
+
 Finally, point the `redirect:` frontmatter in `docs/content/changelog.md` at
 `changelog/changeset-0-XX`: CI's `scripts/ci/check_changelog_redirect.py` requires the
 newest changeset to be the redirect target, so the repoint must land together with the
@@ -97,6 +103,9 @@ Edit PR titles/labels to improve the output, then copy the result into `CHANGELO
 lines as previous releases did). Spot-check a few entries against the actual PRs:
 polluted titles (old, unrelated PRs; `thanks @…` for core team members) mean a PR-number
 lookup misfired — see the warning at the top.
+Read the generated section for wrong contributor attribution and typos.
+If the release ships without Rust crates (`publish-crates=false`), say in the `CHANGELOG.md`
+section that this version is not on crates.io.
 
 Do this *after* step 1: the script reads the assembled changeset and emits a summary of it
 (section headings + links to the changeset on the website), rather than inlining its prose.
@@ -113,6 +122,9 @@ Never add redirects for these temporary entries.
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
 - [ ] No summaries or other prose were synthesized for existing entries.
+- [ ] Images and videos are hosted on `static.rerun.io`, not as GitHub attachments.
+- [ ] `## Highlights` reads well as a whole, or the human has been told where it doesn't.
+- [ ] The `CHANGELOG.md` section has correct contributor attribution and no typos.
 - [ ] `upcoming/` contains only `_template.md` and entries deferred to a later release.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
 - [ ] `python scripts/ci/check_doc_redirects.py --base origin/main` passes (`upcoming/` entries are exempt and DO NOT need a redirect).

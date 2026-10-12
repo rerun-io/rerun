@@ -235,36 +235,11 @@ jobs:
 
           cat <<'EOF' > pr-body.txt
           ### Next steps
-          - Test the release
-          - For alpha releases:
-            - [ ] If a GH release should be published for this alpha (give extra love to alphas deployed to Rerun Hub or when external testing is required):
-                - [ ] Create the GitHub release manually from the UI
-                - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
-                      **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
-            - [ ] Close the release PR without merging, even if the release job succeeded.
-              - Cherry-pick any fixes made on the release branch into `reality`, but *not* the version bump commit (it would introduce bad links).
-          - For non-alpha releases:
-            - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'final' mode
-            - Once the final release workflow finishes it will create a GitHub release for you. Then:
-              - [ ] Sanity check the build artifacts:
-                - [ ] pip install: does it install and run?
-                - [ ] cargo install of cli tool: does it install and run?
-                - [ ] Web Viewer: does it run and connect to Rerun Hub servers?
-              - [ ] Edit and publish the GitHub release:
-                - Do NOT create a GitHub release draft yourself! Let the release job do it.
-                - Check the pre-filled description (preamble + changelog) and add a nice header video/picture
-                - Make sure `Set as latest release` is checked
-                - Click `Publish release`
-                - Once published, the release assets will sync to it automatically.
-              - [ ] Verify the auto-triggered [gradio-rerun-viewer release workflow](https://github.com/rerun-io/gradio-rerun-viewer/actions/workflows/auto_release_on_rerun.yml) succeeded (dispatched from `on_gh_release.yml` for final releases)
-              - [ ] Create a new branch from the prepare-release branch, rebase that one on main and sync it to reality so it can be merged.
-              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine and/or Nick if necessary)
+          The release captain finishes this release with the `oss-release` skill: testing, publishing the GitHub release, and the post-release chores.
+          See [`RELEASES.md`](https://github.com/rerun-io/rerun/blob/main/RELEASES.md) for what this workflow does.
 
-          - [ ] Tests
-            - [ ] Windows
-            - [ ] Linux
-            - [ ] MacOS
+          Do not merge this PR.
+          An alpha's PR is closed without merging, and the commits of an rc or final are merged back to `main` through the internal monorepo (step 8 of `RELEASES.md`).
           EOF
 
           gh pr create \
