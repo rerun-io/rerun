@@ -303,6 +303,12 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
 
 static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
 
+/// Whether analytics is enabled for the current process.
+///
+/// This is separate from the persisted native opt-out because web viewers can be embedded
+/// with a setting supplied by their host page.
+static ANALYTICS_ENABLED: AtomicBool = AtomicBool::new(true);
+
 /// Set to a truthy value to send analytics even where they are normally off, e.g. in debug builds.
 ///
 /// This does not apply in tests, which never initialize analytics whatever the environment says.
@@ -342,6 +348,11 @@ impl Analytics {
     ///
     /// Return `None` if analytics is disabled or some error occurred.
     pub fn global_or_init_with_login_state(user_logged_in: bool) -> Option<&'static Self> {
+        if !ANALYTICS_ENABLED.load(Ordering::Relaxed) {
+            re_log::debug_once!("Analytics disabled by the host application");
+            return None;
+        }
+
         if let Some(reason) = disabled_reason() {
             re_log::debug_once!("Analytics disabled {reason}");
             return None;
@@ -365,6 +376,10 @@ impl Analytics {
     ///
     /// Usually it is better to use [`Self::global_or_init`] instead.
     pub fn global_get() -> Option<&'static Self> {
+        if !ANALYTICS_ENABLED.load(Ordering::Relaxed) {
+            return None;
+        }
+
         GLOBAL_ANALYTICS.get()?.as_ref()
     }
 
@@ -405,7 +420,7 @@ impl Analytics {
     /// The event is constructed using the implementations of [`Event`] and [`Properties`].
     /// The event's properties will be extended with an `event_id`.
     pub fn record<E: Event>(&self, event: E) {
-        if self.pipeline.is_none() {
+        if !ANALYTICS_ENABLED.load(Ordering::Relaxed) || self.pipeline.is_none() {
             return;
         }
 
@@ -450,6 +465,14 @@ impl Analytics {
     }
 }
 
+/// Enable or disable analytics for the current process.
+///
+/// This is intended for applications that embed the web viewer and want to control analytics
+/// without changing the persisted native analytics configuration.
+pub fn set_enabled(enabled: bool) {
+    ANALYTICS_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
 pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     if let Some(analytics) = Analytics::global_or_init() {
         analytics.record(cb());
@@ -461,7 +484,7 @@ pub fn record<E: Event>(cb: impl FnOnce() -> E) {
 /// `false` when the user has opted out with `rerun analytics disable`, or when the pipeline
 /// failed to start. Callers that do expensive work to produce an event should check this first.
 pub fn is_enabled() -> bool {
-    Analytics::global_or_init().is_some()
+    ANALYTICS_ENABLED.load(Ordering::Relaxed) && Analytics::global_or_init().is_some()
 }
 
 /// Update whether the user is currently logged in.

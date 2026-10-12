@@ -35,6 +35,20 @@ By default, the embedded viewer follows the user's OS theme (`prefers-color-sche
 
 This is useful for sites whose theme can differ from the OS preference — without it, a user on a light-mode OS visiting your dark-mode page would see a bright viewer panel against a dark background.
 
+### Disabling analytics
+
+Web Viewer analytics are enabled by default. Add `analytics=0` to an iframe URL to disable them:
+
+```html
+<iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&analytics=0"></iframe>
+```
+
+When using the JavaScript package, pass `analytics: false` to `viewer.start` instead:
+
+```js
+await viewer.start(rrdUrl, parentElement, { analytics: false });
+```
+
 ## Using the JavaScript package
 
 We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the Viewer but requires a JavaScript web application setup with a bundler.
@@ -141,4 +155,3 @@ viewer.on("selection_change", (event) => {
   }
 });
 ```
-

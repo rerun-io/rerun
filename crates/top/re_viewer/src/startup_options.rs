@@ -22,6 +22,9 @@ pub struct LoginOptions {
 pub struct StartupOptions {
     pub persist_state: bool,
 
+    /// Whether to collect anonymous usage analytics.
+    pub analytics_enabled: bool,
+
     /// Overrides the saved startup update-check preference when set.
     pub check_for_updates_on_startup: Option<bool>,
 
@@ -164,6 +167,7 @@ impl Default for StartupOptions {
     fn default() -> Self {
         Self {
             persist_state: true,
+            analytics_enabled: true,
             check_for_updates_on_startup: None,
             is_in_notebook: false,
 
