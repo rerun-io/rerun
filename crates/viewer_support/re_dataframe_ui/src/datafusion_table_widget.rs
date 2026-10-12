@@ -22,8 +22,7 @@ use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
 use re_viewer_context::{
-    AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, SystemCommand,
-    SystemCommandSender as _, TableReference,
+    AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, TableReference,
 };
 
 use crate::DisplayRecordBatch;
@@ -752,7 +751,6 @@ impl<'a> DataFusionTableWidget<'a> {
 
         toolbar_ui(
             ui,
-            app_ctx,
             ToolbarTitle {
                 title: self.title.as_deref(),
                 summary_ui: self.toolbar_summary_fn.as_deref(),
@@ -913,7 +911,6 @@ impl<'a> DataFusionTableWidget<'a> {
         };
         toolbar_ui(
             ui,
-            ctx,
             ToolbarTitle {
                 title: self.title.as_deref(),
                 summary_ui: self.toolbar_summary_fn.as_deref(),
@@ -1260,7 +1257,7 @@ fn toolbar_margin(title: Option<&str>) -> Margin {
 
 /// The left side of the toolbar, with the title, its copy URL button, the summary and the
 /// loading indicator.
-fn toolbar_title_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, content: ToolbarTitle<'_>) {
+fn toolbar_title_ui(ui: &mut egui::Ui, content: ToolbarTitle<'_>) {
     let ToolbarTitle {
         title,
         summary_ui,
@@ -1276,8 +1273,8 @@ fn toolbar_title_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, content: ToolbarTit
                 .on_hover_text(url)
                 .clicked()
         {
-            ctx.command_sender()
-                .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
+            re_log::info!("Copied {url:?} to clipboard");
+            ui.copy_text(url.to_owned());
         }
     }
 
@@ -1291,12 +1288,7 @@ fn toolbar_title_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, content: ToolbarTit
 }
 
 /// The row above the table, with an optional title on the left and `controls_ui` on the right.
-fn toolbar_ui(
-    ui: &mut egui::Ui,
-    ctx: &AppContext<'_>,
-    title: ToolbarTitle<'_>,
-    controls_ui: impl FnOnce(&mut egui::Ui),
-) {
+fn toolbar_ui(ui: &mut egui::Ui, title: ToolbarTitle<'_>, controls_ui: impl FnOnce(&mut egui::Ui)) {
     // Fixed, so the row is the same height whatever it holds.
     let row_height = re_ui::TAB_TOOLBAR_HEIGHT;
     let has_title = title.title.is_some();
@@ -1308,7 +1300,7 @@ fn toolbar_ui(
                 ui,
                 |ui| {
                     ui.set_height(row_height);
-                    toolbar_title_ui(ui, ctx, title);
+                    toolbar_title_ui(ui, title);
                 },
                 |ui| {
                     ui.set_height(row_height);
