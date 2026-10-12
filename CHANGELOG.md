@@ -76,6 +76,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - Support arbitrary `std::io::Write` streams in [`FileSink`](https://docs.rs/rerun/latest/rerun/sink/struct.FileSink.html) [#12940](https://github.com/rerun-io/rerun/pull/12940) (thanks [@de-vri-es](https://github.com/de-vri-es)!)
 
 #### 🪳 Bug fixes
+- Fix anamorphic pinhole projection for 3D in 2D projections [d3aae7c](https://github.com/rerun-io/rerun/commit/d3aae7c076e6a66bd75ed732c3aec314773bf73d)
 - Fix startup deadlock in serve_grpc and serve_web [176fd87](https://github.com/rerun-io/rerun/commit/176fd87f1a6d80738bf6b33d1edf95c1f84bfa1d)
 - Fix MCAP import hanging when the rayon pool is busy [411981a](https://github.com/rerun-io/rerun/commit/411981afddbb586e2f7336b27d1b8c02a6e585b1)
 - Fix H.264 views stuck on a loading spinner on machines with many cores [c004401](https://github.com/rerun-io/rerun/commit/c004401730f7b7f9fdb67c1bc3dc3b9f319d78ec)
