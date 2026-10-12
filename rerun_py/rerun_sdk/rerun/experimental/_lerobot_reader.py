@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal
 
 from rerun_bindings import LeRobotReaderInternal
 
-from ..chunk import LazyChunkStream
+from ..chunk import Chunk, LazyChunkStream
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,6 +55,32 @@ class LeRobotReader:
     def episodes(self) -> list[int]:
         """The episode indices available in this dataset, ascending."""
         return self._internal.episodes()
+
+    def metadata(self, *, entity_path_prefix: str | None = None) -> Chunk:
+        """
+        Return the dataset-wide metadata, as one static chunk at `entity_path_prefix`.
+
+        The `info` and `stats` components hold the text of `meta/info.json` and `meta/stats.json` verbatim;
+        `stats` is absent when the dataset has no `meta/stats.json`.
+
+        The metadata is the same for every episode, so register it once as an asset of the dataset
+        holding the episodes, rather than writing it into each episode's recording:
+
+        ```python
+        reader = LeRobotReader("path/to/dataset")
+        ChunkStore.from_chunks([reader.metadata()]).write_rrd(
+            "metadata.rrd", application_id="my_dataset", recording_id="lerobot_metadata"
+        )
+        dataset.register_asset(f"file://{Path('metadata.rrd').resolve()}")
+        ```
+
+        Parameters
+        ----------
+        entity_path_prefix:
+            The entity path of the metadata chunk; `/__lerobot` when `None`.
+
+        """
+        return Chunk(self._internal.metadata(entity_path_prefix=entity_path_prefix))
 
     def stream(
         self,

@@ -37,7 +37,8 @@ This serves a Rerun server at `rerun+http://127.0.0.1:51234` (the default used b
 
 ### 3. Prepare and register the dataset
 
-Downloads a LeRobot dataset from HuggingFace, splits it into per-episode RRDs, and registers them as a dataset in the catalog:
+Downloads a LeRobot dataset from HuggingFace, splits it into per-episode RRDs, and registers them as a dataset in the catalog.
+The dataset-wide LeRobot metadata (feature shapes and normalization statistics) is written to a separate static RRD and registered once as an [asset](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) of the dataset, rather than being copied into every episode:
 
 ```bash
 uv run python prepare_dataset.py
@@ -51,7 +52,7 @@ Pass `--repo-id user/other_lerobot_ds` to use a different dataset, or `--catalog
 uv run python train.py
 ```
 
-The script streams batches from the catalog, trains an ACT policy for a few epochs, and saves a checkpoint to `act_checkpoint/`.
+The script reads the feature shapes and normalization statistics from the metadata asset, streams batches from the catalog, trains an ACT policy for a few epochs, and saves a checkpoint to `act_checkpoint/`.
 
 It accepts a few CLI flags (run `uv run python train.py --help` for the full list):
 

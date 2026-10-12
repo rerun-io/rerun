@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use ahash::HashMap;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, EntityPath};
 use re_mp4_reader::TimeWindow;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ use crate::diagnostics::LeRobotDiagnostics;
 use crate::error::LeRobotError;
 use crate::features::{Feature, FeatureKey};
 use crate::version::LeRobotDatasetVersion;
-use crate::{convert, emits, parse_v2, parse_v3};
+use crate::{convert, emits, metadata, parse_v2, parse_v3};
 
 /// Version-independent metadata and resolved episode addresses produced by the parsers.
 pub struct DatasetData {
@@ -133,6 +133,15 @@ impl LeRobotDataset {
     #[cfg(test)]
     pub fn episode_addresses(&self) -> impl Iterator<Item = &EpisodeAddress> {
         self.data.episodes.values()
+    }
+
+    /// A static chunk at `entity_path` describing the whole dataset.
+    ///
+    /// Shared by every episode, so register it once as an asset of the dataset rather than
+    /// in each episode's recording.
+    /// [`crate::DEFAULT_METADATA_ENTITY_PATH`] is the conventional location.
+    pub fn metadata_chunk(&self, entity_path: EntityPath) -> Result<Chunk, LeRobotError> {
+        metadata::chunk(&self.path, entity_path)
     }
 
     /// Stream one episode's chunks.

@@ -50,7 +50,8 @@ rerun server
 
 ### 4. Prepare and register the dataset
 
-Downloads the dataset from HuggingFace, splits it into per-episode RRDs, and registers them with the catalog:
+Downloads the dataset from HuggingFace, splits it into per-episode RRDs, and registers them with the catalog.
+The dataset-wide metadata (feature shapes and normalization statistics) is registered alongside them as an asset of the dataset:
 
 ```bash
 uv run python prepare_dataset.py
