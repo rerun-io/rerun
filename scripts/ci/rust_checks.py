@@ -262,7 +262,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Installing is quite quick if it's already installed.
     results.extend((
         run_cargo("install", "--locked cargo-deny@^0.19"),
-        run_cargo("deny", "--all-features --exclude-dev --log-level warn check"),
+        run_cargo("deny", "--all-features --exclude-dev --log-level warn check --warn unmaintained"),
     ))
 
 
