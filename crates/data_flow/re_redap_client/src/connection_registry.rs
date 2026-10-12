@@ -404,12 +404,17 @@ impl ConnectionRegistryHandle {
 
         // We have a successful connection, so we cache it and remember about the successful token.
         //
-        // Note: because we only acquire the lock now, a race is possible where two threads
-        // concurrently attempt to create the connection and would override each-other's results. This
-        // is acceptable since both should reach the same conclusion, and preferable that holding
-        // the lock for the entire time, as the connection process can take a while.
+        // Note: because we only acquire the lock now, another task may have connected to this origin
+        // while we were validating ours. We then use its connection and drop ours: each connection
+        // has its own chunk cache, and callers that already got the stored connection must keep
+        // seeing the chunks cached through it. This is preferable to holding the lock for the entire
+        // time, as the connection process can take a while.
         let connection = {
             let mut inner = self.inner.write().await;
+
+            if let Some(connection) = inner.remote_connections.get(&origin) {
+                return Ok(connection.clone());
+            }
 
             let connection = Connection {
                 client: RedapClient::new(

@@ -36,6 +36,10 @@ impl ChunkCacheHandle {
         self.0.write()
     }
 
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+
     /// Splits a chunk request into the chunks this cache can serve and the rows that still have to
     /// be fetched.
     ///
