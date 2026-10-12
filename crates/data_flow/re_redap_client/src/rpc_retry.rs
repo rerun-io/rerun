@@ -96,7 +96,7 @@ async fn retry_with_policy<T, F: Future<Output = tonic::Result<T>>>(
             .gen_next()
             .jittered()
             .min(deadline.saturating_duration_since(web_time::Instant::now()));
-        tracing::debug!(%reason, ?delay, "RPC rejected, retrying after backoff");
+        tracing::trace!(%reason, ?delay, "RPC rejected, retrying after backoff");
         re_async::sleep(delay).await;
         let Some(remaining) = deadline.checked_duration_since(web_time::Instant::now()) else {
             return Err(timeout);
