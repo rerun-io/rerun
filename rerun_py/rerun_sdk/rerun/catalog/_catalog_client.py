@@ -538,8 +538,7 @@ class CatalogClient:
                 raise ValueError("Either 'id' or 'name' must be provided.")
 
             case (EntryId(), None):
-                # TODO(astral-sh/ty/#2538)
-                return id  # ty: ignore[invalid-return-type]
+                return id
 
             case (str(id), None):
                 return EntryId(id)

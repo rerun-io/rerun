@@ -348,10 +348,13 @@ py-lint-non-sdk = { depends-on = [
 py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
-py-lint-rerun-ty = "uv run ty check --error deprecated"
+py-lint-rerun-ty = { depends-on = [
+  "py-sync-examples", # ty resolves the imports of examples and snippets against the .venv
+  "py-sync-snippets",
+], cmd = "uv run ty check --error deprecated" }
 # Isolated examples (their own uv project + .venv, excluded from the shared mypy run above).
 # The script auto-discovers any example whose pyproject.toml sets
-# `[tool.rerun-example] isolated = true` and lints it with the shared mypy config.
+# `[tool.rerun-example] isolated = true` and lints it with the shared mypy config, and with ty.
 py-lint-isolated-examples = "python scripts/ci/isolated_examples.py lint"
 py-lint = { depends-on = [
   "py-lint-rerun-ty", # Fast first
@@ -672,7 +675,7 @@ taplo = "=0.9.1"
 tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
-ty = "==0.0.84"
+ty = "==0.0.84" # Keep in sync with `dataplatform/pixi.toml`.
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
 wasm-pack = "0.15.*"

@@ -37,7 +37,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-import tomllib
+# The release workflow runs this with the runner's `python3` (3.11+), not the SDK's 3.10 floor.
+import tomllib  # ty: ignore[unresolved-import]
 
 REPO = "rerun-io/rerun"
 GRADIO_REPO = "rerun-io/gradio-rerun-viewer"

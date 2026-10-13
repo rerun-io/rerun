@@ -104,8 +104,9 @@ def build_property_args(
 
     """
     batches: Iterable[DescribedComponentBatch]
-    if hasattr(values, "as_component_batches"):  # same dispatch as rerun._log.log
-        batches = values.as_component_batches()
+    # Same dispatch as `rerun._log.log`.
+    if (as_component_batches := getattr(values, "as_component_batches", None)) is not None:
+        batches = as_component_batches()
     elif isinstance(values, Iterable):
         batches = values
     else:

@@ -1,6 +1,7 @@
 """Use lenses to extract struct fields and reroute data to another entity."""
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 import rerun as rr
 from rerun.chunk import (
@@ -59,7 +60,7 @@ extract_scaled_x = DeriveLens(
     "Imu:accel", output_entity="/new_entity/accel_scaled_x"
 ).to_component(
     rr.Scalars.descriptor_scalars(),
-    Selector(".x").pipe(lambda arr: pa.compute.multiply(arr, 9.81)),
+    Selector(".x").pipe(lambda arr: pc.multiply(arr, 9.81)),
 )
 # endregion: pipe_example
 

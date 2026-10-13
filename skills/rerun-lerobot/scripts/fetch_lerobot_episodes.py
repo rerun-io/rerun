@@ -60,12 +60,12 @@ def bytes_to_download(repo_id: str, patterns: list[str]) -> int | None:
         siblings = HfApi().dataset_info(repo_id, files_metadata=True).siblings or []
     except (HfHubHTTPError, OSError):
         return None
-    wanted = [
-        sibling
+    sizes = [
+        sibling.size
         for sibling in siblings
         if any(fnmatch(sibling.rfilename, pattern) for pattern in patterns) and sibling.size is not None
     ]
-    return sum(sibling.size for sibling in wanted) if wanted else None
+    return sum(sizes) if sizes else None
 
 
 def dataset_bytes(dest: Path) -> int:

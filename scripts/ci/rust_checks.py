@@ -131,8 +131,8 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
 
 def main() -> None:
     # Ensure we can print unicode characters. Has been historically an issue on Windows CI.
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    if (reconfigure := getattr(sys.stdout, "reconfigure", None)) is not None:
+        reconfigure(encoding="utf-8")
 
     # On CI, we split these checks into groups to reduce the time it takes to run all of this.
     # Make sure the `reusable_checks_rust` workflow stays up-to-date with this list.

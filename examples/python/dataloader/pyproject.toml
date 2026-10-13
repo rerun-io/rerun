@@ -46,3 +46,8 @@ rerun-sdk = { path = "../../../rerun_py", editable = true }
 [[tool.mypy.overrides]]
 module = ["lerobot.*", "torch.*", "torchvision.*", "diffusers.*", "accelerate.*"]
 ignore_missing_imports = true
+
+# Makes ty treat this example as its own project instead of walking up to the workspace config.
+[tool.ty.environment]
+python = ".venv"
+extra-paths = ["../../../rerun_py", "../../../rerun_py/rerun_sdk"]

@@ -94,6 +94,11 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
             )
         finally:
             Path(tmp_path).unlink(missing_ok=True)
+        subprocess.run(
+            ["uv", "run", "--no-sync", "ty", "check", "--error", "deprecated"],
+            cwd=project,
+            check=True,
+        )
 
     return 0
 
@@ -122,7 +127,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("lint", help="mypy-check every isolated example")
+    sub.add_parser("lint", help="mypy- and ty-check every isolated example")
     sub.add_parser("check-lock", help="verify every isolated example's uv.lock is up to date")
     args = parser.parse_args()
 

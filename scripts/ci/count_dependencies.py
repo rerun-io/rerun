@@ -25,6 +25,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 
 
@@ -50,9 +52,12 @@ def main() -> None:
 
     # An empty `RUSTFLAGS` disables `cfg(rerun_workspace_hack)`, so `re_workspace_hack` (which depends on every
     # third-party crate in the workspace) is not counted. It is a build-time optimization that users never get.
-    cmd = f'RUSTFLAGS="" cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\\w+ v[0-9.]+" -o | sort -u | wc -l'
-    print(f"Running command: {cmd}", file=sys.stderr, flush=True)
-    count = int(os.popen(cmd).read().strip())
+    custom_env = os.environ | {"RUSTFLAGS": ""}
+    cmd = ["cargo", "tree", "--edges", "normal", "-p", crate, *flags.split()]
+    print(f"Running command: {' '.join(cmd)}", file=sys.stderr, flush=True)
+    tree = subprocess.run(cmd, env=custom_env, check=True, capture_output=True, text=True).stdout
+    # Skip the root crate on the first line, and count every other `name vX.Y.Z` once.
+    count = len(set(re.findall(r"\w+ v[0-9.]+", "\n".join(tree.splitlines()[1:]))))
     assert count > 0, f"Command failed. Maybe unknown crate? cmd: {cmd}"
     print(json.dumps([{"name": f"{crate} {flags}", "value": count, "unit": "crates"}]))
 

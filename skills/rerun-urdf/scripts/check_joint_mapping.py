@@ -29,6 +29,7 @@ import argparse
 import math
 import sys
 import xml.etree.ElementTree as ET  # noqa: S405 — the URDF is a local file the caller named
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,7 +38,7 @@ import pyarrow.parquet as pq
 
 # Corrections are applied in the source unit (degrees or radians), before conversion.
 # `%360` is the wrap that shows up whenever a servo reports a continuous angle.
-CANDIDATES: dict[str, object] = {
+CANDIDATES: dict[str, Callable[[np.ndarray, float], np.ndarray]] = {
     "identity": lambda x, full: x,
     "negate": lambda x, full: -x,
     "%360": lambda x, full: x % full,
