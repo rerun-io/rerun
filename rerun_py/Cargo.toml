@@ -127,7 +127,6 @@ reqwest.workspace = true
 # Deps for remote feature
 re_protos = { workspace = true, features = ["py"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-tokio-stream.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
 thiserror.workspace = true

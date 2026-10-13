@@ -1009,8 +1009,8 @@ pub struct SegmentProperties {
     /// naming the dataset's segment table uses.
     #[prost(message, optional, tag = "2")]
     pub properties: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    /// Bumped on every write, starting at 1. Pass it back to `SetSegmentProperties` to make the
-    /// next write conditional.
+    /// A new random value on every write, never `0`. Only compare it for equality. Pass it back to
+    /// `SetSegmentProperties` or `DeleteSegmentProperties` to make the next change conditional.
     #[prost(uint64, tag = "3")]
     pub revision: u64,
 }
@@ -1067,6 +1067,60 @@ impl ::prost::Name for SetSegmentPropertiesResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.SetSegmentPropertiesResponse".into()
+    }
+}
+/// Request for `DeleteSegmentProperties`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteSegmentPropertiesRequest {
+    /// The segments whose properties to drop. Dropping properties a segment doesn't have is a no-op,
+    /// and so is an empty list.
+    #[prost(message, repeated, tag = "1")]
+    pub segments: ::prost::alloc::vec::Vec<SegmentPropertiesDeletion>,
+}
+impl ::prost::Name for DeleteSegmentPropertiesRequest {
+    const NAME: &'static str = "DeleteSegmentPropertiesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteSegmentPropertiesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteSegmentPropertiesRequest".into()
+    }
+}
+/// One segment in a `DeleteSegmentPropertiesRequest`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentPropertiesDeletion {
+    /// The segment whose properties to drop.
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// When set, the properties are only dropped if the stored revision matches, and are left
+    /// untouched otherwise. Read the current revision from `GetSegmentProperties`.
+    ///
+    /// When unset, whatever is stored is dropped.
+    #[prost(uint64, optional, tag = "2")]
+    pub expected_revision: ::core::option::Option<u64>,
+}
+impl ::prost::Name for SegmentPropertiesDeletion {
+    const NAME: &'static str = "SegmentPropertiesDeletion";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentPropertiesDeletion".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentPropertiesDeletion".into()
+    }
+}
+/// Response for `DeleteSegmentProperties`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DeleteSegmentPropertiesResponse {}
+impl ::prost::Name for DeleteSegmentPropertiesResponse {
+    const NAME: &'static str = "DeleteSegmentPropertiesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteSegmentPropertiesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteSegmentPropertiesResponse".into()
     }
 }
 /// Request for `QueryDataset`.
@@ -3378,6 +3432,32 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Drop the mutable properties of segments in this dataset.
+        ///
+        /// Properties stay stored when a segment is unregistered, so dropping them is up to the client.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn delete_segment_properties(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteSegmentPropertiesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteSegmentPropertiesResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteSegmentProperties",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DeleteSegmentProperties",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
         /// as information that can be sent back to the catalog server to fetch the actual chunks as part
         /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
@@ -3969,6 +4049,18 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::SetSegmentPropertiesRequest>,
         ) -> std::result::Result<tonic::Response<super::SetSegmentPropertiesResponse>, tonic::Status>;
+        /// Drop the mutable properties of segments in this dataset.
+        ///
+        /// Properties stay stored when a segment is unregistered, so dropping them is up to the client.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn delete_segment_properties(
+            &self,
+            request: tonic::Request<super::DeleteSegmentPropertiesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteSegmentPropertiesResponse>,
+            tonic::Status,
+        >;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -5237,6 +5329,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = SetSegmentPropertiesSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteSegmentProperties" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteSegmentPropertiesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DeleteSegmentPropertiesRequest>
+                        for DeleteSegmentPropertiesSvc<T>
+                    {
+                        type Response = super::DeleteSegmentPropertiesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteSegmentPropertiesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::delete_segment_properties(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteSegmentPropertiesSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

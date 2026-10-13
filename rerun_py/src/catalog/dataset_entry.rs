@@ -206,6 +206,19 @@ impl PyDatasetEntryInternal {
         )
     }
 
+    /// Delete the mutable properties of the given segments.
+    fn delete_segment_properties(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_ids: Vec<String>,
+    ) -> PyResult<()> {
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry.delete_segment_properties").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+
+        connection.delete_segment_properties(py, self_.entry_details.id, segment_ids)
+    }
+
     /// The default blueprint segment ID for this dataset, if any.
     fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_

@@ -123,11 +123,11 @@ impl ConnectionHandle {
             return Ok(());
         };
 
-        let (_trace_id, task_ids) = client
+        let (trace_id, task_ids) = client
             .unregister_from_dataset(asset_dataset, vec![asset_segment_id], vec![], force)
             .await?;
 
-        client.wait_for_tasks(task_ids, timeout).await
+        client.wait_for_tasks(task_ids, trace_id, timeout).await
     }
 
     /// Initiate asynchronous registration of the provided data sources with a dataset.

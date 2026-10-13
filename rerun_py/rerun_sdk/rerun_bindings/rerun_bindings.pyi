@@ -1106,6 +1106,7 @@ class DatasetEntryInternal:
         properties: pa.RecordBatch,
         expected_revision: int | None = None,
     ) -> int: ...
+    def delete_segment_properties(self, segment_ids: list[str]) -> None: ...
 
     # ---
 

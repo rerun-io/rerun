@@ -378,6 +378,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Unregistering an asset that doesn't exist is a no-op.
 
+        The asset's properties, such as the segments it applies to, stay stored. Call [`delete_segment_properties`][rerun.catalog.DatasetEntry.delete_segment_properties]
+        on the [`asset_dataset`][rerun.catalog.DatasetEntry.asset_dataset] to delete them.
+
         Parameters
         ----------
         segment_id:
@@ -800,6 +803,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
         * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
 
+        Segment properties stay stored, even for segments that lose all their layers.
+        Use [`delete_segment_properties`][rerun.catalog.DatasetEntry.delete_segment_properties] to delete them.
+
         Parameters
         ----------
         segments_to_drop: list[str]
@@ -832,6 +838,24 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return UnregistrationHandle(
             self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
         )
+
+    @with_tracing("DatasetEntry.delete_segment_properties")
+    def delete_segment_properties(self, segment_ids: str | Sequence[str]) -> None:
+        """
+        Delete the properties of the given segments.
+
+        Deleting properties a segment doesn't have is a no-op.
+
+        Parameters
+        ----------
+        segment_ids: list[str]
+            The segment IDs whose properties to delete.
+
+        """
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+
+        self._internal.delete_segment_properties(list(segment_ids))
 
     def register_prefix(
         self,

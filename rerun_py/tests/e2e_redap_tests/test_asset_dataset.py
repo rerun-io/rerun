@@ -77,6 +77,25 @@ def test_unregister_asset_removes_it_from_asset_dataset(
 
 
 @pytest.mark.local_only
+def test_unregister_asset_keeps_its_properties_until_deleted(
+    entry_factory: EntryFactory,
+    static_recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Unregistering an asset leaves its properties stored. Deleting them explicitly removes them."""
+    ds = entry_factory.create_dataset("dataset_with_unregistered_asset")
+    [asset_uri] = static_recording_factory(["asset"])
+    asset_id = ds.register_asset(asset_uri, mode="opt_in")
+    asset_dataset = ds.asset_dataset()
+    assert asset_dataset is not None
+
+    ds.unregister_asset(asset_id)
+    assert asset_dataset._internal._get_segment_properties(asset_id) is not None
+
+    asset_dataset.delete_segment_properties(asset_id)
+    assert asset_dataset._internal._get_segment_properties(asset_id) is None
+
+
+@pytest.mark.local_only
 def test_assets_for_segment_respects_opt_in_and_opt_out(
     entry_factory: EntryFactory,
     static_recording_factory: Callable[[Sequence[str]], list[str]],

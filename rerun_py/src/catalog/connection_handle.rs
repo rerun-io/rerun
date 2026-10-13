@@ -275,6 +275,26 @@ impl PyConnectionHandle {
         })
     }
 
+    /// Delete the mutable properties of several segments.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn delete_segment_properties(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        segment_ids: Vec<String>,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .delete_segment_properties(
+                    entry_id,
+                    segment_ids.into_iter().map(SegmentId::from).collect(),
+                )
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     pub fn register_table(
         &self,

@@ -154,6 +154,7 @@ define_redap_tests! {
     register_asset::set_segment_properties_rejects_a_multi_row_batch,
     register_asset::get_segment_properties_reads_several_segments,
     register_asset::get_segment_properties_rejects_an_empty_request,
+    register_asset::delete_segment_properties_drops_them,
     register_asset::unregistering_a_segment_preserves_its_properties,
     register_asset::dropping_the_last_layer_of_a_segment_preserves_its_properties,
     register_segment::register_and_attach_table_blueprint_dataset,
