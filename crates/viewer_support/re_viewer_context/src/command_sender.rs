@@ -335,6 +335,16 @@ impl CommandReceiver {
         // is if the sender has been dropped.
         self.recording_receiver.try_recv().ok()
     }
+
+    /// Has every command sent so far been received?
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            system_receiver,
+            ui_receiver,
+            recording_receiver,
+        } = self;
+        system_receiver.is_empty() && ui_receiver.is_empty() && recording_receiver.is_empty()
+    }
 }
 
 /// Creates a new command channel.

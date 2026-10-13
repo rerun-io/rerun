@@ -113,6 +113,9 @@ pub struct App {
         re_log_channel::UiCallback<Result<(), SaveScreenshotError>>,
     >,
 
+    /// `ViewerControlService` answers held back until the commands they queued have run.
+    pending_viewer_control_replies: Vec<viewer_control::PendingReply>,
+
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
@@ -529,6 +532,7 @@ impl App {
             screenshot_rx,
             texture_readback: Default::default(),
             pending_screenshot_notifiers: Default::default(),
+            pending_viewer_control_replies: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,

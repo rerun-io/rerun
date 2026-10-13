@@ -47,12 +47,54 @@ const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
 /// components on it cost many — which is the whole reason to ask for paths alone.
 const DEFAULT_MAX_SCHEMA_PATHS: u32 = 10_000;
 
+/// A `ViewerControlService` answer held back until the work it reports on has happened.
+///
+/// Operations that act through queued commands would otherwise answer before those commands
+/// run, so a caller that reads the viewer state right after would see the old state.
+pub(super) struct PendingReply {
+    on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+    result: Result<ViewerControlResponse, ViewerControlError>,
+}
+
 impl App {
+    /// Answer `on_done` with `result` once every command queued so far has run.
+    fn reply_after_commands(
+        &mut self,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        result: Result<ViewerControlResponse, ViewerControlError>,
+        egui_ctx: &egui::Context,
+    ) {
+        // A failed operation queued nothing, so there is nothing to wait for.
+        if result.is_err() {
+            on_done.call(result);
+            return;
+        }
+        self.pending_viewer_control_replies
+            .push(PendingReply { on_done, result });
+        // The queued commands run, and the answer goes out, only as part of a frame. An idle or
+        // hidden viewer would not run one on its own.
+        egui_ctx.request_repaint();
+    }
+
+    /// Send the held-back answers whose commands have all run.
+    ///
+    /// Must be called right after draining the system commands, so that an empty queue means
+    /// the commands a reply waits for have run rather than not yet been sent.
+    pub(super) fn answer_pending_viewer_control_replies(&mut self) {
+        if self.pending_viewer_control_replies.is_empty() || !self.command_receiver.is_empty() {
+            return;
+        }
+        for PendingReply { on_done, result } in self.pending_viewer_control_replies.drain(..) {
+            on_done.call(result);
+        }
+    }
+
     /// Run one operation of the `ViewerControlService` API on the UI thread.
     ///
     /// Every transport lands here: the request arrives decoded, and `on_done` carries the matching
-    /// response or a coded failure back to whoever asked. Only `save_screenshot` and
-    /// `capture_profile_trace` answer later than this call, once their file has been written.
+    /// response or a coded failure back to whoever asked. Operations that act through queued
+    /// commands answer once those commands have run, and `save_screenshot` and
+    /// `capture_profile_trace` once their file has been written.
     pub(super) fn serve_viewer_control(
         &mut self,
         request: ViewerControlRequest,
@@ -91,7 +133,7 @@ impl App {
                             .map_err(ViewerControlError::not_found)
                     })
                     .map(ViewerControlResponse::from);
-                on_done.call(result);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
             Kind::DescribeCommands(request) => {
                 on_done.call(
@@ -151,19 +193,19 @@ impl App {
             }
 
             Kind::RunCommand(request) => {
-                on_done.call(
-                    self.run_command(store_hub, request, egui_ctx)
-                        .map(ViewerControlResponse::from),
-                );
+                let result = self
+                    .run_command(store_hub, request, egui_ctx)
+                    .map(ViewerControlResponse::from);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
 
             Kind::SetBlueprint(request) => {
-                on_done.call(
-                    self.apply_set_blueprint(store_hub, request)
-                        .map(ViewerControlResponse::from),
-                );
+                let result = self
+                    .apply_set_blueprint(store_hub, request)
+                    .map(ViewerControlResponse::from);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
 
             Kind::SetTimeCursor(request) => {
@@ -199,7 +241,7 @@ impl App {
                         .map_err(ViewerControlError::invalid_argument)
                     })
                     .map(ViewerControlResponse::from);
-                on_done.call(result);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
         }
     }
@@ -467,7 +509,7 @@ impl App {
     /// Replace the active blueprint of a recording's application with JSON, for the
     /// `set_blueprint` operation.
     ///
-    /// Returns once the write is queued; the blueprint changes on the next frame.
+    /// Only queues the write, so the caller must hold the answer back until it has run.
     fn apply_set_blueprint(
         &self,
         store_hub: &StoreHub,
@@ -641,10 +683,14 @@ impl App {
             ],
             re_log_channel::CloseRecordingTarget::Some(store_ids) => store_ids,
         };
+        // Check every id before closing any, so that a failed request closes nothing.
+        if let Some(missing) = to_close
+            .iter()
+            .find(|store_id| store_hub.entity_db(store_id).is_none())
+        {
+            return Err(format!("no such recording: {missing}"));
+        }
         for store_id in &to_close {
-            if store_hub.entity_db(store_id).is_none() {
-                return Err(format!("no such recording: {store_id}"));
-            }
             self.command_sender
                 .send_system(SystemCommand::CloseRecordingOrTable(
                     store_id.clone().into(),
@@ -907,6 +953,96 @@ mod tests {
     use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
 
     use super::*;
+
+    #[cfg(feature = "testing")]
+    mod close_recordings_waits {
+        use super::*;
+
+        /// Send `close_recordings` for `store_ids`, and return where its answer lands.
+        fn close_recordings(
+            app: &mut App,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+            store_ids: &[&StoreId],
+        ) -> std::sync::Arc<
+            parking_lot::Mutex<Option<Result<ViewerControlResponse, ViewerControlError>>>,
+        > {
+            use re_protos::viewer_control::v1alpha1::ViewerRecordingIds;
+
+            let answer = std::sync::Arc::new(parking_lot::Mutex::new(None));
+            let request = ViewerControlRequest {
+                kind: Some(viewer_control_request::Kind::CloseRecordings(
+                    CloseRecordingsRequest {
+                        target: Some(Target::StoreIds(ViewerRecordingIds {
+                            store_ids: store_ids.iter().map(ToString::to_string).collect(),
+                        })),
+                    },
+                )),
+            };
+            app.serve_viewer_control(
+                request,
+                UiCallback::new({
+                    let answer = answer.clone();
+                    move |result| *answer.lock() = Some(result)
+                }),
+                store_hub,
+                egui_ctx,
+            );
+            answer
+        }
+
+        /// The caller reads the viewer state as soon as it has its answer, so the answer must wait
+        /// for the commands the operation queued.
+        #[tokio::test]
+        async fn close_recordings_answers_once_the_recording_is_closed() {
+            use re_log_types::StoreKind;
+
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+            let mut store_hub = app
+                .store_hub
+                .take()
+                .expect("the hub is only taken during a frame");
+
+            let store_id = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&store_id);
+
+            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&store_id]);
+            assert!(answer.lock().is_none(), "answered before closing");
+
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert!(store_hub.entity_db(&store_id).is_none());
+        }
+
+        /// An error answers at once, so it must not leave any recording queued to close.
+        #[tokio::test]
+        async fn close_recordings_with_a_missing_id_closes_nothing() {
+            use re_log_types::StoreKind;
+
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+            let mut store_hub = app
+                .store_hub
+                .take()
+                .expect("the hub is only taken during a frame");
+
+            let open = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&open);
+            let missing = StoreId::random(StoreKind::Recording, "test_app");
+
+            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&open, &missing]);
+            assert!(answer.lock().take().is_some_and(|result| result.is_err()));
+
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(
+                store_hub.entity_db(&open).is_some(),
+                "closed despite the error"
+            );
+        }
+    }
 
     #[test]
     fn an_omitted_close_target_is_refused() {

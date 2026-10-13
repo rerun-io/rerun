@@ -82,7 +82,19 @@ impl App {
                 store_context.as_ref(),
                 &route,
             );
+            // Here too, and not only in `ui`, so that a hidden viewer still runs them. A
+            // viewer-control request waits for them.
+            self.run_pending_recording_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
+
+        // The commands above may queue system commands, and answer viewer-control requests that
+        // wait on them.
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         self.state.cleanup(&store_hub);
 

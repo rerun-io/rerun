@@ -56,6 +56,7 @@ impl App {
         while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
             self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
+        self.answer_pending_viewer_control_replies();
     }
 
     pub(super) fn run_pending_ui_commands(
