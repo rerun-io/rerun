@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, FieldRef};
-use datafusion::logical_expr::Expr;
 use datafusion::sql::sqlparser::ast::Expr as SqlExpr;
 use re_log_types::TimestampFormat;
 use re_types_core::{ArrowDataType as _, Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
@@ -14,33 +13,8 @@ use super::{
     is_supported_string_datatype,
 };
 
-#[derive(Debug, Clone, thiserror::Error)]
-#[expect(clippy::enum_variant_names)]
-pub enum FilterError {
-    #[error("invalid non-nullable boolean filter {filter:?} for field {field}")]
-    InvalidNonNullableBooleanFilter {
-        filter: NonNullableBooleanFilter,
-        field: Box<Field>,
-    },
-
-    #[error("invalid nullable boolean filter {filter:?} for field {field}")]
-    InvalidNullableBooleanFilter {
-        filter: NullableBooleanFilter,
-        field: Box<Field>,
-    },
-
-    #[error("invalid string filter {filter:?} for field {field}")]
-    InvalidStringFilter {
-        filter: StringFilter,
-        field: Box<Field>,
-    },
-}
-
 /// Trait describing what a filter must do.
 pub trait Filter {
-    /// Convert the filter to a datafusion expression.
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
-
     /// Convert the filter to the SQL stored in the table blueprint.
     ///
     /// Returns `None` if the filter selects every row.
@@ -191,10 +165,6 @@ impl TypedFilter {
 }
 
 impl Filter for TypedFilter {
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
-        self.as_filter().as_filter_expression(field)
-    }
-
     fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
         self.as_filter().to_sql(column)
     }

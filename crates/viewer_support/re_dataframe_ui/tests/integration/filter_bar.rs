@@ -130,7 +130,7 @@ async fn test_timestamp_filter_on_commit() {
     run_async_harness(&test_context, &mut harness).await;
     assert_eq!(
         blueprint_filters(&test_context, &table_blueprints),
-        [r#""ts" >= TIMESTAMP '1979-07-10T00:00:00Z'"#]
+        [r#""ts" >= TIMESTAMPTZ '1979-07-10T00:00:00Z'"#]
     );
 
     harness

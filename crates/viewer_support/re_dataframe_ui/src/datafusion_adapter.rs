@@ -247,7 +247,16 @@ impl DataFusionQuery {
     async fn batch_stream(
         self,
     ) -> Result<(SendableRecordBatchStream, FilterErrors), DataFusionError> {
-        let mut dataframe = self.session_ctx.table(self.table_ref).await?;
+        // Relative timestamp filters, such as "today", use the session time zone. With a time
+        // zone, `TIMESTAMPTZ` literals in filters compare as instants against columns of any time
+        // zone.
+        let (mut session_state, plan) = self.session_ctx.table(self.table_ref).await?.into_parts();
+        let time_zone = jiff::tz::TimeZone::system()
+            .iana_name()
+            .unwrap_or("UTC")
+            .to_owned();
+        session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+        let mut dataframe = DataFrame::new(session_state.clone(), plan);
 
         let DataFusionQueryData {
             sort_by,
@@ -305,7 +314,6 @@ impl DataFusionQuery {
         // Filters
         //
 
-        let session_state = self.session_ctx.state();
         let mut filter_errors = HashMap::default();
         let filter_exprs = filters
             .iter()

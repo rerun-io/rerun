@@ -12,8 +12,8 @@ any_match("Some ""column""", x -> x = false)
 ("Some ""column""" IS NULL) IS NOT TRUE
 any_match("Some ""column""", x -> x = true)
 (any_match("Some ""column""", x -> x = false)) IS NOT TRUE
-"Some ""column""" IS NULL OR cardinality("Some ""column""") = 0 OR any_match("Some ""column""", x -> x IS NULL)
-("Some ""column""" IS NULL OR cardinality("Some ""column""") = 0 OR any_match("Some ""column""", x -> x IS NULL)) IS NOT TRUE
+"Some ""column""" IS NULL OR NOT any_match("Some ""column""", x -> true) OR any_match("Some ""column""", x -> x IS NULL)
+("Some ""column""" IS NULL OR NOT any_match("Some ""column""", x -> true) OR any_match("Some ""column""", x -> x IS NULL)) IS NOT TRUE
 "Some ""column""" = -42
 "Some ""column""" = 7
 ("Some ""column""" = -42) IS NOT TRUE
@@ -62,6 +62,78 @@ any_match("Some ""column""", x -> x > -42)
 any_match("Some ""column""", x -> x > 7)
 any_match("Some ""column""", x -> x >= -42)
 any_match("Some ""column""", x -> x >= 7)
+"Some ""column""" = CAST(-10.5 AS REAL)
+"Some ""column""" = CAST(1e300 AS REAL)
+"Some ""column""" = CAST('inf' AS REAL)
+("Some ""column""" = CAST(-10.5 AS REAL)) IS NOT TRUE
+("Some ""column""" = CAST(1e300 AS REAL)) IS NOT TRUE
+("Some ""column""" = CAST('inf' AS REAL)) IS NOT TRUE
+"Some ""column""" < CAST(-10.5 AS REAL)
+"Some ""column""" < CAST(1e300 AS REAL)
+"Some ""column""" < CAST('inf' AS REAL)
+"Some ""column""" <= CAST(-10.5 AS REAL)
+"Some ""column""" <= CAST(1e300 AS REAL)
+"Some ""column""" <= CAST('inf' AS REAL)
+"Some ""column""" > CAST(-10.5 AS REAL)
+"Some ""column""" > CAST(1e300 AS REAL)
+"Some ""column""" > CAST('inf' AS REAL)
+"Some ""column""" >= CAST(-10.5 AS REAL)
+"Some ""column""" >= CAST(1e300 AS REAL)
+"Some ""column""" >= CAST('inf' AS REAL)
+any_match("Some ""column""", x -> x = CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x = CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x = CAST('inf' AS REAL))
+(any_match("Some ""column""", x -> x = CAST(-10.5 AS REAL))) IS NOT TRUE
+(any_match("Some ""column""", x -> x = CAST(1e300 AS REAL))) IS NOT TRUE
+(any_match("Some ""column""", x -> x = CAST('inf' AS REAL))) IS NOT TRUE
+any_match("Some ""column""", x -> x < CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x < CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x < CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x <= CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x <= CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x <= CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x > CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x > CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x > CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x >= CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x >= CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x >= CAST('inf' AS REAL))
+"Some ""column""" = CAST(-10.5 AS REAL)
+"Some ""column""" = CAST(1e300 AS REAL)
+"Some ""column""" = CAST('inf' AS REAL)
+("Some ""column""" = CAST(-10.5 AS REAL)) IS NOT TRUE
+("Some ""column""" = CAST(1e300 AS REAL)) IS NOT TRUE
+("Some ""column""" = CAST('inf' AS REAL)) IS NOT TRUE
+"Some ""column""" < CAST(-10.5 AS REAL)
+"Some ""column""" < CAST(1e300 AS REAL)
+"Some ""column""" < CAST('inf' AS REAL)
+"Some ""column""" <= CAST(-10.5 AS REAL)
+"Some ""column""" <= CAST(1e300 AS REAL)
+"Some ""column""" <= CAST('inf' AS REAL)
+"Some ""column""" > CAST(-10.5 AS REAL)
+"Some ""column""" > CAST(1e300 AS REAL)
+"Some ""column""" > CAST('inf' AS REAL)
+"Some ""column""" >= CAST(-10.5 AS REAL)
+"Some ""column""" >= CAST(1e300 AS REAL)
+"Some ""column""" >= CAST('inf' AS REAL)
+any_match("Some ""column""", x -> x = CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x = CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x = CAST('inf' AS REAL))
+(any_match("Some ""column""", x -> x = CAST(-10.5 AS REAL))) IS NOT TRUE
+(any_match("Some ""column""", x -> x = CAST(1e300 AS REAL))) IS NOT TRUE
+(any_match("Some ""column""", x -> x = CAST('inf' AS REAL))) IS NOT TRUE
+any_match("Some ""column""", x -> x < CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x < CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x < CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x <= CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x <= CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x <= CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x > CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x > CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x > CAST('inf' AS REAL))
+any_match("Some ""column""", x -> x >= CAST(-10.5 AS REAL))
+any_match("Some ""column""", x -> x >= CAST(1e300 AS REAL))
+any_match("Some ""column""", x -> x >= CAST('inf' AS REAL))
 "Some ""column""" = -10.5
 "Some ""column""" = 1e300
 "Some ""column""" = CAST('inf' AS DOUBLE)
@@ -176,12 +248,12 @@ any_match("Some ""column""", x -> x ILIKE '%it''s 100\% a\_b\\c' ESCAPE '\')
 ("Some ""column""" >= date_trunc('week', now()) AND "Some ""column""" < date_trunc('week', now()) + INTERVAL '7 days') IS NOT TRUE
 "Some ""column""" >= date_trunc('week', now()) - INTERVAL '7 days' AND "Some ""column""" < date_trunc('week', now())
 ("Some ""column""" >= date_trunc('week', now()) - INTERVAL '7 days' AND "Some ""column""" < date_trunc('week', now())) IS NOT TRUE
-"Some ""column""" < TIMESTAMP '1973-03-03T09:46:40Z'
-("Some ""column""" < TIMESTAMP '1973-03-03T09:46:40Z') IS NOT TRUE
-"Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z'
-("Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z') IS NOT TRUE
-"Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMP '1973-03-03T10:46:40Z'
-("Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMP '1973-03-03T10:46:40Z') IS NOT TRUE
+"Some ""column""" < TIMESTAMPTZ '1973-03-03T09:46:40Z'
+("Some ""column""" < TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+"Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z'
+("Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+"Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMPTZ '1973-03-03T10:46:40Z'
+("Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMPTZ '1973-03-03T10:46:40Z') IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('day', now()) AND x < date_trunc('day', now()) + INTERVAL '1 day')
 (any_match("Some ""column""", x -> x >= date_trunc('day', now()) AND x < date_trunc('day', now()) + INTERVAL '1 day')) IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('day', now()) - INTERVAL '1 day' AND x < date_trunc('day', now()))
@@ -192,12 +264,12 @@ any_match("Some ""column""", x -> x >= date_trunc('week', now()) AND x < date_tr
 (any_match("Some ""column""", x -> x >= date_trunc('week', now()) AND x < date_trunc('week', now()) + INTERVAL '7 days')) IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('week', now()) - INTERVAL '7 days' AND x < date_trunc('week', now()))
 (any_match("Some ""column""", x -> x >= date_trunc('week', now()) - INTERVAL '7 days' AND x < date_trunc('week', now()))) IS NOT TRUE
-any_match("Some ""column""", x -> x < TIMESTAMP '1973-03-03T09:46:40Z')
-(any_match("Some ""column""", x -> x < TIMESTAMP '1973-03-03T09:46:40Z')) IS NOT TRUE
-any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z')
-(any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z')) IS NOT TRUE
-any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z' AND x < TIMESTAMP '1973-03-03T10:46:40Z')
-(any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z' AND x < TIMESTAMP '1973-03-03T10:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x < TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("Some ""column""", x -> x < TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND x < TIMESTAMPTZ '1973-03-03T10:46:40Z')
+(any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND x < TIMESTAMPTZ '1973-03-03T10:46:40Z')) IS NOT TRUE
 "Some ""column""" >= date_trunc('day', now()) AND "Some ""column""" < date_trunc('day', now()) + INTERVAL '1 day'
 ("Some ""column""" >= date_trunc('day', now()) AND "Some ""column""" < date_trunc('day', now()) + INTERVAL '1 day') IS NOT TRUE
 "Some ""column""" >= date_trunc('day', now()) - INTERVAL '1 day' AND "Some ""column""" < date_trunc('day', now())
@@ -208,12 +280,12 @@ any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z' AND x < 
 ("Some ""column""" >= date_trunc('week', now()) AND "Some ""column""" < date_trunc('week', now()) + INTERVAL '7 days') IS NOT TRUE
 "Some ""column""" >= date_trunc('week', now()) - INTERVAL '7 days' AND "Some ""column""" < date_trunc('week', now())
 ("Some ""column""" >= date_trunc('week', now()) - INTERVAL '7 days' AND "Some ""column""" < date_trunc('week', now())) IS NOT TRUE
-"Some ""column""" < TIMESTAMP '1973-03-03T09:46:40Z'
-("Some ""column""" < TIMESTAMP '1973-03-03T09:46:40Z') IS NOT TRUE
-"Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z'
-("Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z') IS NOT TRUE
-"Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMP '1973-03-03T10:46:40Z'
-("Some ""column""" >= TIMESTAMP '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMP '1973-03-03T10:46:40Z') IS NOT TRUE
+"Some ""column""" < TIMESTAMPTZ '1973-03-03T09:46:40Z'
+("Some ""column""" < TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+"Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z'
+("Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+"Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMPTZ '1973-03-03T10:46:40Z'
+("Some ""column""" >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND "Some ""column""" < TIMESTAMPTZ '1973-03-03T10:46:40Z') IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('day', now()) AND x < date_trunc('day', now()) + INTERVAL '1 day')
 (any_match("Some ""column""", x -> x >= date_trunc('day', now()) AND x < date_trunc('day', now()) + INTERVAL '1 day')) IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('day', now()) - INTERVAL '1 day' AND x < date_trunc('day', now()))
@@ -224,9 +296,9 @@ any_match("Some ""column""", x -> x >= date_trunc('week', now()) AND x < date_tr
 (any_match("Some ""column""", x -> x >= date_trunc('week', now()) AND x < date_trunc('week', now()) + INTERVAL '7 days')) IS NOT TRUE
 any_match("Some ""column""", x -> x >= date_trunc('week', now()) - INTERVAL '7 days' AND x < date_trunc('week', now()))
 (any_match("Some ""column""", x -> x >= date_trunc('week', now()) - INTERVAL '7 days' AND x < date_trunc('week', now()))) IS NOT TRUE
-any_match("Some ""column""", x -> x < TIMESTAMP '1973-03-03T09:46:40Z')
-(any_match("Some ""column""", x -> x < TIMESTAMP '1973-03-03T09:46:40Z')) IS NOT TRUE
-any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z')
-(any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z')) IS NOT TRUE
-any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z' AND x < TIMESTAMP '1973-03-03T10:46:40Z')
-(any_match("Some ""column""", x -> x >= TIMESTAMP '1973-03-03T09:46:40Z' AND x < TIMESTAMP '1973-03-03T10:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x < TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("Some ""column""", x -> x < TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND x < TIMESTAMPTZ '1973-03-03T10:46:40Z')
+(any_match("Some ""column""", x -> x >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND x < TIMESTAMPTZ '1973-03-03T10:46:40Z')) IS NOT TRUE
