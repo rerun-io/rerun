@@ -255,8 +255,9 @@ impl CurrentStores {
         } else {
             self.pipeline_budget.notify_empty_emit();
         }
-        if outcome.freed_bytes > 0 {
-            self.pipeline_budget.release(outcome.freed_bytes as usize);
+        if outcome.gc.freed_bytes > 0 {
+            self.pipeline_budget
+                .release(outcome.gc.freed_bytes as usize);
         }
         Ok(())
     }

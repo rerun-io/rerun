@@ -463,6 +463,10 @@ pub enum QueryErrorKind {
     /// CPU-side decoding or execution error (chunk insertion, row materialization).
     Decode,
 
+    /// Fetches finished without delivering every chunk the plan announced for
+    /// a segment.
+    Incomplete,
+
     /// Generic / unclassified error (e.g. IO task join failure).
     Other,
 }
@@ -474,6 +478,7 @@ impl QueryErrorKind {
             Self::GrpcFetch => "grpc_fetch",
             Self::DirectFetch => "direct_fetch",
             Self::Decode => "decode",
+            Self::Incomplete => "incomplete",
             Self::Other => "other",
         }
     }

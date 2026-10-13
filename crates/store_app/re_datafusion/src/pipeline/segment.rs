@@ -5,8 +5,8 @@
 //! each segment's safe horizon is a pure function of which planned chunks
 //! have been delivered: a chunk can never outrun the metadata describing it.
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 use re_dataframe::QueryExpression;
@@ -44,7 +44,8 @@ impl PlanCursor {
     ///
     /// Divergence (a key that was never planned, or delivered more times
     /// than planned) fires `debug_panic!` — the router matches deliveries
-    /// by exact `ChunkId` against the plan before calling this, so a miss
+    /// by exact `ChunkId` against the plan and rejects repeats
+    /// ([`SegmentState::first_delivery`]) before calling this, so a miss
     /// here indicates a bookkeeping bug, not a server anomaly.
     pub fn mark_delivered(&mut self, key: CursorKey) {
         match self.outstanding.entry(key) {
@@ -63,6 +64,14 @@ impl PlanCursor {
     /// Every planned chunk has been delivered.
     pub fn is_complete(&self) -> bool {
         self.outstanding.is_empty()
+    }
+
+    /// Planned chunks still undelivered.
+    ///
+    /// Paired with [`PlannedSegment::expected_chunks`] this gives the
+    /// received/expected ratio the under-delivery error reports.
+    pub fn outstanding_chunks(&self) -> usize {
+        self.outstanding.values().map(|&count| count as usize).sum()
     }
 
     /// The safe horizon: rows at `T <= horizon` may emit.
@@ -108,6 +117,16 @@ pub(crate) struct SegmentState {
     /// This segment's slice of the plan, shared with it rather than copied:
     /// the source for delivery routing (`chunk_meta`) and the emit mode.
     pub planned: Arc<PlannedSegment>,
+
+    /// Chunk ids already routed into the store, for rejecting repeated
+    /// deliveries.
+    ///
+    /// `chunk_meta` proves a chunk was *planned*, not that a
+    /// delivery is its *first*: the store makes a duplicate insert a no-op,
+    /// but the cursor counts per [`CursorKey`], so an uncaught repeat would
+    /// stand in for a different planned chunk sharing its key — completing
+    /// the cursor while that chunk never arrived.
+    delivered: HashSet<ChunkId>,
 }
 
 impl SegmentState {
@@ -129,7 +148,16 @@ impl SegmentState {
             cursor: PlanCursor::new(planned.cursor_keys()),
             ledger: SegmentLedger::default(),
             planned,
+            delivered: HashSet::new(),
         }
+    }
+
+    /// Record a delivery; `false` means this chunk id was delivered before.
+    ///
+    /// Callers must drop a repeat without touching the cursor or the ledger —
+    /// see [`Self::delivered`].
+    pub fn first_delivery(&mut self, chunk_id: ChunkId) -> bool {
+        self.delivered.insert(chunk_id)
     }
 
     pub fn mode(&self) -> SegmentEmitMode {
@@ -140,9 +168,8 @@ impl SegmentState {
     /// the plan's `chunk_meta` (single-currency rule: releases are in
     /// estimate space, never measured store bytes).
     ///
-    /// A `chunk_id` absent from `chunk_meta` is a plan divergence — the GC
-    /// pass can only remove chunks the store holds, and the store only ever
-    /// holds chunks this plan itself fetched — so it fires `debug_panic!`
+    /// The router drops unplanned deliveries, so every chunk in the store is
+    /// planned. A `chunk_id` absent from `chunk_meta` fires `debug_panic!`
     /// rather than silently undercounting, matching
     /// [`PlanCursor::mark_delivered`].
     pub fn est_bytes_for(&self, chunk_ids: impl IntoIterator<Item = ChunkId>) -> u64 {

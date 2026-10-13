@@ -4,9 +4,8 @@
 //! [`CpuWorkerMsg`] channel.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, LazyLock};
-use std::time::Duration;
 
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
@@ -23,12 +22,12 @@ use tracing::Instrument as _;
 use crate::ObjectStoreAuthenticator;
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
-    ChunksWithSegment, SortedChunksWithSegment, batch_byte_size, batch_byte_size_uncompressed,
-    batch_has_any_direct_urls, fetch_batch_direct, fetch_batch_group_via_grpc,
-    split_batch_by_direct_url,
+    ChunksWithSegment, DIRECT_FETCH_HTTP_CLIENT, SortedChunksWithSegment, batch_byte_size,
+    batch_byte_size_uncompressed, batch_has_any_direct_urls, fetch_batch_direct,
+    fetch_batch_group_via_grpc, split_batch_by_direct_url,
 };
 use crate::dataframe_query_common::{DataframeClientAPI, force_grpc};
-use crate::metrics_capture::QueryMetrics;
+use crate::metrics_capture::{InflightFetchGuard, QueryMetrics};
 #[cfg(test)]
 use crate::pipeline_budget::MAX_CONCURRENT_SEGMENTS;
 use crate::pipeline_budget::PipelineBudget;
@@ -48,63 +47,6 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// Max batch-level futures in-flight at once in the IO pipeline.
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
-
-/// RAII gauge for the number of fetch tasks in flight at once.
-///
-/// Bumps `current_inflight_fetches` on entry — updating the
-/// `peak_inflight_fetches` high-water mark via `fetch_max` — and decrements on
-/// drop, so the reported peak is correct even when a task returns early on
-/// error. `QueryMetrics` is shared across every partition's IO loop, so the
-/// peak is the true global concurrency (one unit per merged transport batch).
-struct InflightFetchGuard<'a>(&'a QueryMetrics);
-
-impl<'a> InflightFetchGuard<'a> {
-    fn enter(metrics: &'a QueryMetrics) -> Self {
-        let in_flight = metrics
-            .current_inflight_fetches
-            .fetch_add(1, Ordering::Relaxed)
-            + 1;
-        metrics
-            .peak_inflight_fetches
-            .fetch_max(in_flight, Ordering::Relaxed);
-        Self(metrics)
-    }
-}
-
-impl Drop for InflightFetchGuard<'_> {
-    fn drop(&mut self) {
-        self.0
-            .current_inflight_fetches
-            .fetch_sub(1, Ordering::Relaxed);
-    }
-}
-
-/// Connect timeout for direct-URL (S3) fetches. Bounds DNS + TCP + TLS
-/// setup so a hung connect cannot indefinitely hold one of the scarce
-/// process-global direct-fetch permits. Mirrors the gRPC client's 10s.
-const DIRECT_FETCH_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Idle read timeout for direct-URL fetches: the max gap between received
-/// bytes. Idle-based (not a total-request cap) so a large-but-progressing
-/// 16 MB merged range is never falsely cancelled, while a stalled body
-/// still releases its permit.
-const DIRECT_FETCH_READ_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// How long an unused connection stays in the pool before it is closed.
-const DIRECT_FETCH_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// Process-wide HTTP client for direct-URL (presigned object-store) chunk fetches.
-///
-/// Cloning is a cheap `Arc` bump that shares the same pool.
-static DIRECT_FETCH_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
-        .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
-        .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
-        .pool_idle_timeout(DIRECT_FETCH_POOL_IDLE_TIMEOUT)
-        .http1_only()
-        .build()
-        .expect("static reqwest client config is valid")
-});
 
 /// Build a [`SegmentChunkManifest`] per segment from the `:start` column
 /// the server attaches to each `chunk_info` row when the query has a

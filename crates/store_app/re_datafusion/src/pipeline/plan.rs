@@ -9,10 +9,10 @@
 //! planned chunks have been delivered, and no downstream consumer re-scans
 //! the chunk-info columns.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{BooleanArray, RecordBatch};
 use re_dataframe::TimelineName;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_log_types::TimeInt;
@@ -109,6 +109,13 @@ pub(crate) struct PlannedSegment {
     /// byte total all derive from it. Relies on `ChunkId` being unique within
     /// a segment, which [`build_fetch_plan`] enforces.
     pub chunk_meta: HashMap<ChunkId, (CursorKey, u64)>,
+
+    /// Index into [`FetchPlan::batches`] of the last batch carrying any of
+    /// this segment's chunks.
+    ///
+    /// Deliveries arrive in plan order, so once that batch has been delivered
+    /// no further chunk for this segment can arrive.
+    pub last_batch_idx: usize,
 }
 
 impl PlannedSegment {
@@ -161,6 +168,30 @@ impl FetchPlan {
     pub fn segment_index(&self, segment_id: &SegmentId) -> Option<usize> {
         self.segment_indices.get(segment_id).copied()
     }
+
+    /// Segments that must be buffered whole before any of their rows can
+    /// emit, and therefore release nothing until they complete.
+    ///
+    /// Reported alongside [`Self::max_segment_est_bytes`] because together
+    /// they predict, before any IO, whether the issuance window can hold:
+    /// a `BufferAll` segment wider than `W` can only be funded by
+    /// `IssuanceWindow::acquire_priority`, which grants past `W` outright.
+    pub fn n_buffer_all_segments(&self) -> usize {
+        self.segments
+            .iter()
+            .filter(|segment| segment.mode == SegmentEmitMode::BufferAll)
+            .count()
+    }
+
+    /// The widest single segment's estimate. Compare against `W`: a
+    /// `BufferAll` segment above it is guaranteed to overdraw the window.
+    pub fn max_segment_est_bytes(&self) -> u64 {
+        self.segments
+            .iter()
+            .map(|segment| segment.est_bytes())
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 /// Build the fetch plan for one partition.
@@ -212,14 +243,16 @@ pub(crate) fn build_fetch_plan(
         } else {
             SegmentEmitMode::Watermark
         };
-        // Each segment must arrive as exactly one batch. The packer's
-        // `:start` sort runs per batch, so a segment split across two would
-        // become two independently sorted runs laid end to end: plan order
-        // would stop matching time order, the horizon would stay pinned by a
-        // late-planned early chunk, and a segment larger than the issuance
-        // window could wedge the pipeline — delivered chunks unable to emit
-        // or GC while the pinning chunk waits behind a full window. A hard
-        // error here turns that silent hang into a visible failure.
+        // Each segment must arrive as exactly one *input* `chunk_info` batch.
+        // The packer's `:start` sort runs per batch, so a segment split across
+        // two would become two independently sorted runs laid end to end: plan
+        // order would stop matching time order, and the horizon would stay
+        // pinned by a late-planned early chunk.
+        //
+        // This says nothing about *request* batches: `split_large_segments`
+        // still spreads a segment past the packing target across several of
+        // them. A segment larger than the issuance window is kept live by
+        // `IssuanceWindow::acquire_priority`, not by this check.
         if modes.insert(segment_id.clone(), mode).is_some() {
             return Err(ApiError::internal(
                 origin,
@@ -229,6 +262,7 @@ pub(crate) fn build_fetch_plan(
                 ),
             ));
         }
+        let chunk_info = drop_repeated_chunk_ids(origin, &segment_id, chunk_info)?;
         kept.push((segment_id, chunk_info));
     }
 
@@ -267,6 +301,7 @@ pub(crate) fn build_fetch_plan(
                 segment_id,
                 mode,
                 chunk_meta: HashMap::new(),
+                last_batch_idx: 0,
             }
         })
         .collect();
@@ -296,6 +331,9 @@ pub(crate) fn build_fetch_plan(
             (grpc, FetchTransport::Grpc),
         ] {
             let Some(request) = request else { continue };
+            // The index this batch will occupy: a request that plans at least
+            // one row always yields a non-empty `requests`, so the push below
+            // is guaranteed and the index is already final.
             let planned = plan_request(
                 origin,
                 request,
@@ -303,6 +341,7 @@ pub(crate) fn build_fetch_plan(
                 start_col_name.as_deref(),
                 &segment_indices,
                 &mut segments,
+                batches.len(),
             )?;
             est_bytes += planned.est_bytes;
             requests.push(planned);
@@ -323,6 +362,45 @@ pub(crate) fn build_fetch_plan(
     })
 }
 
+/// Keep only the first row for each `ChunkId` in one segment's chunk-info
+/// batch.
+///
+/// An id repeats when two layers of a segment hold the same chunk, e.g. a
+/// recording registered alongside a `rerun rrd filter` output of it. The
+/// chunk store ignores a second insert of an id, so fetching the repeat is
+/// pure waste, and `PlannedSegment::chunk_meta` needs ids to be unique.
+fn drop_repeated_chunk_ids(
+    origin: &re_uri::Origin,
+    segment_id: &SegmentId,
+    chunk_info: RecordBatch,
+) -> ApiResult<RecordBatch> {
+    let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(&chunk_info)
+        .map_err(|err| ApiError::internal_quiver(origin, err))?;
+
+    let mut seen = HashSet::with_capacity(chunk_info.num_rows());
+    let keep: BooleanArray = (0..chunk_info.num_rows())
+        .map(|row| Some(seen.insert(chunk_ids.value_owned(row))))
+        .collect();
+    let n_repeated = chunk_info.num_rows() - keep.true_count();
+    if n_repeated == 0 {
+        return Ok(chunk_info);
+    }
+
+    re_log::warn_once!(
+        "segment {segment_id} lists {n_repeated} chunk id(s) more than once, likely across \
+         layers; fetching each chunk once"
+    );
+    arrow::compute::filter_record_batch(&chunk_info, &keep).map_err(|err| {
+        ApiError::internal_with_source(
+            origin,
+            None,
+            err,
+            format!("failed to drop repeated chunk ids for segment {segment_id}"),
+        )
+    })
+}
+
 /// Derive one transport-homogeneous request's byte estimate, populating the
 /// owning segments' `chunk_meta` as a side effect.
 ///
@@ -335,6 +413,7 @@ fn plan_request(
     start_col_name: Option<&str>,
     segment_indices: &HashMap<SegmentId, usize>,
     segments: &mut [PlannedSegment],
+    batch_idx: usize,
 ) -> ApiResult<PlannedRequest> {
     let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
         .extract(&request)
@@ -390,11 +469,16 @@ fn plan_request(
         let chunk_id = chunk_ids.value_owned(row);
 
         let segment = &mut segments[segment_idx];
+        // Batches are planned in ascending index order, so a plain max keeps
+        // this correct whether the segment is packed with others into one
+        // batch or split by `split_large_segments` across several.
+        segment.last_batch_idx = segment.last_batch_idx.max(batch_idx);
         if segment
             .chunk_meta
             .insert(chunk_id, (key, est_bytes))
             .is_some()
         {
+            // Cannot happen by construction (`drop_repeated_chunk_ids`).
             return Err(ApiError::internal(
                 origin,
                 format!("chunk {chunk_id} planned twice within segment {segment_id}"),
@@ -413,84 +497,11 @@ fn plan_request(
 
 #[cfg(test)]
 mod tests {
-    use arrow::array::{
-        BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
-        UInt64Array,
-    };
+    use arrow::array::{RecordBatchOptions, StringArray};
     use arrow::datatypes::{Field, Schema};
 
     use super::*;
-
-    /// Chunk-info batch with `:start`, `chunk_is_static`, and uncompressed
-    /// sizes. `starts[i] = None` → null `:start`.
-    fn chunk_info(
-        segment_id: &str,
-        timeline: Option<&str>,
-        starts: &[Option<i64>],
-        statics: &[bool],
-        uncompressed: &[Option<u64>],
-    ) -> RecordBatch {
-        assert_eq!(starts.len(), statics.len());
-        assert_eq!(starts.len(), uncompressed.len());
-        let n = starts.len();
-
-        let segment_ids = StringArray::from(vec![segment_id; n]);
-        let sizes = UInt64Array::from(vec![10u64; n]);
-        let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(n, 16);
-        for i in 0..n {
-            let mut id_bytes = [0u8; 16];
-            id_bytes[0..8].copy_from_slice(&(i as u64 + 1).to_le_bytes());
-            id_bytes[8..16].copy_from_slice(
-                segment_id
-                    .as_bytes()
-                    .first_chunk::<8>()
-                    .map_or(&[0u8; 8], |c| c),
-            );
-            chunk_id_builder.append_value(id_bytes).unwrap();
-        }
-        let chunk_ids = chunk_id_builder.finish();
-        let static_col = BooleanArray::from(statics.to_vec());
-        let uncompressed_col = UInt64Array::from(uncompressed.to_vec());
-
-        let mut fields = vec![
-            QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
-            Field::new(
-                QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
-                arrow::datatypes::DataType::UInt64,
-                false,
-            ),
-            QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field(),
-            QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
-            Field::new(
-                QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
-                arrow::datatypes::DataType::UInt64,
-                true,
-            ),
-        ];
-        let mut columns: Vec<arrow::array::ArrayRef> = vec![
-            Arc::new(segment_ids),
-            Arc::new(sizes),
-            Arc::new(chunk_ids),
-            Arc::new(static_col),
-            Arc::new(uncompressed_col),
-        ];
-        if let Some(timeline) = timeline {
-            fields.push(Field::new(
-                format!("{timeline}:start"),
-                arrow::datatypes::DataType::Int64,
-                true,
-            ));
-            columns.push(Arc::new(Int64Array::from(starts.to_vec())));
-        }
-
-        let schema = Arc::new(Schema::new_with_metadata(fields, Default::default()));
-        RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &RecordBatchOptions::new().with_row_count(Some(n)),
-        )
-        .unwrap()
-    }
+    use crate::pipeline::test_support::chunk_info_batch;
 
     fn t(v: i64) -> CursorKey {
         CursorKey::Time(TimeInt::new_temporal(v))
@@ -526,14 +537,14 @@ mod tests {
     #[test]
     fn plan_derives_keys_counts_and_estimates() {
         let infos = vec![
-            chunk_info(
+            chunk_info_batch(
                 "seg-a",
                 Some("frame"),
                 &[Some(20), Some(10), None],
                 &[false, false, false],
                 &[Some(100), Some(200), Some(300)],
             ),
-            chunk_info(
+            chunk_info_batch(
                 "seg-b",
                 Some("frame"),
                 &[Some(5)],
@@ -600,7 +611,7 @@ mod tests {
         urls: &[Option<&str>],
     ) -> RecordBatch {
         let n = starts.len();
-        let base = chunk_info(
+        let base = chunk_info_batch(
             segment_id,
             Some("frame"),
             starts,
@@ -683,7 +694,7 @@ mod tests {
 
     #[test]
     fn missing_start_column_yields_buffer_all() {
-        let infos = vec![chunk_info(
+        let infos = vec![chunk_info_batch(
             "seg-a",
             None, // no `:start` column at all
             &[None, None],
@@ -708,9 +719,56 @@ mod tests {
         );
     }
 
+    /// The two plan properties reported on the partition span. They exist to
+    /// be read against `W`, so what matters is that they describe the widest
+    /// *segment* — not the widest batch, and not a total. A `BufferAll`
+    /// segment wider than `W` releases nothing until it completes, so it can
+    /// only be funded by overdrafting the window.
+    #[test]
+    fn plan_reports_the_properties_that_predict_overdraft() {
+        let infos = vec![
+            // Watermark: has `:start` values.
+            chunk_info_batch(
+                "seg-a",
+                Some("frame"),
+                &[Some(10), Some(20)],
+                &[false, false],
+                &[Some(100), Some(700)],
+            ),
+            // BufferAll: no `:start` column at all (the per-segment fallback).
+            // Widest at 900.
+            chunk_info_batch(
+                "seg-b",
+                None,
+                &[None, None],
+                &[false, false],
+                &[Some(400), Some(500)],
+            ),
+            // BufferAll, but narrow — the max must not be a sum over modes.
+            chunk_info_batch("seg-c", None, &[None], &[false], &[Some(50)]),
+        ];
+
+        let plan = build_fetch_plan(
+            &re_uri::Origin::test(),
+            infos,
+            Some(TimelineName::from("frame")),
+            &None,
+            1_000_000,
+        )
+        .unwrap();
+
+        assert_eq!(plan.n_buffer_all_segments(), 2);
+        assert_eq!(
+            plan.max_segment_est_bytes(),
+            900,
+            "the widest single segment, not the plan total ({})",
+            plan.segments.iter().map(|s| s.est_bytes()).sum::<u64>(),
+        );
+    }
+
     #[test]
     fn static_only_query_yields_buffer_all() {
-        let infos = vec![chunk_info(
+        let infos = vec![chunk_info_batch(
             "seg-a",
             Some("frame"),
             &[Some(10)],
@@ -729,8 +787,8 @@ mod tests {
         use std::collections::{BTreeMap as StdBTreeMap, BTreeSet};
 
         let infos = vec![
-            chunk_info("seg-a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
-            chunk_info("seg-b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("seg-a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("seg-b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
         ];
 
         let index_values: StdBTreeMap<SegmentId, BTreeSet<IndexValue>> = std::iter::once((
@@ -758,8 +816,8 @@ mod tests {
     #[test]
     fn segment_index_lookup() {
         let infos = vec![
-            chunk_info("a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
-            chunk_info("b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
         ];
         let plan = build_fetch_plan(
             &re_uri::Origin::test(),
@@ -783,14 +841,14 @@ mod tests {
     #[test]
     fn segment_split_across_batches_errors() {
         let infos = vec![
-            chunk_info(
+            chunk_info_batch(
                 "seg-a",
                 Some("frame"),
                 &[Some(30), Some(40)],
                 &[false, false],
                 &[Some(1), Some(1)],
             ),
-            chunk_info(
+            chunk_info_batch(
                 "seg-a",
                 Some("frame"),
                 &[Some(10), Some(20)],
@@ -814,30 +872,35 @@ mod tests {
         );
     }
 
-    /// `chunk_meta` is the segment's only plan record, so the chunk count and
-    /// the cursor seed both derive from `ChunkId` uniqueness. A repeat would
-    /// collapse into one entry and under-count the segment forever, so it has
-    /// to fail loudly at plan time.
+    /// A chunk id listed twice for one segment (the same chunk in two layers)
+    /// plans and fetches once. `chunk_meta` is the segment's only plan
+    /// record, so keeping both rows would collapse into one entry while the
+    /// fetch still returned two copies.
     #[test]
-    fn duplicate_chunk_id_within_a_segment_errors() {
-        let one = chunk_info("seg-a", Some("frame"), &[Some(10)], &[false], &[Some(1)]);
+    fn repeated_chunk_id_within_a_segment_is_fetched_once() {
+        let one = chunk_info_batch("seg-a", Some("frame"), &[Some(10)], &[false], &[Some(1)]);
         let doubled =
             arrow::compute::concat_batches(&one.schema(), std::iter::once(&one).cycle().take(2))
                 .unwrap();
 
-        let Err(err) = build_fetch_plan(
+        let plan = build_fetch_plan(
             &re_uri::Origin::test(),
             vec![doubled],
             Some(TimelineName::from("frame")),
             &None,
             1_000_000,
-        ) else {
-            panic!("a repeated chunk id must fail plan building");
-        };
-        assert!(
-            err.to_string().contains("planned twice within segment"),
-            "unexpected error: {err}",
-        );
+        )
+        .expect("a repeated chunk id must not fail plan building");
+
+        assert_eq!(plan.segments.len(), 1);
+        assert_eq!(plan.segments[0].expected_chunks(), 1);
+        let planned_rows: usize = plan
+            .batches
+            .iter()
+            .flat_map(|batch| &batch.requests)
+            .map(|request| request.request.num_rows())
+            .sum();
+        assert_eq!(planned_rows, 1, "the repeat must not be fetched");
     }
 
     /// Plan order is declared to the exec node as `SegmentId` ASC output
@@ -846,9 +909,9 @@ mod tests {
     #[test]
     fn unsorted_input_is_sorted_at_plan_time() {
         let infos = vec![
-            chunk_info("seg-c", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
-            chunk_info("seg-a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
-            chunk_info("seg-b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("seg-c", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("seg-a", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
+            chunk_info_batch("seg-b", Some("frame"), &[Some(1)], &[false], &[Some(1)]),
         ];
         let plan = build_fetch_plan(
             &re_uri::Origin::test(),

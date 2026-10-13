@@ -29,6 +29,10 @@ working set stays bounded.
 >
 > TODO(RR-1538): drop this status note once the final PR in the streaming
 > stack lands and the doc matches `main`.
+>
+> **Scope:** this describes the v1 IO-loop / CPU-worker pipeline, which is still the default.
+> A second pipeline is being built behind `RERUN_DATAFRAME_PIPELINE=v2`, documented in [`PIPELINE_V2.md`](PIPELINE_V2.md).
+> Where v2 departs from a decision recorded here, the relevant section says so — see non-goal 3.
 
 ## Top-level dataflow
 
@@ -197,6 +201,32 @@ reasons:
 The cap is admitted under the `active_segments` lock in `PipelineBudget::try_admit` before a segment wave is allowed to allocate CPU-worker state or enter the fetch buffer.
 Fetches inside an admitted wave still reserve bytes before decode, but they no longer use the fetch-concurrency buffer to wait for not-yet-admissible future segments.
 Admitting only a representative segment_id would let a multi-segment fetch from `create_request_batches` stealth-open additional segments past the cap.
+
+#### Why v2 drops the gate — what changed, and what the non-goal got right
+
+The v2 pipeline has no segment cap: it passes `usize::MAX` as the packer's `segment_limit` and bounds lookahead with the issuance window `W` alone.
+
+Neither stated reason applies to v2:
+
+1. **Per-segment memory.**
+   Measured at ~1.9 KB per live `SegmentState` (`ChunkStore` + `QueryCache` + `QueryEngine` + the cloned `QueryExpression`).
+   The peak is one batch's worth of segments — 2000 tiny segments do pack into a single 8 MiB batch — so ~4 MB against a 512 MiB window.
+   It does not "eclipse the byte budget's cap".
+   The figure scales with `QueryExpression` size, so a query carrying large `view_contents`, or per-segment `using_index_values`, moves it.
+2. **Per-tick CPU.**
+   v2 has no per-segment manifest — the plan is immutable and complete before any IO, so the watermark is a `BTreeMap` seeded once (`PlanCursor`) — and only the *head* segment emits or GCs.
+   Successors only insert, so aggregate per-tick cost does not scale with the number of open segments.
+
+The cap still bought something neither reason names: **forward progress**.
+A byte budget alone does not give it: bytes are released only by emitting, so a segment that cannot emit cannot fund the acquisition that would let it.
+Two cases wedge on defaults without a replacement: a `BufferAll` segment whose estimate exceeds `W`, spread across several batches by `split_large_segments`, and an under-delivered head whose successors hold the window.
+
+v2 guarantees forward progress with two rules instead of a count:
+
+* The one batch the driver is blocked on never waits for window bytes (`DeliveryFront` + `IssuanceWindow::acquire_priority`), and the overdraft is repaid from returning permits.
+* Once the last batch that could carry a segment has been delivered, the segment is retired if complete, and the query fails if it is under-delivered.
+
+Any change that removes a flow-control mechanism should say which of memory, CPU, and liveness it gives up.
 
 ### 4. Do not add a CPU-side `publish_segment_started` path back
 

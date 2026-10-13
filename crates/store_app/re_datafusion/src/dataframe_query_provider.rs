@@ -18,6 +18,7 @@ use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
     segment_belongs_to_partition, segment_stream_plan_properties,
 };
+use crate::pipeline::DataframePipeline;
 use crate::pipeline_budget::{PipelineBudget, SegmentAdmissionPolicy, SegmentAdmissionProfile};
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema, SchemaRef};
@@ -130,6 +131,15 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
 
     /// Authentication for object store direct fetch requests.
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+
+    /// IO runtime for the v2 pipeline's network spawns, captured at plan
+    /// construction, which runs on the client's IO runtime. `execute` may
+    /// run on the reactor-less CPU runtime for nested queries, so its
+    /// ambient handle is only a fallback for plans built outside a runtime.
+    io_handle: Option<Handle>,
+
+    /// Read from the environment once per query, in [`Self::try_new`].
+    pipeline: DataframePipeline,
 }
 
 pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
@@ -372,7 +382,7 @@ fn build_and_push_snapshot(
 /// the CAS on `snapshot_sent` guarantees at most one emission across all
 /// callers (`poll_next` end-of-stream, the empty-partition branch in
 /// `execute`, and concurrent cancellations).
-fn emit_snapshot_if_last_partition(
+pub fn emit_snapshot_if_last_partition(
     captured_collectors: &[crate::MetricsCollector],
     partitions_remaining: &AtomicUsize,
     snapshot_sent: &AtomicBool,
@@ -401,11 +411,33 @@ fn emit_snapshot_if_last_partition(
     build_and_push_snapshot(captured_collectors, pending_analytics);
 }
 
+/// Bookkeeping for a partition whose `execute` fails before it builds a
+/// stream. No stream means neither end-of-stream nor `Drop` will run for
+/// it: without recording the failure the query is remembered as
+/// successful, and without the countdown the remaining partitions can
+/// never reach zero.
+pub fn fail_partition_setup(
+    err: DataFusionError,
+    captured_collectors: &[crate::MetricsCollector],
+    partitions_remaining: &AtomicUsize,
+    snapshot_sent: &AtomicBool,
+    pending_analytics: &crate::PendingQueryAnalytics,
+) -> DataFusionError {
+    pending_analytics.record_error(QueryErrorKind::Other);
+    emit_snapshot_if_last_partition(
+        captured_collectors,
+        partitions_remaining,
+        snapshot_sent,
+        pending_analytics,
+    );
+    err
+}
+
 /// Cancellation/short-circuit fallback: if no other path has emitted yet,
 /// latch `snapshot_sent` and emit with whatever state has been recorded.
 /// Does NOT touch `partitions_remaining` (the normal end-of-stream path
 /// is responsible for that).
-fn emit_snapshot_drop_fallback(
+pub fn emit_snapshot_drop_fallback(
     captured_collectors: &[crate::MetricsCollector],
     snapshot_sent: &AtomicBool,
     pending_analytics: &crate::PendingQueryAnalytics,
@@ -554,6 +586,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             query_expression.selection = Some(selection);
         }
 
+        let pipeline = DataframePipeline::from_env()?;
+
         // The output ordering of this table provider should always be rerun
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
@@ -610,7 +644,20 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             partitions_remaining,
             snapshot_sent,
             object_store_auth,
+            io_handle: Handle::try_current().ok(),
+            pipeline,
         })
+    }
+
+    /// See [`fail_partition_setup`].
+    fn fail_partition_setup(&self, err: DataFusionError) -> DataFusionError {
+        fail_partition_setup(
+            err,
+            &self.captured_collectors,
+            &self.partitions_remaining,
+            &self.snapshot_sent,
+            &self.pending_analytics,
+        )
     }
 }
 
@@ -658,10 +705,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(self.trace_headers.as_ref());
 
-        let pipeline_budget = Arc::clone(&self.pipeline_budget);
-
-        let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
-
         let chunk_infos: Vec<_> = {
             re_tracing::profile_scope!("concat_chunk_infos_per_segment");
             self.chunk_info
@@ -687,13 +730,15 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
                 .try_collect()
                 .map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        self.client.origin(),
-                        None,
-                        err,
-                        "concatenating chunk-info batches per segment",
+                    self.fail_partition_setup(
+                        ApiError::deserialization_with_source(
+                            self.client.origin(),
+                            None,
+                            err,
+                            "concatenating chunk-info batches per segment",
+                        )
+                        .into_df_error(),
                     )
-                    .into_df_error()
                 })?
         };
 
@@ -712,6 +757,37 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             return Ok(Box::pin(stream));
         }
 
+        if let DataframePipeline::V2(config) = self.pipeline {
+            let io_handle = self
+                .io_handle
+                .clone()
+                .or_else(|| Handle::try_current().ok())
+                .ok_or_else(|| {
+                    self.fail_partition_setup(exec_datafusion_err!(
+                        "no tokio runtime available for pipeline-v2 IO"
+                    ))
+                })?;
+            return crate::pipeline::execute_partition(crate::pipeline::V2PartitionCtx {
+                chunk_infos,
+                query_expression: self.query_expression.clone(),
+                index_values: self.index_values.clone(),
+                projected_schema: self.projected_schema.clone(),
+                limit_rows: self.limit_rows,
+                client: self.client.clone(),
+                object_store_auth: Arc::clone(&self.object_store_auth),
+                io_handle,
+                config,
+                trace_headers: self.trace_headers.clone(),
+                server_trace_id: self.server_trace_id,
+                pending_analytics: self.pending_analytics.clone(),
+                captured_collectors: self.captured_collectors.clone(),
+                partitions_remaining: Arc::clone(&self.partitions_remaining),
+                snapshot_sent: Arc::clone(&self.snapshot_sent),
+            });
+        }
+
+        let pipeline_budget = Arc::clone(&self.pipeline_budget);
+        let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
         let client = self.client.clone();
 
         let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
@@ -719,19 +795,22 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let projected_schema = self.projected_schema.clone();
         let limit_rows = self.limit_rows;
         let cpu_join_handle = Some(
-            CpuRuntime::try_get()?.handle().spawn(
-                chunk_store_cpu_worker_thread(
-                    client.origin().clone(),
-                    chunk_rx,
-                    batches_tx,
-                    query_expression,
-                    projected_schema,
-                    self.index_values.clone(),
-                    limit_rows,
-                    Arc::clone(&pipeline_budget),
-                )
-                .instrument(tracing::info_span!("cpu_worker")),
-            ),
+            CpuRuntime::try_get()
+                .map_err(|err| self.fail_partition_setup(err))?
+                .handle()
+                .spawn(
+                    chunk_store_cpu_worker_thread(
+                        client.origin().clone(),
+                        chunk_rx,
+                        batches_tx,
+                        query_expression,
+                        projected_schema,
+                        self.index_values.clone(),
+                        limit_rows,
+                        Arc::clone(&pipeline_budget),
+                    )
+                    .instrument(tracing::info_span!("cpu_worker")),
+                ),
         );
 
         let filtered_index_timeline = self.query_expression.filtered_index;
@@ -810,6 +889,8 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             // dedupes against the new one.
             snapshot_sent: Arc::clone(&self.snapshot_sent),
             object_store_auth: Arc::clone(&self.object_store_auth),
+            io_handle: self.io_handle.clone(),
+            pipeline: self.pipeline,
         };
 
         let partitioning = match &plan.props.as_ref().partitioning {
@@ -876,7 +957,7 @@ fn shared_cpu_runtime_threads() -> usize {
 /// is never dropped, so its worker threads persist for the lifetime of the
 /// process.
 #[derive(Debug)]
-struct CpuRuntime {
+pub struct CpuRuntime {
     runtime: tokio::runtime::Runtime,
 }
 
@@ -910,7 +991,7 @@ impl CpuRuntime {
     /// so a cached error couldn't be handed back anyway, and
     /// `OnceLock::get_or_try_init` — which has exactly these semantics — is still
     /// unstable, so we hand-roll the double-checked lock.)
-    fn try_get() -> Result<Arc<Self>, DataFusionError> {
+    pub fn try_get() -> Result<Arc<Self>, DataFusionError> {
         // Fast path: already initialized — a lock-free read.
         static SHARED: OnceLock<Arc<CpuRuntime>> = OnceLock::new();
         if let Some(runtime) = SHARED.get() {
@@ -933,7 +1014,7 @@ impl CpuRuntime {
     }
 
     /// Return a handle suitable for spawning CPU-bound tasks.
-    fn handle(&self) -> &Handle {
+    pub fn handle(&self) -> &Handle {
         self.runtime.handle()
     }
 }
