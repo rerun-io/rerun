@@ -94,6 +94,7 @@ impl CamerasVisualizer {
             ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
+        resolved_pinhole.image_from_camera.sanity_check()?;
 
         // Check for a valid resolution.
         let resolution = resolved_pinhole
