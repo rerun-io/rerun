@@ -18,6 +18,7 @@ from ._shuffle import BlockShuffle, NoShuffle, SampleShuffle, ShuffleStrategy
 if TYPE_CHECKING:
     from ._iterable_dataset import RerunIterableDataset
     from ._map_dataset import RerunMapDataset
+    from ._pooled_batches import PooledBatchCollator
     from ._yuv import Yuv420Collator, Yuv420Frame
     from .decoders import (
         ColumnDecoder,
@@ -42,6 +43,7 @@ __all__ = [
     "Manifest",
     "NoShuffle",
     "NumericDecoder",
+    "PooledBatchCollator",
     "RerunIterableDataset",
     "RerunMapDataset",
     "SampleIndex",
@@ -64,6 +66,7 @@ _LAZY_SUBMODULES = {
     "FieldBatch": ".decoders",
     "ImageDecoder": ".decoders",
     "NumericDecoder": ".decoders",
+    "PooledBatchCollator": "._pooled_batches",
     "VideoFrameDecoder": ".decoders",
     "Yuv420Collator": "._yuv",
     "Yuv420Frame": "._yuv",

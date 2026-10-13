@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import pickle
+import weakref
 from fractions import Fraction
 from typing import cast
 
@@ -35,6 +36,7 @@ from rerun.experimental.dataloader.decoders import (
     ImageDecoder,
     NumericDecoder,
     VideoFrameDecoder,
+    _video,
 )
 from rerun.experimental.dataloader.decoders._arrow import _flatten_blob, _unwrap_to_numpy
 from rerun.experimental.dataloader.decoders._video import _decoder_name, _extract_video_samples, _starts_with
@@ -867,7 +869,7 @@ def test_video_frame_decoder_window_stacks_do_not_share_memory() -> None:
     assert torch.count_nonzero(second) > 0
 
 
-def test_video_frame_decoder_contiguous_windows_can_share_frame_bank() -> None:
+def test_video_frame_decoder_contiguous_windows_can_share_frame_bank(monkeypatch: pytest.MonkeyPatch) -> None:
     samples = _encode_h264(num_frames=5, gop=5)
     requests = [
         DecodeRequest(
@@ -883,11 +885,25 @@ def test_video_frame_decoder_contiguous_windows_can_share_frame_bank() -> None:
 
     batch = _sample_batch(samples, is_windowed=True)
     expected = VideoFrameDecoder(codec="h264").decode(batch, requests)
-    first, second = VideoFrameDecoder(codec="h264", window_storage="view").decode(
-        batch,
-        requests,
-    )
+    decoder = VideoFrameDecoder(codec="h264", window_storage="view")
+    original_convert = decoder._frame_to_tensor
+    converted: list[weakref.ReferenceType[torch.Tensor]] = []
 
+    def convert(frame: av.VideoFrame) -> torch.Tensor:
+        assert all(ref() is None for ref in converted), "Earlier RGB frames must be released before converting the next"
+        tensor = original_convert(frame)
+        converted.append(weakref.ref(tensor))
+        return tensor
+
+    def unexpected_stack(_frames: object) -> None:
+        pytest.fail("RGB windows must use the captured bank without another allocation")
+
+    monkeypatch.setattr(decoder, "_frame_to_tensor", convert)
+    monkeypatch.setattr(_video, "_stack_decoded_frames", unexpected_stack)
+    first, second = decoder.decode(batch, requests)
+
+    assert len(converted) == 3
+    assert all(ref() is None for ref in converted)
     assert first is not None and second is not None
     assert expected[0] is not None and expected[1] is not None
     torch.testing.assert_close(first, expected[0])
