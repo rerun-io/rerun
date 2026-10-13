@@ -20,7 +20,7 @@ all-features = true
 
 [dependencies]
 anyhow.workspace = true
-puffin = { workspace = true, features = ["lz4", "serialization", "zstd"] }
+puffin = { workspace = true, features = ["lz4", "serialization"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 

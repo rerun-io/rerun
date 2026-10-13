@@ -121,7 +121,7 @@ profiling = { version = "1", default-features = false, features = ["profile-with
 prost = { version = "0.14" }
 prost-reflect = { version = "0.16", default-features = false, features = ["serde", "text-format"] }
 prost-types = { version = "0.14" }
-puffin = { version = "0.20", features = ["serialization", "zstd"] }
+puffin = { version = "0.20", features = ["serialization"] }
 quiver = { version = "0.6", default-features = false, features = ["derive"] }
 quote = { version = "1" }
 rand = { version = "0.9" }
@@ -281,7 +281,7 @@ profiling = { version = "1", default-features = false, features = ["profile-with
 prost = { version = "0.14" }
 prost-reflect = { version = "0.16", default-features = false, features = ["serde", "text-format"] }
 prost-types = { version = "0.14" }
-puffin = { version = "0.20", features = ["serialization", "zstd"] }
+puffin = { version = "0.20", features = ["serialization"] }
 quiver = { version = "0.6", default-features = false, features = ["derive"] }
 quote = { version = "1" }
 rand = { version = "0.9" }
