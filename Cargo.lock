@@ -12586,6 +12586,7 @@ dependencies = [
  "re_sorbet",
  "re_span",
  "re_tracing",
+ "re_ui",
  "re_uri",
  "re_video",
  "re_viewer",

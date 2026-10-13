@@ -647,6 +647,10 @@ impl App {
         self.state.app_options_mut()
     }
 
+    pub fn redap_servers(&self) -> &re_redap_browser::RedapServers {
+        &self.state.redap_servers
+    }
+
     /// Open the dev panel, showing the given tab.
     pub fn show_dev_panel_tab(&mut self, tab: crate::dev_panel::DevPanelTab) {
         self.dev_panel_open = true;
