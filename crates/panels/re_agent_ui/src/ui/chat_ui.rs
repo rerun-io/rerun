@@ -7,7 +7,7 @@ use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::acp::LineDirection;
 use re_agent::acp::schema::v1::{
     AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionMode, SessionModeId,
+    SessionConfigValueId, SessionMode, SessionModeId,
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
@@ -114,6 +114,7 @@ pub fn chat_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
     show_thoughts: bool,
     login_hint: Option<&str>,
 ) {
@@ -125,7 +126,14 @@ pub fn chat_ui(
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(ui, session, input, preferred_mode, login_hint);
+            composer_ui(
+                ui,
+                session,
+                input,
+                preferred_mode,
+                preferred_model,
+                login_hint,
+            );
         });
 
     egui::CentralPanel::default()
@@ -205,7 +213,11 @@ fn mode_picker_ui(
 }
 
 /// The model the agent is using, as a drop-down to switch to another one it offers.
-fn model_picker_ui(ui: &mut egui::Ui, session: &AgentSession) {
+fn model_picker_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    preferred_model: &mut Option<SessionConfigValueId>,
+) {
     let transcript = session.transcript();
     let (Some((config_id, select)), Some(current_name)) =
         (transcript.model_selector(), transcript.current_model())
@@ -250,10 +262,11 @@ fn model_picker_ui(ui: &mut egui::Ui, session: &AgentSession) {
     })
     .on_hover_text("The model the agent is using");
 
-    if let Some(value) = selected
-        && value != select.current_value
-    {
-        session.set_config_option(config_id.clone(), value);
+    if let Some(value) = selected {
+        *preferred_model = Some(value.clone());
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
     }
 }
 
@@ -282,6 +295,7 @@ fn composer_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -301,7 +315,7 @@ fn composer_ui(
     queue_ui(ui, session, input);
     input_ui(ui, session, input);
 
-    footer_ui(ui, session, input, preferred_mode);
+    footer_ui(ui, session, input, preferred_mode, preferred_model);
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -401,11 +415,12 @@ fn footer_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
 ) {
     ui.horizontal(|ui| {
         mode_picker_ui(ui, session, preferred_mode);
 
-        model_picker_ui(ui, session);
+        model_picker_ui(ui, session, preferred_model);
 
         match session.phase() {
             Phase::Connecting { status } => {

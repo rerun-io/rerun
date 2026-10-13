@@ -70,6 +70,9 @@ pub struct LaunchConfig {
     /// whatever model it would use on its own.
     pub model_preferences: Vec<String>,
 
+    /// Exact saved model ID, restored only if the agent still offers it.
+    pub preferred_model: Option<SessionConfigValueId>,
+
     /// Exact session mode id to restore when the agent offers it.
     pub preferred_mode: Option<SessionModeId>,
 }
@@ -402,14 +405,17 @@ async fn start_session(
 
     match cx.send_request(request).block_task().await {
         Ok(mut response) => {
-            let config_options = response.config_options.as_deref().unwrap_or_default();
-            select_model(
+            if let Some(config_options) = select_model(
                 cx,
                 &response.session_id,
-                config_options,
+                response.config_options.as_deref().unwrap_or_default(),
+                config.preferred_model.as_ref(),
                 &config.model_preferences,
             )
-            .await;
+            .await
+            {
+                response.config_options = Some(config_options);
+            }
             if let Some(selected_mode) = select_mode(
                 cx,
                 &response.session_id,
@@ -481,7 +487,7 @@ fn pick_mode(
         .flatten()
 }
 
-/// Switches the session to the first preferred model the agent offers.
+/// Restores an offered saved model, otherwise selects the first offered model preference.
 ///
 /// Awaited before the session is announced, so that the first prompt already runs on the chosen
 /// model. A failure is not fatal: the session then runs on the agent's own default model.
@@ -489,14 +495,17 @@ async fn select_model(
     cx: &ConnectionTo<Agent>,
     session_id: &SessionId,
     config_options: &[SessionConfigOption],
+    preferred_model: Option<&SessionConfigValueId>,
     preferences: &[String],
-) {
-    let Some((config_id, model)) = pick_model(config_options, preferences) else {
-        return;
-    };
+) -> Option<Vec<SessionConfigOption>> {
+    let (config_id, model) = pick_model(config_options, preferred_model, preferences)?;
     let request = SetSessionConfigOptionRequest::new(session_id.clone(), config_id, model);
-    if let Err(err) = cx.send_request(request).block_task().await {
-        re_log::debug!("Failed to select a model: {}", describe_error(&err));
+    match cx.send_request(request).block_task().await {
+        Ok(response) => Some(response.config_options),
+        Err(err) => {
+            re_log::debug!("Failed to select a model: {}", describe_error(&err));
+            None
+        }
     }
 }
 
@@ -506,9 +515,10 @@ async fn select_model(
 /// no `session/set_config_option` support is never asked for one.
 fn pick_model(
     config_options: &[SessionConfigOption],
+    preferred_model: Option<&SessionConfigValueId>,
     preferences: &[String],
 ) -> Option<(SessionConfigId, SessionConfigValueId)> {
-    if preferences.is_empty() {
+    if preferred_model.is_none() && preferences.is_empty() {
         return None;
     }
 
@@ -526,13 +536,17 @@ fn pick_model(
         _ => return None,
     };
 
-    let model = preferences.iter().find_map(|preference| {
-        let preference = preference.to_lowercase();
-        models.iter().find(|model| {
-            model.value.0.to_lowercase().contains(&preference)
-                || model.name.to_lowercase().contains(&preference)
-        })
-    })?;
+    let model = preferred_model
+        .and_then(|preferred| models.iter().find(|model| &model.value == preferred))
+        .or_else(|| {
+            preferences.iter().find_map(|preference| {
+                let preference = preference.to_lowercase();
+                models.iter().find(|model| {
+                    model.value.0.to_lowercase().contains(&preference)
+                        || model.name.to_lowercase().contains(&preference)
+                })
+            })
+        })?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
@@ -633,7 +647,11 @@ mod tests {
 
     #[test]
     fn picks_the_first_preferred_model_that_is_offered() {
-        let picked = pick_model(&claude_models("opus"), &preferences(&["flash", "sonnet"]));
+        let picked = pick_model(
+            &claude_models("opus"),
+            None,
+            &preferences(&["flash", "sonnet"]),
+        );
         let (config_id, model) = picked.expect("the model selector");
         assert_eq!(config_id.0.as_ref(), "model");
         assert_eq!(model.0.as_ref(), "sonnet");
@@ -653,7 +671,7 @@ mod tests {
             )
             .category(SessionConfigOptionCategory::Model),
         ];
-        let picked = pick_model(&models, &preferences(&["sonnet", "flash"]));
+        let picked = pick_model(&models, None, &preferences(&["sonnet", "flash"]));
         assert_eq!(picked.expect("a match").1.0.as_ref(), "gemini-2.5-flash");
     }
 
@@ -669,7 +687,7 @@ mod tests {
                 .category(SessionConfigOptionCategory::Model),
         ];
         assert_eq!(
-            pick_model(&models, &preferences(&["sonnet"]))
+            pick_model(&models, None, &preferences(&["sonnet"]))
                 .expect("a match")
                 .1
                 .0
@@ -681,7 +699,7 @@ mod tests {
     #[test]
     fn leaves_the_agent_alone_when_there_is_nothing_to_do() {
         // No preferences, and no model selector at all:
-        assert_eq!(pick_model(&claude_models("opus"), &[]), None);
+        assert_eq!(pick_model(&claude_models("opus"), None, &[]), None);
         let modes = vec![
             SessionConfigOption::select(
                 "mode",
@@ -691,15 +709,15 @@ mod tests {
             )
             .category(SessionConfigOptionCategory::Mode),
         ];
-        assert_eq!(pick_model(&modes, &preferences(&["sonnet"])), None);
+        assert_eq!(pick_model(&modes, None, &preferences(&["sonnet"])), None);
 
         // Offered, but not what we asked for, and already what we would ask for:
         assert_eq!(
-            pick_model(&claude_models("opus"), &preferences(&["flash"])),
+            pick_model(&claude_models("opus"), None, &preferences(&["flash"])),
             None
         );
         assert_eq!(
-            pick_model(&claude_models("sonnet"), &preferences(&["sonnet"])),
+            pick_model(&claude_models("sonnet"), None, &preferences(&["sonnet"])),
             None
         );
     }

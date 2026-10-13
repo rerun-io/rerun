@@ -3,6 +3,7 @@ mod chat_input;
 mod copy_response;
 mod feedback_button;
 mod host_button;
+mod model_selection;
 mod new_conversation_shortcut;
 mod pasted_images;
 

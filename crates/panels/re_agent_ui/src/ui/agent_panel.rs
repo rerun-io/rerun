@@ -40,6 +40,7 @@ const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
 struct Conversation {
     session: AgentSession,
     input: ChatInput,
+    profile_id: String,
 
     /// [`Screen::Chat`] with an idle session means "start the agent on the next frame".
     screen: Screen,
@@ -60,6 +61,7 @@ impl Conversation {
         Self {
             session,
             input: ChatInput::default(),
+            profile_id: settings.profile_id.clone(),
             screen: if settings.setup_done {
                 Screen::Chat
             } else {
@@ -80,6 +82,7 @@ impl Conversation {
         let context = self.context.as_ref().unwrap_or(context);
         match settings.launch_config(agents, context) {
             Ok(config) => {
+                self.profile_id.clone_from(&settings.profile_id);
                 let ctx = ctx.clone();
                 self.session.start(config, move || ctx.request_repaint());
                 self.input = ChatInput::default();
@@ -142,17 +145,24 @@ impl Conversation {
 
         let login_hint = agents
             .iter()
-            .find(|agent| agent.profile.id == settings.profile_id)
+            .find(|agent| agent.profile.id == self.profile_id)
             .map(|agent| agent.profile.login_hint.as_str())
             .filter(|hint| !hint.is_empty());
+        let mut preferred_model = settings.preferred_models.get(&self.profile_id).cloned();
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
             &mut settings.preferred_mode,
+            &mut preferred_model,
             settings.show_thoughts,
             login_hint,
         );
+        if let Some(model) = preferred_model {
+            settings
+                .preferred_models
+                .insert(self.profile_id.clone(), model);
+        }
     }
 
     /// Sends the prompt the host opened this conversation with, once the agent can take it.
