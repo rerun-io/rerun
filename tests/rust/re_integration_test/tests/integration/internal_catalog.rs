@@ -360,6 +360,21 @@ async fn internal_catalog_load_rrd() {
             })
         });
 
+        if use_viewer_catalog {
+            // The recording streams before the catalog listing that lists its dataset arrives.
+            viewer_test_utils::step_until(
+                "dataset listed in the recording panel",
+                &mut harness,
+                |harness| {
+                    harness
+                        .recording_panel()
+                        .root()
+                        .query_by_label_contains(RRD_APP_ID)
+                        .is_some()
+                },
+            );
+        }
+
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until("loading toast gone", &mut harness, |harness| {
             harness

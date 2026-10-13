@@ -883,6 +883,9 @@ impl RedapServers {
     ///
     /// A dataset's failed asset registrations go too, since asking the server again is how the user
     /// gets rid of a stale answer. Pending ones stay: only the server can end those.
+    ///
+    /// An entry the listing does not hold makes the listing refetch instead, unless a fetch is
+    /// already pending.
     pub fn refresh_entry(
         &mut self,
         origin: &re_uri::Origin,
@@ -896,6 +899,7 @@ impl RedapServers {
         server.asset_registrations.clear_failed(entry_id);
 
         let Some(entry) = server.find_entry(entry_id) else {
+            server.refresh_entries();
             return;
         };
 
@@ -1379,6 +1383,7 @@ impl RedapServers {
         &self,
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
         active_entry: EntryId,
         kind: Option<re_viewer_context::EntryKind>,
         table_blueprints: &re_dataframe_ui::TableBlueprints,
@@ -1387,6 +1392,13 @@ impl RedapServers {
         let browser_ctx = Context {
             command_sender: &self.command_sender,
         };
+
+        if self.is_entry_kind_pending(origin, active_entry) {
+            Frame::new().inner_margin(16.0).show(ui, |ui| {
+                ui.loading_indicator("Loading entry…");
+            });
+            return;
+        }
 
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
@@ -1547,5 +1559,33 @@ mod tests {
             .expect("valid origin");
 
         assert!(servers.is_entry_kind_pending(&origin, EntryId::new()));
+    }
+
+    /// An entry that is newer than the listing of its server can only turn up in a new listing,
+    /// so refreshing it fetches the listing again.
+    #[tokio::test]
+    async fn refreshing_an_unknown_entry_fetches_the_entries_again() {
+        let origin = "rerun+http://localhost:51234"
+            .parse::<re_uri::Origin>()
+            .expect("valid origin");
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials();
+        let runtime =
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("tokio runtime");
+        let egui_ctx = egui::Context::default();
+
+        let mut servers = RedapServers::default();
+        servers.add_internal_server(origin.clone(), &connection_registry, &runtime, &egui_ctx);
+        servers
+            .servers
+            .get_mut(&origin)
+            .expect("the server was just added")
+            .entries = crate::entries::Entries::settled_empty();
+
+        let entry_id = EntryId::new();
+        assert!(!servers.is_entry_kind_pending(&origin, entry_id));
+
+        servers.refresh_entry(&origin, entry_id, &egui_ctx);
+        assert!(servers.is_entry_kind_pending(&origin, entry_id));
     }
 }

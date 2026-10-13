@@ -624,6 +624,16 @@ async fn fetch_table_details(
 }
 
 #[cfg(test)]
+impl Entries {
+    /// A listing that has arrived and holds nothing.
+    pub fn settled_empty() -> Self {
+        Self {
+            entries: RequestedObject::Completed(HashMap::default()),
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -636,9 +646,7 @@ mod tests {
         let in_flight = Entries::default();
         assert!(in_flight.is_kind_pending(entry_id));
 
-        let arrived = Entries {
-            entries: RequestedObject::Completed(HashMap::default()),
-        };
+        let arrived = Entries::settled_empty();
         assert!(!arrived.is_kind_pending(entry_id));
     }
 }

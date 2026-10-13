@@ -823,7 +823,11 @@ impl AppState {
                     });
             }
 
-            Route::RedapEntry { entry_id, kind, .. } => {
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
                 Self::left_panel_ui(
                     &mut self.recording_panel,
                     &mut self.blueprint_tree,
@@ -844,6 +848,7 @@ impl AppState {
                         self.redap_servers.entry_ui(
                             &app_ctx,
                             ui,
+                            origin,
                             *entry_id,
                             *kind,
                             table_blueprints,
