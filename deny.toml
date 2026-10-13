@@ -61,6 +61,7 @@ ignore = [
   # cacache (content/write.rs) only calls `MmapMut::map_mut` and the whole-map `flush_async()`, whose
   # range is always the map itself, so none of the affected functions run.
   { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 via cacache 13.1.0 <- http-cache 0.21.0 <- http-cache-reqwest 0.16.0 <- walkers 0.58.0 <- re_view_map. Not exercised because cacache never calls the affected range functions (see comment above). Blocked by cacache 13.1.0 (latest) requiring memmap2 ^0.5.8; walkers 0.60.0 still uses cacache, so updating walkers does not lift this. Remove when cacache allows memmap2 0.9.11+ or walkers drops cacache. No ticket yet." },
+  { id = "RUSTSEC-2026-0344", reason = "ruzstd 0.8.3 via puffin 0.20.0, which links it only on wasm32 and only with its `zstd` feature, enabled by re_dump_puffin <- rerun (`run` feature) and by re_workspace_hack (never built for wasm32). Not exercised because the web viewer does not compile it (`cargo tree -i ruzstd --target wasm32-unknown-unknown -p re_viewer --all-features` is empty), and native builds decode with the `zstd` crate instead. Blocked by puffin 0.20.0 (latest) requiring ruzstd ^0.8.2; the fix is in 0.9.1. Remove when puffin allows ruzstd 0.9.1+. No ticket yet." },
 ]
 
 
