@@ -899,6 +899,7 @@ impl TestContext {
                 SystemCommand::CopyViewerUrl(_) => {
                     // Ignore this trying to copy to the clipboard.
                 }
+                SystemCommand::DropAfterQueuedCommands(value) => drop(value),
                 SystemCommand::LoadDataSource(data_source) => {
                     if let Some(re_uri::RedapUri::Dataset(uri)) = data_source
                         .as_uri()

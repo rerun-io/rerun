@@ -31,6 +31,7 @@ use re_viewer_context::{
 };
 
 use super::App;
+use crate::registrations_in_flight::InFlightRegistration;
 
 mod commands;
 
@@ -422,17 +423,25 @@ impl App {
         // `loading_name` is the viewer's own "actively loading" predicate — the one the welcome
         // screen shows a spinner for — so a source that is only waiting to be sent data is left
         // out, as it would otherwise never clear.
-        let loading = self
-            .rx_log
-            .sources()
-            .iter()
-            .filter_map(|source| {
-                source.loading_name().map(|name| ViewerLoadingSource {
-                    name,
-                    status: source.status_string(),
-                })
+        let sources = self.rx_log.sources();
+        let loading_sources = sources.iter().filter_map(|source| {
+            source.loading_name().map(|name| ViewerLoadingSource {
+                name,
+                status: source.status_string(),
             })
-            .collect();
+        });
+        // A file being registered with a catalog has no source yet: it gets one once registered.
+        let registrations = self.connections.registrations_in_flight.snapshot();
+        let loading_registrations =
+            registrations
+                .into_values()
+                .map(
+                    |InFlightRegistration { origin, name }| ViewerLoadingSource {
+                        status: format!("Registering {name} with {origin}…"),
+                        name,
+                    },
+                );
+        let loading = std::iter::chain(loading_registrations, loading_sources).collect();
 
         GetViewerStateResponse {
             url,
@@ -441,7 +450,8 @@ impl App {
             loading,
             views,
             catalog_url: self
-                .connection_registry
+                .connections
+                .registry
                 .internal_origin()
                 .map(|origin| origin.to_string()),
             viewer_version: Some(self.build_info.version.to_string()),

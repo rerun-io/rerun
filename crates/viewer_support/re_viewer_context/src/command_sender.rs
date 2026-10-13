@@ -28,6 +28,12 @@ pub enum SystemCommand {
     /// Will not load any new data if the source is already one of the active data sources.
     LoadDataSource(LogDataSource),
 
+    /// Drop this value once every command queued before it has run.
+    ///
+    /// Keeps something alive, such as a registration guard, until the commands it stands for
+    /// have taken effect rather than merely been queued.
+    DropAfterQueuedCommands(Box<dyn std::any::Any + Send>),
+
     /// Add a new receiver for log messages.
     AddReceiver(LogReceiver),
 

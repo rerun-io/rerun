@@ -28,7 +28,7 @@ use re_viewer_context::{
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
-use crate::latency_tracker::ServerLatencyTrackers;
+use crate::server_connections::ServerConnections;
 use crate::startup_options::StartupOptions;
 use crate::{AppState, command_palette::CommandPaletteAction};
 
@@ -200,9 +200,7 @@ pub struct App {
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
-    connection_registry: ConnectionRegistryHandle,
-
-    pub(crate) server_latency_trackers: ServerLatencyTrackers,
+    pub(crate) connections: ServerConnections,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -595,8 +593,7 @@ impl App {
 
             event_dispatcher,
 
-            connection_registry,
-            server_latency_trackers: ServerLatencyTrackers::default(),
+            connections: ServerConnections::new(connection_registry),
             async_runtime,
         }
     }
@@ -607,7 +604,7 @@ impl App {
     }
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
-        &self.connection_registry
+        &self.connections.registry
     }
 
     /// Calls `callback` with the renderer context if WGPU rendering is available.
@@ -1377,7 +1374,7 @@ impl eframe::App for App {
         eframe::set_value(
             storage,
             REDAP_TOKEN_KEY,
-            &self.connection_registry.dump_tokens(),
+            &self.connections.registry.dump_tokens(),
         );
 
         // Save the blueprints
@@ -1439,8 +1436,9 @@ impl eframe::App for App {
             }
         }
 
-        self.server_latency_trackers
-            .update(&self.async_runtime, &self.connection_registry);
+        self.connections
+            .latency_trackers
+            .update(&self.async_runtime, &self.connections.registry);
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
@@ -1790,7 +1788,7 @@ impl MemUsageTreeCapture for App {
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
         node.add(
             "connection_registry",
-            self.connection_registry.capture_mem_usage_tree(),
+            self.connections.registry.capture_mem_usage_tree(),
         );
         node.add(
             "store_subscribers",

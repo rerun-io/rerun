@@ -197,7 +197,7 @@ fn top_bar_ui(
         if app.app_options().show_metrics && !app.is_screenshotting() && !app.app_env().is_test() {
             connection_status_ui(
                 ui,
-                &mut app.server_latency_trackers,
+                &mut app.connections.latency_trackers,
                 app.state.navigation.current(),
                 store_hub,
             );

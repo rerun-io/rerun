@@ -18,6 +18,7 @@ use re_redap_client::ConnectionHandle;
 use re_types_core::LayerName;
 
 use crate::catalog_handle::CatalogHandle;
+use crate::registrations_in_flight::InFlightRegistration;
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
@@ -43,7 +44,7 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let LogSource::RedapGrpcStream { uri, .. } = rx.source() {
-            if self.connection_registry.is_internal_origin(&uri.origin) {
+            if self.connections.registry.is_internal_origin(&uri.origin) {
                 self.rx_log.add(rx);
                 return;
             }
@@ -235,7 +236,7 @@ impl App {
         let stream = data_source.clone().stream_with_options(
             &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
-            &self.connection_registry,
+            &self.connections.registry,
             if let LogDataSource::RedapDatasetSegment { open_behavior, .. } = &data_source
                 && matches!(open_behavior, RecordingOpenBehavior::Background)
             {
@@ -252,7 +253,7 @@ impl App {
         if !matches!(
             data_source,
             LogDataSource::RedapDatasetSegment { uri, .. }
-                if self.connection_registry.is_internal_origin(&uri.origin)
+                if self.connections.registry.is_internal_origin(&uri.origin)
         ) {
             record_catalog_load_analytics(data_source.analytics(), None, stream.is_ok());
         }
@@ -293,7 +294,7 @@ impl App {
         match data_source.stream_with_options(
             &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
-            &self.connection_registry,
+            &self.connections.registry,
             re_redap_client::StreamingOptions {
                 download: re_redap_client::SegmentDownload::BLUEPRINT,
                 ..Default::default()
@@ -373,7 +374,7 @@ impl App {
             match data_source.stream_with_options(
                 &self.async_runtime,
                 Self::auth_error_handler(self.command_sender.clone()),
-                &self.connection_registry,
+                &self.connections.registry,
                 // Downloading the blueprint again would throw away the user's edits.
                 re_redap_client::StreamingOptions {
                     download: re_redap_client::SegmentDownload::SEGMENT,
@@ -415,7 +416,7 @@ impl App {
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd") || ext.eq_ignore_ascii_case("rbl"))
             && self.app_options().use_viewer_catalog
-            && self.connection_registry.internal_origin().is_some()
+            && self.connections.registry.internal_origin().is_some()
     }
 
     /// Registers a file with the internal catalog, then opens the segment it produced.
@@ -428,13 +429,23 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))] assets: &[std::path::PathBuf],
         #[cfg(target_arch = "wasm32")] file: web_sys::File,
     ) {
-        let connection_registry = self.connection_registry.clone();
+        let connection_registry = self.connections.registry.clone();
         let sender = self.command_sender.clone();
         let path = path.to_owned();
         #[cfg(not(target_arch = "wasm32"))]
         let assets = assets.to_vec();
+        let catalog = CatalogHandle::internal(&connection_registry);
+        // Count it before spawning, so that whatever checks for it right after cannot miss it.
+        let registration_guard = catalog.as_ref().map(|catalog| {
+            self.connections
+                .registrations_in_flight
+                .begin(InFlightRegistration {
+                    origin: catalog.connection().origin().clone(),
+                    name: path.display().to_string(),
+                })
+        });
         self.async_runtime.spawn_future(async move {
-            let registration = match CatalogHandle::internal(&connection_registry) {
+            let registration = match catalog {
                 Some(catalog) => {
                     register_file(
                         &catalog,
@@ -499,6 +510,12 @@ impl App {
                     );
                 }
             }
+
+            // Only once the commands above have run, so that the file is never shown as neither
+            // registering nor loading.
+            sender.send_system(SystemCommand::DropAfterQueuedCommands(Box::new(
+                registration_guard,
+            )));
         });
     }
 }

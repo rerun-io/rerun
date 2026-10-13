@@ -833,7 +833,7 @@ impl App {
         // dropping them means downloading the same asset again for the next segment that wants it,
         // which is exactly what the cache exists to avoid.
         if limit.is_exceeded_by(&memory_use()).is_some() {
-            self.connection_registry.purge_memory();
+            self.connections.registry.purge_memory();
         }
 
         let mem_use_after = MemoryUse::capture();

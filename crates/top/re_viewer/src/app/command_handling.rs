@@ -450,7 +450,7 @@ impl App {
 
                 self.state
                     .redap_servers
-                    .remove_server(&origin, &self.connection_registry);
+                    .remove_server(&origin, &self.connections.registry);
 
                 let current_route = self.state.navigation.current();
                 let on_removed_server = match current_route {
@@ -545,6 +545,8 @@ impl App {
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
+
+            SystemCommand::DropAfterQueuedCommands(value) => drop(value),
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
