@@ -843,7 +843,7 @@ async fn open_asset_lists_it_under_owning_dataset() {
 
     let asset_label = asset_segment_id.to_string();
     viewer_test_utils::step_until(
-        "the asset appears in the recording panel",
+        "the asset is listed in the recording panel and shown in its view",
         &mut harness,
         |harness| {
             harness.query_by_label("Loading entries…").is_none()
@@ -856,6 +856,10 @@ async fn open_asset_lists_it_under_owning_dataset() {
                         .count()
                         > 0
                 }
+                // The asset is listed before its data arrives, and its view is only created
+                // from that data.
+                && !harness.is_loading()
+                && harness.blueprint_tree().root().query_by_label("/").is_some()
         },
     );
 
