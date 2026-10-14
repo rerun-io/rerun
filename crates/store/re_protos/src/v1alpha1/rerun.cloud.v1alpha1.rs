@@ -854,10 +854,8 @@ pub struct GetDatasetSchemaResponse {
     /// The union of the schemas of every layer of every segment in the dataset (a field-wise
     /// Arrow schema merge).
     ///
-    /// Servers are allowed to return a superset: some maintain this schema incrementally and only
-    /// ever widen it, so fields from unregistered or replaced segments can linger until
-    /// `RematerializeDatasetSchema` recomputes it. A dataset with no registered segments yields
-    /// an empty schema rather than an error.
+    /// Fields that only unregistered or replaced layers had are not part of it.
+    /// A dataset with no registered segments yields an empty schema rather than an error.
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
     /// Dataset identity and revision metadata for this response.
