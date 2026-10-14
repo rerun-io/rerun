@@ -135,13 +135,13 @@ mod tests {
             Some(viewer_control_request::Kind::OpenUrl(_))
         ));
 
-        let envelope = ViewerControlResponse::from(OpenUrlResponse {});
+        let envelope = ViewerControlResponse::from(OpenUrlResponse::default());
         assert!(OpenUrlRequest::from_envelope(envelope).is_ok());
     }
 
     #[test]
     fn rejects_a_mismatched_response_kind() {
-        let envelope = ViewerControlResponse::from(OpenUrlResponse {});
+        let envelope = ViewerControlResponse::from(OpenUrlResponse::default());
         let err = GetViewerLogsRequest::from_envelope(envelope)
             .expect_err("a get_viewer_logs request must not accept an open_url response");
 

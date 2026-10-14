@@ -20,8 +20,8 @@ pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;
 pub use self::viewer_control::{
-    CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlCommand,
-    ViewerControlError, ViewerControlErrorCode,
+    CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, VIEWER_CONTROL_TIMEOUT,
+    ViewerControlCommand, ViewerControlError, ViewerControlErrorCode,
 };
 
 // --- Source ---

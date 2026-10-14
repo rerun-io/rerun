@@ -60,9 +60,10 @@ const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 
 /// Deadline for one viewer-control operation.
 ///
-/// These are answered from viewer state without waiting for a frame, so anything this slow means
-/// the viewer is gone rather than busy.
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+/// Matches the viewer's own deadline for an answer, `re_log_channel::VIEWER_CONTROL_TIMEOUT`.
+/// Slow work, like `open_url` waiting on a slow server, answers before that, so anything this
+/// slow means the viewer is gone rather than busy.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// How long a client may treat the tool list as fresh.
 ///

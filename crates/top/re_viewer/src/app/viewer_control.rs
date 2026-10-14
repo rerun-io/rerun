@@ -5,9 +5,12 @@
 //! That file lists every place an operation has to be added.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::task::Poll;
+use std::time::Duration;
 
 use re_chunk::TimelineName;
+use re_entity_db::LogSource;
 use re_log_channel::{
     CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
 };
@@ -31,7 +34,7 @@ use re_viewer_context::{
 };
 
 use super::App;
-use crate::registrations_in_flight::InFlightRegistration;
+use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
 
@@ -48,13 +51,45 @@ const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
 /// components on it cost many — which is the whole reason to ask for paths alone.
 const DEFAULT_MAX_SCHEMA_PATHS: u32 = 10_000;
 
+/// How long `open_url` waits for what it loads before answering that it is still loading.
+///
+/// Must stay well below the transport's deadline for an answer, or a slow load reads as a viewer
+/// that has stopped responding. The `OpenUrl` docs in `viewer_control.proto` state this number.
+const OPEN_URL_MAX_WAIT: Duration = Duration::from_secs(10);
+
+const _: () = assert!(
+    OPEN_URL_MAX_WAIT.as_millis() + 5_000 <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
+    "`open_url` must answer well before the transport gives up"
+);
+
+/// How often a waiting `open_url` checks whether its catalog registration is done.
+///
+/// Nothing wakes the viewer when a registration finishes, so it has to poll. A few frames is
+/// quick enough for a caller, and cheap enough for an idle viewer.
+const OPEN_URL_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
 /// A `ViewerControlService` answer held back until the work it reports on has happened.
 ///
 /// Operations that act through queued commands would otherwise answer before those commands
 /// run, so a caller that reads the viewer state right after would see the old state.
 pub(super) struct PendingReply {
     on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
-    result: Result<ViewerControlResponse, ViewerControlError>,
+    answer: PendingAnswer,
+}
+
+enum PendingAnswer {
+    /// Sent as soon as the queued commands have run.
+    Ready(Result<ViewerControlResponse, ViewerControlError>),
+
+    /// `open_url`, which also waits for what it started loading, until `deadline`.
+    OpenUrl {
+        /// What was loading before the URL was opened, and so is not waited for.
+        sources_before: Vec<Arc<LogSource>>,
+
+        /// What was being registered before the URL was opened, and so is not waited for.
+        registrations_before: Vec<RegistrationId>,
+        deadline: web_time::Instant,
+    },
 }
 
 impl App {
@@ -70,23 +105,63 @@ impl App {
             on_done.call(result);
             return;
         }
-        self.pending_viewer_control_replies
-            .push(PendingReply { on_done, result });
+        self.pending_viewer_control_replies.push(PendingReply {
+            on_done,
+            answer: PendingAnswer::Ready(result),
+        });
         // The queued commands run, and the answer goes out, only as part of a frame. An idle or
         // hidden viewer would not run one on its own.
         egui_ctx.request_repaint();
     }
 
-    /// Send the held-back answers whose commands have all run.
+    /// Send the held-back answers whose work is done.
     ///
     /// Must be called right after draining the system commands, so that an empty queue means
     /// the commands a reply waits for have run rather than not yet been sent.
     pub(super) fn answer_pending_viewer_control_replies(&mut self) {
-        if self.pending_viewer_control_replies.is_empty() || !self.command_receiver.is_empty() {
+        if self.pending_viewer_control_replies.is_empty() {
             return;
         }
-        for PendingReply { on_done, result } in self.pending_viewer_control_replies.drain(..) {
-            on_done.call(result);
+
+        // Read before the queues: a registration queues its commands before it stops counting.
+        let registrations = self.connections.registrations_in_flight.snapshot();
+        if !self.command_receiver.is_empty() {
+            return;
+        }
+
+        let sources = self.rx_log.sources();
+        let now = web_time::Instant::now();
+        for PendingReply { on_done, answer } in
+            std::mem::take(&mut self.pending_viewer_control_replies)
+        {
+            match answer {
+                PendingAnswer::Ready(result) => on_done.call(result),
+                PendingAnswer::OpenUrl {
+                    sources_before,
+                    registrations_before,
+                    deadline,
+                } => {
+                    let still_loading = registrations
+                        .keys()
+                        .any(|id| !registrations_before.contains(id))
+                        || sources.iter().any(|source| {
+                            source.loading_name().is_some() && !sources_before.contains(source)
+                        });
+                    if still_loading && now < deadline {
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::OpenUrl {
+                                sources_before,
+                                registrations_before,
+                                deadline,
+                            },
+                        });
+                        self.egui_ctx.request_repaint_after(OPEN_URL_POLL_INTERVAL);
+                    } else {
+                        on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
+                    }
+                }
+            }
         }
     }
 
@@ -182,8 +257,23 @@ impl App {
                 );
                 match parsed {
                     Ok(open_url) => {
+                        let sources_before = self.rx_log.sources();
+                        let registrations_before = self
+                            .connections
+                            .registrations_in_flight
+                            .snapshot()
+                            .into_keys()
+                            .collect();
                         open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
-                        on_done.call(Ok(OpenUrlResponse {}.into()));
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::OpenUrl {
+                                sources_before,
+                                registrations_before,
+                                deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
+                            },
+                        });
+                        egui_ctx.request_repaint();
                     }
                     Err(err) => {
                         on_done.call(Err(ViewerControlError::invalid_argument(format!(

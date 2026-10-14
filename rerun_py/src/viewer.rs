@@ -65,7 +65,7 @@ impl PyViewerClientInternal {
         conn.close_recordings(py, target, store_ids)
     }
 
-    fn open_url(self_: Py<Self>, url: String, py: Python<'_>) -> PyResult<()> {
+    fn open_url(self_: Py<Self>, url: String, py: Python<'_>) -> PyResult<bool> {
         let mut conn = self_.borrow(py).conn.clone();
 
         conn.open_url(py, url)
@@ -203,13 +203,14 @@ impl ViewerConnectionHandle {
         to_json(&response)
     }
 
-    fn open_url(&mut self, py: Python<'_>, url: String) -> PyResult<()> {
-        self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
-            py,
-            re_protos::viewer_control::v1alpha1::OpenUrlRequest { url },
-        )?;
+    fn open_url(&mut self, py: Python<'_>, url: String) -> PyResult<bool> {
+        let re_protos::viewer_control::v1alpha1::OpenUrlResponse { still_loading } =
+            self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
+                py,
+                re_protos::viewer_control::v1alpha1::OpenUrlRequest { url },
+            )?;
 
-        Ok(())
+        Ok(!still_loading)
     }
 
     fn save_screenshot(

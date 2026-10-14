@@ -131,9 +131,10 @@ class ViewerState:
     """
     What the viewer is still loading, empty once everything has arrived.
 
-    `open_url` returns as soon as the load starts, and a recording appears in `recordings` as soon
-    as its first message lands, so a recording with no timelines yet means "still arriving" rather
-    than "empty". Poll until this is empty before concluding that a load finished.
+    `open_url` waits a few seconds at most for the load to finish, and a recording appears in
+    `recordings` as soon as its first message lands, so a recording with no timelines yet means
+    "still arriving" rather than "empty". Poll until this is empty before concluding that a load
+    finished.
     """
 
     catalog_url: str | None
@@ -490,9 +491,12 @@ class ViewerClient:
             raw = json.loads(self._internal.close_recordings(store_ids=store_ids))
         return list(raw.get("closed", []))
 
-    def open_url(self, url: str) -> None:
+    def open_url(self, url: str) -> bool:
         """
-        Open a URL in the viewer.
+        Open a URL in the viewer, and wait about ten seconds at most for its initial load.
+
+        For a recording on a server, or an `.rrd` registered with the viewer catalog, the initial
+        load is the chunk index: the chunks themselves are fetched on demand afterwards.
 
         !!! warning
             This API is experimental and may change or be removed in future versions.
@@ -503,8 +507,15 @@ class ViewerClient:
             A recording or blueprint file, a `rerun://` dataset URI, a redap server or catalog
             URL, or an intra-recording link.
 
+        Returns
+        -------
+        bool
+            `True` if the initial load was done when the viewer answered.
+            If `False`, poll [`viewer_state`][rerun.experimental.ViewerClient.viewer_state] until
+            its `loading` list is empty before reading the recording.
+
         """
-        self._internal.open_url(url)
+        return self._internal.open_url(url)
 
     def save_screenshot(self, file_path: str, view_id: str | UUID | None = None) -> None:
         """

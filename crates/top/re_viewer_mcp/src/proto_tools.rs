@@ -708,8 +708,9 @@ mod tests {
 
     #[test]
     fn rejects_a_response_for_a_different_operation() {
-        let response =
-            ViewerControlResponse::from(re_protos::viewer_control::v1alpha1::OpenUrlResponse {});
+        let response = ViewerControlResponse::from(
+            re_protos::viewer_control::v1alpha1::OpenUrlResponse::default(),
+        );
 
         let err = response_json("get_viewer_state", &response)
             .expect_err("another operation's payload must not pass as this one's result");

@@ -50,8 +50,16 @@ pub mod viewer_control_request {
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
         /// server/catalog URL, or an intra-recording link).
         ///
-        /// Returns as soon as the load *starts*. Poll `GetViewerState` until its `loading` list is
-        /// empty; only then does an absent timeline mean an empty recording rather than one still
+        /// Returns once the initial load is done, or after about ten seconds, whichever comes first.
+        /// What the initial load covers depends on the URL:
+        /// * A file or HTTP URL that is opened directly: the whole file is read.
+        /// * A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment
+        ///    on a server: the recording's chunk index (manifest) has arrived. The chunks themselves
+        ///    are fetched on demand afterwards, and need not all fit in memory.
+        /// * Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted
+        ///    on it.
+        /// If the response says `still_loading`, poll `GetViewerState` until its `loading` list
+        /// is empty; only then does an absent timeline mean an empty recording rather than one still
         /// arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
         /// so anything waiting on one stalls, while `GetViewerState` keeps answering.
         #[prost(message, tag = "4")]
@@ -1039,9 +1047,13 @@ impl ::prost::Name for OpenUrlRequest {
         "/rerun.viewer_control.v1alpha1.OpenUrlRequest".into()
     }
 }
-/// Response for `OpenUrl`. Empty: an error is reported as a gRPC status instead.
+/// Response for `OpenUrl`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct OpenUrlResponse {}
+pub struct OpenUrlResponse {
+    /// True if the initial load (see `OpenUrl`) was not done when the viewer answered.
+    #[prost(bool, tag = "1")]
+    pub still_loading: bool,
+}
 impl ::prost::Name for OpenUrlResponse {
     const NAME: &'static str = "OpenUrlResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
