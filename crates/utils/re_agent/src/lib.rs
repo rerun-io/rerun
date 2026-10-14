@@ -19,6 +19,7 @@
 //! Neither removes anything the agent would otherwise have.
 
 mod connection;
+mod elicitation;
 mod error;
 mod profiles;
 mod session;
@@ -32,7 +33,8 @@ pub use connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, Mc
 pub use error::McpStartupFailure;
 pub use profiles::{AgentEntry, AgentProfile, find_executable};
 pub use session::{
-    AgentSession, AuthPrompt, LogLine, PendingPermission, Phase, Prompt, PromptImage,
+    AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
+    PromptImage,
 };
 pub use settings::{AgentSettings, McpServerConfig, SessionContext};
 pub use transcript::{

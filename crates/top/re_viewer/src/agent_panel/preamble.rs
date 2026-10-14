@@ -88,6 +88,17 @@ impl Preamble<'_> {
         }
 
         text.push_str(
+            "- Use elicitation whenever you need clarification, a choice, or additional input from \
+             the user, for any task. Call your agent's built-in structured question tool and wait \
+             for the answer instead of ending your response with a plain-text question. \
+             Examples are `AskUserQuestion` for Claude and synchronous `request_user_input` for Codex; \
+             these are agent-native tools, not Rerun MCP tools. Ask in chat only when the tool is \
+             unavailable, rejects the request, or cannot collect the needed input (such as a \
+             text-only answer when it requires choices). Do not use `request_user_input_async` \
+             with this panel.\n",
+        );
+
+        text.push_str(
             "- Assume no Python environment is set up: the skills and the docs snippets are written in \
              Python, but a bare `python` here usually has neither `rerun` nor the packages they import. \
              Where `uv` is installed, `uv run --with rerun-sdk --with <other packages> python …` needs no \
@@ -143,7 +154,9 @@ impl Preamble<'_> {
         text.push_str(
             "- Point users to scripts you wrote for them, to teach them how to use the Rerun SDK.\n",
         );
-        text.push_str("- Keep answers short: the panel is narrow.\n");
+        text.push_str(
+            "- Keep answers short: the panel is narrow. Omit internal tool commentary unless the user asks for it.\n",
+        );
 
         if !off_limits_directories.is_empty() {
             let directories = off_limits_directories

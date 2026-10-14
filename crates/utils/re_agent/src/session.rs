@@ -1,5 +1,5 @@
 //! The state of one agent session: the connection, the transcript, and whatever the agent
-//! is currently waiting on (a permission answer, a login).
+//! is currently waiting on (a permission answer, structured user input, a login).
 //!
 //! No egui in here, so a host can drive it from any UI or from a headless test.
 
@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use agent_client_protocol::schema::v1::{
-    AuthMethod, AuthMethodId, ContentBlock, ImageContent, PermissionOption, PermissionOptionId,
+    AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
+    ElicitationAction, ElicitationMode, ImageContent, PermissionOption, PermissionOptionId,
     PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome, RequestPermissionRequest,
     RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigId, SessionConfigValueId,
     SessionModeId, SessionModeState, SessionUpdate, StopReason, TextContent, ToolCallStatus,
@@ -18,6 +19,7 @@ use agent_client_protocol::schema::v1::{
 use agent_client_protocol::{LineDirection, Responder};
 
 use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
@@ -109,6 +111,44 @@ impl PendingPermission {
     }
 }
 
+/// A structured question awaiting an explicit user answer, independent of tool permissions.
+///
+/// Questions are never auto-approved. Dropping an unanswered request responds with cancellation.
+pub struct PendingElicitation {
+    /// Session-local UI key, distinct from the JSON-RPC request ID and unique across restarts.
+    pub id: u64,
+
+    /// The agent's question message and requested input schema.
+    pub request: CreateElicitationRequest,
+
+    /// Absent for injected UI fixtures or after the response has been consumed.
+    responder: Option<Responder<CreateElicitationResponse>>,
+}
+
+impl PendingElicitation {
+    fn answer(
+        mut self,
+        response: CreateElicitationResponse,
+    ) -> Result<(), agent_client_protocol::Error> {
+        // Consume the responder before sending so that Drop cannot send a second response on error.
+        match self.responder.take() {
+            Some(responder) => responder.respond(response),
+            None => Ok(()),
+        }
+    }
+}
+
+impl Drop for PendingElicitation {
+    fn drop(&mut self) {
+        if let Some(responder) = self.responder.take()
+            && let Err(err) =
+                responder.respond(CreateElicitationResponse::new(ElicitationAction::Cancel))
+        {
+            re_log::debug!("Failed to cancel elicitation request: {err}");
+        }
+    }
+}
+
 /// The agent refused to open a session until the user logs in.
 pub struct AuthPrompt {
     /// Ways to log in, as offered by the agent. Empty if the agent offered none.
@@ -137,6 +177,13 @@ pub struct AgentSession {
     auth: Option<AuthPrompt>,
     transcript: Transcript,
     pending_permissions: Vec<PendingPermission>,
+    pending_elicitations: Vec<PendingElicitation>,
+
+    /// Preserved across restarts so cached UI drafts cannot attach to a different request.
+    next_elicitation_id: u64,
+
+    /// Reject questions racing with cancellation until another prompt or session starts.
+    cancel_requested: bool,
     log: VecDeque<LogLine>,
     auto_approve: bool,
 
@@ -197,16 +244,19 @@ impl AgentSession {
             off_limits_directories: config.off_limits_directories.clone(),
             cwd: config.cwd.clone(),
             finished_turns: std::mem::take(&mut self.finished_turns),
+            next_elicitation_id: self.next_elicitation_id,
             ..Default::default()
         };
         self.connection = Some(AgentConnection::spawn(config, wake));
     }
 
-    /// Shuts the agent down. Pending permission requests are answered with "cancelled".
+    /// Shuts the agent down. Pending permission and elicitation requests are cancelled.
     pub fn stop(&mut self) {
+        self.cancel_requested = true;
         for pending in self.pending_permissions.drain(..) {
             pending.answer(None).ok();
         }
+        self.pending_elicitations.clear();
         self.connection = None;
         self.finish_turn(TurnOutcome::Aborted, "Stopped");
         self.phase = Phase::Idle;
@@ -275,6 +325,13 @@ impl AgentSession {
         &self.pending_permissions
     }
 
+    /// Questions awaiting a response, in arrival order.
+    ///
+    /// Polling removes requests withdrawn by the agent.
+    pub fn pending_elicitations(&self) -> &[PendingElicitation] {
+        &self.pending_elicitations
+    }
+
     pub fn log(&self) -> &VecDeque<LogLine> {
         &self.log
     }
@@ -318,6 +375,7 @@ impl AgentSession {
         // for an agent that cannot take images inline are plumbing, and the images themselves
         // are in the transcript entry.
         self.begin_turn(prompt);
+        self.cancel_requested = false;
         if 0 < unsaved {
             // The image is in the transcript either way, so without this the user would think
             // the agent got something it never did.
@@ -541,14 +599,16 @@ impl AgentSession {
         });
     }
 
-    /// Cancels the current turn. Pending permission requests are answered with "cancelled".
+    /// Cancels the current turn, including pending permission and elicitation requests.
     pub fn cancel(&mut self) {
+        self.cancel_requested = true;
         if let Some(connection) = &self.connection {
             connection.send(AgentCommand::Cancel);
         }
         for pending in self.pending_permissions.drain(..) {
             pending.answer(None).ok();
         }
+        self.pending_elicitations.clear();
     }
 
     pub fn set_mode(&mut self, mode_id: SessionModeId) {
@@ -600,8 +660,59 @@ impl AgentSession {
         }
     }
 
+    /// Responds to a pending question and records its answer in the transcript.
+    ///
+    /// The caller must validate accepted content against the request's schema.
+    /// Unknown or already-answered IDs are ignored.
+    pub fn answer_elicitation(&mut self, id: u64, response: CreateElicitationResponse) {
+        if let Some(index) = self
+            .pending_elicitations
+            .iter()
+            .position(|pending| pending.id == id)
+        {
+            let pending = self.pending_elicitations.remove(index);
+            let note = response_note(&pending.request, &response);
+            match pending.answer(response) {
+                Ok(()) => self.transcript.push_note(note, false),
+                Err(err) => self.report_error(format!("Failed to answer question: {err}")),
+            }
+        }
+    }
+
+    fn push_elicitation(
+        &mut self,
+        request: CreateElicitationRequest,
+        responder: Option<Responder<CreateElicitationResponse>>,
+    ) {
+        let pending = PendingElicitation {
+            id: self.next_elicitation_id,
+            request,
+            responder,
+        };
+        self.next_elicitation_id += 1;
+        if self.cancel_requested {
+            return;
+        }
+        if matches!(pending.request.mode, ElicitationMode::Form(_)) {
+            self.pending_elicitations.push(pending);
+        } else {
+            // Even unadvertised modes need a terminal response; leaving them pending blocks the agent.
+            if let Err(err) =
+                pending.answer(CreateElicitationResponse::new(ElicitationAction::Decline))
+            {
+                re_log::debug!("Failed to decline unsupported elicitation request: {err}");
+            }
+        }
+    }
+
     /// Applies everything the agent sent since the last call. Call once per frame.
     pub fn poll_events(&mut self) {
+        self.pending_elicitations.retain(|pending| {
+            pending
+                .responder
+                .as_ref()
+                .is_none_or(|responder| !responder.cancellation().is_cancelled())
+        });
         let Some(connection) = &self.connection else {
             return;
         };
@@ -620,6 +731,7 @@ impl AgentSession {
     /// Pretends a turn is running, without an agent. For UI tests.
     #[cfg(feature = "testing")]
     pub fn begin_test_turn(&mut self) {
+        self.cancel_requested = false;
         self.current_turn = Some(TurnStart::testing(self.transcript.items.len()));
     }
 
@@ -632,6 +744,14 @@ impl AgentSession {
             request,
             responder: None,
         });
+    }
+
+    /// Injects a question with no waiting agent.
+    ///
+    /// Submitted answers are still recorded in the transcript.
+    #[cfg(feature = "testing")]
+    pub fn push_test_elicitation_request(&mut self, request: CreateElicitationRequest) {
+        self.push_elicitation(request, None);
     }
 
     /// Applies one event as if it came from the agent. Useful for replaying recorded sessions.
@@ -701,7 +821,11 @@ impl AgentSession {
                     self.pending_permissions.push(pending);
                 }
             }
+            AgentEvent::ElicitationRequest { request, responder } => {
+                self.push_elicitation(request, Some(responder));
+            }
             AgentEvent::TurnFinished(result) => {
+                self.pending_elicitations.clear();
                 let outcome = match result {
                     Ok(StopReason::Cancelled) => {
                         self.transcript.push_note("Cancelled", false);
@@ -753,6 +877,7 @@ impl AgentSession {
                 };
                 self.connection = None;
                 self.pending_permissions.clear();
+                self.pending_elicitations.clear();
             }
         }
     }
@@ -927,11 +1052,127 @@ fn is_within(path: &Path, directories: &[PathBuf]) -> bool {
 #[cfg(test)]
 mod tests {
     use agent_client_protocol::schema::v1::{
-        ContentChunk, SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation,
-        ToolCallStatus,
+        ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
+        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
     };
 
     use super::*;
+
+    #[test]
+    fn question_answers_and_cancellation_reach_the_agent() {
+        use agent_client_protocol::{Agent, Channel, Client, ConnectionTo};
+
+        let (client_channel, agent_channel) = Channel::duplex();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        futures::executor::block_on(async {
+            let client = Client
+                .builder()
+                .on_receive_request(
+                    async |request: CreateElicitationRequest, responder, _cx| {
+                        let cancel = request.message == "Cancel this question";
+                        let mut session = AgentSession::default();
+                        session.handle_event(AgentEvent::ElicitationRequest { request, responder });
+                        if cancel {
+                            session.stop();
+                        } else {
+                            let id = session.pending_elicitations()[0].id;
+                            session.answer_elicitation(
+                                id,
+                                CreateElicitationResponse::new(
+                                    ElicitationAcceptAction::new().content(
+                                        std::collections::BTreeMap::from([(
+                                            "environment".to_owned(),
+                                            ElicitationContentValue::String("existing".to_owned()),
+                                        )]),
+                                    ),
+                                ),
+                            );
+                        }
+                        Ok(())
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .connect_with(client_channel, async move |_cx| {
+                    done_rx.await.expect("agent finished");
+                    Ok::<_, agent_client_protocol::Error>(())
+                });
+            let agent = Agent.builder().connect_with(
+                agent_channel,
+                async move |cx: ConnectionTo<Client>| {
+                    let answer = cx.send_request(form_question()).block_task().await?;
+                    assert_eq!(
+                        serde_json::to_value(answer).expect("response"),
+                        serde_json::json!({
+                            "action": "accept", "content": { "environment": "existing" }
+                        })
+                    );
+                    let mut request = form_question();
+                    request.message = "Cancel this question".to_owned();
+                    let answer = cx.send_request(request).block_task().await?;
+                    assert_eq!(
+                        serde_json::to_value(answer).expect("response"),
+                        serde_json::json!({ "action": "cancel" })
+                    );
+                    done_tx.send(()).expect("client waiting");
+                    Ok::<_, agent_client_protocol::Error>(())
+                },
+            );
+            let (client, agent) = futures::join!(client, agent);
+            client.expect("client connection");
+            agent.expect("agent connection");
+        });
+    }
+
+    fn form_question() -> CreateElicitationRequest {
+        serde_json::from_value(serde_json::json!({
+            "mode": "form",
+            "sessionId": "test-session",
+            "message": "Which environment?",
+            "requestedSchema": {
+                "type": "object",
+                "properties": { "environment": { "type": "string", "enum": ["existing", "temporary"] } }
+            }
+        })).expect("valid question")
+    }
+
+    #[test]
+    fn questions_require_an_answer_even_with_auto_approve() {
+        let mut session = AgentSession::default();
+        session.set_auto_approve(true);
+        session.push_elicitation(form_question(), None);
+        assert_eq!(session.pending_elicitations().len(), 1);
+        let id = session.pending_elicitations()[0].id;
+        session.answer_elicitation(
+            id,
+            CreateElicitationResponse::new(ElicitationAction::Decline),
+        );
+        assert!(session.pending_elicitations().is_empty());
+        assert!(session.transcript().to_plain_text().contains("Skipped"));
+    }
+
+    #[test]
+    fn cancelling_discards_pending_and_late_questions() {
+        let mut session = AgentSession::default();
+        session.push_elicitation(form_question(), None);
+        session.cancel();
+        assert!(session.pending_elicitations().is_empty());
+        session.push_elicitation(form_question(), None);
+        assert!(session.pending_elicitations().is_empty());
+    }
+
+    #[test]
+    fn questions_are_cleared_when_the_session_or_turn_ends() {
+        for end in ["stop", "finish", "disconnect"] {
+            let mut session = AgentSession::default();
+            session.push_elicitation(form_question(), None);
+            match end {
+                "stop" => session.stop(),
+                "finish" => session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn))),
+                _ => session.handle_event(AgentEvent::Disconnected),
+            }
+            assert!(session.pending_elicitations().is_empty());
+        }
+    }
 
     #[test]
     fn turn_report() {

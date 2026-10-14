@@ -4,12 +4,14 @@ use std::sync::Arc;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, AuthenticateRequest, CancelNotification,
-    ConfigOptionUpdate, ContentBlock, CurrentModeUpdate, Implementation, InitializeRequest,
-    McpServer, McpServerStdio, NewSessionRequest, PromptRequest, RequestPermissionRequest,
-    RequestPermissionResponse, SessionConfigId, SessionConfigKind, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionId, SessionModeId, SessionModeState, SessionNotification,
-    SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
+    ClientCapabilities, ConfigOptionUpdate, ContentBlock, CreateElicitationRequest,
+    CreateElicitationResponse, CurrentModeUpdate, ElicitationCapabilities,
+    ElicitationFormCapabilities, Implementation, InitializeRequest, McpServer, McpServerStdio,
+    NewSessionRequest, PromptRequest, RequestPermissionRequest, RequestPermissionResponse,
+    SessionConfigId, SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigSelectOption, SessionConfigSelectOptions, SessionConfigValueId, SessionId,
+    SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
+    SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
 };
 use agent_client_protocol::{
     AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, LineDirection, Responder,
@@ -126,6 +128,14 @@ pub enum AgentEvent {
         responder: Responder<RequestPermissionResponse>,
     },
 
+    /// Structured user input requested by the agent, separate from tool approval.
+    ///
+    /// The responder must receive an answer, decline, or cancellation to unblock the agent.
+    ElicitationRequest {
+        request: CreateElicitationRequest,
+        responder: Responder<CreateElicitationResponse>,
+    },
+
     TurnFinished(Result<StopReason, String>),
 
     Log {
@@ -224,6 +234,7 @@ fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events
 
     let notification_events = events.clone();
     let permission_events = events.clone();
+    let elicitation_events = events.clone();
     let foreground_events = events.clone();
 
     let result = futures::executor::block_on(
@@ -240,6 +251,13 @@ fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events
             .on_receive_request(
                 async move |request: RequestPermissionRequest, responder, _cx| {
                     permission_events.send(AgentEvent::PermissionRequest { request, responder });
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: CreateElicitationRequest, responder, _cx| {
+                    elicitation_events.send(AgentEvent::ElicitationRequest { request, responder });
                     Ok(())
                 },
                 agent_client_protocol::on_receive_request!(),
@@ -269,7 +287,13 @@ async fn drive(
 
     let client_info = Implementation::new("re_agent_ui", env!("CARGO_PKG_VERSION"));
     let init = cx
-        .send_request(InitializeRequest::new(ProtocolVersion::V1).client_info(client_info))
+        .send_request(
+            InitializeRequest::new(ProtocolVersion::V1)
+                .client_info(client_info)
+                .client_capabilities(ClientCapabilities::new().elicitation(
+                    ElicitationCapabilities::new().form(ElicitationFormCapabilities::new()),
+                )),
+        )
         .block_task()
         .await?;
 

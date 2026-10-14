@@ -121,7 +121,12 @@ fn builtin_profiles() -> Vec<AgentProfile> {
                 .to_owned(),
             url: "https://github.com/agentclientprotocol/codex-acp".to_owned(),
             login_hint: "codex login".to_owned(),
-            env: Vec::new(),
+            // TODO(michael): Remove this override once Codex enables structured questions in Default mode:
+            // https://github.com/openai/codex/issues/24750
+            env: vec![(
+                "CODEX_CONFIG".to_owned(),
+                r#"{"features":{"default_mode_request_user_input":true}}"#.to_owned(),
+            )],
         },
         AgentProfile {
             id: "gemini".to_owned(),

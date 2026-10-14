@@ -13,6 +13,8 @@ use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
 
+use super::MAX_REQUEST_CONTENT_HEIGHT;
+use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
@@ -42,6 +44,7 @@ pub struct ChatInput {
 
     /// Images pasted into the composer, sent with the next prompt.
     pending_images: Vec<PendingImage>,
+    elicitation_ui: ElicitationUi,
 }
 
 /// A pasted image waiting to be sent, and the texture the composer shows for it.
@@ -307,6 +310,9 @@ fn composer_ui(
     }
 
     permissions_ui(ui, session, input);
+    if input.elicitation_ui.ui(ui, session) {
+        input.focus = true;
+    }
 
     if let Some(plan) = &session.transcript().plan {
         plan_ui(ui, plan);
@@ -514,8 +520,10 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
     }
 
     // Keyboard shortcuts act on the oldest request only.
-    let enter = consume_plain_enter(ui);
-    let escape = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
+    // While a question is open, Enter and Escape must not answer a tool approval instead.
+    let shortcuts_enabled = session.pending_elicitations().is_empty();
+    let enter = shortcuts_enabled && consume_plain_enter(ui);
+    let escape = shortcuts_enabled && ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
 
     let mut answered = None;
     for (index, pending) in session.pending_permissions().iter().enumerate() {
@@ -543,7 +551,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 .or_else(|| known_call?.raw_input.as_ref());
             if let Some(raw_input) = raw_input {
                 egui::ScrollArea::vertical()
-                    .max_height(320.0)
+                    .max_height(MAX_REQUEST_CONTENT_HEIGHT)
                     .id_salt(&request.tool_call.tool_call_id.0)
                     .show(ui, |ui| tool_input_ui(ui, raw_input));
             }
