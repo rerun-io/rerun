@@ -27,7 +27,6 @@ dev = [
   "maturin>=1.14.1",
   "ruff==0.16.9",
   "mypy==1.19.1",
-  "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
   "pandas>=2.0",
   "pandas-stubs==2.3.3.251201",
@@ -43,6 +42,7 @@ dev = [
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",
+  "tomli>=2.0",
   "tomlkit>=0.12",
   "GitPython>=3.1",
   "PyGithub>=2.0", #NOLINT
@@ -576,3 +576,13 @@ include = ["rerun_py/tests/**"]
 
 [tool.ty.overrides.rules]
 unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+# ty is the only type checker that sees notebooks, so restore the rules ignored workspace-wide above.
+include = ["examples/notebook/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "error"
+invalid-assignment = "error"
+no-matching-overload = "error"
+unresolved-attribute = "error"

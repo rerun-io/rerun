@@ -29,7 +29,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from vector_store import BACKENDS, DEFAULT_PATHS, open_store
 
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, DatasetEntry, Schema
 
 # DROID camera roles, and the timeline everything is logged on.
 ALL_CAMERAS = ("wrist", "ext1", "ext2")
@@ -93,9 +93,9 @@ def resolve_cameras(arg: str) -> list[str]:
     return roles
 
 
-def cameras_with_embeddings(schema: object, cameras: list[str]) -> set[str]:
+def cameras_with_embeddings(schema: Schema, cameras: list[str]) -> set[str]:
     """Return the subset of *cameras* that already have an embedding entity in the dataset."""
-    present = {p.strip("/") for p in schema.entity_paths()}  # type: ignore[attr-defined]
+    present = {p.strip("/") for p in schema.entity_paths()}
     return {role for role in cameras if f"camera/{role}/embedding" in present}
 
 
@@ -107,7 +107,7 @@ def _vector_dim(vectors: pa.Array) -> int:
     """Embedding dimensionality of a (variable- or fixed-size) list array."""
     if pa.types.is_fixed_size_list(vectors.type):
         return int(vectors.type.list_size)
-    return int(pc.max(pc.list_value_length(vectors)).as_py())
+    return int(pc.max(pc.list_value_length(vectors)).as_py())  # ty: ignore[unresolved-attribute]
 
 
 def _embedding_table(role: str, segment_ids: pa.Array, timestamps_ms: pa.Array, vectors: pa.Array) -> pa.Table:
@@ -142,14 +142,14 @@ def _find_embedding_column(schema: pa.Schema, role: str) -> str:
     return candidates[0]
 
 
-def read_embedding_table(dataset: object, segments: list[str], role: str) -> pa.Table | None:
+def read_embedding_table(dataset: DatasetEntry, segments: list[str], role: str) -> pa.Table | None:
     """Read pre-computed embeddings for *role* out of the catalog.
 
     The query result is already columnar Arrow, so we stay in Arrow the whole
     way — filter out missing rows and normalize the column types without ever
     materializing Python row objects.
     """
-    view = dataset.filter_segments(segments).filter_contents(  # type: ignore[attr-defined]
+    view = dataset.filter_segments(segments).filter_contents(
         [f"/camera/{role}/embedding", f"/camera/{role}/embedding/**"],
     )
     table = view.reader(index=TIMELINE).to_arrow_table()
@@ -159,7 +159,7 @@ def read_embedding_table(dataset: object, segments: list[str], role: str) -> pa.
         raise RuntimeError(f"Expected 'rerun_segment_id' and '{TIMELINE}' columns, got {table.schema.names}")
 
     # Columnar equivalent of the per-row `if vec is None or seg is None: continue`.
-    keep = pc.and_(pc.is_valid(table.column(emb_col)), pc.is_valid(table.column("rerun_segment_id")))
+    keep = pc.and_(pc.is_valid(table.column(emb_col)), pc.is_valid(table.column("rerun_segment_id")))  # ty: ignore[unresolved-attribute]
     table = table.filter(keep)
     if table.num_rows == 0:
         print(f"  [{role}] no pre-computed embeddings")
@@ -182,7 +182,7 @@ def _identity_collate(batch: list[Any]) -> list[Any]:
 
 
 def compute_embedding_table(
-    dataset: object,
+    dataset: DatasetEntry,
     segments: list[str],
     role: str,
     *,
@@ -206,7 +206,7 @@ def compute_embedding_table(
     )
 
     field_name = f"img_{role}"
-    source = DataSource(dataset, segments=segments)  # type: ignore[arg-type]
+    source = DataSource(dataset, segments=segments)
     fields = {
         field_name: Field(
             f"/camera/{role}:VideoStream:sample",
@@ -249,7 +249,7 @@ def compute_embedding_table(
                 pbar.update(1)
                 if tensor is None:  # target preceded the first keyframe; skip
                     continue
-                ts_ms = int(np.datetime64(idx_val).astype("datetime64[ms]").astype(np.int64))  # type: ignore[arg-type]
+                ts_ms = int(np.datetime64(idx_val).astype("datetime64[ms]").astype(np.int64))  # type: ignore[arg-type]  # ty: ignore[no-matching-overload]
                 rgb = tensor.permute(1, 2, 0).cpu().numpy()  # [C,H,W] uint8 -> [H,W,C]
                 yield Image.fromarray(rgb), seg_meta.segment_id, ts_ms
 

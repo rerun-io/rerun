@@ -29,7 +29,7 @@ from embeddings import (
 from vector_store import BACKENDS, DEFAULT_PATHS, open_store
 
 import rerun as rr
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, DatasetEntry
 
 TIMELINE = "real_time"
 
@@ -81,10 +81,10 @@ def embed_image_query(path: str, model: EmbeddingModel, processor: EmbeddingProc
     return cast("list[float]", vector.tolist())
 
 
-def viewer_url(dataset: object, segment_id: str, timestamp_ms: int, window_secs: float) -> str:
+def viewer_url(dataset: DatasetEntry, segment_id: str, timestamp_ms: int, window_secs: float) -> str:
     ts = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC)
     half = timedelta(seconds=window_secs / 2)
-    return dataset.segment_url(segment_id, timeline=TIMELINE, start=ts - half, end=ts + half)  # type: ignore[attr-defined, no-any-return]
+    return dataset.segment_url(segment_id, timeline=TIMELINE, start=ts - half, end=ts + half)
 
 
 def main() -> None:

@@ -88,9 +88,9 @@ class LanceStore(VectorStore):
 
         tbl = lancedb.connect(self._path).open_table(self._table)
         # `Table.search()` is typed as returning the base `LanceQueryBuilder`, but a vector
-        # query always yields a `LanceVectorQueryBuilder`, which is where `.metric()` lives.
+        # query always yields a `LanceVectorQueryBuilder`, which is where `.distance_type()` lives.
         query = cast("LanceVectorQueryBuilder", tbl.search(vector))
-        hits = query.metric("cosine").limit(top_k).to_list()
+        hits = query.distance_type("cosine").limit(top_k).to_list()
         return [
             {
                 "segment_id": h["segment_id"],

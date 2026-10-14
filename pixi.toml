@@ -327,7 +327,6 @@ pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
-# Until we resolve nbqa config issue keep aligned with nbqa dirs above
 nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
 nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
 
@@ -342,10 +341,6 @@ py-lint-non-sdk = { depends-on = [
   "py-sync-examples", # these ensure that the .venv is in the right state for type checking examples and snippets
   "py-sync-snippets",
 ], cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
-# I couldn't get the config to work correctly, so placing relevant directories in command line
-# Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-# MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.
-py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint-rerun-ty = { depends-on = [
@@ -354,13 +349,12 @@ py-lint-rerun-ty = { depends-on = [
 ], cmd = "uv run ty check --error deprecated" }
 # Isolated examples (their own uv project + .venv, excluded from the shared mypy run above).
 # The script auto-discovers any example whose pyproject.toml sets
-# `[tool.rerun-example] isolated = true` and lints it with the shared mypy config, and with ty.
+# `[tool.rerun-example] isolated = true` and type-checks it with ty.
 py-lint-isolated-examples = "python scripts/ci/isolated_examples.py lint"
 py-lint = { depends-on = [
   "py-lint-rerun-ty", # Fast first
   "py-lint-non-sdk",
   "py-lint-rerun",
-  "py-lint-nb-rerun",
   "py-lint-isolated-examples",
 ] }
 

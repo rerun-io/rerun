@@ -12,9 +12,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any
 
 import tomli
 
@@ -29,33 +27,6 @@ def discover_isolated(examples_dir: Path) -> list[Path]:
     return found
 
 
-def _format_override(override: dict[str, Any]) -> str:
-    modules = override["module"]
-    if isinstance(modules, str):
-        modules = [modules]
-    lines = [f"[mypy-{','.join(modules)}]"]
-    for key, value in override.items():
-        if key == "module":
-            continue
-        if isinstance(value, bool):
-            value = "true" if value else "false"
-        lines.append(f"{key} = {value}")
-    return "\n".join(lines)
-
-
-def build_merged_config(base_ini: Path, pyproject: Path, repo_root: Path) -> str:
-    with pyproject.open("rb") as f:
-        data = tomli.load(f)
-    overrides = data.get("tool", {}).get("mypy", {}).get("overrides", [])
-    mypy_path = ":".join(str(repo_root / p) for p in ("rerun_py", "rerun_py/rerun_sdk"))
-    sections = [
-        base_ini.read_text().rstrip() + f"\nmypy_path = {mypy_path}",
-        _format_override({"module": ["rerun.*", "rerun_bindings.*"], "ignore_errors": True}),
-    ]
-    sections.extend(_format_override(o) for o in overrides)
-    return "\n\n".join(sections) + "\n"
-
-
 def _announce(projects: list[Path], repo_root: Path, verb: str) -> None:
     print(f"{verb} {len(projects)} isolated example(s):")
     for project in projects:
@@ -63,7 +34,6 @@ def _announce(projects: list[Path], repo_root: Path, verb: str) -> None:
 
 
 def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
-    shared_base = examples_dir / "_isolated" / "mypy.ini"
     projects = discover_isolated(examples_dir)
     if not projects:
         print("No isolated examples found — nothing to lint.", file=sys.stderr)
@@ -77,23 +47,6 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
             cwd=project,
             check=True,
         )
-        merged = build_merged_config(shared_base, project / "pyproject.toml", repo_root)
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=".ini",
-            prefix=f"mypy-{project.name}-",
-            delete=False,
-        ) as tmp:
-            tmp.write(merged)
-            tmp_path = tmp.name
-        try:
-            subprocess.run(
-                ["uv", "run", "--no-sync", "mypy", "--config-file", tmp_path, "."],
-                cwd=project,
-                check=True,
-            )
-        finally:
-            Path(tmp_path).unlink(missing_ok=True)
         subprocess.run(
             ["uv", "run", "--no-sync", "ty", "check", "--error", "deprecated"],
             cwd=project,
@@ -127,7 +80,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("lint", help="mypy- and ty-check every isolated example")
+    sub.add_parser("lint", help="ty-check every isolated example")
     sub.add_parser("check-lock", help="verify every isolated example's uv.lock is up to date")
     args = parser.parse_args()
 
