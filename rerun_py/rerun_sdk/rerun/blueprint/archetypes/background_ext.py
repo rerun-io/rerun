@@ -45,7 +45,7 @@ class BackgroundExt:
                 if isinstance(color_or_kind, blueprint_components.BackgroundKind):
                     kind = color_or_kind
                 else:
-                    color = color_or_kind  # type: ignore[assignment]
+                    color = color_or_kind  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
             if kind is None:
                 if color is None:

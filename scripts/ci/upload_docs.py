@@ -324,6 +324,7 @@ def update_versions_manifest(
     gcs_path = f"{GCS_PREFIX}/versions.json"
     blob = bucket.blob(gcs_path)
 
+    manifest: dict[str, Any]
     if blob.exists():
         # GCS auto-decompresses on download.
         raw = blob.download_as_bytes()

@@ -28,7 +28,7 @@ config = tomlkit.loads(config_path.read_text())
 
 OPT_OUT: dict[str, Any] = cast("Container", config["opt_out"])
 OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
-OPT_OUT_BACKWARDS_CHECK: list[str] = OPT_OUT["backwards_check"].value
+OPT_OUT_BACKWARDS_CHECK = cast("list[str]", OPT_OUT["backwards_check"].value)
 OPT_OUT_COMPARE = OPT_OUT["compare"].value
 EXTRA_ARGS = config["extra_args"].value
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from . import MediaType
@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 class MediaTypeExt:
     """Extension for [MediaType][rerun.components.MediaType]."""
 
-    TEXT: MediaType = None  # type: ignore[assignment]
+    TEXT: ClassVar[MediaType]
     """Plain text: `text/plain`."""
 
-    MARKDOWN: MediaType = None  # type: ignore[assignment]
+    MARKDOWN: ClassVar[MediaType]
     """
     Markdown: `text/markdown`.
 
@@ -24,12 +24,12 @@ class MediaTypeExt:
     # --------------------------
     # Images:
 
-    JPEG: MediaType = None  # type: ignore[assignment]
+    JPEG: ClassVar[MediaType]
     """
     [JPEG image](https://en.wikipedia.org/wiki/JPEG): `image/jpeg`.
     """
 
-    PNG: MediaType = None  # type: ignore[assignment]
+    PNG: ClassVar[MediaType]
     """
     [PNG image](https://en.wikipedia.org/wiki/PNG): `image/png`.
 
@@ -39,35 +39,35 @@ class MediaTypeExt:
     # --------------------------
     # Meshes:
 
-    GLB: MediaType = None  # type: ignore[assignment]
+    GLB: ClassVar[MediaType]
     """
     Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
 
     <https://www.iana.org/assignments/media-types/model/gltf-binary>
     """
 
-    GLTF: MediaType = None  # type: ignore[assignment]
+    GLTF: ClassVar[MediaType]
     """
     [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
 
     <https://www.iana.org/assignments/media-types/model/gltf+json>
     """
 
-    OBJ: MediaType = None  # type: ignore[assignment]
+    OBJ: ClassVar[MediaType]
     """
     [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
 
     <https://www.iana.org/assignments/media-types/model/obj>
     """
 
-    PLY: MediaType = None  # type: ignore[assignment]
+    PLY: ClassVar[MediaType]
     """
     [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
 
     Holds either a mesh or a point cloud, depending on its header.
     """
 
-    STL: MediaType = None  # type: ignore[assignment]
+    STL: ClassVar[MediaType]
     """
     [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
     Either binary or ASCII.
@@ -78,7 +78,7 @@ class MediaTypeExt:
     # --------------------------
     # Compressed Depth Data:
 
-    RVL: MediaType = None  # type: ignore[assignment]
+    RVL: ClassVar[MediaType]
     """
     RVL compressed depth: `application/rvl`.
 
@@ -89,7 +89,7 @@ class MediaTypeExt:
     # --------------------------
     # Video:
 
-    MP4: MediaType = None  # type: ignore[assignment]
+    MP4: ClassVar[MediaType]
     """
     [`mp4`](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
 
@@ -99,40 +99,40 @@ class MediaTypeExt:
     # --------------------------
     # Audio:
 
-    AAC: MediaType = None  # type: ignore[assignment]
+    AAC: ClassVar[MediaType]
     """
     [AAC audio](https://en.wikipedia.org/wiki/Advanced_Audio_Coding) in a raw ADTS stream: `audio/aac`.
 
     <https://www.iana.org/assignments/media-types/audio/aac>
     """
 
-    FLAC: MediaType = None  # type: ignore[assignment]
+    FLAC: ClassVar[MediaType]
     """
     [FLAC audio](https://en.wikipedia.org/wiki/FLAC): `audio/flac`.
     """
 
-    M4A: MediaType = None  # type: ignore[assignment]
+    M4A: ClassVar[MediaType]
     """
     [M4A audio](https://en.wikipedia.org/wiki/MP4_file_format) (AAC in an MP4 container): `audio/mp4`.
 
     <https://www.iana.org/assignments/media-types/audio/mp4>
     """
 
-    MP3: MediaType = None  # type: ignore[assignment]
+    MP3: ClassVar[MediaType]
     """
     [MP3 audio](https://en.wikipedia.org/wiki/MP3): `audio/mpeg`.
 
     <https://www.iana.org/assignments/media-types/audio/mpeg>
     """
 
-    OGG: MediaType = None  # type: ignore[assignment]
+    OGG: ClassVar[MediaType]
     """
     [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
 
     <https://www.iana.org/assignments/media-types/audio/ogg>
     """
 
-    WAV: MediaType = None  # type: ignore[assignment]
+    WAV: ClassVar[MediaType]
     """
     [WAV audio](https://en.wikipedia.org/wiki/WAV): `audio/wav`.
     """

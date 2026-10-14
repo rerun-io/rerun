@@ -109,14 +109,14 @@ class ForceCollisionRadius(Archetype):
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "enabled": enabled,
                 "strength": strength,
                 "iterations": iterations,
             }
 
             if clear_unset:
-                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}
 
             inst.__attrs_init__(**kwargs)
             return inst

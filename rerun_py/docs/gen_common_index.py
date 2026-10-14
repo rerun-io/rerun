@@ -358,6 +358,7 @@ rerun_pkg = loader.load("rerun")
 def griffe_module_for(pkg: str) -> griffe.Module:
     """Return the griffe Module for a `DOCUMENTED_PACKAGES` entry."""
     if pkg == "rerun":
+        assert isinstance(rerun_pkg, griffe.Module)
         return rerun_pkg
     assert pkg.startswith("rerun.")
     return rerun_pkg[pkg[len("rerun.") :]]

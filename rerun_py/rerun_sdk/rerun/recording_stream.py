@@ -935,7 +935,7 @@ class RecordingStream:
         from .time import set_time
 
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
-        set_time(  # type: ignore[call-overload]
+        set_time(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
             timeline=timeline,
             duration=duration,
             sequence=sequence,

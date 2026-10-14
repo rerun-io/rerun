@@ -84,9 +84,8 @@ class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixi
 
     @staticmethod
     def _native_to_pa_array(data: BackgroundKindArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (BackgroundKind, int, str)):
-            data = [data]
+        items: Sequence[BackgroundKindLike | str] = [data] if isinstance(data, (BackgroundKind, int, str)) else data
 
-        pa_data = [BackgroundKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [BackgroundKind.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

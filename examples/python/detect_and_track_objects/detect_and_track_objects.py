@@ -215,7 +215,7 @@ class Tracker:
         curr_gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
         # Calculate optical flow
-        next_points, status, _error = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
+        next_points, status, _error = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
             self.prev_gray,
             curr_gray,
             self.prev_points,

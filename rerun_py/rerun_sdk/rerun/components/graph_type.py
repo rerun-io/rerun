@@ -66,9 +66,8 @@ class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: GraphTypeArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (GraphType, int, str)):
-            data = [data]
+        items: Sequence[GraphTypeLike | str] = [data] if isinstance(data, (GraphType, int, str)) else data
 
-        pa_data = [GraphType.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [GraphType.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

@@ -1139,7 +1139,7 @@ def test_video_frame_decoder_rejects_unknown_window_storage() -> None:
 
 def test_video_frame_decoder_rejects_unknown_output_format() -> None:
     with pytest.raises(ValueError, match="output_format"):
-        VideoFrameDecoder(output_format="unknown")  # type: ignore[call-overload]
+        VideoFrameDecoder(output_format="unknown")  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def test_video_frame_decoder_accepts_automatic_thread_count() -> None:
@@ -1158,7 +1158,7 @@ def test_video_frame_decoder_accepts_automatic_thread_count() -> None:
 )
 def test_video_frame_decoder_rejects_invalid_resource_limits(kwargs: dict[str, int], message: str) -> None:
     with pytest.raises(ValueError, match=message):
-        VideoFrameDecoder(**kwargs)  # type: ignore[call-overload]
+        VideoFrameDecoder(**kwargs)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def _group_table(segment_ids: list[str], index_values: list[int]) -> pa.Table:

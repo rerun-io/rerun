@@ -140,10 +140,10 @@ def test_set_time_requires_exactly_one_time(monkeypatch: pytest.MonkeyPatch) -> 
     viewer, _calls = _capturing_viewer(monkeypatch)
 
     with pytest.raises(ValueError, match="exactly one"):
-        viewer.set_time()  # type: ignore[call-overload]
+        viewer.set_time()  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
     with pytest.raises(ValueError, match="exactly one"):
-        viewer.set_time(sequence=1, duration=1.0)  # type: ignore[call-overload]
+        viewer.set_time(sequence=1, duration=1.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def _closing_viewer(

@@ -75,7 +75,7 @@ class TimeRangeBoundaryExt:
             if seq is None and seconds is None and nanos is None:
                 offset = TimeInt(seq=0)
             else:
-                offset = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]
+                offset = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
         elif seq is not None or seconds is not None or nanos is not None:
             raise ValueError("Only one of time, seq, seconds, or nanos can be provided.")
 
@@ -152,6 +152,6 @@ class TimeRangeBoundaryExt:
         from .time_range_boundary import TimeRangeBoundary
 
         if time is None:
-            time = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]
+            time = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
         return TimeRangeBoundary(inner=time, kind="absolute")

@@ -44,6 +44,13 @@ def _ns_to_dtype(ns: int, ns_dtype: str | None) -> IndexValue:
     return ns
 
 
+def _index_value_to_int(value: IndexValue) -> int:
+    """The raw integer of an index value: nanoseconds for timestamps and durations."""
+    if isinstance(value, (np.datetime64, np.timedelta64)):
+        return int(value.astype(np.int64))
+    return int(value)
+
+
 @dataclass(frozen=True)
 class FixedRateSampling:
     """
@@ -194,7 +201,7 @@ class SampleIndex:
             return _ns_to_dtype(value, self._ns_dtype)
         if int(offset) != offset:
             raise ValueError(f"Integer timelines require integral window offsets, got {offset!r}")
-        return int(index_value) + int(offset)
+        return _index_value_to_int(index_value) + int(offset)
 
     def output_index_values(self, index_value: IndexValue, field: Field) -> tuple[IndexValue, ...]:
         """Concrete index values requested by a field, preserving its explicit offset order."""

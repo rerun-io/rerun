@@ -36,7 +36,7 @@ def _view_coordinates__coordinates__special_field_converter_override(x: ViewCoor
         raise ValueError("coordinates must contain ViewDir values, names, or integers")
 
     try:
-        input_values = iter(x)  # type: ignore[arg-type]
+        input_values = iter(x)  # type: ignore[arg-type]  # ty: ignore[no-matching-overload]
     except TypeError as err:
         raise ValueError("coordinates must be an iterable of ViewDir values") from err
 

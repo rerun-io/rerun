@@ -186,7 +186,7 @@ class _FieldTransfer:
 
 def _view(storage: torch.UntypedStorage, metadata: _TensorMetadata) -> torch.Tensor:
     tensor = torch.empty(0, dtype=metadata.dtype, device="cpu")
-    tensor.set_(storage, 0, metadata.shape)  # type: ignore[call-overload]
+    tensor.set_(storage, 0, metadata.shape)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     return tensor
 
 

@@ -91,13 +91,13 @@ class RecordingInfo(Archetype):
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "start_time": start_time,
                 "name": name,
             }
 
             if clear_unset:
-                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}
 
             inst.__attrs_init__(**kwargs)
             return inst
@@ -163,7 +163,7 @@ class RecordingInfo(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"RecordingInfo:start_time": start_time, "RecordingInfo:name": name}
+        kwargs: dict[str, Any] = {"RecordingInfo:start_time": start_time, "RecordingInfo:name": name}
         columns = []
 
         for batch in batches:
@@ -171,8 +171,8 @@ class RecordingInfo(Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
-                shape = np.shape(param)  # type: ignore[arg-type]
+                param = kwargs[batch.component_descriptor().component]
+                shape = np.shape(param)
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
 
                 if pa.types.is_fixed_size_list(arrow_array.type):

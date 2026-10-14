@@ -39,7 +39,7 @@ def _fixed_size_enum_array__values__special_field_converter_override(
         raise ValueError("values must contain EnumTest values, names, or integers")
 
     try:
-        input_values = iter(x)  # type: ignore[arg-type]
+        input_values = iter(x)  # type: ignore[arg-type]  # ty: ignore[no-matching-overload]
     except TypeError as err:
         raise ValueError("values must be an iterable of EnumTest values") from err
 

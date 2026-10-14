@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -16,13 +16,13 @@ class Plane3DExt:
     """Extension for [Plane3D][rerun.encodings.Plane3D]."""
 
     # The Y^Z plane with normal = +X.
-    YZ: Plane3D = None  # type: ignore[assignment]
+    YZ: ClassVar[Plane3D]
 
     # The Z^X plane with normal = +Y.
-    ZX: Plane3D = None  # type: ignore[assignment]
+    ZX: ClassVar[Plane3D]
 
     # The X^Y plane with normal = +Z.
-    XY: Plane3D = None  # type: ignore[assignment]
+    XY: ClassVar[Plane3D]
 
     @staticmethod
     def deferred_patch_class(cls: Any) -> None:

@@ -29,7 +29,7 @@ from rerun._tracing import (
 from rerun.catalog import CatalogClient
 from rerun_bindings import CatalogClientInternal
 
-from ._sample_index import IndexValue, _ns_to_datetime64, _ns_to_timedelta64
+from ._sample_index import IndexValue, _index_value_to_int, _ns_to_datetime64, _ns_to_timedelta64
 from .decoders import DecodeRequest, FieldBatch
 
 if TYPE_CHECKING:
@@ -256,12 +256,18 @@ def _build_targets(
     targets: list[Target] = []
     for seg, idx_val in located:
         earliest_outputs = {
-            key: min(sample_index.output_index_values(idx_val, fields[key]), key=int) for key in keyframes
+            key: min(sample_index.output_index_values(idx_val, fields[key]), key=_index_value_to_int)
+            for key in keyframes
         }
         prior_keyframes = {
             key: prior_keyframe
             for key, by_seg in keyframes.items()
-            if (prior_keyframe := _prior_keyframe(by_seg.get(seg.segment_id), int(earliest_outputs[key]))) is not None
+            if (
+                prior_keyframe := _prior_keyframe(
+                    by_seg.get(seg.segment_id), _index_value_to_int(earliest_outputs[key])
+                )
+            )
+            is not None
         }
         targets.append(
             _build_target(
@@ -598,7 +604,7 @@ def _decode_order(targets: list[Target]) -> list[list[int]]:
     for position, target in enumerate(targets):
         by_segment.setdefault(target.segment.segment_id, []).append(position)
     for positions in by_segment.values():
-        positions.sort(key=lambda position: int(targets[position].index_value))
+        positions.sort(key=lambda position: _index_value_to_int(targets[position].index_value))
     return list(by_segment.values())
 
 
@@ -632,11 +638,17 @@ def _resolve_decode_requests(
         decode_spans: dict[int, tuple[int, int]] = {}
         if contiguous_positions:
             lo_values = np.fromiter(
-                (int(segment_requests[position].decode_index_range[0]) for position in contiguous_positions),
+                (
+                    _index_value_to_int(segment_requests[position].decode_index_range[0])
+                    for position in contiguous_positions
+                ),
                 dtype=np.int64,
             )
             hi_values = np.fromiter(
-                (int(segment_requests[position].decode_index_range[1]) for position in contiguous_positions),
+                (
+                    _index_value_to_int(segment_requests[position].decode_index_range[1])
+                    for position in contiguous_positions
+                ),
                 dtype=np.int64,
             )
             starts = span_start + np.searchsorted(rows, lo_values, side="left")
@@ -653,7 +665,7 @@ def _resolve_decode_requests(
 
         for position, fetch_request in enumerate(segment_requests):
             output_values = np.fromiter(
-                (int(value) for value in fetch_request.output_index_values),
+                (_index_value_to_int(value) for value in fetch_request.output_index_values),
                 dtype=np.int64,
             )
             output_rows = span_start + np.searchsorted(rows, output_values, side="right") - 1
@@ -760,7 +772,7 @@ def _decode_iter(
         else:
             # Copy the caller's contextvars so each field's spans nest under this
             # block's span instead of appearing as roots.
-            futures: dict[str, Future[list[DecodedResult]]] = {
+            futures: dict[str, Future[list[DecodedResult]]] = {  # ty: ignore[invalid-assignment]
                 key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
             }
             per_field = {key: future.result() for key, future in futures.items()}
@@ -783,8 +795,8 @@ def _resolve_decode_index_range(
     The output bounds define the requested values; a prior keyframe may extend
     the decode start farther back.
     """
-    output_lo = min(output_index_values, key=lambda value: int(value))
-    output_hi = max(output_index_values, key=lambda value: int(value))
+    output_lo = min(output_index_values, key=_index_value_to_int)
+    output_hi = max(output_index_values, key=_index_value_to_int)
     if prior_keyframe is not None:
         return _index_value_like(prior_keyframe, idx_val), output_hi
     if field.window is not None:
@@ -861,7 +873,7 @@ def _build_query_indices(
     for field_requests in fetch_requests.values():
         for fetch_request in field_requests:
             segment_values = groups[fetch_request.segment_id]
-            segment_values.update(int(value) for value in fetch_request.output_index_values)
+            segment_values.update(_index_value_to_int(value) for value in fetch_request.output_index_values)
 
     result: dict[str, np.ndarray | pa.Array] = {}
     for segment_id, vals in groups.items():
@@ -884,7 +896,7 @@ def _build_query_ranges(
     for requests in fetch_requests.values():
         for request in requests:
             lo, hi = request.decode_index_range
-            ranges_by_segment[request.segment_id].append((int(lo), int(hi)))
+            ranges_by_segment[request.segment_id].append((_index_value_to_int(lo), _index_value_to_int(hi)))
             examples.setdefault(request.segment_id, request.index_value)
 
     result: dict[str, list[tuple[IndexValue, IndexValue]]] = {}
@@ -947,7 +959,9 @@ def _fetch_prior_keyframes(
     for seg, idx_val in located:
         sid = seg.segment_id
         requested_max = max(
-            int(value) for key in keyframe_fields for value in sample_index.output_index_values(idx_val, fields[key])
+            _index_value_to_int(value)
+            for key in keyframe_fields
+            for value in sample_index.output_index_values(idx_val, fields[key])
         )
         max_per_segment[sid] = max(requested_max, max_per_segment.get(sid, requested_max))
 

@@ -122,7 +122,7 @@ def run_llm_ner(text: str) -> None:
     # Initialize model
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
     model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
-    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)  # type: ignore[call-overload]
+    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
     # Compute intermediate and final output
     token_ids = tokenizer.encode(text)
