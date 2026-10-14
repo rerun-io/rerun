@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, call
 
 import datafusion
@@ -123,7 +123,7 @@ def test_set_time_uses_active_timeline_when_omitted(monkeypatch: pytest.MonkeyPa
 def test_set_time_converts_temporal_values(monkeypatch: pytest.MonkeyPatch) -> None:
     viewer, calls = _capturing_viewer(monkeypatch)
     viewer.set_time("elapsed", duration=1.5, play=True)
-    viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=timezone.utc))
+    viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=UTC))
 
     assert calls == [("elapsed", 1_500_000_000, True, None), ("capture_time", 0, False, None)]
 

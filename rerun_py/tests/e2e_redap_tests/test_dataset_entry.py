@@ -16,8 +16,8 @@ def test_segment_url_with_datetime(readonly_test_dataset: DatasetEntry) -> None:
     url = readonly_test_dataset.segment_url(
         segment_id,
         "real_time",
-        datetime.datetime(1970, 1, 1, 0, 0, 1, 234567, tzinfo=datetime.timezone.utc),
-        datetime.datetime(1970, 1, 1, 0, 0, 2, 345678, tzinfo=datetime.timezone.utc),
+        datetime.datetime(1970, 1, 1, 0, 0, 1, 234567, tzinfo=datetime.UTC),
+        datetime.datetime(1970, 1, 1, 0, 0, 2, 345678, tzinfo=datetime.UTC),
     )
 
     assert redact_segment_url(url, readonly_test_dataset) == (
@@ -62,7 +62,7 @@ def test_segment_url_with_datetime_start_only(readonly_test_dataset: DatasetEntr
     url = readonly_test_dataset.segment_url(
         segment_id,
         "real_time",
-        datetime.datetime(1970, 1, 1, 0, 0, 1, 234567, tzinfo=datetime.timezone.utc),
+        datetime.datetime(1970, 1, 1, 0, 0, 1, 234567, tzinfo=datetime.UTC),
     )
 
     assert redact_segment_url(url, readonly_test_dataset) == (

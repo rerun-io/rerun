@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from types import TracebackType
-
-    from typing_extensions import Self
+    from typing import Self
 
 EXTRA_ARGS = {
     "examples/python/clock": ["--steps=200"],  # Make it faster

@@ -112,7 +112,7 @@ mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
-  "abi3-py310", # Require at least Python 3.10
+  "abi3-py311", # Require at least Python 3.11
   "generate-import-lib",
   "jiff-02",
 ] }

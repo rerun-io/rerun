@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["numpy", "pyarrow"]
 # ///
 """Check that joint values in a parquet column stay inside a URDF's joint limits.

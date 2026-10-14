@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, Self
 
 import numpy as np
 import pyarrow as pa
 import pytest
 from rerun.time import to_nanos, to_nanos_since_epoch
-from typing_extensions import Self
 
 VALID_TO_NANOS_CASES = [
     (0, 0),
@@ -70,14 +69,14 @@ VALID_TO_NANOS_SINCE_EPOCH_CASES = [
     (1.5, 1_500_000_000),
     (np.float64(2.7), 2_700_000_000),
     (datetime(1970, 1, 1), 0),
-    (datetime(1970, 1, 1, tzinfo=timezone.utc), 0),
+    (datetime(1970, 1, 1, tzinfo=UTC), 0),
     (datetime(1970, 1, 1, 0, 0, 1), 1_000_000_000),
     (np.datetime64("1970-01-01T00:00:00"), 0),
     (np.datetime64("1970-01-01T00:00:01"), 1_000_000_000),
     (np.datetime64("1970-01-01T00:00:00.000000000"), 0),
-    (datetime(1969, 12, 31, 23, 59, 59, tzinfo=timezone.utc), -1_000_000_000),
+    (datetime(1969, 12, 31, 23, 59, 59, tzinfo=UTC), -1_000_000_000),
     (np.datetime64("1969-12-31T23:59:59"), -1_000_000_000),
-    (datetime(2050, 1, 1, 0, 0, 0, tzinfo=timezone.utc), 2524608000000000000),
+    (datetime(2050, 1, 1, 0, 0, 0, tzinfo=UTC), 2524608000000000000),
     (np.datetime64("2050-01-01T00:00:00"), 2524608000000000000),
     (np.datetime64("2000-01-01T00:00:00.123456789"), 946684800123456789),
     (MockPandasTimestamp(2000, 1, 1, 0, 0, 0, 123456, nanoseconds=123456789), 946684800123456789),

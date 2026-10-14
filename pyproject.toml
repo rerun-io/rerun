@@ -13,7 +13,7 @@
 name = "rerun-workspace"
 version = "0.28.0-alpha.1+dev"
 description = "Rerun Python workspace"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.13"
 
 [dependency-groups]
 dev = [
@@ -421,9 +421,8 @@ ignore = [
 ######################
 
 [tool.mypy]
-# Force mypy to check against 3.10 stdlib, even though pixi runs 3.11.
-# This catches imports like `from typing import Self` that don't exist in 3.10.
-python_version = "3.10"
+# Force mypy to check against the stdlib of our minimum supported Python, even if pixi runs a newer one.
+python_version = "3.11"
 # Examples and docs are managed independently of the SDK.
 # in ini file adjacent to this.
 files = [

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["huggingface_hub"]
 # ///
 """Download the first N episodes of a v2.x LeRobot dataset and trim `meta/` to match.

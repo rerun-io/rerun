@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
-from typing_extensions import Self, deprecated
+from typing_extensions import deprecated
 
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import _ServerInternal

@@ -26,7 +26,7 @@ description = "The Rerun Logging SDK"
 readme = "README.md"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["version"]
 license = "MIT OR Apache-2.0"
 license-files = ["LICENSE-APACHE", "LICENSE-MIT"]

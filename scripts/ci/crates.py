@@ -27,7 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
@@ -455,8 +455,8 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     end = error_message.find(RETRY_AFTER_END, start)
     if end == -1:
         return None
-    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
-    return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
+    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S").replace(tzinfo=UTC)
+    return (retry_after - datetime.now(UTC)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
 def sparse_index_url(crate_name: str) -> str:

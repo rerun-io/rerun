@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -49,8 +49,7 @@ if TYPE_CHECKING:
     )
 
 
-# TODO(#12612): switch to `StrEnum` when we drop Python 3.10
-class OnDuplicateSegmentLayer(str, Enum):
+class OnDuplicateSegmentLayer(StrEnum):
     """
     How to handle duplicate segment layers when registering recordings to a dataset.
 
