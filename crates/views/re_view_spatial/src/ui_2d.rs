@@ -383,6 +383,16 @@ impl SpatialView2D {
             clear_color,
         ));
 
+        if state.bounding_boxes.current.is_nothing() && !system_output.any_missing_chunks() {
+            // At this point, all visualizers ran and should've updated bounding boxes.
+            // Show an overlay if nothing was visualized.
+            ui.scope_builder(egui::UiBuilder::new().max_rect(ui_rect), |ui| {
+                ui.centered_and_justified(|ui| {
+                    ui.label("No data available.");
+                });
+            });
+        }
+
         // Make sure to _first_ draw the selected, and *then* the hovered context on top!
         for selected_context in ctx.selection_state().selection_item_contexts() {
             painter.extend(show_projections_from_3d_space(
