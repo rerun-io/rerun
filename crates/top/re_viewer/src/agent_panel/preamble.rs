@@ -99,32 +99,26 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- Assume no Python environment is set up: the skills and the docs snippets are written in \
-             Python, but a bare `python` here usually has neither `rerun` nor the packages they import. \
-             Where `uv` is installed, `uv run --with rerun-sdk --with <other packages> python …` needs no \
-             setup at all — note that the SDK installs as `rerun-sdk` and imports as `rerun`. \
-             Check what you have before you write a script that assumes it.\n",
+            "- Before running Python, ask once with a structured choice question: existing environment or \
+             a temporary one, unless the user already specified it. Use elicitation through your agent's \
+             structured question tool, e.g. synchronous `request_user_input` for Codex or `AskUserQuestion` \
+             for Claude. For an existing environment, get an absolute \
+             interpreter path or the project directory and run command. Resolve relative paths \
+             against that project, not a scratch directory; do not guess environment paths. \
+             Reuse the chosen environment, check required imports, and discuss missing dependencies \
+             before changing it. For a temporary environment, use \
+             `uv run --with rerun-sdk --with <other packages> python …` when available. \
+             The SDK installs as `rerun-sdk` and imports as `rerun`.\n",
         );
 
         text.push_str(
-            "- Run Python from a directory you control, and set `PYTHONSAFEPATH=1` where the \
-             interpreter is 3.11 or newer. Without it the interpreter puts the script's directory \
-             first on `sys.path`, so a stray `inspect.py` or `types.py` left there by someone else \
-             shadows the standard library and is executed on the next import; older interpreters \
-             ignore the variable, so there the directory you run from is the whole defense. \
-             When you need a directory to work in, make a fresh one rather than reusing a path you \
-             picked by hand — the invented name is the one another session picks too. `mktemp -d` \
-             where you have it, otherwise `python -c \"import tempfile; print(tempfile.mkdtemp())\"`, \
-             which works anywhere Python does.\n",
+            "- Run Python from a directory you control. Set `PYTHONSAFEPATH=1` for Python 3.11+ \
+             to avoid local files shadowing the standard library. Use fresh temporary directories \
+             for disposable work; save reusable scripts somewhere persistent.\n",
         );
 
         text.push_str(
-            "- Assume nothing about the machine you are on: Linux, macOS or Windows; a container or a \
-             sandbox; `bash`, `zsh` or something else; any set of installed tools; possibly no network. \
-             Check before you depend on something, keep to portable commands, and read the error you \
-             got rather than assuming the command was wrong. Quoting is part of this — a `zsh` with \
-             `EQUALS` expansion on reads a bare `echo ====` as a command name and fails with \
-             `zsh:1: === not found`, which stops the rest of an `&&` chain.\n",
+            "- Check which tools are available and use commands appropriate to the host platform and shell.\n",
         );
 
         text.push_str(
