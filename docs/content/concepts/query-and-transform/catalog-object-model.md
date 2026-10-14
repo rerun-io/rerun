@@ -84,6 +84,22 @@ Layers are immutable and can only be overwritten by registering a new `.rrd` fil
 - _append to segment_: by registering a `.rrd` with a matching recording ID to a new layer name
 - _overwrite segment layer_: by registering a `.rrd` with a matching recording ID to an existing layer name, with `on_duplicate=OnDuplicateSegmentLayer.REPLACE`
 
+### Managing segment layers with the Python catalog API
+
+Use `DatasetEntry.segment()` to get a handle to a segment, inspect its current layers, or get its Viewer URL.
+Call `delete_layer()` to unregister one layer from that segment, then wait for the returned handle to track completion.
+Unregistering removes catalog references but does not delete the underlying source objects.
+
+```python
+segment = dataset.segment(segment_id)
+print(segment.layers())
+print(segment.url)
+
+unregistration = segment.delete_layer("predictions")
+unregistration.wait()
+```
+
+See the [`Segment` API reference](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.Segment) for details.
 
 ### Schema
 

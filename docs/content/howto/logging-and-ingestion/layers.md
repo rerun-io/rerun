@@ -209,3 +209,19 @@ Output:
 │ ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s ┆ [base, tracking_error, quality] │
 └───────────────────────────────────────┴─────────────────────────────────┘
 ```
+
+### How can I inspect one segment's layers?
+
+Use [`DatasetEntry.segment()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment) to get a segment handle.
+Its `layers()` method reads the current layer names:
+
+snippet: howto/layers[inspect_segment]
+
+### How can I remove one layer from a segment?
+
+Call `delete_layer()` on the segment handle and wait for completion:
+
+snippet: howto/layers[delete_layer]
+
+Other segments and layers are unchanged.
+Use [`DatasetEntry.unregister()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.unregister) to unregister multiple segments or layers at once.

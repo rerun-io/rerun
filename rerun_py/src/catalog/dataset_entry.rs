@@ -85,6 +85,12 @@ impl PyDatasetEntryInternal {
     // Dataset entry methods
     //
 
+    fn segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<super::PySegmentInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.segment").entered();
+        super::PySegmentInternal::new(py, Py::from(self_), SegmentId::new(segment_id))
+    }
+
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]

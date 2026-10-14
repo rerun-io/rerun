@@ -29,6 +29,7 @@ from ._registration_handle import (
     SegmentRegistrationResult as SegmentRegistrationResult,
 )
 from ._schema import Schema as Schema
+from ._segment import Segment as Segment
 from ._unregistration_handle import (
     UnregistrationHandle as UnregistrationHandle,
 )

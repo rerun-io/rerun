@@ -1,15 +1,31 @@
-use re_log_types::{EntryId, EntryName};
-use re_protos::cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetRequest};
+//! The high-level Rust client for a catalog origin.
+//!
+//! Dataset and segment operations take explicit entry selectors and all other required parameters.
+
+use std::collections::HashSet;
+
+use re_log_types::{EntryId, EntryIdOrName, EntryName};
+use re_protos::cloud::v1alpha1::ext::{
+    DataSource, RegisterWithDatasetRequest, ScanSegmentTableDataframe,
+};
+use re_protos::cloud::v1alpha1::{
+    ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList, segment_id_filter,
+};
+use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_types_core::LayerName;
+use tokio_stream::StreamExt as _;
 
 use crate::registration_handle::parse_task_descriptors;
 use crate::{
     ApiError, ApiResult, Asset, AssetRegistrationError, Connection, ConnectionClient,
-    ConnectionRegistryHandle, RegistrationHandle, extract_trace_id,
+    ConnectionRegistryHandle, RegistrationHandle, TraceId, extract_trace_id,
 };
 
-/// Binds a [`ConnectionRegistryHandle`] to one catalog origin.
+/// High-level Rust client for one catalog origin.
+///
+/// Dataset and segment operations take explicit entry selectors rather than resource handles.
 ///
 /// The registry owns shared connection and credential state. This handle supplies the origin and
 /// owns origin-sensitive workflows, such as registration. Use [`Self::client`] to acquire a
@@ -33,7 +49,130 @@ impl ConnectionHandle {
         Ok(self.connection().await?.client)
     }
 
+    /// Validate that a segment exists without fetching its layer metadata.
+    // TODO(RR-5930): Replace the projected scan with a dedicated segment-existence RPC.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn ensure_segment_exists(
+        &self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult {
+        let mut request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        ]);
+        request.segment_id_filter = Some(SegmentIdFilter {
+            strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec![segment_id.clone().into()],
+            })),
+        });
+        let mut stream = self
+            .client()
+            .await?
+            .scan_segment_table(dataset_id, request)
+            .await?;
+        let trace_id = stream.trace_id();
+
+        while let Some(batch) = stream.next().await {
+            let batch = batch?;
+            let ids = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&batch)
+                .map_err(|err| {
+                    ApiError::deserialization_quiver_from(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "/ScanSegmentTable",
+                    )
+                })?;
+            // Servers may ignore the filter hint, so match the ID locally.
+            if ids.iter().any(|id| id == segment_id.as_str()) {
+                return Ok(());
+            }
+        }
+
+        Err(ApiError::not_found(
+            &self.origin,
+            re_error::format_with_details(
+                "Segment not found",
+                format!("Dataset: {dataset_id}\nSegment: {segment_id}"),
+            ),
+        )
+        .with_trace_id(trace_id))
+    }
+
+    /// Read a segment's layer names from the segment table.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_segment_layers(
+        &self,
+        dataset: impl Into<EntryIdOrName>,
+        segment_id: SegmentId,
+    ) -> ApiResult<HashSet<LayerName>> {
+        let dataset = dataset.into();
+        let mut request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME,
+        ]);
+        request.segment_id_filter = Some(SegmentIdFilter {
+            strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec![segment_id.clone().into()],
+            })),
+        });
+        let mut stream = self
+            .client()
+            .await?
+            .scan_segment_table(dataset.clone(), request)
+            .await?;
+        let trace_id = stream.trace_id();
+        let decode_failed = |err| {
+            ApiError::deserialization_quiver_from(&self.origin, trace_id, err, "/ScanSegmentTable")
+        };
+
+        while let Some(batch) = stream.next().await {
+            let batch = batch?;
+            let ids = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&batch)
+                .map_err(decode_failed)?;
+            let layers = ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES
+                .extract(&batch)
+                .map_err(decode_failed)?;
+
+            // Servers may ignore the filter hint, so match the ID locally.
+            for (id, layers) in std::iter::zip(ids.iter_owned(), layers.iter_owned()) {
+                if id == segment_id {
+                    return Ok(layers.into_iter().collect());
+                }
+            }
+        }
+
+        Err(ApiError::not_found(
+            &self.origin,
+            re_error::format_with_details(
+                "Segment not found",
+                format!("Dataset: {dataset:?}\nSegment: {segment_id}"),
+            ),
+        )
+        .with_trace_id(trace_id))
+    }
+
+    /// Unregister exactly one segment/layer pair without deleting its source objects.
+    ///
+    /// Missing segments or layers are a no-op. Returns the request trace ID and task IDs;
+    /// callers can use [`ConnectionClient::wait_for_tasks`] to wait for completion.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn delete_segment_layer(
+        &self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+        layer: LayerName,
+    ) -> ApiResult<(Option<TraceId>, Vec<TaskId>)> {
+        self.client()
+            .await?
+            .unregister_from_dataset(dataset_id, vec![segment_id], vec![layer], false)
+            .await
+    }
+
     /// Scan an asset dataset's manifest, one [`Asset`] per asset, sorted by asset id.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn scan_asset_dataset(&self, asset_dataset: EntryId) -> ApiResult<Vec<Asset>> {
         let batches = self
             .client()
@@ -51,6 +190,7 @@ impl ConnectionHandle {
     ///
     /// The server has restrictions on what an asset can contain; See
     /// [`re_protos::common::v1alpha1::ext::DatasetKind::limits`].
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_asset(
         &self,
         dataset_id: EntryId,
@@ -109,6 +249,7 @@ impl ConnectionHandle {
     /// whatever their status, which is the only way to clear an asset whose registration failed.
     ///
     /// Unregistering an asset that isn't registered does nothing.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn unregister_asset(
         &self,
         dataset_id: EntryId,
@@ -131,6 +272,7 @@ impl ConnectionHandle {
     }
 
     /// Initiate asynchronous registration of the provided data sources with a dataset.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_with_dataset(
         &self,
         dataset_id: EntryId,
@@ -160,6 +302,7 @@ impl ConnectionHandle {
     /// Ensure a dataset exists and register `data_sources` with it.
     ///
     /// `timeout` applies to the task-completion query.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn ensure_dataset_and_register(
         &self,
         dataset_name: &EntryName,

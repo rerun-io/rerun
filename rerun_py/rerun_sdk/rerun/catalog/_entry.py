@@ -45,6 +45,7 @@ if TYPE_CHECKING:
         IndexValuesLike,
         RegistrationHandle,
         Schema,
+        Segment,
         UnregistrationHandle,
     )
 
@@ -905,6 +906,23 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
             )
         )
+
+    @with_tracing("DatasetEntry.segment")
+    def segment(self, segment_id: str) -> Segment:
+        """
+        Check that a segment exists on the server and return a lightweight handle.
+
+        Raises [`NotFoundError`][rerun.catalog.NotFoundError] if the segment or dataset does not exist.
+
+        Parameters
+        ----------
+        segment_id:
+            The segment ID within this dataset.
+
+        """
+        from ._segment import Segment
+
+        return Segment(self._internal.segment(segment_id))
 
     def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStore:
         """

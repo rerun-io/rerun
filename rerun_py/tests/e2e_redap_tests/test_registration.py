@@ -249,6 +249,7 @@ def test_register_with_layer_name(
 
     assert len(result.segment_ids) == 1
     assert result.segment_ids[0] == recording_id
+    assert ds.segment(recording_id).layers() == {"custom_layer"}
 
 
 @pytest.mark.local_only
@@ -270,6 +271,8 @@ def test_register_batch_with_different_layers(
 
     assert len(result.segment_ids) == 2
     assert sorted(result.segment_ids) == sorted(recording_ids)
+    assert ds.segment(recording_ids[0]).layers() == {"layer_a"}
+    assert ds.segment(recording_ids[1]).layers() == {"layer_b"}
 
 
 @pytest.mark.local_only
@@ -422,18 +425,8 @@ def test_failed_layer_registration_not_in_segment_table(entry_factory: EntryFact
     with pytest.raises(ValueError, match="schema"):
         dataset.register([extra_path.as_uri()], layer_name="extra").wait()
 
-    # The segment table should still show the segment (because the base layer succeeded)
-    df = dataset.segment_table()
-    assert df.count() == 1
-
-    # Verify segment_id and layer_names columns
-    table = df.to_arrow_table()
-    segment_ids = table.column("rerun_segment_id").to_pylist()
-    layer_names = table.column("rerun_layer_names").to_pylist()
-
-    assert segment_ids == ["segment1"], f"Expected segment1, got {segment_ids}"
-    # Only the successful "base" layer should appear, not the failed "extra" layer
-    assert layer_names == [["base"]], f"Expected [['base']], got {layer_names}"
+    assert dataset.segment_ids() == ["segment1"]
+    assert dataset.segment("segment1").layers() == {"base"}
 
 
 @pytest.mark.local_only
