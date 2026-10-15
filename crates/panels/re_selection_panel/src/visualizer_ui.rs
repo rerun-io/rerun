@@ -308,22 +308,23 @@ fn visualizer_components(
             };
 
             let multiline = false;
-            if let TryShowEditUiResult::Shown { edited_value } =
-                ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
-                    &ctx.viewer_ctx.blueprint_store_view_ctx(),
-                    ui,
-                    re_viewer_context::EditTarget {
-                        store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
-                        timepoint: ctx
-                            .viewer_ctx
-                            .store_context
-                            .blueprint_timepoint_for_writes(),
-                        entity_path: instruction.override_path.clone(),
-                    },
-                    raw_current_value_array.as_ref(),
-                    target_component_descr.clone(),
-                    multiline,
-                )
+            if is_ui_editable
+                && let TryShowEditUiResult::Shown { edited_value } =
+                    ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
+                        &ctx.viewer_ctx.blueprint_store_view_ctx(),
+                        ui,
+                        re_viewer_context::EditTarget {
+                            store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+                            timepoint: ctx
+                                .viewer_ctx
+                                .store_context
+                                .blueprint_timepoint_for_writes(),
+                            entity_path: instruction.override_path.clone(),
+                        },
+                        raw_current_value_array.as_ref(),
+                        target_component_descr.clone(),
+                        multiline,
+                    )
             {
                 if edited_value {
                     // Make sure we're in override mode.
