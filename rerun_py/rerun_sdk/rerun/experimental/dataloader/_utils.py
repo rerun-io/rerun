@@ -309,7 +309,10 @@ def _pipeline_blocks(
                 set_current_span_attributes({"rerun.dataloader.iter.block.index": i})
                 fetched = pending.result()
             pending = submit(blocks[i + 1]) if i + 1 < len(blocks) else None
-            yield from process(fetched)
+            samples = process(fetched)
+            # Only `samples` may keep the block's fetched tables alive while it is drained.
+            del fetched
+            yield from samples
     finally:
         with tracing_scope("executor.shutdown"):
             executor.shutdown(wait=False)
@@ -695,10 +698,9 @@ def _resolve_decode_requests_in_block(indexed: IndexedBlock) -> PreparedBlock:
     for group in indexed.groups:
         for key, field in group.fields.items():
             fetch_requests = group.fetch_requests[key]
-            column = group.indexed_table.table.column(key).combine_chunks()
             prepared_fields[key] = PreparedField(
                 batch=FieldBatch(
-                    column=column,
+                    column=group.indexed_table.table.column(key),
                     select=field.select,
                     is_windowed=field.window is not None,
                 ),
@@ -751,11 +753,16 @@ def _decode_iter(
     decoders: dict[str, ColumnDecoder[DecodedValue]],
     executor: ThreadPoolExecutor | None = None,
 ) -> Iterator[DecodedSample]:
-    """Yield decoded samples one at a time from a block's materialized query tables."""
+    """
+    Decode every field of a block now, then yield its samples one at a time.
+
+    The returned iterator holds only decoded values, not `prepared`, so the
+    block's fetched Arrow data can be freed before its samples are consumed.
+    """
     with tracing_scope("RerunDataset._decode_block"):
         set_current_span_attributes({"rerun.dataloader.decode.block_size": prepared.num_samples})
         if not prepared.num_samples:
-            return
+            return iter(())
 
         decode_field: dict[str, Callable[[], list[DecodedResult]]] = {}
         for key, prepared_field in prepared.fields.items():
@@ -777,8 +784,12 @@ def _decode_iter(
             }
             per_field = {key: future.result() for key, future in futures.items()}
 
-    # yield outside of the tracing block to avoid the consumer polluting the duration
-    for i in range(prepared.num_samples):
+    return _iter_samples(per_field, prepared.num_samples)
+
+
+def _iter_samples(per_field: dict[str, list[DecodedResult]], num_samples: int) -> Iterator[DecodedSample]:
+    """Yield one sample per position from per-field decoded columns."""
+    for i in range(num_samples):
         yield {key: values[i] for key, values in per_field.items()}
 
 

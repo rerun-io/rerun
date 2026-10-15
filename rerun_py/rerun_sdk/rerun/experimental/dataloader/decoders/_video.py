@@ -24,7 +24,6 @@ from ._base import ColumnDecoder, DecodedValue, DecodeRequest, FieldBatch
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    import pyarrow as pa
 
 # AV1 through ``libdav1d`` is faster.
 _CODEC_TO_DECODER = {
@@ -150,7 +149,7 @@ def _decode_runs(requests: Sequence[DecodeRequest]) -> list[list[int]]:
 
 
 def _extract_video_samples(
-    column: pa.Array,
+    batch: FieldBatch,
     rows: range,
     *,
     video_codec: VideoCodec | None,
@@ -161,10 +160,11 @@ def _extract_video_samples(
     Empty rows do not contain codec packets. Length-prefixed H.264 packets are
     converted to Annex B before being fed to the raw codec context.
     """
+    column = batch.rows(rows.start, rows.stop)
     samples: list[bytes] = []
     sample_rows: list[int] = []
     for row in rows:
-        sample_bytes = bytes(_flatten_blob(column, row))
+        sample_bytes = bytes(_flatten_blob(column, row - rows.start))
         if not sample_bytes:
             continue
         if video_codec is VideoCodec.H264 and not is_annex_b(sample_bytes):
@@ -401,7 +401,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
         # Parallel lists of codec-ready packets and their source Arrow row indices.
         samples, sample_rows = _extract_video_samples(
-            batch.column,
+            batch,
             range(run_start, run_stop),
             video_codec=self._video_codec,
         )

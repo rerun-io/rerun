@@ -6,6 +6,7 @@ import io
 import pickle
 import weakref
 from fractions import Fraction
+from itertools import pairwise
 from typing import cast
 
 import av
@@ -404,7 +405,7 @@ def test_extract_video_samples_preserves_identical_packets() -> None:
     packet = b"same encoded packet"
     column = pa.array([[packet], [packet]], type=pa.list_(pa.binary()))
 
-    samples, rows = _extract_video_samples(column, range(2), video_codec=None)
+    samples, rows = _extract_video_samples(FieldBatch(column=column), range(2), video_codec=None)
 
     assert samples == [packet, packet]
     assert rows == [0, 1]
@@ -1431,3 +1432,71 @@ def test_resolve_decode_requests_omits_a_segment_with_no_rows() -> None:
     )
 
     assert requests == []
+
+
+def _chunked(rows: list[list[bytes]], splits: list[int], *, empty_chunks: bool = False) -> pa.ChunkedArray:
+    """Split `rows` into a `list<binary>` chunked column at `splits`; each chunk is a slice with a non-zero offset."""
+    bounds = [0, *splits, len(rows)]
+    chunks: list[pa.Array] = []
+    for start, stop in pairwise(bounds):
+        padded = pa.array([[b"pad"], *rows[start:stop], [b"pad"]], type=pa.list_(pa.binary()))
+        chunks.append(padded.slice(1, stop - start))
+        if empty_chunks:
+            chunks.append(pa.array([], type=pa.list_(pa.binary())))
+    return pa.chunked_array(chunks, type=pa.list_(pa.binary()))
+
+
+_ROWS = [[f"row{i}".encode()] if i % 4 else [] for i in range(10)]
+
+
+def test_field_batch_rows_match_combined_column() -> None:
+    chunked = _chunked(_ROWS, [3, 7], empty_chunks=True)
+    expected = chunked.combine_chunks()
+    batch = FieldBatch(column=chunked)
+
+    for start in range(len(_ROWS) + 1):
+        for stop in range(start, len(_ROWS) + 1):
+            assert batch.rows(start, stop).equals(expected.slice(start, stop - start)), (start, stop)
+
+
+def test_field_batch_take_rows_across_chunks() -> None:
+    chunked = _chunked(_ROWS, [3, 7], empty_chunks=True)
+    expected = chunked.combine_chunks()
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=8,
+        decode_row_indices=(1, 2, 3, 8),
+        output_row_indices=(2, 8, 8, 3),
+        starts_at_keyframe=False,
+    )
+    batch = FieldBatch(column=chunked)
+
+    decode_rows = batch.take_decode_rows(request)
+    output_rows = batch.take_output_rows(request)
+
+    assert isinstance(decode_rows, pa.Array) and isinstance(output_rows, pa.Array)
+    assert decode_rows.equals(expected.take([1, 2, 3, 8]))
+    assert output_rows.equals(expected.take([2, 8, 8, 3]))
+
+    empty = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=0,
+        decode_row_indices=(),
+        output_row_indices=(),
+        starts_at_keyframe=False,
+    )
+    assert len(batch.take_decode_rows(empty)) == 0
+    for out_of_bounds in (-1, len(_ROWS)):
+        with pytest.raises(IndexError):
+            batch.take_decode_rows(
+                DecodeRequest(
+                    sample_position=0,
+                    segment_id="seg",
+                    index_value=0,
+                    decode_row_indices=(out_of_bounds,),
+                    output_row_indices=(out_of_bounds,),
+                    starts_at_keyframe=False,
+                )
+            )
