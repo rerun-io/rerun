@@ -43,6 +43,7 @@ if TYPE_CHECKING:
         CatalogClient,
         EntryKind,
         IndexValuesLike,
+        Layer,
         RegistrationHandle,
         Schema,
         Segment,
@@ -907,6 +908,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
             )
         )
+
+    @with_tracing("DatasetEntry.layer")
+    def layer(self, name: str) -> Layer:
+        """
+        Check that a layer exists on the server and return a lightweight handle.
+
+        A layer exists while at least one segment contains it.
+        Raises `ValueError` if the layer name is invalid or does not exist.
+        """
+        from ._layer import Layer
+
+        return Layer(self._internal.layer(name))
 
     @with_tracing("DatasetEntry.segment")
     def segment(self, segment_id: str) -> Segment:

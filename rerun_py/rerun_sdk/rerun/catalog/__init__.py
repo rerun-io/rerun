@@ -23,6 +23,7 @@ from ._entry import (
     OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,
     TableEntry as TableEntry,
 )
+from ._layer import Layer as Layer
 from ._registration_handle import (
     RegistrationHandle as RegistrationHandle,
     RegistrationResult as RegistrationResult,

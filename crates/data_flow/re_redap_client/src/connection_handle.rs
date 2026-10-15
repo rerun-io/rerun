@@ -178,6 +178,83 @@ impl ConnectionHandle {
         .with_trace_id(trace_id))
     }
 
+    /// Discover distinct layer names from current segment-table metadata.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_layers(&self, dataset_id: EntryId) -> ApiResult<HashSet<LayerName>> {
+        let request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME,
+        ]);
+        let mut stream = self
+            .client()
+            .await?
+            .scan_segment_table(dataset_id, request)
+            .await?;
+        let trace_id = stream.trace_id();
+        let mut names = HashSet::new();
+
+        while let Some(batch) = stream.next().await {
+            let batch = batch?;
+            let layers = ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES
+                .extract(&batch)
+                .map_err(|err| {
+                    ApiError::deserialization_quiver_from(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "/ScanSegmentTable",
+                    )
+                })?;
+            for layers in layers.iter_owned() {
+                names.extend(layers);
+            }
+        }
+
+        Ok(names)
+    }
+
+    /// Read the IDs of segments currently containing this layer.
+    ///
+    /// A missing layer returns an empty list; a missing dataset remains an error.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_layer_segment_ids(
+        &self,
+        dataset_id: EntryId,
+        layer: LayerName,
+    ) -> ApiResult<Vec<SegmentId>> {
+        let request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME,
+        ]);
+        let mut stream = self
+            .client()
+            .await?
+            .scan_segment_table(dataset_id, request)
+            .await?;
+        let trace_id = stream.trace_id();
+        let decode_failed = |err| {
+            ApiError::deserialization_quiver_from(&self.origin, trace_id, err, "/ScanSegmentTable")
+        };
+        let mut segment_ids = Vec::new();
+
+        while let Some(batch) = stream.next().await {
+            let batch = batch?;
+            let ids = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&batch)
+                .map_err(decode_failed)?;
+            let layers = ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES
+                .extract(&batch)
+                .map_err(decode_failed)?;
+
+            for (id, layers) in std::iter::zip(ids.iter_owned(), layers.iter_owned()) {
+                if layers.contains(&layer) {
+                    segment_ids.push(id);
+                }
+            }
+        }
+
+        Ok(segment_ids)
+    }
+
     /// Unregister exactly one segment/layer pair without deleting its source objects.
     ///
     /// Missing segments or layers are a no-op. Returns the request trace ID and task IDs;

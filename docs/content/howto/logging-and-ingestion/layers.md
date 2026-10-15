@@ -210,6 +210,16 @@ Output:
 └───────────────────────────────────────┴─────────────────────────────────┘
 ```
 
+### How can I find the segments containing a layer?
+
+Use [`DatasetEntry.layer()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.layer) to get a handle to an existing named layer across the dataset.
+Its `segment_ids()` method fetches the segments that currently contain that layer:
+
+snippet: howto/layers[inspect_layer]
+
+Looking up an unknown layer raises `ValueError` and lists the available layers.
+An existing handle returns an empty list if the layer is later removed from every segment.
+
 ### How can I inspect one segment's layers?
 
 Use [`DatasetEntry.segment()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment) to get a segment handle.

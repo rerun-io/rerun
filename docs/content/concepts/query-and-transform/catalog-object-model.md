@@ -99,6 +99,10 @@ unregistration = segment.delete_layer("predictions")
 unregistration.wait()
 ```
 
+To inspect a named layer across the dataset, use `dataset.layer(name).segment_ids()`.
+The layer handle reads current membership on each call, including registrations and removals made after the handle was created.
+See [finding segments in a layer](../../howto/logging-and-ingestion/layers.md#how-can-i-find-the-segments-containing-a-layer) for an example.
+
 See the [`Segment` API reference](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.Segment) for details.
 
 ### Schema

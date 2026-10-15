@@ -89,6 +89,29 @@ impl PyDatasetEntryInternal {
         super::PySegmentInternal::new(py, Py::from(self_), SegmentId::new(segment_id))
     }
 
+    fn layer(self_: PyRef<'_, Self>, name: String) -> PyResult<super::PyLayerInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.layer").entered();
+        let name = LayerName::try_new(name).map_err(to_py_err)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_id();
+        let layers = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_dataset_layers(dataset_id)
+                .await
+                .map_err(to_py_err)
+        })?;
+        if !layers.contains(&name) {
+            let mut available: Vec<_> = layers.into_iter().map(LayerName::into_string).collect();
+            available.sort();
+            return Err(PyValueError::new_err(format!(
+                "Layer {name:?} not found in dataset {dataset_id}. Available layers: {available:?}"
+            )));
+        }
+        Ok(super::PyLayerInternal::new(Py::from(self_), name))
+    }
+
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]
