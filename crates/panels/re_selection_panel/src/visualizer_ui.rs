@@ -11,7 +11,9 @@ use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{ComboItem, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{
+    ComboItem, DesignTokens, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item,
+};
 use re_view::{
     AnnotationMapCache, SourceMappingContext, SourceSelectorContext, raw_default_or_fallback,
     raw_default_without_fallback, save_component_mapping, source_selector_ui,
@@ -131,11 +133,7 @@ pub fn visualizer_ui_impl(
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
         if active_visualizers.is_empty() {
-            ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("none")
-                    .weak(true)
-                    .italics(true),
-            );
+            ui.list_item_flat_noninteractive(list_item::LabelContent::new("none").weak(true));
         }
 
         for (index, visualizer_instruction) in active_visualizers.iter().enumerate() {
@@ -152,7 +150,7 @@ pub fn visualizer_ui_impl(
                             ui,
                             list_item::LabelContent::new(
                                 egui::RichText::new(format!("{visualizer_type}"))
-                                    .size(10.0)
+                                    .text_style(DesignTokens::small())
                                     .color(
                                         design_tokens_of_visuals(ui.visuals())
                                             .list_item_strong_text,
@@ -511,14 +509,14 @@ fn menu_add_new_visualizer(
     let show_sections = !recommended.is_empty() && !other.is_empty();
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+        ui.add(re_ui::ComboItemHeader::new("Recommended"));
     }
     for visualizer_type in &recommended {
         add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);
     }
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Other:"));
+        ui.add(re_ui::ComboItemHeader::new("Other"));
     }
     for visualizer_type in &other {
         add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);

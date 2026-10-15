@@ -17,8 +17,8 @@ use re_sdk_types::blueprint::components::PanelState;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, IconText, ReButton, Size, UiExt as _, Variant,
-    filter_widget, icons, list_item,
+    ContextExt as _, DesignTokens, Help, IconText, Size, UiExt as _, filter_widget, icons,
+    list_item,
 };
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
@@ -277,7 +277,8 @@ impl TimePanel {
                         );
                     } else {
                         ui.horizontal(|ui| {
-                            ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                            ui.spacing_mut().interact_size =
+                                Vec2::splat(tokens.time_panel_toolbar_height());
                             ui.visuals_mut().button_frame = true;
                             self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
                         });
@@ -329,7 +330,8 @@ impl TimePanel {
             let top_row_rect = top_row_frame
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                        ui.spacing_mut().interact_size =
+                            Vec2::splat(tokens.time_panel_toolbar_height());
                         ui.visuals_mut().button_frame = true;
                         self.top_row_ui(store_ctx, ui, time_commands);
                     });
@@ -346,19 +348,14 @@ impl TimePanel {
 
             ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
-            // Add extra margin on the left which was intentionally missing on the controls.
-            let mut streams_frame = egui::Frame::default();
-            streams_frame.inner_margin.left = margin.left;
-            streams_frame.show(ui, |ui| {
-                self.expanded_ui(
-                    store_ctx,
-                    viewer_ctx,
-                    viewport_blueprint,
-                    ui,
-                    time_commands,
-                    top_row_rect.bottom(),
-                );
-            });
+            self.expanded_ui(
+                store_ctx,
+                viewer_ctx,
+                viewport_blueprint,
+                ui,
+                time_commands,
+                top_row_rect.bottom(),
+            );
         });
     }
 
@@ -583,7 +580,8 @@ impl TimePanel {
             ),
             store_ctx.time_ctrl.time_view(),
         );
-        let full_y_range = Rangef::new(ui.max_rect().top(), ui.max_rect().bottom());
+        // Timeline overlays must stay below the playback toolbar.
+        let full_y_range = Rangef::new(ui.cursor().top(), ui.max_rect().bottom());
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
@@ -599,12 +597,11 @@ impl TimePanel {
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
                     self.filter_state.section_title_ui(
                         ui,
-                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
+                        if self.source == TimePanelSource::Blueprint {
                             "Blueprint Streams"
                         } else {
                             "Streams"
-                        })
-                        .strong(),
+                        },
                     );
                 });
             })
@@ -1625,7 +1622,7 @@ impl TimePanel {
 
             let text_edit_width = 200.0.at_most(ui.available_width());
 
-            let response = ReButton::wrap_widget(ui, Variant::Secondary, Size::Tiny, false, |ui| {
+            let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
                 // `TextEdit::min_size` is ignored for some reason so we need add_sized
                 ui.add_sized(
                     Vec2::new(text_edit_width, Size::Tiny.height()),
@@ -1674,7 +1671,7 @@ fn archetype_label_ui(
                         .map(|a| a.short_name())
                         .unwrap_or("Without archetype"),
                 )
-                .size(10.0),
+                .text_style(DesignTokens::small()),
             ),
         )
 }

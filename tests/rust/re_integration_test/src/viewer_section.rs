@@ -1,4 +1,4 @@
-use egui::{PointerButton, Role};
+use egui::PointerButton;
 use egui_kittest::kittest::Queryable as _;
 
 use crate::ViewerHarnessExt;
@@ -11,6 +11,49 @@ pub struct ViewerSection<'a, H: ViewerHarnessExt + ?Sized> {
 }
 
 impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
+    fn list_item_interaction_position(&self, row_rect: egui::Rect) -> egui::Pos2 {
+        let center = row_rect.center();
+        let preferred = egui::pos2((row_rect.left() + 24.0).min(center.x), center.y);
+        let Some(collapse_rect) = std::iter::chain(
+            self.root().query_all_by_label("Collapse"),
+            self.root().query_all_by_label("Expand"),
+        )
+        .find(|node| node.rect().y_range().contains(center.y))
+        .map(|node| node.rect()) else {
+            return preferred;
+        };
+
+        if !collapse_rect.contains(preferred) {
+            return preferred;
+        }
+
+        [
+            collapse_rect.left_center() - egui::vec2(1.0, 0.0),
+            collapse_rect.right_center() + egui::vec2(1.0, 0.0),
+        ]
+        .into_iter()
+        .filter(|pos| row_rect.contains(*pos))
+        .min_by(|a, b| a.distance_sq(center).total_cmp(&b.distance_sq(center)))
+        .unwrap_or(center)
+    }
+
+    fn click_at(&mut self, pos: egui::Pos2, button: PointerButton, modifiers: egui::Modifiers) {
+        self.harness.queue_event(egui::Event::PointerMoved(pos));
+        self.harness
+            .queue_event(egui::Event::ModifiersChanged(modifiers));
+        for pressed in [true, false] {
+            self.harness.queue_event(egui::Event::PointerButton {
+                pos,
+                button,
+                pressed,
+                modifiers,
+            });
+        }
+        self.harness
+            .queue_event(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
+        self.harness.run();
+    }
+
     /// A section covering the children of `section_label`, or the whole app when it is `None`.
     pub(crate) fn new(harness: &'a mut H, section_label: Option<&'a str>) -> Self {
         Self {
@@ -58,6 +101,15 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
         self.harness.run();
     }
 
+    /// Clicks a list item while avoiding its collapse button.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
+    pub fn click_list_item(&mut self, label: &str) {
+        let pos = self.list_item_interaction_position(self.root().get_by_label(label).rect());
+        self.click_at(pos, PointerButton::Primary, egui::Modifiers::NONE);
+    }
+
     /// Right-clicks the only node with the given label.
     ///
     /// # Panics
@@ -76,6 +128,15 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
         self.harness.run();
     }
 
+    /// Clicks the nth list item while avoiding its collapse button.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
+    pub fn click_nth_list_item(&mut self, label: &str, index: usize) {
+        let pos = self.list_item_interaction_position(self.get_nth_label(label, index).rect());
+        self.click_at(pos, PointerButton::Primary, egui::Modifiers::NONE);
+    }
+
     /// Right-clicks the nth node with the given label.
     ///
     /// # Panics
@@ -92,6 +153,15 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
     pub fn click_label_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
         self.root().get_by_label(label).click_modifiers(modifiers);
         self.harness.run();
+    }
+
+    /// Clicks a list item with modifiers while avoiding its collapse button.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
+    pub fn click_list_item_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
+        let pos = self.list_item_interaction_position(self.root().get_by_label(label).rect());
+        self.click_at(pos, PointerButton::Primary, modifiers);
     }
 
     /// Clicks the only node with the label that contains the given text.
@@ -170,30 +240,23 @@ impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
     /// # Panics
     /// Panics if there are fewer such items than `index`, or the item has no arrow.
     pub fn toggle_nth_hierarchical_list(&mut self, label: &str, index: usize) {
-        let row = self.get_nth_label(label, index).rect();
-        let arrow = self
-            .root()
-            .get_all_by_role(Role::DisclosureTriangle)
-            .find(|arrow| row.contains(arrow.rect().center()))
-            .unwrap_or_else(|| panic!("'{label}' #{index} has no collapse arrow on its row"));
-
-        // Click where the arrow is drawn (its node is padded), so the pointer ends up where
-        // the snapshots expect it.
-        let pos = egui::pos2(row.left() + 8.0, row.center().y);
-        assert!(arrow.rect().contains(pos));
+        let row_rect = self.get_nth_label(label, index).rect();
+        let arrow_rect = std::iter::chain(
+            self.root().query_all_by_label("Collapse"),
+            self.root().query_all_by_label("Expand"),
+        )
+        .find(|node| node.rect().y_range().contains(row_rect.center().y))
+        .unwrap_or_else(|| panic!("'{label}' #{index} has no collapse arrow on its row"))
+        .rect();
 
         // Press and release must be flushed by the same `run`. Settling in between lets a busy
         // viewer hold the button for several frames, and once that exceeds egui's
         // `max_click_duration` the release is no longer a click.
-        for pressed in [true, false] {
-            self.harness.queue_event(egui::Event::PointerButton {
-                pos,
-                button: PointerButton::Primary,
-                pressed,
-                modifiers: egui::Modifiers::NONE,
-            });
-        }
-        self.harness.run();
+        self.click_at(
+            arrow_rect.center(),
+            PointerButton::Primary,
+            egui::Modifiers::NONE,
+        );
     }
 
     /// Helper function to get the node with the given label

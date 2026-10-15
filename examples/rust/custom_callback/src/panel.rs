@@ -103,7 +103,7 @@ impl Control {
                 .default_open(true)
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label("Message kind:");
+                        ui.label("Message kind");
                         ui.drop_down_menu("kind", self.states.message_kind.to_string(), |ui| {
                             for kind in [ObjectKind::Point3d, ObjectKind::Box3d] {
                                 ui.selectable_value(
@@ -116,7 +116,7 @@ impl Control {
                     });
 
                     ui.horizontal(|ui| {
-                        ui.label("Entity path:");
+                        ui.label("Entity path");
                         ui.text_edit_singleline(&mut self.states.entity_path);
                     });
 
@@ -167,7 +167,7 @@ fn point_message_ui(ui: &mut egui::Ui, states: &mut ControlStates) {
     position_ui(states, ui);
 
     ui.horizontal(|ui| {
-        ui.label("Radius:");
+        ui.label("Radius");
         ui.add(egui::widgets::DragValue::new(&mut states.radius).speed(0.1));
     });
 }
@@ -177,7 +177,7 @@ fn box_message_ui(ui: &mut egui::Ui, states: &mut ControlStates) {
 
     let mut half_size = states.half_size;
     ui.horizontal(|ui| {
-        ui.label("Half size:");
+        ui.label("Half size");
         ui.add(egui::widgets::DragValue::new(&mut half_size.0).speed(0.1));
         ui.add(egui::widgets::DragValue::new(&mut half_size.1).speed(0.1));
         ui.add(egui::widgets::DragValue::new(&mut half_size.2).speed(0.1));
@@ -190,7 +190,7 @@ fn position_ui(states: &mut ControlStates, ui: &mut egui::Ui) {
     let mut position = states.position;
 
     ui.horizontal(|ui| {
-        ui.label("Position:");
+        ui.label("Position");
         ui.add(egui::widgets::DragValue::new(&mut position.0).speed(0.1));
         ui.add(egui::widgets::DragValue::new(&mut position.1).speed(0.1));
         ui.add(egui::widgets::DragValue::new(&mut position.2).speed(0.1));
@@ -201,7 +201,7 @@ fn position_ui(states: &mut ControlStates, ui: &mut egui::Ui) {
 
 fn dynamic_control_ui(ui: &mut egui::Ui, handle: ControlViewerHandle, states: &mut ControlStates) {
     ui.horizontal(|ui| {
-        ui.label("Offset:");
+        ui.label("Offset");
         if ui
             .add(egui::Slider::new(
                 &mut states.dynamic_offset,
@@ -219,7 +219,7 @@ fn dynamic_control_ui(ui: &mut egui::Ui, handle: ControlViewerHandle, states: &m
     });
 
     ui.horizontal(|ui| {
-        ui.label("Radius:");
+        ui.label("Radius");
         if ui
             .add(egui::Slider::new(
                 &mut states.dynamic_radius,

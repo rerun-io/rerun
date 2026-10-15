@@ -123,7 +123,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if active_defaults.is_empty() {
-            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true).italics(true));
+            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true));
         }
 
         let mut previous_archetype_name = None;

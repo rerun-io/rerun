@@ -597,7 +597,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .map_err(|err| re_error::format_ref(&err))
                 .err();
             ui.loading_screen(
-                "Loading table:",
+                "Loading table",
                 self.display_name().as_ref(),
                 error_string.as_deref(),
                 None,
@@ -657,7 +657,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen("Loading table:", self.display_name().as_ref(), None, None);
+                ui.loading_screen("Loading table", self.display_name().as_ref(), None, None);
                 return TableStatus::InitialLoading;
             }
         };
@@ -1142,12 +1142,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         |ui| {
                             ui.set_height(height);
 
-                            ui.label("rows:");
+                            ui.label("rows");
                             ui.strong(format_uint(total_rows));
 
                             ui.add_space(16.0);
 
-                            ui.label("columns:");
+                            ui.label("columns");
                             ui.strong(format!(
                                 "{} out of {}",
                                 format_uint(visible_columns),
@@ -1176,7 +1176,7 @@ impl<'a> DataFusionTableWidget<'a> {
                                 ctx.app_options.timestamp_format,
                                 Ui::strong,
                             );
-                            ui.label("Last updated:");
+                            ui.label("Last updated");
                         },
                     );
                 });

@@ -60,7 +60,10 @@ pub async fn rejected_startup_url_does_not_create_history() {
     harness.assert_browser_query_string("");
 
     assert!(
-        harness.query_by_label("Loading data source:").is_none(),
+        harness
+            .query_all_by_label("Loading data source")
+            .next()
+            .is_none(),
         "An unsupported S3 URI should not be treated as a local file"
     );
 }
@@ -85,7 +88,10 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
     }
 
     harness.step_until("Loading screen appears", |harness| {
-        harness.query_by_label("Loading data source:").is_some()
+        harness
+            .query_all_by_label("Loading data source")
+            .next()
+            .is_some()
     });
     assert_back_is_disabled(&harness);
     harness.assert_browser_url_parameter(&url);
@@ -97,7 +103,12 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
     harness.step_until("Loading error appears", |harness| {
         harness.query_by_label("Go Back").is_some()
     });
-    assert!(harness.query_by_label("Loading data source:").is_none());
+    assert!(
+        harness
+            .query_all_by_label("Loading data source")
+            .next()
+            .is_none()
+    );
     assert_back_is_disabled(&harness);
 
     let mut snapshot_results = SnapshotResults::new();

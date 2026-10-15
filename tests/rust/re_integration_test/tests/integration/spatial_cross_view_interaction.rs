@@ -25,9 +25,11 @@ pub async fn test_spatial_cross_view_interaction_named_transforms() {
     run_test(true);
 }
 
+const WINDOW_SIZE: egui::Vec2 = egui::vec2(1000.0, 600.0);
+
 fn run_test(use_named_transforms: bool) {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-        window_size: Some(egui::vec2(1000.0, 600.0)),
+        window_size: Some(WINDOW_SIZE),
         snapshot_test_options: re_ui::testing::TestOptions::Rendering3D,
         ..Default::default()
     });
@@ -81,9 +83,11 @@ fn run_test(use_named_transforms: bool) {
     // Hovering the image in 2D should draw the corresponding ray in the 3D view.
     let image_2d_rect = harness.get_panel_position("Image in 2D");
     hover_and_render(&mut harness, image_2d_rect.max * 0.75);
-    harness.snapshot_app(&format!(
-        "spatial_cross_view_interaction_{variant}_2d_to_3d"
-    ));
+    harness.run_ok();
+    harness.snapshot_options(
+        format!("spatial_cross_view_interaction_{variant}_2d_to_3d"),
+        &snapshot_options(),
+    );
 
     // Hovering the image plane in 3D should draw the corresponding position in the 2D view.
     let image_3d_rect = harness.get_panel_position("Image in 3D");
@@ -92,9 +96,11 @@ fn run_test(use_named_transforms: bool) {
         image_3d_rect.top() + image_3d_rect.height() * 0.2,
     );
     hover_and_render(&mut harness, image_plane_position);
-    harness.snapshot_app(&format!(
-        "spatial_cross_view_interaction_{variant}_3d_to_2d"
-    ));
+    harness.run_ok();
+    harness.snapshot_options(
+        format!("spatial_cross_view_interaction_{variant}_3d_to_2d"),
+        &snapshot_options(),
+    );
 }
 
 fn setup_scene(
@@ -173,4 +179,12 @@ fn hover_and_render(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, pos
     harness.hover_at(position);
     harness.run();
     harness.render().expect("app should render");
+}
+
+/// The red/blue texel boundary of the 2D image lands on a half pixel, which macOS rasterizes one
+/// pixel row away from Linux.
+fn snapshot_options() -> egui_kittest::SnapshotOptions {
+    let max_broken_pixels = egui_kittest::OsThreshold::new(240).macos(254);
+    re_ui::testing::default_snapshot_options_for_3d(WINDOW_SIZE)
+        .max_failed_pixels(re_ui::testing::strict_on_ci(10, max_broken_pixels))
 }

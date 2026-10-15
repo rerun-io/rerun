@@ -64,29 +64,33 @@ impl PanelTitleBar {
         let Self { label, hover_text } = self;
 
         let tokens = ui.tokens();
-        let height = tokens.title_bar_height();
+        let height = crate::DesignTokens::list_item_height();
         let background = tokens.section_header_color;
-
-        // egui inserts this after every widget, including after the label.
 
         let shape_idx = ui.painter().add(Shape::Noop);
 
         let InnerResponse {
             response,
             inner: (left, right),
-        } = ui.scope(|ui| {
-            egui::Sides::new().height(height).show(
-                ui,
-                |ui| {
-                    let label_response = ui.strong(label);
-                    if let Some(hover_text) = hover_text {
-                        label_response.on_hover_text(hover_text);
-                    }
-                    add_left_buttons(ui)
-                },
-                add_right_buttons,
-            )
-        });
+        } = egui::Frame::new()
+            .inner_margin(egui::Margin {
+                top: tokens.section_header_top_padding() as i8,
+                ..Default::default()
+            })
+            .show(ui, |ui| {
+                egui::Sides::new().height(height).show(
+                    ui,
+                    |ui| {
+                        let label_response =
+                            ui.label(tokens.eyebrow_text(ui.style(), label.text()));
+                        if let Some(hover_text) = hover_text {
+                            label_response.on_hover_text(hover_text);
+                        }
+                        add_left_buttons(ui)
+                    },
+                    add_right_buttons,
+                )
+            });
 
         ui.painter().set(
             shape_idx,

@@ -349,7 +349,7 @@ fn render_flamegraph_node(
                 text_rect.min,
                 egui::Align2::LEFT_TOP,
                 text,
-                egui::FontId::proportional(12.0),
+                egui::TextStyle::Body.resolve(ui.style()),
                 text_color,
             );
         }

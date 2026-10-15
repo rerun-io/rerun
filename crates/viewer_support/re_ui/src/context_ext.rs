@@ -130,6 +130,8 @@ pub trait ContextExt {
 
         let traffic_button_sizes_fallback = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
+        let desired_height = tokens.top_bar_height() - tokens.top_bar_margin().sum().y;
+
         let native_buttons_size_in_native_scale = cfg_select! {
             target_os = "macos" => {
                 if make_room_for_window_buttons {
@@ -137,6 +139,14 @@ pub trait ContextExt {
 
                     use eframe::WindowChromeMetrics;
 
+                    {
+                        re_tracing::profile_scope!("set_traffic_lights_position");
+                        _frame.set_traffic_lights_position(
+                            self.ctx(),
+                            egui::Rangef::new(0.0, desired_height),
+                            f32::from(tokens.view_padding()),
+                        );
+                    }
                     let metrics = _frame.window_handle().ok().and_then(|handle| {
                         WindowChromeMetrics::from_window_handle(&handle.as_raw())
                     });
@@ -159,16 +169,11 @@ pub trait ContextExt {
         };
 
         let height = if make_room_for_window_buttons {
-            // On mac we want to match the height of the native red/yellow/green close/minimize/maximize buttons.
-            // TODO(emilk): move the native window buttons to match our Self::title_bar_height
-
-            // Use more vertical space when zoomed in…
-            let height = native_buttons_size_in_native_scale.y;
-
-            // …but never shrink below the native button height when zoomed out.
-            height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
+            // On mac we need enough height for the native red/yellow/green
+            // close/minimize/maximize buttons while respecting our desired top-bar height.
+            (native_buttons_size_in_native_scale.y / egui_zoom_factor).max(desired_height)
         } else {
-            tokens.top_bar_height() - tokens.top_bar_margin().sum().y
+            desired_height
         };
 
         let indent = if make_room_for_window_buttons {

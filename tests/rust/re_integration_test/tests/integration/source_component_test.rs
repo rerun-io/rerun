@@ -74,7 +74,7 @@ pub async fn test_source_component_dropdown() {
 
     // Click on the points3d entity to select it
     // After selection, the Visualizers section should already be expanded showing components
-    harness.blueprint_tree().click_label("points3d");
+    harness.blueprint_tree().click_list_item("points3d");
     harness.snapshot_app("source_component_3");
 
     harness

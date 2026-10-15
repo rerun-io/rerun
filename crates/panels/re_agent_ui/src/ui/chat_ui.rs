@@ -601,10 +601,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     let tokens = ui.tokens();
     let response = egui::Frame::new()
         .fill(tokens.text_edit_bg_color)
-        .stroke(egui::Stroke::new(
-            1.0,
-            tokens.widget_noninteractive_bg_stroke,
-        ))
+        .stroke(tokens.control_stroke)
         .corner_radius(6)
         .inner_margin(6)
         .show(ui, |ui| {

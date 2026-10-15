@@ -189,9 +189,10 @@ impl Filter for StringFilter {
                 .accessible_name("Operator");
         });
 
-        let response = ui
-            .text_edit_singleline(&mut self.query)
-            .accessible_name("Value");
+        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+            ui.text_edit_singleline(&mut self.query)
+                .accessible_name("Value")
+        });
 
         if popup_just_opened {
             response.request_focus();

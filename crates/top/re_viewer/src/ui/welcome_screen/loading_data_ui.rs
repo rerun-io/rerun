@@ -13,8 +13,7 @@ pub fn loading_data_ui(ui: &mut egui::Ui, loading_text: &str) {
 
             ui.add(
                 egui::Label::new(
-                    egui::RichText::new(loading_text)
-                        .text_style(DesignTokens::welcome_screen_body()),
+                    egui::RichText::new(loading_text).text_style(DesignTokens::body()),
                 )
                 .wrap(),
             );

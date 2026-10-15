@@ -7,7 +7,7 @@ use re_sdk_types::archetypes::{Measurements, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::components::{self, Color, Name};
 use re_sdk_types::{ComponentDescriptor, FromArrow as _};
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, SystemCommandSender as _,
@@ -118,7 +118,11 @@ pub fn visualizer_ui_element(
                 ui.vertical(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                     ui.label(egui::RichText::new(&display_name).color(title_color));
-                    ui.label(egui::RichText::new(&full_path).size(10.5).color(path_color));
+                    ui.label(
+                        egui::RichText::new(&full_path)
+                            .text_style(DesignTokens::small())
+                            .color(path_color),
+                    );
                 });
             },
             |ui| {
@@ -263,7 +267,7 @@ impl TimeSeriesColors {
             ui.label(
                 egui::RichText::new(&badge_text)
                     .color(ui.tokens().visualizer_list_path_text_color)
-                    .size(10.5),
+                    .text_style(DesignTokens::small()),
             );
         }
 

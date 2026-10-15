@@ -40,6 +40,13 @@ async fn test_cards_view_resize() {
             .setup_kittest_for_rendering_ui([width, 600.0])
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                    // The UI inherits its style before `run_recording` installs the context styles.
+                    ui.set_style(ui.ctx().global_style());
+                    assert!(
+                        ui.style()
+                            .text_styles
+                            .contains_key(&re_ui::DesignTokens::heading_4())
+                    );
                     DataFusionTableWidget::new(
                         Arc::clone(&session_context),
                         table_ref,
@@ -95,6 +102,13 @@ async fn test_cards_view_non_uniform_cards() {
         .setup_kittest_for_rendering_ui([800.0, 600.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                // The UI inherits its style before `run_recording` installs the context styles.
+                ui.set_style(ui.ctx().global_style());
+                assert!(
+                    ui.style()
+                        .text_styles
+                        .contains_key(&re_ui::DesignTokens::heading_4())
+                );
                 DataFusionTableWidget::new(
                     Arc::clone(&session_context),
                     table_ref,

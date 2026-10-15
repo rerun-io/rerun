@@ -1,7 +1,6 @@
 use crate::{ButtonVisuals, DesignTokens, UiExt as _, all_visuals, icons};
 use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
-use egui::widget_style::WidgetState;
 use egui::{
     Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style, WidgetAtomResponse,
 };
@@ -19,9 +18,6 @@ pub enum Variant {
 
     /// Indicate that the thing this button represents is opened.
     Opened,
-
-    /// Show the button visually selected (blue background).
-    Selected,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -88,7 +84,6 @@ impl Variant {
             Self::Outlined => &tokens.button_outlined,
             Self::Blue => &tokens.button_blue,
             Self::Opened => &tokens.button_opened,
-            Self::Selected => &tokens.selection,
         }
     }
 
@@ -186,13 +181,8 @@ impl<'a> ReButton<'a> {
         self
     }
 
-    /// Show the button with the blue selected style and mark [`Button::selected`] for the
-    /// accesskit state.
     pub fn selected(mut self, selected: bool) -> Self {
         self.inner = self.inner.selected(selected);
-        if selected {
-            self.variant = Variant::Selected;
-        }
         self
     }
 
@@ -372,19 +362,6 @@ impl<'a> ReButton<'a> {
                 // Make the resting button look hovered by borrowing the hovered visuals.
                 let style = ui.style_mut();
                 style.visuals.widgets.inactive = style.visuals.widgets.hovered;
-            }
-
-            if matches!(variant, Variant::Selected) {
-                // Restore hover style for selected buttons (as eguis selection style doesn't have
-                // hover or pressed states).
-                let state = ui
-                    .ctx()
-                    .read_response(ui.next_auto_id())
-                    .map_or(WidgetState::Inactive, |r| r.widget_state());
-                let current = *ui.style().visuals.widgets.state(state);
-                let style = ui.style_mut();
-                style.visuals.selection.bg_fill = current.weak_bg_fill;
-                style.visuals.selection.stroke.color = current.fg_stroke.color;
             }
 
             let mut response = inner.min_size(size.icon_button_size()).atom_ui(ui);

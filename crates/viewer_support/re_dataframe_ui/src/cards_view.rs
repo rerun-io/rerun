@@ -5,7 +5,7 @@ use egui::{Frame, RichText, Ui};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
-use re_ui::{UiExt as _, UiLayout};
+use re_ui::{DesignTokens, UiExt as _, UiLayout};
 use re_viewer_context::{AppContext, ViewStates};
 
 use crate::DisplayRecordBatch;
@@ -196,7 +196,7 @@ fn card_content_ui(
                                 RichText::new(title_text)
                                     .monospace()
                                     .strong()
-                                    .size(14.5)
+                                    .text_style(DesignTokens::heading_4())
                                     .color(ui.tokens().text_default),
                             )
                             .truncate()

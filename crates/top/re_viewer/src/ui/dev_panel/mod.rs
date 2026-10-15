@@ -321,34 +321,34 @@ impl DevPanel {
                     total_texture_size_in_bytes,
                 } = gpu_resource_stats;
 
-                ui.label("# Bind Group Layouts:");
+                ui.label("# Bind Group Layouts");
                 ui.label(num_bind_group_layouts.to_string());
                 ui.end_row();
-                ui.label("# Pipeline Layouts:");
+                ui.label("# Pipeline Layouts");
                 ui.label(num_pipeline_layouts.to_string());
                 ui.end_row();
-                ui.label("# Render Pipelines:");
+                ui.label("# Render Pipelines");
                 ui.label(num_render_pipelines.to_string());
                 ui.end_row();
-                ui.label("# Samplers:");
+                ui.label("# Samplers");
                 ui.label(num_samplers.to_string());
                 ui.end_row();
-                ui.label("# Shader Modules:");
+                ui.label("# Shader Modules");
                 ui.label(num_shader_modules.to_string());
                 ui.end_row();
-                ui.label("# Bind Groups:");
+                ui.label("# Bind Groups");
                 ui.label(num_bind_groups.to_string());
                 ui.end_row();
-                ui.label("# Buffers:");
+                ui.label("# Buffers");
                 ui.label(num_buffers.to_string());
                 ui.end_row();
-                ui.label("# Textures:");
+                ui.label("# Textures");
                 ui.label(num_textures.to_string());
                 ui.end_row();
-                ui.label("Buffer Memory:");
+                ui.label("Buffer Memory");
                 ui.label(re_format::format_bytes(*total_buffer_size_in_bytes as _));
                 ui.end_row();
-                ui.label("Texture Memory:");
+                ui.label("Texture Memory");
                 ui.label(re_format::format_bytes(*total_texture_size_in_bytes as _));
                 ui.end_row();
             });
@@ -370,7 +370,7 @@ impl DevPanel {
                     temporal_chunks,
                 } = *store_stats;
 
-                ui.label(egui::RichText::new("Stats").italics());
+                ui.label("Stats");
                 ui.label("Chunks");
                 ui.label("Rows (total)");
                 ui.label("Events (total)")
@@ -392,15 +392,15 @@ impl DevPanel {
                     ui.label(re_format::format_bytes(total_size_bytes as _));
                 }
 
-                ui.label("Static:");
+                ui.label("Static");
                 label_chunk_stats(ui, static_chunks);
                 ui.end_row();
 
-                ui.label("Temporal:");
+                ui.label("Temporal");
                 label_chunk_stats(ui, temporal_chunks);
                 ui.end_row();
 
-                ui.label("Total:");
+                ui.label("Total");
                 label_chunk_stats(ui, static_chunks + temporal_chunks);
                 ui.end_row();
             });

@@ -3,6 +3,72 @@ use egui::{InnerResponse, NumExt as _};
 use crate::UiExt as _;
 use crate::list_item::navigation::ListItemNavigation;
 
+/// Placement of the collapse button relative to a list item's content.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CollapseButtonPlacement {
+    /// Reserve a leading column for collapse buttons, including on leaf items.
+    #[default]
+    Leading,
+
+    /// Place collapse buttons immediately after the item label.
+    AfterLabel,
+}
+
+/// Styling shared by all list items in a [`list_item_scope_with_style`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ListItemStyle {
+    pub(crate) background_inset: f32,
+    pub(crate) corner_radius: egui::CornerRadius,
+    pub(crate) collapse_button_placement: CollapseButtonPlacement,
+    pub(crate) hierarchy_indent: Option<f32>,
+    pub(crate) label_icon_matches_text: bool,
+}
+
+impl ListItemStyle {
+    /// Inset the background highlight horizontally without moving the item content.
+    #[inline]
+    pub fn with_background_inset(mut self, background_inset: f32) -> Self {
+        self.background_inset = background_inset;
+        self
+    }
+
+    /// Set the corner radius of the background highlight.
+    #[inline]
+    pub fn with_corner_radius(mut self, corner_radius: impl Into<egui::CornerRadius>) -> Self {
+        self.corner_radius = corner_radius.into();
+        self
+    }
+
+    /// Set where collapse buttons are placed relative to item labels.
+    #[inline]
+    pub fn with_collapse_button_placement(
+        mut self,
+        collapse_button_placement: CollapseButtonPlacement,
+    ) -> Self {
+        self.collapse_button_placement = collapse_button_placement;
+        self
+    }
+
+    /// Set the indentation added for each level in a hierarchical list.
+    #[inline]
+    pub fn with_hierarchy_indent(mut self, hierarchy_indent: f32) -> Self {
+        self.hierarchy_indent = Some(hierarchy_indent);
+        self
+    }
+
+    /// Tint label icons with the first text section's foreground color, including subdued states.
+    /// Collapse buttons and action buttons retain their own colors.
+    #[inline]
+    pub fn with_label_icon_matching_text(mut self, matching: bool) -> Self {
+        self.label_icon_matches_text = matching;
+        self
+    }
+
+    pub(crate) fn hierarchy_indent(self, default: f32) -> f32 {
+        self.hierarchy_indent.unwrap_or(default)
+    }
+}
+
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///
 /// On frame `n`, statistics are gathered by the [`super::ListItemContent`] implementations and
@@ -133,6 +199,9 @@ pub struct LayoutInfo {
 
     /// Whether the next list item is the first item in this scope.
     is_first_item: bool,
+
+    /// Styling shared by the list items in this scope.
+    pub(crate) style: ListItemStyle,
 }
 
 impl Default for LayoutInfo {
@@ -143,6 +212,7 @@ impl Default for LayoutInfo {
             scope_id: egui::Id::NULL,
             property_content_max_width: None,
             is_first_item: true,
+            style: ListItemStyle::default(),
         }
     }
 }
@@ -231,6 +301,13 @@ impl LayoutInfoStack {
         })
     }
 
+    fn top_style(ctx: &egui::Context) -> Option<ListItemStyle> {
+        ctx.data_mut(|writer| {
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
+            stack.0.last().map(|layout_info| layout_info.style)
+        })
+    }
+
     /// Returns whether the next list item is the first item in the current scope.
     pub(crate) fn take_is_first_item(ctx: &egui::Context) -> bool {
         ctx.data_mut(|writer| {
@@ -264,6 +341,7 @@ impl LayoutInfoStack {
 /// - Uses [`egui::Ui::push_id`] so two sibling `list_item_scope`:s with different ids won't have id clashes within them.
 /// - The `ui.spacing_mut().item_spacing.y` is set to `0.0` to remove the default spacing between
 ///   list items.
+/// - Nested scopes inherit the list item style of their parent scope.
 ///
 /// See [`list_item_scope_in_place`] for a variant that doesn't create a child [`egui::Ui`].
 pub fn list_item_scope<R>(
@@ -271,9 +349,20 @@ pub fn list_item_scope<R>(
     id_salt: impl egui::AsIdSalt,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
+    let style = LayoutInfoStack::top_style(ui.ctx()).unwrap_or_default();
+    list_item_scope_with_style(ui, id_salt, style, content)
+}
+
+/// Create a scope in which `[ListItem]`s share the provided style.
+pub fn list_item_scope_with_style<R>(
+    ui: &mut egui::Ui,
+    id_salt: impl egui::AsIdSalt,
+    style: ListItemStyle,
+    content: impl FnOnce(&mut egui::Ui) -> R,
+) -> InnerResponse<R> {
     let id_salt = ui.make_persistent_id(id_salt); // So we can use it twice
 
-    with_layout_info(ui, id_salt, |ui| {
+    with_layout_info(ui, id_salt, style, |ui| {
         ui.push_id(id_salt, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             content(ui)
@@ -284,20 +373,22 @@ pub fn list_item_scope<R>(
 /// Same as [`list_item_scope`], but runs `content` on the given [`egui::Ui`] instead of a child one.
 ///
 /// The content stays a direct part of the surrounding layout, and keeps the ui's
-/// `item_spacing`.
+/// `item_spacing`. Like [`list_item_scope`], it inherits the list item style of its parent scope.
 pub fn list_item_scope_in_place<R>(
     ui: &mut egui::Ui,
     id_salt: impl egui::AsIdSalt,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
     let id_salt = ui.make_persistent_id(id_salt);
-    with_layout_info(ui, id_salt, content)
+    let style = LayoutInfoStack::top_style(ui.ctx()).unwrap_or_default();
+    with_layout_info(ui, id_salt, style, content)
 }
 
 /// Set up the [`LayoutInfo`] for `content`, without touching the layout itself.
 fn with_layout_info<R>(
     ui: &mut egui::Ui,
     id_salt: egui::Id,
+    style: ListItemStyle,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
     ui.sanity_check();
@@ -326,6 +417,7 @@ fn with_layout_info<R>(
         scope_id,
         property_content_max_width: layout_stats.property_content_max_width,
         is_first_item: true,
+        style,
     };
 
     let is_root = ListItemNavigation::init_if_root(ui.ctx());

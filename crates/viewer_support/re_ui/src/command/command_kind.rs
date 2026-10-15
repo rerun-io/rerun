@@ -159,7 +159,8 @@ impl CommandKind {
                 #[cfg(not(target_arch = "wasm32"))]
                 UICommand::CaptureProfileTrace => true,
 
-                UICommand::OpenUrlDialog
+                UICommand::About
+                | UICommand::OpenUrlDialog
                 | UICommand::CloseAllRecordings
                 | UICommand::SwitchToNextRecording
                 | UICommand::SwitchToPreviousRecording
@@ -197,6 +198,7 @@ impl CommandKind {
 
                 #[cfg(debug_assertions)]
                 UICommand::ToggleEguiDebugPanel
+                | UICommand::DebugTools
                 | UICommand::ResetEguiMemory
                 | UICommand::PlayTestSound => false,
 
@@ -262,7 +264,8 @@ impl CommandKind {
                 #[cfg(target_arch = "wasm32")]
                 UICommand::RestartWithWebGl | UICommand::RestartWithWebGpu => true,
 
-                UICommand::OpenFile
+                UICommand::About
+                | UICommand::OpenFile
                 | UICommand::OpenUrlDialog
                 | UICommand::ImportFileIntoCurrentRecording
                 | UICommand::SwitchToNextRecording
@@ -300,6 +303,7 @@ impl CommandKind {
 
                 #[cfg(debug_assertions)]
                 UICommand::ToggleEguiDebugPanel
+                | UICommand::DebugTools
                 | UICommand::ResetEguiMemory
                 | UICommand::PlayTestSound => false,
             },

@@ -145,7 +145,7 @@ impl SpatialViewState {
             let BoundingBox { min, max } = self.bounding_boxes.current;
 
             if self.bounding_boxes.current.is_nothing() {
-                ui.label(egui::RichText::new("empty").italics());
+                ui.label("empty");
             } else {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));

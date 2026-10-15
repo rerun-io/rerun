@@ -514,8 +514,8 @@ impl Filter for TimestampFilter {
         let from_to_header_ui = |ui: &mut egui::Ui, s: &str| {
             ui.label(
                 egui::RichText::new(s)
-                    .color(ui.tokens().text_default)
-                    .size(DesignTokens::list_header_font_size()),
+                    .text_style(DesignTokens::small())
+                    .color(ui.tokens().text_default),
             );
 
             ui.add_space(-2.0);
@@ -525,9 +525,9 @@ impl Filter for TimestampFilter {
             from_to_header_ui(
                 ui,
                 if self.kind == TimestampFilterKind::After {
-                    "After:"
+                    "After"
                 } else {
-                    "From:"
+                    "From"
                 },
             );
 
@@ -545,9 +545,9 @@ impl Filter for TimestampFilter {
             from_to_header_ui(
                 ui,
                 if self.kind == TimestampFilterKind::Before {
-                    "Before:"
+                    "Before"
                 } else {
-                    "To:"
+                    "To"
                 },
             );
 
@@ -680,14 +680,18 @@ impl EditableTimestamp {
                     self.timestamp_string.clone().unwrap_or_default()
                 };
 
-                let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
-                if parsed.is_err() {
-                    ui.style_invalid_field();
-                }
+                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+                    ui.scope(|ui| {
+                        let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
+                        if parsed.is_err() {
+                            ui.style_invalid_field();
+                        }
 
-                let response = ui
-                    .text_edit_singleline(&mut timestamp_string_to_edit)
-                    .accessible_name("Timestamp");
+                        ui.text_edit_singleline(&mut timestamp_string_to_edit)
+                            .accessible_name("Timestamp")
+                    })
+                    .inner
+                });
 
                 if response.changed() && is_editable {
                     self.update_and_resolve_timestamp(timestamp_string_to_edit, timestamp_format);

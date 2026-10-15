@@ -359,14 +359,14 @@ fn source_component_items_ui(
     let show_sections = !recommended_options.is_empty() && other_has_non_custom;
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+        ui.add(re_ui::ComboItemHeader::new("Recommended"));
     }
     for source in &recommended_options {
         source_component_item_ui(ui, mapping_ctx, current, current_selection_error, source);
     }
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Other values:"));
+        ui.add(re_ui::ComboItemHeader::new("Other values"));
     }
     for source in &other_options {
         source_component_item_ui(ui, mapping_ctx, current, current_selection_error, source);

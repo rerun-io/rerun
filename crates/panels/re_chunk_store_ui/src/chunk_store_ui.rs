@@ -518,7 +518,7 @@ impl DatastoreUi {
                 "Filter the chunk list by entity path and/or component. Filtering is \
                 case-insensitive text-based.",
             );
-            ui.label("Entity:");
+            ui.label("Entity");
             autocomplete_text_edit(
                 ui,
                 &mut self.entity_path_filter,
@@ -527,7 +527,7 @@ impl DatastoreUi {
                 None::<&str>,
             );
 
-            ui.label("Component:");
+            ui.label("Component");
             autocomplete_text_edit(
                 ui,
                 &mut self.component_filter,
@@ -861,7 +861,7 @@ impl DatastoreUi {
             return;
         }
 
-        ui.label("Selected blueprint:");
+        ui.label("Selected blueprint");
 
         store_selector_combo_ui(
             ui,

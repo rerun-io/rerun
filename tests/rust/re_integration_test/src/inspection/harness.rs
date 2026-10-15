@@ -317,14 +317,8 @@ impl InspectionHarness {
 
     /// The snapshot tolerances for the viewer we are driving.
     ///
-    /// The in-process viewer renders through the same `wgpu` setup as our other snapshot tests, so
-    /// it keeps the strict defaults and a regression there still fails the build.
-    ///
-    /// The out-of-process targets render the same UI with a different rasterizer — the browser goes
-    /// through Chrome's `SwiftShader` rather than `lavapipe` — which shifts a few hundred antialiased
-    /// pixels. Raising the per-pixel threshold does not help: at 0.6 the browser still differs in 255
-    /// pixels and at 10.0 in 182, so these are genuinely different colors rather than near misses.
-    /// The count is the knob instead. The worst observed on CI is 240 (`dataset_ui_empty_form`).
+    /// Out-of-process targets can shift a few hundred antialiased pixels compared to the
+    /// in-process baseline. The count is the knob for those targets instead.
     fn snapshot_options() -> egui_kittest::SnapshotOptions {
         let options = re_ui::testing::default_snapshot_options_for_ui();
         match TestEnv::get().target {

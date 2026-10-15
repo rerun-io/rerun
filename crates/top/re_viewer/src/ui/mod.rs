@@ -1,3 +1,4 @@
+mod app_modals;
 mod mobile_warning_ui;
 mod open_url_modal;
 mod rerun_menu;
@@ -10,7 +11,9 @@ mod settings_screen;
 
 // ----
 
-pub use rerun_menu::about_rerun_ui;
+pub use app_modals::about_rerun_ui;
+#[cfg(debug_assertions)]
+pub(crate) use app_modals::debug_tools_ui;
 
 pub(crate) use open_url_modal::OpenUrlModal;
 pub(crate) use settings_screen::settings_screen_ui;

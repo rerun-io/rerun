@@ -28,6 +28,25 @@ fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_rout
     );
 }
 
+fn click_folder_card(harness: &Harness<'static, App>, label: &str) {
+    let label_rect = harness
+        .query_all_by_label(label)
+        .last()
+        .unwrap_or_else(|| panic!("{label} folder card should be present"))
+        .rect();
+    // Click the card's blank body so the child text widget does not consume the pointer event.
+    let pos = label_rect.right_center() + egui::vec2(120.0, 0.0);
+    harness.event(egui::Event::PointerMoved(pos));
+    for pressed in [true, false] {
+        harness.event(egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_folders() {
     // Seed a hierarchy with mixed subfolders and direct datasets at `perception`:
@@ -130,11 +149,7 @@ pub async fn dataset_folders() {
     snapshot_results.add(harness.try_snapshot("dataset_folders_01_perception"));
 
     // Click the subfolder card.
-    harness
-        .query_all_by_role_and_label(Role::Button, "detection")
-        .last()
-        .expect("detection folder card should be present")
-        .click();
+    click_folder_card(&harness, "detection");
     viewer_test_utils::step_until(
         "folder `perception.detection` cards appear",
         &mut harness,
@@ -188,28 +203,25 @@ pub async fn dataset_folders() {
     table_harness.step_until_no_loading_indicator();
 
     // Click direct table card → navigates to table entry and selects it.
-    table_harness
-        .query_all_by_role_and_label(Role::Button, "metrics")
-        .last()
-        .expect("metrics table card should be present")
-        .click();
+    click_folder_card(&table_harness, "metrics");
     viewer_test_utils::step_until(
         "table `perception.metrics` row appears",
         &mut table_harness,
-        |harness| harness.query_by_label_contains("metrics-row").is_some(),
+        |harness| {
+            harness
+                .query_all_by_label_contains("metrics-row")
+                .next()
+                .is_some()
+        },
     );
     assert_route_and_selection(&mut table_harness, &metrics_route);
 
     // Click the `summary` dataset card → navigates to the dataset entry and selects it.
-    harness
-        .query_all_by_role_and_label(Role::Button, "summary")
-        .last()
-        .expect("summary dataset card should be present")
-        .click();
+    click_folder_card(&harness, "summary");
     viewer_test_utils::step_until(
         "dataset `perception.summary` recording appears",
         &mut harness,
-        |harness| harness.query_by_label_contains("rec_summary").is_some(),
+        |harness| harness.query_all_by_label("rec_summary").next().is_some(),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);

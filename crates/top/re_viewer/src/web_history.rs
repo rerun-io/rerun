@@ -198,6 +198,30 @@ pub fn go_forward() -> Option<()> {
     history.forward().ok_or_log_js_error()
 }
 
+/// Whether the browser can currently navigate backward and forward.
+///
+/// The History API does not expose the current position in the history stack.
+/// Feature-detect the Navigation API so unsupported browsers can omit controls whose state they
+/// cannot represent accurately.
+pub fn navigation_availability() -> Option<(bool, bool)> {
+    let window = re_web::browser::window().ok()?;
+    let navigation =
+        js_sys::Reflect::get(window.as_ref(), &JsValue::from_str("navigation")).ok()?;
+
+    if navigation.is_null() || navigation.is_undefined() {
+        return None;
+    }
+
+    let can_go_back = js_sys::Reflect::get(&navigation, &JsValue::from_str("canGoBack"))
+        .ok()?
+        .as_bool()?;
+    let can_go_forward = js_sys::Reflect::get(&navigation, &JsValue::from_str("canGoForward"))
+        .ok()?
+        .as_bool()?;
+
+    Some((can_go_back, can_go_forward))
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_namespace = ["window"], js_name = structuredClone)]

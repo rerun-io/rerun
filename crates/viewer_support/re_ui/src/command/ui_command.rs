@@ -9,17 +9,14 @@ pub trait UICommandSender {
     fn send_ui(&self, command: UICommand);
 }
 
-/// All the commands we support.
-///
-/// Most are available in the GUI,
-/// some have keyboard shortcuts,
-/// and all are visible in the [`crate::CommandPalette`].
+/// Commands dispatched against the viewer's current context instead of an explicit target.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter, strum_macros::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum UICommand {
-    // Listed in the order they show up in the command palette by default!
+    About,
+
     OpenFile,
     OpenUrlDialog,
     ImportFileIntoCurrentRecording,
@@ -57,6 +54,9 @@ pub enum UICommand {
 
     #[cfg(debug_assertions)]
     ToggleEguiDebugPanel,
+
+    #[cfg(debug_assertions)]
+    DebugTools,
 
     ToggleFullscreen,
     #[cfg(not(target_arch = "wasm32"))]
@@ -104,6 +104,11 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
+            Self::About => (
+                "About Rerun…",
+                "Show version, build, platform, and rendering information",
+            ),
+
             Self::OpenFile => (
                 "Open file…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
@@ -192,6 +197,8 @@ impl UICommand {
                 "Toggle egui debug panel",
                 "View and change global egui style settings",
             ),
+            #[cfg(debug_assertions)]
+            Self::DebugTools => ("Debug tools…", "Open debug-only Viewer and egui controls"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => (
@@ -290,6 +297,7 @@ impl UICommand {
         }
 
         match self {
+            Self::About => smallvec![],
             Self::OpenFile => smallvec![cmd(Key::O)],
             // Some browsers have a "paste and go" action.
             // But unfortunately there's no standard shortcut for this.
@@ -338,6 +346,8 @@ impl UICommand {
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
+            #[cfg(debug_assertions)]
+            Self::DebugTools => smallvec![],
 
             Self::ToggleFullscreen => {
                 if cfg!(target_arch = "wasm32") {
@@ -399,11 +409,12 @@ impl UICommand {
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
-            .map(|shortcut| egui_ctx.format_shortcut(&shortcut))
+            .map(|shortcut| crate::format_shortcut(egui_ctx, &shortcut))
     }
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
         match self {
+            Self::About => Some(&crate::icons::INFO),
             Self::OpenRerunWebsite | Self::OpenDocsWebsite => Some(&crate::icons::EXTERNAL_LINK),
             Self::OpenDiscordWebsite => Some(&crate::icons::DISCORD),
             #[cfg(debug_assertions)]
@@ -423,7 +434,10 @@ impl UICommand {
     pub fn is_debug_only(self) -> bool {
         matches!(
             self,
-            Self::ToggleEguiDebugPanel | Self::ResetEguiMemory | Self::PlayTestSound
+            Self::ToggleEguiDebugPanel
+                | Self::DebugTools
+                | Self::ResetEguiMemory
+                | Self::PlayTestSound
         )
     }
 

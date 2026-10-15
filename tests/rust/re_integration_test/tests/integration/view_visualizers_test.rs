@@ -168,14 +168,14 @@ pub async fn test_view_visualizers_section() {
     harness.snapshot_app("view_visualizers_1_initial");
 
     // Select the first view (Plots view) - shows SeriesLines and SeriesPoints visualizers
-    harness.blueprint_tree().click_label("Plots view");
+    harness.blueprint_tree().click_list_item("Plots view");
     harness.run();
 
     // Snapshot 2: Selection panel showing visualizers for Plots view
     harness.snapshot_app("view_visualizers_2_plots_view_selected");
 
     // Select the second view (Other view) - shows only SeriesLines visualizer
-    harness.blueprint_tree().click_label("Other view");
+    harness.blueprint_tree().click_list_item("Other view");
     harness.run();
 
     // Snapshot 3: Selection panel showing visualizers for Other view
@@ -184,7 +184,7 @@ pub async fn test_view_visualizers_section() {
     // --- Test hiding visualizers ---
 
     // Select the Plots view again to see its 3 visualizers
-    harness.blueprint_tree().click_label("Plots view");
+    harness.blueprint_tree().click_list_item("Plots view");
     harness.run();
 
     // Hover the first Visualizer for sin_line to reveal the hide button, but don't click it yet.
@@ -294,7 +294,9 @@ pub async fn test_view_visualizers_multi_scalar() {
     harness.run();
 
     // Select the view to see its visualizers in the selection panel
-    harness.blueprint_tree().click_label("Multi-scalar view");
+    harness
+        .blueprint_tree()
+        .click_list_item("Multi-scalar view");
     harness.run();
 
     // Snapshot: Selection panel showing visualizers for a multi-scalar entity
@@ -375,7 +377,7 @@ fn setup_trig_view() -> (egui_kittest::Harness<'static, re_viewer::App>, ViewId)
         .blueprint_tree()
         .right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
-    harness.blueprint_tree().click_label("Trig view");
+    harness.blueprint_tree().click_list_item("Trig view");
     harness.run();
 
     (harness, view_id)
@@ -758,7 +760,7 @@ pub async fn test_view_visualizers_add_multiple() {
     harness.click_label("Expand all");
 
     // Select the view to see all visualizers in the selection panel.
-    harness.blueprint_tree().click_label("Waves view");
+    harness.blueprint_tree().click_list_item("Waves view");
     harness.snapshot_app("view_visualizers_add_multi_1_starting_state");
 
     // Select the first visualizer pill (waves/cos, first alphabetically) to bring up
@@ -777,7 +779,7 @@ pub async fn test_view_visualizers_add_multiple() {
     harness.snapshot_app("view_visualizers_add_multi_3_removed_visualizer");
 
     // Re-select the view to see the updated visualizer list (without waves/cos entries).
-    harness.blueprint_tree().click_label("Waves view");
+    harness.blueprint_tree().click_list_item("Waves view");
     harness.snapshot_app("view_visualizers_add_multi_4_view_selected_again");
 
     // Open the add-visualizer popup.

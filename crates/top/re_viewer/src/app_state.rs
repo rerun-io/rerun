@@ -711,7 +711,7 @@ impl AppState {
                             .last_loading_error_for(log_source)
                             .map(|error| format!("Failed to load {source_name}: {error}"));
                         if ui.loading_screen(
-                            "Loading data source:",
+                            "Loading data source",
                             &*source_name,
                             error.as_deref(),
                             Some("Go Back"),

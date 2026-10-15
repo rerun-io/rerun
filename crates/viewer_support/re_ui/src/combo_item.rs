@@ -1,11 +1,9 @@
 use crate::{DesignTokens, Size, UiExt as _, icons};
 use eframe::emath::Align;
-use eframe::epaint::FontFamily;
 use eframe::epaint::text::TextWrapMode;
 use egui::{
-    Atom, AtomExt as _, Atoms, Button, ContainerAtom, Direction, FontId, Frame, IdSalt, Layout,
-    Margin, Pos2, Rect, Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom,
-    WidgetText,
+    Atom, AtomExt as _, Atoms, Button, ContainerAtom, Direction, Frame, IdSalt, Layout, Margin,
+    Pos2, Rect, Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom, WidgetText,
 };
 
 /// The value shown alongside a [`ComboItem`]'s label.
@@ -53,17 +51,15 @@ impl<'a> ComboItem<'a> {
         self
     }
 
-    /// Add a value. Will be shown on the right side at font size 10 (or below the label if
+    /// Add a value. Will be shown on the right side using the small text style (or below the label if
     /// [`Self::value_below`] is set).
     pub fn value(mut self, value: impl Into<WidgetText>) -> Self {
-        let value = value
-            .into()
-            .size(DesignTokens::combo_item_small_font_size());
+        let value = value.into().text_style(DesignTokens::small());
         self.value = Some(ComboItemValue::Text(value));
         self
     }
 
-    /// Add a value as a widget. Will be shown on the right side at font size 10.
+    /// Add a value as a widget. Will be shown on the right side using the small text style.
     ///
     /// Note that widget values are always inline; [`Self::value_below`] only applies to text
     /// values (set via [`Self::value`]).
@@ -201,10 +197,10 @@ impl Widget for ComboItem<'_> {
             );
 
             child_ui.style_mut().interaction.selectable_labels = false;
-            // Override the text size to match the design
+            let small_size = DesignTokens::small().resolve(child_ui.style()).size;
             for text_style in [TextStyle::Body, TextStyle::Monospace, TextStyle::Button] {
                 if let Some(font) = child_ui.style_mut().text_styles.get_mut(&text_style) {
-                    font.size = DesignTokens::combo_item_small_font_size();
+                    font.size = small_size;
                 }
             }
 
@@ -252,7 +248,7 @@ impl Widget for ComboItemHeader {
                     top: 4,
                 }))
                 .min_size(Vec2::new(0.0, 22.0))
-                .fallback_font(FontId::new(10.0, FontFamily::Proportional)),
+                .fallback_font(DesignTokens::small().resolve(ui.style())),
         )
     }
 }
@@ -276,7 +272,7 @@ pub mod tests {
                     .popup_style(menu_style())
                     .height(300.0)
                     .show_ui(ui, |ui| {
-                        ui.add(ComboItemHeader::new("Recommended:"));
+                        ui.add(ComboItemHeader::new("Recommended"));
 
                         ui.add(
                             ComboItem::new("vertex_normals")
@@ -291,7 +287,7 @@ pub mod tests {
                             .append_primitive("0.000")
                             .append_syntax("]");
 
-                        ui.add(ComboItemHeader::new("Other values:"));
+                        ui.add(ComboItemHeader::new("Other values"));
                         ui.add(ComboItem::new("vertex_positions"));
                         ui.add(
                             ComboItem::new("Rerun default")

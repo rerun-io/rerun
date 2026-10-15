@@ -122,8 +122,8 @@ pub async fn test_check_focus() {
 
     // Double click the entity on the streams tree and see all views expand.
     harness.streams_tree().hover_label("boxes3d");
-    harness.streams_tree().click_label("boxes3d");
-    harness.streams_tree().click_label("boxes3d");
+    harness.streams_tree().click_list_item("boxes3d");
+    harness.streams_tree().click_list_item("boxes3d");
     harness.snapshot_app("check_focus_7");
 
     // Scroll down to see the second view is entirely expanded.

@@ -263,6 +263,13 @@ pub struct DesignTokens {
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
+
+    /// Structural separators between app surfaces.
+    pub divider_stroke: Stroke,
+
+    /// Outline for compact controls that need more definition than a divider.
+    pub control_stroke: Stroke,
+
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub viewport_tab_selected_text_color: Color32,
@@ -281,6 +288,10 @@ pub struct DesignTokens {
 
     /// Opacity multiplier for the background of 2D labels in spatial views.
     pub spatial_label_bg_opacity: f32,
+
+    /// Opacity multiplier for disabled controls.
+    // TODO(lucas): Implement disabled styling based on classes and colors instead of opacity.
+    pub disabled_opacity: f32,
 
     /// Animation duration in seconds for some things that should feel smooth,
     /// (as opposed as the default egui animaion that should feel _snappy_).
@@ -316,8 +327,11 @@ pub struct DesignTokens {
     pub example_tag_bg_fill: Color32,
     pub example_tag_stroke: Stroke,
 
+    /// The background color of text matching an active search query.
+    pub search_match_bg_fill: Color32,
+
     // ------
-    // Colors for things with a blue selection-background ("primary"), e.g. the breadcrumb:
+    // Colors for content rendered on the selection surface:
     pub surface_on_primary_hovered: Color32,
     pub text_color_on_primary: Color32,
     pub text_color_on_primary_hovered: Color32,
@@ -337,16 +351,13 @@ pub struct DesignTokens {
     // ------
     pub panel_bg_color: Color32,
 
-    /// Background of the page on the right: the catalog, a dataset, a table.
-    ///
-    /// Separate from [`Self::panel_bg_color`], so the page is set off from the panels around it.
+    /// Background of the home, catalog, dataset, and table pages.
     pub page_bg_color: Color32,
 
     pub text_edit_bg_color: Color32,
 
     pub form_field_bg_color: Color32,
     pub form_selectable_bg_color: Color32,
-    pub form_selectable_stroke_color: Color32,
 
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
@@ -395,14 +406,12 @@ pub struct DesignTokens {
     /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
     pub tile_drag_preview_color: Color32,
 
-    pub floating_color: Color32,
     pub faint_bg_color: Color32,
     pub plot_grid_color: Color32,
     pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
     pub widget_hovered_color: Color32,
-    pub widget_noninteractive_bg_stroke: Color32,
 
     /// Text in a field the user cannot edit.
     ///
@@ -436,11 +445,6 @@ pub struct DesignTokens {
     pub button_outlined: ButtonVisuals,
     pub button_blue: ButtonVisuals,
     pub button_opened: ButtonVisuals,
-
-    /// The accent (`Blue.500`) selection surface: selected items, the selection
-    /// badge, the play button, etc. Provides hover/press states so selected
-    /// widgets can give color-only interaction feedback (no growth).
-    pub selection: ButtonVisuals,
 
     pub text_edit_outlined: TextEditVisuals,
     pub text_edit_filled: TextEditVisuals,
@@ -493,9 +497,6 @@ pub struct DesignTokens {
     pub code_null_color: Color32,
     pub code_primitive_color: Color32,
     pub code_keyword_color: Color32,
-
-    // Table filter UI
-    pub table_filter_frame_stroke: Stroke,
 
     // Table cards
     pub table_grid_view_card_min_width: f32,
@@ -550,6 +551,16 @@ pub struct DesignTokens {
     pub preview_controls_fill: Color32,
 }
 
+const INTER_FONT_NAME: &str = "Inter-Variable";
+const JETBRAINS_MONO_FONT_NAME: &str = "JetBrainsMono-Variable";
+const BODY_TYPOGRAPHY_NAME: &str = "Body";
+const SMALL_TYPOGRAPHY_NAME: &str = "Small";
+const HEADING_1_TYPOGRAPHY_NAME: &str = "Heading 1";
+const HEADING_2_TYPOGRAPHY_NAME: &str = "Heading 2";
+const HEADING_3_TYPOGRAPHY_NAME: &str = "Heading 3";
+const HEADING_4_TYPOGRAPHY_NAME: &str = "Heading 4";
+const EYEBROW_TYPOGRAPHY_NAME: &str = "Eyebrow";
+
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
@@ -575,13 +586,20 @@ impl DesignTokens {
         let theme_value: ron::Value = ron::from_str(tokens_ron)
             .with_context(|| format!("Failed to parse {theme:?} theme .ron"))?;
 
-        let typography: Typography = parse_path(&theme_value, "{Global.Typography.Default}");
+        let typography = Typography::load(&theme_value)?;
 
         let get_scalar = |scalar_name: &str| try_get_scalar(&theme_value, scalar_name);
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_value, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_value, stroke_name);
 
         let selection_bg_fill = get_color("selection_bg_fill");
+        let divider_stroke = get_stroke("divider_stroke");
+        let control_stroke = get_stroke("control_stroke");
+        let mut button_outlined = ButtonVisuals::get(&colors, &theme_value, "button_outlined");
+        button_outlined.stroke = control_stroke;
+        let mut text_edit_outlined =
+            TextEditVisuals::get(&colors, &theme_value, "text_edit_outlined");
+        text_edit_outlined.stroke = control_stroke;
 
         let loop_selection_color =
             selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha")?);
@@ -601,6 +619,8 @@ impl DesignTokens {
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
+            divider_stroke,
+            control_stroke,
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
@@ -616,6 +636,7 @@ impl DesignTokens {
             info_text_color: get_color("info_text_color"),
 
             spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
+            disabled_opacity: get_scalar("disabled_opacity")?,
             slow_animation_duration_sec: get_scalar("slow_animation_duration_sec")?,
 
             viewport_background: get_color("viewport_background"),
@@ -634,6 +655,8 @@ impl DesignTokens {
             example_card_background_color: get_color("example_card_background_color"),
             example_tag_bg_fill: get_color("example_tag_bg_fill"),
             example_tag_stroke: get_stroke("example_tag_stroke"),
+
+            search_match_bg_fill: get_color("search_match_bg_fill"),
 
             surface_on_primary_hovered: get_color("surface_on_primary_hovered"),
             text_color_on_primary: get_color("text_color_on_primary"),
@@ -654,7 +677,6 @@ impl DesignTokens {
             text_edit_bg_color: get_color("text_edit_bg_color"),
             form_field_bg_color: get_color("form_field_bg_color"),
             form_selectable_bg_color: get_color("form_selectable_bg_color"),
-            form_selectable_stroke_color: get_color("form_selectable_stroke_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -676,14 +698,12 @@ impl DesignTokens {
             tile_drag_preview_stroke: get_stroke("tile_drag_preview_stroke"),
             tile_drag_preview_color: get_color("tile_drag_preview_color"),
 
-            floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),
             plot_grid_color: get_color("plot_grid_color"),
             plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_hovered_color: get_color("widget_hovered_color"),
-            widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_readonly: get_color("text_readonly"),
             text_subdued: get_color("text_subdued"),
             text_default: get_color("text_default"),
@@ -701,13 +721,11 @@ impl DesignTokens {
             button_primary: ButtonVisuals::get(&colors, &theme_value, "button_primary"),
             button_secondary: ButtonVisuals::get(&colors, &theme_value, "button_secondary"),
             button_ghost: ButtonVisuals::get(&colors, &theme_value, "button_ghost"),
-            button_outlined: ButtonVisuals::get(&colors, &theme_value, "button_outlined"),
+            button_outlined,
             button_blue: ButtonVisuals::get(&colors, &theme_value, "button_blue"),
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
 
-            selection: ButtonVisuals::get(&colors, &theme_value, "selection"),
-
-            text_edit_outlined: TextEditVisuals::get(&colors, &theme_value, "text_edit_outlined"),
+            text_edit_outlined,
             text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
 
             tab: TabVisuals::get(&colors, &theme_value, "tab"),
@@ -761,7 +779,6 @@ impl DesignTokens {
             code_primitive_color: get_color("code_primitive_color"),
 
             code_keyword_color: get_color("code_keyword_color"),
-            table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
 
             table_grid_view_card_min_width: get_scalar("table_grid_view_card_min_width")?,
             table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
@@ -801,82 +818,71 @@ impl DesignTokens {
     }
 
     pub(crate) fn set_fonts(&self, ctx: &egui::Context) {
-        assert_eq!(self.typography.fontFamily, "Inter");
-        assert_eq!(self.typography.fontWeight, "Medium");
+        ctx.set_fonts(self.font_definitions());
+    }
+
+    fn font_definitions(&self) -> egui::FontDefinitions {
         let mut font_definitions = egui::FontDefinitions::default();
+
+        let mut proportional_font =
+            egui::FontData::from_static(include_bytes!("../data/Inter-Variable.ttf"));
+        proportional_font
+            .tweak
+            .coords
+            .push("wght", self.typography.body.font_weight);
         font_definitions.font_data.insert(
-            "Inter-Medium".into(),
+            INTER_FONT_NAME.into(),
+            std::sync::Arc::new(proportional_font),
+        );
+
+        font_definitions.font_data.insert(
+            JETBRAINS_MONO_FONT_NAME.into(),
             std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../data/Inter-Medium.otf"
+                "../data/JetBrainsMono-Variable.ttf"
             ))),
         );
         font_definitions
             .families
             .get_mut(&egui::FontFamily::Proportional)
             .unwrap()
-            .insert(0, "Inter-Medium".into());
-
-        // We don't rely on egui's `default_fonts`, so we must bundle a monospace font ourselves.
-        // On web there are no system fonts to fall back to at all.
-        font_definitions.font_data.insert(
-            "Hack-Regular".into(),
-            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../data/Hack-Regular.ttf"
-            ))),
-        );
+            .insert(0, INTER_FONT_NAME.into());
         font_definitions
             .families
             .get_mut(&egui::FontFamily::Monospace)
             .unwrap()
-            .insert(0, "Hack-Regular".into());
-
-        ctx.set_fonts(font_definitions);
+            .insert(0, JETBRAINS_MONO_FONT_NAME.into());
+        font_definitions
     }
 
     fn set_text_styles(&self, egui_style: &mut egui::Style) {
-        let font_size = parse_px(&self.typography.fontSize);
+        let typography = &self.typography;
 
-        for text_style in [
-            egui::TextStyle::Body,
-            egui::TextStyle::Monospace,
-            egui::TextStyle::Button,
+        for (text_style, typography) in [
+            (Self::body(), &typography.body),
+            (Self::small(), &typography.small),
+            (Self::heading_1(), &typography.heading_1),
+            (Self::heading_2(), &typography.heading_2),
+            (Self::heading_3(), &typography.heading_3),
+            (Self::heading_4(), &typography.heading_4),
+            (Self::eyebrow(), &typography.eyebrow),
         ] {
-            egui_style.text_styles.get_mut(&text_style).unwrap().size = font_size;
+            egui_style
+                .text_styles
+                .insert(text_style, egui::FontId::proportional(typography.font_size));
         }
 
-        egui_style
-            .text_styles
-            .get_mut(&egui::TextStyle::Heading)
-            .unwrap()
-            .size = 16.0;
+        egui_style.text_styles.insert(
+            egui::TextStyle::Button,
+            egui::FontId::proportional(typography.body.font_size),
+        );
+        egui_style.text_styles.insert(
+            egui::TextStyle::Monospace,
+            egui::FontId::monospace(typography.body.font_size),
+        );
 
-        // We want labels and buttons to have the same height.
-        // Intuitively, we would just assign font_size to
-        // the interact_size, but in practice text height does not match
-        // font size (for unknown reason), so we fudge it for now:
-
+        // Font size and rendered text height differ, so matching the font size here would make
+        // labels and buttons different heights.
         egui_style.spacing.interact_size.y = 15.0;
-        // egui_style.spacing.interact_size.y = font_size;
-
-        // fonts used in the welcome screen
-        // TODO(ab): font sizes should come from design tokens
-        egui_style
-            .text_styles
-            .insert(Self::welcome_screen_h1(), egui::FontId::proportional(41.0));
-        egui_style
-            .text_styles
-            .insert(Self::welcome_screen_h2(), egui::FontId::proportional(27.0));
-        egui_style.text_styles.insert(
-            Self::welcome_screen_example_title(),
-            egui::FontId::proportional(13.0),
-        );
-        egui_style.text_styles.insert(
-            Self::welcome_screen_body(),
-            egui::FontId::proportional(15.0),
-        );
-        egui_style
-            .text_styles
-            .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
     }
 
     fn set_spacing(&self, egui_style: &mut egui::Style) {
@@ -897,7 +903,7 @@ impl DesignTokens {
         }
 
         egui_style.visuals.window_corner_radius = self.window_corner_radius().into();
-        egui_style.visuals.menu_corner_radius = self.window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = self.normal_corner_radius().into();
         let small_corner_radius = self.small_corner_radius().into();
         egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
         egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
@@ -950,8 +956,9 @@ impl DesignTokens {
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
-        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
+        // Fill of unchecked radio buttons, checkboxes, etc.
         egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
+        egui_style.visuals.disabled_alpha = self.disabled_opacity;
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc)
@@ -970,17 +977,17 @@ impl DesignTokens {
         egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
         egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
 
-        // separator lines, panel lines, etc
-        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.widget_noninteractive_bg_stroke;
+        // Separator lines, panel lines, etc.
+        egui_style.visuals.widgets.noninteractive.bg_stroke = self.divider_stroke;
 
-        let subdued = self.text_subdued;
         let default = self.text_default;
         let strong = self.text_strong;
 
-        egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
-        egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
-        egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
+        egui_style.visuals.widgets.noninteractive.fg_stroke.color = default;
+        egui_style.visuals.widgets.inactive.fg_stroke.color = default;
+        egui_style.visuals.widgets.hovered.fg_stroke.color = strong;
+        egui_style.visuals.widgets.active.fg_stroke.color = strong;
+        egui_style.visuals.widgets.open.fg_stroke.color = strong;
 
         let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
         egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
@@ -996,8 +1003,8 @@ impl DesignTokens {
         egui_style.visuals.popup_shadow = shadow;
         egui_style.visuals.window_shadow = shadow;
 
-        egui_style.visuals.window_fill = self.floating_color; // tooltips and menus
-        egui_style.visuals.window_stroke = Stroke::NONE;
+        egui_style.visuals.window_fill = self.panel_bg_color;
+        egui_style.visuals.window_stroke = self.divider_stroke;
         egui_style.visuals.panel_fill = self.panel_bg_color;
 
         // don't color hyperlinks #2733
@@ -1007,29 +1014,47 @@ impl DesignTokens {
         egui_style.visuals.warn_fg_color = self.warn_fg_color;
     }
 
-    #[inline]
-    pub fn welcome_screen_h1() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h1".into())
+    pub fn body() -> egui::TextStyle {
+        egui::TextStyle::Body
     }
 
-    #[inline]
-    pub fn welcome_screen_h2() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h2".into())
+    pub fn small() -> egui::TextStyle {
+        egui::TextStyle::Small
     }
 
-    #[inline]
-    pub fn welcome_screen_example_title() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-example-title".into())
+    pub fn heading_1() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_1_TYPOGRAPHY_NAME.into())
     }
 
-    #[inline]
-    pub fn welcome_screen_body() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-body".into())
+    pub fn heading_2() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_2_TYPOGRAPHY_NAME.into())
     }
 
-    #[inline]
-    pub fn welcome_screen_tag() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-tag".into())
+    pub fn heading_3() -> egui::TextStyle {
+        egui::TextStyle::Heading
+    }
+
+    pub fn heading_4() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_4_TYPOGRAPHY_NAME.into())
+    }
+
+    fn eyebrow() -> egui::TextStyle {
+        egui::TextStyle::Name(EYEBROW_TYPOGRAPHY_NAME.into())
+    }
+
+    /// Formats a compact, uppercase, letter-spaced label that introduces a section.
+    pub fn eyebrow_text(&self, style: &egui::Style, text: impl Into<String>) -> egui::RichText {
+        let font_id = style
+            .text_styles
+            .get(&Self::eyebrow())
+            .cloned()
+            .unwrap_or_else(|| egui::FontId::proportional(self.typography.eyebrow.font_size));
+
+        egui::RichText::new(text.into().to_uppercase())
+            .font(font_id)
+            .variation("wght", self.typography.eyebrow.font_weight)
+            .extra_letter_spacing(0.5)
+            .color(self.text_strong)
     }
 
     /// Margin on all sides of views.
@@ -1037,8 +1062,19 @@ impl DesignTokens {
         12
     }
 
+    /// Horizontal inset for content in side panels.
     pub fn panel_margin(&self) -> egui::Margin {
-        egui::Margin::symmetric(self.view_padding(), 0)
+        egui::Margin::symmetric(16, 0)
+    }
+
+    /// Inset for list-item backgrounds inside panels, relative to panel edges.
+    pub fn panel_list_item_background_inset(&self) -> f32 {
+        0.5 * f32::from(self.panel_margin().left)
+    }
+
+    /// Indentation added for each level in compact hierarchy lists.
+    pub fn list_item_hierarchy_indent(&self) -> f32 {
+        12.0
     }
 
     pub fn menu_button_padding() -> f32 {
@@ -1046,7 +1082,7 @@ impl DesignTokens {
     }
 
     pub fn window_corner_radius(&self) -> u8 {
-        6
+        10
     }
 
     pub fn normal_corner_radius(&self) -> u8 {
@@ -1101,15 +1137,38 @@ impl DesignTokens {
         4.0
     }
 
-    /// Height of the top-most bar.
-    pub fn top_bar_height(&self) -> f32 {
-        28.0 // Don't waste vertical space, especially important for embedded web viewers
+    /// Space between adjacent action buttons in a list item.
+    pub fn list_item_button_spacing(&self) -> f32 {
+        6.0
     }
 
-    /// Height of the title row in the blueprint view and selection view,
-    /// as well as the tab bar height in the viewport view.
+    /// Space between a label and a collapse button placed after it.
+    pub fn collapse_button_to_label_padding(&self) -> f32 {
+        2.0
+    }
+
+    /// Height of the top-most bar.
+    pub fn top_bar_height(&self) -> f32 {
+        36.0
+    }
+
+    /// Height of the controls in the time panel toolbar.
+    pub fn time_panel_toolbar_height(&self) -> f32 {
+        28.0
+    }
+
+    /// Height of the title row in the blueprint and selection panels,
+    /// as well as the tab buttons in the viewport.
     pub fn title_bar_height(&self) -> f32 {
         24.0 // https://github.com/rerun-io/rerun/issues/5589
+    }
+
+    pub fn section_header_top_padding(&self) -> f32 {
+        4.0
+    }
+
+    pub fn section_header_height(&self) -> f32 {
+        Self::list_item_height() + self.section_header_top_padding()
     }
 
     pub fn list_item_height() -> f32 {
@@ -1118,10 +1177,6 @@ impl DesignTokens {
 
     pub fn list_header_vertical_offset() -> f32 {
         2.0
-    }
-
-    pub fn list_header_font_size() -> f32 {
-        11.0
     }
 
     pub fn combo_item_max_value_width() -> f32 {
@@ -1162,12 +1217,14 @@ impl DesignTokens {
     pub fn popup_frame(&self, style: &egui::Style) -> egui::Frame {
         egui::Frame::window(style)
             .fill(self.notification_panel_background_color)
-            .corner_radius(8)
+            .corner_radius(self.window_corner_radius())
             .inner_margin(8.0)
     }
 
     pub fn bottom_panel_margin(&self) -> egui::Margin {
-        self.top_bar_margin()
+        let mut margin = self.top_bar_margin();
+        margin.left = self.panel_margin().left;
+        margin
     }
 
     /// For the streams view (time panel)
@@ -1401,30 +1458,196 @@ fn follow_path<'value>(mut value: &'value ron::Value, path: &str) -> Option<&'va
 
 // ----------------------------------------------------------------------------
 
-#[expect(non_snake_case)]
-#[derive(Debug, serde::Deserialize)]
-struct Typography {
-    fontSize: String,
-    fontWeight: String,
-    fontFamily: String,
-    // lineHeight: String,  // TODO(emilk)
-    // letterSpacing: String, // TODO(emilk)
+#[derive(Debug)]
+struct TypographyStyle {
+    font_size: f32,
+    font_weight: f32,
 }
 
-fn parse_px(pixels: &str) -> f32 {
-    pixels.strip_suffix("px").unwrap().parse().unwrap()
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TypographyValue {
+    font_size: String,
+    font_weight: String,
+    font_family: String,
+}
+
+impl TryFrom<TypographyValue> for TypographyStyle {
+    type Error = anyhow::Error;
+
+    fn try_from(value: TypographyValue) -> Result<Self, Self::Error> {
+        anyhow::ensure!(
+            value.font_family == "Inter",
+            "Unsupported proportional font family: {:?}",
+            value.font_family
+        );
+
+        let font_size = value
+            .font_size
+            .strip_suffix("px")
+            .context("Typography font size must use px units")?
+            .parse::<f32>()
+            .context("Typography font size is not a number")?;
+        anyhow::ensure!(
+            font_size.is_finite() && font_size > 0.0,
+            "Typography font size must be positive and finite"
+        );
+
+        let font_weight = value
+            .font_weight
+            .parse::<f32>()
+            .context("Typography font weight is not a number")?;
+        anyhow::ensure!(
+            (100.0..=900.0).contains(&font_weight),
+            "Typography font weight must be in the Inter variable-font range 100–900"
+        );
+
+        Ok(Self {
+            font_size,
+            font_weight,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct Typography {
+    body: TypographyStyle,
+    small: TypographyStyle,
+    heading_1: TypographyStyle,
+    heading_2: TypographyStyle,
+    heading_3: TypographyStyle,
+    heading_4: TypographyStyle,
+    eyebrow: TypographyStyle,
+}
+
+impl Typography {
+    fn load(theme_value: &ron::Value) -> anyhow::Result<Self> {
+        let load_style = |name: &str| {
+            TypographyStyle::try_from(parse_path::<TypographyValue>(
+                theme_value,
+                &format!("{{Global.Typography.{name}}}"),
+            ))
+            .with_context(|| format!("Invalid {name} typography style"))
+        };
+
+        let typography = Self {
+            body: load_style(BODY_TYPOGRAPHY_NAME)?,
+            small: load_style(SMALL_TYPOGRAPHY_NAME)?,
+            heading_1: load_style(HEADING_1_TYPOGRAPHY_NAME)?,
+            heading_2: load_style(HEADING_2_TYPOGRAPHY_NAME)?,
+            heading_3: load_style(HEADING_3_TYPOGRAPHY_NAME)?,
+            heading_4: load_style(HEADING_4_TYPOGRAPHY_NAME)?,
+            eyebrow: load_style(EYEBROW_TYPOGRAPHY_NAME)?,
+        };
+
+        // Egui text styles cannot carry variable-font coordinates, so styles rendered without a
+        // `RichText` override must share the proportional family's configured weight.
+        for (name, style) in [
+            (SMALL_TYPOGRAPHY_NAME, &typography.small),
+            (HEADING_1_TYPOGRAPHY_NAME, &typography.heading_1),
+            (HEADING_2_TYPOGRAPHY_NAME, &typography.heading_2),
+            (HEADING_3_TYPOGRAPHY_NAME, &typography.heading_3),
+            (HEADING_4_TYPOGRAPHY_NAME, &typography.heading_4),
+        ] {
+            anyhow::ensure!(
+                style.font_weight == typography.body.font_weight,
+                "{name} and Body must use the same Inter weight"
+            );
+        }
+
+        Ok(typography)
+    }
 }
 
 // ----------------------------------------------------------------------------
 
-#[test]
-fn test_design_tokens() {
-    let ctx = egui::Context::default();
-    crate::apply_style_and_install_loaders(&ctx);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Make sure it works:
-    let mut output = ctx.run_ui(Default::default(), |ui| {
-        ui.label("Hello Test!");
-    });
-    output.textures_delta.clear();
+    #[test]
+    fn bundled_fonts_are_prioritized() {
+        let tokens = crate::design_tokens_of(Theme::Dark);
+        let definitions = tokens.font_definitions();
+
+        assert_eq!(
+            definitions.families[&egui::FontFamily::Proportional]
+                .first()
+                .map(String::as_str),
+            Some(INTER_FONT_NAME)
+        );
+        assert_eq!(
+            definitions.families[&egui::FontFamily::Monospace]
+                .first()
+                .map(String::as_str),
+            Some(JETBRAINS_MONO_FONT_NAME)
+        );
+        assert!(definitions.font_data.contains_key(JETBRAINS_MONO_FONT_NAME));
+        let inter_coords = &definitions.font_data[INTER_FONT_NAME].tweak.coords;
+        assert_eq!(
+            inter_coords,
+            &egui::epaint::text::VariationCoords::new([(
+                "wght",
+                tokens.typography.body.font_weight,
+            )])
+        );
+
+        let ctx = egui::Context::default();
+        crate::apply_style_and_install_loaders(&ctx);
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.label("Proportional");
+            ui.monospace("Monospace");
+        });
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn test_design_tokens() {
+        let ctx = egui::Context::default();
+        crate::apply_style_and_install_loaders(&ctx);
+
+        for theme in [Theme::Dark, Theme::Light] {
+            let tokens = crate::design_tokens_of(theme);
+            let style = ctx.style_of(theme);
+
+            assert_eq!(
+                style.visuals.widgets.noninteractive.bg_stroke, tokens.divider_stroke,
+                "noninteractive widgets should use the semantic divider stroke"
+            );
+            assert_eq!(
+                style.visuals.window_stroke, tokens.divider_stroke,
+                "windows should use the semantic divider stroke"
+            );
+            assert_eq!(
+                style.visuals.window_fill, tokens.panel_bg_color,
+                "windows should share the panel surface color"
+            );
+            assert_eq!(
+                style.visuals.disabled_alpha, tokens.disabled_opacity,
+                "disabled controls should use the theme's disabled opacity"
+            );
+            assert_eq!(
+                style.visuals.widgets.inactive.fg_stroke.color, tokens.text_default,
+                "inactive widgets should use the default text color"
+            );
+            assert_eq!(
+                style.visuals.widgets.hovered.fg_stroke.color, tokens.text_strong,
+                "hovered widgets should use the strong text color"
+            );
+            assert_eq!(
+                tokens.button_outlined.stroke, tokens.control_stroke,
+                "outlined buttons should use the semantic control stroke"
+            );
+            assert_eq!(
+                tokens.text_edit_outlined.stroke, tokens.control_stroke,
+                "outlined text edits should use the semantic control stroke"
+            );
+        }
+
+        // Make sure it works:
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.label("Hello Test!");
+        });
+        output.textures_delta.clear();
+    }
 }

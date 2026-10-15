@@ -1,3 +1,4 @@
+mod entrance_animation;
 mod example_section;
 mod intro_section;
 mod loading_data_ui;
@@ -13,6 +14,15 @@ use crate::app_state::WelcomeScreenState;
 
 pub use intro_section::{CloudState, LoginState};
 use re_viewer_context::AppContext;
+
+const MIN_PAGE_MARGIN: f32 = 16.0;
+const MAX_PAGE_MARGIN: f32 = 40.0;
+
+fn page_horizontal_margin(available_width: f32) -> i8 {
+    ((available_width - MIN_COLUMN_WIDTH) / 2.0)
+        .clamp(MIN_PAGE_MARGIN, MAX_PAGE_MARGIN)
+        .round() as i8
+}
 
 #[derive(Default)]
 pub struct WelcomeScreen {
@@ -37,22 +47,24 @@ impl WelcomeScreen {
             return;
         }
 
+        re_tracing::profile_function!();
+
         // This is needed otherwise `example_page_ui` bleeds by a few pixels over the timeline panel
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        let horizontal_scroll = ui.available_width() < 40.0 * 2.0 + MIN_COLUMN_WIDTH;
+        let horizontal_margin = page_horizontal_margin(ui.available_width());
 
-        let response = egui::ScrollArea::new([horizontal_scroll, true])
+        let response = egui::ScrollArea::vertical()
             .id_salt("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 egui::Frame {
                     inner_margin: egui::Margin {
-                        left: 40,
-                        right: 40,
-                        top: 50,
-                        bottom: 8,
+                        left: horizontal_margin,
+                        right: horizontal_margin,
+                        top: 80,
+                        bottom: 80,
                     },
                     ..Default::default()
                 }
@@ -77,5 +89,17 @@ impl WelcomeScreen {
             ui.painter()
                 .rect_filled(response.inner_rect, 0.0, fill_color);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn page_margin_preserves_content_on_narrow_screens() {
+        assert_eq!(page_horizontal_margin(400.0), 40);
+        assert_eq!(page_horizontal_margin(300.0), 25);
+        assert_eq!(page_horizontal_margin(250.0), 16);
     }
 }

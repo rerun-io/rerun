@@ -1,6 +1,6 @@
 //! The command types of the viewer:
 //!
-//! - [`UICommand`]: global commands, always available.
+//! - [`UICommand`]: commands that use the viewer's current context.
 //! - [`RecordingCommand`]: commands that act on a specific recording.
 //! - [`RedapServerCommand`]: commands that act on a specific Redap server.
 //! - [`TableCommand`]: commands that act on a specific Redap entry (dataset or table).
@@ -174,7 +174,7 @@ fn consume_best_shortcut<Cmd: Copy>(
 
     egui_ctx.input_mut(|input| {
         for (kb_shortcut, command) in commands {
-            if text_edit_has_focus && kb_shortcut.conflicts_with_text_editing() {
+            if text_edit_has_focus && conflicts_with_text_editing(&kb_shortcut) {
                 continue; // Make sure we can move text cursor with alt-arrow keys, etc
             }
 
@@ -186,6 +186,107 @@ fn consume_best_shortcut<Cmd: Copy>(
         }
         None
     })
+}
+
+/// Like [`KeyboardShortcut::conflicts_with_text_editing`], but also reserves undo/redo
+/// (cmd/ctrl + Z/Y) for the focused text edit.
+pub fn conflicts_with_text_editing(kb_shortcut: &KeyboardShortcut) -> bool {
+    let modifiers = kb_shortcut.modifiers;
+    kb_shortcut.conflicts_with_text_editing()
+        || ((modifiers.command || modifiers.ctrl || modifiers.mac_cmd)
+            && matches!(kb_shortcut.logical_key, egui::Key::Z | egui::Key::Y))
+}
+
+/// Like [`egui::Context::format_shortcut`], but spells arrow keys with glyphs our bundled fonts have.
+///
+/// egui's macOS key symbols for the arrow keys (`⏴⏵⏶⏷`) are missing from our bundled fonts,
+/// and egui panics on missing glyphs.
+pub fn format_shortcut(egui_ctx: &egui::Context, shortcut: &KeyboardShortcut) -> String {
+    replace_arrow_symbols(&egui_ctx.format_shortcut(shortcut))
+}
+
+/// Like [`egui::Key::symbol_or_name`], but spells arrow keys with glyphs our bundled fonts have.
+pub fn key_symbol_or_name(key: egui::Key) -> &'static str {
+    match key {
+        egui::Key::ArrowDown => "↓",
+        egui::Key::ArrowLeft => "←",
+        egui::Key::ArrowRight => "→",
+        egui::Key::ArrowUp => "↑",
+        key => key.symbol_or_name(),
+    }
+}
+
+fn replace_arrow_symbols(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '⏷' => '↓',
+            '⏴' => '←',
+            '⏵' => '→',
+            '⏶' => '↑',
+            c => c,
+        })
+        .collect()
+}
+
+#[test]
+fn undo_redo_shortcuts_preserve_text_editing() {
+    use egui::{Event, Key, RawInput, os::OperatingSystem};
+
+    let env = CommandEnvironment {
+        recording: Some(re_log_types::StoreId::empty_recording()),
+        redap_server: None,
+        has_editable_redap_server: false,
+        table: None,
+    };
+    for os in [
+        OperatingSystem::Mac,
+        OperatingSystem::Windows,
+        OperatingSystem::Nix,
+    ] {
+        for kind in [
+            RecordingCommandKind::UndoBlueprintEdit,
+            RecordingCommandKind::RedoBlueprintEdit,
+        ] {
+            for shortcut in kind.kb_shortcuts(os) {
+                for editing_text in [false, true] {
+                    let ctx = egui::Context::default();
+                    ctx.set_os(os);
+                    ctx.begin_pass(RawInput {
+                        events: vec![Event::Key {
+                            key: shortcut.logical_key,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers: shortcut.modifiers,
+                        }],
+                        ..Default::default()
+                    });
+                    if editing_text {
+                        let id = egui::Id::unique("text_edit");
+                        egui::text_edit::TextEditState::default().store(&ctx, id);
+                        ctx.memory_mut(|memory| memory.request_focus(id));
+                        assert!(ctx.text_edit_focused());
+                    }
+
+                    let command = listen_for_kb_shortcuts(&ctx, &env);
+                    if editing_text {
+                        assert!(command.is_none(), "{os:?}: {shortcut:?}");
+                        assert!(ctx.input_mut(|input| input.consume_shortcut(&shortcut)));
+                    } else {
+                        assert!(
+                            matches!(command, Some(BoundCommand::Recording(command)) if command.kind == kind)
+                        );
+                        assert!(
+                            !ctx.input(
+                                |input| input.key_pressed(Key::Z) || input.key_pressed(Key::Y)
+                            )
+                        );
+                    }
+                    ctx.end_pass().textures_delta.clear();
+                }
+            }
+        }
+    }
 }
 
 #[test]

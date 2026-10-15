@@ -32,6 +32,8 @@ use crate::system_execution::execute_systems_for_all_views;
 // NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
 const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
+const TAB_BAR_PADDING: f32 = 2.0;
+
 /// Checks if the keyboard shortcut for maximizing a view is pressed,
 /// avoiding clashes with other similar shortcuts.
 fn is_toggle_maximize_view_pressed(input: &mut egui::InputState) -> bool {
@@ -623,6 +625,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         tabs: &egui_tiles::Tabs,
         _scroll_offset: &mut f32,
     ) {
+        ui.add_space(TAB_BAR_PADDING);
+
         let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else {
             return;
         };
@@ -730,6 +734,16 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         self.reports_button(ui, view_id);
     }
 
+    fn tab_bar_left_ui(
+        &mut self,
+        _tiles: &egui_tiles::Tiles<ViewId>,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        _tabs: &egui_tiles::Tabs,
+    ) {
+        ui.add_space(TAB_BAR_PADDING);
+    }
+
     // Styling:
 
     fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
@@ -745,6 +759,18 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         visuals.panel_fill.gamma_multiply(0.5)
     }
 
+    fn resize_stroke(
+        &self,
+        style: &egui::Style,
+        resize_state: egui_tiles::ResizeState,
+    ) -> egui::Stroke {
+        match resize_state {
+            egui_tiles::ResizeState::Idle => style.visuals.widgets.noninteractive.bg_stroke,
+            egui_tiles::ResizeState::Hovering => style.visuals.widgets.hovered.fg_stroke,
+            egui_tiles::ResizeState::Dragging => style.visuals.widgets.active.fg_stroke,
+        }
+    }
+
     /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
     fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
         design_tokens_of_visuals(visuals).tile_drag_preview_stroke
@@ -757,7 +783,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     /// The height of the bar holding tab titles.
     fn tab_bar_height(&self, style: &egui::Style) -> f32 {
-        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height() + 2.0 * TAB_BAR_PADDING
     }
 
     /// A tab container hides its tab bar only when it holds a single view with the title bar off.
@@ -1112,20 +1138,15 @@ impl TabWidget {
         let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
-        //
-        // Note that we used to distinguish named & unnamed tabs:
-        // But we concluded by now that whether someone typed the name or it came from the
-        // origin is not something the reader is trying to tell apart.
-        //
-        // `strong` bakes its own color into the galley, which the painter cannot override
-        // afterwards, so the tab's color has to be stated here.
         let text_color = if selected {
             tokens.viewport_tab_selected_text_color
+        } else if !tab_state.active {
+            ui.visuals().weak_text_color()
         } else {
             tab_viewer.tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
         }
         .gamma_multiply(alpha);
-        let text = tab_desc.widget_text.strong().color(text_color);
+        let text = tab_desc.widget_text.color(text_color);
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let galley = text.into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, font_id);
@@ -1170,7 +1191,8 @@ impl TabWidget {
     }
 
     fn paint(self, ui: &egui::Ui) {
-        ui.painter().rect_filled(self.rect, 0.0, self.bg_color);
+        ui.painter()
+            .rect_filled(self.rect, ui.tokens().normal_corner_radius(), self.bg_color);
 
         let icon_image = self
             .icon

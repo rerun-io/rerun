@@ -188,7 +188,7 @@ fn edge_filter_ui(ui: &mut egui::Ui, state: &mut TransformCacheUiState) {
 /// Draws the horizontal/vertical layout controls.
 fn layout_direction_ui(ui: &mut egui::Ui, state: &mut TransformCacheUiState) {
     ui.horizontal_centered(|ui| {
-        ui.label("Layout:");
+        ui.label("Layout");
         ui.selectable_toggle(|ui| {
             ui.selectable_value(
                 &mut state.layout_direction,

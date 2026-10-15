@@ -38,6 +38,10 @@ impl<'a> ItemButtons<'a> {
         self.buttons.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        self.buttons.len()
+    }
+
     fn should_show_buttons(&self, context: &ContentContext<'_>) -> bool {
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
         // so we use `contains_pointer` instead. That also means we need to check
@@ -72,6 +76,7 @@ impl<'a> ItemButtons<'a> {
         );
 
         let tokens = ui.tokens();
+        ui.spacing_mut().item_spacing.x = tokens.list_item_button_spacing();
         if context.list_item.selected {
             // Icons and text get different colors when they are on a selected background:
             let visuals = ui.visuals_mut();
@@ -92,7 +97,8 @@ impl<'a> ItemButtons<'a> {
         }
 
         let used_rect = ui.min_rect();
-        rect.max.x -= used_rect.width() + tokens.text_to_icon_padding();
+        rect.max.x =
+            (rect.max.x - used_rect.width() - tokens.text_to_icon_padding()).max(rect.min.x);
     }
 }
 

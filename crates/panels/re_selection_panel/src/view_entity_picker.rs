@@ -206,10 +206,7 @@ fn add_entities_line_ui(
             None,
         );
 
-        if is_explicitly_excluded {
-            // TODO(jleibs): Better design-language for excluded.
-            widget_text = widget_text.italics();
-        } else if entity_path == &view.space_origin {
+        if !is_explicitly_excluded && entity_path == &view.space_origin {
             widget_text = widget_text.strong();
         }
 

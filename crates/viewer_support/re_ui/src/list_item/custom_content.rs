@@ -1,6 +1,8 @@
-use egui::{NumExt as _, Ui, Widget};
+use egui::{Ui, Widget};
 
-use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
+use crate::list_item::{
+    ContentContext, DesiredWidth, ItemButtons, ListItemContent, ListItemContentButtonsExt,
+};
 use crate::{OnResponseExt as _, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
@@ -26,21 +28,20 @@ pub struct CustomContent<'a> {
     ui: Box<dyn FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a>,
     desired_width: CustomContentDesiredWidth,
 
-    //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<egui::BoxedWidget<'a>>,
+    buttons: ItemButtons<'a>,
 }
 
 impl<'a> CustomContent<'a> {
     /// Create a content with a custom UI closure.
     ///
     /// The closure will be called from within a [`egui::Ui`] with its maximum width set as per the
-    /// list item geometry. Note that this may differ from [`ContentContext::rect`] if a button is
+    /// list item geometry. Note that this may differ from [`ContentContext::rect`] if buttons are
     /// set.
     pub fn new(ui: impl FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a) -> Self {
         Self {
             ui: Box::new(ui),
             desired_width: Default::default(),
-            button: None,
+            buttons: ItemButtons::default().with_always_show_buttons(true),
         }
     }
 
@@ -51,7 +52,7 @@ impl<'a> CustomContent<'a> {
         self
     }
 
-    /// Set the desired width based on the provided content width. If a button is set, its width
+    /// Set the desired width based on the provided content width. If buttons are set, their width
     /// will be taken into account and added to the content width.
     #[inline]
     pub fn with_content_width(mut self, desired_content_width: f32) -> Self {
@@ -61,17 +62,10 @@ impl<'a> CustomContent<'a> {
 
     /// Add a right-aligned button.
     ///
-    /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(ab): accept multiple calls for this function for multiple actions.
+    /// Note: for aesthetics, space is always reserved for action buttons.
     #[inline]
     pub fn button(mut self, button: impl Widget + 'a) -> Self {
-        // TODO(ab): support multiple action buttons
-        assert!(
-            self.button.is_none(),
-            "Only one action button is supported right now"
-        );
-
-        self.button = Some(button.boxed());
+        self.buttons.add(button);
         self
     }
 
@@ -141,26 +135,19 @@ impl<'a> CustomContent<'a> {
 }
 
 impl ListItemContent for CustomContent<'_> {
-    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
+    fn ui(
+        self: Box<Self>,
+        ui: &mut egui::Ui,
+        context: &ContentContext<'_>,
+    ) -> Option<egui::Response> {
         let Self {
             ui: content_ui,
             desired_width: _,
-            button,
+            buttons,
         } = *self;
 
-        let tokens = ui.tokens();
-        let button_dimension = tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
-
-        let content_width = if button.is_some() {
-            (context.rect.width() - button_dimension - tokens.text_to_icon_padding()).at_least(0.0)
-        } else {
-            context.rect.width()
-        };
-
-        let content_rect = egui::Rect::from_min_size(
-            context.rect.min,
-            egui::vec2(content_width, context.rect.height()),
-        );
+        let mut content_rect = context.rect;
+        buttons.show_and_shrink_rect(ui, context, &mut content_rect);
 
         ui.scope_builder(
             egui::UiBuilder::new()
@@ -176,36 +163,34 @@ impl ListItemContent for CustomContent<'_> {
             },
         );
 
-        if let Some(button) = button {
-            let action_button_rect = egui::Rect::from_center_size(
-                context.rect.right_center() - egui::vec2(button_dimension / 2.0, 0.0),
-                egui::Vec2::splat(button_dimension),
-            );
-
-            // the right to left layout is used to mimic LabelContent's buttons behavior and get a
-            // better alignment
-            let mut child_ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(action_button_rect)
-                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
-            );
-
-            button.ui(&mut child_ui);
-        }
+        None
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         match self.desired_width {
             CustomContentDesiredWidth::DesiredWidth(desired_width) => desired_width,
             CustomContentDesiredWidth::ContentWidth(mut content_width) => {
-                if self.button.is_some() {
+                if !self.buttons.is_empty() {
                     let tokens = ui.tokens();
-                    content_width += tokens.small_icon_size.x
-                        + 2.0 * ui.spacing().button_padding.x
+                    let button_count = self.buttons.len() as f32;
+                    let button_width =
+                        tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
+                    content_width += button_count * button_width
+                        + (button_count - 1.0) * tokens.list_item_button_spacing()
                         + tokens.text_to_icon_padding();
                 }
                 DesiredWidth::AtLeast(content_width)
             }
         }
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for CustomContent<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        &self.buttons
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        &mut self.buttons
     }
 }

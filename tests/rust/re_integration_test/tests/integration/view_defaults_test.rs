@@ -64,7 +64,7 @@ pub async fn test_view_defaults_stroke_width() {
     harness.run();
 
     // Select the view to show the selection panel with component defaults.
-    harness.blueprint_tree().click_label("/");
+    harness.blueprint_tree().click_list_item("/");
     harness.run();
 
     harness.snapshot_app("view_defaults");

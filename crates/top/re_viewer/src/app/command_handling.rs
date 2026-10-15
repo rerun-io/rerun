@@ -914,6 +914,10 @@ impl App {
             });
 
         match cmd {
+            UICommand::About => {
+                self.about_modal.open();
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenFile => {
                 use re_data_source::LogDataSource;
@@ -1001,8 +1005,19 @@ impl App {
             }
 
             UICommand::NavigateBackInHistory => {
-                if let Some(url) = self.state.history.go_back() {
-                    url.clone().open(
+                #[cfg(target_arch = "wasm32")]
+                let url = if self.startup_options().web_history_enabled() {
+                    let _ = crate::web_history::go_back();
+                    None
+                } else {
+                    self.state.history.go_back().cloned()
+                };
+
+                #[cfg(not(target_arch = "wasm32"))]
+                let url = self.state.history.go_back().cloned();
+
+                if let Some(url) = url {
+                    url.open(
                         egui_ctx,
                         &OpenUrlOptions {
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
@@ -1013,8 +1028,19 @@ impl App {
                 }
             }
             UICommand::NavigateForwardInHistory => {
-                if let Some(url) = self.state.history.go_forward() {
-                    url.clone().open(
+                #[cfg(target_arch = "wasm32")]
+                let url = if self.startup_options().web_history_enabled() {
+                    let _ = crate::web_history::go_forward();
+                    None
+                } else {
+                    self.state.history.go_forward().cloned()
+                };
+
+                #[cfg(not(target_arch = "wasm32"))]
+                let url = self.state.history.go_forward().cloned();
+
+                if let Some(url) = url {
+                    url.open(
                         egui_ctx,
                         &OpenUrlOptions {
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
@@ -1111,6 +1137,10 @@ impl App {
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel => {
                 self.egui_debug_panel_open ^= true;
+            }
+            #[cfg(debug_assertions)]
+            UICommand::DebugTools => {
+                self.debug_tools_modal.open();
             }
 
             UICommand::ToggleFullscreen => {

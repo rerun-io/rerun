@@ -81,7 +81,7 @@ impl ViewClass for SpatialView3D {
 
         system_registry
             .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
-                re_sdk_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
+                re_sdk_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 45)
             });
 
         system_registry.register_fallback_provider(
@@ -103,20 +103,12 @@ impl ViewClass for SpatialView3D {
 
         system_registry
             .register_fallback_provider(LineGrid3D::descriptor_stroke_width().component, |_| {
-                re_sdk_types::components::StrokeWidth::from(1.0)
+                re_sdk_types::components::StrokeWidth::from(0.5)
             });
 
-        system_registry.register_fallback_provider(
-            Background::descriptor_kind().component,
-            |ctx| match ctx.egui_ctx().theme() {
-                egui::Theme::Dark => {
-                    re_sdk_types::blueprint::components::BackgroundKind::GradientDark
-                }
-                egui::Theme::Light => {
-                    re_sdk_types::blueprint::components::BackgroundKind::GradientBright
-                }
-            },
-        );
+        system_registry.register_fallback_provider(Background::descriptor_kind().component, |_| {
+            re_sdk_types::blueprint::components::BackgroundKind::SolidColor
+        });
 
         fn eye_property(ctx: &QueryContext<'_>) -> ViewProperty {
             ViewProperty::from_archetype::<EyeControls3D>(ctx.view_ctx)

@@ -156,9 +156,10 @@ impl Filter for IntFilter {
         numerical_comparison_operator_ui(ui, column_name, &operator_text, &mut self.operator);
 
         let mut value_str = self.rhs_value.map(|v| v.to_string()).unwrap_or_default();
-        let response = ui
-            .text_edit_singleline(&mut value_str)
-            .accessible_name("Value");
+        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+            ui.text_edit_singleline(&mut value_str)
+                .accessible_name("Value")
+        });
         if response.changed() {
             if value_str.is_empty() {
                 self.rhs_value = None;
@@ -264,9 +265,10 @@ impl Filter for FloatFilter {
         numerical_comparison_operator_ui(ui, column_name, &operator_text, &mut self.operator);
 
         let mut value_str = self.rhs_value.map(|v| v.to_string()).unwrap_or_default();
-        let response = ui
-            .text_edit_singleline(&mut value_str)
-            .accessible_name("Value");
+        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+            ui.text_edit_singleline(&mut value_str)
+                .accessible_name("Value")
+        });
         if response.changed() {
             if value_str.is_empty() {
                 self.rhs_value = None;

@@ -105,6 +105,13 @@ const HIGH_THRESHOLD_TESTS: &[&str] = &[
     "animated_urdf",
 ];
 
+/// Examples whose snapshots differ from the Linux snapshot on more pixels than the default on
+/// macOS, with the number of failing pixels to allow there.
+const MACOS_MAX_FAILED_PIXELS: &[(&str, usize)] = &[
+    // Point cloud and mesh edge pixels rasterize differently on macOS.
+    ("arkit_scenes", 130),
+];
+
 /// The size of the viewer window we take the snapshots of.
 const WINDOW_SIZE: egui::Vec2 = egui::vec2(1024.0, 768.0);
 
@@ -333,9 +340,15 @@ async fn test_old_rrds_in_current_viewer() {
             } else {
                 2.0
             };
+            let macos_max_failed_pixels = MACOS_MAX_FAILED_PIXELS
+                .iter()
+                .find(|(name, _)| *name == example_name.as_str())
+                .map_or(50, |(_, max_failed_pixels)| *max_failed_pixels);
+            let lenient_max_failed_pixels =
+                egui_kittest::OsThreshold::new(50).macos(macos_max_failed_pixels);
             let snapshot_options = re_ui::testing::default_snapshot_options_for_3d(WINDOW_SIZE)
                 .threshold(re_ui::testing::strict_on_ci(2.0, lenient_threshold))
-                .max_failed_pixels(re_ui::testing::strict_on_ci(10, 50));
+                .max_failed_pixels(re_ui::testing::strict_on_ci(10, lenient_max_failed_pixels));
             harness.snapshot_options(format!("rrd_bw_compat_{example_name}"), &snapshot_options);
         }
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use egui::emath::GuiRounding as _;
 use egui::text::TextWrapping;
 use egui::{Align, Align2, NumExt as _, RichText, Ui};
 
@@ -17,7 +18,6 @@ pub struct LabelContent<'a> {
     //TODO(ab): these should probably go as WidgetText already implements that
     subdued: bool,
     weak: bool,
-    italics: bool,
     strong: bool,
 
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
@@ -34,7 +34,6 @@ impl<'a> LabelContent<'a> {
 
             subdued: false,
             weak: false,
-            italics: false,
             strong: false,
 
             icon_fn: None,
@@ -50,7 +49,7 @@ impl<'a> LabelContent<'a> {
     /// Text will be strong and smaller.
     /// For best results, use this with [`super::ListItem::header`].
     pub fn header(text: impl Into<RichText>) -> Self {
-        Self::new(text.into().size(DesignTokens::list_header_font_size())).strong(true)
+        Self::new(text.into().text_style(DesignTokens::small())).strong(true)
     }
 
     /// Set the subdued state of the item.
@@ -73,14 +72,6 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn weak(mut self, weak: bool) -> Self {
         self.weak = weak;
-        self
-    }
-
-    /// Render text in italic.
-    // TODO(ab): should use design token instead
-    #[inline]
-    pub fn italics(mut self, italics: bool) -> Self {
-        self.italics = italics;
         self
     }
 
@@ -141,14 +132,13 @@ impl<'a> LabelContent<'a> {
 }
 
 impl ListItemContent for LabelContent<'_> {
-    fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
+    fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) -> Option<egui::Response> {
         let text_wrap_mode = self.get_text_wrap_mode(ui);
 
         let Self {
-            mut text,
+            text,
             subdued,
             weak,
-            italics,
             strong,
             icon_fn,
             buttons,
@@ -168,11 +158,6 @@ impl ListItemContent for LabelContent<'_> {
             text_rect.min.x += icon_rect.width() + tokens.text_to_icon_padding();
         }
 
-        // text styling
-        if italics {
-            text = text.italics();
-        }
-
         let mut visuals = context.visuals;
         visuals.strong |= strong;
 
@@ -184,6 +169,29 @@ impl ListItemContent for LabelContent<'_> {
             text_color = text_color.gamma_multiply(0.5);
         }
 
+        let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
+            ui.style(),
+            egui::FontSelection::Default,
+            Align::LEFT,
+        ));
+
+        let collapse_button_after_label =
+            context.collapse_button_placement == super::CollapseButtonPlacement::AfterLabel;
+        if context.layout_info.style.label_icon_matches_text || collapse_button_after_label {
+            visuals.icon_tint_override = Some(
+                layout_job
+                    .sections
+                    .iter()
+                    .find(|section| !section.byte_range.is_empty())
+                    .map(|section| section.format.color)
+                    .filter(|color| *color != egui::Color32::PLACEHOLDER)
+                    .unwrap_or(text_color),
+            );
+        }
+
+        let show_collapse_button_after_label =
+            collapse_button_after_label && context.visuals.is_collapsible();
+
         // Draw icon
         if let Some(icon_fn) = icon_fn {
             icon_fn(ui, icon_rect, visuals);
@@ -191,12 +199,14 @@ impl ListItemContent for LabelContent<'_> {
 
         buttons.show_and_shrink_rect(ui, context, &mut text_rect);
 
+        let collapse_button_right = text_rect.right();
+        if show_collapse_button_after_label {
+            let reserved_width =
+                tokens.collapsing_triangle_size().x + tokens.collapse_button_to_label_padding();
+            text_rect.max.x = (text_rect.max.x - reserved_width).max(text_rect.min.x);
+        }
+
         // Draw text
-        let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
-            ui.style(),
-            egui::FontSelection::Default,
-            Align::LEFT,
-        ));
         layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
 
         let galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job));
@@ -215,7 +225,33 @@ impl ListItemContent for LabelContent<'_> {
             .align_size_within_rect(galley.size(), text_rect)
             .min;
 
+        let text_right = text_pos.x + galley.size().x;
         ui.painter().galley(text_pos, galley, text_color);
+
+        if show_collapse_button_after_label {
+            let size = tokens.collapsing_triangle_size();
+            let triangle_left = (text_right + tokens.collapse_button_to_label_padding())
+                .min(collapse_button_right - size.x);
+            let triangle_pos = egui::pos2(triangle_left, context.rect.center().y - 0.5 * size.y)
+                .round_to_pixels(ui.pixels_per_point());
+            let triangle_rect = egui::Rect::from_min_size(triangle_pos, size);
+
+            context.visuals.openness.map(|openness| {
+                super::list_item::collapse_button_ui(
+                    ui,
+                    context.response.id,
+                    openness,
+                    triangle_rect,
+                    context.visuals,
+                )
+            })
+        } else {
+            None
+        }
+    }
+
+    fn supports_collapse_button_after_label(&self) -> bool {
+        true
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
@@ -224,12 +260,7 @@ impl ListItemContent for LabelContent<'_> {
 
         let measured_width = {
             //TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
-            let mut text = self.text.clone();
-            if self.italics {
-                text = text.italics();
-            }
-
-            let layout_job = Arc::unwrap_or_clone(text.clone().into_layout_job(
+            let layout_job = Arc::unwrap_or_clone(self.text.clone().into_layout_job(
                 ui.style(),
                 egui::FontSelection::Default,
                 Align::LEFT,

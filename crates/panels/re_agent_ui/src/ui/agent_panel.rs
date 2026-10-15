@@ -286,7 +286,7 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         ui.add_space(TAB_BAR_BUTTON_SPACING);
         let tooltip = format!(
             "New conversation ({})",
-            ui.ctx().format_shortcut(&NEW_CONVERSATION_SHORTCUT)
+            re_ui::format_shortcut(ui.ctx(), &NEW_CONVERSATION_SHORTCUT)
         );
         if ui
             .small_icon_button(&icons::ADD, "New conversation")

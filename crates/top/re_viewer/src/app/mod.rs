@@ -188,6 +188,9 @@ pub struct App {
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
+    about_modal: re_ui::modal::ModalHandler,
+    #[cfg(debug_assertions)]
+    debug_tools_modal: re_ui::modal::ModalHandler,
 
     /// All known view types.
     view_class_registry: ViewClassRegistry,
@@ -583,6 +586,9 @@ impl App {
             command_sender,
             command_receiver,
             cmd_palette: Default::default(),
+            about_modal: Default::default(),
+            #[cfg(debug_assertions)]
+            debug_tools_modal: Default::default(),
 
             view_class_registry,
 
@@ -696,15 +702,15 @@ impl App {
     ///
     /// Keyboard shortcuts, the command palette, and `ViewerControlService` all bind commands
     /// against this, so they agree on what a command does.
-    fn command_environment(&self) -> re_ui::CommandEnvironment {
+    pub fn command_environment(&self) -> re_ui::CommandEnvironment {
         let active_recording = self.state.navigation.current().recording_id().cloned();
 
-        let selected_redap_server = if let Some(Item::RedapServer(origin)) =
-            self.state.selection_state.selected_items().single_item()
+        let selected_redap_server = match self.state.selection_state.selected_items().single_item()
         {
-            Some(origin.clone())
-        } else {
-            None
+            Some(Item::RedapServer(origin)) if self.state.redap_servers.has_server(origin) => {
+                Some(origin.clone())
+            }
+            _ => None,
         };
 
         re_ui::CommandEnvironment {
@@ -1627,8 +1633,6 @@ impl eframe::App for App {
                 .and_then(|id| self.state.time_controls.get(id).cloned())
                 .unwrap_or_default();
 
-            let cmd_env = self.command_environment();
-
             let (storage_context, store_context) =
                 store_hub.read_context(active_route, &active_time_ctrl);
 
@@ -1654,8 +1658,59 @@ impl eframe::App for App {
                 store_stats.as_ref(),
             );
 
+            {
+                let modal = &mut self.about_modal;
+                let build_info = &self.build_info;
+                let render_state = frame.wgpu_render_state();
+                modal.ui(
+                    ui.ctx(),
+                    || {
+                        re_ui::modal::ModalWrapper::new("About Rerun")
+                            .min_width(460.0)
+                            .max_width(520.0)
+                    },
+                    |ui| crate::ui::about_rerun_ui(ui, build_info, render_state),
+                );
+            }
+
+            #[cfg(debug_assertions)]
+            {
+                let active_recording_id =
+                    store_context.as_ref().map(|ctx| ctx.recording_store_id());
+                let modal = &mut self.debug_tools_modal;
+                let app_options = &mut self.state.app_options;
+                let command_sender = &self.command_sender;
+                let max_height = (ui.ctx().content_rect().height() - 64.0).max(320.0);
+                modal.ui(
+                    ui.ctx(),
+                    || {
+                        re_ui::modal::ModalWrapper::new("Debug tools")
+                            .min_width(560.0)
+                            .max_width(720.0)
+                            .max_height(max_height)
+                            .scrollable([false, true])
+                    },
+                    |ui| {
+                        crate::ui::debug_tools_ui(
+                            ui,
+                            app_options,
+                            active_recording_id,
+                            command_sender,
+                        );
+                    },
+                );
+            }
+
             if self.custom_window_frame() {
                 ui::paint_custom_window_frame(ui);
+            }
+
+            let commands = self.command_context(storage_context.hub, store_context.as_ref());
+            let cmd_env = &commands.environment;
+
+            #[cfg(target_os = "macos")]
+            if self.uses_native_menu() {
+                crate::native_menu::update(ui.ctx(), &commands);
             }
 
             // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:
@@ -1663,8 +1718,10 @@ impl eframe::App for App {
                 use re_ui::RecordingCommandSender as _;
 
                 // Non-timeline shortcuts, resolved against the current environment:
-                if let Some(resolved) = re_ui::listen_for_kb_shortcuts(ui.ctx(), &cmd_env) {
-                    self.command_sender.send_command(resolved);
+                if let Some(bound) = re_ui::listen_for_kb_shortcuts(ui.ctx(), cmd_env)
+                    .and_then(|command| commands.resolve(command.kind()))
+                {
+                    self.command_sender.send_command(bound);
                 }
 
                 // Timeline shortcuts (space/arrows/home/end) were consumed early in
@@ -1675,8 +1732,7 @@ impl eframe::App for App {
                     data.remove::<re_ui::RecordingCommandKind>(key);
                     kind
                 });
-                if let Some(cmd) = pending_timeline.and_then(|kind| kind.for_environment(&cmd_env))
-                {
+                if let Some(cmd) = pending_timeline.and_then(|kind| kind.for_environment(cmd_env)) {
                     self.command_sender.send_recording_command(cmd);
                 }
             }
@@ -1684,7 +1740,7 @@ impl eframe::App for App {
             let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
                 recording: store_context.as_ref().map(|ctx| ctx.recording()),
                 redap_servers: &self.state.redap_servers,
-                cmd_env,
+                commands,
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {

@@ -8,8 +8,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
             egui::Label::new(
                 egui::RichText::new(super::welcome_section::WELCOME_SCREEN_TITLE)
                     .weak()
-                    .line_height(Some(36.0))
-                    .text_style(DesignTokens::welcome_screen_h2()),
+                    .text_style(DesignTokens::heading_2()),
             )
             .wrap(),
         );
@@ -25,7 +24,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().weak_text_color())
-                            .text_style(DesignTokens::welcome_screen_body()),
+                            .text_style(DesignTokens::body()),
                     )
                     .wrap(),
                 );
@@ -42,7 +41,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
             .button(
                 egui::RichText::new("Go to documentation →")
                     .weak()
-                    .text_style(DesignTokens::welcome_screen_body()),
+                    .text_style(DesignTokens::body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()

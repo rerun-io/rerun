@@ -42,7 +42,11 @@ impl<'a> ButtonContent<'a> {
 }
 
 impl ListItemContent for ButtonContent<'_> {
-    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
+    fn ui(
+        self: Box<Self>,
+        ui: &mut egui::Ui,
+        context: &ContentContext<'_>,
+    ) -> Option<egui::Response> {
         let Self {
             label,
             enabled,
@@ -70,5 +74,7 @@ impl ListItemContent for ButtonContent<'_> {
         if let Some(hover_text) = hover_text {
             response.on_hover_text(hover_text);
         }
+
+        None
     }
 }

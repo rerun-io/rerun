@@ -483,11 +483,7 @@ pub fn app_id_button_ui(
 ) -> egui::Response {
     let item = Item::AppId(app_id.clone());
 
-    let response = ui.selectable_label_with_icon(
-        &icons::APPLICATION,
-        app_id.to_string(),
-        ctx.is_selected_or_loading(&item),
-    );
+    let response = ui.selectable_label(ctx.is_selected_or_loading(&item), app_id.to_string());
 
     let response = response.on_hover_ui(|ui| {
         app_id.app_ui(ctx, ui, re_viewer_context::UiLayout::Tooltip);
@@ -503,11 +499,7 @@ pub fn data_source_button_ui(
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 
-    let response = ui.selectable_label_with_icon(
-        &icons::DATA_SOURCE,
-        data_source.to_string(),
-        ctx.is_selected_or_loading(&item),
-    );
+    let response = ui.selectable_label(ctx.is_selected_or_loading(&item), data_source.to_string());
 
     let response = response.on_hover_ui(|ui| {
         data_source.app_ui(ctx, ui, re_viewer_context::UiLayout::Tooltip);

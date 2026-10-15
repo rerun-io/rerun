@@ -24,9 +24,14 @@ impl DebugContent {
 }
 
 impl ListItemContent for DebugContent {
-    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
+    fn ui(
+        self: Box<Self>,
+        ui: &mut egui::Ui,
+        context: &ContentContext<'_>,
+    ) -> Option<egui::Response> {
         ui.debug_painter()
             .debug_rect(context.rect, egui::Color32::DARK_GREEN, self.label);
+        None
     }
 
     fn desired_width(&self, _ui: &Ui) -> DesiredWidth {

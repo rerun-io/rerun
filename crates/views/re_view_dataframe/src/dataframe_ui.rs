@@ -15,7 +15,7 @@ use re_dataframe_ui::{
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
-use re_ui::{UiExt as _, UiLayout};
+use re_ui::{DesignTokens, UiExt as _, UiLayout};
 use re_viewer_context::{StoreViewContext, TimeControlCommand, ViewId};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -365,7 +365,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             ui.spacing_mut().item_spacing.y = 2.0;
                             ui.label(
                                 RichText::new(archetype)
-                                    .size(10.0)
+                                    .text_style(DesignTokens::small())
                                     .color(ui.tokens().text_subdued),
                             );
                             ui.selectable_label(is_selected, text)

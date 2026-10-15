@@ -1,6 +1,8 @@
 use std::ops::Range;
 
-use crate::{UiExt as _, icons, list_item};
+use crate::{
+    ContextExt as _, UiExt as _, icons, list_item, list_item::ListItemContentButtonsExt as _,
+};
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use re_log::debug_assert;
@@ -110,12 +112,35 @@ impl FilterState {
         ui: &mut egui::Ui,
         section_title: impl Into<egui::WidgetText>,
     ) -> Option<egui::Response> {
+        self.section_title_ui_impl(ui, section_title, None::<fn(&mut egui::Ui)>)
+    }
+
+    /// Display the filter widget as a section title with additional right-aligned buttons.
+    pub fn section_title_ui_with_buttons(
+        &mut self,
+        ui: &mut egui::Ui,
+        section_title: impl Into<egui::WidgetText>,
+        add_right_buttons: impl FnOnce(&mut egui::Ui),
+    ) -> Option<egui::Response> {
+        self.section_title_ui_impl(ui, section_title, Some(add_right_buttons))
+    }
+
+    fn section_title_ui_impl(
+        &mut self,
+        ui: &mut egui::Ui,
+        section_title: impl Into<egui::WidgetText>,
+        add_right_buttons: Option<impl FnOnce(&mut egui::Ui)>,
+    ) -> Option<egui::Response> {
         let mut toggle_search_clicked = false;
 
         let is_searching = self.inner_state.is_some();
 
         // precompute the title layout such that we know the size we need for the list item content
         let section_title = section_title.into();
+        let section_title: egui::WidgetText = ui
+            .tokens()
+            .eyebrow_text(ui.style(), section_title.text())
+            .into();
         let galley = section_title.into_galley(
             ui,
             Some(egui::TextWrapMode::Extend),
@@ -127,47 +152,55 @@ impl FilterState {
         let mut title_response = None;
 
         list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
+            let content = list_item::CustomContent::new(|ui, _| {
+                if self.inner_state.is_some()
+                    && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                {
+                    self.inner_state = None;
+                }
+
+                if let Some(inner_state) = self.inner_state.as_mut() {
+                    ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
+
+                    // TODO(ab): ideally _all_ text edits would be styled this way, but we
+                    // require egui support for that (https://github.com/emilk/egui/issues/3284)
+                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                    ui.visuals_mut().widgets.active.expansion = 0.0;
+                    ui.visuals_mut().widgets.open.expansion = 0.0;
+                    ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
+                    ui.visuals_mut().selection.stroke.width = 1.0;
+
+                    let response = crate::text_edit::text_edit_scope(ui, |ui| {
+                        egui::TextEdit::singleline(&mut inner_state.filter_query)
+                            .lock_focus(true)
+                            .ui(ui)
+                            .accessible_name("Filter")
+                    });
+
+                    if self.request_focus {
+                        self.request_focus = false;
+                        response.request_focus();
+                    }
+                } else {
+                    title_response = Some(ui.label(galley));
+                }
+            })
+            .with_content_width(text_width);
+
+            let content = if let Some(add_right_buttons) = add_right_buttons {
+                content.with_buttons(add_right_buttons)
+            } else {
+                content
+            };
+
             ui.list_item()
                 .interactive(false)
                 .force_background(ui.tokens().section_header_color)
+                .with_height(ui.tokens().section_header_height())
+                .with_content_top_padding(ui.tokens().section_header_top_padding())
                 .show_flat(
                     ui,
-                    list_item::CustomContent::new(|ui, _| {
-                        if self.inner_state.is_some()
-                            && ui.input_mut(|i| {
-                                i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
-                            })
-                        {
-                            self.inner_state = None;
-                        }
-
-                        if let Some(inner_state) = self.inner_state.as_mut() {
-                            ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
-
-                            // TODO(ab): ideally _all_ text edits would be styled this way, but we
-                            // require egui support for that (https://github.com/emilk/egui/issues/3284)
-                            ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                            ui.visuals_mut().widgets.active.expansion = 0.0;
-                            ui.visuals_mut().widgets.open.expansion = 0.0;
-                            ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
-                            ui.visuals_mut().selection.stroke.width = 1.0;
-
-                            let response =
-                                egui::TextEdit::singleline(&mut inner_state.filter_query)
-                                    .lock_focus(true)
-                                    .ui(ui)
-                                    .accessible_name("Filter");
-
-                            if self.request_focus {
-                                self.request_focus = false;
-                                response.request_focus();
-                            }
-                        } else {
-                            title_response = Some(ui.label(galley));
-                        }
-                    })
-                    .with_content_width(text_width)
-                    .action_button(
+                    content.action_button(
                         if is_searching {
                             &icons::CLOSE
                         } else {
@@ -216,14 +249,12 @@ impl FilterState {
         let stroke = if response.is_some_and(|r| r.has_focus()) {
             selection_stroke
         } else {
-            let mut stroke = visuals.bg_stroke;
-            stroke.width = selection_stroke.width;
-            stroke
+            ui.tokens().control_stroke
         };
 
         egui::Frame::new()
             .inner_margin(egui::Margin::symmetric(3, 2))
-            .fill(ui.visuals().extreme_bg_color)
+            .fill(ui.tokens().panel_bg_color)
             .stroke(stroke)
             .corner_radius(visuals.corner_radius)
             .show(ui, |ui| {
@@ -603,7 +634,7 @@ pub fn format_matching_text(
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                 color,
-                background: ctx.global_style().visuals.selection.bg_fill,
+                background: ctx.tokens().search_match_bg_fill,
                 ..Default::default()
             },
         );

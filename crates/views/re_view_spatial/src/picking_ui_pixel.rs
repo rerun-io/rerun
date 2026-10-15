@@ -332,7 +332,7 @@ fn pixel_value_ui(
     meter: Option<f32>,
 ) {
     egui::Grid::new("hovered pixel properties").show(ui, |ui| {
-        ui.label("Position:");
+        ui.label("Position");
         ui.label(format!("{x}, {y}"));
         ui.end_row();
 
@@ -342,7 +342,7 @@ fn pixel_value_ui(
                 && let Some(raw_value) = image.get_xyc(x, y, 0)
                 && let Some(u16_val) = raw_value.try_as_u16()
             {
-                ui.label("Label:");
+                ui.label("Label");
                 ui.label(
                     annotations
                         .resolved_class_description(Some(re_sdk_types::components::ClassId::from(
@@ -399,7 +399,7 @@ fn pixel_value_ui(
 
 fn show_depth_at_hover(ui: &mut egui::Ui, raw_value: f64, meter: f32) {
     let meters = raw_value / (meter as f64);
-    ui.label("Depth:");
+    ui.label("Depth");
     if meters < 1.0 {
         ui.monospace(format!("{:.1} mm", meters * 1e3));
     } else {
@@ -415,24 +415,24 @@ fn format_pixel_value(
     match image_kind {
         ImageKind::Segmentation | ImageKind::Depth => elements
             .first()
-            .map(|v| ("Val:".to_owned(), v.format_padded())),
+            .map(|v| ("Val".to_owned(), v.format_padded())),
 
         ImageKind::Color => match color_model {
             ColorModel::L => elements
                 .first()
-                .map(|v| ("L:".to_owned(), v.format_padded())),
+                .map(|v| ("L".to_owned(), v.format_padded())),
 
             ColorModel::RGB => {
                 if let [r, g, b] = elements {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
                             Some((
-                                "RGB:".to_owned(),
+                                "RGB".to_owned(),
                                 format!("{r: >3}, {g: >3}, {b: >3}, #{r:02X}{g:02X}{b:02X}"),
                             ))
                         }
                         _ => Some((
-                            "RGB:".to_owned(),
+                            "RGB".to_owned(),
                             format!(
                                 "{}, {}, {}",
                                 r.format_padded(),
@@ -455,13 +455,13 @@ fn format_pixel_value(
                             TensorElement::U8(b),
                             TensorElement::U8(a),
                         ) => Some((
-                            "RGBA:".to_owned(),
+                            "RGBA".to_owned(),
                             format!(
                                 "{r: >3}, {g: >3}, {b: >3}, {a: >3}, #{r:02X}{g:02X}{b:02X}{a:02X}"
                             ),
                         )),
                         _ => Some((
-                            "RGBA:".to_owned(),
+                            "RGBA".to_owned(),
                             format!(
                                 "{}, {}, {}, {}",
                                 r.format_padded(),
@@ -481,12 +481,12 @@ fn format_pixel_value(
                     match (b, g, r) {
                         (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => {
                             Some((
-                                "BGR:".to_owned(),
+                                "BGR".to_owned(),
                                 format!("{b: >3}, {g: >3}, {r: >3}, #{b:02X}{g:02X}{r:02X}"),
                             ))
                         }
                         _ => Some((
-                            "BGR:".to_owned(),
+                            "BGR".to_owned(),
                             format!(
                                 "{}, {}, {}",
                                 b.format_padded(),
@@ -509,13 +509,13 @@ fn format_pixel_value(
                             TensorElement::U8(r),
                             TensorElement::U8(a),
                         ) => Some((
-                            "BGRA:".to_owned(),
+                            "BGRA".to_owned(),
                             format!(
                                 "{b: >3}, {g: >3}, {r: >3}, {a: >3}, #{b:02X}{g:02X}{r:02X}{a:02X}"
                             ),
                         )),
                         _ => Some((
-                            "BGRA:".to_owned(),
+                            "BGRA".to_owned(),
                             format!(
                                 "{}, {}, {}, {}",
                                 b.format_padded(),

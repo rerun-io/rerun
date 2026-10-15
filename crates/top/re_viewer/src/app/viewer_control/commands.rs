@@ -184,7 +184,7 @@ fn describe_command(
         shortcuts: kind
             .kb_shortcuts(egui_ctx.os())
             .iter()
-            .map(|shortcut| egui_ctx.format_shortcut(shortcut))
+            .map(|shortcut| re_ui::format_shortcut(egui_ctx, shortcut))
             .collect(),
         available: bound.is_some(),
         blocking_native_modal: kind.opens_blocking_native_modal(),

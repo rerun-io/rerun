@@ -9,7 +9,7 @@ use re_query::{LatestAllComponentResults, LatestAllResults};
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
-use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{DesignTokens, UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{HoverHighlight, Item, StoreViewContext, UiLayout};
 
 use super::DataUi;
@@ -471,7 +471,7 @@ pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: Option<&Archet
                         .map(|a| a.short_name())
                         .unwrap_or("Without archetype"),
                 )
-                .size(10.0)
+                .text_style(DesignTokens::small())
                 .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
             ),
         );

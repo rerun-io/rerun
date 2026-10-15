@@ -6,7 +6,9 @@ use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
 use re_ui::drag_and_drop::DropTarget;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
+use re_ui::{
+    ContextExt as _, DesignTokens, OnResponseExt as _, UiExt as _, filter_widget, list_item,
+};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
     DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
@@ -86,33 +88,29 @@ impl BlueprintTree {
         }
 
         ui.panel_content(|ui| {
-            ui.list_item_scope("blueprint_section_title", |ui| {
-                ui.list_item().interactive(false).show_flat(
-                    ui,
-                    list_item::CustomContent::new(|ui, _| {
-                        let title_response = self
-                            .filter_state
-                            .section_title_ui(ui, egui::RichText::new("Blueprint").strong());
+            let title_response =
+                self.filter_state
+                    .section_title_ui_with_buttons(ui, "Blueprint", |ui| {
+                        ui.add(
+                            ui.small_icon_button_widget(
+                                &re_ui::icons::MORE,
+                                "Open menu with more options",
+                            )
+                            .on_hover_text("Open menu with more options")
+                            .on_menu(|ui| {
+                                let recording_id = ctx.store_context.recording_store_id();
+                                re_ui::RecordingCommandKind::OpenAddViewOrContainerDialog
+                                    .menu_button_ui(ui, Some(recording_id), ctx.command_sender());
+                                set_blueprint_to_default_menu_buttons(ctx, ui);
+                                set_blueprint_to_auto_menu_button(ctx, ui);
+                            }),
+                        );
+                    });
 
-                        if let Some(title_response) = title_response {
-                            title_response.on_hover_text(
-                                "The blueprint is where you can configure the Rerun Viewer",
-                            );
-                        }
-                    })
-                    .menu_button(
-                        &re_ui::icons::MORE,
-                        "Open menu with more options",
-                        |ui| {
-                            let recording_id = ctx.store_context.recording_store_id();
-                            re_ui::RecordingCommandKind::OpenAddViewOrContainerDialog
-                                .menu_button_ui(ui, Some(recording_id), ctx.command_sender());
-                            set_blueprint_to_default_menu_buttons(ctx, ui);
-                            set_blueprint_to_auto_menu_button(ctx, ui);
-                        },
-                    ),
-                );
-            });
+            if let Some(title_response) = title_response {
+                title_response
+                    .on_hover_text("The blueprint is where you can configure the Rerun Viewer");
+            }
         });
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
@@ -150,7 +148,11 @@ impl BlueprintTree {
                         self.handle_focused_item(ctx, viewport_blueprint, ui, &item.item)
                     });
 
-                    list_item::list_item_scope(ui, "blueprint tree", |ui| {
+                    let style = list_item::ListItemStyle::default()
+                        .with_background_inset(ui.tokens().panel_list_item_background_inset())
+                        .with_corner_radius(ui.tokens().normal_corner_radius())
+                        .with_label_icon_matching_text(true);
+                    list_item::list_item_scope_with_style(ui, "blueprint tree", style, |ui| {
                         if let Some(root_container) = &blueprint_tree_data.root_container {
                             self.root_container_ui(
                                 ctx,
@@ -472,7 +474,10 @@ impl BlueprintTree {
                         .interactive(false)
                         .show_flat(
                             ui,
-                            list_item::LabelContent::new("Projections:").italics(true),
+                            list_item::LabelContent::new(
+                                egui::RichText::new("Projections")
+                                    .text_style(DesignTokens::small()),
+                            ),
                         );
 
                     for projection in &view_data.projection_trees {
@@ -604,7 +609,6 @@ impl BlueprintTree {
                         ui,
                         list_item::LabelContent::new("$origin")
                             .subdued(true)
-                            .italics(true)
                             .with_icon(&re_ui::icons::INTERNAL_LINK),
                     )
                     .on_hover_text(

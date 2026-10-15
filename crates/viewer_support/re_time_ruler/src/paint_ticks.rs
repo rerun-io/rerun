@@ -1,6 +1,7 @@
-use egui::{Align2, Color32, Rect, Rgba, Shape, Stroke, lerp, pos2, remap_clamp};
+use egui::{Align2, Color32, Rect, Shape, Stroke, lerp, pos2, remap_clamp};
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRangeF, TimeReal, TimeType, TimestampFormat};
+use re_ui::UiExt as _;
 
 use crate::time_ranges_ui::TimeRangesUi;
 
@@ -68,6 +69,8 @@ fn paint_time_range_ticks(
             paint_ticks(
                 ui.ctx(),
                 ui.visuals().dark_mode,
+                ui.tokens().text_default,
+                ui.visuals().widgets.noninteractive.bg_stroke,
                 &font_id,
                 rect,
                 &ui.clip_rect(),
@@ -84,6 +87,8 @@ fn paint_time_range_ticks(
             paint_ticks(
                 ui.ctx(),
                 ui.visuals().dark_mode,
+                ui.tokens().text_default,
+                ui.visuals().widgets.noninteractive.bg_stroke,
                 &font_id,
                 rect,
                 &ui.clip_rect(),
@@ -98,6 +103,8 @@ fn paint_time_range_ticks(
 fn paint_ticks(
     egui_ctx: &egui::Context,
     dark_mode: bool,
+    text_color: Color32,
+    divider_stroke: Stroke,
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
@@ -109,11 +116,9 @@ fn paint_ticks(
 
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {
-            #[expect(clippy::disallowed_methods)] // We are theme-aware here.
-            Rgba::from_white_alpha(alpha * alpha).into()
+            text_color.gamma_multiply(alpha * alpha)
         } else {
-            #[expect(clippy::disallowed_methods)] // We are theme-aware here.
-            Rgba::from_black_alpha(alpha).into()
+            text_color.gamma_multiply(alpha)
         }
     };
 
@@ -166,11 +171,17 @@ fn paint_ticks(
     let medium_line_strength = line_strength_from_spacing(medium_spacing_time);
     let small_line_strength = line_strength_from_spacing(small_spacing_time);
 
-    let base_strength = 0.7;
+    let base_strength = 1.0;
 
-    let big_line_color = color_from_alpha(base_strength * big_line_strength);
-    let medium_line_color = color_from_alpha(base_strength * medium_line_strength);
-    let small_line_color = color_from_alpha(base_strength * small_line_strength);
+    let big_line_color = divider_stroke
+        .color
+        .gamma_multiply(base_strength * big_line_strength);
+    let medium_line_color = divider_stroke
+        .color
+        .gamma_multiply(base_strength * medium_line_strength);
+    let small_line_color = divider_stroke
+        .color
+        .gamma_multiply(base_strength * small_line_strength);
 
     let big_text_color = text_color_from_spacing(big_spacing_time);
     let medium_text_color = text_color_from_spacing(medium_spacing_time);
@@ -200,7 +211,7 @@ fn paint_ticks(
 
             shapes.push(egui::Shape::line_segment(
                 [pos2(line_x, line_top), pos2(line_x, canvas.max.y)],
-                Stroke::new(1.0, line_color),
+                Stroke::new(divider_stroke.width, line_color),
             ));
 
             if text_color != Color32::TRANSPARENT {

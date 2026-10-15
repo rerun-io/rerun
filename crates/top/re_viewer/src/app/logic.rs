@@ -65,6 +65,23 @@ impl App {
             let (storage_context, store_context) =
                 store_hub.read_context(&route, &active_time_ctrl);
 
+            // The menu might be visible while the viewer is minimized, so we also handle these
+            // commands here
+            #[cfg(target_os = "macos")]
+            if self.uses_native_menu() {
+                let pending = crate::native_menu::take_pending();
+                if !pending.is_empty() {
+                    let commands =
+                        self.command_context(storage_context.hub, store_context.as_ref());
+                    for command in pending
+                        .into_iter()
+                        .filter_map(|kind| commands.resolve(kind))
+                    {
+                        crate::command_catalog::dispatch(command, &self.command_sender);
+                    }
+                }
+            }
+
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
             let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
