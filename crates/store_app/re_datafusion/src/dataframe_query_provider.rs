@@ -132,11 +132,11 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// Authentication for object store direct fetch requests.
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 
-    /// IO runtime for the v2 pipeline's network spawns, captured at plan
-    /// construction, which runs on the client's IO runtime. `execute` may
-    /// run on the reactor-less CPU runtime for nested queries, so its
-    /// ambient handle is only a fallback for plans built outside a runtime.
-    io_handle: Option<Handle>,
+    /// IO runtime for all network operations, passed from the table provider.
+    ///
+    /// `execute` and the streams it returns may be polled on a runtime without an IO reactor
+    /// (or outside any runtime), so they must spawn back into the right one.
+    io_handle: Handle,
 
     /// Read from the environment once per query, in [`Self::try_new`].
     pipeline: DataframePipeline,
@@ -203,6 +203,9 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
 
     /// Authentication for direct chunk fetch requests.
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+
+    /// See `SegmentStreamExec::io_handle`.
+    io_handle: Handle,
 }
 
 // TODO(RR-4607): This is a temporary fix to minimize the impact of leaking memory
@@ -280,7 +283,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
         if this.io_join_handle.is_none()
             && let Some(chunk_tx) = this.chunk_tx.take()
         {
-            let io_handle = Handle::current();
+            let io_handle = this.io_handle.clone();
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
@@ -567,6 +570,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         pending_analytics: crate::PendingQueryAnalytics,
         captured_collectors: Vec<crate::MetricsCollector>,
         object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+        io_handle: Handle,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -644,7 +648,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             partitions_remaining,
             snapshot_sent,
             object_store_auth,
-            io_handle: Handle::try_current().ok(),
+            io_handle,
             pipeline,
         })
     }
@@ -758,15 +762,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         }
 
         if let DataframePipeline::V2(config) = self.pipeline {
-            let io_handle = self
-                .io_handle
-                .clone()
-                .or_else(|| Handle::try_current().ok())
-                .ok_or_else(|| {
-                    self.fail_partition_setup(exec_datafusion_err!(
-                        "no tokio runtime available for pipeline-v2 IO"
-                    ))
-                })?;
             return crate::pipeline::execute_partition(crate::pipeline::V2PartitionCtx {
                 chunk_infos,
                 query_expression: self.query_expression.clone(),
@@ -775,7 +770,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 limit_rows: self.limit_rows,
                 client: self.client.clone(),
                 object_store_auth: Arc::clone(&self.object_store_auth),
-                io_handle,
+                io_handle: self.io_handle.clone(),
                 config,
                 trace_headers: self.trace_headers.clone(),
                 server_trace_id: self.server_trace_id,
@@ -834,6 +829,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             snapshot_sent: Arc::clone(&self.snapshot_sent),
             completed: false,
             object_store_auth,
+            io_handle: self.io_handle.clone(),
         };
         let stream = DataframeSegmentStream {
             inner: Some(stream),
@@ -1178,8 +1174,8 @@ mod plan_properties_tests {
     /// inconsistent pair, and a missed optimization. Both now derive from the
     /// same by-name lookup against the projected schema, so they cannot
     /// disagree.
-    #[test]
-    fn unprojected_scan_claims_both_ordering_and_hash_partitioning() {
+    #[tokio::test]
+    async fn unprojected_scan_claims_both_ordering_and_hash_partitioning() {
         let segment_id = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
         let table_schema: SchemaRef = Arc::new(Schema::new_with_metadata(
             vec![
@@ -1204,6 +1200,7 @@ mod plan_properties_tests {
             begin_query(None, query_info(), Instant::now(), SystemTime::now()),
             vec![],
             Arc::new(NoOpObjectStoreAuthenticator::default()),
+            Handle::current(),
         )
         .unwrap();
 

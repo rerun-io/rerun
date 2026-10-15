@@ -50,7 +50,7 @@ working set stays bounded.
 1. `SegmentStreamExec::execute` is the DataFusion entry point. For each output
    partition it spawns:
    - one **CPU worker** task (`chunk_store_cpu_worker_thread`), onto the process-global CPU runtime (see [threading model](#threading-model-the-shared-cpu-runtime))
-   - one **IO loop** task (`chunk_stream_io_loop`), onto the ambient runtime that first polls the output stream
+   - one **IO loop** task (`chunk_stream_io_loop`), onto the IO runtime the table provider was built on
    connected by a single bounded `tokio::mpsc` channel carrying `CpuWorkerMsg`.
 
 2. The IO loop iterates the partition's `chunk_info` rows (already grouped by segment), groups fetches into target-sized batches (`create_request_batches`), and assigns those batches to segment waves of at most `MAX_CONCURRENT_SEGMENTS` segments.
@@ -67,7 +67,7 @@ working set stays bounded.
 
 The two tasks above run on different Tokio runtimes, and the split is deliberate:
 
-- The **IO loop** runs on the ambient runtime — whichever runtime drives the output stream (captured via `Handle::current()` on first poll).
+- The **IO loop** runs on the IO runtime that `DataframeQueryTableProvider` was built on.
 - The **CPU worker** runs on a dedicated multi-threaded runtime shared by the whole process (`CpuRuntime` in `dataframe_query_provider.rs`).
 
 `CpuRuntime::try_get` creates the runtime lazily on first use and holds it in a `static`.
@@ -76,7 +76,7 @@ Every `SegmentStreamExec` — across concurrent queries, sessions, and scan leav
 This is the canonical "one dedicated CPU executor per process" design (DataFusion's `thread_pools` example, derived from InfluxDB IOx), and it buys two properties:
 
 1. **IO stays responsive under CPU load.**
-   The worker's store inserts, horizon-driven emits, and GC are CPU-bound; running them on the ambient runtime would starve gRPC polling and stream consumers.
+   The worker's store inserts, horizon-driven emits, and GC are CPU-bound; running them on the IO runtime would starve gRPC polling and stream consumers.
 2. **Total CPU threads are bounded per process.**
    A query's `target_partitions` only governs how many `cpu_worker` *tasks* it spawns; the tasks queue onto the fixed-size pool, so N concurrent queries share threads instead of multiplying them.
 

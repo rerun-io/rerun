@@ -57,6 +57,10 @@ use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::LazyLock;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::runtime::Handle;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio_util::task::AbortOnDropHandle;
 use tracing::Instrument as _;
 use web_time::{Instant, SystemTime};
 
@@ -148,6 +152,13 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     /// Authentication for object store direct fetch requests.
     #[cfg(not(target_arch = "wasm32"))]
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+
+    /// The IO runtime the provider was built on, which all of its network work is spawned onto.
+    ///
+    /// `scan` and `execute` may be polled outside that runtime's context (datafusion-python
+    /// calls `scan` through the FFI on its own executor), and we need to use the right one.
+    #[cfg(not(target_arch = "wasm32"))]
+    io_handle: Handle,
 }
 
 /// Per-filter classification data captured in [`DataframeQueryTableProvider::supports_filters_pushdown`]
@@ -300,6 +311,17 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
     ) -> ApiResult<Self> {
         let origin = client.origin().clone();
 
+        // TODO(ilya): We can drop this once https://github.com/apache/datafusion/pull/26263 is merged
+        #[cfg(not(target_arch = "wasm32"))]
+        let io_handle = Handle::try_current().map_err(|err| {
+            ApiError::internal_with_source(
+                &origin,
+                None,
+                err,
+                "a dataframe query provider must be created inside a Tokio runtime",
+            )
+        })?;
+
         // Either use the caller-provided schema or fetch it from the server.
         let (schema, trace_id) = if let Some(schema) = arrow_schema {
             (schema, None)
@@ -421,6 +443,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             filter_capture: Arc::new(Mutex::new(None)),
             #[cfg(not(target_arch = "wasm32"))]
             object_store_auth,
+            #[cfg(not(target_arch = "wasm32"))]
+            io_handle,
         })
     }
 
@@ -627,7 +651,9 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                     let client = self.client.clone();
                     let origin = client.origin().clone();
                     let dataset_id = self.dataset_id;
-                    async move {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let io_handle = self.io_handle.clone();
+                    let task = async move {
                         // Hold a process-wide permit for the whole open+drain so
                         // co-tenant queries share one ceiling on concurrent
                         // `query_dataset` streams (the fan-out width alone only
@@ -696,7 +722,16 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         }
 
                         Ok::<_, DataFusionError>((batches, time_to_first, trace_id))
-                    }
+                    };
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let task = async move {
+                        AbortOnDropHandle::new(io_handle.spawn(task.in_current_span()))
+                            .await
+                            .map_err(|err| {
+                                exec_datafusion_err!("query_dataset task failed: {err}")
+                            })?
+                    };
+                    task
                 })
                 .buffer_unordered(query_dataset_fanout());
 
@@ -805,6 +840,8 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 self.metrics_collectors.clone(),
                 #[cfg(not(target_arch = "wasm32"))]
                 self.object_store_auth.clone(),
+                #[cfg(not(target_arch = "wasm32"))]
+                self.io_handle.clone(),
             )
             .map(Arc::new)
             .map(|exec| {
@@ -1040,7 +1077,11 @@ fn compute_unique_chunk_info_ids(
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, iter::once};
+    use std::{
+        collections::HashMap,
+        iter::once,
+        sync::atomic::{AtomicUsize, Ordering},
+    };
 
     use arrow::datatypes::{DataType, Field};
 
@@ -1322,5 +1363,99 @@ mod tests {
              synthesize_latest_at=false",
         );
         assert!(query.range.is_none(), "static-only must have no range");
+    }
+
+    #[derive(Clone, Debug)]
+    struct ThrottledClient {
+        origin: re_uri::Origin,
+        query_dataset_calls: Arc<AtomicUsize>,
+    }
+
+    #[derive(Debug)]
+    struct EmptyDecoder;
+
+    impl tonic::codec::Decoder for EmptyDecoder {
+        type Item = QueryDatasetResponse;
+        type Error = tonic::Status;
+
+        fn decode(
+            &mut self,
+            _src: &mut tonic::codec::DecodeBuf<'_>,
+        ) -> Result<Option<Self::Item>, Self::Error> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait]
+    impl DataframeClientAPI for ThrottledClient {
+        fn origin(&self) -> &re_uri::Origin {
+            &self.origin
+        }
+
+        async fn get_dataset_schema(
+            &mut self,
+            _request: tonic::Request<GetDatasetSchemaRequest>,
+        ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>> {
+            Err(tonic::Status::unimplemented("unused by test"))
+        }
+
+        async fn query_dataset(
+            &mut self,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
+        ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
+            let calls = self.query_dataset_calls.fetch_add(1, Ordering::Relaxed);
+            if calls == 0 {
+                return Err(tonic::Status::resource_exhausted(
+                    "injected admission rejection",
+                ));
+            }
+            let streaming =
+                tonic::codec::Streaming::new_request(EmptyDecoder, String::new(), None, None);
+            Ok(tonic::Response::new(streaming))
+        }
+
+        async fn fetch_chunks(
+            &mut self,
+            _request: tonic::Request<FetchChunksRequest>,
+        ) -> tonic::Result<
+            tonic::Response<
+                tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
+            >,
+        > {
+            Err(tonic::Status::unimplemented("unused by test"))
+        }
+    }
+
+    #[test]
+    fn scan_retries_resource_exhausted_outside_tokio_runtime() {
+        let query_dataset_calls = Arc::new(AtomicUsize::new(0));
+        let client = ThrottledClient {
+            origin: re_uri::Origin::test(),
+            query_dataset_calls: Arc::clone(&query_dataset_calls),
+        };
+
+        let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: test needs to create a runtime explicitly
+            .enable_all()
+            .build()
+            .unwrap();
+        let provider = rt
+            .block_on(DataframeQueryTableProvider::new_from_client(
+                client,
+                EntryId::new(),
+                &QueryExpression::default(),
+                &["segment"],
+                None,
+                Some(Schema::empty()),
+                None,
+                vec![],
+                Arc::new(crate::NoOpObjectStoreAuthenticator::default()),
+            ))
+            .expect("provider construction should not touch the network");
+        let state = datafusion::prelude::SessionContext::new().state();
+
+        // Simulates datafusion-python, which polls `scan` through the FFI on its own runtime, not our tokio.
+        futures::executor::block_on(provider.scan(&state, None, &[], None))
+            .expect("scan should succeed after retrying ResourceExhausted");
+        assert_eq!(query_dataset_calls.load(Ordering::Relaxed), 2);
     }
 }
