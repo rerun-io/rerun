@@ -3,6 +3,8 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Any
 
+import pyarrow as pa
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 
 class Schema:
     """
-    The schema representing a set of available columns for a dataset.
+    The schema representing a set of available columns for a dataset, view, or segment.
 
     A schema contains both index columns (timelines) and component columns (entity/component data).
     """
@@ -248,6 +250,14 @@ class Schema:
             return NotImplemented
         # Impl note: this delegates to the `Eq` trait of `PySchemaInternal`
         return self._internal == other._internal
+
+    def to_arrow(self) -> pa.Schema:
+        """
+        Convert this schema snapshot to an Arrow schema, including its metadata.
+
+        This is a local conversion; it does not fetch or refresh the schema.
+        """
+        return pa.schema(self)
 
     def __arrow_c_schema__(self) -> Any:
         return self._internal.__arrow_c_schema__()

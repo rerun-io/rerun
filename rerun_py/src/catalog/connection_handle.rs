@@ -388,8 +388,7 @@ impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .get_dataset_schema(entry_id)
                 .await
                 .map_err(to_py_err)

@@ -4,6 +4,8 @@
 
 use std::collections::HashSet;
 
+use arrow::datatypes::Schema as ArrowSchema;
+
 use re_log_types::{EntryId, EntryIdOrName, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, RegisterWithDatasetRequest, ScanSegmentTableDataframe,
@@ -47,6 +49,28 @@ impl ConnectionHandle {
 
     pub async fn client(&self) -> ApiResult<ConnectionClient> {
         Ok(self.connection().await?.client)
+    }
+
+    /// The dataset-wide schema, which may retain fields from removed layers.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<ArrowSchema> {
+        self.client().await?.get_dataset_schema(dataset_id).await
+    }
+
+    /// The union of the schemas of a segment's registered layers, without referenced assets.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_segment_schema(
+        &self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<ArrowSchema> {
+        // TODO(RR-5928): Fetch the segment schema without the full chunk manifest.
+        let manifest = self
+            .client()
+            .await?
+            .get_rrd_manifest(dataset_id, segment_id)
+            .await?;
+        Ok(manifest.sorbet_schema)
     }
 
     /// Validate that a segment exists without fetching its layer metadata.

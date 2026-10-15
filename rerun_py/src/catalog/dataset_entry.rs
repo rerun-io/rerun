@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
-use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
@@ -12,7 +11,6 @@ use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_redap_client::SegmentChunkProvider;
-use re_sorbet::SorbetColumnDescriptors;
 use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
@@ -96,15 +94,6 @@ impl PyDatasetEntryInternal {
     #[getter]
     fn manifest_url(&self) -> String {
         self.dataset_handle.url.to_string()
-    }
-
-    /// Return the Arrow schema of the data contained in the dataset.
-    fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
-        let _span =
-            read_trace_context_from_python(self_.py(), "DatasetEntry.arrow_schema").entered();
-        let arrow_schema = Self::fetch_arrow_schema(&self_)?;
-
-        Ok(arrow_schema.into())
     }
 
     /// The associated blueprint dataset, if any.
@@ -296,7 +285,10 @@ impl PyDatasetEntryInternal {
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.schema").entered();
-        Self::fetch_schema(&self_)
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        PySchemaInternal::from_arrow_schema(
+            connection.get_dataset_schema(self_.py(), self_.entry_details.id)?,
+        )
     }
 
     /// Returns a list of segment IDs for the dataset.
@@ -737,29 +729,6 @@ impl PyDatasetEntryInternal {
             "DatasetEntry(name='{}', id='{}')",
             self_.entry_details.name, self_.entry_details.id,
         )
-    }
-}
-
-impl PyDatasetEntryInternal {
-    #[tracing::instrument(level = "info", skip_all)]
-    pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
-        let connection = self_.client.borrow_mut(self_.py()).connection().clone();
-
-        let schema = connection.get_dataset_schema(self_.py(), self_.entry_details.id)?;
-
-        Ok(schema)
-    }
-
-    #[tracing::instrument(level = "info", skip_all)]
-    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
-        let arrow_schema = Self::fetch_arrow_schema(self_)?;
-        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
-            .map_err(to_py_err)?;
-
-        Ok(PySchemaInternal {
-            columns,
-            metadata: arrow_schema.metadata,
-        })
     }
 }
 

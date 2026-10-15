@@ -150,9 +150,6 @@ class DatasetEntry(Entry):
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner: _catalog.DatasetEntry = inner
 
-    def arrow_schema(self) -> pa.Schema:
-        return self._inner.arrow_schema()
-
     def register_blueprint(self, uri: str, set_default: bool = True) -> None:
         """
         Register an existing .rbl visible to the server.
@@ -315,9 +312,6 @@ class DatasetView:
 
     def schema(self) -> _catalog.Schema:
         return self._inner.schema()
-
-    def arrow_schema(self) -> pa.Schema:
-        return self._inner.arrow_schema()
 
     def reader(
         self,

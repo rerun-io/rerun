@@ -981,6 +981,7 @@ where
     /// Scan the segment table with server-side column projection.
     ///
     /// The segment filter is only a hint; callers must apply it locally for correctness.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn scan_segment_table(
         &self,
         entry: impl Into<EntryIdOrName>,

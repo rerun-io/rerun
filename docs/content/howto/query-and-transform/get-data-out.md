@@ -85,7 +85,16 @@ schema = dataset.schema()
 schema.index_columns()  # list of all index columns (timelines)
 schema.component_columns()  # list of all component columns
 schema.column_names()  # list of all column names
+schema.to_arrow()  # convert to a PyArrow schema
 ```
+
+To inspect one segment's schema, use:
+
+```python
+segment_schema = dataset.segment(segment_id).schema()
+```
+
+Referenced assets are excluded from the segment's schema.
 
 Component column names follow the pattern `$entity_path:$Archetype:$field`, e.g. `/robot/gripper/force:Scalars:scalars`.
 Data logged without an archetype, such as with `rr.AnyValues`, omits the `$Archetype` part, e.g. `/robot/meta:mode`.

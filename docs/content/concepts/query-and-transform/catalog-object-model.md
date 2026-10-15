@@ -111,6 +111,16 @@ This differs from the table model, where the schema is defined upfront (_schema-
 
 In this context, the schema of a dataset is the union of schemas of its segments, which themselves are the union of the schemas of their layers.
 
+Use `segment.schema()` to fetch a snapshot of one segment's schema across its registered layers.
+Referenced assets are excluded from the segment's schema.
+
+```python
+segment_schema = dataset.segment(segment_id).schema()
+print(segment_schema)
+print(dataset.schema())
+print(dataset.schema().to_arrow())
+```
+
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="">
   <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="">

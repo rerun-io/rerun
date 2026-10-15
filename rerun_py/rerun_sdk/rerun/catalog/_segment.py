@@ -7,7 +7,7 @@ from rerun._tracing import with_tracing
 if TYPE_CHECKING:
     from rerun_bindings import SegmentInternal
 
-    from . import DatasetEntry, UnregistrationHandle
+    from . import DatasetEntry, Schema, UnregistrationHandle
 
 
 class Segment:
@@ -45,6 +45,19 @@ class Segment:
     def url(self) -> str:
         """The URL for this segment in the Rerun Viewer."""
         return self._internal.url
+
+    @with_tracing("Segment.schema")
+    def schema(self) -> Schema:
+        """
+        Fetch the current schema of this segment's registered layers.
+
+        Referenced assets are excluded from the segment's schema.
+
+        Raises [`NotFoundError`][rerun.catalog.NotFoundError] if the segment or dataset does not exist.
+        """
+        from ._schema import Schema
+
+        return Schema(self._internal.schema())
 
     @with_tracing("Segment.layers")
     def layers(self) -> set[str]:

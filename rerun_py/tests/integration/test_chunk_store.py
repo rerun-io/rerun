@@ -5,6 +5,7 @@ from __future__ import annotations
 import pathlib
 from typing import TYPE_CHECKING
 
+import pyarrow as pa
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
@@ -153,7 +154,13 @@ def test_repr(test_rrd_path: Path) -> None:
 def test_schema(test_rrd_path: Path, snapshot: SnapshotAssertion) -> None:
     """schema() returns a Schema matching the stored data."""
     store = RrdReader(test_rrd_path).stream().collect()
-    assert repr(store.schema()) == snapshot
+    schema = store.schema()
+    assert repr(schema) == snapshot
+    del store
+    arrow_schema = schema.to_arrow()
+    assert arrow_schema.equals(pa.schema(schema), check_metadata=True)
+    assert set(schema.column_names()) <= set(arrow_schema.names)
+    assert all(arrow_schema.field(column.name).metadata for column in schema)
 
 
 def test_schema_entity_paths(test_rrd_path: Path) -> None:

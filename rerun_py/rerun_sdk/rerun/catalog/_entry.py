@@ -219,10 +219,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.manifest_url
 
+    # TODO(RR-5950): Remove this compatibility method after callers migrate to schema().to_arrow().
+    @deprecated("DatasetEntry.arrow_schema() is deprecated. Use DatasetEntry.schema().to_arrow() instead.")
     def arrow_schema(self) -> pa.Schema:
         """Return the Arrow schema of the data contained in the dataset."""
-
-        return self._internal.arrow_schema()
+        return self.schema().to_arrow()
 
     def register_blueprint(self, uri: str, set_default: bool = True, *, segment_table: bool = False) -> None:
         """

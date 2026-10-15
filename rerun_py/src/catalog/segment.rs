@@ -4,7 +4,7 @@ use pyo3::{Py, PyResult, Python, pyclass, pymethods};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::LayerName;
 
-use super::{PyDatasetEntryInternal, PyUnregistrationHandleInternal, to_py_err};
+use super::{PyDatasetEntryInternal, PySchemaInternal, PyUnregistrationHandleInternal, to_py_err};
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
@@ -83,6 +83,29 @@ impl PySegmentInternal {
             self.dataset.borrow(py).entry_id(),
             self.segment_id.as_str()
         )
+    }
+
+    fn schema(&self, py: Python<'_>) -> PyResult<PySchemaInternal> {
+        let _span = read_trace_context_from_python(py, "Segment.schema").entered();
+        let Self {
+            dataset,
+            segment_id,
+        } = self;
+        let (connection, dataset_id) = {
+            let dataset = dataset.borrow(py);
+            (
+                dataset.client().borrow(py).connection().clone(),
+                dataset.entry_id(),
+            )
+        };
+        let schema = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_segment_schema(dataset_id, segment_id.clone())
+                .await
+                .map_err(to_py_err)
+        })?;
+        PySchemaInternal::from_arrow_schema(schema)
     }
 
     /// Read the current layer names from the segment table.
