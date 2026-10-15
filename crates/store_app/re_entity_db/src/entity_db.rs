@@ -5,7 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use arrow::array::BooleanArray;
 use itertools::chain;
 use nohash_hasher::IntMap;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
@@ -16,7 +15,8 @@ use re_chunk::{
 use re_chunk_index::RrdManifest;
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
-    ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStoreSubscriber as _, ChunkTrackingMode, GarbageCollectionOptions,
+    GarbageCollectionTarget, IsStartOfGop,
 };
 use re_log::{debug_assert, debug_assert_eq};
 use re_log_channel::LogSource;
@@ -38,6 +38,16 @@ use crate::rrd_manifest_index::RrdManifestIndex;
 
 /// See [`GarbageCollectionOptions::time_budget`].
 pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
+
+/// A time range to export with [`EntityDb::to_messages`].
+#[derive(Clone)]
+pub struct ExportTimeSelection {
+    pub timeline: TimelineName,
+    pub range: AbsoluteTimeRangeF,
+
+    /// Used to start video streams on a keyframe, see [`ChunkStore::split_by_time_ranges`].
+    pub is_start_of_gop: Option<IsStartOfGop>,
+}
 
 // ----------------------------------------------------------------------------¨
 
@@ -1028,11 +1038,11 @@ impl EntityDb {
 
     /// Export the contents of the current database to a sequence of messages.
     ///
-    /// If `time_selection` is specified, then only data for that specific timeline over that
-    /// specific time range will be accounted for.
+    /// If `time_selection` is specified, then only the data needed to view that specific time
+    /// range on that specific timeline will be accounted for, see [`ChunkStore::split_by_time_ranges`].
     pub fn to_messages(
         &self,
-        time_selection: Option<(TimelineName, AbsoluteTimeRangeF)>,
+        time_selection: Option<ExportTimeSelection>,
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
@@ -1043,52 +1053,45 @@ impl EntityDb {
             .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
         let data_messages = {
-            let time_filter = time_selection.map(|(timeline, range)| {
-                (
+            let chunks: Vec<Arc<Chunk>> = if let Some(time_selection) = time_selection {
+                let ExportTimeSelection {
                     timeline,
-                    AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
-                )
-            });
+                    range,
+                    is_start_of_gop,
+                } = time_selection;
 
-            let mut chunks: Vec<Arc<Chunk>> = engine
-                .store()
-                .iter_physical_chunks()
-                .filter(move |chunk| {
-                    if chunk.is_static() {
-                        return true; // always keep all static data
-                    }
+                // Only what is loaded can be saved.
+                let tracking = ChunkTrackingMode::Ignore;
 
-                    let Some((timeline, time_range)) = time_filter else {
-                        return true; // no filter -> keep all data
-                    };
+                // The chunks come ordered by their original chunk ID, which preserves the loading order.
+                engine
+                    .store()
+                    .split_by_time_ranges(
+                        tracking,
+                        &timeline,
+                        &[range.to_int()],
+                        is_start_of_gop.as_ref(),
+                    )
+                    .into_iter()
+                    .flatten()
+                    .map(|(_original_chunk_id, chunk)| Arc::new(chunk))
+                    .collect()
+            } else {
+                let mut chunks: Vec<Arc<Chunk>> =
+                    engine.store().iter_physical_chunks().cloned().collect();
 
-                    chunk
-                        .timelines()
-                        .get(&timeline)
-                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
-                })
-                .cloned() // refcount
-                .collect();
+                // Try to roughly preserve the order of the chunks
+                // from how they were originally logged.
+                // See https://github.com/rerun-io/rerun/issues/7175 for why.
+                chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
 
-            // Try to roughly preserve the order of the chunks
-            // from how they were originally logged.
-            // See https://github.com/rerun-io/rerun/issues/7175 for why.
-            chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
+                chunks
+            };
 
-            // Slicing copies data, so it happens lazily, after the store lock has been released.
-            chunks.into_iter().filter_map(move |chunk| {
-                let chunk = match time_filter {
-                    Some((timeline, time_range)) if !chunk.is_static() => {
-                        slice_to_time_range(&chunk, &timeline, time_range)?
-                    }
-                    _ => chunk,
-                };
-
-                Some(
-                    chunk
-                        .to_arrow_msg()
-                        .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg)),
-                )
+            chunks.into_iter().map(|chunk| {
+                chunk
+                    .to_arrow_msg()
+                    .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
             })
         };
 
@@ -1393,28 +1396,6 @@ impl MemUsageTreeCapture for EntityDb {
     }
 }
 
-/// Keeps only the rows of a temporal `chunk` whose time on `timeline` is within `time_range`.
-///
-/// Returns `None` if the chunk has no such rows, including when it isn't on `timeline` at all.
-fn slice_to_time_range(
-    chunk: &Arc<Chunk>,
-    timeline: &TimelineName,
-    time_range: AbsoluteTimeRange,
-) -> Option<Arc<Chunk>> {
-    let time_column = chunk.timelines().get(timeline)?;
-    if time_range.contains_range(time_column.time_range()) {
-        return Some(Arc::clone(chunk)); // no need to copy anything
-    }
-
-    let mask: Vec<bool> = time_column
-        .times()
-        .map(|time| time_range.contains(time))
-        .collect();
-    let sliced = chunk.filtered(&BooleanArray::from(mask))?;
-
-    (!sliced.is_empty()).then(|| Arc::new(sliced))
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -1524,7 +1505,11 @@ mod tests {
         )?;
         add_chunk("static", &[TimePoint::default()])?;
 
-        let time_selection = (*timeline_frame.name(), AbsoluteTimeRangeF::new(4.0, 8.0));
+        let time_selection = ExportTimeSelection {
+            timeline: *timeline_frame.name(),
+            range: AbsoluteTimeRangeF::new(4.0, 8.0),
+            is_start_of_gop: None,
+        };
 
         let mut frames_per_entity: BTreeMap<String, Vec<i64>> = BTreeMap::new();
         let mut static_entities = Vec::new();
@@ -1554,6 +1539,8 @@ mod tests {
             frames_per_entity,
             BTreeMap::from([
                 ("/fully_inside".to_owned(), vec![5, 6]),
+                // The latest value before the selection is kept, so that it can be viewed on its own.
+                ("/no_rows_inside".to_owned(), vec![2]),
                 ("/partially_inside".to_owned(), vec![4, 6, 8]),
                 ("/unsorted".to_owned(), vec![4, 6]),
             ])

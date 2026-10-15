@@ -44,6 +44,15 @@ impl RrdSnapshot {
             .and_then(|info| info.store_version)
             .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
+        let time_selection =
+            time_selection.map(|(timeline, range)| re_entity_db::ExportTimeSelection {
+                timeline,
+                range,
+                is_start_of_gop: Some(std::sync::Arc::new(|data, codec| {
+                    re_video::is_start_of_gop(data, codec.into()).map_err(anyhow::Error::from)
+                })),
+            });
+
         Self {
             version,
             messages: entity_db.to_messages(time_selection).collect(),
