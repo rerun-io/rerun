@@ -591,4 +591,93 @@ mod tests {
             ))
         );
     }
+
+    /// The Python SDK writes number and timestamp literals the way Python formats them, and these
+    /// also become column filters.
+    #[test]
+    fn python_literals_are_parsed() {
+        let float_field = Arc::new(Field::new("value", DataType::Float64, false));
+        let timestamp_field = Arc::new(Field::new(
+            "time",
+            DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+            false,
+        ));
+        let schema = Schema::new_with_metadata(
+            vec![Arc::clone(&float_field), Arc::clone(&timestamp_field)],
+            Default::default(),
+        );
+
+        for (sql, value) in [
+            (r#""value" > 1e+300"#, 1e300),
+            (r#""value" > 1e-07"#, 1e-7),
+            (r#""value" > CAST('-inf' AS DOUBLE)"#, f64::NEG_INFINITY),
+        ] {
+            assert_eq!(
+                TableFilter::from_sql(sql, &schema),
+                TableFilter::Column(ColumnFilter::new(
+                    Arc::clone(&float_field),
+                    FloatFilter::new(ComparisonOperator::Gt, Some(value))
+                )),
+                "{sql}"
+            );
+        }
+
+        let sql = r#""value" = CAST('NaN' AS DOUBLE)"#;
+        let TableFilter::Column(ColumnFilter {
+            filter: TypedFilter::Float(filter),
+            ..
+        }) = TableFilter::from_sql(sql, &schema)
+        else {
+            panic!("{sql}");
+        };
+        assert!(filter.rhs_value().is_some_and(f64::is_nan), "{sql}");
+
+        let sql = r#""time" < TIMESTAMPTZ '1973-03-03T09:46:40.500000Z'"#;
+        assert_eq!(
+            TableFilter::from_sql(sql, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                timestamp_field,
+                TimestampFilter::before(timestamp() + jiff::SignedDuration::from_millis(500))
+            )),
+            "{sql}"
+        );
+    }
+
+    /// The Python SDK doesn't know the column types, so it writes the same SQL for a `Float32`
+    /// column as for a `Float64` column, and the same SQL for a column of the `Timestamp`
+    /// component as for an Arrow timestamp column. These are still column filters.
+    #[test]
+    fn python_sql_for_typed_columns_is_parsed() {
+        use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+
+        let float_field = Arc::new(Field::new("value", DataType::Float32, false));
+        let timestamp_field = Arc::new(
+            Field::new("created", DataType::Int64, false).with_metadata(
+                [(
+                    FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
+                    re_sdk_types::components::Timestamp::name().to_string(),
+                )]
+                .into(),
+            ),
+        );
+        let schema = Schema::new_with_metadata(
+            vec![Arc::clone(&float_field), Arc::clone(&timestamp_field)],
+            Default::default(),
+        );
+
+        assert_eq!(
+            TableFilter::from_sql(r#""value" > 0.1"#, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                float_field,
+                FloatFilter::new(ComparisonOperator::Gt, Some(0.1))
+            ))
+        );
+        assert_eq!(
+            TableFilter::from_sql(r#""created" < TIMESTAMPTZ '1973-03-03T09:46:40Z'"#, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                timestamp_field,
+                TimestampFilter::before(timestamp())
+            ))
+        );
+    }
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Literal
 from unittest.mock import Mock, patch
 
@@ -169,6 +170,139 @@ def test_table_blueprint_validates_inputs() -> None:
         rrb.table.Column("a", editable=True)
 
     assert rrb.table.PreviewCell(view).views == (view,)
+
+
+def test_table_blueprint_logs_filters(tmp_path: Path) -> None:
+    blueprint = rrb.table.TableBlueprint(filters=[rrb.table.col("score") >= 3, '"a" > "b"'])
+
+    data = _save_and_read(blueprint, tmp_path / "table.rbl")
+
+    assert data["/table"] == {"TableBlueprint:filters": [['"score" >= 3', '"a" > "b"']]}
+
+
+# Each filter writes the SQL the Viewer parses back into an editable filter, as in the
+# `column_filters_round_trip_through_sql` snapshot of `re_dataframe_ui`.
+_COLUMN = 'Some "column"'
+_C = '"Some ""column"""'
+_TIMESTAMP = datetime(1973, 3, 3, 9, 46, 40, tzinfo=UTC)
+_FILTER_SQL = [
+    (rrb.table.col(_COLUMN).is_true(), f"{_C} = true"),
+    (rrb.table.col(_COLUMN).is_false(), f"{_C} = false"),
+    (rrb.table.col(_COLUMN).is_not_true(), f"({_C} = true) IS NOT TRUE"),
+    (rrb.table.col(_COLUMN).is_not_false(), f"({_C} = false) IS NOT TRUE"),
+    (rrb.table.col(_COLUMN).list.is_true(), f"any_match({_C}, x -> x = true)"),
+    (rrb.table.col(_COLUMN).is_null(), f"{_C} IS NULL"),
+    (
+        rrb.table.col(_COLUMN).list.is_not_null(),
+        f"({_C} IS NULL OR NOT any_match({_C}, x -> true) OR any_match({_C}, x -> x IS NULL)) IS NOT TRUE",
+    ),
+    (rrb.table.col(_COLUMN) == -42, f"{_C} = -42"),
+    (rrb.table.col(_COLUMN).eq(-42), f"{_C} = -42"),
+    (rrb.table.col(_COLUMN) != 7, f"({_C} = 7) IS NOT TRUE"),
+    (rrb.table.col(_COLUMN).ne(7), f"({_C} = 7) IS NOT TRUE"),
+    (rrb.table.col(_COLUMN).lt(7), f"{_C} < 7"),
+    (rrb.table.col(_COLUMN).le(7), f"{_C} <= 7"),
+    (rrb.table.col(_COLUMN).gt(7), f"{_C} > 7"),
+    (rrb.table.col(_COLUMN).ge(7), f"{_C} >= 7"),
+    (rrb.table.col(_COLUMN) < 7, f"{_C} < 7"),
+    (rrb.table.col(_COLUMN) <= 7, f"{_C} <= 7"),
+    (rrb.table.col(_COLUMN) > -10.5, f"{_C} > -10.5"),
+    (rrb.table.col(_COLUMN).list >= 7, f"any_match({_C}, x -> x >= 7)"),
+    (rrb.table.col(_COLUMN) == float("inf"), f"{_C} = CAST('inf' AS DOUBLE)"),
+    (rrb.table.col(_COLUMN).str.contains("query"), f"{_C} ILIKE '%query%'"),
+    (
+        rrb.table.col(_COLUMN).str.does_not_contain(r"it's 100% a_b\c"),
+        rf"({_C} ILIKE '%it''s 100\% a\_b\\c%' ESCAPE '\') IS NOT TRUE",
+    ),
+    (rrb.table.col(_COLUMN).str.starts_with("query"), f"{_C} ILIKE 'query%'"),
+    (rrb.table.col(_COLUMN).list.str.ends_with("query"), f"any_match({_C}, x -> x ILIKE '%query')"),
+    (
+        rrb.table.col(_COLUMN).today(),
+        f"{_C} >= date_trunc('day', now()) AND {_C} < date_trunc('day', now()) + INTERVAL '1 day'",
+    ),
+    (
+        rrb.table.col(_COLUMN).yesterday(),
+        f"{_C} >= date_trunc('day', now()) - INTERVAL '1 day' AND {_C} < date_trunc('day', now())",
+    ),
+    (rrb.table.col(_COLUMN).last_24_hours(), f"{_C} >= now() - INTERVAL '24 hours' AND {_C} < now()"),
+    (
+        rrb.table.col(_COLUMN).this_week(),
+        f"{_C} >= date_trunc('week', now()) AND {_C} < date_trunc('week', now()) + INTERVAL '7 days'",
+    ),
+    (
+        rrb.table.col(_COLUMN).list.not_last_week(),
+        (
+            f"(any_match({_C}, x -> x >= date_trunc('week', now()) - INTERVAL '7 days'"
+            " AND x < date_trunc('week', now()))) IS NOT TRUE"
+        ),
+    ),
+    (rrb.table.col(_COLUMN).before(_TIMESTAMP), f"{_C} < TIMESTAMPTZ '1973-03-03T09:46:40Z'"),
+    (rrb.table.col(_COLUMN).after(_TIMESTAMP), f"{_C} >= TIMESTAMPTZ '1973-03-03T09:46:40Z'"),
+    (
+        rrb.table.col(_COLUMN).between(_TIMESTAMP, _TIMESTAMP + timedelta(hours=1)),
+        f"{_C} >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND {_C} < TIMESTAMPTZ '1973-03-03T10:46:40Z'",
+    ),
+    (
+        rrb.table.col(_COLUMN).not_between(_TIMESTAMP, _TIMESTAMP + timedelta(hours=1)),
+        f"({_C} >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND {_C} < TIMESTAMPTZ '1973-03-03T10:46:40Z') IS NOT TRUE",
+    ),
+    (
+        rrb.table.col(_COLUMN).not_today(),
+        f"({_C} >= date_trunc('day', now()) AND {_C} < date_trunc('day', now()) + INTERVAL '1 day') IS NOT TRUE",
+    ),
+    (
+        rrb.table.col(_COLUMN).not_yesterday(),
+        f"({_C} >= date_trunc('day', now()) - INTERVAL '1 day' AND {_C} < date_trunc('day', now())) IS NOT TRUE",
+    ),
+    (
+        rrb.table.col(_COLUMN).not_last_24_hours(),
+        f"({_C} >= now() - INTERVAL '24 hours' AND {_C} < now()) IS NOT TRUE",
+    ),
+    (
+        rrb.table.col(_COLUMN).not_this_week(),
+        (f"({_C} >= date_trunc('week', now()) AND {_C} < date_trunc('week', now()) + INTERVAL '7 days') IS NOT TRUE"),
+    ),
+]
+
+
+@pytest.mark.parametrize(("row_filter", "sql"), _FILTER_SQL)
+def test_filters_write_viewer_sql(row_filter: rrb.table.Filter, sql: str) -> None:
+    assert row_filter.sql == sql
+
+
+def test_timestamp_filters_convert_to_utc() -> None:
+    column = rrb.table.col("time")
+    local = datetime(1973, 3, 3, 11, 46, 40, tzinfo=timezone(timedelta(hours=2)))
+
+    assert column.before(local) == column.before(_TIMESTAMP)
+    assert column.before(_TIMESTAMP.replace(tzinfo=None)) == column.before(_TIMESTAMP)
+
+
+def test_filters_validate_inputs() -> None:
+    with pytest.raises(ValueError, match="must not be empty"):
+        rrb.table.col("")
+    with pytest.raises(ValueError, match="must not be empty"):
+        rrb.table.Filter(" ")
+    with pytest.raises(ValueError, match="non-empty string"):
+        rrb.table.col("task").str.contains("")
+    with pytest.raises(TypeError, match="datetime"):
+        rrb.table.col("time").before("2026-01-01")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="Can't compare"):
+        _ = rrb.table.col("score") >= None  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+    with pytest.raises(TypeError, match="Can't compare"):
+        _ = rrb.table.col("task") == "pick"
+    with pytest.raises(TypeError, match="Can't compare"):
+        rrb.table.col("success").eq(True)
+    with pytest.raises(TypeError, match="Can't compare"):
+        _ = rrb.table.col("time") > _TIMESTAMP  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+    with pytest.raises(AttributeError):
+        _ = rrb.table.col("tags").list.list  # type: ignore[attr-defined]
+    with pytest.raises(TypeError, match="sequence of filters"):
+        rrb.table.TableBlueprint(filters='"a" > 1')
+    with pytest.raises(TypeError, match="no truth value"):
+        _ = not rrb.table.col("success").is_true()
+    with pytest.raises(TypeError, match="no truth value"):
+        _ = rrb.table.col("score") > 1 and rrb.table.col("score") < 3
 
 
 @pytest.mark.parametrize("visible", [None, True, False])

@@ -21,6 +21,13 @@ from ._table_cells import (
     ThumbnailCell as ThumbnailCell,
     _Cell,
 )
+from ._table_filters import (
+    Filter as Filter,
+    FilterColumn as FilterColumn,
+    ListFilters as ListFilters,
+    StringFilters as StringFilters,
+    col as col,
+)
 from .archetypes import (
     CardLayout as CardLayoutArchetype,
     PreviewsConfig as PreviewsConfig,
@@ -41,13 +48,18 @@ __all__ = [
     "CardLayout",
     "Column",
     "EntryKindCell",
+    "Filter",
+    "FilterColumn",
     "FlagCell",
     "LinkCell",
+    "ListFilters",
     "PreviewCell",
     "PreviewsConfig",
+    "StringFilters",
     "TableBlueprint",
     "TableLayout",
     "ThumbnailCell",
+    "col",
 ]
 
 
@@ -216,6 +228,11 @@ class TableBlueprint:
     previews_config:
         Timeline selection shared by every [`PreviewCell`][rerun.blueprint.table.PreviewCell] in both layouts.
         If no timeline is specified, one is picked automatically, preferring custom over built-in timelines.
+    filters:
+        Row filters, shared by both layouts.
+        A row is only shown when all filters select it.
+        Build filters for one column with [`col`][rerun.blueprint.table.col], which the Viewer shows as editable filters.
+        Instead of a [`Filter`][rerun.blueprint.table.Filter], you can also provide a string with a raw SQL expression.
 
     """
 
@@ -224,8 +241,16 @@ class TableBlueprint:
     default_layout: Literal["table", "cards"] | None = None
     column_display_mode: ColumnDisplayModeLike | None = None
     previews_config: PreviewsConfig | None = None
+    filters: Sequence[Filter | str] = ()
 
     def __post_init__(self) -> None:
+        if isinstance(self.filters, (str, Filter)):
+            raise TypeError("TableBlueprint.filters must be a sequence of filters")
+        object.__setattr__(
+            self,
+            "filters",
+            tuple(entry if isinstance(entry, Filter) else Filter(entry) for entry in self.filters),
+        )
         if self.table_layout is not None and not isinstance(self.table_layout, TableLayout):
             raise TypeError("TableBlueprint.table_layout must be a TableLayout or None")
         if self.card_layout is not None and not isinstance(self.card_layout, CardLayout):
@@ -285,7 +310,9 @@ class TableBlueprint:
             view._log_to_stream(stream)
 
         components = TableBlueprintArchetype(
-            layout=self.default_layout, column_display_mode=self.column_display_mode
+            layout=self.default_layout,
+            column_display_mode=self.column_display_mode,
+            filters=[str(entry) for entry in self.filters] or None,
         ).as_component_batches()
         if components:
             stream.log("table", components)
@@ -317,4 +344,3 @@ class TableBlueprint:
                 field._log_to_stream(stream, f"table/layouts/cards/fields/{source}")
 
     # TODO(RR-4810): Add sorting after the type definitions model it.
-    # TODO(RR-4810): Add filters after the type definitions model them.
