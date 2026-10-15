@@ -15,6 +15,7 @@ mod connection_handle;
 mod dataframe_rendering;
 mod datafusion_catalog;
 mod dataset_entry;
+mod dataset_info;
 mod dataset_view;
 mod entry;
 mod errors;
@@ -42,6 +43,7 @@ pub use self::component_columns::{PyComponentColumnDescriptor, PyComponentColumn
 pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
+pub use self::dataset_info::PyDatasetInfoInternal;
 pub use self::dataset_view::PyDatasetViewInternal;
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
@@ -67,6 +69,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntryDetails>()?;
     m.add_class::<PyDatasetEntryInternal>()?;
     m.add_class::<PySegmentInternal>()?;
+    m.add_class::<PyDatasetInfoInternal>()?;
     m.add_class::<PyLayerInternal>()?;
     m.add_class::<PyTableEntryInternal>()?;
     m.add_class::<PyTableInsertModeInternal>()?;

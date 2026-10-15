@@ -1,0 +1,23 @@
+# serializer version: 1
+# name: test_dataset_info
+  '''
+  DatasetInfo(<dataset>: 20 segments, 0 B)
+    contents: 5 entities, 5 component columns
+    properties: (none)
+    layers:
+      base: in 20 segments
+    timelines:
+      log_tick: sequence, #1 … #128, in 20 segments
+      log_time: timestamp, 2025-11-03 20:35:21.033 023Z … 2025-11-03 20:35:21.092 650Z, in 20 segments
+      time_1: timestamp, 2024-01-15 10:30:45.123 456Z … 2024-01-15 12:08:45.123 456Z, in 20 segments
+      time_2: duration, +1 800s … +16 500s, in 20 segments
+      time_3: sequence, #1 … #50, in 20 segments
+  '''
+# ---
+# name: test_dataset_info_empty
+  '''
+  DatasetInfo(<dataset>: 0 segments, 0 B)
+    contents: 0 entities, 0 component columns
+    properties: (none)
+  '''
+# ---

@@ -41,6 +41,7 @@ if TYPE_CHECKING:
 
     from . import (
         CatalogClient,
+        DatasetInfo,
         EntryKind,
         IndexValuesLike,
         Layer,
@@ -592,6 +593,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         from ._schema import Schema
 
         return Schema(self._internal.schema())
+
+    @with_tracing("DatasetEntry.info")
+    def info(self) -> DatasetInfo:
+        """
+        Return an overview of the dataset: segments, size, layers, timelines, contents and properties.
+
+        This fetches the schema and scans a few columns of the segment table.
+        It reads no recording data, and its output grows with the number of layers and timelines, not segments.
+        """
+        from ._dataset_info import _dataset_info_from_internal
+
+        return _dataset_info_from_internal(self._internal.info())
 
     @with_tracing("DatasetEntry.segment_ids")
     def segment_ids(self) -> list[str]:

@@ -16,6 +16,11 @@ from rerun_bindings.types import (
 
 from ._catalog_client import CatalogClient as CatalogClient, VersionInfo as VersionInfo
 from ._content_filter import ContentFilter as ContentFilter
+from ._dataset_info import (
+    DatasetInfo as DatasetInfo,
+    LayerInfo as LayerInfo,
+    TimelineInfo as TimelineInfo,
+)
 from ._entry import (
     DatasetEntry as DatasetEntry,
     DatasetView as DatasetView,

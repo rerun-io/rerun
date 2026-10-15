@@ -19,6 +19,7 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_types_core::LayerName;
 use tokio_stream::StreamExt as _;
 
+use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
 use crate::registration_handle::parse_task_descriptors;
 use crate::{
     ApiError, ApiResult, Asset, AssetRegistrationError, Connection, ConnectionClient,
@@ -176,6 +177,25 @@ impl ConnectionHandle {
             ),
         )
         .with_trace_id(trace_id))
+    }
+
+    /// An overview of a dataset, from its schemas and a projected scan of its segment table.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_info(&self, dataset_id: EntryId) -> ApiResult<DatasetInfo> {
+        let mut client = self.client().await?;
+        let segment_table_schema = client.get_segment_table_schema(dataset_id).await?;
+        let dataset_schema = client.get_dataset_schema(dataset_id).await?;
+
+        let mut builder = DatasetInfoBuilder::new(&segment_table_schema);
+        let request = ScanSegmentTableRequest::with_columns(builder.columns());
+        let mut stream = client.scan_segment_table(dataset_id, request).await?;
+        let trace_id = stream.trace_id();
+
+        while let Some(batch) = stream.next().await {
+            builder.add_batch(&self.origin, trace_id, &batch?)?;
+        }
+
+        builder.finish(&self.origin, &dataset_schema)
     }
 
     /// Discover distinct layer names from current segment-table metadata.

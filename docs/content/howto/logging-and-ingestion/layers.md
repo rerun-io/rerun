@@ -210,6 +210,17 @@ Output:
 └───────────────────────────────────────┴─────────────────────────────────┘
 ```
 
+### How many segments contain each layer?
+
+[`DatasetEntry.info()`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetEntry.info) counts the distinct segments of each layer:
+
+```python
+>>> {layer.name: layer.num_segments for layer in dataset.info().layers}
+{'base': 3, 'predictions': 2}
+```
+
+A segment with several layers counts once for each of them, so the counts can add up to more than the number of segments.
+
 ### How can I find the segments containing a layer?
 
 Use [`DatasetEntry.layer()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.layer) to get a handle to an existing named layer across the dataset.

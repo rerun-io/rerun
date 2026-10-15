@@ -76,6 +76,27 @@ rerun rerun+http://localhost:51234
 or open the command palette in the viewer (`cmd/ctrl + K` or via the menu) and pick "Connect to a server…".
 Set the scheme to `http` and enter the hostname and port in the dialog.
 
+## Getting an overview
+
+Before querying, `info()` summarizes what a dataset holds: its segments, layers, timeline ranges, contents and property columns.
+It reads only the segment table and the schema, so it stays fast on large datasets.
+
+```python
+>>> dataset.info()
+DatasetInfo(robot_episodes: 3 segments, 41.1 KiB)
+  contents: 3 entities, 3 component columns
+  properties: property:RecordingInfo:start_time, property:episode:operator, property:episode:success
+  layers:
+    base: in 3 segments
+    predictions: in 2 segments
+  timelines:
+    capture_time: timestamp, 2026-03-01 09:00:00Z … 2026-03-01 11:02:19Z, in 3 segments
+    frame: sequence, #0 … #139, in 3 segments
+```
+
+The same information is available as fields, e.g. `{layer.name: layer.num_segments for layer in dataset.info().layers}`.
+See [`DatasetInfo`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetInfo) for the full list.
+
 ## Inspecting the schema
 
 The content of a dataset can be inspected using the `schema()` method:

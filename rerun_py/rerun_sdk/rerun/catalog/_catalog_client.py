@@ -9,6 +9,7 @@ from rerun._tracing import with_tracing
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import (
     CatalogClientInternal,
+    format_bytes,
 )
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
@@ -106,13 +107,7 @@ def _format_duration(d: timedelta) -> str:
 def _format_bandwidth(bps: float | None) -> str:
     if bps is None:
         return "(too fast to measure)"
-    units = ("B/s", "KiB/s", "MiB/s", "GiB/s", "TiB/s")
-    value = bps
-    idx = 0
-    while value >= 1024.0 and idx + 1 < len(units):
-        value /= 1024.0
-        idx += 1
-    return f"{value:.1f} {units[idx]}"
+    return f"{format_bytes(bps)}/s"
 
 
 class CatalogClient:

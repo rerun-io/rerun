@@ -10655,6 +10655,7 @@ dependencies = [
  "re_mutex",
  "re_perf_telemetry",
  "re_protos",
+ "re_sorbet",
  "re_span",
  "re_tracing",
  "re_types_core",

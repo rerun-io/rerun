@@ -28,6 +28,7 @@ mod arrow;
 mod catalog;
 mod chunk;
 mod chunk_stream;
+mod formatting;
 mod lenses;
 mod python_bridge;
 mod query_metrics;

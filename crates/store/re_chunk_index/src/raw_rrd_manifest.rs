@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use arrow::array::RecordBatch;
 use arrow::buffer::NullBuffer;
-use arrow::datatypes::Field;
+use arrow::datatypes::{Field, FieldRef};
 use arrow::{
     array::{BooleanArray, UInt64Array},
     error::ArrowError,
@@ -814,6 +814,34 @@ impl RawRrdManifest {
         Self::is_index(field)
             && !Self::is_index_static(field)
             && !Self::is_index_per_component(field)
+    }
+
+    /// The `(index_name, start, end)` fields of every global temporal index in `fields`, sorted by index name.
+    ///
+    /// An index missing either of the two columns is left out.
+    pub fn global_index_ranges(
+        fields: &[FieldRef],
+    ) -> impl Iterator<Item = (&str, &FieldRef, &FieldRef)> {
+        let mut starts = BTreeMap::new();
+        let mut ends = BTreeMap::new();
+
+        for field in fields {
+            if !Self::is_index_global_temporal(field) {
+                continue;
+            }
+            let Some(index_name) = Self::get_index_name(field) else {
+                continue;
+            };
+            if Self::is_index_start(field) {
+                starts.insert(index_name, field);
+            } else if Self::is_index_end(field) {
+                ends.insert(index_name, field);
+            }
+        }
+
+        starts.into_iter().filter_map(move |(index_name, start)| {
+            Some((index_name, start, ends.remove(index_name)?))
+        })
     }
 }
 
@@ -1706,4 +1734,57 @@ fn strip_null_mask_on_default_columns(data: RecordBatch) -> ChunkIndexResult<Rec
         &arrow::array::RecordBatchOptions::new().with_row_count(Some(num_rows)),
     )
     .map_err(ChunkIndexError::ArrowSerialization)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arrow::datatypes::{DataType, Field, FieldRef};
+
+    use super::RawRrdManifest;
+
+    fn index_field(name: &str, index: &str, marker: &str, component: Option<&str>) -> FieldRef {
+        let mut metadata = std::collections::HashMap::from([
+            (
+                RawRrdManifest::FIELD_METADATA_KEY_INDEX.to_owned(),
+                index.to_owned(),
+            ),
+            (
+                RawRrdManifest::FIELD_METADATA_KEY_INDEX_MARKER.to_owned(),
+                marker.to_owned(),
+            ),
+        ]);
+        if let Some(component) = component {
+            metadata.insert(
+                re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                component.to_owned(),
+            );
+        }
+        Arc::new(Field::new(name, DataType::Int64, true).with_metadata(metadata))
+    }
+
+    #[test]
+    fn global_index_ranges_pairs_start_and_end() {
+        let fields = vec![
+            Arc::new(Field::new("rerun_segment_id", DataType::Utf8, false)),
+            index_field("frame:end", "frame", "end", None),
+            index_field("frame:start", "frame", "start", None),
+            index_field("log_time:start", "log_time", "start", None),
+            index_field("static:start", "static", "start", None),
+            index_field("static:end", "static", "end", None),
+            index_field(
+                "pos:frame:start",
+                "frame",
+                "start",
+                Some("Points3D:positions"),
+            ),
+            index_field("pos:frame:end", "frame", "end", Some("Points3D:positions")),
+        ];
+
+        let names: Vec<_> = RawRrdManifest::global_index_ranges(&fields)
+            .map(|(index, start, end)| (index, start.name().as_str(), end.name().as_str()))
+            .collect();
+        assert_eq!(names, vec![("frame", "frame:start", "frame:end")]);
+    }
 }

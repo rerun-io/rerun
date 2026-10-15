@@ -14,7 +14,10 @@ use re_redap_client::SegmentChunkProvider;
 use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
-use super::{PyCatalogClientInternal, PyEntryDetails, PyTableProviderAdapterInternal, to_py_err};
+use super::{
+    PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails, PyTableProviderAdapterInternal,
+    to_py_err,
+};
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
@@ -321,6 +324,26 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
 
         connection.get_dataset_segment_ids(py, self_.entry_details.id)
+    }
+
+    /// Return an overview of the dataset.
+    fn info(self_: PyRef<'_, Self>) -> PyResult<PyDatasetInfoInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.info").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_details.id;
+
+        let info = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_dataset_info(dataset_id)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(PyDatasetInfoInternal::new(
+            self_.entry_details.name.to_string(),
+            info,
+        ))
     }
 
     /// Return the segment table as a DataFusion DataFrame.
