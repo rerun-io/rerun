@@ -49,7 +49,8 @@ impl RrdSnapshot {
                 timeline,
                 range,
                 is_start_of_gop: Some(std::sync::Arc::new(|data, codec| {
-                    re_video::is_start_of_gop(data, codec.into()).map_err(anyhow::Error::from)
+                    re_video::is_start_of_gop(data, codec.into())
+                        .map_err(|err| anyhow::anyhow!(err))
                 })),
             });
 

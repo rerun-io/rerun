@@ -20,8 +20,6 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 
 // ---
 
-// TODO(RR-3809): we should expose a `ChunkStore::split()` API.
-
 // TODO(RR-3810): There exists an optimal version of this that uses virtual chunk stores instead of physical
 // chunk stores, and only goes physical for chunks that require it (anything that could benefit
 // from slicing, meaning it sits across 2 or more splits, as well as keyframes & transforms special cases).

@@ -9,7 +9,7 @@ use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, TimePoint, Timeline};
 use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
 use re_sdk_types::components::{
-    PinholeProjection, TransformFrameId, Translation3D, VideoCodec, VideoSample,
+    IsKeyframe, PinholeProjection, TransformFrameId, Translation3D, VideoCodec, VideoSample,
 };
 use re_types_core::ComponentBatch;
 
@@ -151,19 +151,21 @@ fn video_starts_on_previous_keyframe() {
         vec![(None, vec![(VideoStream::descriptor_codec(), &codec as _)])],
     );
     let samples: Vec<VideoSample> = (0..20u8).map(|i| VideoSample::from(vec![i])).collect();
+    let is_keyframe: Vec<IsKeyframe> = (0..20).map(|i| IsKeyframe::from(i % 5 == 0)).collect();
     insert_chunk(
         &mut store,
         "/video",
-        samples
-            .iter()
-            .zip(0..)
-            .map(|(sample, i)| {
+        itertools::izip!(&samples, &is_keyframe, 0..)
+            .map(|(sample, is_keyframe, i)| {
                 (
                     Some(i),
-                    vec![(
-                        VideoStream::descriptor_sample(),
-                        sample as &dyn ComponentBatch,
-                    )],
+                    vec![
+                        (
+                            VideoStream::descriptor_sample(),
+                            sample as &dyn ComponentBatch,
+                        ),
+                        (VideoStream::descriptor_is_keyframe(), is_keyframe as _),
+                    ],
                 )
             })
             .collect(),
@@ -178,6 +180,11 @@ fn video_starts_on_previous_keyframe() {
     let times = times_per_component(&chunks);
     assert_eq!(
         times["/video:VideoStream:sample"],
+        some(&[5, 6, 7, 8, 9, 10, 11, 12])
+    );
+    // The keyframe markers go along with the samples.
+    assert_eq!(
+        times["/video:VideoStream:is_keyframe"],
         some(&[5, 6, 7, 8, 9, 10, 11, 12])
     );
     assert_eq!(times["/video:VideoStream:codec"], vec![None]);
@@ -222,6 +229,45 @@ fn keeps_all_multiplexed_transforms_before_range() {
     assert_eq!(times["/tf:Transform3D:child_frame"], some(&[1, 2, 3, 10]));
     assert_eq!(times["/tf:Transform3D:translation"], some(&[1, 2, 3, 10]));
 }
+
+#[test]
+fn keeps_latest_transform_and_pinhole_before_range() {
+    let mut store = new_store();
+    let translation = Translation3D::new(1.0, 2.0, 3.0);
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    insert_chunk(
+        &mut store,
+        "/tf",
+        [0, 1]
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![(
+                        Transform3D::descriptor_translation(),
+                        &translation as &dyn ComponentBatch,
+                    )],
+                )
+            })
+            .into(),
+    );
+    insert_chunk(
+        &mut store,
+        "/camera",
+        vec![(
+            Some(0),
+            vec![(Pinhole::descriptor_image_from_camera(), &projection as _)],
+        )],
+    );
+
+    let chunks = split(&store, (5, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    // Without multiplexed coordinate frames, these are regular latest-at data.
+    assert_eq!(times["/tf:Transform3D:translation"], some(&[1]));
+    assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[0]));
+}
+
 #[test]
 fn keeps_static_data() {
     let mut store = new_store();

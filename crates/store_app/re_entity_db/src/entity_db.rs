@@ -42,7 +42,10 @@ pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::fro
 /// A time range to export with [`EntityDb::to_messages`].
 #[derive(Clone)]
 pub struct ExportTimeSelection {
+    /// The timeline the selection is on.
     pub timeline: TimelineName,
+
+    /// The selected time range, rounded outwards to whole time points.
     pub range: AbsoluteTimeRangeF,
 
     /// Used to start video streams on a keyframe, see [`ChunkStore::split_by_time_ranges`].
@@ -1507,7 +1510,8 @@ mod tests {
 
         let time_selection = ExportTimeSelection {
             timeline: *timeline_frame.name(),
-            range: AbsoluteTimeRangeF::new(4.0, 8.0),
+            // Rounded outwards to [4, 8].
+            range: AbsoluteTimeRangeF::new(4.5, 7.5),
             is_start_of_gop: None,
         };
 
