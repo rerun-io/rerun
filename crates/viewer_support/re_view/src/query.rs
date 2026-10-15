@@ -855,6 +855,9 @@ impl DataResultQuery for DataResult {
 }
 
 #[cfg(test)]
+pub use tests::{run_with_test_view_context, test_data_result, test_instruction};
+
+#[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
@@ -886,7 +889,7 @@ mod tests {
     use crate::blueprint_resolved_results::ComponentSourcesMap;
     use crate::{BlueprintResolvedResults, ComponentMappingError};
 
-    fn test_instruction(mappings: VisualizerComponentMappings) -> VisualizerInstruction {
+    pub fn test_instruction(mappings: VisualizerComponentMappings) -> VisualizerInstruction {
         VisualizerInstruction::new(
             VisualizerInstructionId::new_random(),
             ViewSystemIdentifier::from_static_str("Test"),
@@ -1371,7 +1374,7 @@ mod tests {
     }
 
     /// Creates a visible, interactive latest-at [`DataResult`] with no visualizer instructions.
-    fn test_data_result(entity_path: impl Into<EntityPath>) -> DataResult {
+    pub fn test_data_result(entity_path: impl Into<EntityPath>) -> DataResult {
         DataResult {
             entity_path: entity_path.into(),
             any_visualizers_available: true,
@@ -1385,7 +1388,7 @@ mod tests {
     }
 
     /// Runs `func` with the minimal [`ViewContext`] backed by `test_context` and returns its output.
-    fn run_with_test_view_context<R>(
+    pub fn run_with_test_view_context<R>(
         test_context: &TestContext,
         func: impl FnOnce(&ViewContext<'_>) -> R,
     ) -> R {
@@ -1720,69 +1723,6 @@ mod tests {
             other_entity.query_context.target_entity_path = &other_path;
             assert_ne!(first.query_result_hash(), other_entity.query_result_hash());
         });
-    }
-
-    /// Bootstrap data recovers an empty range, and subsequent changes on either side invalidate it.
-    #[test]
-    fn bootstrapped_hash_preserves_range_and_latest_dependencies() {
-        let mut test_context = TestContext::new();
-        let descriptor = ComponentDescriptor::partial("source").with_component_type(Color::name());
-        let target = "target".into();
-        let data_result = test_data_result("entity");
-        let instruction = test_instruction(VisualizerComponentMappings::from([(
-            target,
-            VisualizerComponentSource::simple_map(descriptor.component),
-        )]));
-        let mut previous = None;
-
-        for frame in [1, 10, 2, 11] {
-            test_context.log_entity("entity", |builder| {
-                builder.with_component_batches(
-                    RowId::new(),
-                    [build_frame_nr(frame)],
-                    [(descriptor.clone(), &[Color::from_rgb(1, 2, 3)] as _)],
-                )
-            });
-
-            let current = run_with_test_view_context(&test_context, |ctx| {
-                let mut range = range_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::new(5, 20)),
-                    &data_result,
-                    [target],
-                    &instruction,
-                );
-                assert_eq!(
-                    range.component_sources[&target].error().is_some(),
-                    frame == 1,
-                    "Only the initial query should need recovery from an empty range"
-                );
-                let latest = latest_at_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    &LatestAtQuery::new("frame_nr".into(), 4),
-                    &data_result,
-                    [target],
-                    Some(&instruction),
-                );
-                range.merge_bootstrapped_data(latest);
-                let error = range.component_sources[&target].error();
-                assert!(
-                    error.is_none(),
-                    "Bootstrap should resolve the component: {error:?}"
-                );
-                range.query_result_hash()
-            });
-
-            if let Some(previous) = previous {
-                assert_ne!(
-                    previous, current,
-                    "Logging frame {frame} must invalidate the bootstrapped result"
-                );
-            }
-            previous = Some(current);
-        }
     }
 
     /// A fixed query must invalidate as data arrives, including the transition from no data.

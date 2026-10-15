@@ -289,7 +289,7 @@ pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) annotation_context_row_id: Option<re_chunk::RowId>,
 }
 
-impl<'a> BlueprintResolvedRangeResults<'a> {
+impl BlueprintResolvedRangeResults<'_> {
     /// Identifies resolved components, including intermediate inputs, and their dependencies.
     ///
     /// Cast rules are excluded; callers must keep them fixed or invalidate caches separately.
@@ -366,96 +366,6 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
         0 < self.overrides.missing_virtual.len()
             + self.store_results.missing_virtual.len()
             + self.view_defaults.missing_virtual.len()
-    }
-
-    /// Merges bootstrapped data from a latest-at query into this range query result.
-    ///
-    /// Latest-at bootstrapping is used for optional/recommended components (like colors, radii,
-    /// labels, etc.) that should maintain stable values at the beginning of a visible time range.
-    /// Without bootstrapping, these components would only appear where they have data within the
-    /// visible range, causing them to change unexpectedly as the time window moves.
-    ///
-    /// For example, if a plot's color was set at t=50 and you're viewing t=100-200, you want
-    /// that color to persist throughout the range rather than disappearing or changing.
-    ///
-    /// Bootstrapped results are prepended with their logged time and row ID intact. This lets
-    /// range zipping apply optional data only when it was logged no later than the required data,
-    /// including when events share a timestamp. Any errors from the bootstrap query are also
-    /// merged into the component sources.
-    // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
-    pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'a>) {
-        // Merge component source from bootstrap into the range results.
-        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
-        for (component, bootstrap_source) in bootstrapped.component_sources {
-            match self.component_sources.entry(component) {
-                std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
-                    let bootstrap_hash = bootstrapped
-                        .store_results
-                        .get(component)
-                        .map(|chunk| (chunk.row_id(), bootstrap_source.recording_result_hash));
-                    let range_hash = range_query_source.get().recording_result_hash;
-                    let merged_hash = bootstrap_hash.map_or(range_hash, |(row_id, hash)| {
-                        Hash64::hash((row_id, hash, range_hash))
-                    });
-
-                    match bootstrap_source.error() {
-                        None => {
-                            // A component may exist only before (or after) the visible range.
-                            // In that case, promote the query overall to successful.
-                            if let Some(err) = range_query_source.get().error()
-                                && err.is_data_temporarily_unavailable()
-                            {
-                                *range_query_source.get_mut() = bootstrap_source;
-                            }
-                            // Otherwise, don't override. Let the range result take precedence.
-                        }
-
-                        Some(
-                            ComponentMappingError::ComponentNotPresentOnEntity { .. }
-                            | ComponentMappingError::NoComponentDataForQuery(_)
-                            | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_)
-                            | ComponentMappingError::AnnotationContextUnavailable(_),
-                        ) => {
-                            // No component data was found in the bootstrap data.
-                            // Data may only exist within the range actual range, if not it has the error already!
-                        }
-
-                        Some(
-                            ComponentMappingError::SelectorParseFailed(_)
-                            | ComponentMappingError::SelectorExecutionFailed(_)
-                            | ComponentMappingError::CastFailed { .. }
-                            | ComponentMappingError::OverrideUnavailable(_),
-                        ) => {
-                            // All these errors are likely to occur in the range query as well.
-                            // However, in case they don't we treat it as-if we failed first and then never executed the range query.
-                            // I.e. override what's there!
-                            *range_query_source.get_mut() = bootstrap_source;
-                        }
-                    }
-                    range_query_source.get_mut().recording_result_hash = merged_hash;
-                }
-
-                std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-                    // Data showed up only in the target range result.
-                    // That's unusual since we'd expect the same query on bootstrapped & the target range result,
-                    // but sure enough we can just combine in the bootstrap!
-                    vacant_entry.insert(bootstrap_source);
-                }
-            }
-        }
-
-        // Prepend bootstrapped chunks to range results
-        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
-        for (component, unit_chunk) in bootstrapped.store_results.components {
-            let chunk = Arc::unwrap_or_clone(unit_chunk.into_chunk());
-
-            // Prepend bootstrapped chunk to range results
-            self.store_results
-                .components
-                .entry(component)
-                .or_default()
-                .insert(0, chunk);
-        }
     }
 
     /// Returns the [`QueryContext`] for this result.
