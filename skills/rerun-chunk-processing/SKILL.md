@@ -1,6 +1,6 @@
 ---
 name: rerun-chunk-processing
-description: "Core mechanics of the Rerun Chunk Processing API (rerun.experimental) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read BEFORE writing any ingestion/conversion/preprocessing code (convert an MCAP, build a recording from a dataset, preprocess an .rrd, port an old converter): it mandates reader+lens pipelines and steers away from hand-built chunks — no Chunk.from_columns for data a reader/lens can produce, no per-message rr.log, no manual pa.array assembly. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-mp4, rerun-lerobot); read rerun-data-model first to decide what the data should become."
+description: "Core mechanics of the Rerun Chunk Processing API (rerun.chunk) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read BEFORE writing any ingestion/conversion/preprocessing code (convert an MCAP, build a recording from a dataset, preprocess an .rrd, port an old converter): it mandates reader+lens pipelines and steers away from hand-built chunks — no Chunk.from_columns for data a reader/lens can produce, no per-message rr.log, no manual pa.array assembly. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-mp4, rerun-lerobot); read rerun-data-model first to decide what the data should become."
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -23,7 +23,7 @@ importer skill for each source:
 | Existing RRD                              | `RrdReader(path)`                       | here, below     |
 | Sidecar files (JSON calib, metadata)      | `Chunk.from_columns` + `from_iter`      | here, below     |
 
-The API is `rerun.experimental`; when
+The API is `rerun.chunk`; when
 behavior matters, check the installed surface:
 `python -c "from rerun.chunk import LazyChunkStream; help(LazyChunkStream)"`.
 
@@ -295,7 +295,7 @@ Rerun catalog or Hub, unless explicitly asked otherwise.
   many entities.
 - Preserve Arrow array type and length in `MutateLens` transforms.
 - For catalog layers, the layer `recording_id` must equal the segment id.
-- This is `rerun.experimental`; pin-check signatures when upgrading.
+- This is `rerun.chunk`; pin-check signatures when upgrading.
 
 ## References
 
