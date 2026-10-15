@@ -4676,7 +4676,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "The body of the message.",
-                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                        flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
                         name: "level",

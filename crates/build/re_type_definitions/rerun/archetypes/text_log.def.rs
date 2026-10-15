@@ -12,6 +12,7 @@
 #[rust(derive(PartialEq))]
 pub struct TextLog {
     /// The body of the message.
+    #[rerun(no_ui_edit)]
     #[rerun(required)]
     pub text: rerun::components::Text,
 
