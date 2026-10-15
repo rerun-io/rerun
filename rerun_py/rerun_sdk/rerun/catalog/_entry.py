@@ -226,7 +226,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Return the Arrow schema of the data contained in the dataset."""
         return self.schema().to_arrow()
 
-    def register_blueprint(self, uri: str, set_default: bool = True, *, segment_table: bool = False) -> None:
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        segment_table: bool = False,
+        object_store_config: str | None = None,
+    ) -> None:
         """
         Register an existing .rbl visible to the server.
 
@@ -251,7 +258,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             raise LookupError("a blueprint dataset is not configured for this dataset")
 
         segment_id = (
-            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+            blueprint_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
         )
 
         if set_default:
@@ -315,6 +325,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         *,
         mode: Literal["opt_out", "opt_in"] = "opt_out",
         segments: Sequence[str] | None = None,
+        object_store_config: str | None = None,
     ) -> str:
         """
         Register an existing .rrd visible to the server as an asset.
@@ -347,6 +358,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The segment ids the mode applies to. Defaults to empty, so an `"opt_out"` asset applies
             to every segment and an `"opt_in"` asset applies to none.
 
+        object_store_config:
+            Use a custom object store configuration for the registration.
+            If not specified, the store is inferred from the URL.
+
         Returns
         -------
         str
@@ -365,7 +380,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if asset_dataset is None:
             raise LookupError("an asset dataset is not configured for this dataset")
 
-        segment_id = asset_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        segment_id = (
+            asset_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
+        )
 
         asset_dataset._write_asset_property(segment_id, mode=_ASSET_MODE_STR[mode], segments=list(segments or []))
 
@@ -1670,7 +1690,13 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
-    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        object_store_config: str | None = None,
+    ) -> None:
         """
         Register an existing .rbl visible to the server as this table's blueprint.
 
@@ -1688,7 +1714,10 @@ class TableEntry(Entry[TableEntryInternal]):
         blueprint_dataset = self.blueprint_dataset()
 
         segment_id = (
-            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+            blueprint_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
         )
 
         if set_default:
