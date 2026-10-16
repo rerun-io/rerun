@@ -145,23 +145,23 @@ fn analytics_details_open_on_click() {
     );
 }
 
-/// Sharing starts on, the checkbox turns it off, and both states say what they mean.
+/// Sharing starts off, the checkbox turns it on, and both states say what they mean.
 ///
-/// The ticked state is in the `setup_screen` snapshot, which is where the panel starts.
+/// The unticked state is in the `setup_screen` snapshot, which is where the panel starts.
 #[test]
-fn redacted_prompt_sharing_is_opt_out() {
+fn redacted_prompt_sharing_is_opt_in() {
     let mut harness = harness(panel());
     harness.run_steps(4);
 
     // The checkbox must be reachable without expanding "Advanced":
-    assert!(harness.state().settings().share_redacted_prompts);
+    assert!(!harness.state().settings().share_redacted_prompts);
     harness
         .get_by_label_contains("Share redacted prompts with Rerun")
         .click();
     harness.run_steps(4);
 
-    assert!(!harness.state().settings().share_redacted_prompts);
-    harness.snapshot("setup_screen_prompt_sharing_off");
+    assert!(harness.state().settings().share_redacted_prompts);
+    harness.snapshot("setup_screen_prompt_sharing_on");
 }
 
 #[test]
