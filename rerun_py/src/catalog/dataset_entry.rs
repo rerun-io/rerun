@@ -677,7 +677,7 @@ impl PyDatasetEntryInternal {
 
         let provider = wait_for_future(py, async {
             SegmentChunkProvider::try_new(
-                connection.inner().clone(),
+                connection.inner().connection().clone(),
                 dataset_id,
                 segment_id,
                 include_assets,
@@ -725,15 +725,22 @@ impl PyDatasetEntryInternal {
             })
             .transpose()?;
 
-        connection.do_maintenance(
-            py,
-            self_.entry_details.id,
-            optimize_indexes,
-            retrain_indexes,
-            compact_fragments,
-            cleanup_before,
-            unsafe_allow_recent_cleanup,
-        )
+        let dataset_id = self_.entry_details.id;
+        wait_for_future(py, async {
+            connection
+                .client()
+                .await?
+                .do_maintenance(
+                    dataset_id,
+                    optimize_indexes,
+                    retrain_indexes,
+                    compact_fragments,
+                    cleanup_before,
+                    unsafe_allow_recent_cleanup,
+                )
+                .await
+                .map_err(to_py_err)
+        })
     }
 
     /// Returns a new `DatasetView` filtered to the given segment IDs.

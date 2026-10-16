@@ -8,12 +8,10 @@ mod chunk_cache;
 mod connection_client;
 mod connection_handle;
 mod connection_registry;
-mod dataset_info;
 mod dataset_revisions;
 mod grpc;
-mod registration_handle;
+mod registration_response;
 mod rpc_retry;
-mod staging;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -26,9 +24,6 @@ pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
-pub use self::asset::{
-    Asset, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
-};
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
@@ -39,15 +34,12 @@ pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
 };
-pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
     ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
-pub use self::registration_handle::{RegistrationHandle, SegmentRegistrationResult};
-pub use self::staging::StagingError;
 pub use self::tasks::TaskCompletion;
 
 #[cfg(not(target_arch = "wasm32"))]

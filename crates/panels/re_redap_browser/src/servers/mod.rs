@@ -6,14 +6,15 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
+use re_catalog_client::{AssetLayer, AssetRegistrationError};
 use re_dataframe_ui::TableCellKind;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{
-    AssetLayer, AssetRegistrationError, ClientCredentialsError, ConnectionHandle,
-    ConnectionRegistryHandle, CredentialSource, Credentials,
+    ClientCredentialsError, ConnectionHandle, ConnectionRegistryHandle, CredentialSource,
+    Credentials,
 };
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};

@@ -1,14 +1,15 @@
 //! Registering a `.rrd` in object storage as an asset of a dataset.
 
 use re_async::AsyncRuntimeHandle;
+use re_catalog_client::{
+    AssetRegistrationError, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
+};
 use re_format::{format_bytes, format_plural_s};
 use re_log_types::EntryId;
 use re_protos::capabilities::{CATALOG_WRITE_REGISTER, ServerCapabilities, catalog_write_register};
 use re_protos::common::v1alpha1::ext::{DatasetKind, DatasetLimits};
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{
-    AssetRegistrationError, ConnectionRegistryHandle, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
-};
+use re_redap_client::ConnectionRegistryHandle;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _, icons};
 
@@ -516,8 +517,7 @@ async fn register_asset(
     dataset_id: EntryId,
     source_uri: &str,
 ) -> Result<(), AssetRegistrationError> {
-    match connection_registry
-        .connection_handle(origin)
+    match CatalogClient::new(connection_registry.connection_handle(origin))
         .register_asset(dataset_id, source_uri, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
     {

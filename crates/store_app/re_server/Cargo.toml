@@ -110,6 +110,7 @@ percent-encoding.workspace = true
 re_web.workspace = true
 
 [dev-dependencies]
+re_catalog_client.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_redap_client.workspace = true

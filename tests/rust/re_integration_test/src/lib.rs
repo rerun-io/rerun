@@ -10,7 +10,8 @@ use std::net::TcpListener;
 
 pub use inspection::{HarnessConfig, InspectionHarness, TargetViewer};
 pub use kittest_harness_ext::HarnessExt;
-use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle, ConnectionRegistry};
+use re_catalog_client::CatalogClient;
+use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
@@ -59,9 +60,9 @@ impl TestServer {
         let segment_id = {
             let this = &self;
             async move {
-                let connection = this.connection_handle();
+                let catalog_client = this.catalog_client();
                 test_data::load_test_data_with_name(
-                    &connection,
+                    &catalog_client,
                     dataset_name,
                     dataset_id,
                     new_recording_id,
@@ -84,9 +85,9 @@ impl TestServer {
         count: usize,
     ) -> (Self, Vec<SegmentId>) {
         let segment_ids = {
-            let connection = self.connection_handle();
+            let catalog_client = self.catalog_client();
             test_data::load_static_preview_data(
-                &connection,
+                &catalog_client,
                 dataset_name,
                 dataset_id,
                 recording_id_prefix,
@@ -111,21 +112,23 @@ impl TestServer {
             .injected_errors()
     }
 
-    pub fn connection_handle(&self) -> ConnectionHandle {
+    pub fn catalog_client(&self) -> CatalogClient {
         let origin = re_uri::Origin {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        ConnectionRegistry::new_without_stored_credentials().connection_handle(origin)
+        CatalogClient::new(
+            ConnectionRegistry::new_without_stored_credentials().connection_handle(origin),
+        )
     }
 
     pub async fn client(&self) -> ApiResult<ConnectionClient> {
-        self.connection_handle().client().await
+        self.catalog_client().client().await
     }
 
     pub async fn add_test_data(&self) -> SegmentId {
-        test_data::load_test_data(&self.connection_handle())
+        test_data::load_test_data(&self.catalog_client())
             .await
             .expect("Failed to load test data")
     }

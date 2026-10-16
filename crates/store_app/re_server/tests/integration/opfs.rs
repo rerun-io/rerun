@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use re_catalog_client::CatalogClient;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyPoint, MyPoints};
@@ -14,7 +15,7 @@ use re_protos::cloud::v1alpha1::VersionRequest;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::{Connection, ConnectionHandle, ConnectionRegistry};
+use re_redap_client::{Connection, ConnectionRegistry};
 use re_server::RerunCloudHandlerBuilder;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -47,7 +48,7 @@ async fn register_rrd_without_footer_from_file_url_in_opfs() {
 /// Serve `service` in-process as the internal origin of a fresh connection registry.
 ///
 /// The placeholder origin is never dialed; requests go straight to `service`.
-fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHandle {
+fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogClient {
     let registry = ConnectionRegistry::new_without_stored_credentials().with_internal(
         Connection::from_service(
             re_uri::Origin::http_local_host(1),
@@ -56,15 +57,17 @@ fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHan
         ),
         re_web::fs::root(),
     );
-    registry
-        .internal_connection_handle()
-        .expect("internal connection is configured")
+    CatalogClient::new(
+        registry
+            .internal_connection_handle()
+            .expect("internal connection is configured"),
+    )
 }
 
 async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let service = Arc::new(RerunCloudHandlerBuilder::new().build());
-    let connection = in_process_connection(service);
-    let mut client = connection.client().await.expect("failed to get client");
+    let catalog_client = in_process_catalog_client(service);
+    let mut client = catalog_client.client().await.expect("failed to get client");
     let footer_suffix = if with_footer {
         "with_footer"
     } else {
@@ -83,7 +86,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
         .create_dataset_entry(dataset_name, None)
         .await
         .expect("failed to create dataset");
-    let registration = connection
+    let registration = catalog_client
         .register_with_dataset(
             dataset.details.id,
             vec![DataSource::new_rrd(url, None).expect("valid OPFS URL")],

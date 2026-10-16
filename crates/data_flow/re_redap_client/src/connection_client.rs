@@ -1,8 +1,4 @@
-//! Provides a low-level interface on top of the raw gRPC calls.
-//!
-//! It includes some convenience types and helpers, but it is not intended as
-//! a user-facing API. Users and the Python client should preferably use
-//! [`crate::ConnectionHandle`].
+//! Low-level protocol requests and response decoding.
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
@@ -12,17 +8,17 @@ use re_log_encoding::{Decodable as _, ToApplication as _};
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::EntryName;
 use re_protos::capabilities::ServerCapabilities;
-use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::ext::{
     self as cloud_ext, ETag, RrdManifestKey as RrdManifestKeyExt, SOURCE_CHANGED_MESSAGE,
     WatchEventsResponse, url_strip_query,
 };
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryResponse, CreateTableEntryRequest, DatasetDetails, DatasetEntry,
+    CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DatasetDetails, DatasetEntry,
     EntryDetails, EntryDetailsUpdate, GetWriteAccessGrantResponse, LanceTable, ObjectKey,
     ProviderDetails, QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
-    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse, TableDetails,
-    TableEntry, TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
+    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
+    TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
     UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
     UpdateTableEntryResponse, VersionResponse,
 };
@@ -40,7 +36,7 @@ use re_protos::cloud::v1alpha1::{
     ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest, VersionRequest,
     WriteTableRequest,
 };
-use re_protos::common::v1alpha1::ext::{ScanParameters, SegmentId};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -341,8 +337,9 @@ pub struct SegmentQueryParams {
 ///
 /// Implementation note: this type is generic so that it can be used with several client types. This
 /// is useful for other projects which might have a different type (e.g. due to instrumentation).
-/// Application code should use [`crate::ConnectionHandle`] to bind requests to an origin and
-/// acquire a short-lived [`crate::ConnectionClient`] for RPCs.
+/// Applications that need lower-level APIs should call [`crate::ConnectionHandle::client`]
+/// to acquire a short-lived RPC client, or access the handle through
+/// `re_catalog_client::CatalogClient::connection` when using catalog workflows.
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Clone)]
@@ -1069,70 +1066,31 @@ where
         ))
     }
 
-    /// Get a list of segment IDs for the given dataset entry ID.
-    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
+    /// Submit dataset registration and decode the server's task descriptors.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>>
-    where
-        T: Clone,
-    {
-        let mut stream = self
-            .scan_segment_table(
-                entry_id,
-                ScanSegmentTableRequest::with_columns([
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                ]),
-            )
-            .await?;
-        let trace_id = stream.trace_id();
-
-        let mut segment_ids = Vec::new();
-
-        while let Some(resp) = stream.next().await {
-            let record_batch = resp?;
-
-            let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
-                .extract(&record_batch)
-                .map_err(|err| {
-                    ApiError::deserialization_quiver_from(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "/ScanSegmentTable stream",
-                    )
-                })?;
-
-            segment_ids.extend(segment_id_column.into_iter_owned());
-        }
-
-        Ok(segment_ids)
-    }
-
-    /// How many segments the given dataset entry holds.
-    ///
-    /// There is no count endpoint, so this counts the rows of the segment table.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_count(&self, entry_id: EntryId) -> ApiResult<usize>
-    where
-        T: Clone,
-    {
-        // `rerun_last_updated_at` is the narrowest column of the table, a fixed-width timestamp.
-        let mut stream = self
-            .scan_segment_table(
-                entry_id,
-                ScanSegmentTableRequest::with_columns([
-                    ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
-                ]),
-            )
-            .await?;
-
-        let mut segment_count = 0;
-
-        while let Some(resp) = stream.next().await {
-            segment_count += resp?.num_rows();
-        }
-
-        Ok(segment_count)
+    pub async fn register_with_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
+        let request = tonic::Request::new(RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        })
+        .with_entry_id(dataset_id);
+        let response = self
+            .inner()
+            .register_with_dataset(request.map(Into::into))
+            .await
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterWithDataset"))?;
+        let trace_id = extract_trace_id(response.metadata());
+        let descriptors = crate::registration_response::parse_task_descriptors(
+            &self.origin,
+            trace_id,
+            response.into_inner().data,
+        )?;
+        Ok((trace_id, descriptors))
     }
 
     //TODO(ab): accept entry name
@@ -1847,44 +1805,6 @@ where
         Ok((trace_id, tasks))
     }
 
-    // -- Assets API --
-
-    /// The asset dataset of `dataset_id`, if it has one.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn asset_dataset(&mut self, dataset_id: EntryId) -> ApiResult<Option<EntryId>> {
-        Ok(self
-            .read_dataset_entry(dataset_id)
-            .await?
-            .dataset_details
-            .asset_dataset)
-    }
-
-    /// The asset dataset of `dataset_id`, creating one if it has none yet.
-    ///
-    /// Datasets are now always created with an asset dataset, but there could still be
-    /// datasets created before.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn ensure_asset_dataset(&mut self, dataset_id: EntryId) -> ApiResult<EntryId> {
-        let dataset_details = self.read_dataset_entry(dataset_id).await?.dataset_details;
-
-        if let Some(asset_dataset) = dataset_details.asset_dataset {
-            return Ok(asset_dataset);
-        }
-
-        // The server attaches the missing asset dataset while handling an update, so send it back
-        // the details it already has.
-        self.update_dataset_entry(dataset_id, dataset_details)
-            .await?
-            .dataset_details
-            .asset_dataset
-            .ok_or_else(|| {
-                ApiError::internal(
-                    &self.origin,
-                    "the server did not attach an asset dataset to this dataset",
-                )
-            })
-    }
-
     /// Register a foreign Lance table to a new table entry in the catalog.
     //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
     #[tracing::instrument(level = "info", skip_all)]
@@ -2205,61 +2125,13 @@ where
             })
     }
 
-    /// Look up a dataset entry by name, returning its id if it exists.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_dataset_by_name(&mut self, name: &EntryName) -> ApiResult<Option<EntryId>> {
-        let entries = match self
-            .find_entries(EntryFilter {
-                name: Some(name.to_string()),
-                // Pass both `entry_kind` (deprecated) and `entry_kinds`
-                // to be compatible with old Hub versions.
-                // Drop `entry_kind` when no customer has a 0.14 deployment
-                // or older of Rerun Hub.
-                entry_kind: Some(EntryKind::Dataset.into()),
-                entry_kinds: vec![EntryKind::Dataset.into()],
-                ..Default::default()
-            })
-            .await
-        {
-            Ok(entries) => entries,
-            Err(err) if err.kind == ApiErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(err),
-        };
-        Ok(entries.into_iter().next().map(|entry| entry.id))
-    }
-
-    /// Find the dataset named `name`, creating it if it doesn't exist yet.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_or_create_dataset(&mut self, name: &EntryName) -> ApiResult<EntryId> {
-        if let Some(id) = self.find_dataset_by_name(name).await? {
-            return Ok(id);
-        }
-
-        match self.create_dataset_entry(name.clone(), None).await {
-            Ok(dataset) => Ok(dataset.details.id),
-
-            // Created concurrently between our lookup and our create.
-            Err(err) if err.kind == ApiErrorKind::AlreadyExists => {
-                self.find_dataset_by_name(name).await?.ok_or_else(|| {
-                    ApiError::invalid_arguments(
-                        &self.origin,
-                        format!("dataset '{name}' disappeared while registering"),
-                    )
-                })
-            }
-
-            Err(err) => Err(err),
-        }
-    }
-
     // --- Grants ---
 
     /// Requests authorization to write one object at `key`.
     ///
     /// Writing the object does not register it: redeem the grant, then pass the returned storage
-    /// URL to [`crate::ConnectionHandle::register_with_dataset`], which is a separate operation and
-    /// may happen much later. [`crate::ConnectionHandle::stage`] does both the request and
-    /// the redemption.
+    /// URL to [`Self::register_with_dataset`], which is a separate operation and may happen much
+    /// later.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_write_access_grant(
         &mut self,

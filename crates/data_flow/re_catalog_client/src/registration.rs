@@ -1,22 +1,22 @@
+//! Catalog registration workflows and task lifecycle.
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow::array::RecordBatch;
 use futures::StreamExt as _;
-use itertools::Itertools as _;
-use re_protos::cloud::v1alpha1::RegisterWithDatasetResponse;
-use re_protos::cloud::v1alpha1::ext::{
-    DataSourceKind, RegisterWithDatasetDataframe, RegisterWithDatasetTaskDescriptor,
-};
-use re_protos::common::v1alpha1::ext::SegmentId;
-use re_protos::common::v1alpha1::{DataframePart, TaskId};
-use re_protos::{TypeConversionError, missing_field};
+use re_log_types::{EntryId, EntryName};
+use re_protos::cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 
-use crate::{
+use re_redap_client::{
     ApiError, ApiErrorKind, ApiResponseStream, ApiResult, ConnectionHandle, TaskCompletion,
     TraceId, format_trace_ids,
 };
+use re_types_core::LayerName;
+
+use crate::CatalogClient;
 
 /// The outcome of one completed segment registration.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -24,88 +24,6 @@ pub struct SegmentRegistrationResult {
     pub recording_uri: String,
     pub segment_id: SegmentId,
     pub error: Option<String>,
-}
-
-/// Decode a `/RegisterWithDataset` response payload into task descriptors.
-pub(crate) fn parse_task_descriptors(
-    origin: &re_uri::Origin,
-    trace_id: Option<TraceId>,
-    data: Option<DataframePart>,
-) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
-    re_tracing::profile_function!();
-
-    let response: RecordBatch = data
-        .ok_or_else(|| {
-            let err = missing_field!(RegisterWithDatasetResponse, "data");
-            ApiError::deserialization_with_source(
-                origin,
-                trace_id,
-                err,
-                "missing field in /RegisterWithDataset response",
-            )
-        })?
-        .try_into()
-        .map_err(|err| {
-            ApiError::deserialization_with_source(
-                origin,
-                trace_id,
-                err,
-                "failed decoding /RegisterWithDataset response",
-            )
-        })?;
-
-    // Validates the columns (existence, datatype, no nulls):
-    let RegisterWithDatasetDataframe {
-        rerun_segment_id,
-        rerun_segment_layer,
-        rerun_segment_type,
-        rerun_storage_url,
-        rerun_task_id,
-    } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
-        ApiError::deserialization_quiver_from(
-            origin,
-            trace_id,
-            err,
-            "/RegisterWithDataset response",
-        )
-    })?;
-
-    let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
-        .map_err(|err| {
-            ApiError::deserialization_with_source(
-                origin,
-                trace_id,
-                err,
-                "failed parsing /RegisterWithDataset response",
-            )
-        })?;
-
-    itertools::izip!(
-        rerun_segment_layer.into_iter_owned(),
-        rerun_segment_id.into_iter_owned(),
-        segment_types,
-        rerun_storage_url.into_iter_owned(),
-        rerun_task_id.into_iter_owned()
-    )
-    .map(
-        |(layer_name, segment_id, segment_type, storage_url, task_id)| {
-            Ok(RegisterWithDatasetTaskDescriptor {
-                layer_name,
-                segment_id,
-                segment_type,
-                storage_url: url::Url::parse(&storage_url).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        origin,
-                        trace_id,
-                        TypeConversionError::UrlParseError(err),
-                        "failed to parse /RegisterWithDataset response",
-                    )
-                })?,
-                task_id,
-            })
-        },
-    )
-    .try_collect()
 }
 
 /// A segment result paired with its position in the original descriptor list.
@@ -382,13 +300,93 @@ fn registration_error(task_id: &TaskId, status: &str, message: Option<&str>) -> 
     }
 }
 
+impl CatalogClient {
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// This is an asynchronous operation, and returns a list of task ids.
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    ///
+    /// If `force`, deletion will go through regardless of the segments/layers' current statuses.
+    /// This is only useful in the very specific, catastrophic scenario where the contents of the
+    /// task queue were lost and some tasks are now stuck in `status=pending` forever.
+    /// Do not use this unless you know exactly what you're doing.
+    pub async fn unregister_from_dataset(
+        &self,
+        dataset_id: EntryId,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
+        force: bool,
+    ) -> ApiResult<(Option<TraceId>, Vec<TaskId>)> {
+        self.client()
+            .await?
+            .unregister_from_dataset(dataset_id, segments_to_drop, layers_to_drop, force)
+            .await
+    }
+
+    /// Initiate asynchronous registration of the provided data sources with a dataset.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn register_with_dataset(
+        &self,
+        dataset_id: EntryId,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> ApiResult<RegistrationHandle> {
+        let (trace_id, descriptors) = self
+            .client()
+            .await?
+            .register_with_dataset(dataset_id, data_sources, on_duplicate)
+            .await?;
+
+        Ok(RegistrationHandle::new(
+            self.connection().clone(),
+            trace_id,
+            descriptors,
+        ))
+    }
+
+    /// Ensure a dataset exists and register `data_sources` with it.
+    ///
+    /// `timeout` applies to the task-completion query.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn ensure_dataset_and_register(
+        &self,
+        dataset_name: &EntryName,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+        timeout: std::time::Duration,
+    ) -> ApiResult<(EntryId, SegmentId)> {
+        let dataset_id = self.find_or_create_dataset(dataset_name).await?;
+        let registration = self
+            .register_with_dataset(dataset_id, data_sources, on_duplicate)
+            .await?;
+        let segment_id = registration
+            .wait(timeout)
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| {
+                ApiError::invalid_arguments(
+                    self.origin(),
+                    "server registered the file but returned no segments",
+                )
+            })?;
+
+        Ok((dataset_id, segment_id))
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use re_protos::cloud::v1alpha1::ext::DataSourceKind;
     use re_types_core::LayerName;
 
     use super::*;
-    use crate::ConnectionRegistry;
+    use re_redap_client::ConnectionRegistry;
 
     fn descriptor(task_id: &str, segment_id: &str) -> RegisterWithDatasetTaskDescriptor {
         RegisterWithDatasetTaskDescriptor {

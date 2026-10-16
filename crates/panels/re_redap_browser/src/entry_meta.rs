@@ -3,9 +3,10 @@
 use std::sync::Arc;
 
 use re_async::{AsyncRuntimeHandle, WasmNotSend};
+use re_catalog_client::{Asset, CatalogClient};
 use re_log_types::EntryId;
 use re_mutex::Mutex;
-use re_redap_client::{ApiError, ApiResult, Asset, ConnectionHandle};
+use re_redap_client::{ApiError, ApiResult, ConnectionHandle};
 use re_ui::{RequestedObject, ServerValue};
 
 /// Summary of a catalog entry, as reported by the server hosting it.
@@ -134,12 +135,15 @@ async fn warn_on_failure<T>(
 ///
 /// The server has no count endpoint, so this counts the rows of the segment table, one per segment.
 async fn segment_count(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<usize> {
-    let client = connection.client().await?;
-    client.get_dataset_segment_count(entry_id).await
+    CatalogClient::new(connection)
+        .get_dataset_segment_count(entry_id)
+        .await
 }
 
 async fn assets(connection: ConnectionHandle, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
-    let assets = connection.scan_asset_dataset(asset_dataset).await?;
+    let assets = CatalogClient::new(connection)
+        .scan_asset_dataset(asset_dataset)
+        .await?;
 
     Ok(Arc::new(assets))
 }

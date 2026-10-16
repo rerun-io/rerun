@@ -9285,6 +9285,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_catalog_client"
+version = "0.40.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "ehttp",
+ "futures",
+ "itertools 0.15.0",
+ "jiff",
+ "re_async",
+ "re_chunk",
+ "re_chunk_index",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_protos",
+ "re_redap_client",
+ "re_sorbet",
+ "re_span",
+ "re_tracing",
+ "re_types_core",
+ "re_uri",
+ "re_workspace_hack",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "re_cdr"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10006,6 +10037,7 @@ dependencies = [
  "re_analytics",
  "re_arrow_util",
  "re_build_info",
+ "re_catalog_client",
  "re_chunk_index",
  "re_datafusion",
  "re_entity_db",
@@ -10595,6 +10627,7 @@ dependencies = [
  "re_async",
  "re_auth",
  "re_backoff",
+ "re_catalog_client",
  "re_dataframe_ui",
  "re_datafusion",
  "re_error",
@@ -10655,8 +10688,6 @@ dependencies = [
  "re_mutex",
  "re_perf_telemetry",
  "re_protos",
- "re_sorbet",
- "re_span",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -10989,6 +11020,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_store",
@@ -11860,6 +11892,7 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_capabilities",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_store",
@@ -12703,6 +12736,7 @@ dependencies = [
  "re_auth",
  "re_build_info",
  "re_build_tools",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_optimizer",

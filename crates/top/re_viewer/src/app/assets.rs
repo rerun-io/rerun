@@ -25,6 +25,8 @@ pub async fn register_assets(
         return;
     };
 
+    let catalog_client = re_catalog_client::CatalogClient::new(connection);
+
     for path in paths {
         let source_uri = match asset_file_url(path) {
             Ok(url) => url,
@@ -38,11 +40,11 @@ pub async fn register_assets(
             }
         };
 
-        match connection
+        match catalog_client
             .register_asset(
                 dataset_id(target),
                 source_uri.as_str(),
-                re_redap_client::DEFAULT_ASSET_TASK_TIMEOUT,
+                re_catalog_client::DEFAULT_ASSET_TASK_TIMEOUT,
             )
             .await
         {

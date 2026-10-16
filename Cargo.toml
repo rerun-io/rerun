@@ -129,6 +129,7 @@ re_server = { path = "crates/store_app/re_server", version = "=0.40.0-alpha.1", 
 re_tf = { path = "crates/store_app/re_tf", version = "=0.40.0-alpha.1", default-features = false }
 
 # crates/data_flow:
+re_catalog_client = { path = "crates/data_flow/re_catalog_client", version = "=0.40.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/data_flow/re_data_source", version = "=0.40.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/data_flow/re_grpc_client", version = "=0.40.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/data_flow/re_grpc_server", version = "=0.40.0-alpha.1", default-features = false }

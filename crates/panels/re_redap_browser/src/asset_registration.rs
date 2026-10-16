@@ -1,9 +1,10 @@
 //! The asset registrations a server is working on, the ones it refused, and the assets it was
 //! asked to drop.
 
+use re_catalog_client::AssetRegistrationError;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
-use re_redap_client::{ApiError, AssetRegistrationError};
+use re_redap_client::ApiError;
 
 /// An asset the user asked a server to register.
 pub struct AssetRegistration {

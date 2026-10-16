@@ -121,6 +121,7 @@ re_protos.workspace = true
 re_query.workspace = true
 re_recording_panel.workspace = true
 re_redap_browser.workspace = true
+re_catalog_client.workspace = true
 re_redap_client.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_sdk_types.workspace = true
