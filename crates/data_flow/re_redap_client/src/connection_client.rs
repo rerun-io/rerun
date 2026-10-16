@@ -1,9 +1,15 @@
+//! Provides a low-level interface on top of the raw gRPC calls.
+//!
+//! It includes some convenience types and helpers, but it is not intended as
+//! a user-facing API. Users and the Python client should preferably use
+//! [`crate::ConnectionHandle`].
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
 use re_chunk_index::RawRrdManifest;
 use re_log_encoding::{Decodable as _, ToApplication as _};
-use re_log_types::EntryId;
+use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::EntryName;
 use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
@@ -31,8 +37,8 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentPropertiesRequest,
     GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest, ScanSegmentTableResponse,
-    SetSegmentPropertiesRequest, VersionRequest, WriteTableRequest,
+    ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest, VersionRequest,
+    WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -52,6 +58,8 @@ use crate::tasks::task_completion_stream;
 use crate::{
     ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TaskCompletion, TraceId, extract_trace_id,
 };
+
+mod segment_properties;
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -329,7 +337,7 @@ pub struct SegmentQueryParams {
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
-/// Expose an ergonomic API over the gRPC redap client.
+/// Low-level API over the gRPC client.
 ///
 /// Implementation note: this type is generic so that it can be used with several client types. This
 /// is useful for other projects which might have a different type (e.g. due to instrumentation).
@@ -436,7 +444,7 @@ impl<T> std::fmt::Debug for RedapClient<T> {
 /// Application code should acquire this from [`crate::ConnectionHandle::client`].
 pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
 
-/// An established connection to a redap origin.
+/// An established connection to a catalog origin.
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Connection {
     pub client: ConnectionClient,
@@ -970,35 +978,47 @@ where
             })
     }
 
-    /// Open a `/ScanSegmentTable` stream on the given dataset entry ID, projecting one column.
+    /// Scan the segment table with server-side column projection.
     ///
-    /// The table holds one row per segment, whichever column is projected.
-    async fn scan_segment_table_column(
+    /// The segment filter is only a hint; callers must apply it locally for correctness.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn scan_segment_table(
         &self,
-        entry_id: EntryId,
-        column_name: &str,
-    ) -> ApiResult<ApiResponseStream<ScanSegmentTableResponse>>
+        entry: impl Into<EntryIdOrName>,
+        request: ScanSegmentTableRequest,
+    ) -> ApiResult<ApiResponseStream<RecordBatch>>
     where
         T: Clone,
     {
+        let metadata = match entry.into() {
+            EntryIdOrName::Id(id) => tonic::Request::new(()).with_entry_id(id),
+            EntryIdOrName::Name(name) => {
+                let name = EntryName::new(name)
+                    .map_err(|err| ApiError::invalid_arguments(&self.origin, err.to_string()))?;
+                tonic::Request::new(()).with_entry_name(name)
+            }
+        }
+        .into_parts()
+        .0;
+
         // Retry only the *open*: the server rejects `ScanSegmentTable` with `ResourceExhausted`
         // fail-fast at admission control, before the stream exists, so re-opening is idempotent.
         // Consumption by the caller is intentionally outside the retry, matching
         // `query_dataset_raw`. Once the stream is open it can't return `ResourceExhausted`.
         let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
             let client = self.clone();
+            let request = request.clone();
+            let metadata = &metadata;
             async move {
                 crate::rpc_retry::retry(|| {
                     let mut client = client.clone();
+                    let request = request.clone();
                     async move {
                         crate::rpc_retry::open_stream(
                             client
                                 .inner()
                                 .scan_segment_table(
-                                    tonic::Request::new(ScanSegmentTableRequest::with_columns([
-                                        column_name,
-                                    ]))
-                                    .with_entry_id(entry_id),
+                                    tonic::Request::new(request).with_metadata(metadata),
                                 )
                                 .await?,
                         )
@@ -1011,41 +1031,42 @@ where
         })
         .await?;
 
-        Ok(ApiResponseStream::from_tonic_response(
+        let stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
             response,
             "/ScanSegmentTable",
         )
         .inspect_first(|response| {
             crate::dataset_revisions().observe_meta(response.meta.as_ref());
-        }))
-    }
+        });
+        let trace_id = stream.trace_id();
+        let origin = self.origin.clone();
 
-    /// The record batch in one item of a `/ScanSegmentTable` stream.
-    fn segment_table_batch(
-        &self,
-        response: &ScanSegmentTableResponse,
-        trace_id: Option<TraceId>,
-    ) -> ApiResult<RecordBatch> {
-        response
-            .data()
-            .map_err(|err| {
-                ApiError::deserialization_with_source(
-                    &self.origin,
-                    trace_id,
-                    err,
-                    "failed parsing item from /ScanSegmentTable stream",
-                )
-            })?
-            .try_into()
-            .map_err(|err| {
-                ApiError::deserialization_with_source(
-                    &self.origin,
-                    trace_id,
-                    err,
-                    "failed decoding item from /ScanSegmentTable stream",
-                )
-            })
+        Ok(ApiResponseStream::new(
+            self.origin.clone(),
+            stream.map(move |response| {
+                response?
+                    .data()
+                    .map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            &origin,
+                            trace_id,
+                            err,
+                            "failed parsing item from /ScanSegmentTable stream",
+                        )
+                    })?
+                    .try_into()
+                    .map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            &origin,
+                            trace_id,
+                            err,
+                            "failed decoding item from /ScanSegmentTable stream",
+                        )
+                    })
+            }),
+            trace_id,
+        ))
     }
 
     /// Get a list of segment IDs for the given dataset entry ID.
@@ -1056,9 +1077,11 @@ where
         T: Clone,
     {
         let mut stream = self
-            .scan_segment_table_column(
+            .scan_segment_table(
                 entry_id,
-                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                ScanSegmentTableRequest::with_columns([
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                ]),
             )
             .await?;
         let trace_id = stream.trace_id();
@@ -1066,7 +1089,7 @@ where
         let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch = self.segment_table_batch(&resp?, trace_id)?;
+            let record_batch = resp?;
 
             let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
                 .extract(&record_batch)
@@ -1095,99 +1118,21 @@ where
     {
         // `rerun_last_updated_at` is the narrowest column of the table, a fixed-width timestamp.
         let mut stream = self
-            .scan_segment_table_column(
+            .scan_segment_table(
                 entry_id,
-                ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+                ScanSegmentTableRequest::with_columns([
+                    ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+                ]),
             )
             .await?;
-        let trace_id = stream.trace_id();
 
         let mut segment_count = 0;
 
         while let Some(resp) = stream.next().await {
-            segment_count += self.segment_table_batch(&resp?, trace_id)?.num_rows();
+            segment_count += resp?.num_rows();
         }
 
         Ok(segment_count)
-    }
-
-    /// Read one segment's mutable properties, and the revision that gates writes to them.
-    ///
-    /// `None` means the segment has no properties. See
-    /// [`Self::set_segment_properties`].
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_segment_properties(
-        &mut self,
-        entry_id: EntryId,
-        segment_id: SegmentId,
-    ) -> ApiResult<Option<(RecordBatch, u64)>> {
-        let (mut stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .get_segment_properties(
-                    tonic::Request::new(GetSegmentPropertiesRequest {
-                        segment_ids: vec![segment_id.clone().into()],
-                    })
-                    .with_entry_id(entry_id),
-                )
-                .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "/GetSegmentProperties failed")
-                })?,
-        );
-
-        while let Some(response) = stream.next().await.transpose().map_err(|err| {
-            ApiError::tonic(&self.origin, err, "/GetSegmentProperties stream error")
-        })? {
-            for segment in response.segments {
-                let Some(properties) = segment.properties else {
-                    continue;
-                };
-                let batch = RecordBatch::try_from(&properties).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "failed parsing /GetSegmentProperties response",
-                    )
-                })?;
-                return Ok(Some((batch, segment.revision)));
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Replace one segment's mutable properties, returning the new revision.
-    ///
-    /// `properties` must be a single-row `RecordBatch` whose columns are named
-    /// `property:<key>:<component>`, and it replaces every property on the segment without merging
-    /// into the stored ones.
-    ///
-    /// With `expected_revision` set the write only lands if the stored revision matches, and fails
-    /// with `FailedPrecondition` otherwise, leaving the stored properties untouched. `0` means "only
-    /// if the segment has no properties yet". Without it the write overwrites whatever is stored.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn set_segment_properties(
-        &mut self,
-        entry_id: EntryId,
-        segment_id: SegmentId,
-        properties: &RecordBatch,
-        expected_revision: Option<u64>,
-    ) -> ApiResult<u64> {
-        let response = self
-            .inner()
-            .set_segment_properties(
-                tonic::Request::new(SetSegmentPropertiesRequest {
-                    segment_id: Some(segment_id.into()),
-                    properties: Some(properties.into()),
-                    expected_revision,
-                })
-                .with_entry_id(entry_id),
-            )
-            .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/SetSegmentProperties failed"))?;
-
-        Ok(response.into_inner().revision)
     }
 
     //TODO(ab): accept entry name
@@ -2113,19 +2058,22 @@ where
     /// Wait for the given tasks to finish, failing if any of them did not succeed.
     ///
     /// Reaching `timeout` while a task is still running also fails.
+    ///
+    /// A task failure has the trace-id of `request_trace_id` when given, which is the request that
+    /// started the tasks, and the trace-id of the completion query otherwise.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn wait_for_tasks(
         &mut self,
         task_ids: Vec<TaskId>,
+        request_trace_id: Option<TraceId>,
         timeout: std::time::Duration,
     ) -> ApiResult {
-        // Old servers unregister synchronously and return no tasks.
         if task_ids.is_empty() {
             return Ok(());
         }
 
         let completions = self.task_completions(task_ids, timeout).await?;
-        let trace_id = completions.trace_id();
+        let trace_id = request_trace_id.or_else(|| completions.trace_id());
         let mut completions = std::pin::pin!(completions);
 
         let mut failures = Vec::new();

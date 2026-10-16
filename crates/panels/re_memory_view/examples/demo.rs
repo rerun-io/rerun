@@ -40,7 +40,7 @@ impl eframe::App for DemoApp {
             ui.heading("Memory flamegraph demo");
             ui.separator();
 
-            ui.label("Controls:");
+            ui.label("Controls");
             ui.label("• Ctrl+Scroll to zoom");
             ui.label("• Scroll horizontally to pan");
             ui.label("• Double-click scope to zoom to it");

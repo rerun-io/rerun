@@ -8,6 +8,7 @@ mod chunk_cache;
 mod connection_client;
 mod connection_handle;
 mod connection_registry;
+mod dataset_info;
 mod dataset_revisions;
 mod grpc;
 mod registration_handle;
@@ -38,6 +39,7 @@ pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
 };
+pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
     ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,

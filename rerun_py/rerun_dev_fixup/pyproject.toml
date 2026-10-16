@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "rerun-dev-fixup"
 version = "0.1.0"
 description = "Development helper for rerun-sdk editable installs"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["sitecustomize-entrypoints"]
 
 [project.entry-points."sitecustomize"]

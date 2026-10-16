@@ -149,15 +149,19 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
         let is_paused = time_ctrl.play_state() == PlayState::Paused;
+        let variant = if is_paused {
+            Variant::Secondary
+        } else {
+            Variant::Blue
+        };
         if ui
             .add(
                 ReButton::icon(
                     if is_paused { icons::PLAY } else { icons::PAUSE },
                     RecordingCommandKind::TogglePlayPause.text(),
                 )
-                .selected(!is_paused)
                 .size(TIME_CONTROL_ROW_SIZE)
-                .secondary(),
+                .variant(variant),
             )
             .on_hover_ui(|ui| RecordingCommandKind::TogglePlayPause.tooltip_ui(ui))
             .clicked()
@@ -269,10 +273,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .size(TIME_CONTROL_ROW_SIZE)
             .secondary();
 
-        // `selected` also switches the variant to `Variant::Selected`, which takes its fill
-        // straight from the theme tokens and would ignore the loop colors set below. Put the
-        // variant back with `secondary`, so the fill keeps coming from `visuals.selection`.
-        let selected_button = |button: ReButton<'static>| button.selected(true).secondary();
+        let selected_button = |button: ReButton<'static>| button.selected(true);
 
         ui.scope(|ui| {
             // Loop-button cycles between states:

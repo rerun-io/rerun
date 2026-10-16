@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, overload
 
 import numpy as np
@@ -137,15 +137,15 @@ def to_nanos_since_epoch(
         return int(np.round(1e9 * timestamp))  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
         # Special case pandas to avoid loss of precision
-        if hasattr(timestamp, "to_datetime64"):
-            datetime64: np.datetime64 = timestamp.to_datetime64()
+        if (to_datetime64 := getattr(timestamp, "to_datetime64", None)) is not None:
+            datetime64: np.datetime64 = to_datetime64()
             return int(datetime64.astype("datetime64[ns]").astype("int64"))
 
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         else:
-            timestamp = timestamp.astimezone(timezone.utc)
-        epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            timestamp = timestamp.astimezone(UTC)
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
 
         return int(np.round(1e9 * (timestamp - epoch).total_seconds()))
     elif isinstance(timestamp, np.datetime64):

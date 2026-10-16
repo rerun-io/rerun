@@ -1513,6 +1513,30 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    async fn delete_segment_properties(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteSegmentPropertiesRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteSegmentPropertiesResponse>>
+    {
+        let mut store = self.store.write().await;
+
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let request = request.into_inner();
+
+        let dataset = store.dataset_mut(dataset_id)?;
+        for segment in request.segments {
+            let segment_id: SegmentId = segment
+                .segment_id
+                .ok_or_else(|| tonic::Status::invalid_argument("segment_id is required"))?
+                .try_into()?;
+            dataset.remove_segment_properties(&segment_id, segment.expected_revision);
+        }
+
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::DeleteSegmentPropertiesResponse {},
+        ))
+    }
+
     /* Queries */
 
     type QueryDatasetStream = QueryDatasetResponseStream;

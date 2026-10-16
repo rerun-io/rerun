@@ -247,7 +247,16 @@ impl DataFusionQuery {
     async fn batch_stream(
         self,
     ) -> Result<(SendableRecordBatchStream, FilterErrors), DataFusionError> {
-        let mut dataframe = self.session_ctx.table(self.table_ref).await?;
+        // Relative timestamp filters, such as "today", use the session time zone. With a time
+        // zone, `TIMESTAMPTZ` literals in filters compare as instants against columns of any time
+        // zone.
+        let (mut session_state, plan) = self.session_ctx.table(self.table_ref).await?.into_parts();
+        let time_zone = jiff::tz::TimeZone::system()
+            .iana_name()
+            .unwrap_or("UTC")
+            .to_owned();
+        session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+        let mut dataframe = DataFrame::new(session_state.clone(), plan);
 
         let DataFusionQueryData {
             sort_by,
@@ -305,7 +314,6 @@ impl DataFusionQuery {
         // Filters
         //
 
-        let session_state = self.session_ctx.state();
         let mut filter_errors = HashMap::default();
         let filter_exprs = filters
             .iter()
@@ -379,24 +387,18 @@ impl DataFusionQuery {
                     while let Some(frame) = sorbet_stream.next().await {
                         match frame {
                             Ok(batch) => {
-                                if !sent_schemas {
-                                    let sorbet_schema = batch.sorbet_schema().clone();
-                                    let original_schema = Arc::clone(&schema);
-                                    if send_crossbeam(
-                                        &tx,
-                                        QueryEvent::Schema {
-                                            original_schema,
-                                            sorbet_schema,
-                                            filter_errors: Arc::clone(&filter_errors),
-                                        },
-                                    )
-                                    .is_err()
-                                    {
-                                        return; // Receiver dropped, stop streaming
-                                    }
+                                let event = if sent_schemas {
+                                    QueryEvent::Batch(batch)
+                                } else {
                                     sent_schemas = true;
-                                }
-                                if send_crossbeam(&tx, QueryEvent::Batch(batch)).is_err() {
+                                    QueryEvent::Schema {
+                                        original_schema: Arc::clone(&schema),
+                                        sorbet_schema: batch.sorbet_schema().clone(),
+                                        filter_errors: Arc::clone(&filter_errors),
+                                        first_batch: Some(batch),
+                                    }
+                                };
+                                if send_crossbeam(&tx, event).is_err() {
                                     return; // Receiver dropped, stop streaming
                                 }
                             }
@@ -426,6 +428,7 @@ impl DataFusionQuery {
                                         original_schema: schema,
                                         sorbet_schema,
                                         filter_errors,
+                                        first_batch: None,
                                     },
                                 )
                                 .ok();
@@ -467,12 +470,20 @@ pub struct DataFusionQueryError {
 /// It's guaranteed that the first event is either [`QueryEvent::Schema`] or [`QueryEvent::Error`].
 #[derive(Debug)]
 pub enum QueryEvent {
+    /// The schema of the query, with its first batch of rows if the query has any.
+    ///
+    /// The first batch travels with the schema so a receiver that polls between events never
+    /// sees a query with rows as an empty table.
     Schema {
         original_schema: SchemaRef,
         sorbet_schema: re_sorbet::SorbetSchema,
         filter_errors: FilterErrors,
+        first_batch: Option<SorbetBatch>,
     },
+
+    /// A batch of rows after the first one.
     Batch(SorbetBatch),
+
     Error(DataFusionQueryError),
 }
 
@@ -559,12 +570,16 @@ impl DataFusionAdapter {
                         sorbet_schema,
                         original_schema,
                         filter_errors,
+                        first_batch,
                     }) => {
+                        if first_batch.is_some() {
+                            adapter.last_query_results = None;
+                        }
                         adapter.results = Some(Ok(DataFusionQueryResult {
                             original_schema,
                             sorbet_schema,
                             filter_errors,
-                            sorbet_batches: vec![],
+                            sorbet_batches: first_batch.into_iter().collect(),
                             finished: false,
                         }));
                         changed = true;
@@ -742,9 +757,12 @@ mod tests {
 
     use arrow::array::{Int64Array, RecordBatch};
     use datafusion::prelude::SessionContext;
+    use re_async::AsyncRuntimeHandle;
     use re_log_types::EntryId;
 
-    use super::{DataFusionQuery, DataFusionQueryData, EntryLinksSpec, SegmentLinksSpec};
+    use super::{
+        DataFusionQuery, DataFusionQueryData, EntryLinksSpec, QueryEvent, SegmentLinksSpec,
+    };
     use crate::column_sorting::SortBy;
 
     /// The query leaves out filters that fail to plan and returns their error by SQL.
@@ -847,6 +865,57 @@ mod tests {
         let batches: Vec<RecordBatch> = futures::TryStreamExt::try_collect(stream).await.unwrap();
         let num_rows: usize = batches.iter().map(RecordBatch::num_rows).sum();
         assert_eq!(num_rows, 2);
+    }
+
+    /// A query with rows sends its schema and first batch as one event, and a query without rows
+    /// sends its schema alone. A receiver that polls between events must never see a query with
+    /// rows as an empty table.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn first_event_carries_the_first_batch() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch =
+            RecordBatch::try_from_iter([("a", Arc::new(Int64Array::from(vec![1, 2, 3])) as _)])
+                .unwrap();
+        session_ctx.register_batch("table", batch).unwrap();
+        let runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+
+        let events = |filters: Vec<String>| {
+            let query = DataFusionQuery::new(
+                Arc::clone(&session_ctx),
+                "table".into(),
+                DataFusionQueryData {
+                    filters,
+                    ..Default::default()
+                },
+            );
+            let rx = query.execute_streaming(&runtime);
+            // The producer runs on this runtime, which may have a single worker.
+            tokio::task::block_in_place(|| rx.iter().collect::<Vec<_>>())
+        };
+
+        let with_rows = events(vec![]);
+        let [
+            QueryEvent::Schema {
+                first_batch: Some(first_batch),
+                ..
+            },
+        ] = with_rows.as_slice()
+        else {
+            panic!("expected one schema event carrying the first batch, got {with_rows:?}");
+        };
+        assert_eq!(first_batch.num_rows(), 3);
+
+        let without_rows = events(vec![r#""a" > 100"#.to_owned()]);
+        assert!(
+            matches!(
+                without_rows.as_slice(),
+                [QueryEvent::Schema {
+                    first_batch: None,
+                    ..
+                }]
+            ),
+            "expected one schema event without a batch, got {without_rows:?}"
+        );
     }
 
     #[test]

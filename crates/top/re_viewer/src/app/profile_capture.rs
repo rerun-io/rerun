@@ -14,7 +14,7 @@ const DEFAULT_PROFILE_CAPTURE_FRAMES: u32 = 5;
 
 /// The most frames a viewer-control request may ask for.
 ///
-/// At 60 FPS this records for 5 seconds, which fits within the 10 second deadline of a
+/// At 60 FPS this records for 5 seconds, which fits within the 15 second deadline of a
 /// viewer-control request.
 const MAX_PROFILE_CAPTURE_FRAMES: u32 = 300;
 

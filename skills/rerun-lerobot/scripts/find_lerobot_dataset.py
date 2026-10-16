@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["huggingface_hub"]
 # ///
 """Search the HF Hub for LeRobot datasets and report what each candidate costs to fetch.

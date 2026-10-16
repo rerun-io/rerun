@@ -261,6 +261,13 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc SetSegmentProperties(SetSegmentPropertiesRequest) returns (SetSegmentPropertiesResponse) {}
 
+  // Drop the mutable properties of segments in this dataset.
+  //
+  // Properties stay stored when a segment is unregistered, so dropping them is up to the client.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc DeleteSegmentProperties(DeleteSegmentPropertiesRequest) returns (DeleteSegmentPropertiesResponse) {}
+
   /* Indexing */
 
   // Reserved (removed): the custom-index / vector-search subsystem was removed.
@@ -830,10 +837,8 @@ message GetDatasetSchemaResponse {
   // The union of the schemas of every layer of every segment in the dataset (a field-wise
   // Arrow schema merge).
   //
-  // Servers are allowed to return a superset: some maintain this schema incrementally and only
-  // ever widen it, so fields from unregistered or replaced segments can linger until
-  // `RematerializeDatasetSchema` recomputes it. A dataset with no registered segments yields
-  // an empty schema rather than an error.
+  // Fields that only unregistered or replaced layers had are not part of it.
+  // A dataset with no registered segments yields an empty schema rather than an error.
   rerun.common.v1alpha1.Schema schema = 1;
   // Dataset identity and revision metadata for this response.
   DatasetResponseMeta meta = 100;
@@ -909,8 +914,8 @@ message SegmentProperties {
   // naming the dataset's segment table uses.
   rerun.common.v1alpha1.DataframePart properties = 2;
 
-  // Bumped on every write, starting at 1. Pass it back to `SetSegmentProperties` to make the
-  // next write conditional.
+  // A new random value on every write, never `0`. Only compare it for equality. Pass it back to
+  // `SetSegmentProperties` or `DeleteSegmentProperties` to make the next change conditional.
   uint64 revision = 3;
 }
 
@@ -936,6 +941,28 @@ message SetSegmentPropertiesResponse {
   // The revision the write produced.
   uint64 revision = 1;
 }
+
+// Request for `DeleteSegmentProperties`.
+message DeleteSegmentPropertiesRequest {
+  // The segments whose properties to drop. Dropping properties a segment doesn't have is a no-op,
+  // and so is an empty list.
+  repeated SegmentPropertiesDeletion segments = 1;
+}
+
+// One segment in a `DeleteSegmentPropertiesRequest`.
+message SegmentPropertiesDeletion {
+  // The segment whose properties to drop.
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+
+  // When set, the properties are only dropped if the stored revision matches, and are left
+  // untouched otherwise. Read the current revision from `GetSegmentProperties`.
+  //
+  // When unset, whatever is stored is dropped.
+  optional uint64 expected_revision = 2;
+}
+
+// Response for `DeleteSegmentProperties`.
+message DeleteSegmentPropertiesResponse {}
 
 /* Indexing */
 

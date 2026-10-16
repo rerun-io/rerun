@@ -7,7 +7,7 @@ use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_ui::{DesignTokens, Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
     DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID, IdentifiedViewSystem as _,
     Item, QueryRange, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
@@ -973,6 +973,7 @@ fn show_group(
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
+    let body_font = DesignTokens::body().resolve(ui.style());
 
     let mut is_hovered = false;
     let mut hovered_phase = None;
@@ -1012,7 +1013,7 @@ fn show_group(
                 RenderItem::Single {
                     phase, end_time, ..
                 } => {
-                    paint_single_phase(&painter, item_rect, phase, hovered);
+                    paint_single_phase(&painter, item_rect, phase, hovered, &body_font);
                     if hovered && let Some(content) = &phase.content {
                         let (start_time, end_time) = clamp_hovered_range(
                             phase.start_time,
@@ -1037,7 +1038,14 @@ fn show_group(
                     } else {
                         merged_fill_inactive
                     };
-                    paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
+                    paint_merged_phase(
+                        &painter,
+                        item_rect,
+                        *count,
+                        fill,
+                        merged_text_color,
+                        &body_font,
+                    );
                     if hovered {
                         let (start_time, end_time) =
                             clamp_hovered_range(*start_time, *end_time, group.visible_time_range);
@@ -1077,7 +1085,7 @@ fn paint_group_label(
 ) {
     let label_galley = painter.layout_no_wrap(
         group.label.clone(),
-        egui::FontId::proportional(11.0),
+        DesignTokens::small().resolve(ui.style()),
         label_color,
     );
     let bg_color = ui.visuals().extreme_bg_color;
@@ -1098,6 +1106,7 @@ fn paint_single_phase(
     rect: egui::Rect,
     phase: &StateLanePhase,
     hovered: bool,
+    font_id: &egui::FontId,
 ) {
     let Some(style) = &phase.content else {
         return;
@@ -1124,7 +1133,7 @@ fn paint_single_phase(
             egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
             egui::Align2::LEFT_TOP,
             &style.label,
-            egui::FontId::proportional(12.0),
+            font_id.clone(),
             readable_text_color(style.color),
         );
     }
@@ -1140,6 +1149,7 @@ fn paint_merged_phase(
     count: usize,
     fill: egui::Color32,
     text_color: egui::Color32,
+    font_id: &egui::FontId,
 ) {
     painter.add(egui::epaint::RectShape::new(
         rect,
@@ -1155,7 +1165,7 @@ fn paint_merged_phase(
             egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
             egui::Align2::LEFT_TOP,
             label,
-            egui::FontId::proportional(12.0),
+            font_id.clone(),
             text_color,
         );
     }

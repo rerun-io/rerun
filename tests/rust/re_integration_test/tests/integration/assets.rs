@@ -641,6 +641,41 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
     );
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn concurrent_connections_to_one_origin_share_a_chunk_cache() {
+    let server = TestServer::spawn().await;
+    let connection = server.connection_handle();
+
+    let connections = futures::future::join_all((0..8).map(|_| {
+        let connection = connection.clone();
+        tokio::spawn(async move { connection.connection().await })
+    }))
+    .await;
+
+    let kept = connection
+        .connection()
+        .await
+        .expect("Failed to connect to server");
+    let kept_cache = kept
+        .client
+        .chunk_cache()
+        .expect("remote connections have a chunk cache");
+
+    for connection in connections {
+        let connection = connection
+            .expect("the connecting task panicked")
+            .expect("Failed to connect to server");
+        let cache = connection
+            .client
+            .chunk_cache()
+            .expect("remote connections have a chunk cache");
+        assert!(
+            cache.ptr_eq(kept_cache),
+            "every concurrent caller should get the connection the registry keeps"
+        );
+    }
+}
+
 /// The Assets tab of a dataset that has none says what an asset is and offers to register the
 /// first one, instead of showing an empty list.
 #[tokio::test(flavor = "multi_thread")]
@@ -808,7 +843,7 @@ async fn open_asset_lists_it_under_owning_dataset() {
 
     let asset_label = asset_segment_id.to_string();
     viewer_test_utils::step_until(
-        "the asset appears in the recording panel",
+        "the asset is listed in the recording panel and shown in its view",
         &mut harness,
         |harness| {
             harness.query_by_label("Loading entries…").is_none()
@@ -821,6 +856,10 @@ async fn open_asset_lists_it_under_owning_dataset() {
                         .count()
                         > 0
                 }
+                // The asset is listed before its data arrives, and its view is only created
+                // from that data.
+                && !harness.is_loading()
+                && harness.blueprint_tree().root().query_by_label("/").is_some()
         },
     );
 

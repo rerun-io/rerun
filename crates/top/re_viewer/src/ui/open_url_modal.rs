@@ -39,9 +39,10 @@ impl OpenUrlModal {
                     }
                 });
 
-                let response = ui
-                    .add(egui::TextEdit::singleline(&mut self.url).desired_width(f32::INFINITY))
-                    .accessible_name("URL");
+                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+                    ui.add(egui::TextEdit::singleline(&mut self.url).desired_width(f32::INFINITY))
+                        .accessible_name("URL")
+                });
 
                 // If we just opened the dialog, focus the text edit so user can just paste.
                 if self.just_opened {
@@ -64,7 +65,7 @@ impl OpenUrlModal {
                         let description = ViewerOpenUrlDescription::from_url(url);
                         if let Some(target_short) = description.target_short {
                             ui.horizontal(|ui| {
-                                ui.label(format!("{}:", description.category));
+                                ui.label(description.category);
                                 ui.strong(target_short);
                             });
                         } else {

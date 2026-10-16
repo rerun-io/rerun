@@ -22,6 +22,7 @@ use re_dataframe_ui::{
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
     parse_sql_expr,
 };
+use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
 use re_viewer_context::external::tokio;
 use strum::VariantArray as _;
 
@@ -53,7 +54,7 @@ impl TestColumn {
     }
 
     /// Create a nullable primitive array with the provided data.
-    fn primitive_nulls<T>(data: Vec<Option<T::Native>>) -> Self
+    fn primitive_with_some_nulls<T>(data: Vec<Option<T::Native>>) -> Self
     where
         T: ArrowPrimitiveType,
         PrimitiveArray<T>: From<Vec<Option<T::Native>>>,
@@ -123,7 +124,7 @@ impl TestColumn {
         )
     }
 
-    fn strings_nulls() -> Self {
+    fn strings_with_some_nulls() -> Self {
         Self::new(
             StringArray::from(vec![
                 Some("a"),
@@ -173,7 +174,7 @@ impl TestColumn {
         Self::new(BooleanArray::from(vec![true, true, false]), false)
     }
 
-    fn bools_nulls() -> Self {
+    fn bools_with_some_nulls() -> Self {
         Self::new(
             BooleanArray::from(vec![Some(true), Some(true), None, Some(false)]),
             true,
@@ -231,10 +232,10 @@ impl TestColumn {
         convert_timestamp_column(nano_column, unit)
     }
 
-    fn timestamps_nulls(unit: TimeUnit) -> Self {
+    fn timestamps_with_some_nulls(unit: TimeUnit) -> Self {
         let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
 
-        let nano_column = Self::primitive_nulls::<TimestampNanosecondType>(vec![
+        let nano_column = Self::primitive_with_some_nulls::<TimestampNanosecondType>(vec![
             Some(timestamp_to_nanos(some_date)),
             Some(timestamp_to_nanos(some_date - 1.hours())),
             Some(timestamp_to_nanos(some_date - 24.hours())),
@@ -314,10 +315,11 @@ struct TestSessionContext {
 impl TestSessionContext {
     fn new(columns: impl IntoIterator<Item = TestColumn>) -> Self {
         // Relative timestamp filters use the system time zone, so their SQL needs it as well.
-        let mut config = SessionConfig::new();
-        if let Some(time_zone) = jiff::tz::TimeZone::system().iana_name() {
-            config = config.set_str("datafusion.execution.time_zone", time_zone);
-        }
+        let time_zone = jiff::tz::TimeZone::system()
+            .iana_name()
+            .unwrap_or("UTC")
+            .to_owned();
+        let config = SessionConfig::new().set_str("datafusion.execution.time_zone", &time_zone);
         let ctx = SessionContext::new_with_config(config);
 
         let (fields, arrays): (Vec<_>, Vec<_>) =
@@ -351,27 +353,9 @@ impl TestSessionContext {
     }
 
     async fn to_filtered_record_batch(&self, filter: &ColumnFilter) -> RecordBatch {
-        let df = self.df().await;
-
-        let filter_expr = filter
-            .as_filter_expression()
-            .expect("couldn't create an expression from filter");
-
-        let mut record_batches = df
-            .filter(filter_expr)
-            .expect("failed to apply filter")
-            .collect()
-            .await
-            .expect("failed to collect");
-
-        assert_eq!(record_batches.len(), 1);
-
-        let record_batch = record_batches
-            .pop()
-            .expect("we just checked that there is one record batch");
+        let mut df = self.df().await;
 
         if let Some(sql) = filter.to_sql() {
-            let df = self.df().await;
             let sql_expr = parse_sql_expr(&sql)
                 .and_then(|expr| {
                     self.ctx.state().create_logical_expr_from_sql_expr(
@@ -380,21 +364,17 @@ impl TestSessionContext {
                     )
                 })
                 .unwrap_or_else(|err| panic!("couldn't plan the filter SQL: {err}\n{sql}"));
-            let sql_record_batches = df
-                .filter(sql_expr)
-                .expect("failed to apply the filter SQL")
-                .collect()
-                .await
-                .unwrap_or_else(|err| panic!("failed to run the filter SQL: {err}\n{sql}"));
-            assert_eq!(sql_record_batches.len(), 1);
-            assert_eq!(
-                sql_record_batches[0].column(0).as_ref(),
-                record_batch.column(0).as_ref(),
-                "the filter SQL selects other rows than the filter\n{sql}"
-            );
+            df = df.filter(sql_expr).expect("failed to apply the filter SQL");
         }
 
-        record_batch
+        let schema = Arc::clone(df.schema().inner());
+        let record_batches = df
+            .collect()
+            .await
+            .unwrap_or_else(|err| panic!("failed to run the filter: {err}\n{:?}", filter.to_sql()));
+
+        arrow::compute::concat_batches(&schema, &record_batches)
+            .expect("failed to concatenate the record batches")
     }
 }
 
@@ -444,8 +424,13 @@ macro_rules! filter_snapshot {
 #[tokio::test]
 async fn test_int_compares() {
     let ints = TestColumn::primitive::<Int64Type>(vec![1, 2, 3, 4, 5]);
-    let ints_nulls =
-        TestColumn::primitive_nulls::<Int64Type>(vec![Some(1), Some(2), None, Some(4), Some(5)]);
+    let ints_nulls = TestColumn::primitive_with_some_nulls::<Int64Type>(vec![
+        Some(1),
+        Some(2),
+        None,
+        Some(4),
+        Some(5),
+    ]);
 
     for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
@@ -522,7 +507,7 @@ async fn test_int_lists() {
 #[tokio::test]
 async fn test_float_compares() {
     let floats = TestColumn::primitive::<Float64Type>(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-    let floats_nulls = TestColumn::primitive_nulls::<Float64Type>(vec![
+    let floats_nulls = TestColumn::primitive_with_some_nulls::<Float64Type>(vec![
         Some(1.0),
         Some(2.0),
         None,
@@ -560,6 +545,28 @@ async fn test_float_all_types() {
 
     test_float_all_types_impl!(Float32Type);
     test_float_all_types_impl!(Float64Type);
+}
+
+/// A float filter on a `Float32` column compares with the value at `Float32` precision, so a value
+/// like 0.1 matches the column values that display as 0.1.
+/// 0.1 has no exact binary representation, and `f32` and `f64` round it to different values,
+/// so comparing the `Float32` column against the `f64` filter value would match nothing.
+#[tokio::test]
+async fn test_float32_precision() {
+    let floats = TestColumn::primitive::<Float32Type>(vec![0.1, 0.2, 0.3]);
+    let filter = ColumnFilter::new(
+        Arc::clone(&floats.field),
+        FloatFilter::new(ComparisonOperator::Eq, Some(0.1)),
+    );
+
+    let result = TestSessionContext::new([floats])
+        .to_filtered_record_batch(&filter)
+        .await;
+
+    assert_eq!(
+        result.column(0).as_ref(),
+        &arrow::array::Float32Array::from(vec![0.1]) as &dyn Array
+    );
 }
 
 #[tokio::test]
@@ -618,13 +625,13 @@ async fn test_string_contains() {
 
     filter_snapshot!(
         StringFilter::new(StringOperator::Contains, String::new()),
-        TestColumn::strings_nulls(),
+        TestColumn::strings_with_some_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
         StringFilter::new(StringOperator::Contains, "a".to_owned()),
-        TestColumn::strings_nulls(),
+        TestColumn::strings_with_some_nulls(),
         "nulls_a"
     );
 
@@ -636,7 +643,7 @@ async fn test_string_contains() {
 
     filter_snapshot!(
         StringFilter::new(StringOperator::StartsWith, "b".to_owned()),
-        TestColumn::strings_nulls(),
+        TestColumn::strings_with_some_nulls(),
         "nulls_starts_with_b"
     );
 
@@ -648,7 +655,7 @@ async fn test_string_contains() {
 
     filter_snapshot!(
         StringFilter::new(StringOperator::EndsWith, "c".to_owned()),
-        TestColumn::strings_nulls(),
+        TestColumn::strings_with_some_nulls(),
         "nulls_ends_with_c"
     );
 
@@ -660,7 +667,7 @@ async fn test_string_contains() {
 
     filter_snapshot!(
         StringFilter::new(StringOperator::DoesNotContain, "b".to_owned()),
-        TestColumn::strings_nulls(),
+        TestColumn::strings_with_some_nulls(),
         "nulls_does_not_contain_b"
     );
 }
@@ -695,13 +702,13 @@ async fn test_non_nullable_boolean_equals() {
 
     filter_snapshot!(
         NonNullableBooleanFilter::IsTrue,
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
         NonNullableBooleanFilter::IsFalse,
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_false"
     );
 }
@@ -710,31 +717,31 @@ async fn test_non_nullable_boolean_equals() {
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
         NullableBooleanFilter::new_is_true(),
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
         NullableBooleanFilter::new_is_false(),
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
         NullableBooleanFilter::new_is_null(),
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_null"
     );
 
     filter_snapshot!(
         NullableBooleanFilter::new_is_true().with_is_not(),
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_is_not_true"
     );
 
     filter_snapshot!(
         NullableBooleanFilter::new_is_null().with_is_not(),
-        TestColumn::bools_nulls(),
+        TestColumn::bools_with_some_nulls(),
         "nulls_is_not_null"
     );
 }
@@ -807,7 +814,7 @@ async fn test_timestamps() {
                 filter_snapshot!(
                     filter.clone(),
                     if nullable {
-                        TestColumn::timestamps_nulls(*time_unit)
+                        TestColumn::timestamps_with_some_nulls(*time_unit)
                     } else {
                         TestColumn::timestamps(*time_unit)
                     },
@@ -817,6 +824,87 @@ async fn test_timestamps() {
                     )
                 );
             }
+        }
+    }
+}
+
+/// Timestamp filters select the same instants on columns with a time zone, and on a column of the
+/// `Timestamp` component, as on a column without a time zone.
+#[tokio::test]
+async fn test_timestamps_time_zones() {
+    let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+    let filters = [
+        TimestampFilter::after(some_date),
+        TimestampFilter::after(some_date).with_is_not(),
+        TimestampFilter::before(some_date + 1.seconds()),
+        TimestampFilter::between(some_date - 168.hours(), some_date - 2.hours()),
+        TimestampFilter::today(),
+    ];
+
+    let naive = TestColumn::timestamps_with_some_nulls(TimeUnit::Nanosecond);
+    let utc = cast(
+        naive.array.as_ref(),
+        &DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+    )
+    .expect("cast failed");
+    let with_time_zone = |data_type: DataType| {
+        TestColumn::new(cast(utc.as_ref(), &data_type).expect("cast failed"), true)
+    };
+    let timestamp_component = {
+        let column = TestColumn::new(
+            cast(naive.array.as_ref(), &DataType::Int64).expect("cast failed"),
+            true,
+        );
+        let field = Field::new(COLUMN_NAME, DataType::Int64, true).with_metadata(
+            [(
+                FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
+                re_sdk_types::components::Timestamp::name().to_string(),
+            )]
+            .into(),
+        );
+        TestColumn {
+            field: Arc::new(field),
+            ..column
+        }
+    };
+    let columns = [
+        with_time_zone(DataType::Timestamp(
+            TimeUnit::Nanosecond,
+            Some("+02:00".into()),
+        )),
+        with_time_zone(DataType::Timestamp(
+            TimeUnit::Second,
+            Some("America/New_York".into()),
+        )),
+        timestamp_component,
+    ];
+
+    let filtered_nanos = async |column: &TestColumn, filter: &TimestampFilter| {
+        let column_filter = ColumnFilter::new(Arc::clone(&column.field), filter.clone());
+        let filtered = TestSessionContext::new([column.clone()])
+            .to_filtered_record_batch(&column_filter)
+            .await;
+        cast(
+            &cast(
+                filtered.column(0),
+                &DataType::Timestamp(TimeUnit::Nanosecond, None),
+            )
+            .expect("cast failed"),
+            &DataType::Int64,
+        )
+        .expect("cast failed")
+    };
+
+    for filter in &filters {
+        let expected = filtered_nanos(&naive, filter).await;
+        for column in &columns {
+            assert_eq!(
+                filtered_nanos(column, filter).await.as_ref(),
+                expected.as_ref(),
+                "{filter:?} on {}",
+                column.field.data_type()
+            );
         }
     }
 }

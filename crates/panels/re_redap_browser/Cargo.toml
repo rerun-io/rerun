@@ -51,6 +51,7 @@ webbrowser.workspace = true
 
 [dev-dependencies]
 re_ui = { workspace = true, features = ["testing"] }
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rfd.workspace = true

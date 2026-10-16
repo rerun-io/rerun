@@ -51,7 +51,7 @@ namespace rerun::blueprint::archetypes {
         /// * `"score">= 3`
         /// * `"success" = true`
         /// * `"task" ILIKE '%pick%'`
-        /// * `"created">= TIMESTAMP '2026-01-01T00:00:00Z'`
+        /// * `"created">= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
         ///
         /// For a list column, the comparison goes in `any_match("column", x -> …)`.
         /// Other expressions still filter the table, and the viewer shows them as SQL text.
@@ -124,7 +124,7 @@ namespace rerun::blueprint::archetypes {
         /// * `"score">= 3`
         /// * `"success" = true`
         /// * `"task" ILIKE '%pick%'`
-        /// * `"created">= TIMESTAMP '2026-01-01T00:00:00Z'`
+        /// * `"created">= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
         ///
         /// For a list column, the comparison goes in `any_match("column", x -> …)`.
         /// Other expressions still filter the table, and the viewer shows them as SQL text.

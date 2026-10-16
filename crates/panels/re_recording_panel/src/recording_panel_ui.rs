@@ -74,9 +74,17 @@ impl RecordingPanel {
             .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
-                    re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                        all_sections_ui(ctx, ui, &recording_panel_data);
-                    })
+                    let style = list_item::ListItemStyle::default()
+                        .with_background_inset(ui.tokens().panel_list_item_background_inset())
+                        .with_corner_radius(ui.tokens().normal_corner_radius());
+                    re_ui::list_item::list_item_scope_with_style(
+                        ui,
+                        "recording panel",
+                        style,
+                        |ui| {
+                            all_sections_ui(ctx, ui, &recording_panel_data);
+                        },
+                    )
                     .response
                     .widget_info(|| {
                         WidgetInfo::labeled(egui::Role::Pane, true, "_recording_panel")
@@ -182,7 +190,7 @@ fn all_sections_ui(
     //
 
     if recording_panel_data.is_empty() {
-        ui.add_space(ui.tokens().panel_margin().left as f32);
+        ui.add_space(f32::from(ui.tokens().view_padding()));
         ui.weak("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer");
     }
 
@@ -273,7 +281,9 @@ fn welcome_item_ui(
         Route::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
     );
 
-    let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
+    let title = list_item::LabelContent::new("Welcome to rerun")
+        .strong(true)
+        .with_icon(&icons::HOME);
 
     let list_item = ui.list_item().header().selected(selected).active(active);
 

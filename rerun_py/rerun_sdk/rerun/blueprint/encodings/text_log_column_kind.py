@@ -72,9 +72,10 @@ class TextLogColumnKindBatch(BaseBatch[TextLogColumnKindArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TextLogColumnKindArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (TextLogColumnKind, int, str)):
-            data = [data]
+        items: Sequence[TextLogColumnKindLike | str] = (
+            [data] if isinstance(data, (TextLogColumnKind, int, str)) else data
+        )
 
-        pa_data = [TextLogColumnKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [TextLogColumnKind.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

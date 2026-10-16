@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use agent_client_protocol::schema::v1::SessionModeId;
+use agent_client_protocol::schema::v1::{SessionConfigValueId, SessionModeId};
 
 use crate::connection::{LaunchConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, find_executable};
@@ -94,6 +95,9 @@ pub struct AgentSettings {
     /// Session mode to restore when an agent offers it.
     pub preferred_mode: Option<SessionModeId>,
 
+    /// Exact model choice per agent profile; model IDs belong to the agent that offered them.
+    pub preferred_models: BTreeMap<String, SessionConfigValueId>,
+
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
 
@@ -181,6 +185,7 @@ impl AgentSettings {
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
             model_preferences: Vec::new(),
+            preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
             preferred_mode: self.preferred_mode.clone(),
         })
     }
@@ -197,6 +202,7 @@ impl Default for AgentSettings {
             show_thoughts: true,
             log_protocol: false,
             preferred_mode: None,
+            preferred_models: BTreeMap::new(),
             share_redacted_prompts: true,
             setup_done: false,
         }
@@ -300,6 +306,7 @@ mod tests {
         };
         assert!(settings.share_redacted_prompts);
         assert_eq!(settings.preferred_mode, None);
+        assert!(settings.preferred_models.is_empty());
     }
 
     #[test]

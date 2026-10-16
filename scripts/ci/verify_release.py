@@ -31,6 +31,7 @@ import os
 import re
 import sys
 import time
+import tomllib
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -101,13 +102,26 @@ def parse_final_version(version: str) -> tuple[int, int, int]:
 # Checks
 
 
+def ships_crates(version: str) -> bool:
+    """Same rule as `crates.py check-no-crates-io-patches`: a `[patch.crates-io]` entry makes publishing impossible."""
+    status, cargo_toml = http_get(f"https://raw.githubusercontent.com/{REPO}/{version}/Cargo.toml")
+    if status != 200:
+        raise CheckFailed(f"HTTP {status} reading Cargo.toml at {version}")
+    patches = tomllib.loads(cargo_toml).get("patch", {}).get("crates-io", {})
+    return not [name for name in patches if name != "re_workspace_hack"]
+
+
 def check_registries(version: str) -> str:
     urls = {
         "PyPI rerun-sdk": f"https://pypi.org/pypi/rerun-sdk/{version}/json",
         "PyPI rerun-notebook": f"https://pypi.org/pypi/rerun-notebook/{version}/json",
         "npm @rerun-io/web-viewer": f"https://registry.npmjs.org/@rerun-io/web-viewer/{version}",
-        "crates.io rerun": f"https://crates.io/api/v1/crates/rerun/{version}",
     }
+    crates = ships_crates(version)
+    if crates:
+        urls["crates.io rerun"] = f"https://crates.io/api/v1/crates/rerun/{version}"
+    else:
+        print(f"  crates.io: skipped, {version} patches crates.io dependencies")
     missing = []
     for what, url in urls.items():
         status, _ = http_get(url)
@@ -116,7 +130,7 @@ def check_registries(version: str) -> str:
             missing.append(what)
     if missing:
         raise CheckFailed(f"{version} missing from " + ", ".join(missing))
-    return "PyPI, npm and crates.io"
+    return "PyPI, npm and crates.io" if crates else "PyPI and npm (not on crates.io)"
 
 
 def check_conda(version: str) -> str:

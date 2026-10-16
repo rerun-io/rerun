@@ -138,6 +138,19 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
         }
     };
 
+    let source_root = transform_info.tree_root();
+    let target_root = transform_context.target_frame_pinhole_root();
+    for frame in std::iter::chain(
+        std::iter::once(source_root),
+        target_root.filter(|target| *target != source_root),
+    ) {
+        if let Some(pinhole) = transform_context.pinhole_tree_root_info(frame)
+            && let Err(err) = pinhole.pinhole_projection.image_from_camera.sanity_check()
+        {
+            output.report_unspecified_source(*instruction_id, ViewerReportSeverity::Error, err);
+        }
+    }
+
     is_valid_space_for_content(
         entity_path,
         instruction_id,

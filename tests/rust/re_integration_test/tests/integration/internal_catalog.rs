@@ -4,14 +4,21 @@
 //! to highlight things that we still need to adapt.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
+use re_entity_db::LogSource;
 use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
+use re_log_channel::{UiCallback, ViewerControlCommand};
 use re_log_types::{EntityPath, EntryName, TimelineName};
 use re_protos::common::v1alpha1::ext::SegmentId;
+use re_protos::viewer_control::v1alpha1::{
+    OpenUrlRequest, OpenUrlResponse, ViewerControlRequest, viewer_control_request,
+    viewer_control_response,
+};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::blueprint::{Blueprint, Spatial2DView};
 use re_sdk_types::archetypes::Points2D;
@@ -360,6 +367,21 @@ async fn internal_catalog_load_rrd() {
             })
         });
 
+        if use_viewer_catalog {
+            // The recording streams before the catalog listing that lists its dataset arrives.
+            viewer_test_utils::step_until(
+                "dataset listed in the recording panel",
+                &mut harness,
+                |harness| {
+                    harness
+                        .recording_panel()
+                        .root()
+                        .query_by_label_contains(RRD_APP_ID)
+                        .is_some()
+                },
+            );
+        }
+
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until("loading toast gone", &mut harness, |harness| {
             harness
@@ -425,4 +447,60 @@ async fn internal_catalog_load_rrd() {
 
     run_with_catalog(&mut snapshot_results, true);
     run_with_catalog(&mut snapshot_results, false);
+}
+
+/// A caller reads the recording as soon as `open_url` answers, so the answer must wait for it,
+/// including when the file first has to be registered with the viewer catalog.
+#[tokio::test(flavor = "multi_thread")]
+async fn open_url_answers_once_the_recording_has_arrived() {
+    for use_viewer_catalog in [false, true] {
+        let (_dir, rrd_path) = test_rrd(false);
+        let mut harness = viewer_test_utils::viewer_harness(&Default::default());
+        harness.state_mut().app_options_mut().use_viewer_catalog = use_viewer_catalog;
+
+        let (tx, rx) = re_log_channel::log_channel(LogSource::Sdk);
+        harness.state_mut().add_log_receiver(rx);
+
+        let answer = Arc::new(parking_lot::Mutex::new(None));
+        let request = ViewerControlRequest {
+            kind: Some(viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+                url: rrd_path.display().to_string(),
+            })),
+        };
+        let on_done = UiCallback::new({
+            let answer = answer.clone();
+            move |response| *answer.lock() = Some(response)
+        });
+        tx.send(ViewerControlCommand::ViewerControl { request, on_done }.into())
+            .expect("the viewer holds the receiver");
+
+        viewer_test_utils::step_until("open_url answered", &mut harness, |_| {
+            answer.lock().is_some()
+        });
+
+        let response = answer.lock().take().map(|response| {
+            response
+                .map(|response| response.kind)
+                .map_err(|err| err.message)
+        });
+        assert_eq!(
+            response,
+            Some(Ok(Some(viewer_control_response::Kind::OpenUrl(
+                OpenUrlResponse {
+                    still_loading: false
+                }
+            )))),
+            "use_viewer_catalog: {use_viewer_catalog}"
+        );
+
+        let frame = TimelineName::from("frame");
+        let has_timeline = harness.run_with_app_context(move |ctx| {
+            ctx.storage_context
+                .hub
+                .store_bundle()
+                .recordings()
+                .any(|db| db.timelines().contains_key(&frame))
+        });
+        assert!(has_timeline, "use_viewer_catalog: {use_viewer_catalog}");
+    }
 }

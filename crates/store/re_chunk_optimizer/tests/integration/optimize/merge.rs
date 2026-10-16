@@ -1,6 +1,7 @@
 //! Merging within a run: packing to the target, identity of what does not merge, and the gates
 //! that keep incompatible chunks apart.
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, RowId};
@@ -158,7 +159,7 @@ fn mismatched_blocker_mid_run() {
 
 #[test]
 fn merge_correctness() {
-    // Interleaved row ids across two chunks with different components: the merged chunk is
+    // Interleaved row ids across two chunks with overlapping column sets: the merged chunk is
     // RowId-sorted, has a new `ChunkId`, and unions the components with null padding.
     let frame = Timeline::new_sequence("frame");
     let points = Chunk::builder_with_id(ChunkId::from_u128(1), "entity")
@@ -178,25 +179,35 @@ fn merge_correctness() {
         )
         .build()
         .unwrap();
-    let colors = Chunk::builder_with_id(ChunkId::from_u128(2), "entity")
+    let mixed = Chunk::builder_with_id(ChunkId::from_u128(2), "entity")
         .with_serialized_batches(
             RowId::from_u128(2),
             [(frame, 1_i64)],
-            [MyColor::from_iter(0..4)
-                .try_serialized(MyPoints::descriptor_colors())
-                .unwrap()],
+            [
+                MyPoint::from_iter(0..4)
+                    .try_serialized(MyPoints::descriptor_points())
+                    .unwrap(),
+                MyColor::from_iter(0..4)
+                    .try_serialized(MyPoints::descriptor_colors())
+                    .unwrap(),
+            ],
         )
         .with_serialized_batches(
             RowId::from_u128(4),
             [(frame, 3_i64)],
-            [MyColor::from_iter(0..4)
-                .try_serialized(MyPoints::descriptor_colors())
-                .unwrap()],
+            [
+                MyPoint::from_iter(0..4)
+                    .try_serialized(MyPoints::descriptor_points())
+                    .unwrap(),
+                MyColor::from_iter(0..4)
+                    .try_serialized(MyPoints::descriptor_colors())
+                    .unwrap(),
+            ],
         )
         .build()
         .unwrap();
 
-    let provider = provider_of(vec![Arc::new(points), Arc::new(colors)]);
+    let provider = provider_of(vec![Arc::new(points), Arc::new(mixed)]);
     let outputs = collect(optimize(provider, &settings(1024 * 1024, 0)).unwrap());
 
     assert_eq!(outputs.len(), 1);
@@ -208,7 +219,7 @@ fn merge_correctness() {
     let row_ids: Vec<RowId> = merged.row_ids().collect();
     assert_eq!(row_ids, (1..=4).map(RowId::from_u128).collect::<Vec<_>>());
 
-    // Both components are present, null-padded on the rows that lack them.
+    // Both components are present, colors null-padded on the points-only rows.
     let components = merged.components();
     let points_column = components
         .get(MyPoints::descriptor_points().component)
@@ -218,6 +229,44 @@ fn merge_correctness() {
         .unwrap();
     assert_eq!(points_column.list_array.len(), 4);
     assert_eq!(colors_column.list_array.len(), 4);
-    assert_eq!(points_column.list_array.null_count(), 2);
+    assert_eq!(points_column.list_array.null_count(), 0);
     assert_eq!(colors_column.list_array.null_count(), 2);
+}
+
+/// Chunks of one group that share no column never merge, whatever room the target leaves; chunks
+/// whose column sets overlap still do.
+#[test]
+fn disjoint_column_sets_never_merge() {
+    let inputs = vec![
+        temporal_point_chunk(1, "entity", &[0, 1], 64),
+        temporal_color_chunk(2, "entity", &[10, 11], 64),
+        temporal_mixed_chunk(3, "other", &[20, 21], 64, 64),
+        temporal_point_chunk(4, "entity", &[30, 31], 64),
+        temporal_color_chunk(5, "entity", &[40, 41], 64),
+        temporal_mixed_chunk(6, "other", &[50, 51], 64, 64),
+        temporal_point_chunk(7, "other", &[100, 101], 64),
+    ];
+    let provider = provider_of(inputs.clone());
+
+    let outputs = collect(optimize(provider, &settings(1024 * 1024, 0)).unwrap());
+
+    let layout: Vec<(String, BTreeSet<_>, usize)> = outputs
+        .iter()
+        .map(|chunk| {
+            (
+                chunk.entity_path().to_string(),
+                columns_of(chunk),
+                chunk.num_rows(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        layout,
+        vec![
+            ("/entity".to_owned(), BTreeSet::from([points()]), 4),
+            ("/entity".to_owned(), BTreeSet::from([colors()]), 4),
+            ("/other".to_owned(), BTreeSet::from([points(), colors()]), 6),
+        ]
+    );
+    assert_eq!(cell_set(&inputs), cell_set(&outputs));
 }

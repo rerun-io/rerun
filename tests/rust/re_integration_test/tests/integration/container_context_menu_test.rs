@@ -111,10 +111,10 @@ pub async fn test_context_menu_multi_selection() {
     harness.snapshot("context_menu_multi_selection_02");
 
     // Select 3D View and 2D View, check context menu
-    harness.blueprint_tree().click_label("3D view");
+    harness.blueprint_tree().click_list_item("3D view");
     harness
         .blueprint_tree()
-        .click_label_modifiers("2D view", Modifiers::COMMAND);
+        .click_list_item_modifiers("2D view", Modifiers::COMMAND);
     harness.blueprint_tree().right_click_label("2D view");
     harness.snapshot_app("context_menu_multi_selection_03");
     harness.key_press(egui::Key::Escape);
@@ -122,7 +122,7 @@ pub async fn test_context_menu_multi_selection() {
     // Add container to selection, check context menu
     harness
         .blueprint_tree()
-        .click_label_modifiers("Grid container", Modifiers::COMMAND);
+        .click_list_item_modifiers("Grid container", Modifiers::COMMAND);
     harness.blueprint_tree().right_click_label("2D view");
     harness.snapshot_app("context_menu_multi_selection_04");
     harness.key_press(egui::Key::Escape);
@@ -130,7 +130,7 @@ pub async fn test_context_menu_multi_selection() {
     // Select viewport and check context menu
     harness
         .blueprint_tree()
-        .click_label_modifiers("Viewport (Grid container)", Modifiers::COMMAND);
+        .click_list_item_modifiers("Viewport (Grid container)", Modifiers::COMMAND);
     harness
         .blueprint_tree()
         .right_click_label("Viewport (Grid container)");
@@ -138,25 +138,25 @@ pub async fn test_context_menu_multi_selection() {
     harness.key_press(egui::Key::Escape);
 
     // View + data result
-    harness.blueprint_tree().click_label("2D view");
+    harness.blueprint_tree().click_list_item("2D view");
     harness
         .blueprint_tree()
-        .click_label_modifiers("boxes2d", Modifiers::COMMAND);
+        .click_list_item_modifiers("boxes2d", Modifiers::COMMAND);
     harness.blueprint_tree().right_click_label("boxes2d");
     harness.snapshot("context_menu_multi_selection_06");
     harness.key_press(egui::Key::Escape);
 
-    harness.streams_tree().click_label("boxes2d");
+    harness.streams_tree().click_list_item("boxes2d");
     harness
         .blueprint_tree()
-        .click_label_modifiers("boxes3d", Modifiers::COMMAND);
+        .click_list_item_modifiers("boxes3d", Modifiers::COMMAND);
     harness.blueprint_tree().right_click_label("boxes3d");
     harness.snapshot("context_menu_multi_selection_07");
     harness.key_press(egui::Key::Escape);
 
     harness
         .streams_tree()
-        .click_label_modifiers("half_sizes", Modifiers::COMMAND);
+        .click_list_item_modifiers("half_sizes", Modifiers::COMMAND);
     harness.streams_tree().right_click_label("half_sizes");
     harness.snapshot("context_menu_multi_selection_08");
 }

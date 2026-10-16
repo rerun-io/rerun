@@ -72,7 +72,7 @@ class TableBlueprint(Archetype):
             * `"score" >= 3`
             * `"success" = true`
             * `"task" ILIKE '%pick%'`
-            * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+            * `"created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
 
             For a list column, the comparison goes in `any_match("column", x -> …)`.
             Other expressions still filter the table, and the viewer shows them as SQL text.
@@ -136,7 +136,7 @@ class TableBlueprint(Archetype):
             * `"score" >= 3`
             * `"success" = true`
             * `"task" ILIKE '%pick%'`
-            * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+            * `"created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
 
             For a list column, the comparison goes in `any_match("column", x -> …)`.
             Other expressions still filter the table, and the viewer shows them as SQL text.
@@ -145,14 +145,14 @@ class TableBlueprint(Archetype):
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "layout": layout,
                 "column_display_mode": column_display_mode,
                 "filters": filters,
             }
 
             if clear_unset:
-                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}
 
             inst.__attrs_init__(**kwargs)
             return inst
@@ -227,7 +227,7 @@ class TableBlueprint(Archetype):
     # * `"score" >= 3`
     # * `"success" = true`
     # * `"task" ILIKE '%pick%'`
-    # * `"created" >= TIMESTAMP '2026-01-01T00:00:00Z'`
+    # * `"created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
     #
     # For a list column, the comparison goes in `any_match("column", x -> …)`.
     # Other expressions still filter the table, and the viewer shows them as SQL text.

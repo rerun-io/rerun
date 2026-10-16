@@ -1,17 +1,13 @@
 use std::fmt::Formatter;
 
-use arrow::datatypes::{DataType, Field};
-use datafusion::common::Column;
-use datafusion::logical_expr::{Expr, col, lit, not};
-use datafusion::prelude::{array_element, array_has, array_sort};
 use datafusion::sql::sqlparser::ast::{BinaryOperator, Expr as SqlExpr};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
 use super::{
-    Filter, FilterError, FilterUiAction, SqlColumn, SqlValue, bool_literal, is_same_sql,
-    negated_sql, strip_negation,
+    Filter, FilterUiAction, SqlColumn, SqlValue, bool_literal, is_same_sql, negated_sql,
+    strip_negation,
 };
 
 /// Filter for non-nullable boolean columns.
@@ -54,24 +50,6 @@ fn bool_comparison_from_sql(predicate: &SqlExpr, value: &SqlValue) -> Option<boo
 impl Filter for NonNullableBooleanFilter {
     fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
         Some(column.predicate_sql(|value| format!("{value} = {}", self.as_bool())))
-    }
-
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
-        match field.data_type() {
-            DataType::Boolean => Ok(col(field.name().clone()).eq(lit(self.as_bool()))),
-
-            DataType::List(field) | DataType::ListView(field)
-                if field.data_type() == &DataType::Boolean =>
-            {
-                // `ANY` semantics
-                Ok(array_has(col(field.name().clone()), lit(self.as_bool())))
-            }
-
-            _ => Err(FilterError::InvalidNonNullableBooleanFilter {
-                filter: self.clone(),
-                field: field.clone().into(),
-            }),
-        }
     }
 
     fn popup_ui(
@@ -235,8 +213,10 @@ impl NullableBooleanFilter {
 fn is_null_sql(column: &SqlColumn<'_>) -> String {
     let sql = column.predicate_sql(|value| format!("{value} IS NULL"));
     if column.is_list() {
+        // `NOT any_match(…, x -> true)` selects empty lists.
+        let is_empty = format!("NOT {}", column.predicate_sql(|_| "true".to_owned()));
         let column = column.sql();
-        format!("{column} IS NULL OR cardinality({column}) = 0 OR {sql}")
+        format!("{column} IS NULL OR {is_empty} OR {sql}")
     } else {
         sql
     }
@@ -253,47 +233,6 @@ impl Filter for NullableBooleanFilter {
             NullableBooleanOperator::Is => sql,
             NullableBooleanOperator::IsNot => negated_sql(&sql),
         })
-    }
-
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
-        let column = Column::from(field.name().clone());
-
-        let expr = match field.data_type() {
-            DataType::Boolean => {
-                if let Some(value) = self.value.as_bool() {
-                    col(column).eq(lit(value))
-                } else {
-                    col(column).is_null()
-                }
-            }
-
-            DataType::List(field) | DataType::ListView(field)
-                if field.data_type() == &DataType::Boolean =>
-            {
-                // `ANY` semantics
-                if let Some(value) = self.value.as_bool() {
-                    array_has(col(column), lit(value))
-                } else {
-                    col(column.clone()).is_null().or(array_element(
-                        array_sort(col(column), lit("ASC"), lit("NULLS FIRST")),
-                        lit(1),
-                    )
-                    .is_null())
-                }
-            }
-
-            _ => {
-                return Err(FilterError::InvalidNullableBooleanFilter {
-                    filter: self.clone(),
-                    field: field.clone().into(),
-                });
-            }
-        };
-
-        match self.operator {
-            NullableBooleanOperator::Is => Ok(expr),
-            NullableBooleanOperator::IsNot => Ok(not(expr.clone()).or(expr.is_null())),
-        }
     }
 
     fn popup_ui(

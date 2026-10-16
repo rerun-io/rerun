@@ -18,7 +18,7 @@ Registration puts the recordings in a catalog so they can be queried as a datase
 Start the server first:
 
 ```bash
-rerun serve # let it running
+rerun server # let it running
 ```
 
 Then register each layer.

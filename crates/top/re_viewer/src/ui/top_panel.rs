@@ -1,14 +1,38 @@
-use egui::{Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, include_image};
+use egui::{
+    Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, TextStyle, include_image,
+};
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
 use crate::dev_panel::{DevPanelTab, MAX_PLAUSIBLE_LATENCY_SEC, latency_text};
 use crate::latency_tracker::{LatencyResult, ServerLatencyTrackers};
+
+const NAVIGATION_BUTTON_SIZE: f32 = 24.0;
+
+#[derive(Clone, Copy)]
+enum NavigationButtonsState {
+    #[cfg(target_arch = "wasm32")]
+    Hidden,
+    Visible {
+        can_go_back: bool,
+        can_go_forward: bool,
+    },
+}
+
+impl NavigationButtonsState {
+    fn is_visible(self) -> bool {
+        match self {
+            #[cfg(target_arch = "wasm32")]
+            Self::Hidden => false,
+            Self::Visible { .. } => true,
+        }
+    }
+}
 
 pub fn top_panel(
     frame: &eframe::Frame,
@@ -100,16 +124,16 @@ fn top_bar_ui(
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
+    let top_bar_rect = ui.max_rect();
 
-    // In tests we always show the navigation buttons so that browser and native look the same.
-    if !app.startup_options().web_history_enabled() || app.app_env().is_test() {
-        ui.add_space(12.0);
-        app.navigation_buttons(ui);
+    if !app.uses_native_menu() {
+        app.rerun_menu_button_ui(store_hub, store_context, ui);
     }
 
+    let show_top_bar_diagnostics = app.app_options().show_metrics;
+
     if !app.is_screenshotting() && !app.app_env().is_test() {
-        show_warnings(frame, ui, app.app_env()); // Fixed width: put first
+        show_warnings(frame, ui, app.app_env(), show_top_bar_diagnostics); // Fixed width: put first
 
         // Latency is only meaningful for data that could have been logged just now:
         let latency_snapshot = store_context
@@ -125,21 +149,28 @@ fn top_bar_ui(
         let mut show_latency_tab = false;
         let mut show_memory_tab = false;
 
-        if app.app_options().show_metrics {
+        if show_top_bar_diagnostics {
             ui.separator();
 
             ui.scope(|ui| {
                 ui.spacing_mut().item_spacing.x = 12.0;
 
-                // Varying widths:
                 show_memory_tab |=
-                    memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users);
-                frame_time_label_ui(ui, app);
-                fps_ui(ui, app);
+                    fixed_width_diagnostic_ui(ui, "9999.9 GiB", &TextStyle::Monospace, |ui| {
+                        memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users)
+                    });
+                fixed_width_diagnostic_ui(ui, "9999.9 ms", &TextStyle::Monospace, |ui| {
+                    frame_time_label_ui(ui, app);
+                });
+                fixed_width_diagnostic_ui(ui, "9999 FPS", &TextStyle::Monospace, |ui| {
+                    fps_ui(ui, app);
+                });
 
                 if let Some(latency_snapshot) = latency_snapshot {
-                    // Always show latency when metrics are enabled:
-                    show_latency_tab |= latency_snapshot_button_ui(ui, &latency_snapshot);
+                    show_latency_tab |=
+                        fixed_width_diagnostic_ui(ui, "Latency: 59.9 s", &TextStyle::Body, |ui| {
+                            latency_snapshot_button_ui(ui, &latency_snapshot)
+                        });
                 }
             });
         } else {
@@ -180,32 +211,255 @@ fn top_bar_ui(
         }
     }
 
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if app.custom_window_decorations() && !cfg!(target_arch = "wasm32") {
-            #[cfg(not(target_arch = "wasm32"))]
-            ui.native_window_buttons_ui();
-            ui.separator();
-        } else {
-            // Make the first button the same distance form the side as from the top,
-            // no matter how high the top bar is.
-            let extra_margin = (ui.available_height() - 24.0) / 2.0;
-            ui.add_space(extra_margin);
-        }
+    let left_content_right = ui.cursor().left();
+    let right_content_left = ui
+        .with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if app.custom_window_decorations() && !cfg!(target_arch = "wasm32") {
+                #[cfg(not(target_arch = "wasm32"))]
+                ui.native_window_buttons_ui();
+                ui.separator();
+            } else {
+                // Make the first button the same distance form the side as from the top,
+                // no matter how high the top bar is.
+                let extra_margin = (ui.available_height() - 24.0) / 2.0;
+                ui.add_space(extra_margin);
+            }
 
-        panel_buttons_r2l(app, app_blueprint, ui, store_hub);
+            panel_buttons_r2l(app, app_blueprint, ui, store_hub);
 
-        if app.app_options().show_metrics && !app.is_screenshotting() && !app.app_env().is_test() {
-            connection_status_ui(
-                ui,
-                &mut app.server_latency_trackers,
-                app.state.navigation.current(),
-                store_hub,
-            );
-        }
-    });
+            if show_top_bar_diagnostics && !app.is_screenshotting() && !app.app_env().is_test() {
+                connection_status_ui(
+                    ui,
+                    &mut app.connections.latency_trackers,
+                    app.state.navigation.current(),
+                    store_hub,
+                );
+            }
+
+            ui.cursor().right()
+        })
+        .inner;
+
+    command_palette_trigger_ui(
+        ui,
+        top_bar_rect,
+        left_content_right,
+        right_content_left,
+        app,
+    );
 }
 
-fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppEnvironment) {
+/// Keep rapidly changing diagnostics from moving the centered command-palette trigger.
+fn fixed_width_diagnostic_ui<R>(
+    ui: &mut egui::Ui,
+    representative_text: &str,
+    text_style: &TextStyle,
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let font_id = text_style.resolve(ui.style());
+    let width = ui
+        .painter()
+        .layout_no_wrap(representative_text.to_owned(), font_id, Color32::WHITE)
+        .size()
+        .x;
+
+    ui.allocate_ui_with_layout(
+        egui::vec2(width, ui.available_height()),
+        Layout::right_to_left(Align::Center),
+        contents,
+    )
+    .inner
+}
+
+fn command_palette_trigger_ui(
+    ui: &mut egui::Ui,
+    top_bar_rect: Rect,
+    left_content_right: f32,
+    right_content_left: f32,
+    app: &App,
+) {
+    const MAX_WIDTH: f32 = 420.0;
+    const MIN_WIDTH: f32 = 180.0;
+    const HEIGHT: f32 = 26.0;
+    const SIDE_GAP: f32 = 12.0;
+    const NAVIGATION_GAP: f32 = 8.0;
+
+    let navigation_buttons_state = navigation_buttons_state(app);
+    let navigation_width = if navigation_buttons_state.is_visible() {
+        2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
+    } else {
+        0.0
+    };
+    let center_x = ui.ctx().content_rect().center().x;
+    let left_half_width = center_x - left_content_right - SIDE_GAP - navigation_width;
+    let right_half_width = right_content_left - SIDE_GAP - center_x;
+    let width = (2.0 * left_half_width.min(right_half_width)).min(MAX_WIDTH);
+
+    if width < MIN_WIDTH {
+        let available_width = right_content_left - left_content_right - 2.0 * SIDE_GAP;
+        if navigation_buttons_state.is_visible() && 2.0 * NAVIGATION_BUTTON_SIZE <= available_width
+        {
+            let forward_center_x = left_content_right + SIDE_GAP + 1.5 * NAVIGATION_BUTTON_SIZE;
+            navigation_buttons_at(
+                ui,
+                top_bar_rect,
+                forward_center_x,
+                app,
+                navigation_buttons_state,
+            );
+        }
+        return;
+    }
+
+    let button_rect = Rect::from_center_size(
+        egui::pos2(center_x, top_bar_rect.center().y),
+        egui::vec2(width, HEIGHT),
+    );
+    let shortcut = UICommand::ToggleCommandPalette
+        .formatted_kb_shortcut(ui.ctx())
+        .unwrap_or_default();
+    let subdued_color = ui.tokens().text_subdued;
+    let button = Button::image_and_text(
+        icons::SEARCH
+            .as_image()
+            .fit_to_exact_size(ui.tokens().small_icon_size),
+        RichText::new("Search commands…").color(subdued_color),
+    )
+    .right_text(RichText::new(shortcut).color(subdued_color))
+    .image_tint_follows_text_color(true)
+    .corner_radius(ui.tokens().normal_corner_radius())
+    .min_size(button_rect.size());
+
+    let top_bar_color = ui.tokens().top_bar_color;
+    let border = ui.visuals().widgets.noninteractive.bg_stroke;
+    let response = ui
+        .scope(|ui| {
+            ui.spacing_mut().button_padding = egui::vec2(8.0, 0.0);
+
+            let widgets = &mut ui.visuals_mut().widgets;
+            widgets.inactive.bg_fill = top_bar_color;
+            widgets.inactive.weak_bg_fill = top_bar_color;
+            for widget in [
+                &mut widgets.inactive,
+                &mut widgets.hovered,
+                &mut widgets.active,
+                &mut widgets.open,
+            ] {
+                widget.bg_stroke = border;
+                widget.fg_stroke.color = subdued_color;
+                widget.expansion = 0.0;
+            }
+
+            ui.place(button_rect, button)
+        })
+        .inner;
+
+    if response.clicked() {
+        app.command_sender.send_ui(UICommand::ToggleCommandPalette);
+    }
+
+    if navigation_buttons_state.is_visible() {
+        let forward_center_x = button_rect.left() - NAVIGATION_GAP - NAVIGATION_BUTTON_SIZE * 0.5;
+        navigation_buttons_at(
+            ui,
+            top_bar_rect,
+            forward_center_x,
+            app,
+            navigation_buttons_state,
+        );
+    }
+}
+
+fn navigation_buttons_state(app: &App) -> NavigationButtonsState {
+    #[cfg(target_arch = "wasm32")]
+    if app.startup_options().web_history_enabled() {
+        return crate::web_history::navigation_availability().map_or(
+            NavigationButtonsState::Hidden,
+            |(can_go_back, can_go_forward)| NavigationButtonsState::Visible {
+                can_go_back,
+                can_go_forward,
+            },
+        );
+    }
+
+    NavigationButtonsState::Visible {
+        can_go_back: app.state.history.has_back(),
+        can_go_forward: app.state.history.has_forward(),
+    }
+}
+
+fn navigation_buttons_at(
+    ui: &mut egui::Ui,
+    top_bar_rect: Rect,
+    forward_center_x: f32,
+    app: &App,
+    state: NavigationButtonsState,
+) {
+    let (can_go_back, can_go_forward) = match state {
+        #[cfg(target_arch = "wasm32")]
+        NavigationButtonsState::Hidden => return,
+        NavigationButtonsState::Visible {
+            can_go_back,
+            can_go_forward,
+        } => (can_go_back, can_go_forward),
+    };
+
+    let forward_rect = Rect::from_center_size(
+        egui::pos2(forward_center_x, top_bar_rect.center().y),
+        egui::Vec2::splat(NAVIGATION_BUTTON_SIZE),
+    );
+    let back_rect = forward_rect.translate(egui::vec2(-forward_rect.width(), 0.0));
+    let mut overlay_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(top_bar_rect)
+            .layout(Layout::left_to_right(Align::Center)),
+    );
+
+    navigation_button(
+        &mut overlay_ui,
+        app,
+        can_go_back,
+        &icons::ARROW_LEFT,
+        "go back",
+        UICommand::NavigateBackInHistory,
+        back_rect,
+    );
+    navigation_button(
+        &mut overlay_ui,
+        app,
+        can_go_forward,
+        &icons::ARROW_RIGHT,
+        "go forward",
+        UICommand::NavigateForwardInHistory,
+        forward_rect,
+    );
+}
+
+fn navigation_button(
+    ui: &mut egui::Ui,
+    app: &App,
+    enabled: bool,
+    icon: &'static icons::Icon,
+    alt_text: &'static str,
+    command: UICommand,
+    rect: Rect,
+) {
+    let button = ui.small_icon_button_widget(icon, alt_text);
+    let response = ui
+        .add_enabled_ui(enabled, |ui| ui.place(rect, button))
+        .inner;
+
+    if response.on_hover_ui(|ui| command.tooltip_ui(ui)).clicked() {
+        app.command_sender.send_ui(command);
+    }
+}
+
+fn show_warnings(
+    frame: &eframe::Frame,
+    ui: &mut egui::Ui,
+    app_env: &crate::AppEnvironment,
+    show_top_bar_diagnostics: bool,
+) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
     // * it's more visible
@@ -221,6 +475,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
         callback: impl FnOnce(&mut egui::Ui),
     ) {
         if !*has_shown_warning {
+            #[cfg(target_arch = "wasm32")]
             ui.separator();
             *has_shown_warning = true;
         }
@@ -228,7 +483,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
         callback(ui);
     }
 
-    if cfg!(debug_assertions) {
+    if cfg!(debug_assertions) && show_top_bar_diagnostics {
         show_warning(ui, &mut has_shown_warning, |ui| {
             // Warn if in debug build
             ui.label(
@@ -561,7 +816,6 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
             visuals.warn_fg_color
         };
 
-        // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
@@ -595,7 +849,6 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
             visuals.weak_text_color()
         };
 
-        // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{fps:.0} FPS");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("Frames per second. Higher is better.");
@@ -639,7 +892,6 @@ fn memory_use_label_ui(
     let mem = re_memory::MemoryUse::capture();
 
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        // we use monospace so the width doesn't fluctuate as the numbers change.
         let bytes_used_text = re_format::format_bytes(count.size as _);
 
         ui.add(

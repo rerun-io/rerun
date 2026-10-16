@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -41,16 +41,18 @@ if TYPE_CHECKING:
 
     from . import (
         CatalogClient,
+        DatasetInfo,
         EntryKind,
         IndexValuesLike,
+        Layer,
         RegistrationHandle,
         Schema,
+        Segment,
         UnregistrationHandle,
     )
 
 
-# TODO(#12612): switch to `StrEnum` when we drop Python 3.10
-class OnDuplicateSegmentLayer(str, Enum):
+class OnDuplicateSegmentLayer(StrEnum):
     """
     How to handle duplicate segment layers when registering recordings to a dataset.
 
@@ -219,12 +221,20 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.manifest_url
 
+    # TODO(RR-5950): Remove this compatibility method after callers migrate to schema().to_arrow().
+    @deprecated("DatasetEntry.arrow_schema() is deprecated. Use DatasetEntry.schema().to_arrow() instead.")
     def arrow_schema(self) -> pa.Schema:
         """Return the Arrow schema of the data contained in the dataset."""
+        return self.schema().to_arrow()
 
-        return self._internal.arrow_schema()
-
-    def register_blueprint(self, uri: str, set_default: bool = True, *, segment_table: bool = False) -> None:
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        segment_table: bool = False,
+        object_store_config: str | None = None,
+    ) -> None:
         """
         Register an existing .rbl visible to the server.
 
@@ -249,7 +259,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             raise LookupError("a blueprint dataset is not configured for this dataset")
 
         segment_id = (
-            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+            blueprint_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
         )
 
         if set_default:
@@ -313,6 +326,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         *,
         mode: Literal["opt_out", "opt_in"] = "opt_out",
         segments: Sequence[str] | None = None,
+        object_store_config: str | None = None,
     ) -> str:
         """
         Register an existing .rrd visible to the server as an asset.
@@ -345,6 +359,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The segment ids the mode applies to. Defaults to empty, so an `"opt_out"` asset applies
             to every segment and an `"opt_in"` asset applies to none.
 
+        object_store_config:
+            Use a custom object store configuration for the registration.
+            If not specified, the store is inferred from the URL.
+
         Returns
         -------
         str
@@ -363,7 +381,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if asset_dataset is None:
             raise LookupError("an asset dataset is not configured for this dataset")
 
-        segment_id = asset_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+        segment_id = (
+            asset_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
+        )
 
         asset_dataset._write_asset_property(segment_id, mode=_ASSET_MODE_STR[mode], segments=list(segments or []))
 
@@ -377,6 +400,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
 
         Unregistering an asset that doesn't exist is a no-op.
+
+        The asset's properties, such as the segments it applies to, stay stored. Call [`delete_segment_properties`][rerun.catalog.DatasetEntry.delete_segment_properties]
+        on the [`asset_dataset`][rerun.catalog.DatasetEntry.asset_dataset] to delete them.
 
         Parameters
         ----------
@@ -567,6 +593,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         from ._schema import Schema
 
         return Schema(self._internal.schema())
+
+    @with_tracing("DatasetEntry.info")
+    def info(self) -> DatasetInfo:
+        """
+        Return an overview of the dataset: segments, size, layers, timelines, contents and properties.
+
+        This fetches the schema and scans a few columns of the segment table.
+        It reads no recording data, and its output grows with the number of layers and timelines, not segments.
+        """
+        from ._dataset_info import _dataset_info_from_internal
+
+        return _dataset_info_from_internal(self._internal.info())
 
     @with_tracing("DatasetEntry.segment_ids")
     def segment_ids(self) -> list[str]:
@@ -800,6 +838,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
         * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
 
+        Segment properties stay stored, even for segments that lose all their layers.
+        Use [`delete_segment_properties`][rerun.catalog.DatasetEntry.delete_segment_properties] to delete them.
+
         Parameters
         ----------
         segments_to_drop: list[str]
@@ -832,6 +873,24 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return UnregistrationHandle(
             self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
         )
+
+    @with_tracing("DatasetEntry.delete_segment_properties")
+    def delete_segment_properties(self, segment_ids: str | Sequence[str]) -> None:
+        """
+        Delete the properties of the given segments.
+
+        Deleting properties a segment doesn't have is a no-op.
+
+        Parameters
+        ----------
+        segment_ids: list[str]
+            The segment IDs whose properties to delete.
+
+        """
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+
+        self._internal.delete_segment_properties(list(segment_ids))
 
     def register_prefix(
         self,
@@ -882,6 +941,35 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
             )
         )
+
+    @with_tracing("DatasetEntry.layer")
+    def layer(self, name: str) -> Layer:
+        """
+        Check that a layer exists on the server and return a lightweight handle.
+
+        A layer exists while at least one segment contains it.
+        Raises `ValueError` if the layer name is invalid or does not exist.
+        """
+        from ._layer import Layer
+
+        return Layer(self._internal.layer(name))
+
+    @with_tracing("DatasetEntry.segment")
+    def segment(self, segment_id: str) -> Segment:
+        """
+        Check that a segment exists on the server and return a lightweight handle.
+
+        Raises [`NotFoundError`][rerun.catalog.NotFoundError] if the segment or dataset does not exist.
+
+        Parameters
+        ----------
+        segment_id:
+            The segment ID within this dataset.
+
+        """
+        from ._segment import Segment
+
+        return Segment(self._internal.segment(segment_id))
 
     def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStore:
         """
@@ -1615,7 +1703,13 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
-    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        object_store_config: str | None = None,
+    ) -> None:
         """
         Register an existing .rbl visible to the server as this table's blueprint.
 
@@ -1633,7 +1727,10 @@ class TableEntry(Entry[TableEntryInternal]):
         blueprint_dataset = self.blueprint_dataset()
 
         segment_id = (
-            blueprint_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+            blueprint_dataset
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .wait()
+            .segment_ids[0]
         )
 
         if set_default:

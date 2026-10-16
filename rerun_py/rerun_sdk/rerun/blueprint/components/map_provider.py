@@ -104,9 +104,8 @@ class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MapProviderArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (MapProvider, int, str)):
-            data = [data]
+        items: Sequence[MapProviderLike | str] = [data] if isinstance(data, (MapProvider, int, str)) else data
 
-        pa_data = [MapProvider.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [MapProvider.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

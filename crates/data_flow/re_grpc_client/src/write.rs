@@ -508,9 +508,10 @@ mod tests {
     fn unconnected_full_queue_only_stops_blocking_after_shutdown() {
         // Port 0 cannot identify a listening service, so this endpoint is reliably unreachable.
         let uri = "rerun+http://127.0.0.1:0/proxy".parse().unwrap();
+        let connect_timeout_on_flush = Duration::from_millis(50);
         let options = Options {
             compression: Compression::LZ4,
-            connect_timeout_on_flush: Duration::from_millis(50),
+            connect_timeout_on_flush,
         };
         let client = Arc::new(Client::new(uri, options));
         let msg = test_log_msg();
@@ -538,14 +539,16 @@ mod tests {
         );
 
         // Since the connection is not established, shutdown grants one final connection window.
+        let shutdown_requested = Instant::now();
         client.request_shutdown();
-        assert_eq!(
-            done_rx.recv_timeout(Duration::from_millis(20)),
-            Err(crossbeam::channel::RecvTimeoutError::Timeout)
-        );
 
         // Timing out drops the receiver, wakes the sender, and records a terminal failure.
         done_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        let elapsed = shutdown_requested.elapsed();
+        assert!(
+            connect_timeout_on_flush <= elapsed,
+            "sender unblocked {elapsed:?} after shutdown, before the {connect_timeout_on_flush:?} connection window ended"
+        );
         assert_eq!(
             client.status(),
             ClientConnectionState::Disconnected(Err(

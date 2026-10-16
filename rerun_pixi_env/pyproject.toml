@@ -2,7 +2,7 @@
 name = "rerun-pixi-env"
 version = "0.1.0"
 description = "Pixi environment setup utilities for Rerun"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.scripts]
 ensure-rerun-env = "rerun_pixi_env:main"

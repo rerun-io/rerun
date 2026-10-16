@@ -138,7 +138,7 @@ impl ChunkListMode {
 
         ui.horizontal(|ui| {
             ui.horizontal(|ui| {
-                ui.label("Timeline:");
+                ui.label("Timeline");
                 egui::ComboBox::new("timeline", "")
                     .selected_text(current_timeline.name().as_str())
                     .show_ui(ui, |ui| {
@@ -149,7 +149,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Entity:");
+                ui.label("Entity");
                 egui::ComboBox::new("entity_path", "")
                     .selected_text(current_entity.to_string())
                     .show_ui(ui, |ui| {
@@ -160,7 +160,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Component:");
+                ui.label("Component");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
                 egui::ComboBox::new("component", "")
                     .selected_text(current_component.as_str())
@@ -187,16 +187,16 @@ impl ChunkListMode {
 
             match query {
                 ChunkListQueryMode::LatestAt(time) => {
-                    ui.label("At:");
+                    ui.label("At");
                     time_drag_value.drag_value_ui(ui, time_typ, time, true, None, format);
                 }
                 ChunkListQueryMode::Range(range) => {
                     let (mut min, mut max) = (range.min(), range.max());
 
-                    ui.label("From:");
+                    ui.label("From");
                     time_drag_value.drag_value_ui(ui, time_typ, &mut min, true, None, format);
 
-                    ui.label("To:");
+                    ui.label("To");
                     time_drag_value.drag_value_ui(ui, time_typ, &mut max, true, Some(min), format);
 
                     range.set_min(min);

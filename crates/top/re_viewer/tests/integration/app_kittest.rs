@@ -21,6 +21,37 @@ fn os_snapshot_suffix(os: OperatingSystem) -> &'static str {
     }
 }
 
+#[tokio::test]
+async fn menu_hides_commands_without_a_target() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    harness.get_by_label("Menu").click();
+    harness.run_ok();
+    assert!(harness.query_by_label("Playback").is_none());
+    harness.get_by_label("Data").hover();
+    harness.run_ok();
+    harness.get_by_label("Connect to a server…");
+    for label in [
+        "Edit server…",
+        "Copy server URL",
+        "Remove server",
+        "Refresh table",
+        "Refresh server",
+    ] {
+        assert!(harness.query_by_label(label).is_none(), "{label}");
+    }
+}
+
+#[tokio::test]
+async fn menu_opens_about_from_shared_commands() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    harness.get_by_label("Menu").click();
+    harness.run_ok();
+    harness.get_by_label("About Rerun…").click();
+    harness.run_ok();
+    harness.get_by_label("Version");
+    harness.get_by_label("Platform");
+}
+
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
 async fn settings_screen() {
@@ -43,9 +74,11 @@ async fn settings_screen() {
             os: Some(os),
             ..Default::default()
         });
-        harness.get_by_label("Menu").click();
+        harness.get_by_label_contains("Search commands…").click();
         harness.run_ok();
-        harness.get_by_label_contains("Settings…").click();
+        harness.get_by_role(Role::TextInput).type_text("settings");
+        harness.run_ok();
+        harness.key_press(egui::Key::Enter);
         // Wait for the FFmpeg-check loading indicator to disappear.
         viewer_test_utils::step_until(
             "Settings screen shows up with FFMpeg binary not found error",
@@ -105,16 +138,49 @@ fn about_rerun() {
     harness.snapshot("about_rerun");
 }
 
-/// Opens the Rerun menu without an active recording and snapshots the app.
-/// Tests that certain recording-related entries are disabled (e.g. save or close recording).
+/// Opens the command palette from its search-style trigger in the top bar.
 #[tokio::test]
-async fn menu_without_recording() {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
-    harness.get_by_label("Menu").click();
+async fn command_palette_from_top_bar() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1200.0, 768.0)),
+        os: Some(egui::os::OperatingSystem::Mac),
+        ..Default::default()
+    });
+
+    let trigger_rect = harness.get_by_label_contains("Search commands…").rect();
+    let back_rect = harness.get_by_label("go back").rect();
+    let forward_rect = harness.get_by_label("go forward").rect();
+    assert!((trigger_rect.center().x - 600.0).abs() < 0.5);
+    assert!((back_rect.right() - forward_rect.left()).abs() < 0.5);
+    assert!(forward_rect.right() < trigger_rect.left());
+
+    harness.snapshot("top_bar_command_palette_trigger");
+    harness.get_by_label_contains("Search commands…").click();
     harness.run_ok();
-    // Redact the shortcut for quitting as it's platform-dependent.
-    harness.mask(harness.get_by_label_contains("Quit").rect());
-    harness.snapshot("menu_without_recording");
+    harness.get_by_role(Role::TextInput);
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_tools_toggle_top_bar_diagnostics() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        app_options_editor: Some(Box::new(|app_options| app_options.show_metrics = false)),
+        ..Default::default()
+    });
+
+    harness.get_by_label_contains("Search commands…").click();
+    harness.run_ok();
+    harness
+        .get_by_role(Role::TextInput)
+        .type_text("debug tools");
+    harness.run_ok();
+    harness.key_press(egui::Key::Enter);
+    harness.run_ok();
+
+    assert!(!harness.state().app_options().show_metrics);
+    harness.get_by_label("Show top bar diagnostics").click();
+    harness.run_ok();
+    assert!(harness.state().app_options().show_metrics);
 }
 
 /// Tests the colormap selector UI with snapshot testing.
@@ -131,7 +197,7 @@ fn colormap_selector_ui() {
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 ui.horizontal(|ui| {
-                    ui.label("Colormap:");
+                    ui.label("Colormap");
 
                     let mut test_colormap = Colormap::Spectral;
                     let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);

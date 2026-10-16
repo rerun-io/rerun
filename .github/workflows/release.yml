@@ -452,11 +452,17 @@ jobs:
             pre_arg="--prerelease"
           fi
 
+          if [ "${{ inputs.publish-crates }}" = "true" ]; then
+            crates_arg=""
+          else
+            crates_arg="--without-crates"
+          fi
+
           git show "$commit:CHANGELOG.md" > release-changelog.md
           if python3 scripts/ci/release_notes.py \
               --tag "$version" \
               --changelog-version "${{ needs.version.outputs.final }}" \
-              --changelog release-changelog.md > release-notes.md; then
+              --changelog release-changelog.md $crates_arg > release-notes.md; then
             notes_arg="--notes-file=release-notes.md"
           else
             echo "::warning::Could not fill the release draft from CHANGELOG.md; write the description by hand."
@@ -585,6 +591,14 @@ jobs:
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }} --locked"
           npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
+          if [ "${{ inputs.publish-crates }}" = "true" ]; then
+            crates_row="| [crates]($crates_link)            | $cargo_install |"
+            rs_docs_row="| [rs docs]($rs_docs_link)          |                |"
+          else
+            crates_row="| crates                            | not published to crates.io |"
+            rs_docs_row="| rs docs                           | not on docs.rs |"
+          fi
+
           cat <<EOF > comment-body.txt
           Version ${{ needs.version.outputs.current }} published successfully.
 
@@ -592,11 +606,11 @@ jobs:
           | --------------------------------- | -------------- |
           | [web app]($web_app_link)          |                |
           | [wheels]($wheels_link)            | $pip_install   |
-          | [crates]($crates_link)            | $cargo_install |
+          $crates_row
           | [npm]($npm_link)                  | $npm_install   |
           | [docs]($rerun_io_docs_link)       |                |
           | [py docs]($py_docs_link)          |                |
-          | [rs docs]($rs_docs_link)          |                |
+          $rs_docs_row
           | [cpp_sdk zip]($cpp_sdk_zip_link)  |                |
           EOF
 

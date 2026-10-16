@@ -2,7 +2,9 @@
 
 use crate::egui_ext::garbage_collect::EguiMemoryGarbageCollector;
 use crate::list_item::navigation::ListItemNavigation;
-use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
+use crate::list_item::{
+    CollapseButtonPlacement, ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent,
+};
 use crate::{DesignTokens, UiExt as _, design_tokens_of};
 use egui::emath::GuiRounding as _;
 use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
@@ -53,7 +55,9 @@ pub struct ListItem {
     height: f32,
     y_offset: f32,
     render_offscreen: bool,
-    corner_radius: egui::CornerRadius,
+    corner_radius: Option<egui::CornerRadius>,
+    collapse_button_placement: Option<CollapseButtonPlacement>,
+    content_top_padding: f32,
     collapse_temporary: bool,
 }
 
@@ -71,7 +75,9 @@ impl Default for ListItem {
             height: DesignTokens::list_item_height(),
             y_offset: 0.0,
             render_offscreen: true,
-            corner_radius: egui::CornerRadius::ZERO,
+            corner_radius: None,
+            collapse_button_placement: None,
+            content_top_padding: 0.0,
             collapse_temporary: false,
         }
     }
@@ -87,6 +93,7 @@ pub struct ListVisuals {
     pub interactive: bool,
     pub strong: bool,
     pub openness: Option<f32>,
+    pub icon_tint_override: Option<Color32>,
 }
 
 impl ListVisuals {
@@ -127,14 +134,22 @@ impl ListVisuals {
     }
 
     pub fn icon_tint(self) -> Color32 {
+        if let Some(icon_tint_override) = self.icon_tint_override {
+            return icon_tint_override;
+        }
+
         let design_tokens = design_tokens_of(self.theme);
 
         if self.selected {
-            design_tokens.icon_color_on_primary
-        } else if self.active {
-            design_tokens.list_item_active_icon
+            if self.hovered {
+                design_tokens.icon_color_on_primary_hovered
+            } else {
+                design_tokens.icon_color_on_primary
+            }
         } else if self.hovered {
             design_tokens.list_item_hovered_icon
+        } else if self.active {
+            design_tokens.list_item_active_icon
         } else {
             design_tokens.list_item_default_icon
         }
@@ -155,7 +170,7 @@ impl ListVisuals {
         }
     }
 
-    fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
+    pub(crate) fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
             design_tokens.list_item_collapse_default
@@ -257,7 +272,24 @@ impl ListItem {
     /// The default is square, which fits the full-span highlight in panels.
     #[inline]
     pub fn with_corner_radius(mut self, corner_radius: impl Into<egui::CornerRadius>) -> Self {
-        self.corner_radius = corner_radius.into();
+        self.corner_radius = Some(corner_radius.into());
+        self
+    }
+
+    /// Override where this item's collapse button is placed.
+    #[inline]
+    pub fn with_collapse_button_placement(
+        mut self,
+        collapse_button_placement: CollapseButtonPlacement,
+    ) -> Self {
+        self.collapse_button_placement = Some(collapse_button_placement);
+        self
+    }
+
+    /// Add padding above the item's content without changing its background or interaction area.
+    #[inline]
+    pub fn with_content_top_padding(mut self, content_top_padding: f32) -> Self {
+        self.content_top_padding = content_top_padding;
         self
     }
 
@@ -343,12 +375,20 @@ impl ListItem {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         ui.scope(|ui| {
             let tokens = ui.tokens();
-            self.ui(
-                ui,
-                None,
-                tokens.small_icon_size.x + tokens.text_to_icon_padding(),
-                Box::new(content),
-            )
+            let style = LayoutInfoStack::top(ui.ctx()).style;
+            let default_indent = tokens.small_icon_size.x + tokens.text_to_icon_padding();
+            let collapse_button_placement = if content.supports_collapse_button_after_label() {
+                self.collapse_button_placement
+                    .unwrap_or(style.collapse_button_placement)
+            } else {
+                CollapseButtonPlacement::Leading
+            };
+            let extra_indent = if collapse_button_placement == CollapseButtonPlacement::AfterLabel {
+                0.0
+            } else {
+                style.hierarchy_indent(default_indent)
+            };
+            self.ui(ui, None, extra_indent, Box::new(content))
         })
         .inner
         .response
@@ -420,6 +460,8 @@ impl ListItem {
         }
 
         let tokens = ui.tokens();
+        let style = LayoutInfoStack::top(ui.ctx()).style;
+        let default_indent = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
         // enable collapsing arrow
         let openness = state.openness(ui.ctx());
@@ -445,8 +487,7 @@ impl ListItem {
         let body_response = ui
             .scope(|ui| {
                 if indented {
-                    ui.spacing_mut().indent =
-                        tokens.small_icon_size.x + tokens.text_to_icon_padding();
+                    ui.spacing_mut().indent = style.hierarchy_indent(default_indent);
                     state.show_body_indented(&response.response, ui, |ui| add_children(ui))
                 } else {
                     state.show_body_unindented(ui, |ui| add_children(ui))
@@ -487,11 +528,14 @@ impl ListItem {
             y_offset,
             render_offscreen,
             corner_radius,
+            collapse_button_placement,
+            content_top_padding,
             collapse_temporary: _,
         } = self;
 
         let tokens = ui.tokens();
         let is_first_item = LayoutInfoStack::take_is_first_item(ui.ctx());
+        let layout_info = LayoutInfoStack::top(ui.ctx());
 
         if y_offset != 0.0 && !is_first_item {
             ui.add_space(y_offset);
@@ -499,9 +543,19 @@ impl ListItem {
         height -= y_offset;
 
         let collapsing_triangle_size = tokens.collapsing_triangle_size();
+        let collapse_button_placement = if content.supports_collapse_button_after_label() {
+            collapse_button_placement.unwrap_or(layout_info.style.collapse_button_placement)
+        } else {
+            CollapseButtonPlacement::Leading
+        };
+
+        let collapse_button_padding = match collapse_button_placement {
+            CollapseButtonPlacement::Leading => tokens.text_to_icon_padding(),
+            CollapseButtonPlacement::AfterLabel => tokens.collapse_button_to_label_padding(),
+        };
 
         let collapse_extra = if collapse_openness.is_some() {
-            collapsing_triangle_size.x + tokens.text_to_icon_padding()
+            collapsing_triangle_size.x + collapse_button_padding
         } else {
             0.0
         };
@@ -541,15 +595,21 @@ impl ListItem {
 
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
-        let layout_info = LayoutInfoStack::top(ui.ctx());
-        let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
+        let interaction_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
+        let bg_rect = egui::Rect::from_x_y_ranges(
+            interaction_rect
+                .x_range()
+                .shrink(layout_info.style.background_inset),
+            rect.y_range(),
+        );
+        let corner_radius = corner_radius.unwrap_or(layout_info.style.corner_radius);
 
         // Record the max allocated width.
         layout_info.register_max_item_width(ui, rect.right() - layout_info.left_x);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
-        let mut response = ui.interact(bg_rect, id, sense);
+        let mut response = ui.interact(interaction_rect, id, sense);
 
         if interactive {
             let focused = response.has_focus();
@@ -620,6 +680,7 @@ impl ListItem {
             interactive,
             strong: false,
             openness: collapse_openness,
+            icon_tint_override: None,
         };
 
         let mut collapse_response = None;
@@ -627,44 +688,26 @@ impl ListItem {
         let background_frame = ui.painter().add(egui::Shape::Noop);
 
         // Draw collapsing triangle
-        if let Some(openness) = collapse_openness {
+        if let Some(openness) = collapse_openness
+            && collapse_button_placement == CollapseButtonPlacement::Leading
+        {
             let triangle_pos = egui::pos2(
                 rect.min.x,
                 rect.center().y - 0.5 * collapsing_triangle_size.y,
             )
             .round_to_pixels(ui.pixels_per_point());
             let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
-            let mut triangle_sense = egui::Sense::click();
-            triangle_sense.remove(Sense::FOCUSABLE);
-            let triangle_response = ui.interact(
-                triangle_rect.expand(3.0), // make it easier to click
-                id.with("collapsing_triangle"),
-                triangle_sense,
-            );
-            // Reachable by name. Not named after the item: a query by the item's label must
-            // keep finding the item alone.
-            let expanded = 0.5 < openness;
-            triangle_response.widget_info(|| {
-                egui::WidgetInfo::labeled(
-                    egui::Role::DisclosureTriangle,
-                    ui.is_enabled(),
-                    if expanded { "Collapse" } else { "Expand" },
-                )
-            });
-            ui.ctx()
-                .accesskit_node_builder(triangle_response.id, |node| node.set_expanded(expanded));
-
-            let color = visuals.collapse_button_color(triangle_response.hovered());
-
-            ui.paint_collapsing_triangle(openness, triangle_rect.center(), color);
-            collapse_response = Some(triangle_response);
+            collapse_response = Some(collapse_button_ui(ui, id, openness, triangle_rect, visuals));
         }
 
         // Draw content
         let mut content_rect = rect;
-        if collapse_openness.is_some() {
+        if collapse_openness.is_some()
+            && collapse_button_placement == CollapseButtonPlacement::Leading
+        {
             content_rect.min.x += extra_indent + collapse_extra;
         }
+        content_rect.min.y = (content_rect.min.y + content_top_padding).at_most(content_rect.max.y);
 
         let content_ctx = ContentContext {
             rect: content_rect,
@@ -673,6 +716,7 @@ impl ListItem {
             list_item: &self,
             layout_info,
             visuals,
+            collapse_button_placement,
         };
 
         if interactive {
@@ -684,8 +728,17 @@ impl ListItem {
         }
 
         let prev_widgets = ui.style_mut().visuals.widgets.clone();
-        content.ui(ui, &content_ctx);
+        let content_collapse_response = content.ui(ui, &content_ctx);
+        collapse_response = collapse_response.or(content_collapse_response);
         ui.style_mut().visuals.widgets = prev_widgets;
+
+        if let Some(collapse_response) = &collapse_response
+            && collapse_response.secondary_clicked()
+        {
+            // Secondary clicks on the disclosure control belong to the item's context menu;
+            // primary clicks remain exclusive to expanding or collapsing it.
+            response = response.union(collapse_response.clone());
+        }
 
         if ui.is_rect_visible(bg_rect) {
             // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,
@@ -723,4 +776,31 @@ impl ListItem {
             collapse_response,
         }
     }
+}
+
+pub(crate) fn collapse_button_ui(
+    ui: &Ui,
+    id: egui::Id,
+    openness: f32,
+    rect: egui::Rect,
+    visuals: ListVisuals,
+) -> Response {
+    let mut sense = egui::Sense::click();
+    sense.remove(Sense::FOCUSABLE);
+    let response = ui.interact(rect.expand(3.0), id.with("collapsing_triangle"), sense);
+    // Reachable by name. Not named after the item: a query by the item's label must
+    // keep finding the item alone.
+    let expanded = 0.5 < openness;
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(
+            egui::Role::DisclosureTriangle,
+            ui.is_enabled(),
+            if expanded { "Collapse" } else { "Expand" },
+        )
+    });
+    ui.ctx()
+        .accesskit_node_builder(response.id, |node| node.set_expanded(expanded));
+    let color = visuals.collapse_button_color(response.hovered());
+    ui.paint_collapsing_triangle(openness, rect.center(), color);
+    response
 }

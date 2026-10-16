@@ -1,4 +1,5 @@
 use re_sdk_types::components::PinholeProjection;
+use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, MaybeMutRef, UiLayout};
 
 pub fn singleline_view_pinhole(
@@ -12,7 +13,9 @@ pub fn singleline_view_pinhole(
     // See if this is a trivial pinhole, and can be displayed as such:
     let fl = pinhole.focal_length_in_pixels();
     let pp = pinhole.principal_point();
-    if *pinhole == PinholeProjection::from_focal_length_and_principal_point(fl, pp) {
+    if let Err(err) = pinhole.sanity_check() {
+        ui.error_label(err)
+    } else if *pinhole == PinholeProjection::from_focal_length_and_principal_point(fl, pp) {
         let fl = if fl.x() == fl.y() {
             fl.x().to_string()
         } else {
@@ -36,6 +39,10 @@ pub fn multiline_view_pinhole(
 ) -> egui::Response {
     // TODO(#6743): Since overrides are not yet taken into account in the transform hierarchy, editing this value has no effect.
     let mat3x3 = value.as_ref().0;
+
+    if let Err(err) = value.as_ref().sanity_check() {
+        ui.error_label(err);
+    }
 
     egui::Grid::new("mat3")
         .num_columns(3)

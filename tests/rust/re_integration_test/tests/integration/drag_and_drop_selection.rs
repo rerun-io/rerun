@@ -75,7 +75,7 @@ pub async fn successful_drop_selects_view() {
         "view should not be pre-selected before the drop"
     );
 
-    harness.streams_tree().click_label("cos_curve");
+    harness.streams_tree().click_list_item("cos_curve");
     harness.streams_tree().drag_label("cos_curve");
 
     let drop_point = harness.get_panel_position("PLOT").center();
@@ -107,7 +107,7 @@ pub async fn failed_drop_does_not_change_selection() {
     let (mut harness, _view_id) = make_harness();
 
     // First drop: add `cos_curve` so the second drop will be rejected.
-    harness.streams_tree().click_label("cos_curve");
+    harness.streams_tree().click_list_item("cos_curve");
     harness.streams_tree().drag_label("cos_curve");
     let drop_point = harness.get_panel_position("PLOT").center();
     harness.hover_at(drop_point);
@@ -115,7 +115,7 @@ pub async fn failed_drop_does_not_change_selection() {
     harness.run_ok();
 
     // Re-select `cos_curve` in the streams tree, then try to drop it again onto the PLOT view.
-    harness.streams_tree().click_label("cos_curve");
+    harness.streams_tree().click_list_item("cos_curve");
     let before = current_selection(&mut harness);
 
     harness.streams_tree().drag_label("cos_curve");

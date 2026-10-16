@@ -402,6 +402,10 @@ impl ApiError {
         }
     }
 
+    pub fn not_found(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
+        Self::new(origin, ApiErrorKind::NotFound, message)
+    }
+
     pub fn invalid_arguments(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
         Self::new(origin, ApiErrorKind::InvalidArguments, message)
     }

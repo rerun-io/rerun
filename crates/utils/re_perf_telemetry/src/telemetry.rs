@@ -727,10 +727,8 @@ impl Telemetry {
 
                 // Everything is generically typed, which is why this is such a nightmare to do.
                 macro_rules! handle_format {
-                    ($format:ident, $is_json:expr) => {{
-                        let layer = layer
-                            .$format()
-                            .map_event_format(|f| TraceIdFormat::new(f, $is_json));
+                    ($layer:expr, $is_json:expr) => {{
+                        let layer = $layer.map_event_format(|f| TraceIdFormat::new(f, $is_json));
                         if log_test_output {
                             layer.with_test_writer().boxed()
                         } else {
@@ -739,9 +737,18 @@ impl Telemetry {
                     }};
                 }
                 let layer = match log_format {
-                    LogFormat::Pretty => handle_format!(pretty, false),
-                    LogFormat::Compact => handle_format!(compact, false),
-                    LogFormat::Json => handle_format!(json, true),
+                    LogFormat::Pretty => handle_format!(layer.pretty(), false),
+                    LogFormat::Compact => handle_format!(layer.compact(), false),
+                    // `spans` already ends with the current span, and thread names/ids add bytes
+                    // to every line without helping much.
+                    LogFormat::Json => handle_format!(
+                        layer
+                            .with_thread_ids(false)
+                            .with_thread_names(false)
+                            .json()
+                            .with_current_span(false),
+                        true
+                    ),
                 };
 
                 layer.with_filter(create_filter(&log_filter, "warn")?)

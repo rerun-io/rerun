@@ -227,7 +227,7 @@ when you need a custom field path. Field paths reference the
 
 ## References
 
-- Lens builder source with full docstrings: `rerun/experimental/_lens.py` in
+- Lens builder source with full docstrings: `rerun/chunk/_lens.py` in
   the installed `rerun-sdk` package (`to_translation`, `to_quaternion`,
   `to_scale`, `to_rotation_axis_angle`, `to_scalars`, `to_packed_component`,
   `to_component`, `to_timeline`).

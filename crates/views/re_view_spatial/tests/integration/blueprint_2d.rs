@@ -9,6 +9,27 @@ use re_viewport_blueprint::ViewBlueprint;
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);
 
+/// Shows the empty-state overlay when a 2D view has no spatial data.
+#[test]
+pub fn test_no_data_available_2d() {
+    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            SpatialView2D::identifier(),
+        ))
+    });
+
+    test_context
+        .run_view_ui_and_save_renderer_snapshot(
+            view_id,
+            "no_data_available_2d",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
+}
+
 #[test]
 pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
     let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();

@@ -6,7 +6,6 @@
 /// High values lead to more opaque surfaces, lower to more transparent ones.
 /// More accurately, a value of 1 attenuates light to `exp(-1)` over the reference distance.
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[python(aliases = "float")]
 #[python(array_aliases = "float | npt.ArrayLike")]
 #[rust(derive(Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable))]

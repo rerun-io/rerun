@@ -1209,7 +1209,7 @@ fn start_native_viewer(
 ) -> anyhow::Result<()> {
     use re_viewer::external::{eframe, re_viewer_context};
 
-    use crate::external::re_ui::{UICommand, UICommandSender as _};
+    use re_ui::{UICommand, UICommandSender as _};
     use re_viewer_context::SystemCommandSender as _;
 
     use super::cli_data_source::take_asset_load_request;
@@ -1252,14 +1252,20 @@ fn start_native_viewer(
     // The in-process catalog connection must use the proxy's bound address because `server_addr`
     // may contain port zero.
     #[cfg(feature = "server")]
-    let (viewer_server_listener, internal_catalog, connection_registry) = {
+    let (viewer_server_listener, internal_catalog, connection_registry, connect_hint) = {
         let listener = re_grpc_server::ServerListener::bind(server_addr)?;
+        let connect_hint = url_or_paths.is_empty().then(|| listener.connect_hint());
         let internal_catalog = re_viewer::internal_catalog::build(listener.local_addr());
         let connection_registry = connection_registry.with_internal(
             internal_catalog.connection.clone(),
             internal_catalog.storage_dir().to_owned(),
         );
-        (listener, internal_catalog, connection_registry)
+        (
+            listener,
+            internal_catalog,
+            connection_registry,
+            connect_hint,
+        )
     };
 
     #[allow(clippy::allow_attributes, unused_mut)]
@@ -1361,6 +1367,16 @@ fn start_native_viewer(
             app.add_external_memory_user(Box::new(ProxyHandleWrapper {
                 handle: grpc_server_handle,
             }));
+
+            // Only surface the hint when connecting an SDK is the sole way to get data in.
+            if let Some(connect_hint) = connect_hint
+                && app.redap_servers().is_empty()
+            {
+                use re_ui::notifications::{Notification, NotificationLevel};
+                command_tx.send_system(re_viewer_context::SystemCommand::ShowNotification(
+                    Notification::new(NotificationLevel::Info, connect_hint),
+                ));
+            }
         }
 
         app.set_profiler(profiler);

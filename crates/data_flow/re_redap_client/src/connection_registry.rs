@@ -404,12 +404,17 @@ impl ConnectionRegistryHandle {
 
         // We have a successful connection, so we cache it and remember about the successful token.
         //
-        // Note: because we only acquire the lock now, a race is possible where two threads
-        // concurrently attempt to create the connection and would override each-other's results. This
-        // is acceptable since both should reach the same conclusion, and preferable that holding
-        // the lock for the entire time, as the connection process can take a while.
+        // Note: because we only acquire the lock now, another task may have connected to this origin
+        // while we were validating ours. We then use its connection and drop ours: each connection
+        // has its own chunk cache, and callers that already got the stored connection must keep
+        // seeing the chunks cached through it. This is preferable to holding the lock for the entire
+        // time, as the connection process can take a while.
         let connection = {
             let mut inner = self.inner.write().await;
+
+            if let Some(connection) = inner.remote_connections.get(&origin) {
+                return Ok(connection.clone());
+            }
 
             let connection = Connection {
                 client: RedapClient::new(
@@ -492,14 +497,12 @@ impl ConnectionRegistryHandle {
         match result {
             Ok(validated) => Ok((validated, None)),
 
-            Err(err) => {
-                // If we actually tried tokens, this error is more relevant.
-                if let Some(first_failed_attempt) = first_failed_attempt {
-                    Err(first_failed_attempt)
-                } else {
-                    Err(err)
-                }
+            // Credential errors matter only when every attempt failed because of credentials.
+            Err(err) if err.is_client_credentials_error() => {
+                Err(first_failed_attempt.unwrap_or(err))
             }
+
+            Err(err) => Err(err),
         }
     }
 
@@ -895,4 +898,40 @@ fn get_token_from_env() -> Option<Jwt> {
 #[cfg(target_arch = "wasm32")]
 fn get_token_from_env() -> Option<Jwt> {
     None
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::{ConnectionRegistry, Credentials};
+    use crate::ApiErrorKind;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn connection_errors_take_precedence_over_credentials_errors() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .expect("should find a free port")
+            .port();
+        let origin: re_uri::Origin = format!("rerun+http://127.0.0.1:{port}")
+            .parse()
+            .expect("origin should be valid");
+
+        // A token without `allowed_hosts` is not valid for loopback.
+        let token = re_auth::Jwt::try_from(
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ4In0.c2ln".to_owned(),
+        )
+        .expect("token should be well-formed");
+
+        for credentials in [None, Some(Credentials::Token(token))] {
+            let registry = ConnectionRegistry::new_without_stored_credentials();
+            if let Some(credentials) = &credentials {
+                registry.set_credentials(&origin, credentials.clone());
+            }
+
+            let err = registry
+                .connection(origin.clone())
+                .await
+                .expect_err("connection should fail");
+            assert_eq!(err.kind, ApiErrorKind::Connection, "{credentials:?}: {err}");
+        }
+    }
 }

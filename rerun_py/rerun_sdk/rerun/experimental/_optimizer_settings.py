@@ -79,7 +79,7 @@ class _OwnChunkRule:
         if entity_filter is not None and not isinstance(entity_filter, str):
             entity_filter = "\n".join(entity_filter)
         merge_split: Literal["inherit", "passthrough"] | MergeSplitSettingsDict = (
-            self.merge_split if isinstance(self.merge_split, str) else self.merge_split._to_internal()
+            self.merge_split._to_internal() if isinstance(self.merge_split, _MergeSplitSettings) else self.merge_split
         )
         return {
             "component_type": self.component_type,
@@ -123,10 +123,10 @@ class _GopBatchingRule:
         if entity_filter is not None and not isinstance(entity_filter, str):
             entity_filter = "\n".join(entity_filter)
         samples: Literal["inherit", "passthrough"] | MergeSplitSettingsDict = (
-            self.samples if isinstance(self.samples, str) else self.samples._to_internal()
+            self.samples._to_internal() if isinstance(self.samples, _MergeSplitSettings) else self.samples
         )
         keyframes: Literal["inline", "own_chunk"] | MergeSplitSettingsDict = (
-            self.keyframes if isinstance(self.keyframes, str) else self.keyframes._to_internal()
+            self.keyframes._to_internal() if isinstance(self.keyframes, _MergeSplitSettings) else self.keyframes
         )
         return {
             "entity_filter": entity_filter,

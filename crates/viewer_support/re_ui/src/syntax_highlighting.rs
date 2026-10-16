@@ -206,14 +206,6 @@ impl SyntaxHighlightedBuilder {
         BodyDefault
     );
 
-    impl_style_fns!(
-        "Body text in italics, e.g. for emphasis.",
-        body_italics,
-        with_body_italics,
-        append_body_italics,
-        BodyItalics
-    );
-
     /// Append text with a custom format.
     #[inline]
     pub fn append_with_format(&mut self, text: &str, format: TextFormat) -> &mut Self {
@@ -275,7 +267,6 @@ enum SyntaxHighlightedStyle {
     Syntax,
     Body,
     BodyDefault,
-    BodyItalics,
     Custom(Box<TextFormat>),
 }
 
@@ -291,7 +282,6 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::Syntax => write!(f, "Syntax"),
             Self::Body => write!(f, "Body"),
             Self::BodyDefault => write!(f, "BodyDefault"),
-            Self::BodyItalics => write!(f, "BodyItalics"),
             Self::Custom(_) => write!(f, "Custom(…)"),
         }
     }
@@ -346,11 +336,6 @@ impl SyntaxHighlightedStyle {
                     .visuals
                     .override_text_color
                     .unwrap_or_else(|| style.tokens().text_default);
-                format
-            }
-            Self::BodyItalics => {
-                let mut format = Self::body(style);
-                format.italics = true;
                 format
             }
             Self::Custom(format) => *format.clone(),

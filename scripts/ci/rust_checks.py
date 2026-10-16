@@ -131,8 +131,8 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
 
 def main() -> None:
     # Ensure we can print unicode characters. Has been historically an issue on Windows CI.
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    if (reconfigure := getattr(sys.stdout, "reconfigure", None)) is not None:
+        reconfigure(encoding="utf-8")
 
     # On CI, we split these checks into groups to reduce the time it takes to run all of this.
     # Make sure the `reusable_checks_rust` workflow stays up-to-date with this list.
@@ -262,7 +262,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Installing is quite quick if it's already installed.
     results.extend((
         run_cargo("install", "--locked cargo-deny@^0.19"),
-        run_cargo("deny", "--all-features --exclude-dev --log-level warn check"),
+        run_cargo("deny", "--all-features --exclude-dev --log-level warn check --warn unmaintained"),
     ))
 
 

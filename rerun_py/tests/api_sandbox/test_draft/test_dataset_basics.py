@@ -177,7 +177,7 @@ Column name: property:RecordingInfo:start_time
 	Static: true\
 """)
 
-        assert sorted_schema_str(ds.arrow_schema(), with_metadata=True) == inline_snapshot("""\
+        assert sorted_schema_str(ds.schema().to_arrow(), with_metadata=True) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
   -- field metadata --
   rerun:archetype: 'rerun.archetypes.Points2D'

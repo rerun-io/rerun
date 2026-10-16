@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
 use std::sync::Arc;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_chunk_store::external::re_chunk::external::arrow::array::ArrayRef;
 use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::hash::Hash64;
+use re_log_types::hash::{HASH_RANDOM_STATE, Hash64};
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::encodings::ComponentSourceKind;
@@ -44,6 +45,9 @@ pub struct CheckedComponentSource<'a> {
 
     /// Parsed execution state for an explicit source-component mapping.
     remapping: Option<ActiveRemapping>,
+
+    /// Recording dependencies captured before remapping changes chunk identities.
+    pub(crate) recording_result_hash: Hash64,
 }
 
 impl<'a> CheckedComponentSource<'a> {
@@ -52,6 +56,7 @@ impl<'a> CheckedComponentSource<'a> {
             source,
             error: None,
             remapping: None,
+            recording_result_hash: Hash64::ZERO,
         }
     }
 
@@ -92,18 +97,18 @@ pub type ComponentSourcesMap<'a> = IntMap<ComponentIdentifier, CheckedComponentS
 /// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
 pub struct BlueprintResolvedLatestAtResults<'a> {
+    /// Resolved class/keypoint inputs used to synthesize annotation components.
+    pub(crate) annotation_input_hash: Hash64,
+
     // Don't expose overrides/store results directly, since we may not query all overrides/store results
     // indiscrimnently depending on the active mapping (as of writing that is not yet the case, but it's an optimization we want to do).
     pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: LatestAtResults,
-    pub view_defaults: &'a LatestAtResults,
+    pub(crate) view_defaults: &'a LatestAtResults,
 
     pub(crate) query_context: QueryContext<'a>,
 
     pub(crate) component_sources: ComponentSourcesMap<'a>,
-
-    /// Hash of the visualizer instruction's component mappings.
-    pub(crate) component_mappings_hash: Hash64,
 
     /// Components resolved from annotation context.
     pub(crate) annotation_resolved: IntMap<ComponentIdentifier, UnitChunkShared>,
@@ -117,6 +122,68 @@ pub type ResolvedUnitChunkResult<'a> =
     Result<Option<Cow<'a, UnitChunkShared>>, &'a ComponentMappingError>;
 
 impl<'a> BlueprintResolvedLatestAtResults<'a> {
+    /// Identifies resolved components, including intermediate inputs, without the cursor time.
+    ///
+    /// Cast rules are excluded; callers must keep them fixed or invalidate caches separately.
+    pub fn query_result_hash(&self) -> Hash64 {
+        let mut hasher = HASH_RANDOM_STATE.build_hasher();
+        self.entity_path().hash().hash(&mut hasher);
+        self.query().timeline().hash(&mut hasher);
+        self.component_sources.len().hash(&mut hasher);
+
+        // Iteration order matters here, but only that it's consistent while `component_sources` is unchanged.
+        #[expect(clippy::iter_over_hash_type)]
+        for (&component, checked) in &self.component_sources {
+            self.hash_component_result(component, checked, &mut hasher);
+        }
+
+        Hash64::from_u64(hasher.finish())
+    }
+
+    pub(crate) fn hash_component_result(
+        &self,
+        component: ComponentIdentifier,
+        checked: &CheckedComponentSource<'_>,
+        hasher: &mut impl std::hash::Hasher,
+    ) {
+        let source = checked.source();
+        let available = checked.error().is_none();
+        component.hash().hash(hasher);
+        source.hash(hasher);
+        available.hash(hasher);
+        if !available {
+            return;
+        }
+
+        match source {
+            VisualizerComponentSource::SourceComponent { .. } => {
+                checked.recording_result_hash.hash(hasher);
+            }
+            VisualizerComponentSource::Override => {
+                self.overrides
+                    .get(component)
+                    .and_then(|chunk| chunk.row_id())
+                    .hash(hasher);
+            }
+            VisualizerComponentSource::Default => {
+                self.view_defaults
+                    .get(component)
+                    .and_then(|chunk| chunk.row_id())
+                    .hash(hasher);
+            }
+            VisualizerComponentSource::AnnotationContext => {
+                (
+                    self.annotation_context_row_id,
+                    self.view_defaults
+                        .get(component)
+                        .and_then(|chunk| chunk.row_id()),
+                    self.annotation_input_hash,
+                )
+                    .hash(hasher);
+            }
+        }
+    }
+
     /// Are there any chunks that need to be fetched from a remote store?
     pub fn any_missing_chunks(&self) -> bool {
         0 < self.overrides.missing_virtual.len()
@@ -204,6 +271,9 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
 /// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
 pub struct BlueprintResolvedRangeResults<'a> {
+    /// Resolved class/keypoint inputs used to synthesize annotation components.
+    pub(crate) annotation_input_hash: Hash64,
+
     pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: RangeResults,
     pub(crate) view_defaults: &'a LatestAtResults,
@@ -212,9 +282,6 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) component_sources: ComponentSourcesMap<'a>,
 
-    /// Hash of the visualizer instruction's component mappings.
-    pub(crate) component_mappings_hash: Hash64,
-
     /// Components resolved from annotation context.
     pub(crate) annotation_resolved: IntMap<ComponentIdentifier, Vec<re_chunk::Chunk>>,
 
@@ -222,92 +289,83 @@ pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) annotation_context_row_id: Option<re_chunk::RowId>,
 }
 
-impl<'a> BlueprintResolvedRangeResults<'a> {
+impl BlueprintResolvedRangeResults<'_> {
+    /// Identifies resolved components, including intermediate inputs, and their dependencies.
+    ///
+    /// Cast rules are excluded; callers must keep them fixed or invalidate caches separately.
+    ///
+    /// The complete query distinguishes slices sharing source chunk IDs.
+    pub fn query_result_hash(&self) -> Hash64 {
+        let mut hasher = HASH_RANDOM_STATE.build_hasher();
+        self.entity_path().hash().hash(&mut hasher);
+        self.store_results.query.hash(&mut hasher);
+        self.component_sources.len().hash(&mut hasher);
+
+        // Iteration order matters here, but only that it's consistent while `component_sources` is unchanged.
+        #[expect(clippy::iter_over_hash_type)]
+        for (&component, checked) in &self.component_sources {
+            self.hash_component_result(component, checked, &mut hasher);
+        }
+
+        Hash64::from_u64(hasher.finish())
+    }
+
+    pub(crate) fn hash_component_result(
+        &self,
+        component: ComponentIdentifier,
+        checked: &CheckedComponentSource<'_>,
+        hasher: &mut impl std::hash::Hasher,
+    ) {
+        let source = checked.source();
+        let available = checked.error().is_none();
+        component.hash().hash(hasher);
+        source.hash(hasher);
+        available.hash(hasher);
+        if !available {
+            return;
+        }
+
+        match source {
+            VisualizerComponentSource::SourceComponent { .. } => {
+                (
+                    checked.recording_result_hash,
+                    // View defaults may be used on gaps in the data!
+                    self.view_defaults
+                        .get(component)
+                        .and_then(|chunk| chunk.row_id()),
+                )
+                    .hash(hasher);
+            }
+            VisualizerComponentSource::Override => {
+                self.overrides
+                    .get(component)
+                    .and_then(|chunk| chunk.row_id())
+                    .hash(hasher);
+            }
+            VisualizerComponentSource::Default => {
+                self.view_defaults
+                    .get(component)
+                    .and_then(|chunk| chunk.row_id())
+                    .hash(hasher);
+            }
+            VisualizerComponentSource::AnnotationContext => {
+                (
+                    self.annotation_context_row_id,
+                    self.view_defaults
+                        .get(component)
+                        .and_then(|chunk| chunk.row_id()),
+                    self.annotation_input_hash,
+                )
+                    .hash(hasher);
+            }
+        }
+    }
+
     /// Are there any chunks that need to be fetched from a remote store?
     fn any_missing_chunks(&self) -> bool {
         0 < self.overrides.missing_virtual.len()
             + self.store_results.missing_virtual.len()
             + self.view_defaults.missing_virtual.len()
-    }
-
-    /// Merges bootstrapped data from a latest-at query into this range query result.
-    ///
-    /// Latest-at bootstrapping is used for optional/recommended components (like colors, radii,
-    /// labels, etc.) that should maintain stable values at the beginning of a visible time range.
-    /// Without bootstrapping, these components would only appear where they have data within the
-    /// visible range, causing them to change unexpectedly as the time window moves.
-    ///
-    /// For example, if a plot's color was set at t=50 and you're viewing t=100-200, you want
-    /// that color to persist throughout the range rather than disappearing or changing.
-    ///
-    /// Bootstrapped results are prepended with their logged time and row ID intact. This lets
-    /// range zipping apply optional data only when it was logged no later than the required data,
-    /// including when events share a timestamp. Any errors from the bootstrap query are also
-    /// merged into the component sources.
-    // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
-    pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'a>) {
-        // Merge component source from bootstrap into the range results.
-        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
-        for (component, bootstrap_source) in bootstrapped.component_sources {
-            match self.component_sources.entry(component) {
-                std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
-                    match bootstrap_source.error() {
-                        None => {
-                            // A component may exist only before (or after) the visible range.
-                            // In that case, promote the query overall to successful.
-                            if let Some(err) = range_query_source.get().error()
-                                && err.is_data_temporarily_unavailable()
-                            {
-                                *range_query_source.get_mut() = bootstrap_source;
-                            }
-                            // Otherwise, don't override. Let the range result take precedence.
-                        }
-
-                        Some(
-                            ComponentMappingError::ComponentNotPresentOnEntity { .. }
-                            | ComponentMappingError::NoComponentDataForQuery(_)
-                            | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_)
-                            | ComponentMappingError::AnnotationContextUnavailable(_),
-                        ) => {
-                            // No component data was found in the bootstrap data.
-                            // Data may only exist within the range actual range, if not it has the error already!
-                        }
-
-                        Some(
-                            ComponentMappingError::SelectorParseFailed(_)
-                            | ComponentMappingError::SelectorExecutionFailed(_)
-                            | ComponentMappingError::CastFailed { .. }
-                            | ComponentMappingError::OverrideUnavailable(_),
-                        ) => {
-                            // All these errors are likely to occur in the range query as well.
-                            // However, in case they don't we treat it as-if we failed first and then never executed the range query.
-                            // I.e. override what's there!
-                            *range_query_source.get_mut() = bootstrap_source;
-                        }
-                    }
-                }
-
-                std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-                    // Data showed up only in the target range result.
-                    // That's unusual since we'd expect the same query on bootstrapped & the target range result,
-                    // but sure enough we can just combine in the bootstrap!
-                    vacant_entry.insert(bootstrap_source);
-                }
-            }
-        }
-
-        // Prepend bootstrapped chunks to range results
-        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
-        for (component, unit_chunk) in bootstrapped.store_results.components {
-            let chunk = Arc::unwrap_or_clone(unit_chunk.into_chunk());
-
-            // Prepend bootstrapped chunk to range results
-            self.store_results
-                .components
-                .entry(component)
-                .or_default()
-                .insert(0, chunk);
-        }
     }
 
     /// Returns the [`QueryContext`] for this result.
@@ -416,86 +474,19 @@ impl BlueprintResolvedResults<'_> {
         }
     }
 
+    /// Identifies resolved components and their dependencies, including intermediate inputs.
+    ///
+    /// Range results use source chunk identities and query bounds, never per-row scans.
+    /// Latest-at results use selected row identities so cursor movement within unchanged data
+    /// does not invalidate caches.
+    ///
+    /// Cast rules are excluded; callers must keep them fixed or invalidate caches separately.
     pub fn query_result_hash(&self) -> Hash64 {
-        // This is called very frequently, don't put a profile scope here.
-        // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
+        re_tracing::profile_function!();
 
         match self {
-            Self::LatestAt(_, r) => {
-                let mut indices = Vec::with_capacity(
-                    // Don't add defaults component count because that's defaults for the entire view.
-                    r.overrides.components.len() + r.store_results.components.len(),
-                );
-
-                indices.extend(
-                    r.view_defaults
-                        .components
-                        .values()
-                        .filter_map(|chunk| chunk.row_id()),
-                );
-                indices.extend(
-                    r.overrides
-                        .components
-                        .values()
-                        .filter_map(|chunk| chunk.row_id()),
-                );
-                indices.extend(
-                    r.store_results
-                        .components
-                        .values()
-                        .filter_map(|chunk| chunk.row_id()),
-                );
-                // Synthesized annotation context row IDs are zeroed out, no point in including them.
-                // Class/keypoint ids should already be in the store results.
-
-                Hash64::hash((
-                    &indices,
-                    r.component_mappings_hash,
-                    r.annotation_context_row_id,
-                ))
-            }
-
-            Self::Range(_, r) => {
-                let mut indices = Vec::with_capacity(
-                    // Don't add defaults component count because that's defaults for the entire view.
-                    r.overrides.components.len() + r.store_results.components.len(),
-                );
-
-                indices.extend(
-                    r.view_defaults
-                        .components
-                        .values()
-                        .filter_map(|chunk| chunk.row_id()),
-                );
-                indices.extend(
-                    r.overrides
-                        .components
-                        .values()
-                        .filter_map(|chunk| chunk.row_id()),
-                );
-                indices.extend(r.store_results.components.iter().flat_map(
-                    |(component, chunks)| {
-                        chunks
-                            .iter()
-                            .flat_map(|chunk| chunk.component_row_ids(*component))
-                    },
-                ));
-                indices.extend(
-                    r.annotation_resolved
-                        .iter()
-                        .flat_map(|(component, chunks)| {
-                            chunks
-                                .iter()
-                                .flat_map(|chunk| chunk.component_row_ids(*component))
-                        }),
-                );
-
-                Hash64::hash((
-                    &indices,
-                    r.component_mappings_hash,
-                    r.annotation_context_row_id,
-                ))
-            }
+            Self::LatestAt(_, results) => results.query_result_hash(),
+            Self::Range(_, results) => results.query_result_hash(),
         }
     }
 

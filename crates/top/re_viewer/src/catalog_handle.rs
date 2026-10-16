@@ -3,13 +3,29 @@ use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use re_redap_client::{ConnectionHandle, ConnectionRegistryHandle};
 
+/// The Viewer-owned catalog that runs in this process.
+#[derive(Clone, Debug)]
+pub struct InternalCatalog {
+    connection: ConnectionHandle,
+
+    /// Where it keeps the files it owns.
+    storage_dir: std::path::PathBuf,
+}
+
+impl InternalCatalog {
+    /// The internal catalog, if it is running.
+    fn new(registry: &ConnectionRegistryHandle) -> Option<Self> {
+        Some(Self {
+            connection: registry.internal_connection_handle()?,
+            storage_dir: registry.internal_storage_dir()?.to_owned(),
+        })
+    }
+}
+
 /// A [`ConnectionHandle`] tagged with whether its origin is the internal catalog.
 #[derive(Clone, Debug)]
 pub enum CatalogHandle {
-    Internal {
-        connection: ConnectionHandle,
-        storage_dir: std::path::PathBuf,
-    },
+    Internal(InternalCatalog),
     Remote(ConnectionHandle),
 }
 
@@ -17,36 +33,31 @@ impl CatalogHandle {
     /// The connection to `origin`, tagged with whether it is the internal catalog.
     #[expect(dead_code, reason = "remote catalog registration is not wired up yet")]
     pub fn for_origin(registry: &ConnectionRegistryHandle, origin: &re_uri::Origin) -> Self {
-        let connection = registry.connection_handle(origin.clone());
         if registry.is_internal_origin(origin)
-            && let Some(storage_dir) = registry.internal_storage_dir()
+            && let Some(internal) = InternalCatalog::new(registry)
         {
-            Self::Internal {
-                connection,
-                storage_dir: storage_dir.to_owned(),
-            }
+            Self::Internal(internal)
         } else {
-            Self::Remote(connection)
+            Self::Remote(registry.connection_handle(origin.clone()))
         }
     }
 
     /// The internal catalog, if it is running.
     pub fn internal(registry: &ConnectionRegistryHandle) -> Option<Self> {
-        Some(Self::Internal {
-            connection: registry.internal_connection_handle()?,
-            storage_dir: registry.internal_storage_dir()?.to_owned(),
-        })
+        InternalCatalog::new(registry).map(Self::Internal)
     }
 
     pub fn connection(&self) -> &ConnectionHandle {
         match self {
-            Self::Internal { connection, .. } | Self::Remote(connection) => connection,
+            Self::Internal(InternalCatalog { connection, .. }) | Self::Remote(connection) => {
+                connection
+            }
         }
     }
 
     /// Whether this is the Viewer-owned internal catalog.
     pub fn is_internal(&self) -> bool {
-        matches!(self, Self::Internal { .. })
+        matches!(self, Self::Internal(_))
     }
 
     /// Makes `file` available to the catalog and returns its credential-free URL.
@@ -65,7 +76,7 @@ impl CatalogHandle {
                 let source = re_web::fs::File::from(file.clone());
                 let key = object_key(fingerprint)?;
                 match self {
-                    Self::Internal { storage_dir, .. } => {
+                    Self::Internal(InternalCatalog { storage_dir, .. }) => {
                         write_to_opfs(storage_dir, key, file).await
                     }
                     Self::Remote(connection) => {
@@ -81,7 +92,7 @@ impl CatalogHandle {
             _ => {
                 match self {
                     // The catalog runs in this process, so it reads the file where it already is.
-                    Self::Internal { .. } => {
+                    Self::Internal(_) => {
                         let file = std::path::absolute(&file).with_context(|| {
                             format!(
                                 "failed to resolve absolute path\nFile path: {}",
@@ -125,7 +136,7 @@ impl CatalogHandle {
         bytes: bytes::Bytes,
     ) -> anyhow::Result<url::Url> {
         match self {
-            Self::Internal { storage_dir, .. } => {
+            Self::Internal(InternalCatalog { storage_dir, .. }) => {
                 write_internal_bytes(storage_dir, &key, bytes).await
             }
             Self::Remote(connection) => anyhow::bail!(

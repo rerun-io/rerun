@@ -45,8 +45,8 @@ class BlobExt:
         elif isinstance(data, bytes):
             inners = [pa.array(np.frombuffer(data, dtype=np.uint8))]
 
-        elif hasattr(data, "read"):
-            inners = [pa.array(np.frombuffer(data.read(), dtype=np.uint8))]
+        elif (read := getattr(data, "read", None)) is not None:
+            inners = [pa.array(np.frombuffer(read(), dtype=np.uint8))]
 
         # sequences
         elif isinstance(data, Sequence):
@@ -55,7 +55,7 @@ class BlobExt:
             elif isinstance(data[0], Blob):
                 inners = [pa.array(np.array(datum.data, dtype=np.uint8).flatten()) for datum in data]  # type: ignore[union-attr]
             elif isinstance(data[0], bytes):
-                inners = [pa.array(np.frombuffer(datum, dtype=np.uint8)) for datum in data]  # type: ignore[arg-type]
+                inners = [pa.array(np.frombuffer(datum, dtype=np.uint8)) for datum in data]  # type: ignore[arg-type]  # ty: ignore[no-matching-overload]
             else:
                 inners = [pa.array(np.array(datum, dtype=np.uint8).flatten()) for datum in data]
 

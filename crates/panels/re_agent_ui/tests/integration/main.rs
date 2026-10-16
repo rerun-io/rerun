@@ -1,8 +1,10 @@
 mod agent_panel_snapshots;
 mod chat_input;
 mod copy_response;
+mod elicitation;
 mod feedback_button;
 mod host_button;
+mod model_selection;
 mod new_conversation_shortcut;
 mod pasted_images;
 

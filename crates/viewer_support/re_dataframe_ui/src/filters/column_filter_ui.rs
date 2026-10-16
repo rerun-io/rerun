@@ -338,7 +338,7 @@ fn filter_pill_ui(
 
     let frame = Frame::new()
         .inner_margin(Margin::symmetric(4, 4))
-        .stroke(ui.tokens().table_filter_frame_stroke)
+        .stroke(ui.tokens().control_stroke)
         .corner_radius(2.0);
 
     let atom_layout = WidgetAtom::new(atoms).sense(Sense::click()).frame(frame);

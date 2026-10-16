@@ -30,6 +30,7 @@ server.refresh: Refresh the contents (datasets & tables) of the server
 server.remove: Remove the server
 table.refresh: Refresh the contents of the current dataset or table
 table.reset_blueprint_to_default: Clear the active blueprint of the current table and use the default blueprint instead
+ui.about: Show version, build, platform, and rendering information
 ui.capture_profile_trace: Capture profiling data and save them as a .puffin file
 ui.close_all_recordings: Close all open current recording (unsaved data will be lost)
 ui.copy_direct_link_to_clipboard: Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.

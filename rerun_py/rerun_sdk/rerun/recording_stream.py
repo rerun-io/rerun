@@ -6,9 +6,7 @@ import inspect
 import math
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast, overload
 
 from rerun import bindings
 from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
@@ -937,7 +935,7 @@ class RecordingStream:
         from .time import set_time
 
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
-        set_time(  # type: ignore[call-overload]
+        set_time(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
             timeline=timeline,
             duration=duration,
             sequence=sequence,

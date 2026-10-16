@@ -2,5 +2,5 @@
 source: crates/top/re_viewer/tests/integration/all_component_fallbacks.rs
 expression: arch_display
 ---
-color: [255]
+color: [218959359]
 show_grid: [true]

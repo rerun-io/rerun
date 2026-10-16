@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, call
 
 import datafusion
@@ -123,7 +123,7 @@ def test_set_time_uses_active_timeline_when_omitted(monkeypatch: pytest.MonkeyPa
 def test_set_time_converts_temporal_values(monkeypatch: pytest.MonkeyPatch) -> None:
     viewer, calls = _capturing_viewer(monkeypatch)
     viewer.set_time("elapsed", duration=1.5, play=True)
-    viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=timezone.utc))
+    viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=UTC))
 
     assert calls == [("elapsed", 1_500_000_000, True, None), ("capture_time", 0, False, None)]
 
@@ -140,10 +140,10 @@ def test_set_time_requires_exactly_one_time(monkeypatch: pytest.MonkeyPatch) -> 
     viewer, _calls = _capturing_viewer(monkeypatch)
 
     with pytest.raises(ValueError, match="exactly one"):
-        viewer.set_time()  # type: ignore[call-overload]
+        viewer.set_time()  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
     with pytest.raises(ValueError, match="exactly one"):
-        viewer.set_time(sequence=1, duration=1.0)  # type: ignore[call-overload]
+        viewer.set_time(sequence=1, duration=1.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def _closing_viewer(

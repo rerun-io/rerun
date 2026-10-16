@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import threading
 from collections import OrderedDict
+from itertools import pairwise
 from typing import TYPE_CHECKING, Any, Generic, Literal, cast, overload
 
 import av
 import numpy as np
 import torch
+from av.video.reformatter import VideoReformatter
 from typing_extensions import TypeVar
 
 from rerun._tracing import set_current_span_attributes, with_tracing
@@ -21,7 +24,6 @@ from ._base import ColumnDecoder, DecodedValue, DecodeRequest, FieldBatch
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    import pyarrow as pa
 
 # AV1 through ``libdav1d`` is faster.
 _CODEC_TO_DECODER = {
@@ -147,7 +149,7 @@ def _decode_runs(requests: Sequence[DecodeRequest]) -> list[list[int]]:
 
 
 def _extract_video_samples(
-    column: pa.Array,
+    batch: FieldBatch,
     rows: range,
     *,
     video_codec: VideoCodec | None,
@@ -158,10 +160,11 @@ def _extract_video_samples(
     Empty rows do not contain codec packets. Length-prefixed H.264 packets are
     converted to Annex B before being fed to the raw codec context.
     """
+    column = batch.rows(rows.start, rows.stop)
     samples: list[bytes] = []
     sample_rows: list[int] = []
     for row in rows:
-        sample_bytes = bytes(_flatten_blob(column, row))
+        sample_bytes = bytes(_flatten_blob(column, row - rows.start))
         if not sample_bytes:
             continue
         if video_codec is VideoCodec.H264 and not is_annex_b(sample_bytes):
@@ -288,6 +291,8 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
         # LRU of live decode sessions, keyed by `(segment_id, keyframe sample)`.
         self._sessions: OrderedDict[tuple[str, bytes], _DecoderSession] = OrderedDict()
+        # Fields can share a decoder, so each conversion thread needs its own native context.
+        self._rgb_reformatters: threading.local | None = None
         # Lifetime session-cache stats, surfaced as span attributes on every decode.
         self._cache_hits = 0
         self._cache_misses = 0
@@ -304,9 +309,10 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         return f"VideoFrameDecoder(codec={self.codec!r}{suffix})"
 
     def __getstate__(self) -> dict[str, Any]:
-        """Drop the sessions: open codec contexts cannot be pickled. Cache stats restart per process."""
+        """Drop native codec and conversion contexts, which cannot be pickled. Cache stats restart per process."""
         state = self.__dict__.copy()
         state["_sessions"] = OrderedDict()
+        state["_rgb_reformatters"] = None
         state["_cache_hits"] = 0
         state["_cache_misses"] = 0
         return state
@@ -395,7 +401,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
         # Parallel lists of codec-ready packets and their source Arrow row indices.
         samples, sample_rows = _extract_video_samples(
-            batch.column,
+            batch,
             range(run_start, run_stop),
             video_codec=self._video_codec,
         )
@@ -432,37 +438,37 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         # 3. Walk the GOP once, retaining only frames requested by at least one output slot.
         wanted_packet_positions = sorted(output_slots_by_packet_position)
         packets_to_decode = samples[: wanted_packet_positions[-1] + 1]
-        direct_frame_bank: Yuv420Frame | None = None
-        direct_frame_bank_compatible = True
-        direct_frame_bank_written: set[int] = set()
+        captured_frame_bank: DecodedValue | None = None
+        captured_frame_bank_compatible = True
+        captured_frame_bank_written: set[int] = set()
         capture_frame_fn: Callable[[int, av.VideoFrame], DecodedValue] | None = None
         if use_views and self.output_format == "yuv420p":
-            direct_bank_position = {packet_position: i for i, packet_position in enumerate(wanted_packet_positions)}
+            bank_position_by_packet = {packet_position: i for i, packet_position in enumerate(wanted_packet_positions)}
 
             def capture_yuv420_frame(packet_position: int, frame: av.VideoFrame) -> Yuv420Frame:
-                nonlocal direct_frame_bank, direct_frame_bank_compatible
+                nonlocal captured_frame_bank, captured_frame_bank_compatible
                 planar = self._as_yuv420(frame)
                 color_space = self._frame_color_space(frame)
                 color_range = self._frame_color_range(frame)
                 y_shape: tuple[int, int, int] = (1, planar.planes[0].height, planar.planes[0].width)
                 uv_shape: tuple[int, int, int] = (2, planar.planes[1].height, planar.planes[1].width)
-                if direct_frame_bank is None:
-                    direct_frame_bank = Yuv420Frame(
+                if captured_frame_bank is None:
+                    captured_frame_bank = Yuv420Frame(
                         y=torch.empty((len(wanted_packet_positions), *y_shape), dtype=torch.uint8),
                         uv=torch.empty((len(wanted_packet_positions), *uv_shape), dtype=torch.uint8),
                         color_space=color_space,
                         color_range=color_range,
                     )
-                bank = direct_frame_bank
+                bank = cast("Yuv420Frame", captured_frame_bank)
                 if (
                     tuple(bank.y.shape[1:]) != y_shape
                     or tuple(bank.uv.shape[1:]) != uv_shape
                     or bank.color_space != color_space
                     or bank.color_range != color_range
                 ):
-                    direct_frame_bank_compatible = False
+                    captured_frame_bank_compatible = False
                     return self._frame_to_yuv420(frame)
-                bank_position = direct_bank_position[packet_position]
+                bank_position = bank_position_by_packet[packet_position]
                 tensor = Yuv420Frame(
                     y=bank.y[bank_position],
                     uv=bank.uv[bank_position],
@@ -470,10 +476,41 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
                     color_range=color_range,
                 )
                 self._copy_yuv420_frame(planar, tensor)
-                direct_frame_bank_written.add(packet_position)
+                captured_frame_bank_written.add(packet_position)
                 return tensor
 
             capture_frame_fn = capture_yuv420_frame
+        elif view_packet_positions_by_request is not None and self.output_format == "rgb":
+            bank_position_by_packet = {packet_position: i for i, packet_position in enumerate(wanted_packet_positions)}
+            # Allocate a bank only when at least one output can share a contiguous slice.
+            has_view_window = any(
+                positions
+                and all(position is not None for position in positions)
+                and all(
+                    bank_position_by_packet[right] == bank_position_by_packet[left] + 1
+                    for left, right in pairwise(cast("list[int]", positions))
+                )
+                for positions in view_packet_positions_by_request.values()
+            )
+            if has_view_window:
+
+                def capture_rgb_frame(packet_position: int, frame: av.VideoFrame) -> torch.Tensor:
+                    nonlocal captured_frame_bank, captured_frame_bank_compatible
+                    rgb: torch.Tensor = self._frame_to_tensor(frame)
+                    if captured_frame_bank is None:
+                        captured_frame_bank = torch.empty(
+                            (len(wanted_packet_positions), *rgb.shape), dtype=rgb.dtype, device=rgb.device
+                        )
+                    bank = cast("torch.Tensor", captured_frame_bank)
+                    if bank.shape[1:] != rgb.shape:
+                        captured_frame_bank_compatible = False
+                        return rgb
+                    tensor = bank[bank_position_by_packet[packet_position]]
+                    tensor.copy_(rgb)
+                    captured_frame_bank_written.add(packet_position)
+                    return tensor
+
+                capture_frame_fn = capture_rgb_frame
 
         decoded_frames_by_packet_position = self._feed_run(
             segment_id,
@@ -499,9 +536,9 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             packet_positions_by_request=view_packet_positions_by_request,
             wanted_packet_positions=wanted_packet_positions,
             decoded_frames_by_packet_position=decoded_frames_by_packet_position,
-            direct_frame_bank=direct_frame_bank,
-            direct_frame_bank_compatible=direct_frame_bank_compatible,
-            direct_frame_bank_written=direct_frame_bank_written,
+            captured_frame_bank=captured_frame_bank,
+            captured_frame_bank_compatible=captured_frame_bank_compatible,
+            captured_frame_bank_written=captured_frame_bank_written,
             out=out,
         ):
             return
@@ -531,9 +568,9 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         packet_positions_by_request: dict[int, list[int | None]],
         wanted_packet_positions: list[int],
         decoded_frames_by_packet_position: dict[int, DecodedValue],
-        direct_frame_bank: Yuv420Frame | None,
-        direct_frame_bank_compatible: bool,
-        direct_frame_bank_written: set[int],
+        captured_frame_bank: DecodedValue | None,
+        captured_frame_bank_compatible: bool,
+        captured_frame_bank_written: set[int],
         out: list[DecodedValue | None],
     ) -> bool:
         """Populate view-mode outputs from one shared frame bank when at least one window is contiguous."""
@@ -568,16 +605,16 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         ):
             return False
 
-        # The YUV path may have decoded directly into the correctly ordered bank.
-        direct_bank_ready = (
-            direct_frame_bank is not None
-            and direct_frame_bank_compatible
+        # Frames may have been captured directly into the correctly ordered bank.
+        captured_bank_ready = (
+            captured_frame_bank is not None
+            and captured_frame_bank_compatible
             and decoded_packet_positions == wanted_packet_positions
-            and len(direct_frame_bank_written) == len(wanted_packet_positions)
+            and len(captured_frame_bank_written) == len(wanted_packet_positions)
         )
-        if direct_bank_ready:
-            assert direct_frame_bank is not None
-            frame_bank: DecodedValue = direct_frame_bank
+        if captured_bank_ready:
+            assert captured_frame_bank is not None
+            frame_bank: DecodedValue = captured_frame_bank
         else:
             frame_bank = _stack_decoded_frames(bank_frames)
 
@@ -783,7 +820,14 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
     def _frame_to_tensor(self, frame: av.VideoFrame) -> torch.Tensor:
         """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor."""
-        arr = frame.to_ndarray(format="rgb24")
+        reformatters = self._rgb_reformatters
+        if reformatters is None:
+            reformatters = self._rgb_reformatters = threading.local()
+        reformatter = getattr(reformatters, "rgb", None)
+        if reformatter is None:
+            reformatter = reformatters.rgb = VideoReformatter()
+        rgb = reformatter.reformat(frame, format="rgb24")
+        arr = rgb.to_ndarray()
         return torch.from_numpy(arr).permute(2, 0, 1)
 
     def _frame_to_yuv420(self, frame: av.VideoFrame) -> Yuv420Frame:

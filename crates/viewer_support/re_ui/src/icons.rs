@@ -190,6 +190,7 @@ pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");
+pub const SHARE: Icon = icon_from_path!("../data/icons/share.svg");
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.svg");
 pub const BOTTOM_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/bottom_panel_toggle.svg");
 pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_toggle.svg");

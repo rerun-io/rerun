@@ -18,7 +18,7 @@ impl IconText {
         } = shortcut;
 
         let key_text = if os.is_mac() {
-            logical_key.symbol_or_name()
+            crate::key_symbol_or_name(logical_key)
         } else {
             logical_key.name()
         };

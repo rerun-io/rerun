@@ -174,3 +174,18 @@ layers = (
 )
 print(layers)
 # endregion: list_layers
+
+# region: inspect_layer
+layer = dataset.layer("tracking_error")
+print(sorted(layer.segment_ids()))
+# endregion: inspect_layer
+
+# region: inspect_segment
+segment = dataset.segment(min(dataset.segment_ids()))
+print(sorted(segment.layers()))
+# endregion: inspect_segment
+
+# region: delete_layer
+segment.delete_layer("tracking_error").wait()
+print(sorted(segment.layers()))
+# endregion: delete_layer

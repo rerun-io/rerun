@@ -358,6 +358,7 @@ rerun_pkg = loader.load("rerun")
 def griffe_module_for(pkg: str) -> griffe.Module:
     """Return the griffe Module for a `DOCUMENTED_PACKAGES` entry."""
     if pkg == "rerun":
+        assert isinstance(rerun_pkg, griffe.Module)
         return rerun_pkg
     assert pkg.startswith("rerun.")
     return rerun_pkg[pkg[len("rerun.") :]]
@@ -562,9 +563,6 @@ overview of what's possible and how.
 
 Rerun will typically support Python version up until their end-of-life. If you are using an older version
 of Python, you can use the table below to make sure you choose the proper Rerun version for your Python installation.
-
-Python 3.10 is deprecated and reaches end-of-life in October 2026. Rerun 0.39 will move the minimum
-supported version to Python 3.11.
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|

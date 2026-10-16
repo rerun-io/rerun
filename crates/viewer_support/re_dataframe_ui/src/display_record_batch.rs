@@ -257,12 +257,11 @@ impl DisplayComponentColumn {
                 .and_then(|row_ids| row_ids.get(row_index))
                 .copied();
 
-            let blobs = Blob::from_arrow(&data_to_display).ok();
-
             // Generate a content-based cache key for thumbnails without a row ID.
             if cell_kind == TableCellKind::Thumbnail
                 && row_id.is_none()
-                && let Some(blob) = blobs.as_ref().and_then(|blobs| blobs.first())
+                && let Ok(blobs) = Blob::from_arrow(&data_to_display)
+                && let Some(blob) = blobs.first()
             {
                 re_tracing::profile_scope!("Blob hash");
 

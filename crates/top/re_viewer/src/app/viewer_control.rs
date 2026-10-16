@@ -5,9 +5,12 @@
 //! That file lists every place an operation has to be added.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::task::Poll;
+use std::time::Duration;
 
 use re_chunk::TimelineName;
+use re_entity_db::LogSource;
 use re_log_channel::{
     CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
 };
@@ -31,6 +34,7 @@ use re_viewer_context::{
 };
 
 use super::App;
+use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
 
@@ -47,12 +51,126 @@ const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
 /// components on it cost many — which is the whole reason to ask for paths alone.
 const DEFAULT_MAX_SCHEMA_PATHS: u32 = 10_000;
 
+/// How long `open_url` waits for what it loads before answering that it is still loading.
+///
+/// Must stay well below the transport's deadline for an answer, or a slow load reads as a viewer
+/// that has stopped responding. The `OpenUrl` docs in `viewer_control.proto` state this number.
+const OPEN_URL_MAX_WAIT: Duration = Duration::from_secs(10);
+
+const _: () = assert!(
+    OPEN_URL_MAX_WAIT.as_millis() + 5_000 <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
+    "`open_url` must answer well before the transport gives up"
+);
+
+/// How often a waiting `open_url` checks whether its catalog registration is done.
+///
+/// Nothing wakes the viewer when a registration finishes, so it has to poll. A few frames is
+/// quick enough for a caller, and cheap enough for an idle viewer.
+const OPEN_URL_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+/// A `ViewerControlService` answer held back until the work it reports on has happened.
+///
+/// Operations that act through queued commands would otherwise answer before those commands
+/// run, so a caller that reads the viewer state right after would see the old state.
+pub(super) struct PendingReply {
+    on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+    answer: PendingAnswer,
+}
+
+enum PendingAnswer {
+    /// Sent as soon as the queued commands have run.
+    Ready(Result<ViewerControlResponse, ViewerControlError>),
+
+    /// `open_url`, which also waits for what it started loading, until `deadline`.
+    OpenUrl {
+        /// What was loading before the URL was opened, and so is not waited for.
+        sources_before: Vec<Arc<LogSource>>,
+
+        /// What was being registered before the URL was opened, and so is not waited for.
+        registrations_before: Vec<RegistrationId>,
+        deadline: web_time::Instant,
+    },
+}
+
 impl App {
+    /// Answer `on_done` with `result` once every command queued so far has run.
+    fn reply_after_commands(
+        &mut self,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        result: Result<ViewerControlResponse, ViewerControlError>,
+        egui_ctx: &egui::Context,
+    ) {
+        // A failed operation queued nothing, so there is nothing to wait for.
+        if result.is_err() {
+            on_done.call(result);
+            return;
+        }
+        self.pending_viewer_control_replies.push(PendingReply {
+            on_done,
+            answer: PendingAnswer::Ready(result),
+        });
+        // The queued commands run, and the answer goes out, only as part of a frame. An idle or
+        // hidden viewer would not run one on its own.
+        egui_ctx.request_repaint();
+    }
+
+    /// Send the held-back answers whose work is done.
+    ///
+    /// Must be called right after draining the system commands, so that an empty queue means
+    /// the commands a reply waits for have run rather than not yet been sent.
+    pub(super) fn answer_pending_viewer_control_replies(&mut self) {
+        if self.pending_viewer_control_replies.is_empty() {
+            return;
+        }
+
+        // Read before the queues: a registration queues its commands before it stops counting.
+        let registrations = self.connections.registrations_in_flight.snapshot();
+        if !self.command_receiver.is_empty() {
+            return;
+        }
+
+        let sources = self.rx_log.sources();
+        let now = web_time::Instant::now();
+        for PendingReply { on_done, answer } in
+            std::mem::take(&mut self.pending_viewer_control_replies)
+        {
+            match answer {
+                PendingAnswer::Ready(result) => on_done.call(result),
+                PendingAnswer::OpenUrl {
+                    sources_before,
+                    registrations_before,
+                    deadline,
+                } => {
+                    let still_loading = registrations
+                        .keys()
+                        .any(|id| !registrations_before.contains(id))
+                        || sources.iter().any(|source| {
+                            source.loading_name().is_some() && !sources_before.contains(source)
+                        });
+                    if still_loading && now < deadline {
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::OpenUrl {
+                                sources_before,
+                                registrations_before,
+                                deadline,
+                            },
+                        });
+                        self.egui_ctx.request_repaint_after(OPEN_URL_POLL_INTERVAL);
+                    } else {
+                        on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
+                    }
+                }
+            }
+        }
+    }
+
     /// Run one operation of the `ViewerControlService` API on the UI thread.
     ///
     /// Every transport lands here: the request arrives decoded, and `on_done` carries the matching
-    /// response or a coded failure back to whoever asked. Only `save_screenshot` and
-    /// `capture_profile_trace` answer later than this call, once their file has been written.
+    /// response or a coded failure back to whoever asked. Operations that act through queued
+    /// commands answer once those commands have run, and `save_screenshot` and
+    /// `capture_profile_trace` once their file has been written.
     pub(super) fn serve_viewer_control(
         &mut self,
         request: ViewerControlRequest,
@@ -91,7 +209,7 @@ impl App {
                             .map_err(ViewerControlError::not_found)
                     })
                     .map(ViewerControlResponse::from);
-                on_done.call(result);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
             Kind::DescribeCommands(request) => {
                 on_done.call(
@@ -139,8 +257,23 @@ impl App {
                 );
                 match parsed {
                     Ok(open_url) => {
+                        let sources_before = self.rx_log.sources();
+                        let registrations_before = self
+                            .connections
+                            .registrations_in_flight
+                            .snapshot()
+                            .into_keys()
+                            .collect();
                         open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
-                        on_done.call(Ok(OpenUrlResponse {}.into()));
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::OpenUrl {
+                                sources_before,
+                                registrations_before,
+                                deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
+                            },
+                        });
+                        egui_ctx.request_repaint();
                     }
                     Err(err) => {
                         on_done.call(Err(ViewerControlError::invalid_argument(format!(
@@ -151,19 +284,19 @@ impl App {
             }
 
             Kind::RunCommand(request) => {
-                on_done.call(
-                    self.run_command(store_hub, request, egui_ctx)
-                        .map(ViewerControlResponse::from),
-                );
+                let result = self
+                    .run_command(store_hub, request, egui_ctx)
+                    .map(ViewerControlResponse::from);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
 
             Kind::SetBlueprint(request) => {
-                on_done.call(
-                    self.apply_set_blueprint(store_hub, request)
-                        .map(ViewerControlResponse::from),
-                );
+                let result = self
+                    .apply_set_blueprint(store_hub, request)
+                    .map(ViewerControlResponse::from);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
 
             Kind::SetTimeCursor(request) => {
@@ -199,7 +332,7 @@ impl App {
                         .map_err(ViewerControlError::invalid_argument)
                     })
                     .map(ViewerControlResponse::from);
-                on_done.call(result);
+                self.reply_after_commands(on_done, result, egui_ctx);
             }
         }
     }
@@ -380,17 +513,25 @@ impl App {
         // `loading_name` is the viewer's own "actively loading" predicate — the one the welcome
         // screen shows a spinner for — so a source that is only waiting to be sent data is left
         // out, as it would otherwise never clear.
-        let loading = self
-            .rx_log
-            .sources()
-            .iter()
-            .filter_map(|source| {
-                source.loading_name().map(|name| ViewerLoadingSource {
-                    name,
-                    status: source.status_string(),
-                })
+        let sources = self.rx_log.sources();
+        let loading_sources = sources.iter().filter_map(|source| {
+            source.loading_name().map(|name| ViewerLoadingSource {
+                name,
+                status: source.status_string(),
             })
-            .collect();
+        });
+        // A file being registered with a catalog has no source yet: it gets one once registered.
+        let registrations = self.connections.registrations_in_flight.snapshot();
+        let loading_registrations =
+            registrations
+                .into_values()
+                .map(
+                    |InFlightRegistration { origin, name }| ViewerLoadingSource {
+                        status: format!("Registering {name} with {origin}…"),
+                        name,
+                    },
+                );
+        let loading = std::iter::chain(loading_registrations, loading_sources).collect();
 
         GetViewerStateResponse {
             url,
@@ -399,7 +540,8 @@ impl App {
             loading,
             views,
             catalog_url: self
-                .connection_registry
+                .connections
+                .registry
                 .internal_origin()
                 .map(|origin| origin.to_string()),
             viewer_version: Some(self.build_info.version.to_string()),
@@ -467,7 +609,7 @@ impl App {
     /// Replace the active blueprint of a recording's application with JSON, for the
     /// `set_blueprint` operation.
     ///
-    /// Returns once the write is queued; the blueprint changes on the next frame.
+    /// Only queues the write, so the caller must hold the answer back until it has run.
     fn apply_set_blueprint(
         &self,
         store_hub: &StoreHub,
@@ -641,10 +783,14 @@ impl App {
             ],
             re_log_channel::CloseRecordingTarget::Some(store_ids) => store_ids,
         };
+        // Check every id before closing any, so that a failed request closes nothing.
+        if let Some(missing) = to_close
+            .iter()
+            .find(|store_id| store_hub.entity_db(store_id).is_none())
+        {
+            return Err(format!("no such recording: {missing}"));
+        }
         for store_id in &to_close {
-            if store_hub.entity_db(store_id).is_none() {
-                return Err(format!("no such recording: {store_id}"));
-            }
             self.command_sender
                 .send_system(SystemCommand::CloseRecordingOrTable(
                     store_id.clone().into(),
@@ -907,6 +1053,96 @@ mod tests {
     use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
 
     use super::*;
+
+    #[cfg(feature = "testing")]
+    mod close_recordings_waits {
+        use super::*;
+
+        /// Send `close_recordings` for `store_ids`, and return where its answer lands.
+        fn close_recordings(
+            app: &mut App,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+            store_ids: &[&StoreId],
+        ) -> std::sync::Arc<
+            parking_lot::Mutex<Option<Result<ViewerControlResponse, ViewerControlError>>>,
+        > {
+            use re_protos::viewer_control::v1alpha1::ViewerRecordingIds;
+
+            let answer = std::sync::Arc::new(parking_lot::Mutex::new(None));
+            let request = ViewerControlRequest {
+                kind: Some(viewer_control_request::Kind::CloseRecordings(
+                    CloseRecordingsRequest {
+                        target: Some(Target::StoreIds(ViewerRecordingIds {
+                            store_ids: store_ids.iter().map(ToString::to_string).collect(),
+                        })),
+                    },
+                )),
+            };
+            app.serve_viewer_control(
+                request,
+                UiCallback::new({
+                    let answer = answer.clone();
+                    move |result| *answer.lock() = Some(result)
+                }),
+                store_hub,
+                egui_ctx,
+            );
+            answer
+        }
+
+        /// The caller reads the viewer state as soon as it has its answer, so the answer must wait
+        /// for the commands the operation queued.
+        #[tokio::test]
+        async fn close_recordings_answers_once_the_recording_is_closed() {
+            use re_log_types::StoreKind;
+
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+            let mut store_hub = app
+                .store_hub
+                .take()
+                .expect("the hub is only taken during a frame");
+
+            let store_id = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&store_id);
+
+            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&store_id]);
+            assert!(answer.lock().is_none(), "answered before closing");
+
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert!(store_hub.entity_db(&store_id).is_none());
+        }
+
+        /// An error answers at once, so it must not leave any recording queued to close.
+        #[tokio::test]
+        async fn close_recordings_with_a_missing_id_closes_nothing() {
+            use re_log_types::StoreKind;
+
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+            let mut store_hub = app
+                .store_hub
+                .take()
+                .expect("the hub is only taken during a frame");
+
+            let open = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&open);
+            let missing = StoreId::random(StoreKind::Recording, "test_app");
+
+            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&open, &missing]);
+            assert!(answer.lock().take().is_some_and(|result| result.is_err()));
+
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(
+                store_hub.entity_db(&open).is_some(),
+                "closed despite the error"
+            );
+        }
+    }
 
     #[test]
     fn an_omitted_close_target_is_refused() {

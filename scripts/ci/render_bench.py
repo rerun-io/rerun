@@ -29,7 +29,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from subprocess import run
@@ -70,8 +70,7 @@ def get_commits(after: datetime) -> list[CommitWithDate]:
     log = run(args, check=True, capture_output=True, text=True).stdout.strip().splitlines()
     commits = (commit.split(";", 1) for commit in log)
     return [
-        CommitWithDate(date=datetime.fromisoformat(date).astimezone(timezone.utc), commit=commit)
-        for date, commit in commits
+        CommitWithDate(date=datetime.fromisoformat(date).astimezone(UTC), commit=commit) for date, commit in commits
     ]
 
 

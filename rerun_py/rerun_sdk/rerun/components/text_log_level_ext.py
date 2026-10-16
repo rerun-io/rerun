@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from . import TextLogLevel
@@ -9,22 +9,22 @@ if TYPE_CHECKING:
 class TextLogLevelExt:
     """Extension for [TextLogLevel][rerun.components.TextLogLevel]."""
 
-    CRITICAL: TextLogLevel = None  # type: ignore[assignment]
+    CRITICAL: ClassVar[TextLogLevel]
     """ Designates catastrophic failures. """
 
-    ERROR: TextLogLevel = None  # type: ignore[assignment]
+    ERROR: ClassVar[TextLogLevel]
     """ Designates very serious errors. """
 
-    WARN: TextLogLevel = None  # type: ignore[assignment]
+    WARN: ClassVar[TextLogLevel]
     """ Designates hazardous situations. """
 
-    INFO: TextLogLevel = None  # type: ignore[assignment]
+    INFO: ClassVar[TextLogLevel]
     """ Designates useful information. """
 
-    DEBUG: TextLogLevel = None  # type: ignore[assignment]
+    DEBUG: ClassVar[TextLogLevel]
     """ Designates lower priority information. """
 
-    TRACE: TextLogLevel = None  # type: ignore[assignment]
+    TRACE: ClassVar[TextLogLevel]
     """ Designates very low priority, often extremely verbose, information. """
 
     @staticmethod

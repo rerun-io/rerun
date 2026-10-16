@@ -12,6 +12,7 @@ use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::{ChunkStream, ChunkStreamFactory};
+use crate::chunk::PyChunkInternal;
 
 /// Internal LeRobot reader binding.
 #[pyclass(
@@ -77,6 +78,19 @@ impl PyLeRobotReaderInternal {
     #[getter]
     fn path(&self) -> PathBuf {
         self.dataset.path().to_path_buf()
+    }
+
+    /// Return the static chunk describing the whole dataset, at `entity_path_prefix`
+    /// (`/__lerobot` when `None`).
+    fn metadata(&self, entity_path_prefix: Option<&str>) -> PyResult<PyChunkInternal> {
+        let entity_path = EntityPath::from(
+            entity_path_prefix.unwrap_or(re_lerobot::DEFAULT_METADATA_ENTITY_PATH),
+        );
+        let chunk = self
+            .dataset
+            .metadata_chunk(entity_path)
+            .map_err(|err| lerobot_err(&err))?;
+        Ok(PyChunkInternal::new(Arc::new(chunk)))
     }
 
     /// Return a new lazy stream over one episode's chunks.

@@ -114,7 +114,7 @@ class Transform3DExt:
                     pass
 
                 if is_rotation_axis_angle:
-                    rotation_axis_angle = rotation  # type: ignore[assignment]
+                    rotation_axis_angle = rotation  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
                 else:
                     is_quaternion = False
                     try:
@@ -126,7 +126,7 @@ class Transform3DExt:
                         pass
                     if not is_quaternion:
                         raise ValueError("Rotation must be compatible with either RotationQuat or RotationAxisAngle")
-                    quaternion = rotation  # type: ignore[assignment]
+                    quaternion = rotation  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
             if scale is not None and (not hasattr(scale, "__len__") or len(scale) == 1):  # type: ignore[arg-type]
                 scale = Scale3D(scale)  # type: ignore[arg-type]

@@ -16,7 +16,7 @@ use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::Schema;
 use re_dataframe::external::re_chunk::{Chunk, ChunkId, LatestAtQuery};
 use re_dataframe::external::re_chunk_store::{
-    ChunkStore, ChunkTrackingMode, GarbageCollectionOptions,
+    ChunkStore, ChunkStoreDiff, ChunkTrackingMode, GarbageCollectionOptions,
 };
 use re_dataframe::utils::align_record_batch_to_schema;
 use re_dataframe::{
@@ -157,8 +157,19 @@ pub struct IncrementalFlushOutcome {
     /// Rows emitted this cycle (0 on the fast-skip paths).
     pub rows_emitted: usize,
 
-    /// Decoded bytes freed by the GC step this cycle.
+    /// What the GC step removed this cycle.
+    pub gc: GcOutcome,
+}
+
+/// What one [`SegmentStore::gc_up_to_horizon`] pass removed.
+#[derive(Default)]
+pub struct GcOutcome {
+    /// Measured decoded bytes freed (store-stats delta).
     pub freed_bytes: u64,
+
+    /// Ids of the removed chunks, for callers that account in plan-estimate
+    /// bytes rather than the measured delta.
+    pub removed_chunks: Vec<ChunkId>,
 }
 
 /// Per-segment in-memory store, plus the state needed to incrementally emit
@@ -396,11 +407,11 @@ impl SegmentStore {
             .max_arrived_time_max
             .is_none_or(|tmax| self.processed_through_time.is_some_and(|p| tmax <= p))
         {
-            let freed_bytes = self.gc_up_to_horizon(horizon);
+            let gc = self.gc_up_to_horizon(horizon);
             self.processed_through_time = Some(horizon);
             return Ok(IncrementalFlushOutcome {
                 rows_emitted: 0,
-                freed_bytes,
+                gc,
             });
         }
 
@@ -414,10 +425,10 @@ impl SegmentStore {
             limit_rows,
         )
         .await?;
-        let freed_bytes = self.gc_up_to_horizon(horizon);
+        let gc = self.gc_up_to_horizon(horizon);
         Ok(IncrementalFlushOutcome {
             rows_emitted: *rows_sent - rows_before,
-            freed_bytes,
+            gc,
         })
     }
 
@@ -489,8 +500,8 @@ impl SegmentStore {
     }
 
     /// Drop chunks no longer needed once the safe horizon has
-    /// advanced, returning the number of freed bytes.
-    /// No-op (returning 0) for queries without a temporal
+    /// advanced, returning what was removed.
+    /// No-op (returning an empty outcome) for queries without a temporal
     /// `filtered_index`.
     ///
     /// **Carry-forward protection.** A naive "drop everything with
@@ -509,9 +520,9 @@ impl SegmentStore {
     /// `LatestAtQuery::new(timeline, horizon)` for every entity and
     /// add them to `protected_chunks`. Everything outside that set
     /// **and** outside `(horizon, +inf]` is fair game.
-    pub fn gc_up_to_horizon(&mut self, horizon: TimeInt) -> u64 {
+    pub fn gc_up_to_horizon(&mut self, horizon: TimeInt) -> GcOutcome {
         let Some(timeline_name) = self.filtered_index_timeline else {
-            return 0;
+            return GcOutcome::default();
         };
 
         let bytes_before = self.store_bytes();
@@ -552,11 +563,18 @@ impl SegmentStore {
             AbsoluteTimeRange::new(horizon.inc(), TimeInt::MAX),
         );
         options.perform_deep_deletions = true;
-        // `gc` returns the list of removed chunks plus stats; we
-        // measure freed bytes via `store_bytes()` before/after
-        // instead, so the structured return value is intentionally
-        // discarded.
-        let _ = self.store.write().gc(&options);
+        // Freed bytes are measured via `store_bytes()` before/after; the GC
+        // events supply only the removed chunk ids.
+        let (events, _stats) = self.store.write().gc(&options);
+        let removed_chunks = events
+            .iter()
+            .filter_map(|event| match &event.diff {
+                ChunkStoreDiff::Deletion(deletion) => Some(deletion.chunk.id()),
+                ChunkStoreDiff::Addition(_)
+                | ChunkStoreDiff::SchemaAddition(_)
+                | ChunkStoreDiff::VirtualAddition(_) => None,
+            })
+            .collect();
         // Restore the populated set to the field so its capacity
         // survives for the next call. Contents are dropped on the
         // next entry via `.clear()`; only the table backing storage
@@ -567,7 +585,10 @@ impl SegmentStore {
         );
 
         let bytes_after = self.store_bytes();
-        bytes_before.saturating_sub(bytes_after)
+        GcOutcome {
+            freed_bytes: bytes_before.saturating_sub(bytes_after),
+            removed_chunks,
+        }
     }
 
     /// Final drain. Emits everything still in `store` that's past
@@ -634,7 +655,7 @@ mod tests {
         let bytes_before = segment.store_bytes();
         assert_eq!(segment.store.read().num_physical_chunks(), 3);
 
-        let freed = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
+        let gc = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
 
         assert_eq!(
             segment.store.read().num_physical_chunks(),
@@ -646,7 +667,11 @@ mod tests {
             bytes_before,
             "no bytes freed when every chunk is protected",
         );
-        assert_eq!(freed, 0, "freed bytes must be zero when nothing dropped");
+        assert_eq!(
+            gc.freed_bytes, 0,
+            "freed bytes must be zero when nothing dropped"
+        );
+        assert!(gc.removed_chunks.is_empty());
     }
 
     /// Superseded chunks (older than the latest-at value at the horizon
@@ -660,18 +685,20 @@ mod tests {
     #[test]
     fn gc_up_to_horizon_drops_superseded_chunks() {
         let mut segment = store_with_timeline("seg", "frame");
-        for chunk in [
+        let chunks = [
             temporal_chunk("/a", "frame", 10),
             temporal_chunk("/a", "frame", 20),
             temporal_chunk("/a", "frame", 30),
-        ] {
+        ];
+        let mut superseded: Vec<ChunkId> = chunks[..2].iter().map(Chunk::id).collect();
+        for chunk in chunks {
             segment.insert_chunk(&Arc::new(chunk)).unwrap();
         }
 
         let bytes_before = segment.store_bytes();
         assert_eq!(segment.store.read().num_physical_chunks(), 3);
 
-        let freed = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
+        let mut gc = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
 
         let bytes_after = segment.store_bytes();
         assert_eq!(
@@ -684,9 +711,15 @@ mod tests {
             "GC must free bytes when chunks are dropped (before={bytes_before}, after={bytes_after})",
         );
         assert_eq!(
-            freed,
+            gc.freed_bytes,
             bytes_before - bytes_after,
             "reported freed bytes must match the store-stats delta",
+        );
+        gc.removed_chunks.sort();
+        superseded.sort();
+        assert_eq!(
+            gc.removed_chunks, superseded,
+            "the two superseded chunks (@10, @20) must be reported by id",
         );
     }
 
@@ -750,14 +783,14 @@ mod tests {
             .unwrap();
         let bytes_before = segment.store_bytes();
 
-        let freed = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
+        let gc = segment.gc_up_to_horizon(TimeInt::new_temporal(50));
 
         assert_eq!(
             segment.store_bytes(),
             bytes_before,
             "no-op leaves bytes unchanged"
         );
-        assert_eq!(freed, 0, "no-op reports zero freed bytes");
+        assert_eq!(gc.freed_bytes, 0, "no-op reports zero freed bytes");
     }
 
     /// `insert_chunk` must advance `max_arrived_time_max` monotonically

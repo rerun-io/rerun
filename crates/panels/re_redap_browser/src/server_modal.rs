@@ -190,7 +190,7 @@ impl ServerModal {
                     );
                 }
 
-                let label = ui.label("Address:");
+                let label = ui.label("Address");
 
                 egui::Sides::new()
                     .shrink_left()
@@ -217,19 +217,21 @@ impl ServerModal {
                                     );
                                 });
 
-                            ui.scope(|ui| {
-                                // make field red if host is invalid
-                                if url::Host::parse(&self.host).is_err() {
-                                    ui.style_invalid_field();
-                                }
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.host)
-                                        .lock_focus(false)
-                                        .hint_text("Host name")
-                                        .desired_width(ui.available_width()),
-                                )
-                                .labelled_by(label.id);
-                                self.host = self.host.trim().to_owned();
+                            re_ui::text_edit::text_edit_scope(ui, |ui| {
+                                ui.scope(|ui| {
+                                    // make field red if host is invalid
+                                    if url::Host::parse(&self.host).is_err() {
+                                        ui.style_invalid_field();
+                                    }
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut self.host)
+                                            .lock_focus(false)
+                                            .hint_text("Host name")
+                                            .desired_width(ui.available_width()),
+                                    )
+                                    .labelled_by(label.id);
+                                    self.host = self.host.trim().to_owned();
+                                })
                             });
                         },
                         |ui| {
@@ -266,7 +268,7 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Authentication:");
+                ui.label("Authentication");
 
                 let login_enabled = app_ctx.login_enabled;
                 ui.selectable_toggle(|ui| {
@@ -417,7 +419,7 @@ impl ServerModal {
 fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
         AuthKind::RerunAccount(login_flow) => {
-            ui.label("Account login:");
+            ui.label("Account login");
 
             if let Some(flow) = login_flow {
                 // Login flow is in progress - show login buttons or loading indicator
@@ -459,22 +461,24 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
         }
 
         AuthKind::Token(token) => {
-            ui.label("Access token (will be stored in plain text):");
+            ui.label("Access token (will be stored in plain text)");
 
-            ui.scope(|ui| {
-                let jwt = (!token.is_empty())
-                    .then(|| Jwt::try_from(token.clone()))
-                    .transpose();
+            re_ui::text_edit::text_edit_scope(ui, |ui| {
+                ui.scope(|ui| {
+                    let jwt = (!token.is_empty())
+                        .then(|| Jwt::try_from(token.clone()))
+                        .transpose();
 
-                if jwt.is_err() {
-                    ui.style_invalid_field();
-                }
+                    if jwt.is_err() {
+                        ui.style_invalid_field();
+                    }
 
-                ui.add(
-                    egui::TextEdit::singleline(token)
-                        .code_editor()
-                        .desired_width(f32::INFINITY),
-                );
+                    ui.add(
+                        egui::TextEdit::singleline(token)
+                            .code_editor()
+                            .desired_width(f32::INFINITY),
+                    );
+                })
             });
         }
 

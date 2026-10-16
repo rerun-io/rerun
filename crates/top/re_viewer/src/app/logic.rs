@@ -65,6 +65,23 @@ impl App {
             let (storage_context, store_context) =
                 store_hub.read_context(&route, &active_time_ctrl);
 
+            // The menu might be visible while the viewer is minimized, so we also handle these
+            // commands here
+            #[cfg(target_os = "macos")]
+            if self.uses_native_menu() {
+                let pending = crate::native_menu::take_pending();
+                if !pending.is_empty() {
+                    let commands =
+                        self.command_context(storage_context.hub, store_context.as_ref());
+                    for command in pending
+                        .into_iter()
+                        .filter_map(|kind| commands.resolve(kind))
+                    {
+                        crate::command_catalog::dispatch(command, &self.command_sender);
+                    }
+                }
+            }
+
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
             let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
 
@@ -82,7 +99,19 @@ impl App {
                 store_context.as_ref(),
                 &route,
             );
+            // Here too, and not only in `ui`, so that a hidden viewer still runs them. A
+            // viewer-control request waits for them.
+            self.run_pending_recording_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
+
+        // The commands above may queue system commands, and answer viewer-control requests that
+        // wait on them.
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         self.state.cleanup(&store_hub);
 
@@ -821,7 +850,7 @@ impl App {
         // dropping them means downloading the same asset again for the next segment that wants it,
         // which is exactly what the cache exists to avoid.
         if limit.is_exceeded_by(&memory_use()).is_some() {
-            self.connection_registry.purge_memory();
+            self.connections.registry.purge_memory();
         }
 
         let mem_use_after = MemoryUse::capture();

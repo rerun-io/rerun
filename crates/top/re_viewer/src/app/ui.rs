@@ -96,10 +96,10 @@ impl App {
                     let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
-                        if let Some(origin) = self.connection_registry.internal_origin() {
+                        if let Some(origin) = self.connections.registry.internal_origin() {
                             self.state.redap_servers.add_internal_server(
                                 origin.clone(),
-                                &self.connection_registry,
+                                &self.connections.registry,
                                 &self.async_runtime,
                                 &self.egui_ctx,
                             );
@@ -109,7 +109,7 @@ impl App {
                         }
 
                         self.state.redap_servers.on_frame_start(
-                            &self.connection_registry,
+                            &self.connections.registry,
                             &self.async_runtime,
                             &self.egui_ctx,
                             self.startup_options.login_enabled(),
@@ -160,7 +160,7 @@ impl App {
                             opacity: self.welcome_screen_opacity(ui),
                         },
                         self.event_dispatcher.as_ref(),
-                        &self.connection_registry,
+                        &self.connections.registry,
                         &self.async_runtime,
                         self.custom_window_frame(),
                     );
@@ -236,7 +236,8 @@ impl App {
         }
 
         let viewer_endpoint = self
-            .connection_registry
+            .connections
+            .registry
             .internal_origin()
             .map(|origin| origin.as_url());
         let cache_dir = self.app_options().cache_directory.clone();

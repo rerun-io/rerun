@@ -263,7 +263,7 @@ pub async fn test_multi_change_container_type() {
 
     harness
         .blueprint_tree()
-        .click_nth_label("Vertical container", 0);
+        .click_nth_list_item("Vertical container", 0);
     harness.snapshot_app("change_container_type_1");
 
     harness.change_dropdown_value("Container kind", "Horizontal");
@@ -286,7 +286,9 @@ pub async fn test_simplify_container_hierarchy() {
     harness.snapshot_app("simplify_container_hierarchy_2");
 
     harness.set_selection_panel_opened(true);
-    harness.blueprint_tree().click_label("Horizontal container");
+    harness
+        .blueprint_tree()
+        .click_list_item("Horizontal container");
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_container_hierarchy_3");
 }
@@ -307,7 +309,7 @@ pub async fn test_simplify_root_hierarchy() {
 
     harness
         .blueprint_tree()
-        .click_label("Viewport (Grid container)");
+        .click_list_item("Viewport (Grid container)");
     harness.snapshot_app("simplify_root_hierarchy_2");
 
     harness.set_selection_panel_opened(true);

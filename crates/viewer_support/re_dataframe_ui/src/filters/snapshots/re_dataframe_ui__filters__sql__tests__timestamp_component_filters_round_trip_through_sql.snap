@@ -1,0 +1,36 @@
+---
+source: crates/viewer_support/re_dataframe_ui/src/filters/sql.rs
+expression: "all_sql.join(\"\\n\")"
+---
+to_timestamp_nanos("created") >= date_trunc('day', now()) AND to_timestamp_nanos("created") < date_trunc('day', now()) + INTERVAL '1 day'
+(to_timestamp_nanos("created") >= date_trunc('day', now()) AND to_timestamp_nanos("created") < date_trunc('day', now()) + INTERVAL '1 day') IS NOT TRUE
+to_timestamp_nanos("created") >= date_trunc('day', now()) - INTERVAL '1 day' AND to_timestamp_nanos("created") < date_trunc('day', now())
+(to_timestamp_nanos("created") >= date_trunc('day', now()) - INTERVAL '1 day' AND to_timestamp_nanos("created") < date_trunc('day', now())) IS NOT TRUE
+to_timestamp_nanos("created") >= now() - INTERVAL '24 hours' AND to_timestamp_nanos("created") < now()
+(to_timestamp_nanos("created") >= now() - INTERVAL '24 hours' AND to_timestamp_nanos("created") < now()) IS NOT TRUE
+to_timestamp_nanos("created") >= date_trunc('week', now()) AND to_timestamp_nanos("created") < date_trunc('week', now()) + INTERVAL '7 days'
+(to_timestamp_nanos("created") >= date_trunc('week', now()) AND to_timestamp_nanos("created") < date_trunc('week', now()) + INTERVAL '7 days') IS NOT TRUE
+to_timestamp_nanos("created") >= date_trunc('week', now()) - INTERVAL '7 days' AND to_timestamp_nanos("created") < date_trunc('week', now())
+(to_timestamp_nanos("created") >= date_trunc('week', now()) - INTERVAL '7 days' AND to_timestamp_nanos("created") < date_trunc('week', now())) IS NOT TRUE
+to_timestamp_nanos("created") < TIMESTAMPTZ '1973-03-03T09:46:40Z'
+(to_timestamp_nanos("created") < TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+to_timestamp_nanos("created") >= TIMESTAMPTZ '1973-03-03T09:46:40Z'
+(to_timestamp_nanos("created") >= TIMESTAMPTZ '1973-03-03T09:46:40Z') IS NOT TRUE
+to_timestamp_nanos("created") >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND to_timestamp_nanos("created") < TIMESTAMPTZ '1973-03-03T10:46:40Z'
+(to_timestamp_nanos("created") >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND to_timestamp_nanos("created") < TIMESTAMPTZ '1973-03-03T10:46:40Z') IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('day', now()) AND to_timestamp_nanos(x) < date_trunc('day', now()) + INTERVAL '1 day')
+(any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('day', now()) AND to_timestamp_nanos(x) < date_trunc('day', now()) + INTERVAL '1 day')) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('day', now()) - INTERVAL '1 day' AND to_timestamp_nanos(x) < date_trunc('day', now()))
+(any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('day', now()) - INTERVAL '1 day' AND to_timestamp_nanos(x) < date_trunc('day', now()))) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= now() - INTERVAL '24 hours' AND to_timestamp_nanos(x) < now())
+(any_match("created", x -> to_timestamp_nanos(x) >= now() - INTERVAL '24 hours' AND to_timestamp_nanos(x) < now())) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('week', now()) AND to_timestamp_nanos(x) < date_trunc('week', now()) + INTERVAL '7 days')
+(any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('week', now()) AND to_timestamp_nanos(x) < date_trunc('week', now()) + INTERVAL '7 days')) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('week', now()) - INTERVAL '7 days' AND to_timestamp_nanos(x) < date_trunc('week', now()))
+(any_match("created", x -> to_timestamp_nanos(x) >= date_trunc('week', now()) - INTERVAL '7 days' AND to_timestamp_nanos(x) < date_trunc('week', now()))) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) < TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("created", x -> to_timestamp_nanos(x) < TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= TIMESTAMPTZ '1973-03-03T09:46:40Z')
+(any_match("created", x -> to_timestamp_nanos(x) >= TIMESTAMPTZ '1973-03-03T09:46:40Z')) IS NOT TRUE
+any_match("created", x -> to_timestamp_nanos(x) >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND to_timestamp_nanos(x) < TIMESTAMPTZ '1973-03-03T10:46:40Z')
+(any_match("created", x -> to_timestamp_nanos(x) >= TIMESTAMPTZ '1973-03-03T09:46:40Z' AND to_timestamp_nanos(x) < TIMESTAMPTZ '1973-03-03T10:46:40Z')) IS NOT TRUE

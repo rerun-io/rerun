@@ -77,9 +77,8 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
 
     @staticmethod
     def _native_to_pa_array(data: ContainerKindArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (ContainerKind, int, str)):
-            data = [data]
+        items: Sequence[ContainerKindLike | str] = [data] if isinstance(data, (ContainerKind, int, str)) else data
 
-        pa_data = [ContainerKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [ContainerKind.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

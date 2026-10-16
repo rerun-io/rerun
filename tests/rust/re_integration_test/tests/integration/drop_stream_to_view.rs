@@ -122,14 +122,14 @@ pub async fn test_drop_stream_to_view() {
     let mut harness = make_harness();
     harness
         .blueprint_tree()
-        .click_label("Viewport (Grid container)");
+        .click_list_item("Viewport (Grid container)");
 
     let drop_point_1 = harness.get_panel_position("Plot 1").center();
     let plot_1_id = view_id(&mut harness, "Plot 1");
     let sin_curve = Item::from(re_sdk::EntityPath::from("sin_curve"));
 
     // A successful drop selects the target view.
-    harness.streams_tree().click_label("sin_curve");
+    harness.streams_tree().click_list_item("sin_curve");
     assert_selected_item(&mut harness, sin_curve.clone());
     harness.streams_tree().drag_label("sin_curve");
     harness.hover_at(drop_point_1);
@@ -142,7 +142,7 @@ pub async fn test_drop_stream_to_view() {
     assert_selected_item(&mut harness, Item::View(plot_1_id));
 
     // A rejected drop preserves the dragged entity's selection.
-    harness.streams_tree().click_label("sin_curve");
+    harness.streams_tree().click_list_item("sin_curve");
     assert_selected_item(&mut harness, sin_curve.clone());
     harness.streams_tree().drag_label("sin_curve");
     harness.hover_at(drop_point_1);
@@ -155,7 +155,7 @@ pub async fn test_drop_stream_to_view() {
     assert_selected_item(&mut harness, sin_curve);
 
     // Dragging an unselected entity preserves the target view's selection.
-    harness.blueprint_tree().click_label("Plot 1");
+    harness.blueprint_tree().click_list_item("Plot 1");
     assert_selected_item(&mut harness, Item::View(plot_1_id));
     harness.streams_tree().drag_label("line_curve");
     harness.hover_at(drop_point_1);
@@ -172,7 +172,7 @@ pub async fn test_drop_multiple_streams_to_view() {
     let mut harness = make_harness();
     harness
         .blueprint_tree()
-        .click_label("Viewport (Grid container)");
+        .click_list_item("Viewport (Grid container)");
 
     let drop_point_1 = harness.get_panel_position("Plot 1").center();
     let drop_point_2 = harness.get_panel_position("Plot 2").center();
@@ -191,10 +191,10 @@ pub async fn test_drop_multiple_streams_to_view() {
     );
 
     // Drag both entities to sine plot
-    harness.streams_tree().click_label("sin_curve");
+    harness.streams_tree().click_list_item("sin_curve");
     harness
         .streams_tree()
-        .click_label_modifiers("line_curve", Modifiers::COMMAND);
+        .click_list_item_modifiers("line_curve", Modifiers::COMMAND);
     harness.streams_tree().drag_label("line_curve");
 
     harness.hover_at(drop_point_1);
@@ -211,10 +211,10 @@ pub async fn test_drop_multiple_streams_to_view() {
     );
 
     // Drag both again, should fail, but should succeed to other plot
-    harness.streams_tree().click_label("sin_curve");
+    harness.streams_tree().click_list_item("sin_curve");
     harness
         .streams_tree()
-        .click_label_modifiers("line_curve", Modifiers::COMMAND);
+        .click_list_item_modifiers("line_curve", Modifiers::COMMAND);
     harness.streams_tree().drag_label("line_curve");
 
     harness.hover_at(drop_point_1);

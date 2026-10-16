@@ -33,6 +33,7 @@ re_video.workspace = true
 
 arrow.workspace = true
 futures.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 thiserror.workspace = true
 vec1.workspace = true

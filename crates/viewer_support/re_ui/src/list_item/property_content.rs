@@ -145,7 +145,9 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
         self.value_fn(|ui, _| {
-            ui.text_edit_singleline(text);
+            crate::text_edit::text_edit_scope(ui, |ui| {
+                ui.text_edit_singleline(text);
+            });
         })
     }
 
@@ -173,7 +175,7 @@ impl<'a> PropertyContent<'a> {
 }
 
 impl ListItemContent for PropertyContent<'_> {
-    fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
+    fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) -> Option<egui::Response> {
         ui.sanity_check();
 
         let Self {
@@ -343,6 +345,8 @@ impl ListItemContent for PropertyContent<'_> {
             );
             ui.advance_cursor_after_rect(alloc_rect);
         }
+
+        None
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {

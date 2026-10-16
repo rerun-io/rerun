@@ -106,6 +106,17 @@ def _raise_if_incomplete(
         )
 
 
+def _check_complete(
+    decoded: Iterator[DecodedSample],
+    targets: list[Target],
+    required: set[str],
+) -> Iterator[DecodedSample]:
+    """Yield `decoded` through, raising if a sample is missing a required field."""
+    for target, sample in zip(targets, decoded, strict=True):
+        _raise_if_incomplete(sample, target, required)
+        yield sample
+
+
 def _count_yields(
     samples: Generator[DecodedSample, None, None],
 ) -> Generator[DecodedSample, None, None]:
@@ -448,9 +459,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
                     decoders=decoders,
                     executor=executor,
                 )
-                for target, sample in zip(fetched.targets, decoded, strict=True):
-                    _raise_if_incomplete(sample, target, required)
-                    yield sample
+                return _check_complete(decoded, fetched.targets, required)
 
             samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
             yield from _count_yields(_replay(samples, emit_order))

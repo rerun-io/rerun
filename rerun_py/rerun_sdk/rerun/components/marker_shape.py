@@ -139,9 +139,8 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerShapeArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (MarkerShape, int, str)):
-            data = [data]
+        items: Sequence[MarkerShapeLike | str] = [data] if isinstance(data, (MarkerShape, int, str)) else data
 
-        pa_data = [MarkerShape.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [MarkerShape.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

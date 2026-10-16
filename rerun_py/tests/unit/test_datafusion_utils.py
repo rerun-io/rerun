@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -22,8 +22,8 @@ def df() -> DataFrame:
             pa.array([4, None, 6]),
             pa.array([2.0, -1.0, None], type=pa.float32()),
             pa.array([
-                datetime(2022, 12, 31, tzinfo=timezone.utc),
-                datetime(2027, 6, 26, tzinfo=timezone.utc),
+                datetime(2022, 12, 31, tzinfo=UTC),
+                datetime(2027, 6, 26, tzinfo=UTC),
                 None,
             ]),
             pa.array([False, None, True]),

@@ -4,7 +4,8 @@ This script:
 1. Downloads a LeRobot dataset from HuggingFace Hub.
 2. Loads it into Rerun via the built-in LeRobot importer (`log_file_from_path`).
 3. Splits the resulting archive into one optimized RRD per episode, deriving video keyframe markers.
-4. Registers the per-episode RRDs to a catalog server instance.
+4. Writes the dataset-wide metadata (feature shapes, normalization stats) to its own static RRD.
+5. Registers the per-episode RRDs to a catalog server instance, and the metadata RRD as an asset shared by all of them.
 
 """
 
@@ -18,10 +19,13 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 import rerun as rr
+from rerun.chunk import ChunkStore
+from rerun.experimental import LeRobotReader
 
 DEFAULT_REPO_ID = "rerun/so101-pick-and-place"
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "data"
 APPLICATION_ID = "lerobot"
+METADATA_RECORDING_ID = "lerobot_metadata"
 
 _EPISODE_RE = re.compile(r"^(episode_)(\d+)$")
 
@@ -85,13 +89,24 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
     return episode_paths
 
 
+def write_metadata_rrd(dataset_dir: Path, metadata_rrd: Path) -> None:
+    """Write the dataset-wide LeRobot metadata as a static chunk at `/__lerobot`."""
+    print(f"Writing dataset metadata to {metadata_rrd}")
+    ChunkStore.from_chunks([LeRobotReader(dataset_dir).metadata()]).write_rrd(
+        metadata_rrd,
+        application_id=APPLICATION_ID,
+        recording_id=METADATA_RECORDING_ID,
+    )
+
+
 def register_to_catalog(
     rrd_paths: list[Path],
+    metadata_rrd: Path,
     *,
     catalog_url: str,
     dataset_name: str,
 ) -> None:
-    """Register per-episode RRDs to a catalog server instance.
+    """Register per-episode RRDs to a catalog server instance, with the metadata as a dataset asset.
 
     Uses absolute file:// URIs so the catalog can read the RRDs directly from the local filesystem.
     """
@@ -102,6 +117,7 @@ def register_to_catalog(
     uris = [f"file://{p.resolve()}" for p in rrd_paths]
     on_duplicate = rr.catalog.OnDuplicateSegmentLayer(rr.catalog.OnDuplicateSegmentLayer.REPLACE)
     dataset.register(uris, on_duplicate=on_duplicate).wait()
+    dataset.register_asset(f"file://{metadata_rrd.resolve()}")
     print("  registration done")
 
 
@@ -140,10 +156,12 @@ def main() -> None:
     dataset_dir = output_dir / "lerobot" / repo_slug
     rrd_dir = output_dir / "rrds" / repo_slug
     combined_rrd = output_dir / f"{repo_slug}_combined.rrd"
+    metadata_rrd = output_dir / f"{repo_slug}_metadata.rrd"
 
     download_dataset(args.repo_id, dataset_dir)
     lerobot_to_combined_rrd(dataset_dir, combined_rrd)
     episode_paths = split_into_episode_rrds(combined_rrd, rrd_dir)
+    write_metadata_rrd(dataset_dir, metadata_rrd)
 
     if not args.keep_combined:
         combined_rrd.unlink()
@@ -152,7 +170,7 @@ def main() -> None:
 
     if args.catalog_url:
         dataset_name = args.dataset_name or repo_slug
-        register_to_catalog(episode_paths, catalog_url=args.catalog_url, dataset_name=dataset_name)
+        register_to_catalog(episode_paths, metadata_rrd, catalog_url=args.catalog_url, dataset_name=dataset_name)
 
 
 if __name__ == "__main__":

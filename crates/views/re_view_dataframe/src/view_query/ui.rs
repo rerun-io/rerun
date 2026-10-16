@@ -67,7 +67,7 @@ impl Query {
             (time_drag_value, timeline.typ())
         });
 
-        ui.label("Filter rows by time range:");
+        ui.label("Filter rows by time range");
         let range = self.filter_by_range()?;
         let (mut start, mut end) = (range.min(), range.max());
 
@@ -204,7 +204,7 @@ impl Query {
 
         let before_active = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
-            ui.re_checkbox(&mut active, "Filter rows where column is not null:")
+            ui.re_checkbox(&mut active, "Filter rows where column is not null")
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
         });
 
@@ -584,7 +584,7 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) -> Result<(), ViewSystemExecutionError> {
-        ui.label("Empty cells:");
+        ui.label("Empty cells");
 
         let mut latest_at = self.latest_at_enabled()?;
         let changed = {

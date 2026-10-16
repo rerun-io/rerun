@@ -1008,13 +1008,14 @@ fn entity_path_filter_ui(
         .clone()
     });
 
-    let response = ui
-        .add(
+    let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+        ui.add(
             egui::TextEdit::multiline(&mut filter_string)
                 .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
                 .layouter(&mut text_layouter),
         )
-        .accessible_name("Entity path filter");
+        .accessible_name("Entity path filter")
+    });
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
@@ -1067,9 +1068,7 @@ fn container_children(
 
         if !has_child {
             ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("empty — use the + button to add content")
-                    .weak(true)
-                    .italics(true),
+                list_item::LabelContent::new("empty — use the + button to add content").weak(true),
             );
         }
     };
@@ -1247,7 +1246,9 @@ fn view_top_level_properties(
             .at_least(ui.available_width());
 
         let mut name = view.display_name.clone().unwrap_or_default();
-        ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
+        re_ui::text_edit::text_edit_scope(ui, |ui| {
+            ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"))
+        });
         view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
@@ -1288,7 +1289,7 @@ fn container_top_level_properties(
             .at_least(ui.available_width());
 
         let mut name = container.display_name.clone().unwrap_or_default();
-        ui.add(egui::TextEdit::singleline(&mut name));
+        re_ui::text_edit::text_edit_scope(ui, |ui| ui.add(egui::TextEdit::singleline(&mut name)));
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 

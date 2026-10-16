@@ -33,7 +33,7 @@ pub fn test_list_items_should_match_snapshot() {
             ui,
             ui.make_persistent_id("label content features"),
             true,
-            list_item::LabelContent::new("LabelContent features:"),
+            list_item::LabelContent::new("LabelContent features"),
             |ui| {
                 ui.list_item()
                     .show_hierarchical(ui, list_item::LabelContent::new("LabelContent"));
@@ -102,7 +102,6 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::LabelContent::new("LabelContent with custom styling")
                             .subdued(true)
-                            .italics(true)
                             .with_icon(&icons::VIEW_2D),
                     )
                     .on_hover_text("The styling applies to the icon.");
@@ -131,7 +130,7 @@ pub fn test_list_items_should_match_snapshot() {
             ui,
             ui.make_persistent_id("property content features"),
             true,
-            list_item::PropertyContent::new("PropertyContent features:")
+            list_item::PropertyContent::new("PropertyContent features")
                 .value_text("bunch of properties"),
             |ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
@@ -184,7 +183,7 @@ pub fn test_list_items_should_match_snapshot() {
             ui,
             ui.make_persistent_id("other features"),
             true,
-            list_item::LabelContent::new("Other contents:"),
+            list_item::LabelContent::new("Other contents"),
             |ui| {
                 ui.list_item().show_hierarchical(
                     ui,

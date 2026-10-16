@@ -361,6 +361,19 @@ impl ServerListener {
         self.local_addr
     }
 
+    /// Tells the user where the server listens and how to connect a Viewer to it.
+    pub fn connect_hint(&self) -> String {
+        let local_addr = self.local_addr;
+        let connect_addr = if local_addr.ip().is_loopback() || local_addr.ip().is_unspecified() {
+            format!("rerun+http://127.0.0.1:{}/proxy", local_addr.port())
+        } else {
+            format!("rerun+http://{local_addr}/proxy")
+        };
+        format!(
+            "Listening for gRPC connections on {self}. Connect by running `rerun --connect {connect_addr}`"
+        )
+    }
+
     /// Returns streams of incoming connections from all reserved sockets.
     pub fn into_incoming(self) -> std::io::Result<IncomingConnections> {
         fn incoming(listener: std::net::TcpListener) -> std::io::Result<TcpIncoming> {
@@ -399,15 +412,9 @@ async fn serve_impl(
     shutdown: shutdown::Shutdown,
     extra_services: LoopbackServices,
 ) -> anyhow::Result<()> {
-    let local_addr = listener.local_addr();
-    let connect_addr = if local_addr.ip().is_loopback() || local_addr.ip().is_unspecified() {
-        format!("rerun+http://127.0.0.1:{}/proxy", local_addr.port())
-    } else {
-        format!("rerun+http://{local_addr}/proxy")
-    };
-    re_log::info!(
-        "Listening for gRPC connections on {listener}. Connect by running `rerun --connect {connect_addr}`",
-    );
+    let connect_hint = listener.connect_hint();
+    // We decide elsewhere whether there should be a UI notification for this, but logging it is always useful.
+    re_log::info!(gui_notification = false, "{connect_hint}");
     let incoming = listener.into_incoming()?;
 
     re_log::debug!(

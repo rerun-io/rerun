@@ -107,8 +107,8 @@ def log(
     # surprisingly slow compared to an isinstance() check against a non-protocol
     # class. Consider using alternative idioms such as hasattr() calls for
     # structural checks in performance-sensitive code. hasattr is
-    if hasattr(entity, "as_component_batches"):
-        components = list(entity.as_component_batches())
+    if (as_component_batches := getattr(entity, "as_component_batches", None)) is not None:
+        components = list(as_component_batches())
     elif isinstance(entity, Iterable):
         components = list(entity)
     else:
@@ -118,8 +118,8 @@ def log(
         )
 
     for ext in extra:
-        if hasattr(ext, "as_component_batches"):
-            components.extend(ext.as_component_batches())
+        if (as_component_batches := getattr(ext, "as_component_batches", None)) is not None:
+            components.extend(as_component_batches())
         elif isinstance(ext, Iterable):
             components.extend(ext)
         else:

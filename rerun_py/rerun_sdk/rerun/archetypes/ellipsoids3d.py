@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -165,7 +165,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "half_sizes": half_sizes,
                 "centers": centers,
                 "rotation_axis_angles": rotation_axis_angles,
@@ -179,7 +179,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
             }
 
             if clear_unset:
-                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}
 
             inst.__attrs_init__(**kwargs)
             return inst
@@ -354,7 +354,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "Ellipsoids3D:half_sizes": half_sizes,
             "Ellipsoids3D:centers": centers,
             "Ellipsoids3D:rotation_axis_angles": rotation_axis_angles,
@@ -373,8 +373,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
-                shape = np.shape(param)  # type: ignore[arg-type]
+                param = kwargs[batch.component_descriptor().component]
+                shape = np.shape(param)
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
 
                 if pa.types.is_fixed_size_list(arrow_array.type):

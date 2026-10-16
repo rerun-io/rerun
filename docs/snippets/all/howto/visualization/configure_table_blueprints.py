@@ -4,7 +4,8 @@ Configure table layouts and segment previews with Python blueprints.
 Creates a table from DROID episode properties and registers blueprints that
 show metadata and recording links in rows, or segment previews on cards.
 Both the catalog table and the dataset's segment table use these layouts.
-Also registers an editable-flag blueprint without making it the default.
+Also registers an editable-flag blueprint and a filtered blueprint without
+making them the default.
 
 Downloads and caches a recordings from rerun/droid_sample on
 Hugging Face and serves them through a temporary local catalog.
@@ -70,6 +71,23 @@ flag_blueprint = rrb.TableBlueprint(
     previews_config=rrb.table.PreviewsConfig(timeline="real_time"),
 )
 # endregion: flags
+
+# region: filters
+filter_blueprint = replace(
+    blueprint,
+    filters=[
+        # These show as editable filters in the Viewer's filter bar.
+        #
+        # Nothing here knows about the tables schema, if the type of
+        # the given column doesn't work in the operation it will show
+        # up as 'Custom' in the viewer and might error.
+        rrb.table.col("current_task").str.contains("cup"),
+        rrb.table.col("reviewed").is_false(),
+        # Any other SQL expression shows as SQL text.
+        'length("uuid") > 10',
+    ],
+)
+# endregion: filters
 
 
 def register_table(catalog_url: str) -> None:
@@ -198,6 +216,10 @@ def run(
         flag_path = Path("flags.rbl").resolve()
         flag_blueprint.save("my_app", flag_path)
         table.register_blueprint(flag_path.as_uri(), set_default=False)
+
+        filter_path = Path("filters.rbl").resolve()
+        filter_blueprint.save("my_app", filter_path)
+        table.register_blueprint(filter_path.as_uri(), set_default=False)
 
         if screenshots is not None:
             save_screenshots(server.url(), table, screenshots)

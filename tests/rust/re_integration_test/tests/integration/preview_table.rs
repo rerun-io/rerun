@@ -109,7 +109,7 @@ pub async fn preview_table() {
     viewer_test_utils::step_until_with_custom_timeout(
         "Opened recording source tree populated",
         &mut harness,
-        |harness| harness.query_by_label_contains("Streams").is_some(),
+        |harness| harness.query_by_label_contains("STREAMS").is_some(),
         Duration::from_millis(100),
         Duration::from_secs(15),
     );

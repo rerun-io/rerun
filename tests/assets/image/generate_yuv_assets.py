@@ -28,8 +28,7 @@ def bgra2y_u_v24(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[n
     y = np.array(y).flatten()
     u = np.array(u).flatten()
     v = np.array(v).flatten()
-    yuv24: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
-    return yuv24.astype(np.uint8)
+    return np.concatenate((y, u, v)).astype(np.uint8)
 
 
 def bgra2y_u_v16(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
@@ -42,8 +41,7 @@ def bgra2y_u_v16(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[n
     y = np.array(y).flatten()
     u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0]))).flatten()
     v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0]))).flatten()
-    yuv16: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
-    return yuv16.astype(np.uint8)
+    return np.concatenate((y, u, v)).astype(np.uint8)
 
 
 def bgra2y_u_v12(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
@@ -56,8 +54,7 @@ def bgra2y_u_v12(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[n
     y = np.array(y).flatten()
     u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0] // 2))).flatten()
     v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0] // 2))).flatten()
-    yuv12: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
-    return yuv12.astype(np.uint8)
+    return np.concatenate((y, u, v)).astype(np.uint8)
 
 
 def bgra2y8(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
@@ -82,7 +79,7 @@ def bgra2yuy2(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_YUY2)
     (y, uv) = cv2.split(yuv)
 
-    yuy2: npt.NDArray[np.uint8] = np.empty((y.shape[0], y.shape[1] * 2), dtype=y.dtype)
+    yuy2 = np.empty((y.shape[0], y.shape[1] * 2), dtype=np.uint8)
     yuy2[:, 0::2] = y
     yuy2[:, 1::4] = uv[:, ::2]
     yuy2[:, 3::4] = uv[:, 1::2]

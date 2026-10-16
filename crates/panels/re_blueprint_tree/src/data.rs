@@ -195,7 +195,7 @@ pub struct ViewData {
     pub origin_tree: Option<DataResultData>,
 
     /// Projection trees are the various trees contained data results which are outside the view
-    /// origin subtrees. They are presented after a "Projections:" label in the blueprint tree.
+    /// origin subtrees. They are presented after a "Projections" label in the blueprint tree.
     ///
     /// These trees may be super-trees of the view origin trees. In that case, the view origin
     /// subtree is represented by a stub item, see [`DataResultKind::OriginProjectionPlaceholder`].

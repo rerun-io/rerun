@@ -108,11 +108,17 @@ impl PyDatasetViewInternal {
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetView.schema").entered();
-        let dataset = self_.dataset.borrow(py);
+        let (connection, dataset_id) = {
+            let dataset = self_.dataset.borrow(py);
+            (
+                dataset.client().borrow(py).connection().clone(),
+                dataset.entry_id(),
+            )
+        };
         let PySchemaInternal {
             columns: base_columns,
             metadata,
-        } = PyDatasetEntryInternal::fetch_schema(&dataset)?;
+        } = PySchemaInternal::from_arrow_schema(connection.get_dataset_schema(py, dataset_id)?)?;
 
         // Apply content filters
         let filtered_columns = self_.filter_schema(base_columns);
@@ -343,12 +349,12 @@ fn build_dataframe_query_table_provider(
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
-    let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref)?;
     let client_ref = dataset_ref.client().borrow(py);
     let connection = client_ref.connection().clone();
     let object_store_auth = client_ref.object_store_auth().clone();
     drop(client_ref);
     drop(dataset_ref);
+    let schema = connection.get_dataset_schema(py, dataset_id)?;
 
     // Error if the queried index is unknown.
     if let Some(index) = index.as_deref() {

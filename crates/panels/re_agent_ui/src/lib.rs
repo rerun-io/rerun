@@ -8,8 +8,8 @@ mod ui;
 pub use re_agent::{
     AgentCommand, AgentConnection, AgentEntry, AgentEvent, AgentProfile, AgentSession,
     AgentSettings, AuthPrompt, LaunchConfig, LogLine, McpServerConfig, McpStdioServer,
-    PendingPermission, Phase, Prompt, PromptImage, SessionContext, ToolCallState, Transcript,
-    TranscriptEntry, TranscriptItem, TurnOutcome, TurnReport, acp, find_executable, message_text,
-    truncate_bytes,
+    PendingElicitation, PendingPermission, Phase, Prompt, PromptImage, SessionContext,
+    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnOutcome, TurnReport, acp,
+    find_executable, message_text, truncate_bytes,
 };
 pub use ui::{AgentPanel, HostButton, RECOMMENDED_WIDTH};

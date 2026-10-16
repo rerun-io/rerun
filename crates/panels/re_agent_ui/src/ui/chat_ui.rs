@@ -7,12 +7,14 @@ use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::acp::LineDirection;
 use re_agent::acp::schema::v1::{
     AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionMode, SessionModeId,
+    SessionConfigValueId, SessionMode, SessionModeId,
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
 
+use super::MAX_REQUEST_CONTENT_HEIGHT;
+use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
@@ -42,6 +44,7 @@ pub struct ChatInput {
 
     /// Images pasted into the composer, sent with the next prompt.
     pending_images: Vec<PendingImage>,
+    elicitation_ui: ElicitationUi,
 }
 
 /// A pasted image waiting to be sent, and the texture the composer shows for it.
@@ -114,6 +117,7 @@ pub fn chat_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
     show_thoughts: bool,
     login_hint: Option<&str>,
 ) {
@@ -125,7 +129,14 @@ pub fn chat_ui(
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(ui, session, input, preferred_mode, login_hint);
+            composer_ui(
+                ui,
+                session,
+                input,
+                preferred_mode,
+                preferred_model,
+                login_hint,
+            );
         });
 
     egui::CentralPanel::default()
@@ -205,7 +216,11 @@ fn mode_picker_ui(
 }
 
 /// The model the agent is using, as a drop-down to switch to another one it offers.
-fn model_picker_ui(ui: &mut egui::Ui, session: &AgentSession) {
+fn model_picker_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    preferred_model: &mut Option<SessionConfigValueId>,
+) {
     let transcript = session.transcript();
     let (Some((config_id, select)), Some(current_name)) =
         (transcript.model_selector(), transcript.current_model())
@@ -250,10 +265,11 @@ fn model_picker_ui(ui: &mut egui::Ui, session: &AgentSession) {
     })
     .on_hover_text("The model the agent is using");
 
-    if let Some(value) = selected
-        && value != select.current_value
-    {
-        session.set_config_option(config_id.clone(), value);
+    if let Some(value) = selected {
+        *preferred_model = Some(value.clone());
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
     }
 }
 
@@ -282,6 +298,7 @@ fn composer_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -293,6 +310,9 @@ fn composer_ui(
     }
 
     permissions_ui(ui, session, input);
+    if input.elicitation_ui.ui(ui, session) {
+        input.focus = true;
+    }
 
     if let Some(plan) = &session.transcript().plan {
         plan_ui(ui, plan);
@@ -301,7 +321,7 @@ fn composer_ui(
     queue_ui(ui, session, input);
     input_ui(ui, session, input);
 
-    footer_ui(ui, session, input, preferred_mode);
+    footer_ui(ui, session, input, preferred_mode, preferred_model);
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -401,11 +421,12 @@ fn footer_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
 ) {
     ui.horizontal(|ui| {
         mode_picker_ui(ui, session, preferred_mode);
 
-        model_picker_ui(ui, session);
+        model_picker_ui(ui, session, preferred_model);
 
         match session.phase() {
             Phase::Connecting { status } => {
@@ -499,8 +520,10 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
     }
 
     // Keyboard shortcuts act on the oldest request only.
-    let enter = consume_plain_enter(ui);
-    let escape = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
+    // While a question is open, Enter and Escape must not answer a tool approval instead.
+    let shortcuts_enabled = session.pending_elicitations().is_empty();
+    let enter = shortcuts_enabled && consume_plain_enter(ui);
+    let escape = shortcuts_enabled && ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
 
     let mut answered = None;
     for (index, pending) in session.pending_permissions().iter().enumerate() {
@@ -528,7 +551,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 .or_else(|| known_call?.raw_input.as_ref());
             if let Some(raw_input) = raw_input {
                 egui::ScrollArea::vertical()
-                    .max_height(320.0)
+                    .max_height(MAX_REQUEST_CONTENT_HEIGHT)
                     .id_salt(&request.tool_call.tool_call_id.0)
                     .show(ui, |ui| tool_input_ui(ui, raw_input));
             }
@@ -578,10 +601,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     let tokens = ui.tokens();
     let response = egui::Frame::new()
         .fill(tokens.text_edit_bg_color)
-        .stroke(egui::Stroke::new(
-            1.0,
-            tokens.widget_noninteractive_bg_stroke,
-        ))
+        .stroke(tokens.control_stroke)
         .corner_radius(6)
         .inner_margin(6)
         .show(ui, |ui| {

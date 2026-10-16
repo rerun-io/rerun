@@ -258,7 +258,7 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
     // If anything was shown, then `should_display_separator` has to be true. We can therefore
     // recycle this flag for the empty menu message.
     if !should_display_separator {
-        ui.label(egui::RichText::from("No action available for the current selection").italics());
+        ui.label("No action available for the current selection");
     }
 }
 

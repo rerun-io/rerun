@@ -23,6 +23,10 @@ use crate::fuzzy::{FuzzyMatch, FuzzyQuery};
 use egui::text::LayoutJob;
 use egui::{Key, NumExt as _};
 
+fn command_palette_modal_id() -> egui::Id {
+    egui::Id::unique("command_palette_modal")
+}
+
 /// The visual content of a single command-palette row, as produced by a
 /// [`CommandPaletteProvider`].
 ///
@@ -174,11 +178,21 @@ pub struct CommandPalette {
     /// Groups (by index) whose full contents should be shown,
     /// because the user clicked their "+ N more" button.
     expanded_groups: BTreeSet<usize>,
+
+    animation_started_at: Option<f64>,
+    transformed_layer: Option<egui::LayerId>,
 }
 
 impl CommandPalette {
-    fn reset(&mut self) {
+    fn reset(&mut self, ctx: &egui::Context) {
+        self.clear_transform(ctx);
         *self = Default::default();
+    }
+
+    fn clear_transform(&mut self, ctx: &egui::Context) {
+        if let Some(layer_id) = self.transformed_layer.take() {
+            ctx.set_transform_layer(layer_id, egui::emath::TSTransform::IDENTITY);
+        }
     }
 
     pub fn toggle(&mut self) {
@@ -195,7 +209,7 @@ impl CommandPalette {
         self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
             // Reset everything (query, selection, expanded groups) so reopening starts fresh:
-            self.reset();
+            self.reset(egui_ctx);
             return None;
         }
 
@@ -203,7 +217,23 @@ impl CommandPalette {
         let width = 640.0.at_most(0.9 * screen_rect.width());
         let max_height = 320.0.at_most(screen_rect.height());
 
+        let animation_started_at = *self
+            .animation_started_at
+            .get_or_insert_with(|| egui_ctx.input(|input| input.time));
+        let scale = crate::motion::scale_for_opened_at(egui_ctx, animation_started_at);
+
+        let modal_response = egui::Modal::new(command_palette_modal_id())
+            .backdrop_color(egui::Color32::TRANSPARENT)
+            .frame(egui::Frame::NONE)
+            .show(egui_ctx, |_| {});
+
+        let window_id = egui::Id::unique("Command Palette");
+        let window_layer_id = egui::LayerId::new(egui::Order::Foreground, window_id);
+        egui_ctx.set_sublayer(modal_response.response.layer_id, window_layer_id);
+
         let response = egui::Window::new("Command Palette")
+            .id(window_id)
+            .order(egui::Order::Foreground)
             .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
             .fixed_size([width, max_height])
             .pivot(egui::Align2::CENTER_TOP)
@@ -212,6 +242,15 @@ impl CommandPalette {
             .title_bar(false)
             .show(egui_ctx, |ui| self.window_content_ui(ui, provider))?;
 
+        if !self.visible {
+            return response.inner?;
+        }
+
+        let transform = crate::motion::scale_transform(response.response.rect.center(), scale);
+        egui_ctx.set_transform_layer(response.response.layer_id, transform);
+        self.transformed_layer = Some(response.response.layer_id);
+        let transformed_rect = transform * response.response.rect;
+
         // Clicking or dragging anywhere outside the palette closes it.
         // We check the press (not the click) so that starting a drag outside also closes it:
         let pressed_outside = egui_ctx.input(|input| {
@@ -219,10 +258,11 @@ impl CommandPalette {
                 && input
                     .pointer
                     .interact_pos()
-                    .is_some_and(|pos| !response.response.rect.contains(pos))
+                    .is_some_and(|pos| !transformed_rect.contains(pos))
         });
         if pressed_outside {
             self.visible = false; // The `reset` happens on the next frame.
+            self.clear_transform(egui_ctx);
             return None;
         }
 
@@ -276,7 +316,7 @@ impl CommandPalette {
             .inner;
 
         if selected_command.is_some() {
-            self.reset();
+            self.reset(ui.ctx());
         }
 
         selected_command
@@ -454,5 +494,78 @@ impl CommandPalette {
         }
 
         selected_command
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct EmptyProvider;
+
+    impl CommandPaletteProvider<()> for EmptyProvider {
+        fn all_matching(&mut self, _query: &FuzzyQuery) -> Vec<MatchGroup<()>> {
+            Vec::new()
+        }
+
+        fn cmd_row(&self, _ui: &egui::Ui, _cmd: &MatchedCmd<()>, _selected: bool) -> CmdRow {
+            unreachable!("the empty provider has no command rows")
+        }
+    }
+
+    fn render_palette(ctx: &egui::Context, palette: &mut CommandPalette, time: f64) {
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                time: Some(time),
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(800.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                assert!(palette.show(ui.ctx(), &mut EmptyProvider).is_none());
+            },
+        );
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn command_palette_animation_restarts_after_closing() {
+        let ctx = egui::Context::default();
+        ctx.all_styles_mut(|style| style.animation_time = 0.2);
+        let mut palette = CommandPalette::default();
+
+        palette.toggle();
+        render_palette(&ctx, &mut palette, 0.0);
+        render_palette(&ctx, &mut palette, 0.016);
+
+        let layer_id = palette
+            .transformed_layer
+            .expect("the visible command palette should register its transformed layer");
+        assert_eq!(
+            ctx.memory(|memory| memory.top_modal_layer()),
+            Some(egui::LayerId::new(
+                egui::Order::Foreground,
+                command_palette_modal_id(),
+            )),
+            "the command palette should block interaction with lower layers"
+        );
+        let opening_transform = ctx
+            .layer_transform_to_global(layer_id)
+            .expect("the opening command palette should have an input-aware transform");
+        assert!(opening_transform.scaling < 1.0);
+
+        palette.toggle();
+        render_palette(&ctx, &mut palette, 0.032);
+        assert_eq!(ctx.layer_transform_to_global(layer_id), None);
+
+        palette.toggle();
+        render_palette(&ctx, &mut palette, 0.048);
+        render_palette(&ctx, &mut palette, 0.064);
+        let reopened_transform = ctx
+            .layer_transform_to_global(layer_id)
+            .expect("the reopened command palette should restart its animation");
+        assert!(reopened_transform.scaling < 1.0);
     }
 }

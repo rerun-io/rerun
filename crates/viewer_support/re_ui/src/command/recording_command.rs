@@ -40,7 +40,6 @@ pub struct RecordingCommand {
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum RecordingCommandKind {
-    // Listed in the order they show up in the command palette by default!
     /// Save the recording, or all selected recordings.
     Save,
 
@@ -370,7 +369,7 @@ impl RecordingCommandKind {
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
-            .map(|shortcut| egui_ctx.format_shortcut(&shortcut))
+            .map(|shortcut| crate::format_shortcut(egui_ctx, &shortcut))
     }
 
     /// Show this command as a menu-button.

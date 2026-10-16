@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
-from typing import Generic, Protocol, TypeVar, overload, runtime_checkable
+from typing import TYPE_CHECKING, Any, Generic, Protocol, Self, TypeVar, overload, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -89,6 +89,10 @@ class AsComponents(Protocol):
 @define
 class Archetype(AsComponents):
     """Base class for all archetypes."""
+
+    if TYPE_CHECKING:
+        # attrs adds this to every archetype, which are all `@define(init=False)`.
+        def __attrs_init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def __str__(self) -> str:
         from pprint import pformat
@@ -199,7 +203,7 @@ class BaseBatch(Generic[T]):
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     @classmethod
-    def _converter(cls, data: T | None) -> BaseBatch[T] | None:
+    def _converter(cls, data: T | None) -> Self | None:
         """
         Primary method for creating Arrow arrays for components.
 

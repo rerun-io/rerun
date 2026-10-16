@@ -207,12 +207,12 @@ impl eframe::App for ExampleApp {
         // bottom section closure
         let left_panel_bottom_section_ui = |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
-                ui.label("Theme:");
+                ui.label("Theme");
                 egui::global_theme_preference_buttons(ui);
             });
 
             ui.horizontal(|ui| {
-                ui.label("Toggle switch:");
+                ui.label("Toggle switch");
                 ui.toggle_switch(8.0, &mut self.dummy_bool, "Dummy toggle");
                 ui.help_button(|ui| {
                     ui.label("This some help text.");
@@ -284,8 +284,7 @@ impl eframe::App for ExampleApp {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_separator();
-                self.filter_state
-                    .section_title_ui(ui, egui::RichText::new("Filter demo").strong());
+                self.filter_state.section_title_ui(ui, "Filter demo");
                 ui.full_span_separator();
 
                 let names = vec![
@@ -325,7 +324,7 @@ impl eframe::App for ExampleApp {
                     egui::Panel::top("left_panel_top_bar")
                         .exact_size(tokens.title_bar_height())
                         .frame(egui::Frame {
-                            inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
+                            inner_margin: tokens.panel_margin(),
                             ..Default::default()
                         })
                         .show(ui, left_panel_top_section_ui);
@@ -334,8 +333,11 @@ impl eframe::App for ExampleApp {
                     egui::ScrollArea::both()
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
+                            let mut inner_margin = tokens.panel_margin();
+                            inner_margin.top = tokens.view_padding();
+                            inner_margin.bottom = tokens.view_padding();
                             egui::Frame {
-                                inner_margin: egui::Margin::same(tokens.view_padding()),
+                                inner_margin,
                                 ..Default::default()
                             }
                             .show(ui, left_panel_bottom_section_ui);
@@ -539,7 +541,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
             ui.label(
                 egui::RichText::new("Welcome to the ReUi example")
-                    .text_style(DesignTokens::welcome_screen_h1()),
+                    .text_style(DesignTokens::heading_1()),
             );
 
             ui.error_label("This is an example of a long error label.");
@@ -560,7 +562,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                 .popup_style(menu_style())
                 .height(300.0)
                 .show_ui(ui, |ui| {
-                    ui.add(ComboItemHeader::new("Recommended:"));
+                    ui.add(ComboItemHeader::new("Recommended"));
 
                     ComboItem::new("vertex_normals")
                         .error(Some("Invalid selector".to_owned()))
@@ -574,7 +576,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                         .append_primitive("0.000")
                         .append_syntax("]");
 
-                    ui.add(ComboItemHeader::new("Other values:"));
+                    ui.add(ComboItemHeader::new("Other values"));
                     ComboItem::new("vertex_positions").ui(ui);
                     ComboItem::new("Rerun default")
                         .value(code.into_widget_text(ui.style()))

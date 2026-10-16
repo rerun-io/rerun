@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from ..encodings import Utf8PairLike
+    from ..encodings import Utf8Pair, Utf8PairLike
     from . import KeyValuePairsArrayLike
 
 
@@ -17,14 +17,14 @@ class KeyValuePairsExt:
     """Extension for [KeyValuePairs][rerun.components.KeyValuePairs]."""
 
     @staticmethod
-    def pairs__field_converter_override(data: Sequence[Utf8PairLike]) -> list[Utf8PairLike]:
+    def pairs__field_converter_override(data: Sequence[Utf8PairLike]) -> list[Utf8Pair]:
         if isinstance(data, dict):
             return [_utf8_pair_converter((k, v)) for k, v in data.items()]
         elif hasattr(data, "__iter__") and not isinstance(data, str):
-            pairs = []
+            pairs: list[Utf8Pair] = []
             for item in data:
                 if hasattr(item, "first") and hasattr(item, "second"):
-                    pairs.append(item)
+                    pairs.append(cast("Utf8Pair", item))
                 elif isinstance(item, dict):
                     pairs.extend([_utf8_pair_converter((k, v)) for k, v in item.items()])
                 else:

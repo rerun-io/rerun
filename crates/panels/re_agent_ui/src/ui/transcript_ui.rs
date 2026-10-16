@@ -175,10 +175,7 @@ fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) {
     let tokens = ui.tokens();
     egui::Frame::new()
         .fill(tokens.form_field_bg_color)
-        .stroke(egui::Stroke::new(
-            1.0,
-            tokens.widget_noninteractive_bg_stroke,
-        ))
+        .stroke(tokens.control_stroke)
         .corner_radius(6)
         .inner_margin(USER_FRAME_MARGIN)
         .show(ui, |ui| {

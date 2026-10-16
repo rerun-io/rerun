@@ -298,7 +298,7 @@ def main() -> None:
         sys.exit(1)
 
     print(
-        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',
+        f'Syncing binary assets for release `{release.tag_name}` ("{release.name}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',
     )
 
     assets = fetch_binary_assets(
@@ -326,7 +326,7 @@ def main() -> None:
     # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
     if release.draft:
         print("Detected mistakenly drafted release, undrafting…")
-        release.update_release(release.title, release.body, draft=False, prerelease=release.prerelease)
+        release.update_release(release.name, release.body, draft=False, prerelease=release.prerelease)
 
 
 if __name__ == "__main__":

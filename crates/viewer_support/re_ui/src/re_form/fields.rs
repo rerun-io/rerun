@@ -50,6 +50,9 @@ pub fn apply_form_field_style(style: &mut Style, tokens: &DesignTokens) {
     let frame = form_field_frame(tokens);
     style.visuals.widgets.inactive.bg_fill = frame.fill;
     style.visuals.widgets.inactive.weak_bg_fill = frame.fill;
+    style.visuals.widgets.inactive.bg_stroke = frame.stroke;
+    style.visuals.widgets.hovered.bg_stroke = frame.stroke;
+    style.visuals.widgets.active.bg_stroke = frame.stroke;
     style.visuals.widgets.active.expansion = 0.0;
     style.visuals.widgets.hovered.expansion = 0.0;
     style.visuals.widgets.open.expansion = 0.0;
@@ -63,5 +66,6 @@ pub fn form_field_frame(tokens: &DesignTokens) -> Frame {
     Frame::new()
         .corner_radius(4.0)
         .fill(tokens.form_field_bg_color)
+        .stroke(tokens.control_stroke)
         .inner_margin(Margin::symmetric(6, 0))
 }

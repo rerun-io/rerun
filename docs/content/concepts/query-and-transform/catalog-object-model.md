@@ -84,6 +84,26 @@ Layers are immutable and can only be overwritten by registering a new `.rrd` fil
 - _append to segment_: by registering a `.rrd` with a matching recording ID to a new layer name
 - _overwrite segment layer_: by registering a `.rrd` with a matching recording ID to an existing layer name, with `on_duplicate=OnDuplicateSegmentLayer.REPLACE`
 
+### Managing segment layers with the Python catalog API
+
+Use `DatasetEntry.segment()` to get a handle to a segment, inspect its current layers, or get its Viewer URL.
+Call `delete_layer()` to unregister one layer from that segment, then wait for the returned handle to track completion.
+Unregistering removes catalog references but does not delete the underlying source objects.
+
+```python
+segment = dataset.segment(segment_id)
+print(segment.layers())
+print(segment.url)
+
+unregistration = segment.delete_layer("predictions")
+unregistration.wait()
+```
+
+To inspect a named layer across the dataset, use `dataset.layer(name).segment_ids()`.
+The layer handle reads current membership on each call, including registrations and removals made after the handle was created.
+See [finding segments in a layer](../../howto/logging-and-ingestion/layers.md#how-can-i-find-the-segments-containing-a-layer) for an example.
+
+See the [`Segment` API reference](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.Segment) for details.
 
 ### Schema
 
@@ -94,6 +114,16 @@ We refer to this as _schema-on-read_, because the schema proceeds from the data,
 This differs from the table model, where the schema is defined upfront (_schema-on-write_).
 
 In this context, the schema of a dataset is the union of schemas of its segments, which themselves are the union of the schemas of their layers.
+
+Use `segment.schema()` to fetch a snapshot of one segment's schema across its registered layers.
+Referenced assets are excluded from the segment's schema.
+
+```python
+segment_schema = dataset.segment(segment_id).schema()
+print(segment_schema)
+print(dataset.schema())
+print(dataset.schema().to_arrow())
+```
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="">

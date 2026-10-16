@@ -3,12 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow
+import pytest
+import rerun as rr
 from datafusion import col
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rerun.catalog import DatasetEntry
 
-    from .conftest import PrefilledCatalog
+    from .conftest import EntryFactory, PrefilledCatalog
 
 
 def test_component_filtering(readonly_test_dataset: DatasetEntry) -> None:
@@ -60,6 +64,56 @@ def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
                     prior_segment = segment
                     if timestamp is not None:
                         prior_timestamp = timestamp
+
+
+@pytest.mark.local_only
+def test_static_overlay_layer_fills_every_row(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """
+    A static-only layer on a segment that also carries temporal chunks must reach every row.
+
+    The two layers land in different chunks, so a query has to hold a row back until the
+    static chunk has arrived. A row emitted before then carries a null where the static
+    value belongs, which is wrong output rather than a failure — nothing raises, the
+    column is simply empty for the rows that went out early.
+
+    The local server plans this dataset as a single fetch batch, so the chunks arrive
+    together and this cannot *force* the late-arrival ordering; that case is covered
+    deterministically by `late_static_chunk_holds_back_every_row` in `re_datafusion`.
+    What this test covers is the realistic segment shape end-to-end, over the wire.
+
+    It runs under whichever pipeline `RERUN_DATAFRAME_PIPELINE` selects.
+    """
+    n_rows = 32
+    base_path = tmp_path / "base.rrd"
+    overlay_path = tmp_path / "statics.rrd"
+
+    # One segment, two layers: the same recording id is what puts them in the same segment.
+    with rr.RecordingStream("rerun_example_static_overlay", recording_id="segment1") as rec:
+        rec.save(base_path)
+        for t in range(n_rows):
+            rec.set_time("frame", sequence=t)
+            rec.log("/points", rr.Points2D([[float(t), float(t)]]))
+
+    with rr.RecordingStream("rerun_example_static_overlay", recording_id="segment1") as rec:
+        rec.save(overlay_path)
+        rec.log("/meta", rr.AnyValues(static_tag=pyarrow.array([7], type=pyarrow.int64())), static=True)
+
+    dataset = entry_factory.create_dataset("static_overlay")
+    dataset.register([base_path.as_uri()], layer_name="base").wait()
+    dataset.register([overlay_path.as_uri()], layer_name="statics").wait()
+
+    batches = dataset.reader(index="frame", fill_latest_at=True).collect()
+    assert batches, "query returned no batches"
+
+    static_columns = [name for name in batches[0].schema.names if name.endswith("static_tag")]
+    assert len(static_columns) == 1, f"expected exactly one static column, got {static_columns}"
+    static_column = static_columns[0]
+
+    total_rows = sum(batch.num_rows for batch in batches)
+    null_rows = sum(batch.column(static_column).null_count for batch in batches)
+
+    assert total_rows == n_rows
+    assert null_rows == 0, f"{null_rows}/{total_rows} rows are missing the static value"
 
 
 def test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -> None:

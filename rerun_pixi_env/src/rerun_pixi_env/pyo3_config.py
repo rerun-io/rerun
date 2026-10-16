@@ -5,8 +5,8 @@ This module queries the current Python interpreter and generates a config file
 that pyo3-build-config can use, ensuring consistent builds whether invoked
 via `maturin develop`, `uv sync`, or any other method.
 
-Note: The `version` field is set to 3.10 (our abi3 minimum), not the actual
-Python version, since we build with abi3-py310.
+Note: The `version` field is set to 3.11 (our abi3 minimum), not the actual
+Python version, since we build with abi3-py311.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ def get_python_config() -> dict[str, Any]:
         implementation = impl_name
 
     # For abi3 builds, version is the minimum supported version, not the actual Python version.
-    # We use abi3-py310, so this should be 3.10 regardless of what Python is installed.
-    version = "3.10"
+    # We use abi3-py311, so this should be 3.11 regardless of what Python is installed.
+    version = "3.11"
 
     # Determine if shared library
     # Match pyo3's logic: shared if Windows, macOS framework, PyPy, or Py_ENABLE_SHARED
@@ -104,7 +104,7 @@ def generate_config_file(output_path: Path) -> bool:
     config = get_python_config()
     python_path = get_python_executable()
 
-    # abi3 is true since we target abi3-py310
+    # abi3 is true since we target abi3-py311
     abi3 = "true"
 
     # Format booleans as lowercase

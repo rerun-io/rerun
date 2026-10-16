@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeAlias, TypeVar
 
+import numpy as np
 import pyarrow as pa
 import torch
 
@@ -67,7 +68,6 @@ class DecodeRequest:
     """
 
 
-@dataclass(frozen=True, kw_only=True, slots=True, eq=False)
 class FieldBatch:
     """
     One field's rows for a whole fetch block, across every segment it touches.
@@ -83,37 +83,102 @@ class FieldBatch:
     Index values are only comparable inside a segment, which is why locating a
     sample's rows is the pipeline's job: see
     [`DecodeRequest`][rerun.experimental.dataloader.DecodeRequest].
+
+    The rows are kept in the chunks they were fetched in. Read them with
+    [`rows`][rerun.experimental.dataloader.FieldBatch.rows] or the `take_*`
+    methods, which copy at most the rows they return; reading
+    [`column`][rerun.experimental.dataloader.FieldBatch.column] copies the whole
+    field when it was fetched in several chunks.
     """
 
-    column: pa.Array
-    """A Rerun component column, with one outer Arrow list per timeline row."""
+    __slots__ = ("_chunk_starts", "_chunks", "_column", "is_windowed", "select")
 
-    select: Selector | None = None
-    is_windowed: bool = False
-    """Whether decoded outputs keep a leading time axis, including a one-value window."""
+    def __init__(
+        self,
+        *,
+        column: pa.Array | pa.ChunkedArray,
+        select: Selector | None = None,
+        is_windowed: bool = False,
+    ) -> None:
+        """
+        Wrap one field's fetched rows.
 
-    def __post_init__(self) -> None:
-        if not pa.types.is_list(self.column.type):
+        Parameters
+        ----------
+        column:
+            A Rerun component column, with one outer Arrow list per timeline row.
+        select:
+            Selector applied by the `take_*` methods.
+        is_windowed:
+            Whether decoded outputs keep a leading time axis, including a one-value window.
+
+        """
+        if not pa.types.is_list(column.type):
             raise TypeError(
-                "FieldBatch.column must be a Rerun component column with an outer Arrow List type, "
-                f"got {self.column.type}"
+                f"FieldBatch.column must be a Rerun component column with an outer Arrow List type, got {column.type}"
             )
+        self._chunks = column if isinstance(column, pa.ChunkedArray) else pa.chunked_array([column])
+        self._chunk_starts = np.cumsum([0, *(len(chunk) for chunk in self._chunks.chunks)], dtype=np.int64)
+        self._column: pa.Array | None = column if isinstance(column, pa.Array) else None
+        self.select = select
+        """Selector applied by the `take_*` methods."""
+        self.is_windowed = is_windowed
+        """Whether decoded outputs keep a leading time axis, including a one-value window."""
+
+    @property
+    def column(self) -> pa.Array:
+        """
+        Every row as one contiguous array.
+
+        When the rows were fetched in several chunks, the first access
+        concatenates them: a copy of the whole field that lives as long as the batch.
+        """
+        if self._column is None:
+            chunks = self._chunks
+            self._column = chunks.chunk(0) if chunks.num_chunks == 1 else chunks.combine_chunks()
+        return self._column
+
+    def rows(self, start: int, stop: int) -> pa.Array:
+        """Rows `[start, stop)` as one array: zero-copy within a chunk, a copy of just these rows across chunks."""
+        if self._column is not None:
+            return self._column.slice(start, stop - start)
+        chunk = int(np.searchsorted(self._chunk_starts, start, side="right")) - 1
+        if 0 <= chunk < self._chunks.num_chunks and stop <= self._chunk_starts[chunk + 1]:
+            return self._chunks.chunk(chunk).slice(start - int(self._chunk_starts[chunk]), stop - start)
+        return self._chunks.slice(start, stop - start).combine_chunks()
 
     def take_decode_rows(self, request: DecodeRequest) -> pa.Array:
         """The request's decode rows, with `select` applied."""
-        selected = self.column.take(pa.array(request.decode_row_indices, type=pa.int64()))
-        return self._select(selected)
+        return self._select(self._take(request.decode_row_indices))
 
     def take_output_rows(self, request: DecodeRequest) -> pa.Array:
         """The rows requested for output, preserving repeats and applying `select`."""
-        selected = self.column.take(pa.array(request.output_row_indices, type=pa.int64()))
-        out = self._select(selected)
+        out = self._select(self._take(request.output_row_indices))
         if len(out) != len(request.output_row_indices):
             raise ValueError(
                 f"Selector returned {len(out)} rows for {len(request.output_row_indices)} requested outputs; "
                 "a windowed field requires a selector that preserves row count"
             )
         return out
+
+    def _take(self, row_indices: tuple[int, ...]) -> pa.Array:
+        if self._column is not None:
+            return self._column.take(pa.array(row_indices, type=pa.int64()))
+        # `ChunkedArray.take` concatenates every chunk first, so take from each chunk separately.
+        indices = np.asarray(row_indices, dtype=np.int64)
+        chunk_ids = np.searchsorted(self._chunk_starts, indices, side="right") - 1
+        if indices.size and (chunk_ids.min() < 0 or chunk_ids.max() >= self._chunks.num_chunks):
+            raise IndexError(f"Row index out of bounds for a column of {len(self._chunks)} rows")
+        # One take per run of consecutive indices into the same chunk, preserving the requested order.
+        boundaries = np.flatnonzero(np.diff(chunk_ids)) + 1
+        pieces = [
+            self._chunks.chunk(int(ids[0])).take(pa.array(run - self._chunk_starts[ids[0]], type=pa.int64()))
+            for run, ids in zip(np.split(indices, boundaries), np.split(chunk_ids, boundaries), strict=True)
+            if run.size
+        ]
+        if not pieces:
+            return pa.array([], type=self._chunks.type)
+        return pieces[0] if len(pieces) == 1 else pa.concat_arrays(pieces)
 
     def _select(self, sliced: pa.Array) -> pa.Array:
         """Apply this batch's selector to `sliced`."""

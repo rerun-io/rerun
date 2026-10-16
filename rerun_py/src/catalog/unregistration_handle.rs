@@ -1,9 +1,8 @@
 // Unregistration only reports how its tasks ended. `registration_handle` maps the same tasks back
 // to one result per segment.
-use pyo3::{Py, PyResult, Python, exceptions::PyValueError, pyclass, pymethods};
+use pyo3::{Py, PyResult, Python, pyclass, pymethods};
 use re_protos::common::v1alpha1::TaskId;
-use re_redap_client::{TaskCompletion, TraceId, format_trace_ids};
-use tokio_stream::StreamExt as _;
+use re_redap_client::TraceId;
 use tracing::Instrument as _;
 
 use crate::{
@@ -50,11 +49,6 @@ impl PyUnregistrationHandleInternal {
     fn wait(&self, py: Python<'_>, timeout_secs: Option<u64>) -> PyResult<()> {
         let span = read_trace_context_from_python(py, "UnregistrationHandle.wait");
 
-        // This happens when running the SDK against an old server, which does not have asynchronous unregistration.
-        if self.tasks.is_empty() {
-            return Ok(());
-        }
-
         let connection = self.client.borrow(py).connection().clone();
         let task_ids = self.tasks.clone();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
@@ -65,45 +59,12 @@ impl PyUnregistrationHandleInternal {
         wait_for_future(
             py,
             async move {
-                let mut completions = connection
+                connection
                     .client()
                     .await?
-                    .task_completions(task_ids, timeout)
+                    .wait_for_tasks(task_ids, request_trace_id, timeout)
                     .await
                     .map_err(to_py_err)?;
-
-                // Trace-id of this completion query.
-                let query_trace_id = completions.trace_id();
-
-                let mut errors = Vec::new();
-
-                while let Some(completion) = completions.next().await {
-                    let TaskCompletion {
-                        task_id,
-                        status,
-                        message,
-                    } = completion.map_err(to_py_err)?;
-
-                    let error = match status.as_str() {
-                        "success" => None,
-                        "cancelled" => Some("unregistration was cancelled".to_owned()),
-                        _ => Some(message.unwrap_or_default()),
-                    };
-
-                    if let Some(err) = error {
-                        errors.push(format!("Unregistration task '{task_id}' failed: {err}"));
-                    }
-                }
-
-                // Check for any errors
-                if !errors.is_empty() {
-                    return Err(PyValueError::new_err(format!(
-                        "Unregistration failed.{}\n\nThe following segments failed:\n{}",
-                        format_trace_ids(request_trace_id, query_trace_id),
-                        errors.join("\n"),
-                    )));
-                }
-
                 Ok(())
             }
             .instrument(span),

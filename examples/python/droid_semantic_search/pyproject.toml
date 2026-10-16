@@ -8,14 +8,14 @@ dependencies = [
   "rerun-sdk[catalog,dataloader]",
   "lancedb", # default local vector store + ANN index (--backend lance)
   "qdrant-client", # alternative local vector store (--backend qdrant)
-  "transformers>=5.18.0", # SigLIP-2 model + processor
-  "pyarrow<26", # building the vector-index table
+  "transformers>=5.19.0", # SigLIP-2 model + processor
+  "pyarrow<27", # building the vector-index table
   "huggingface-hub", # prepare_dataset.py: download DROID sample episodes from the Hub
   "tqdm", # progress bars for download/register/ingest
 ]
 
 [dependency-groups]
-dev = ["mypy==2.4.0", "types-tqdm"]
+dev = ["types-tqdm"]
 
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
@@ -38,29 +38,7 @@ package = false
 [tool.uv.sources]
 rerun-sdk = { path = "../../../rerun_py", editable = true }
 
-# Merged onto the shared base at `../_isolated/mypy.ini` by
-# scripts/ci/isolated_examples.py — list the untyped third-party libs this
-# example actually imports.
-[[tool.mypy.overrides]]
-module = [
-  "lancedb.*",
-  "qdrant_client.*",
-  "torch.*",
-  "torchvision.*",
-  "av.*",
-  "PIL.*",
-  "huggingface_hub.*",
-  # pyarrow is pinned <24 (24.0.0 segfaults rerun on import); 23.x ships no py.typed,
-  # so all of pyarrow — including pyarrow.compute — is untyped to mypy.
-  "pyarrow.*",
-]
-ignore_missing_imports = true
-
-# transformers ships a `py.typed` marker but with incomplete stubs, so type-checking its
-# internals yields false positives we can't fix from here: model methods are wrapped in
-# `_Wrapped` descriptors that mistype `self` (`AutoModel has no attribute "to"`,
-# `AutoProcessor not callable`, etc.). Skip following it — we only need our own usage typed.
-[[tool.mypy.overrides]]
-module = ["transformers.*"]
-follow_imports = "skip"
-ignore_missing_imports = true
+# Makes ty treat this example as its own project instead of walking up to the workspace config.
+[tool.ty.environment]
+python = ".venv"
+extra-paths = ["../../../rerun_py", "../../../rerun_py/rerun_sdk"]

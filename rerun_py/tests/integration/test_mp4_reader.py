@@ -208,7 +208,7 @@ def test_file_not_found(tmp_path: Path) -> None:
 
 def test_invalid_mode() -> None:
     with pytest.raises(ValueError, match="Invalid mode"):
-        Mp4Reader(H264_NO_BFRAMES, mode="bogus")  # type: ignore[call-overload]
+        Mp4Reader(H264_NO_BFRAMES, mode="bogus")  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def test_chunk_by_gop_false_with_asset_mode_rejected() -> None:

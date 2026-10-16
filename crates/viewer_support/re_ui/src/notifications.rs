@@ -700,7 +700,10 @@ fn show_notification(
         let mut reaction = None;
 
         let response = egui::Frame::window(ui.style())
-            .corner_radius(4)
+            .corner_radius(match mode {
+                DisplayMode::Panel => ui.tokens().small_corner_radius(),
+                DisplayMode::Toast => ui.tokens().window_corner_radius(),
+            })
             .inner_margin(10.0)
             .fill(background_color)
             .shadow(egui::Shadow::NONE)

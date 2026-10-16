@@ -66,6 +66,19 @@ impl TextEditVariant {
     }
 }
 
+/// Apply the standard outlined text-edit visuals to a raw egui text edit.
+///
+/// Prefer [`ReTextEdit`] when its API is sufficient; use this adapter when callers need access to
+/// advanced [`TextEdit`] configuration.
+pub fn text_edit_scope<R>(ui: &mut Ui, content: impl FnOnce(&mut Ui) -> R) -> R {
+    ui.scope(|ui| {
+        let tokens = ui.tokens();
+        TextEditVariant::Outlined.apply(ui.style_mut(), tokens);
+        content(ui)
+    })
+    .inner
+}
+
 impl ReTextEdit<'_> {
     pub fn singleline(text: &mut dyn TextBuffer) -> ReTextEdit<'_> {
         ReTextEdit {
@@ -178,8 +191,8 @@ pub fn autocomplete_text_edit(
         text_edit = text_edit.hint_text(hint);
     }
 
-    let mut response = ui
-        .scope(|ui| {
+    let mut response = text_edit_scope(ui, |ui| {
+        ui.scope(|ui| {
             if invalid_hint_text.is_some() {
                 ui.style_invalid_field();
                 text_edit = text_edit.text_color(ui.visuals().error_fg_color);
@@ -187,7 +200,8 @@ pub fn autocomplete_text_edit(
 
             ui.add(text_edit)
         })
-        .inner;
+        .inner
+    });
 
     // Filter suggestions based on current text input.
     let filtered_suggestions: Vec<_> = suggestions

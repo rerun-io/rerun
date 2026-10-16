@@ -30,6 +30,15 @@ pub struct PySchemaInternal {
 }
 
 impl PySchemaInternal {
+    pub fn from_arrow_schema(schema: Schema) -> PyResult<Self> {
+        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
+            .map_err(to_py_err)?;
+        Ok(Self {
+            columns,
+            metadata: schema.metadata,
+        })
+    }
+
     /// Convert back the schema to an Arrow schema.
     pub fn into_arrow_schema(self) -> Schema {
         Schema::new_with_metadata(

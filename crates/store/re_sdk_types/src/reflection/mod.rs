@@ -4676,7 +4676,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "The body of the message.",
-                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                        flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
                         name: "level",
@@ -5757,7 +5757,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "filters",
                         display_name: "Filters",
                         component_type: "rerun.blueprint.components.SqlFilterExpression".into(),
-                        docstring_md: "Filters for the table's rows.\n\nA row in the table is only shown when *all* filters evaluate to true for it.\nEach filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.\n\nThe viewer shows an editable filter for a single column compared to a literal value, for example:\n* `\"score\" >= 3`\n* `\"success\" = true`\n* `\"task\" ILIKE '%pick%'`\n* `\"created\" >= TIMESTAMP '2026-01-01T00:00:00Z'`\n\nFor a list column, the comparison goes in `any_match(\"column\", x -> …)`.\nOther expressions still filter the table, and the viewer shows them as SQL text.",
+                        docstring_md: "Filters for the table's rows.\n\nA row in the table is only shown when *all* filters evaluate to true for it.\nEach filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.\n\nThe viewer shows an editable filter for a single column compared to a literal value, for example:\n* `\"score\" >= 3`\n* `\"success\" = true`\n* `\"task\" ILIKE '%pick%'`\n* `\"created\" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`\n\nFor a list column, the comparison goes in `any_match(\"column\", x -> …)`.\nOther expressions still filter the table, and the viewer shows them as SQL text.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

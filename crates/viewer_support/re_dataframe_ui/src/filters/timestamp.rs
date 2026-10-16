@@ -18,10 +18,6 @@ use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::str::FromStr as _;
 
-use arrow::array::{ArrayRef, BooleanArray};
-use arrow::datatypes::{DataType, Field, TimeUnit};
-use datafusion::common::{Result as DataFusionResult, exec_err};
-use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use datafusion::sql::sqlparser::ast::{
     BinaryOperator, DataType as SqlDataType, Expr as SqlExpr, Value,
 };
@@ -34,7 +30,7 @@ use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
 use super::{
-    Filter, FilterError, FilterUdf, FilterUiAction, SqlColumn, TimestampFormatted, is_same_sql,
+    Filter, FilterUiAction, SqlColumn, SqlValue, TimestampFormatted, function_args, is_same_sql,
     negated_sql, parse_timestamp, quote_string, strip_negation, strip_nested,
 };
 
@@ -185,8 +181,12 @@ impl TimestampFilter {
         let (expr, negated) = strip_negation(expr);
         let (predicate, value) = column.match_predicate(expr)?;
 
-        let bound = |expr: &'_ SqlExpr, operator: BinaryOperator| match value.comparison(expr)? {
-            (op, right) if *op == operator => Some(right.clone()),
+        let bound = |expr: &'_ SqlExpr, operator: BinaryOperator| match strip_nested(expr) {
+            SqlExpr::BinaryOp { left, op, right }
+                if *op == operator && is_timestamp_value(left, &value) =>
+            {
+                Some(strip_nested(right).clone())
+            }
             _ => None,
         };
         let (low, high) = match predicate {
@@ -295,8 +295,38 @@ const RELATIVE_KINDS: [(TimestampFilterKind, &str, &str); 5] = [
     ),
 ];
 
+/// The SQL of a timestamp.
+///
+/// `TIMESTAMPTZ` has the session time zone, so it compares as an instant against columns of any
+/// time zone.
 fn timestamp_sql(timestamp: jiff::Timestamp) -> String {
-    format!("TIMESTAMP {}", quote_string(&timestamp.to_string()))
+    format!("TIMESTAMPTZ {}", quote_string(&timestamp.to_string()))
+}
+
+/// The SQL of a timestamp value of the column.
+///
+/// The values of an `Int64` column are nanoseconds since the epoch.
+fn timestamp_value_sql(column: &SqlColumn<'_>, value: &str) -> String {
+    if column.value_type() == &TimeInt::arrow_data_type() {
+        format!("to_timestamp_nanos({value})")
+    } else {
+        value.to_owned()
+    }
+}
+
+/// The inverse of [`timestamp_value_sql`].
+fn is_timestamp_value(expr: &SqlExpr, value: &SqlValue) -> bool {
+    if value.is(expr) {
+        return true;
+    }
+    let SqlExpr::Function(function) = strip_nested(expr) else {
+        return false;
+    };
+    function
+        .name
+        .to_string()
+        .eq_ignore_ascii_case("to_timestamp_nanos")
+        && matches!(function_args(expr).as_deref(), Some([arg]) if value.is(arg))
 }
 
 fn timestamp_from_sql(expr: &SqlExpr) -> Option<jiff::Timestamp> {
@@ -355,12 +385,13 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
 impl Filter for TimestampFilter {
     fn to_sql(&self, column: &SqlColumn<'_>) -> Option<String> {
         let sql = match self.sql_bounds()? {
-            (Some(low), Some(high)) => {
-                column.predicate_sql(|value| format!("{value} >= {low} AND {value} < {high}"))
-            }
-            (Some(low), None) => column.predicate_sql(|value| format!("{value} >= {low}")),
-            (None, Some(high)) => column.predicate_sql(|value| format!("{value} < {high}")),
             (None, None) => return None,
+            (low, high) => column.predicate_sql(|value| {
+                let value = timestamp_value_sql(column, value);
+                let low = low.map(|low| format!("{value} >= {low}"));
+                let high = high.map(|high| format!("{value} < {high}"));
+                itertools::join(std::iter::chain(low, high), " AND ")
+            }),
         };
 
         Some(match self.operator {
@@ -416,13 +447,13 @@ impl Filter for TimestampFilter {
         // - switching from e.g. "today" to "between"
         // - the user didn't previously enter a value
         let default_timestamp_range = match self.kind {
-            TimestampFilterKind::Today => ResolvedTimestampFilter::Today.timestamp_range(),
-            TimestampFilterKind::Yesterday => ResolvedTimestampFilter::Yesterday.timestamp_range(),
+            TimestampFilterKind::Today => RelativeTimestampRange::Today.timestamp_range(),
+            TimestampFilterKind::Yesterday => RelativeTimestampRange::Yesterday.timestamp_range(),
             TimestampFilterKind::Last24Hours => {
-                ResolvedTimestampFilter::Last24Hours.timestamp_range()
+                RelativeTimestampRange::Last24Hours.timestamp_range()
             }
-            TimestampFilterKind::ThisWeek => ResolvedTimestampFilter::ThisWeek.timestamp_range(),
-            TimestampFilterKind::LastWeek => ResolvedTimestampFilter::LastWeek.timestamp_range(),
+            TimestampFilterKind::ThisWeek => RelativeTimestampRange::ThisWeek.timestamp_range(),
+            TimestampFilterKind::LastWeek => RelativeTimestampRange::LastWeek.timestamp_range(),
             // See note above on `Before`
             TimestampFilterKind::Before => (self.high_bound_timestamp.resolved().ok(), None),
             TimestampFilterKind::After => (self.low_bound_timestamp.resolved().ok(), None),
@@ -483,8 +514,8 @@ impl Filter for TimestampFilter {
         let from_to_header_ui = |ui: &mut egui::Ui, s: &str| {
             ui.label(
                 egui::RichText::new(s)
-                    .color(ui.tokens().text_default)
-                    .size(DesignTokens::list_header_font_size()),
+                    .text_style(DesignTokens::small())
+                    .color(ui.tokens().text_default),
             );
 
             ui.add_space(-2.0);
@@ -494,9 +525,9 @@ impl Filter for TimestampFilter {
             from_to_header_ui(
                 ui,
                 if self.kind == TimestampFilterKind::After {
-                    "After:"
+                    "After"
                 } else {
-                    "From:"
+                    "From"
                 },
             );
 
@@ -514,9 +545,9 @@ impl Filter for TimestampFilter {
             from_to_header_ui(
                 ui,
                 if self.kind == TimestampFilterKind::Before {
-                    "Before:"
+                    "Before"
                 } else {
-                    "To:"
+                    "To"
                 },
             );
 
@@ -541,16 +572,6 @@ impl Filter for TimestampFilter {
     fn on_commit(&mut self) {
         self.low_bound_timestamp.invalidate_timestamp_string();
         self.high_bound_timestamp.invalidate_timestamp_string();
-    }
-
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
-        let udf = ResolvedTimestampFilter::from(self).as_scalar_udf();
-        let expr = udf.call(vec![col(field.name().clone())]);
-
-        Ok(match self.operator {
-            TimestampOperator::Is => expr,
-            TimestampOperator::IsNot => not(expr.clone()).or(expr.is_null()),
-        })
     }
 }
 
@@ -659,14 +680,18 @@ impl EditableTimestamp {
                     self.timestamp_string.clone().unwrap_or_default()
                 };
 
-                let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
-                if parsed.is_err() {
-                    ui.style_invalid_field();
-                }
+                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
+                    ui.scope(|ui| {
+                        let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
+                        if parsed.is_err() {
+                            ui.style_invalid_field();
+                        }
 
-                let response = ui
-                    .text_edit_singleline(&mut timestamp_string_to_edit)
-                    .accessible_name("Timestamp");
+                        ui.text_edit_singleline(&mut timestamp_string_to_edit)
+                            .accessible_name("Timestamp")
+                    })
+                    .inner
+                });
 
                 if response.changed() && is_editable {
                     self.update_and_resolve_timestamp(timestamp_string_to_edit, timestamp_format);
@@ -750,74 +775,25 @@ fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> 
     re_log_types::Timestamp::from(timestamp).format(timestamp_format)
 }
 
-/// Helper to resolve a [`TimestampFilter`] and actually perform the filtering.
+/// The range of a relative timestamp filter, in the system time zone.
 ///
-/// IMPORTANT: this ignores the `TimestampOperator`, because it is applied outside of the UDF.
+/// The popup shows it as the default bounds when switching to an absolute filter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum ResolvedTimestampFilter {
-    All,
-
+enum RelativeTimestampRange {
     Today,
     Yesterday,
     Last24Hours,
     ThisWeek,
     LastWeek,
-
-    /// Accept timestamps that are before the given timestamp.
-    Before(jiff::Timestamp),
-
-    /// Accept timestamps that are at or after the given timestamp.
-    After(jiff::Timestamp),
-
-    /// Accept timestamps that are at or after the low timestamp, and before the high timestamp.
-    Between(jiff::Timestamp, jiff::Timestamp),
 }
 
-impl From<&TimestampFilter> for ResolvedTimestampFilter {
-    fn from(value: &TimestampFilter) -> Self {
-        let low_bound = value.low_bound_timestamp.resolved().ok();
-        let high_bound = value.high_bound_timestamp.resolved().ok();
-
-        match value.kind {
-            TimestampFilterKind::Today => Self::Today,
-            TimestampFilterKind::Yesterday => Self::Yesterday,
-            TimestampFilterKind::Last24Hours => Self::Last24Hours,
-            TimestampFilterKind::ThisWeek => Self::ThisWeek,
-            TimestampFilterKind::LastWeek => Self::LastWeek,
-            TimestampFilterKind::Before => {
-                if let Some(high_bound) = high_bound {
-                    Self::Before(high_bound)
-                } else {
-                    Self::All
-                }
-            }
-            TimestampFilterKind::After => {
-                if let Some(low_bound) = low_bound {
-                    Self::After(low_bound)
-                } else {
-                    Self::All
-                }
-            }
-            TimestampFilterKind::Between => {
-                if let (Some(low_bound), Some(high_bound)) = (low_bound, high_bound) {
-                    Self::Between(low_bound, high_bound)
-                } else {
-                    Self::All
-                }
-            }
-        }
-    }
-}
-
-impl ResolvedTimestampFilter {
-    fn timestamp_range(&self) -> (Option<Timestamp>, Option<Timestamp>) {
+impl RelativeTimestampRange {
+    fn timestamp_range(self) -> (Option<Timestamp>, Option<Timestamp>) {
         let tz = jiff::tz::TimeZone::system();
         let now = Timestamp::now();
         let today = now.to_zoned(tz.clone()).date();
 
         match self {
-            Self::All => (None, None),
-
             Self::Today => day_range_to_timestamp_range(Some(today), today.tomorrow().ok()),
 
             Self::Yesterday => day_range_to_timestamp_range(today.yesterday().ok(), Some(today)),
@@ -848,49 +824,7 @@ impl ResolvedTimestampFilter {
 
                 day_range_to_timestamp_range(week_start.map(|d| d - 7.days()), week_start)
             }
-            Self::Before(high) => (None, Some(*high)),
-            Self::After(low) => (Some(*low), None),
-            Self::Between(low, high) => (Some(*low), Some(*high)),
         }
-    }
-
-    /// Is the provided timestamp accepted by this filter?
-    fn apply(&self, timestamp: jiff::Timestamp) -> bool {
-        let (low, high) = self.timestamp_range();
-
-        if let (Some(low), Some(high)) = (low, high)
-            && high < low
-        {
-            return false;
-        }
-
-        let mut result = true;
-
-        if let Some(low) = low {
-            result &= timestamp >= low;
-        }
-
-        if let Some(high) = high {
-            result &= timestamp < high;
-        }
-
-        result
-    }
-
-    fn apply_seconds(&self, seconds: i64) -> bool {
-        jiff::Timestamp::from_second(seconds).is_ok_and(|t| self.apply(t))
-    }
-
-    fn apply_milliseconds(&self, milli: i64) -> bool {
-        jiff::Timestamp::from_millisecond(milli).is_ok_and(|t| self.apply(t))
-    }
-
-    fn apply_microseconds(&self, micro: i64) -> bool {
-        jiff::Timestamp::from_microsecond(micro).is_ok_and(|t| self.apply(t))
-    }
-
-    fn apply_nanoseconds(&self, nano: i64) -> bool {
-        jiff::Timestamp::from_nanosecond(nano as _).is_ok_and(|t| self.apply(t))
     }
 }
 
@@ -910,57 +844,6 @@ fn day_range_to_timestamp_range(
         high.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz).ok())
             .map(|t| t.timestamp()),
     )
-}
-
-impl FilterUdf for ResolvedTimestampFilter {
-    const PRIMITIVE_SIGNATURE: TypeSignature = TypeSignature::Any(1);
-
-    fn name(&self) -> &'static str {
-        "timestamp"
-    }
-
-    fn is_valid_primitive_input_type(data_type: &DataType) -> bool {
-        match data_type {
-            _data_type if _data_type == &TimeInt::arrow_data_type() => true,
-            DataType::Timestamp(_, _) => true,
-            _ => false,
-        }
-    }
-
-    fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
-        macro_rules! timestamp_case {
-            ($apply_fun:ident, $conv_fun:ident, $op:expr) => {{
-                let array = datafusion::common::cast::$conv_fun(array)?;
-                let result: BooleanArray =
-                    array.iter().map(|x| x.map(|v| $op.$apply_fun(v))).collect();
-
-                Ok(result)
-            }};
-        }
-
-        match array.data_type() {
-            _data_type if _data_type == &TimeInt::arrow_data_type() => {
-                timestamp_case!(apply_nanoseconds, as_int64_array, self)
-            }
-
-            DataType::Timestamp(TimeUnit::Second, _) => {
-                timestamp_case!(apply_seconds, as_timestamp_second_array, self)
-            }
-            DataType::Timestamp(TimeUnit::Millisecond, _) => {
-                timestamp_case!(apply_milliseconds, as_timestamp_millisecond_array, self)
-            }
-            DataType::Timestamp(TimeUnit::Microsecond, _) => {
-                timestamp_case!(apply_microseconds, as_timestamp_microsecond_array, self)
-            }
-            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-                timestamp_case!(apply_nanoseconds, as_timestamp_nanosecond_array, self)
-            }
-
-            _ => {
-                exec_err!("Unsupported data type {}", array.data_type())
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -998,58 +881,17 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_before_filter() {
-        let cutoff = Timestamp::from_second(1000000).unwrap();
-        let filter = ResolvedTimestampFilter::Before(cutoff);
-
-        // Should accept timestamps before the cutoff
-        assert!(filter.apply(Timestamp::from_second(999999).unwrap()));
-        assert!(filter.apply(Timestamp::from_second(0).unwrap()));
-        assert!(filter.apply(Timestamp::from_second(-1000000).unwrap()));
-
-        // Should reject timestamps at or after the cutoff
-        assert!(!filter.apply(cutoff));
-        assert!(!filter.apply(Timestamp::from_second(1000001).unwrap()));
-        assert!(!filter.apply(Timestamp::from_second(2000000).unwrap()));
-    }
-
-    #[test]
-    fn test_after_filter() {
-        let cutoff = Timestamp::from_second(1000000).unwrap();
-        let filter = ResolvedTimestampFilter::After(cutoff);
-
-        // Should accept timestamps at or after the cutoff
-        assert!(filter.apply(cutoff));
-        assert!(filter.apply(Timestamp::from_second(1000001).unwrap()));
-        assert!(filter.apply(Timestamp::from_second(2000000).unwrap()));
-
-        // Should reject timestamps before the cutoff
-        assert!(!filter.apply(Timestamp::from_second(999999).unwrap()));
-        assert!(!filter.apply(Timestamp::from_second(0).unwrap()));
-        assert!(!filter.apply(Timestamp::from_second(-1000000).unwrap()));
-    }
-
-    #[test]
-    fn test_between_filter() {
-        let low = Timestamp::from_second(1000000).unwrap();
-        let high = Timestamp::from_second(2000000).unwrap();
-        let filter = ResolvedTimestampFilter::Between(low, high);
-
-        // Should accept timestamps in the range [low, high)
-        assert!(filter.apply(low));
-        assert!(filter.apply(Timestamp::from_second(1500000).unwrap()));
-        assert!(filter.apply(Timestamp::from_second(1999999).unwrap()));
-
-        // Should reject timestamps outside the range
-        assert!(!filter.apply(Timestamp::from_second(999999).unwrap()));
-        assert!(!filter.apply(high));
-        assert!(!filter.apply(Timestamp::from_second(2000001).unwrap()));
+    impl RelativeTimestampRange {
+        /// Is the timestamp in the range?
+        fn contains(self, timestamp: Timestamp) -> bool {
+            let (low, high) = self.timestamp_range();
+            low.is_none_or(|low| timestamp >= low) && high.is_none_or(|high| timestamp < high)
+        }
     }
 
     #[test]
     fn test_today_filter() {
-        let filter = ResolvedTimestampFilter::Today;
+        let filter = RelativeTimestampRange::Today;
         let tz = jiff::tz::TimeZone::system();
         let now = Timestamp::now();
         let today = now.to_zoned(tz.clone()).date();
@@ -1072,10 +914,10 @@ mod tests {
             .timestamp();
 
         // Today's timestamps should be accepted
-        assert!(filter.apply(today_start));
-        assert!(filter.apply(today_noon));
-        assert!(filter.apply(today_end));
-        assert!(filter.apply(now));
+        assert!(filter.contains(today_start));
+        assert!(filter.contains(today_noon));
+        assert!(filter.contains(today_end));
+        assert!(filter.contains(now));
 
         // Yesterday and tomorrow should be rejected
         if let Ok(yesterday) = today.yesterday() {
@@ -1084,7 +926,7 @@ mod tests {
                 .to_zoned(tz.clone())
                 .unwrap()
                 .timestamp();
-            assert!(!filter.apply(yesterday_noon));
+            assert!(!filter.contains(yesterday_noon));
         }
 
         if let Ok(tomorrow) = today.tomorrow() {
@@ -1093,13 +935,13 @@ mod tests {
                 .to_zoned(tz.clone())
                 .unwrap()
                 .timestamp();
-            assert!(!filter.apply(tomorrow_start));
+            assert!(!filter.contains(tomorrow_start));
         }
     }
 
     #[test]
     fn test_yesterday_filter() {
-        let filter = ResolvedTimestampFilter::Yesterday;
+        let filter = RelativeTimestampRange::Yesterday;
         let tz = jiff::tz::TimeZone::system();
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
@@ -1122,9 +964,9 @@ mod tests {
                 .timestamp();
 
             // Yesterday's timestamps should be accepted
-            assert!(filter.apply(yesterday_start));
-            assert!(filter.apply(yesterday_noon));
-            assert!(filter.apply(yesterday_end));
+            assert!(filter.contains(yesterday_start));
+            assert!(filter.contains(yesterday_noon));
+            assert!(filter.contains(yesterday_end));
 
             // Today should be rejected
             let today_start = today
@@ -1132,7 +974,7 @@ mod tests {
                 .to_zoned(tz.clone())
                 .unwrap()
                 .timestamp();
-            assert!(!filter.apply(today_start));
+            assert!(!filter.contains(today_start));
 
             // Day before yesterday should be rejected
             if let Ok(day_before) = yesterday.yesterday() {
@@ -1141,36 +983,36 @@ mod tests {
                     .to_zoned(tz.clone())
                     .unwrap()
                     .timestamp();
-                assert!(!filter.apply(day_before_noon));
+                assert!(!filter.contains(day_before_noon));
             }
         }
     }
 
     #[test]
     fn test_last_24_hours_filter() {
-        let filter = ResolvedTimestampFilter::Last24Hours;
+        let filter = RelativeTimestampRange::Last24Hours;
 
         // Note: this test doesn't attempt to test close to the limits, because it can become
         // flaky with slow execution time. This is also why we are calling `Timestamp::now()` again
         // for each assert.
 
         // Should accept timestamps within the last 24 hours
-        assert!(filter.apply(Timestamp::now()));
-        assert!(filter.apply(Timestamp::now().checked_sub(1.hours()).unwrap()));
-        assert!(filter.apply(Timestamp::now().checked_sub(12.hours()).unwrap()));
-        assert!(filter.apply(Timestamp::now().checked_sub(23.hours()).unwrap()));
+        assert!(filter.contains(Timestamp::now()));
+        assert!(filter.contains(Timestamp::now().checked_sub(1.hours()).unwrap()));
+        assert!(filter.contains(Timestamp::now().checked_sub(12.hours()).unwrap()));
+        assert!(filter.contains(Timestamp::now().checked_sub(23.hours()).unwrap()));
 
         // Should reject timestamps older than 24 hours
-        assert!(!filter.apply(Timestamp::now().checked_sub(25.hours()).unwrap()));
-        assert!(!filter.apply(Timestamp::now().checked_sub(48.hours()).unwrap()));
+        assert!(!filter.contains(Timestamp::now().checked_sub(25.hours()).unwrap()));
+        assert!(!filter.contains(Timestamp::now().checked_sub(48.hours()).unwrap()));
 
         // Should reject future timestamps
-        assert!(!filter.apply(Timestamp::now().checked_add(1.hours()).unwrap()));
+        assert!(!filter.contains(Timestamp::now().checked_add(1.hours()).unwrap()));
     }
 
     #[test]
     fn test_this_week_filter() {
-        let filter = ResolvedTimestampFilter::ThisWeek;
+        let filter = RelativeTimestampRange::ThisWeek;
         let tz = jiff::tz::TimeZone::system();
         let now = Timestamp::now();
         let today = now.to_zoned(tz.clone()).date();
@@ -1201,10 +1043,10 @@ mod tests {
             .timestamp();
 
         // This week's timestamps should be accepted
-        assert!(filter.apply(monday_start));
-        assert!(filter.apply(wednesday_noon));
-        assert!(filter.apply(sunday_end));
-        assert!(filter.apply(now));
+        assert!(filter.contains(monday_start));
+        assert!(filter.contains(wednesday_noon));
+        assert!(filter.contains(sunday_end));
+        assert!(filter.contains(now));
 
         // Last week's Sunday should be rejected
         let last_sunday = week_start
@@ -1214,7 +1056,7 @@ mod tests {
             .to_zoned(tz.clone())
             .unwrap()
             .timestamp();
-        assert!(!filter.apply(last_sunday));
+        assert!(!filter.contains(last_sunday));
 
         // Next week's Monday should be rejected
         let next_monday = week_start
@@ -1224,12 +1066,12 @@ mod tests {
             .to_zoned(tz.clone())
             .unwrap()
             .timestamp();
-        assert!(!filter.apply(next_monday));
+        assert!(!filter.contains(next_monday));
     }
 
     #[test]
     fn test_last_week_filter() {
-        let filter = ResolvedTimestampFilter::LastWeek;
+        let filter = RelativeTimestampRange::LastWeek;
         let tz = jiff::tz::TimeZone::system();
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
@@ -1260,9 +1102,9 @@ mod tests {
             .timestamp();
 
         // Last week's timestamps should be accepted
-        assert!(filter.apply(last_monday_start));
-        assert!(filter.apply(last_wednesday_noon));
-        assert!(filter.apply(last_sunday_end));
+        assert!(filter.contains(last_monday_start));
+        assert!(filter.contains(last_wednesday_noon));
+        assert!(filter.contains(last_sunday_end));
 
         // This week's Monday should be rejected
         let this_monday = this_week_start
@@ -1270,7 +1112,7 @@ mod tests {
             .to_zoned(tz.clone())
             .unwrap()
             .timestamp();
-        assert!(!filter.apply(this_monday));
+        assert!(!filter.contains(this_monday));
 
         // Two weeks ago should be rejected
         let two_weeks_ago = last_week_start
@@ -1280,7 +1122,7 @@ mod tests {
             .to_zoned(tz.clone())
             .unwrap()
             .timestamp();
-        assert!(!filter.apply(two_weeks_ago));
+        assert!(!filter.contains(two_weeks_ago));
     }
 
     #[test]
@@ -1294,7 +1136,7 @@ mod tests {
         let week_start = wednesday.checked_sub(days_since_monday.days()).unwrap();
         let last_week_start = week_start.checked_sub(7.days()).unwrap();
 
-        // Test the calculation logic that ResolvedTimestampFilter uses
+        // Test the calculation logic that RelativeTimestampRange uses
         assert_eq!(week_start, date(2024, 10, 28)); // Monday of that week
         assert_eq!(last_week_start, date(2024, 10, 21)); // Monday of previous week
     }
@@ -1305,7 +1147,7 @@ mod tests {
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
         // Test exact midnight boundaries for Today filter
-        let filter = ResolvedTimestampFilter::Today;
+        let filter = RelativeTimestampRange::Today;
 
         let today_midnight = today
             .at(0, 0, 0, 0)
@@ -1316,8 +1158,8 @@ mod tests {
         // One nanosecond before midnight today
         let almost_midnight = today_midnight.checked_sub(1.nanoseconds()).unwrap();
 
-        assert!(filter.apply(today_midnight)); // Should include start of today
-        assert!(!filter.apply(almost_midnight)); // Should exclude just before today
+        assert!(filter.contains(today_midnight)); // Should include start of today
+        assert!(!filter.contains(almost_midnight)); // Should exclude just before today
 
         if let Ok(tomorrow) = today.tomorrow() {
             let tomorrow_midnight = tomorrow
@@ -1329,8 +1171,8 @@ mod tests {
             // One nanosecond before tomorrow's midnight
             let end_of_today = tomorrow_midnight.checked_sub(1.nanoseconds()).unwrap();
 
-            assert!(filter.apply(end_of_today)); // Should include end of today
-            assert!(!filter.apply(tomorrow_midnight)); // Should exclude start of tomorrow
+            assert!(filter.contains(end_of_today)); // Should include end of today
+            assert!(!filter.contains(tomorrow_midnight)); // Should exclude start of tomorrow
         }
     }
 }

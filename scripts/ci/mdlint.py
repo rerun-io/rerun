@@ -19,7 +19,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
-from typing import Self
 
 
 @dataclass
@@ -27,7 +26,7 @@ class Span:
     start: int
     end: int
 
-    def offset(self, by: int) -> Self:
+    def offset(self, by: int) -> Span:
         self.start += by
         self.end += by
         return self

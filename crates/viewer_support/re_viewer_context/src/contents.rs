@@ -141,11 +141,8 @@ pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> T
 impl SyntaxHighlighting for ContentsName {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         match self {
-            Self::Named(name) => {
+            Self::Named(name) | Self::Placeholder(name) => {
                 builder.append_body(name);
-            }
-            Self::Placeholder(name) => {
-                builder.append_body_italics(name);
             }
         }
     }

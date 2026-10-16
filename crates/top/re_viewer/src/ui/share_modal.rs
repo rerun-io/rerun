@@ -75,22 +75,29 @@ impl ShareModal {
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen = Self::current_url(store_hub, route, time_ctrl, selection);
-        let enable_share_button = url_for_current_screen.is_ok() && route != &Route::welcome_page();
+        if route == &Route::welcome_page() {
+            return;
+        }
+
+        let Ok(url_for_current_screen) = Self::current_url(store_hub, route, time_ctrl, selection)
+        else {
+            return;
+        };
 
         let share_button_resp = ui
-            .add_enabled_ui(enable_share_button, |ui| ui.button("Share"))
-            .inner;
+            .add(
+                ui.image_button_widget(
+                    icons::SHARE
+                        .as_image()
+                        .fit_to_exact_size(egui::Vec2::splat(16.0)),
+                    "Share",
+                )
+                .image_tint_follows_text_color(true),
+            )
+            .on_hover_text("Share the current screen as a link");
 
-        match url_for_current_screen {
-            Err(err) => {
-                share_button_resp.on_disabled_hover_text(format!("Cannot create share URL: {err}"));
-            }
-            Ok(url) => {
-                if share_button_resp.clicked() {
-                    self.open_with_url(url);
-                }
-            }
+        if share_button_resp.clicked() {
+            self.open_with_url(url_for_current_screen);
         }
     }
 
@@ -129,11 +136,13 @@ impl ShareModal {
                     // TODO(andreas): This is slightly glitchy: you can still type and we forget about it immediately.
                     // Ideally we'd keep this interactive but don't allow text edits, but `TextEdit` doesn't have this option yet.
                     let mut url_for_text_edit = url_string.clone();
-                    egui::TextEdit::singleline(&mut url_for_text_edit)
-                        .hint_text("<can't share link>") // No known way to get into this situation.
-                        .text_color(ui.style().visuals.strong_text_color())
-                        .desired_width(f32::INFINITY) // Take up the entire space.
-                        .show(ui);
+                    re_ui::text_edit::text_edit_scope(ui, |ui| {
+                        egui::TextEdit::singleline(&mut url_for_text_edit)
+                            .hint_text("<can't share link>") // No known way to get into this situation.
+                            .text_color(ui.style().visuals.strong_text_color())
+                            .desired_width(f32::INFINITY) // Take up the entire space.
+                            .show(ui);
+                    });
 
                     url_string
                 };

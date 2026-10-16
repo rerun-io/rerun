@@ -2100,7 +2100,7 @@ fn quote_enum_array_field_converter(
                     raise ValueError("{field_name} must contain {enum_name} values, names, or integers")
 
                 try:
-                    input_values = iter(x)  # type: ignore[arg-type]
+                    input_values = iter(x)  # type: ignore[arg-type]  # ty: ignore[no-matching-overload]
                 except TypeError as err:
                     raise ValueError("{field_name} must be an iterable of {enum_name} values") from err
 
@@ -2529,10 +2529,9 @@ fn quote_arrow_serialization(
 
         ObjectClass::Enum(_) => Ok(unindent(&format!(
             r##"
-if isinstance(data, ({name}, int, str)):
-    data = [data]
+items: Sequence[{name}Like | str] = [data] if isinstance(data, ({name}, int, str)) else data
 
-pa_data = [{name}.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+pa_data = [{name}.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
 return pa.array(pa_data, type=data_type)
         "##
@@ -3063,12 +3062,12 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             {doc_block}
             inst = cls.__new__(cls)
             with catch_and_log_exceptions(context=cls.__name__):
-                kwargs = {{
+                kwargs: dict[str, Any] = {{
                     {kwargs},
                 }}
 
                 if clear_unset:
-                    kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
+                    kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}
 
                 inst.__attrs_init__(**kwargs)
                 return inst
@@ -3159,7 +3158,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             if len(batches) == 0:
                 return ComponentColumnList([])
 
-            kwargs = {{
+            kwargs: dict[str, Any] = {{
                 {kwargs}
             }}
             columns = []
@@ -3169,8 +3168,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
                 # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                    param = kwargs[batch.component_descriptor().component] # type: ignore[index]
-                    shape = np.shape(param)  # type: ignore[arg-type]
+                    param = kwargs[batch.component_descriptor().component]
+                    shape = np.shape(param)
                     num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
 
                     if pa.types.is_fixed_size_list(arrow_array.type):

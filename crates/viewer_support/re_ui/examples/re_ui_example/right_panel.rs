@@ -3,7 +3,7 @@ use eframe::emath::Align2;
 use egui::{Atom, AtomExt as _, AtomKind, Button, DragValue, RichText, TextEdit, Ui, Vec2};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip};
-use re_ui::{TabBar, UiExt as _, icons, list_item};
+use re_ui::{DesignTokens, TabBar, UiExt as _, icons, list_item};
 
 #[derive(PartialEq)]
 enum DemoTab {
@@ -63,7 +63,7 @@ impl RightPanel {
                             &mut self.show_hierarchical_demo,
                             "Hierarchical demo",
                         );
-                        ui.label("Hierarchical:");
+                        ui.label("Hierarchical");
                     })
                     .show(ui, |ui| {
                         if show_hierarchical {
@@ -167,7 +167,7 @@ impl RightPanel {
             ui,
             ui.make_persistent_id("label content features"),
             true,
-            list_item::LabelContent::new("LabelContent features:"),
+            list_item::LabelContent::new("LabelContent features"),
             |ui| {
                 ui.list_item()
                     .show_hierarchical(ui, list_item::LabelContent::new("LabelContent"));
@@ -216,7 +216,6 @@ impl RightPanel {
                         ui,
                         list_item::LabelContent::new("LabelContent with custom styling")
                             .subdued(true)
-                            .italics(true)
                             .with_icon(&re_ui::icons::VIEW_2D),
                     )
                     .on_hover_text("The styling applies to the icon.");
@@ -245,7 +244,7 @@ impl RightPanel {
             ui,
             ui.make_persistent_id("property content features"),
             true,
-            list_item::PropertyContent::new("PropertyContent features:")
+            list_item::PropertyContent::new("PropertyContent features")
                 .value_text("bunch of properties"),
             |ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
@@ -302,7 +301,7 @@ impl RightPanel {
             ui,
             ui.make_persistent_id("property content right button reserve"),
             true,
-            list_item::PropertyContent::new("PropertyContent action button:")
+            list_item::PropertyContent::new("PropertyContent action button")
                 .value_text("demo of right gutter"),
             |ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
@@ -311,7 +310,7 @@ impl RightPanel {
                     fn demo_item(ui: &mut egui::Ui) {
                         ui.list_item().show_hierarchical(
                             ui,
-                            list_item::PropertyContent::new("Some item:").value_fn(|ui, _| {
+                            list_item::PropertyContent::new("Some item").value_fn(|ui, _| {
                                 ui.debug_painter().debug_rect(
                                     ui.max_rect(),
                                     egui::Color32::LIGHT_BLUE,
@@ -345,7 +344,7 @@ impl RightPanel {
             ui,
             ui.make_persistent_id("other features"),
             true,
-            list_item::LabelContent::new("Other contents:"),
+            list_item::LabelContent::new("Other contents"),
             |ui| {
                 ui.list_item().show_hierarchical(
                     ui,
@@ -399,7 +398,9 @@ impl RightPanel {
 
                 let subdued = ui.tokens().text_subdued;
                 let suffix = |suffix: &str| {
-                    RichText::new(suffix).color(subdued).size(10.0)
+                    RichText::new(suffix)
+                        .color(subdued)
+                        .text_style(DesignTokens::small())
                 };
 
                 // The drag value hardcodes it's gap to 0 so we need to add some space

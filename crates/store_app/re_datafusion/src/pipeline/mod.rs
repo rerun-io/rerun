@@ -13,12 +13,19 @@
 //!   plan-estimate bytes.
 //! * [`segment`] — per-segment state, whose plan cursor yields the safe
 //!   horizon that gates emission.
+//!
+//! Selected per query via `RERUN_DATAFRAME_PIPELINE=v2` (see
+//! [`DataframePipeline`]); the branch point is `SegmentStreamExec::execute`.
 
-// TODO(tsaucer): remove this attribute once the executor/driver/bridge wires
-// the module into `SegmentStreamExec::execute`; until then nothing below is
-// reachable.
-#![allow(dead_code)]
-
+mod bridge;
+mod config;
+mod driver;
+mod executor;
 pub(crate) mod plan;
 pub(crate) mod segment;
+#[cfg(test)]
+mod test_support;
 pub(crate) mod window;
+
+pub use bridge::{V2PartitionCtx, execute_partition};
+pub use config::{DataframePipeline, FetchConfig};

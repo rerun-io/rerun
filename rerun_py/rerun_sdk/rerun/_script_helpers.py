@@ -106,7 +106,8 @@ def script_setup(
         strict=True,
     )
 
-    rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
+    rec = rr.get_global_data_recording()
+    assert rec is not None, "`rr.init` sets a global recording"
 
     if args.stdout:
         rec.stdout(default_blueprint=default_blueprint)

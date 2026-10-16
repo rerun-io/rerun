@@ -48,6 +48,9 @@ pub struct ContentContext<'a> {
 
     /// The colors to use for rendering.
     pub visuals: ListVisuals,
+
+    /// Effective placement of this item's collapse button.
+    pub collapse_button_placement: CollapseButtonPlacement,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -76,10 +79,17 @@ pub trait ListItemContent {
     ///
     /// The content should render within the provided `context.rect`.
     ///
-    /// If the content has some interactive elements, it should return its response. In particular,
-    /// if the response is hovered, the list item will show a dimmer background highlight.
-    //TODO(ab): could the return type be just a bool meaning "inner interactive widget was hovered"?
-    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>);
+    /// Returns the collapse-button response when the content places that button itself.
+    fn ui(
+        self: Box<Self>,
+        ui: &mut egui::Ui,
+        context: &ContentContext<'_>,
+    ) -> Option<egui::Response>;
+
+    /// Whether this content can place a collapse button immediately after its label.
+    fn supports_collapse_button_after_label(&self) -> bool {
+        false
+    }
 
     /// The desired width of the content.
     fn desired_width(&self, _ui: &egui::Ui) -> DesiredWidth {

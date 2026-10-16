@@ -3,6 +3,8 @@ use re_agent_ui::{
     AgentSession, LaunchConfig, ToolCallState, Transcript, TranscriptItem, message_text,
     truncate_bytes,
 };
+#[cfg(feature = "analytics")]
+use re_sdk_types::external::uuid::Uuid;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use serde::Serialize;
 
@@ -22,6 +24,10 @@ const MAX_OBSERVATION_BYTES: usize = 10_000;
 /// `PostHog` drops events larger than about 1 MB. This leaves room for the other event properties.
 #[cfg(feature = "analytics")]
 const MAX_TRAJECTORY_BYTES: usize = 900_000;
+
+/// Where this feedback comes from, as the `source` of the analytics event.
+#[cfg(feature = "analytics")]
+const FEEDBACK_SOURCE: &str = "viewer_panel";
 
 /// Asks the user for feedback on one agent conversation,
 /// then sends it together with the conversation as an ATIF trajectory.
@@ -97,28 +103,41 @@ impl FeedbackModal {
         cfg_select! {
             feature = "analytics" => {
                 let Some(config) = config else {
-                    re_log::warn!("Failed to send the feedback: no agent to redact it with");
+                    re_log::warn!(
+                        "Your feedback was not sent: no agent is available to remove sensitive data from it."
+                    );
                     return;
                 };
                 let json = match serde_json::to_value(&trajectory) {
                     Ok(json) => json,
                     Err(err) => {
-                        re_log::error!("Failed to send the feedback: {err}");
+                        re_log::error!("Your feedback was not sent: {err}");
                         return;
                     }
                 };
                 let agent = trajectory.agent.name;
+                let image_count = trajectory.image_count;
+                re_log::info!("Removing sensitive data from your feedback. It is sent after that.");
                 self.redactor.redact(
                     json,
                     config,
                     Box::new(move |redacted| match redacted {
-                        Ok(json) => re_analytics::record(|| feedback_event(&json, agent)),
-                        Err(err) => re_log::warn!("Failed to redact the feedback, so it was not sent: {err}"),
+                        Ok(mut json) => {
+                            // Added after redaction, because the redactor replaces ids with `<id>`.
+                            let feedback_id = Uuid::new_v4();
+                            re_analytics::record(|| {
+                                feedback_event(&mut json, feedback_id, agent, image_count)
+                            });
+                            re_log::info!("Thank you for your feedback.");
+                        }
+                        Err(err) => re_log::warn!(
+                            "Your feedback was not sent: the sensitive data could not be removed ({err})."
+                        ),
                     }),
                 );
             }
             _ => {
-                let _ = (trajectory, config);
+                let _ = (trajectory.image_count, config);
             }
         }
     }
@@ -131,11 +150,23 @@ fn can_send() -> bool {
     }
 }
 
+/// The analytics event for a redacted trajectory.
+///
+/// Also writes `feedback_id` into the trajectory's `extra`, so the event and the trajectory can be
+/// joined wherever the trajectory is stored.
 #[cfg(feature = "analytics")]
 fn feedback_event(
-    trajectory: &serde_json::Value,
+    trajectory: &mut serde_json::Value,
+    feedback_id: Uuid,
     agent: String,
-) -> re_analytics::event::AgentFeedback {
+    image_count: usize,
+) -> re_analytics::event::Feedback {
+    if let Some(extra) = trajectory
+        .get_mut("extra")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        extra.insert("feedback_id".to_owned(), feedback_id.to_string().into());
+    }
     let feedback = trajectory
         .pointer("/extra/feedback")
         .and_then(serde_json::Value::as_str)
@@ -143,11 +174,16 @@ fn feedback_event(
         .to_owned();
     let json = trajectory.to_string();
     let trajectory_bytes = json.len();
-    re_analytics::event::AgentFeedback {
+    re_analytics::event::Feedback {
+        feedback_id,
+        author: re_analytics::event::FeedbackAuthor::User,
+        subject: re_analytics::event::FeedbackSubject::Session,
+        source: FEEDBACK_SOURCE,
         feedback,
         agent,
         trajectory: (trajectory_bytes <= MAX_TRAJECTORY_BYTES).then_some(json),
-        trajectory_bytes,
+        trajectory_bytes: Some(trajectory_bytes),
+        image_count: Some(image_count),
     }
 }
 
@@ -157,6 +193,10 @@ struct Trajectory {
     agent: Agent,
     steps: Vec<Step>,
     extra: Extra,
+
+    /// Images in the conversation, which the steps do not carry.
+    #[serde(skip)]
+    image_count: usize,
 }
 
 #[derive(Serialize)]
@@ -169,6 +209,8 @@ struct Agent {
 }
 
 /// Rerun's own fields, in the ATIF `extra` object.
+///
+/// `feedback_id` is added to the redacted JSON, see [`feedback_event`].
 #[derive(Serialize)]
 struct Extra {
     feedback: String,
@@ -234,20 +276,30 @@ struct ObservationResult {
 impl Trajectory {
     fn new(transcript: &Transcript, agent_name: Option<&str>) -> Self {
         let mut steps: Vec<Step> = Vec::new();
+        let mut image_count = 0;
         for entry in &transcript.items {
             let timestamp = jiff::Timestamp::try_from(entry.created_at)
                 .ok()
                 .map(|timestamp| timestamp.to_string());
             match &entry.item {
                 TranscriptItem::User(prompt) => {
+                    image_count += prompt.images.len();
                     steps.push(Step::new(Source::User, prompt.text.clone(), timestamp));
                 }
                 TranscriptItem::Agent { content, thoughts } => {
+                    image_count += content.iter().filter(|block| is_image(block)).count();
                     let mut step = Step::new(Source::Agent, message_text(content), timestamp);
                     step.reasoning_content = (!thoughts.is_empty()).then(|| thoughts.clone());
                     steps.push(step);
                 }
                 TranscriptItem::ToolCall(call) => {
+                    image_count += call
+                        .content
+                        .iter()
+                        .filter(|content| {
+                            matches!(content, ToolCallContent::Content(content) if is_image(&content.content))
+                        })
+                        .count();
                     if steps.last().is_none_or(|step| step.source != Source::Agent) {
                         steps.push(Step::new(Source::Agent, String::new(), timestamp));
                     }
@@ -286,6 +338,7 @@ impl Trajectory {
                 feedback: String::new(),
                 rerun_version: env!("CARGO_PKG_VERSION"),
             },
+            image_count,
         }
     }
 }
@@ -327,6 +380,10 @@ impl Step {
                 },
             });
     }
+}
+
+fn is_image(block: &ContentBlock) -> bool {
+    matches!(block, ContentBlock::Image(_))
 }
 
 fn tool_output(call: &ToolCallState) -> String {
@@ -442,18 +499,62 @@ mod tests {
         let mut trajectory = Trajectory::new(&transcript, None);
         trajectory.extra.feedback = "Too slow".to_owned();
 
-        let json = serde_json::to_value(&trajectory).expect("serialize");
-        let event = feedback_event(&json, "Test Agent".to_owned());
+        let mut json = serde_json::to_value(&trajectory).expect("serialize");
+        let event = feedback_event(&mut json, Uuid::new_v4(), "Test Agent".to_owned(), 0);
         assert_eq!(event.feedback, "Too slow");
-        assert!(MAX_TRAJECTORY_BYTES < event.trajectory_bytes);
+        assert!(MAX_TRAJECTORY_BYTES < event.trajectory_bytes.expect("a trajectory"));
         assert!(event.trajectory.is_none());
 
-        let small =
+        let mut small =
             serde_json::to_value(Trajectory::new(&Transcript::default(), None)).expect("serialize");
-        let small = feedback_event(&small, "Test Agent".to_owned());
+        let small = feedback_event(&mut small, Uuid::new_v4(), "Test Agent".to_owned(), 0);
         let sent: serde_json::Value =
             serde_json::from_str(&small.trajectory.expect("a small trajectory is sent"))
                 .expect("parse");
         assert_eq!(sent["schema_version"], SCHEMA_VERSION);
+    }
+
+    #[test]
+    #[cfg(feature = "analytics")]
+    fn the_event_and_the_trajectory_share_the_feedback_id() {
+        let mut json =
+            serde_json::to_value(Trajectory::new(&Transcript::default(), None)).expect("serialize");
+        let feedback_id = Uuid::new_v4();
+        let event = feedback_event(&mut json, feedback_id, "Test Agent".to_owned(), 2);
+        assert_eq!(event.feedback_id, feedback_id);
+        assert_eq!(event.source, FEEDBACK_SOURCE);
+        assert_eq!(event.image_count, Some(2));
+        assert_eq!(event.author, re_analytics::event::FeedbackAuthor::User);
+        assert_eq!(event.subject, re_analytics::event::FeedbackSubject::Session);
+
+        let sent: serde_json::Value =
+            serde_json::from_str(&event.trajectory.expect("a small trajectory is sent"))
+                .expect("parse");
+        assert_eq!(sent["extra"]["feedback_id"], feedback_id.to_string());
+    }
+
+    #[test]
+    fn images_are_counted_but_not_sent() {
+        use re_agent_ui::acp::schema::v1::ImageContent;
+        use re_agent_ui::{Prompt, PromptImage};
+
+        let mut transcript = Transcript::default();
+        transcript.push_user(Prompt {
+            text: "What is wrong here?".to_owned(),
+            images: vec![PromptImage {
+                bytes: std::sync::Arc::from([0_u8].as_slice()),
+                mime_type: "image/png".to_owned(),
+                size: [800, 600],
+            }],
+        });
+        transcript.apply(SessionUpdate::AgentMessageChunk(ContentChunk::new(
+            ContentBlock::Image(ImageContent::new("AAAA", "image/png")),
+        )));
+
+        let trajectory = Trajectory::new(&transcript, None);
+        assert_eq!(trajectory.image_count, 2);
+        let json = serde_json::to_string(&trajectory).expect("serialize");
+        assert!(!json.contains("AAAA"), "{json}");
+        assert!(!json.contains("image_count"), "{json}");
     }
 }

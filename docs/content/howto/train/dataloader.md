@@ -80,6 +80,10 @@ snippet: howto/dataloader[window]
 
 The example uses this to feed 50-step action chunks into the ACT policy.
 With `VideoFrameDecoder`, a window returns one decoded frame per explicit offset as a `[T, 3, H, W]` tensor.
+`VideoFrameDecoder(window_storage="view")` collects decoded RGB frames in a common frame buffer and returns views for contiguous windows.
+The decoder fills that buffer as frames are converted to RGB, avoiding a separate stacking allocation for the shared buffer.
+RGB conversion contexts are reused within each thread.
+Overlapping windows share storage, so treat them as read-only until collation.
 For GPU training, `VideoFrameDecoder(output_format="yuv420p", window_storage="view")` instead returns compact YUV planes, shares decoded storage across overlapping windows, and defers RGB conversion until after device transfer.
 With `NumericDecoder`, every resolved numeric-list row in a window must have the same width, producing a `[T, D]` tensor (including `[T, 1]` for a scalar component).
 Variable-width window rows decode to `None` rather than being flattened and losing their time boundaries; the live iterable dataset treats that sample as missing.
@@ -87,6 +91,14 @@ Variable-width window rows decode to `None` rather than being flattened and losi
 Unwindowed variable-sized values such as point clouds remain supported as one tensor per sample.
 Batch them with a custom `collate_fn` that pads and returns a mask, samples a fixed number of elements, or concatenates values and returns batch offsets.
 Padding belongs in the collator because only it knows the maximum size of the actual training batch.
+
+For CPU tensors, NumPy arrays, numbers, and YUV frames, `rerun.experimental.dataloader.PooledBatchCollator` reuses shared CPU buffers for worker-to-consumer batches on Linux.
+It supports nested dictionaries, lists, and tuples with matching structure, shapes, and data types across samples.
+Worker pooling requires `multiprocessing_context="spawn"` and PyTorch's `file_descriptor` sharing strategy.
+With `num_workers=0`, it batches data without pooling and also works on other platforms.
+Buffers are allocated on demand and returned to the pool after the consumer releases them.
+Pool limits bound cached buffers per worker; retained batches and uncached fallback allocations can use additional memory.
+It works with either dataset style; see the [pooled-batch example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader_pooled_batches) for usage and ownership constraints.
 
 #### Video decoding is GOP-aware
 

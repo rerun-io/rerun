@@ -50,6 +50,14 @@ thiserror.workspace = true
 
 [dev-dependencies]
 re_test_context.workspace = true
+criterion.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "query_result_hash"
+harness = false
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
 re_workspace_hack.workspace = true

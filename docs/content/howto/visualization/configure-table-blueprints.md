@@ -11,7 +11,7 @@ Use table blueprints to order, rename, or hide columns, embed segment previews, 
 
 Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
 
-The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py?speculative-link) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
+The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
 ## Prerequisites
 
@@ -108,6 +108,30 @@ Editing requires write access to a catalog table with a row-key column marked wi
 The Viewer uses this key to persist edits. See [Update a table](../query-and-transform/catalog-tables.md#update-a-table) for details.
 Editing flags is currently not supported on dataset segment tables.
 
+### Filtering rows
+
+`filters` hides the rows that don't match every filter, in both layouts:
+
+snippet: howto/visualization/configure_table_blueprints[filters]
+
+`rrb.table.col` builds filters for one column.
+It only builds the filters that can be edited in the Viewer's filter bar:
+- numbers: `eq()`, `ne()`, `lt()`, `le()`, `gt()`, `ge()`, or the operators `==`, `!=`, `<`, `<=`, `>`, `>=`
+- booleans: `is_true()`, `is_false()`, `is_null()`, `is_not_true()`, `is_not_false()`, `is_not_null()`
+- strings: `str.contains()`, `str.does_not_contain()`, `str.starts_with()`, `str.ends_with()`, matched as plain text ignoring case
+- timestamps: `before()`, `after()`, `between()`, and relative ranges such as `today()` and `last_week()`, and the negated ranges such as `not_between()` and `not_today()`
+
+The negated filters such as `ne()` and `str.does_not_contain()` also select the rows where the value is null.
+For a list column, use the same filters on `.list`, e.g. `col("tags").list.str.contains("pick")`, to select the rows where any value of the list matches.
+The negated filters then select the rows where no value matches.
+
+`col` doesn't know the type of the column, so make sure the filter matches the given column.
+The Viewer shows a filter for another type, such as `str.contains()` on a number column, as SQL text.
+If the SQL doesn't work on the column, the Viewer shows the error on that filter and doesn't apply it.
+
+Instead of using `rrb.table.col`, you can also provide a string with a raw SQL expression in [DataFusion's SQL dialect](https://datafusion.apache.org/user-guide/sql/index.html), with double-quoted column names.
+It filters the table like any other filter, and the Viewer shows it as SQL text.
+
 ## Configuring a dataset's segment table
 
 Dataset segment tables use the same blueprint API.
@@ -135,4 +159,4 @@ For more complete examples, including setup and usage instructions, see:
 - [Table grid with flags](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_grid_with_flags/README.md): a standalone editable table demonstrating row keys and persisted flag updates, without segment previews.
 
 For more about catalog entries and their blueprints, see the [Catalog object model](../../concepts/query-and-transform/catalog-object-model.md).
-For the available configuration options, see the [Python table blueprint API reference](https://ref.rerun.io/docs/python/stable/blueprint_table/?speculative-link).
+For the available configuration options, see the [Python table blueprint API reference](https://ref.rerun.io/docs/python/stable/blueprint_table/).

@@ -10,11 +10,12 @@ use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
 use re_ui::{
-    BoundCommand, CmdRow, CommandEnvironment, CommandPaletteProvider, FuzzyMatch, FuzzyQuery,
-    ListedCommand, MatchGroup, MatchedCmd, SyntaxHighlighting as _,
+    BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
+    SyntaxHighlighting as _,
 };
 use re_viewer_context::open_url::ViewerOpenUrl;
 
+use crate::command_catalog::{CommandContext, catalog_commands};
 use crate::open_url_description::ViewerOpenUrlDescription;
 
 /// Something the user can pick in the command palette.
@@ -87,7 +88,7 @@ pub struct CommandPaletteProviderImpl<'a> {
     pub redap_servers: &'a RedapServers,
 
     /// Determines which commands are currently available.
-    pub cmd_env: CommandEnvironment,
+    pub commands: CommandContext,
 }
 
 impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl<'_> {
@@ -109,8 +110,6 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         let ui_cmd_group = if query.raw_query().starts_with('/') {
             vec![] // The user is looking for an entity path.
         } else {
-            let cmd_env = &self.cmd_env;
-
             // Helper to match a command against the query:
             let match_command = |target_text: &str, enabled: bool, command| {
                 if query.is_empty() {
@@ -131,12 +130,13 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
                 }
             };
 
-            re_ui::palette_commands(cmd_env)
-                .into_iter()
-                .filter_map(|ListedCommand { command, enabled }| {
+            catalog_commands()
+                .filter(|&kind| self.commands.is_visible(kind))
+                .filter_map(|kind| {
+                    let command = kind.bind(&self.commands.environment)?;
                     match_command(
-                        command.kind().text(),
-                        enabled,
+                        kind.text(),
+                        self.commands.resolve(kind).is_some(),
                         CommandPaletteAction::Command(command),
                     )
                 })
@@ -194,7 +194,7 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         {
             (vec![], vec![])
         } else {
-            let selected_server = self.cmd_env.redap_server.as_ref();
+            let selected_server = self.commands.environment.redap_server.as_ref();
 
             // When entries from more than one server can show up,
             // show which server each entry belongs to.

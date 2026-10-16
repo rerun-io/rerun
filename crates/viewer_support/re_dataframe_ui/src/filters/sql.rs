@@ -9,7 +9,7 @@ use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::common::{DFSchema, DataFusionError, plan_err};
 use datafusion::execution::SessionState;
 use datafusion::logical_expr::utils::{find_aggregate_exprs, find_window_exprs};
-use datafusion::logical_expr::{Expr, ExprSchemable as _};
+use datafusion::logical_expr::{Expr, ExprSchemable as _, lit};
 use datafusion::sql::parser::DFParser;
 use datafusion::sql::sqlparser::ast::{
     BinaryOperator, Expr as SqlExpr, ExprWithAlias, FunctionArg, FunctionArgExpr,
@@ -31,19 +31,19 @@ pub fn parse_sql_expr(sql: &str) -> Result<SqlExpr, DataFusionError> {
 
 /// Plan a SQL filter for a dataframe with the given schema.
 ///
-/// SQL that parses into a [`ColumnFilter`] runs as that filter. Any other SQL needs to return a
-/// boolean.
+/// The SQL returns a boolean.
 pub fn filter_expression(
     state: &SessionState,
     schema: &DFSchema,
     sql: &str,
 ) -> Result<Expr, DataFusionError> {
-    let sql_expr = parse_sql_expr(sql)?;
+    let mut sql_expr = parse_sql_expr(sql)?;
 
     if let Some(column_filter) = ColumnFilter::from_sql(&sql_expr, schema.as_arrow()) {
-        return column_filter
-            .as_filter_expression()
-            .map_err(|err| DataFusionError::External(Box::new(err)));
+        match column_filter.to_sql() {
+            Some(column_filter_sql) => sql_expr = parse_sql_expr(&column_filter_sql)?,
+            None => return Ok(lit(true)),
+        }
     }
 
     let expr = state.create_logical_expr_from_sql_expr(
@@ -96,19 +96,31 @@ pub fn leftmost_column(expr: &SqlExpr, schema: &Schema) -> Option<String> {
 /// The column a filter applies to.
 pub struct SqlColumn<'a> {
     name: &'a str,
-    is_list: bool,
+    data_type: &'a DataType,
 }
 
 impl<'a> SqlColumn<'a> {
     pub fn new(field: &'a Field) -> Self {
         Self {
             name: field.name(),
-            is_list: matches!(field.data_type(), DataType::List(_) | DataType::ListView(_)),
+            data_type: field.data_type(),
+        }
+    }
+
+    fn list_value_type(&self) -> Option<&DataType> {
+        match self.data_type {
+            DataType::List(inner) | DataType::ListView(inner) => Some(inner.data_type()),
+            _ => None,
         }
     }
 
     pub fn is_list(&self) -> bool {
-        self.is_list
+        self.list_value_type().is_some()
+    }
+
+    /// The datatype of the column, or of its values for a list column.
+    pub fn value_type(&self) -> &DataType {
+        self.list_value_type().unwrap_or(self.data_type)
     }
 
     /// The quoted column name.
@@ -122,7 +134,7 @@ impl<'a> SqlColumn<'a> {
     /// predicate holds for any of its values.
     pub fn predicate_sql(&self, predicate: impl FnOnce(&str) -> String) -> String {
         let column = self.sql();
-        if self.is_list {
+        if self.is_list() {
             format!(
                 "any_match({column}, {LAMBDA_PARAMETER} -> {})",
                 predicate(LAMBDA_PARAMETER)
@@ -136,7 +148,7 @@ impl<'a> SqlColumn<'a> {
     ///
     /// Returns the predicate and the name of the value it applies to.
     pub fn match_predicate<'e>(&self, expr: &'e SqlExpr) -> Option<(&'e SqlExpr, SqlValue)> {
-        if !self.is_list {
+        if !self.is_list() {
             return Some((
                 strip_nested(expr),
                 SqlValue {
@@ -287,7 +299,7 @@ pub fn is_same_sql(expr: &SqlExpr, sql: &str) -> bool {
 }
 
 /// The arguments of a function call without named or wildcard arguments.
-fn function_args(expr: &SqlExpr) -> Option<Vec<&SqlExpr>> {
+pub fn function_args(expr: &SqlExpr) -> Option<Vec<&SqlExpr>> {
     let SqlExpr::Function(function) = strip_nested(expr) else {
         return None;
     };
@@ -347,7 +359,7 @@ mod tests {
                     ]
                 })
                 .collect(),
-            DataType::Float64 => ComparisonOperator::VARIANTS
+            DataType::Float32 | DataType::Float64 => ComparisonOperator::VARIANTS
                 .iter()
                 .flat_map(|op| {
                     [
@@ -392,6 +404,7 @@ mod tests {
         let data_types = [
             DataType::Boolean,
             DataType::Int64,
+            DataType::Float32,
             DataType::Float64,
             DataType::Utf8,
             DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
@@ -425,6 +438,85 @@ mod tests {
         }
 
         insta::assert_snapshot!(all_sql.join("\n"));
+    }
+
+    /// Timestamp filters on a column of the `Timestamp` component, which has the nanoseconds
+    /// since the epoch as integers, parse back from the SQL they write.
+    #[test]
+    fn timestamp_component_filters_round_trip_through_sql() {
+        use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+
+        let mut all_sql = Vec::new();
+        for is_list in [false, true] {
+            let column_type = if is_list {
+                DataType::new_list(DataType::Int64, true)
+            } else {
+                DataType::Int64
+            };
+            let field = Arc::new(
+                Field::new("created", column_type, true).with_metadata(
+                    [(
+                        FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
+                        re_sdk_types::components::Timestamp::name().to_string(),
+                    )]
+                    .into(),
+                ),
+            );
+            let schema = Schema::new_with_metadata(vec![Arc::clone(&field)], Default::default());
+
+            let timestamp_type = DataType::Timestamp(TimeUnit::Nanosecond, None);
+            for filter in filters_for(&timestamp_type, true) {
+                let column_filter = ColumnFilter::new(Arc::clone(&field), filter);
+                let sql = column_filter.to_sql().expect("filter selects some rows");
+                assert_eq!(
+                    TableFilter::from_sql(&sql, &schema),
+                    TableFilter::Column(column_filter),
+                    "{sql}"
+                );
+                all_sql.push(sql);
+            }
+        }
+
+        insta::assert_snapshot!(all_sql.join("\n"));
+    }
+
+    /// The examples in the docs of the table blueprint filters are column filters that write the
+    /// same SQL back. A timestamp written as `TIMESTAMP` is the same filter as with `TIMESTAMPTZ`.
+    #[test]
+    fn table_blueprint_doc_examples_are_column_filters() {
+        let schema = Schema::new_with_metadata(
+            vec![
+                Field::new("score", DataType::Int64, false),
+                Field::new("success", DataType::Boolean, false),
+                Field::new("task", DataType::Utf8, false),
+                Field::new(
+                    "created",
+                    DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                    false,
+                ),
+            ],
+            Default::default(),
+        );
+
+        for sql in [
+            r#""score" >= 3"#,
+            r#""success" = true"#,
+            r#""task" ILIKE '%pick%'"#,
+            r#""created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'"#,
+        ] {
+            let TableFilter::Column(column_filter) = TableFilter::from_sql(sql, &schema) else {
+                panic!("not a column filter: {sql}");
+            };
+            assert_eq!(column_filter.to_sql().as_deref(), Some(sql));
+        }
+
+        assert_eq!(
+            TableFilter::from_sql(r#""created" >= TIMESTAMP '2026-01-01T00:00:00Z'"#, &schema),
+            TableFilter::from_sql(
+                r#""created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'"#,
+                &schema
+            ),
+        );
     }
 
     /// Filters without a value select every row and have no SQL.
@@ -496,6 +588,95 @@ mod tests {
             TableFilter::Column(ColumnFilter::new(
                 field,
                 IntFilter::new(ComparisonOperator::Ge, Some(-3))
+            ))
+        );
+    }
+
+    /// The Python SDK writes number and timestamp literals the way Python formats them, and these
+    /// also become column filters.
+    #[test]
+    fn python_literals_are_parsed() {
+        let float_field = Arc::new(Field::new("value", DataType::Float64, false));
+        let timestamp_field = Arc::new(Field::new(
+            "time",
+            DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+            false,
+        ));
+        let schema = Schema::new_with_metadata(
+            vec![Arc::clone(&float_field), Arc::clone(&timestamp_field)],
+            Default::default(),
+        );
+
+        for (sql, value) in [
+            (r#""value" > 1e+300"#, 1e300),
+            (r#""value" > 1e-07"#, 1e-7),
+            (r#""value" > CAST('-inf' AS DOUBLE)"#, f64::NEG_INFINITY),
+        ] {
+            assert_eq!(
+                TableFilter::from_sql(sql, &schema),
+                TableFilter::Column(ColumnFilter::new(
+                    Arc::clone(&float_field),
+                    FloatFilter::new(ComparisonOperator::Gt, Some(value))
+                )),
+                "{sql}"
+            );
+        }
+
+        let sql = r#""value" = CAST('NaN' AS DOUBLE)"#;
+        let TableFilter::Column(ColumnFilter {
+            filter: TypedFilter::Float(filter),
+            ..
+        }) = TableFilter::from_sql(sql, &schema)
+        else {
+            panic!("{sql}");
+        };
+        assert!(filter.rhs_value().is_some_and(f64::is_nan), "{sql}");
+
+        let sql = r#""time" < TIMESTAMPTZ '1973-03-03T09:46:40.500000Z'"#;
+        assert_eq!(
+            TableFilter::from_sql(sql, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                timestamp_field,
+                TimestampFilter::before(timestamp() + jiff::SignedDuration::from_millis(500))
+            )),
+            "{sql}"
+        );
+    }
+
+    /// The Python SDK doesn't know the column types, so it writes the same SQL for a `Float32`
+    /// column as for a `Float64` column, and the same SQL for a column of the `Timestamp`
+    /// component as for an Arrow timestamp column. These are still column filters.
+    #[test]
+    fn python_sql_for_typed_columns_is_parsed() {
+        use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+
+        let float_field = Arc::new(Field::new("value", DataType::Float32, false));
+        let timestamp_field = Arc::new(
+            Field::new("created", DataType::Int64, false).with_metadata(
+                [(
+                    FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
+                    re_sdk_types::components::Timestamp::name().to_string(),
+                )]
+                .into(),
+            ),
+        );
+        let schema = Schema::new_with_metadata(
+            vec![Arc::clone(&float_field), Arc::clone(&timestamp_field)],
+            Default::default(),
+        );
+
+        assert_eq!(
+            TableFilter::from_sql(r#""value" > 0.1"#, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                float_field,
+                FloatFilter::new(ComparisonOperator::Gt, Some(0.1))
+            ))
+        );
+        assert_eq!(
+            TableFilter::from_sql(r#""created" < TIMESTAMPTZ '1973-03-03T09:46:40Z'"#, &schema),
+            TableFilter::Column(ColumnFilter::new(
+                timestamp_field,
+                TimestampFilter::before(timestamp())
             ))
         );
     }

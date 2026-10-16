@@ -209,6 +209,11 @@ re_perf_telemetry = { workspace = true, optional = true }
 tempfile.workspace = true
 tokio.workspace = true
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-app-kit.workspace = true
+objc2-foundation.workspace = true
+
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true

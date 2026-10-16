@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import ExitStack
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pyarrow as pa
 import pytest
 
+if TYPE_CHECKING:
+    from rerun.notebook import Viewer
+
 
 @pytest.fixture
-def mocked_viewer() -> tuple[MagicMock, MagicMock]:
+def mocked_viewer() -> Iterator[tuple[Viewer, MagicMock]]:
     """Create a high-level rerun.notebook.Viewer with all heavy deps mocked out.
 
     Yields the Viewer along with the mock for its low-level rerun_notebook.Viewer
@@ -39,7 +44,7 @@ def mocked_viewer() -> tuple[MagicMock, MagicMock]:
 SAMPLE_BATCH = pa.RecordBatch.from_pydict({"x": [1, 2, 3]})
 
 
-def test_send_table_sends_bytes(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_send_table_sends_bytes(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     viewer, low_level = mocked_viewer
     viewer.send_table("t", SAMPLE_BATCH)
 
@@ -48,7 +53,7 @@ def test_send_table_sends_bytes(mocked_viewer: tuple[MagicMock, MagicMock]) -> N
     assert len(args[0]) > 0
 
 
-def test_send_table_does_not_block_on_viewer_ready(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_send_table_does_not_block_on_viewer_ready(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     # The spinner now renders as a standalone output widget, so send_table should
     # not wait for the Viewer Wasm to load.
     viewer, low_level = mocked_viewer
@@ -57,7 +62,7 @@ def test_send_table_does_not_block_on_viewer_ready(mocked_viewer: tuple[MagicMoc
     low_level.block_until_ready.assert_not_called()
 
 
-def test_send_table_sets_then_clears_loading_widget(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_send_table_sets_then_clears_loading_widget(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     # The loading widget value should land on "" across the call so the indicator
     # disappears once the data has been sent.
     viewer, _ = mocked_viewer
@@ -66,7 +71,7 @@ def test_send_table_sets_then_clears_loading_widget(mocked_viewer: tuple[MagicMo
     assert viewer._loading_widget.value == ""
 
 
-def test_send_table_loading_html_mentions_table_id(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_send_table_loading_html_mentions_table_id(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     # Use PropertyMock to record every get/set of the loading widget's `value`
     # attribute, then filter to the setter calls (which carry the new value).
     viewer, _ = mocked_viewer
@@ -80,7 +85,7 @@ def test_send_table_loading_html_mentions_table_id(mocked_viewer: tuple[MagicMoc
     assert assigned[-1] == ""
 
 
-def test_display_groups_loading_and_viewer_in_vbox(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_display_groups_loading_and_viewer_in_vbox(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     # The loading indicator must share a layout container with the Viewer so its
     # height is tied to the viewer's layout box rather than living in its own
     # notebook output cell.
@@ -93,7 +98,7 @@ def test_display_groups_loading_and_viewer_in_vbox(mocked_viewer: tuple[MagicMoc
     assert children == [viewer._loading_widget, low_level]
 
 
-def test_send_table_clears_loading_widget_on_error(mocked_viewer: tuple[MagicMock, MagicMock]) -> None:
+def test_send_table_clears_loading_widget_on_error(mocked_viewer: tuple[Viewer, MagicMock]) -> None:
     # If the table send raises, the spinner must still be cleared so the user
     # isn't left staring at a stuck progress indicator.
     viewer, low_level = mocked_viewer

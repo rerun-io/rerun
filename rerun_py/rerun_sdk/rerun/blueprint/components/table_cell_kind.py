@@ -129,9 +129,8 @@ class TableCellKindBatch(BaseBatch[TableCellKindArrayLike], ComponentBatchMixin)
 
     @staticmethod
     def _native_to_pa_array(data: TableCellKindArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (TableCellKind, int, str)):
-            data = [data]
+        items: Sequence[TableCellKindLike | str] = [data] if isinstance(data, (TableCellKind, int, str)) else data
 
-        pa_data = [TableCellKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [TableCellKind.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

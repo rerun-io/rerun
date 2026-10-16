@@ -28,6 +28,12 @@ pub enum SystemCommand {
     /// Will not load any new data if the source is already one of the active data sources.
     LoadDataSource(LogDataSource),
 
+    /// Drop this value once every command queued before it has run.
+    ///
+    /// Keeps something alive, such as a registration guard, until the commands it stands for
+    /// have taken effect rather than merely been queued.
+    DropAfterQueuedCommands(Box<dyn std::any::Any + Send>),
+
     /// Add a new receiver for log messages.
     AddReceiver(LogReceiver),
 
@@ -334,6 +340,16 @@ impl CommandReceiver {
         // The only way this can fail (other than being empty)
         // is if the sender has been dropped.
         self.recording_receiver.try_recv().ok()
+    }
+
+    /// Has every command sent so far been received?
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            system_receiver,
+            ui_receiver,
+            recording_receiver,
+        } = self;
+        system_receiver.is_empty() && ui_receiver.is_empty() && recording_receiver.is_empty()
     }
 }
 

@@ -13,7 +13,7 @@
 name = "rerun-workspace"
 version = "0.28.0-alpha.1+dev"
 description = "Rerun Python workspace"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.13"
 
 [dependency-groups]
 dev = [
@@ -27,7 +27,6 @@ dev = [
   "maturin>=1.14.1",
   "ruff==0.16.9",
   "mypy==1.19.1",
-  "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
   "pandas>=2.0",
   "pandas-stubs==2.3.3.251201",
@@ -43,6 +42,7 @@ dev = [
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",
+  "tomli>=2.0",
   "tomlkit>=0.12",
   "GitPython>=3.1",
   "PyGithub>=2.0", #NOLINT
@@ -326,9 +326,12 @@ extend-exclude = [
 
 [tool.ruff.lint]
 extend-select = [
+  "ANN", # Require type annotations
   "S", # flake8-bandit: security lints
 ]
 ignore = [
+  "ANN401", # Explicit `Any`
+
   # flake8-bandit (`S`). This tree is an SDK plus its examples, docs snippets, tests and
   # build scripts, so the rules below cannot produce a security finding anywhere in it.
   # Everything scoped to a subdirectory instead is under `per-file-ignores`.
@@ -365,6 +368,9 @@ ignore = [
   "RUF069", # Exact float equality comparison
 ]
 
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
 [tool.ruff.lint.per-file-ignores]
 "docs/snippets/all/*" = [
   # Missing required import: `from __future__ import annotations`
@@ -391,6 +397,8 @@ ignore = [
   # marimo's notebook format: a cell's last expression is its output, and every cell ends in `return`.
   "B018",
   "PLR1711",
+  # marimo injects cell arguments by name from other cells' return values.
+  "ANN",
 ]
 
 "examples/notebook/notebook_neural_field_2d/neural_field_2d.ipynb" = [
@@ -421,9 +429,8 @@ ignore = [
 ######################
 
 [tool.mypy]
-# Force mypy to check against 3.10 stdlib, even though pixi runs 3.11.
-# This catches imports like `from typing import Self` that don't exist in 3.10.
-python_version = "3.10"
+# Force mypy to check against the stdlib of our minimum supported Python, even if pixi runs a newer one.
+python_version = "3.11"
 # Examples and docs are managed independently of the SDK.
 # in ini file adjacent to this.
 files = [
@@ -471,31 +478,126 @@ ignore_errors = true
 ignore_missing_imports = true
 
 [tool.ty.environment]
-extra-paths = ["rerun_py", "rerun_py/rerun_sdk"]
+extra-paths = [
+  "rerun_py",
+  "rerun_py/rerun_sdk",
+  "rerun_notebook/src",
+  # Scripts that import siblings by putting their own directory on `sys.path`.
+  "scripts",
+  "scripts/ci",
+]
 
 [tool.ty.src]
 include = [
-  "rerun_py/rerun_sdk/rerun",
-  "rerun_py/rerun_sdk/rerun_bindings",
-  "rerun_py/tests",
-  "rerun_notebook/src/rerun_notebook",
-  "tests/python",
+  "crates",
+  "docs",
+  "examples",
+  "rerun_notebook",
+  "rerun_pixi_env",
+  "rerun_py",
+  "scripts",
+  "skills",
+  "tests",
+]
+exclude = [
+  # Isolated examples have their own environment; see `py-lint-isolated-examples`.
+  "examples/python/dataloader",
+  "examples/python/droid_semantic_search",
+]
+
+[tool.ty.analysis]
+# Not in the shared `.venv`: optional dependencies of individual examples and tools,
+# and hardware or ROS SDKs that need a system install.
+allowed-unresolved-imports = [
+  "cv_bridge",
+  "frontmatter",
+  "gitignore_parser",
+  "griffe.**",
+  "image_geometry",
+  "lancedb.**",
+  "laser_geometry",
+  "lerobot.**",
+  "mediapipe.**",
+  "mkdocs_gen_files.**",
+  "nav_msgs.**",
+  "paddleocr.**",
+  "pdf2image",
+  "pyrealsense2",
+  "rclpy.**",
+  "rerun_lerobot.**",
+  "sensor_msgs.**",
+  "sensor_msgs_py",
+  "std_msgs.**",
+  "tf2_msgs.**",
 ]
 
 [tool.ty.rules]
-# parsing disagrees with mypy
-unused-ignore-comment = "ignore"
-unused-type-ignore-comment = "ignore"
-# Stricter parsing than mypy
+# - invalid-argument-type: tests that pass values typed `object`, and numpy and pyarrow stubs that are
+#   narrower than what we pass at runtime.
+# - unresolved-attribute: largely `pyarrow.compute`, whose functions are created at runtime.
+# TODO(emilk): burn down.
 invalid-argument-type = "ignore"
-# this is our api draft need to figure out that config
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["scripts/ci/crates.py", "scripts/ci/update_rerun_notebook_version.py"]
+
+[tool.ty.overrides.rules]
+# `tomlkit` types every value it reads as `Item | Container`, which cannot be indexed, iterated or assigned to.
+invalid-assignment = "ignore"
+not-iterable = "ignore"
+not-subscriptable = "ignore"
+
+[[tool.ty.overrides]]
+include = ["rerun_py/tests/test_types/**"]
+
+[tool.ty.overrides.rules]
+# Generated code: some types need the suppressions the generator emits, others do not.
+unused-ignore-comment = "ignore"
+
+[[tool.ty.overrides]]
+# Fragments that are shown in the docs but not runnable on their own, so they use names they never define.
+include = [
+  "docs/snippets/all/concepts/how_helix_was_logged.py",
+  "docs/snippets/all/concepts/static/log_static.py",
+  "docs/snippets/all/concepts/static/log_static_10x.py",
+  "docs/snippets/all/concepts/static/log_temporal_10x.py",
+  "docs/snippets/all/concepts/static/send_static.py",
+  "docs/snippets/all/tutorials/custom-application-id.py",
+  "docs/snippets/all/tutorials/custom-recording-id.py",
+  "docs/snippets/all/tutorials/timelines_example.py",
+]
+
+[tool.ty.overrides.rules]
+unresolved-reference = "ignore"
+
+[[tool.ty.overrides]]
+# `rerun/tests/__init__.py` makes `tests` a regular package, which hides `rerun_py/tests` from
+# ty, so the relative imports in there do not resolve. `rerun_draft` is a sandbox with no stubs.
+include = ["rerun_py/tests/**"]
+
+[tool.ty.overrides.rules]
 unresolved-import = "ignore"
-# others to burn down
-call-non-callable = "ignore"
-# TODO(astral-sh/ty/#2501)
-index-out-of-bounds = "ignore"
+
+[[tool.ty.overrides]]
+# ty is the only type checker that sees notebooks, so restore the rules ignored workspace-wide above.
+include = ["examples/notebook/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "error"
+unresolved-attribute = "error"
+
+[[tool.ty.overrides]]
+include = ["rerun_py/rerun_sdk/rerun/encodings/class_description.py"]
+
+[tool.ty.overrides.rules]
+# The generated keypoint fields are typed as lists, but hold `None` when not given.
+invalid-assignment = "ignore"
+
+[[tool.ty.overrides]]
+# A sandbox for drafting new APIs.
+include = ["rerun_py/tests/api_sandbox/rerun_draft/**"]
+
+[tool.ty.overrides.rules]
 invalid-assignment = "ignore"
 no-matching-overload = "ignore"
-unresolved-attribute = "ignore"
-unresolved-reference = "ignore"
-unsupported-operator = "ignore"

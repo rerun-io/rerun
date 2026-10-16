@@ -9,7 +9,7 @@ from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     import datafusion
     import pyarrow as pa
@@ -29,21 +29,21 @@ class CatalogClient:
     def __repr__(self) -> str:
         return repr(self._inner)
 
-    def entries(self, *, include_hidden=False) -> list[Entry]:
+    def entries(self, *, include_hidden: bool = False) -> list[Entry]:
         """Returns a list of all entries in the catalog."""
         return sorted(
             [Entry(e) for e in self._inner.entries(include_hidden=include_hidden)],
             key=lambda e: e.name,
         )
 
-    def datasets(self, *, include_hidden=False) -> list[DatasetEntry]:
+    def datasets(self, *, include_hidden: bool = False) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
         return sorted(
             [DatasetEntry(e) for e in self._inner.datasets(include_hidden=include_hidden)],
             key=lambda e: e.name,
         )
 
-    def tables(self, *, include_hidden=False) -> list[TableEntry]:
+    def tables(self, *, include_hidden: bool = False) -> list[TableEntry]:
         """Returns a list of all table entries in the catalog."""
         return sorted(
             [TableEntry(e) for e in self._inner.tables(include_hidden=include_hidden)],
@@ -78,7 +78,7 @@ class CatalogClient:
         """Registers a foreign Lance table as a new table entry."""
         return TableEntry(self._inner.register_table(name, url))
 
-    def create_table(self, name: str, schema, url: str | None = None) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str | None = None) -> TableEntry:
         """Create and register a new table."""
         if url is None:
             tmpdir = tempfile.TemporaryDirectory()
@@ -150,9 +150,6 @@ class DatasetEntry(Entry):
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner: _catalog.DatasetEntry = inner
 
-    def arrow_schema(self) -> pa.Schema:
-        return self._inner.arrow_schema()
-
     def register_blueprint(self, uri: str, set_default: bool = True) -> None:
         """
         Register an existing .rbl visible to the server.
@@ -198,8 +195,8 @@ class DatasetEntry(Entry):
         self,
         segment_id: str,
         timeline: str | None = None,
-        start=None,
-        end=None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str:
         return self._inner.segment_url(segment_id, timeline, start, end)
 
@@ -261,7 +258,7 @@ class DatasetEntry(Entry):
         optimize_indexes: bool = False,
         retrain_indexes: bool = False,
         compact_fragments: bool = False,
-        cleanup_before=None,
+        cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None:
         return self._inner.do_maintenance(
@@ -315,9 +312,6 @@ class DatasetView:
 
     def schema(self) -> _catalog.Schema:
         return self._inner.schema()
-
-    def arrow_schema(self) -> pa.Schema:
-        return self._inner.arrow_schema()
 
     def reader(
         self,

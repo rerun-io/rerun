@@ -7,47 +7,47 @@ import rerun as rr
 def test_time_range_boundary_failure_cases() -> None:
     # Too many arguments for absolute.
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(rr.TimeInt(seq=0), nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(seq=123, seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(seq=123, seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(seq=123, nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(seq=123, nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(seconds=123, seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(seconds=123, seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(seconds=123, nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(seconds=123, nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(nanos=123, seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(nanos=123, seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute(nanos=123, seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute(nanos=123, seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
     # No argument for absolute.
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.absolute()  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.absolute()  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
     # Too many arguments for cursor_relative.
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(rr.TimeInt(seq=0), nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(seq=123, seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(seq=123, seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(seq=123, nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(seq=123, nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(seconds=123, seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(seconds=123, seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(seconds=123, nanos=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(seconds=123, nanos=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(nanos=123, seq=123)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(nanos=123, seq=123)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     with pytest.raises(ValueError):
-        rr.TimeRangeBoundary.cursor_relative(nanos=123, seconds=123.0)  # type: ignore[call-overload]
+        rr.TimeRangeBoundary.cursor_relative(nanos=123, seconds=123.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def test_time_range_boundary() -> None:

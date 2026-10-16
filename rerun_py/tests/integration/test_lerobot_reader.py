@@ -8,6 +8,7 @@ is covered by `re_lerobot`'s Rust tests and the importer snapshot tests.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -32,6 +33,25 @@ def test_lerobot_reader_opens_and_reports_metadata() -> None:
     reader = LeRobotReader(LEROBOT_ASSETS / "v21_apple_storage")
     assert reader.version == "v2"
     assert reader.episodes() == [0, 1, 2]
+
+
+def test_lerobot_metadata_carries_meta_json_verbatim() -> None:
+    chunk = LeRobotReader(LEROBOT_ASSETS / "v30_apple_storage").metadata()
+    # `register_asset` rejects temporal data.
+    assert chunk.is_static
+    assert chunk.entity_path == "/__lerobot"
+    [row] = chunk.to_record_batch().to_pylist()
+    assert json.loads(row["info"][0])["codebase_version"] == "v3.0"
+    assert "observation.state" in json.loads(row["stats"][0])
+
+    # v2 datasets have no `meta/stats.json`.
+    chunk = LeRobotReader(LEROBOT_ASSETS / "v21_apple_storage").metadata()
+    assert "stats" not in chunk.to_record_batch().schema.names
+
+
+def test_lerobot_metadata_entity_path_is_configurable() -> None:
+    chunk = LeRobotReader(LEROBOT_ASSETS / "v30_apple_storage").metadata(entity_path_prefix="/robot/meta")
+    assert chunk.entity_path == "/robot/meta"
 
 
 def test_lerobot_reader_rejects_bad_input(tmp_path: Path) -> None:

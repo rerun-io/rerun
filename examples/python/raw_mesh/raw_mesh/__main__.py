@@ -45,7 +45,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
     children = scene.graph.transforms.children.get(node)
 
     node_data = scene.graph.get(frame_to=node, frame_from=parent)
-    if node_data:
+    if node_data:  # ty: ignore[redundant-condition]
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
             # TODO(#3559): We should support 4x4 matrices directly

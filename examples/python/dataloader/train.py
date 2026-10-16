@@ -4,6 +4,8 @@ Demonstrates how to stream robot trajectory data from Rerun's catalog
 into an imitation learning policy (Action Chunking Transformers).
 
 The Rerun dataloader's Field.window feature fetches future action chunks in a single query per batch.
+Feature shapes and normalization statistics come from the dataset-wide LeRobot metadata,
+which `prepare_dataset.py` registers as an asset of the dataset.
 
 Usage:
 
@@ -18,15 +20,18 @@ and shuffle options mean and how to tune them.
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 import torch.nn.functional as F
+from datafusion import col
 from lerobot.configs.types import FeatureType, NormalizationMode, PolicyFeature
 from lerobot.policies.act.configuration_act import ACTConfig
 from lerobot.policies.act.modeling_act import ACTPolicy
+from lerobot.policies.act.processor_act import make_act_pre_post_processors
 from torch.utils.data import DataLoader
 
 from rerun._tracing import tracing_scope, with_tracing
@@ -44,6 +49,9 @@ from rerun.experimental.dataloader import (
     VideoFrameDecoder,
 )
 
+if TYPE_CHECKING:
+    from rerun.catalog import DatasetEntry
+
 CHECKPOINT_DIR = Path(__file__).resolve().parent / "act_checkpoint"
 
 IMAGE_H = 32
@@ -58,13 +66,15 @@ LR = 1e-5
 NUM_WORKERS = 4
 FETCH_BLOCK_SIZE = 256
 
+METADATA_ASSET = "lerobot_metadata"
+
 
 class CollateFn:
     """Picklable collate callable for PyTorch DataLoader multiprocessing."""
 
-    def __init__(self, chunk_size: int, state_dim: int) -> None:
+    def __init__(self, chunk_size: int, action_dim: int) -> None:
         self.chunk_size = chunk_size
-        self.state_dim = state_dim
+        self.action_dim = action_dim
 
     @with_tracing("CollateFn")
     def __call__(self, samples: list[dict[str, torch.Tensor | None]]) -> dict[str, torch.Tensor]:
@@ -77,7 +87,7 @@ class CollateFn:
         states = torch.stack([s["state"] for s in complete]).float()
 
         # Future action chunks: reshape windowed flat tensors
-        actions = torch.stack([s["action"].reshape(self.chunk_size, self.state_dim) for s in complete]).float()
+        actions = torch.stack([s["action"].reshape(self.chunk_size, self.action_dim) for s in complete]).float()
 
         batch: dict[str, torch.Tensor] = {
             "observation.state": states,
@@ -89,6 +99,22 @@ class CollateFn:
             imgs = torch.stack([s[f"image_{cam}"] for s in complete]).float() / 255.0
             batch[key] = F.interpolate(imgs, size=(IMAGE_H, IMAGE_W), mode="bilinear", align_corners=False)
         return batch
+
+
+def read_lerobot_metadata(dataset_entry: DatasetEntry) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The parsed `meta/info.json` and `meta/stats.json` that `prepare_dataset.py` registered as an asset."""
+    asset_dataset = dataset_entry.asset_dataset()
+    if asset_dataset is None or METADATA_ASSET not in asset_dataset.segment_ids():
+        raise SystemExit(f"Dataset {dataset_entry.name!r} has no {METADATA_ASSET!r} asset, rerun prepare_dataset.py")
+    [row] = asset_dataset.reader(index=None).filter(col("rerun_segment_id") == METADATA_ASSET).to_pylist()
+    return json.loads(row["/__lerobot:info"][0]), json.loads(row["/__lerobot:stats"][0])
+
+
+def normalization_stats(stats: dict[str, Any], keys: list[str]) -> dict[str, dict[str, torch.Tensor]]:
+    """The `mean`/`std` of each feature, as `make_act_pre_post_processors` expects them."""
+    return {
+        key: {stat: torch.tensor(stats[key][stat], dtype=torch.float32) for stat in ("mean", "std")} for key in keys
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -178,6 +204,7 @@ def main() -> None:
 
     client = CatalogClient(args.catalog_url)
     dataset_entry = client.get_dataset(args.dataset)
+    info, stats = read_lerobot_metadata(dataset_entry)
 
     all_segments = dataset_entry.segment_ids()
     segments = all_segments if args.num_segments == 0 else all_segments[: args.num_segments]
@@ -234,14 +261,12 @@ def main() -> None:
         )
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 
-    # IterableDataset doesn't support indexing, so probe shape via iteration.
-    state_tensor = next(iter(ds))["state"]
-    assert isinstance(state_tensor, torch.Tensor)  # NumericDecoder always returns tensors
-    state_dim = state_tensor.shape[0]
-    action_dim = state_dim
+    [state_dim] = info["features"]["observation.state"]["shape"]
+    [action_dim] = info["features"]["action"]["shape"]
     print(f"Dimensions: {state_dim=}, {action_dim=}")
 
     config = ACTConfig(
+        device=device.type,
         chunk_size=CHUNK_SIZE,
         n_action_steps=CHUNK_SIZE,
         use_vae=True,
@@ -270,6 +295,11 @@ def main() -> None:
         },
     )
 
+    preprocessor, postprocessor = make_act_pre_post_processors(
+        config,
+        dataset_stats=normalization_stats(stats, ["observation.state", "action", *IMAGE_KEYS]),
+    )
+
     policy = ACTPolicy(config)
     policy.train()
     policy.to(device)
@@ -281,7 +311,7 @@ def main() -> None:
         weight_decay=1e-4,
     )
 
-    collate_fn = CollateFn(CHUNK_SIZE, state_dim)
+    collate_fn = CollateFn(CHUNK_SIZE, action_dim)
     # For the map-style dataset, shuffling is driven by the DataLoader's default RandomSampler.
     # Swap in `sampler=DistributedSampler(ds)` (and call `sampler.set_epoch(epoch)` each epoch)
     # for multi-node training, or plug in any other PyTorch sampler.
@@ -316,7 +346,7 @@ def main() -> None:
                 data_time = time.perf_counter() - t_data_start
 
                 t_model_start = time.perf_counter()
-                batch = {k: v.to(device) for k, v in batch.items()}
+                batch = preprocessor(batch)
                 loss, loss_dict = policy.forward(batch)
                 optimizer.zero_grad()
                 loss.backward()
@@ -353,6 +383,8 @@ def main() -> None:
 
     with tracing_scope("save_pretrained"):
         policy.save_pretrained(str(args.checkpoint_dir))
+        preprocessor.save_pretrained(str(args.checkpoint_dir))
+        postprocessor.save_pretrained(str(args.checkpoint_dir))
     print(f"\nSaved checkpoint to {args.checkpoint_dir}")
 
 

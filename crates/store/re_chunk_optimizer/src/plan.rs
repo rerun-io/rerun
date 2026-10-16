@@ -17,6 +17,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use indexmap::IndexMap;
+
 use re_chunk::{ComponentIdentifier, ComponentType};
 use re_log_types::{
     EntityPath, EntityPathFilter, ResolvedEntityPathFilter, Timeline, TimelineName,
@@ -83,6 +85,22 @@ pub enum ColumnSelection {
 
     /// Every column not named here. Never empty: [`plan_covers_view`] rejects an empty set.
     Except(BTreeSet<ComponentIdentifier>),
+}
+
+impl ColumnSelection {
+    /// The columns of `meta`'s chunk that this selection keeps.
+    fn apply(&self, meta: &ChunkMeta) -> BTreeSet<ComponentIdentifier> {
+        match self {
+            Self::All => meta.components.keys().copied().collect(),
+            Self::Only(columns) => columns.clone(),
+            Self::Except(excluded) => meta
+                .components
+                .keys()
+                .filter(|column| !excluded.contains(column))
+                .copied()
+                .collect(),
+        }
+    }
 }
 
 /// How a GoP run cuts its samples into output chunks. A GoP is never split.
@@ -254,8 +272,9 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
 
     // Temporal chunks merge per entity and per exact timeline set — the same grouping the merge
     // gate `Chunk::concatenable` enforces at merge time. Within a group, every own column gets a
-    // run of its own over the chunks that carry it, then the rest of every chunk forms one run.
-    // A matched entity's video columns are left to its GoP run.
+    // run of its own over the chunks that carry it, then the rest of the chunks form runs by
+    // column set (see [`partition_rest`]). A matched entity's video columns are left to its GoP
+    // run.
     let video_columns = [sample_column(), codec_column(), keyframe_column()];
     for (entity_path, entity) in &view.entities {
         let own = own_columns_of(entity_path);
@@ -307,7 +326,7 @@ pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanU
     units
 }
 
-/// Plan one group: own runs, then the rest run, in sweep order.
+/// Plan one group: own runs, then rest runs, in sweep order.
 ///
 /// The `excluded_columns` stay out of both; the caller routes them through other units.
 fn plan_group(
@@ -347,8 +366,8 @@ fn plan_group(
     for (column, inputs) in own_runs {
         emit(units, inputs, own[&column]);
     }
-    if !rest.is_empty() {
-        emit(units, rest, settings.merge_split);
+    for inputs in partition_into_run(view, rest) {
+        emit(units, inputs, settings.merge_split);
     }
 }
 
@@ -470,6 +489,105 @@ fn run_timeline(group: &TimelineSetGroup, target_timeline: Option<&TimelineName>
     }
     // Every row of a group is on every timeline of the group, so no score tells them apart.
     Timeline::pick_best_timeline(group.timelines.iter(), |_| 0)
+}
+
+/// Split a group's rest slices into merge runs, so that only slices sharing columns merge.
+///
+/// A merge null-pads every column that some of its inputs lack. Merging slices that share no
+/// column would produce mixed chunks that are mostly nulls, and make a reader of one stream fetch
+/// the other stream's bytes too. So the slices are grouped by column set (the columns a slice
+/// carries), and a run only gathers sets that are linked through shared columns:
+///
+/// - Distinct column sets are taken heaviest first (ties in sweep order), each weighed by the total
+///   rows of its slices. Rows, not bytes: the index has no per-column sizes.
+/// - A set joins the heaviest run it shares a column with, and the run takes on its columns.
+/// - A set sharing no column with any run starts a new run.
+///
+/// A set overlapping several runs (e.g. a few chunks that carry two otherwise separate streams)
+/// joins the heaviest one rather than fusing them. The streams therefore stay apart only as long as
+/// such bridging sets are lighter than both streams.
+///
+/// Returns the runs in order of their first slice, each in sweep order.
+fn partition_into_run(view: &ChunkIndexView, rest: Vec<ChunkSlice>) -> Vec<Vec<ChunkSlice>> {
+    // 1. Extract the columns and weight (aka row count) of every slice.
+    let slice_columns: Vec<(BTreeSet<ComponentIdentifier>, u64)> = rest
+        .iter()
+        .map(|slice| {
+            let meta = view.chunk(slice.chunk);
+            (slice.columns.apply(meta), meta.num_rows)
+        })
+        .collect();
+
+    // 2. Based on their columns, assign every slice to a run.
+    let run_of_slice = assign_runs(&slice_columns);
+
+    // 3. Collect the slices into their assigned runs, in order of first slice.
+    let mut runs: IndexMap<usize, Vec<ChunkSlice>> = IndexMap::new();
+    for (slice, run) in std::iter::zip(rest, run_of_slice) {
+        runs.entry(run).or_default().push(slice);
+    }
+    runs.into_values().collect()
+}
+
+/// Assign slices, in sweep order, to merge runs by column set, as described in
+/// [`partition_into_run`].
+///
+/// Each slice comes as its columns and its weight. Slices with equal columns always land in the
+/// same run.
+///
+/// Returns the run of each slice.
+fn assign_runs(slice_columns: &[(BTreeSet<ComponentIdentifier>, u64)]) -> Vec<usize> {
+    // 1. Gather the distinct column sets, in order of first slice, each weighed by all its slices.
+    let mut sets: IndexMap<&BTreeSet<ComponentIdentifier>, u64> = IndexMap::new();
+    let set_of_slice: Vec<usize> = slice_columns
+        .iter()
+        .map(|(columns, weight)| {
+            let entry = sets.entry(columns);
+            let set = entry.index();
+            let total = entry.or_insert(0);
+            *total = total.saturating_add(*weight);
+            set
+        })
+        .collect();
+
+    let mut by_weight: Vec<usize> = (0..sets.len()).collect();
+    by_weight.sort_by_key(|&set| (std::cmp::Reverse(sets[set]), set));
+
+    // 2. Dispatch sets into runs.
+    struct Run {
+        /// Merged schema of all the sets included in this run.
+        columns: BTreeSet<ComponentIdentifier>,
+
+        weight: u64,
+    }
+
+    let mut runs: Vec<Run> = Vec::new();
+    let mut run_of_set = vec![0; sets.len()];
+    for set in by_weight {
+        let (&columns, &weight) = sets.get_index(set).expect("`set` indexes `sets`");
+        let heaviest_overlapping = runs
+            .iter()
+            .enumerate()
+            .filter(|(_, run)| !run.columns.is_disjoint(columns))
+            // Ties go to the earliest run.
+            .max_by_key(|&(i, run)| (run.weight, std::cmp::Reverse(i)))
+            .map(|(i, _)| i);
+        let run = heaviest_overlapping.unwrap_or_else(|| {
+            runs.push(Run {
+                columns: BTreeSet::new(),
+                weight: 0,
+            });
+            runs.len() - 1
+        });
+        runs[run].columns.extend(columns);
+        runs[run].weight = runs[run].weight.saturating_add(weight);
+        run_of_set[set] = run;
+    }
+
+    set_of_slice
+        .into_iter()
+        .map(|set| run_of_set[set])
+        .collect()
 }
 
 fn emit(units: &mut Vec<PlanUnit>, inputs: Vec<ChunkSlice>, target: Option<MergeSplitSettings>) {
@@ -835,13 +953,13 @@ mod tests {
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId};
     use re_chunk_index::RawRrdManifest;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-    use re_log_types::{EntityPathFilter, StoreId, StoreKind, TimeInt, TimePoint, Timeline};
+    use re_log_types::{EntityPathFilter, StoreId, StoreKind, TimePoint, Timeline};
     use re_sdk_types::archetypes::VideoStream;
     use re_sdk_types::components::{IsKeyframe, VideoCodec, VideoSample};
     use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};
 
     use super::{
-        ChunkSlice, CodecSource, GopChunkingConfig, KeyframePlacementConfig, MergeInput, PlanUnit,
+        ChunkSlice, CodecSource, GopChunkingConfig, KeyframePlacementConfig, PlanUnit,
         codec_column, keyframe_column, plan, plan_covers_view, sample_column,
     };
     use crate::view::{ChunkIdx, ChunkIndexView};
@@ -938,6 +1056,29 @@ mod tests {
         builder.build().unwrap()
     }
 
+    /// A temporal chunk with one point under each of `descriptors` on every row.
+    fn temporal_chunk_with(
+        id: u128,
+        entity: &str,
+        times: &[i64],
+        descriptors: &[&ComponentDescriptor],
+    ) -> Chunk {
+        let frame = Timeline::new_sequence("frame");
+        let mut builder = Chunk::builder_with_id(ChunkId::from_u128(id), entity);
+        for (i, &time) in times.iter().enumerate() {
+            builder = builder.with_serialized_batches(
+                RowId::from_u128((id << 32) + i as u128 + 1),
+                [(frame, time)],
+                descriptors.iter().map(|descriptor| {
+                    MyPoint::from_iter(0..1)
+                        .try_serialized((*descriptor).clone())
+                        .unwrap()
+                }),
+            );
+        }
+        builder.build().unwrap()
+    }
+
     fn static_chunk(id: u128, entity: &str) -> Chunk {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
@@ -1017,41 +1158,8 @@ mod tests {
         settings
     }
 
-    fn passthrough_all(view: &ChunkIndexView, id: u128) -> PlanUnit {
-        PlanUnit::Passthrough(ChunkSlice::all(idx_of(view, id)))
-    }
-
-    fn merge_split_run(
-        view: &ChunkIndexView,
-        ids: &[u128],
-        settings: &OptimizationSettings,
-    ) -> PlanUnit {
-        PlanUnit::MergeSplitRun {
-            inputs: ids
-                .iter()
-                .map(|&id| ChunkSlice::all(idx_of(view, id)))
-                .collect(),
-            target: settings.merge_split.unwrap(),
-        }
-    }
-
-    fn only_run(
-        view: &ChunkIndexView,
-        ids: &[u128],
-        column: ComponentIdentifier,
-        target: MergeSplitSettings,
-    ) -> PlanUnit {
-        PlanUnit::MergeSplitRun {
-            inputs: ids
-                .iter()
-                .map(|&id| ChunkSlice::only(idx_of(view, id), [column]))
-                .collect(),
-            target,
-        }
-    }
-
-    /// A group's chunks form one merge/split run in sweep order, whatever the byte target —
-    /// output boundaries and splits belong to the executor.
+    /// A group's chunks of one column set form one merge/split run in sweep order, whatever the
+    /// byte target — output boundaries and splits belong to the executor.
     #[test]
     fn group_forms_one_run() {
         let chunks: Vec<Chunk> = (0..7)
@@ -1060,11 +1168,19 @@ mod tests {
         let view = view_of(&chunks);
 
         let settings = settings(1, 0); // even a tiny target: the plan shape does not change
-        let outputs = plan(&view, &settings);
-        assert!(plan_covers_view(&view, &outputs));
+        let units = plan(&view, &settings);
 
-        let expected = vec![merge_split_run(&view, &[1, 2, 3, 4, 5, 6, 7], &settings)];
-        assert_eq!(outputs, expected);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1 B)
+              #1 all
+              #2 all
+              #3 all
+              #4 all
+              #5 all
+              #6 all
+              #7 all
+            ");
     }
 
     /// Chunks never share a run across entities or across timeline sets; a singleton group is a
@@ -1097,16 +1213,18 @@ mod tests {
         ];
         let view = view_of(&chunks);
 
-        let settings = settings(u64::MAX / 2, 0);
-        let outputs = plan(&view, &settings);
-        assert!(plan_covers_view(&view, &outputs));
+        let units = plan(&view, &settings(u64::MAX / 2, 0));
 
-        let expected = vec![
-            merge_split_run(&view, &[1, 2], &settings),
-            merge_split_run(&view, &[3], &settings),
-            merge_split_run(&view, &[4], &settings),
-        ];
-        assert_eq!(outputs, expected);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (9223372036854775807 B)
+              #1 all
+              #2 all
+            merge_split (9223372036854775807 B)
+              #3 all
+            merge_split (9223372036854775807 B)
+              #4 all
+            ");
     }
 
     /// Statics pass through untouched; `merge_split: None` disables the optimization — every
@@ -1121,10 +1239,14 @@ mod tests {
         let view = view_of(&chunks);
 
         // Tiny byte target: statics still pass through whole; temporal chunks form their run.
-        let outputs = plan(&view, &settings(1, 0));
-        assert!(plan_covers_view(&view, &outputs));
-        assert_eq!(outputs[0], passthrough_all(&view, 1));
-        assert!(matches!(&outputs[1], PlanUnit::MergeSplitRun { .. }));
+        let units = plan(&view, &settings(1, 0));
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 all
+            merge_split (1 B)
+              #2 all
+              #3 all
+            ");
 
         // `merge_split: None`: every chunk stands alone, no run.
         let disabled = OptimizationSettings {
@@ -1133,16 +1255,13 @@ mod tests {
             own_chunk: Vec::new(),
             gop_batching: Vec::new(),
         };
-        let outputs = plan(&view, &disabled);
-        assert!(plan_covers_view(&view, &outputs));
-        assert_eq!(
-            outputs,
-            vec![
-                passthrough_all(&view, 1),
-                passthrough_all(&view, 2),
-                passthrough_all(&view, 3),
-            ]
-        );
+        let units = plan(&view, &disabled);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 all
+            passthrough #2 all
+            passthrough #3 all
+            ");
     }
 
     /// With `target_timeline`, the run's inputs follow time order where file order disagrees; a
@@ -1158,34 +1277,41 @@ mod tests {
         ];
         let view = view_of(&chunks);
 
-        let with_target = |name: &str| OptimizationSettings {
-            target_timeline: Some(re_log_types::TimelineName::try_new(name).unwrap()),
-            ..settings(1024 * 1024, 0)
+        let plan_with_target = |name: Option<&str>| {
+            let settings = OptimizationSettings {
+                target_timeline: name
+                    .map(|name| re_log_types::TimelineName::try_new(name).unwrap()),
+                ..settings(1024 * 1024, 0)
+            };
+            let units = plan(&view, &settings);
+            assert!(plan_covers_view(&view, &units));
+            render_plan(&view, &units)
         };
 
         // Time order sweeps 0, 10, 20, 30.
-        let outputs = plan(&view, &with_target("frame"));
-        assert!(plan_covers_view(&view, &outputs));
-        assert_eq!(
-            outputs,
-            vec![merge_split_run(&view, &[1, 3, 2, 4], &with_target("frame"))]
-        );
+        insta::assert_snapshot!(plan_with_target(Some("frame")), @r"
+            merge_split (1048576 B)
+              #1 all
+              #3 all
+              #2 all
+              #4 all
+            ");
 
         // File order sweeps 0, 20, 10, 30 — both with no target and with an unknown one.
-        let file_order = vec![merge_split_run(
-            &view,
-            &[1, 2, 3, 4],
-            &settings(1024 * 1024, 0),
-        )];
-        assert_eq!(plan(&view, &settings(1024 * 1024, 0)), file_order);
-        assert_eq!(
-            plan(&view, &with_target("no_such_timeline")),
-            vec![merge_split_run(
-                &view,
-                &[1, 2, 3, 4],
-                &with_target("no_such_timeline")
-            )]
-        );
+        insta::assert_snapshot!(plan_with_target(None), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #3 all
+              #4 all
+            ");
+        insta::assert_snapshot!(plan_with_target(Some("no_such_timeline")), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #3 all
+              #4 all
+            ");
     }
 
     /// The chunk index of `chunks` with the second chunk's per-(index, component) time ranges
@@ -1237,17 +1363,14 @@ mod tests {
             temporal_chunk(2, "entity", &[10, 11], 64),
         ];
         let view = view_with_orphan(&chunks);
-        let settings = settings(1024 * 1024, 0);
-        let units = plan(&view, &settings);
+        let units = plan(&view, &settings(1024 * 1024, 0));
 
         assert!(plan_covers_view(&view, &units));
-        assert_eq!(
-            units,
-            vec![
-                merge_split_run(&view, &[1], &settings),
-                passthrough_all(&view, 2),
-            ]
-        );
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+            passthrough #2 all
+            ");
     }
 
     /// Own-column runs hold `Only` slices of every chunk carrying the column, dedicated chunks
@@ -1284,27 +1407,147 @@ mod tests {
             settings(1024 * 1024, 0),
             vec![OwnChunkRule::new(ColumnSelector::Type(MyColor::name()))],
         );
-        let target = settings.merge_split.unwrap();
+        let units = plan(&view, &settings);
+
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+              #3 only[example.MyPoints:colors]
+              #4 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+              #2 all
+              #4 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #5 only[example.MyPoints:colors]
+              #6 only[example.MyPoints:colors]
+            ");
+    }
+
+    /// The rest of a group splits into runs by column set: chunks sharing no column never share a
+    /// run, chunks whose columns overlap do, and runs come out in order of their first chunk, not
+    /// by weight.
+    #[test]
+    fn rest_runs_follow_shared_columns() {
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let custom = untyped_descriptor();
+        // The custom run has more rows, but its first chunk comes second.
+        let chunks = vec![
+            temporal_chunk_with(1, "entity", &[0, 1], &[&points]),
+            temporal_chunk_with(2, "entity", &[2, 3, 4, 5], &[&custom]),
+            temporal_chunk_with(3, "entity", &[6, 7], &[&points, &colors]),
+            temporal_chunk_with(4, "entity", &[8, 9, 10, 11], &[&custom]),
+            temporal_chunk_with(5, "entity", &[12, 13], &[&points]),
+        ];
+        let view = view_of(&chunks);
+        let settings = settings(1024 * 1024, 0);
         let units = plan(&view, &settings);
         assert!(plan_covers_view(&view, &units));
 
-        let except_colors =
-            |id: u128| ChunkSlice::except(idx_of(&view, id), BTreeSet::from([colors()]));
-        assert_eq!(
-            units,
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #3 all
+              #5 all
+            merge_split (1048576 B)
+              #2 all
+              #4 all
+            ");
+    }
+
+    /// A column set overlapping two runs, lighter than both, joins the one with the most rows,
+    /// whichever stream that is, instead of fusing them.
+    #[test]
+    fn bridge_joins_the_heaviest_run() {
+        let points = MyPoints::descriptor_points();
+        let custom = untyped_descriptor();
+        let bridged = |points_rows: i64, custom_rows: i64| {
+            let times = |start: i64, rows: i64| (start..start + rows).collect::<Vec<_>>();
             vec![
-                only_run(&view, &[1, 3, 4], colors(), target),
-                PlanUnit::MergeSplitRun {
-                    inputs: vec![
-                        except_colors(1),
-                        ChunkSlice::all(idx_of(&view, 2)),
-                        except_colors(4),
-                    ],
-                    target,
-                },
-                only_run(&view, &[5, 6], colors(), target),
+                temporal_chunk_with(1, "entity", &[0], &[&points, &custom]),
+                temporal_chunk_with(2, "entity", &times(10, points_rows), &[&points]),
+                temporal_chunk_with(3, "entity", &times(10, custom_rows), &[&custom]),
+                temporal_chunk_with(4, "entity", &times(20, points_rows), &[&points]),
+                temporal_chunk_with(5, "entity", &times(20, custom_rows), &[&custom]),
             ]
+        };
+        let settings = settings(1024 * 1024, 0);
+
+        let chunks = bridged(4, 2);
+        let view = view_of(&chunks);
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #4 all
+            merge_split (1048576 B)
+              #3 all
+              #5 all
+            ");
+
+        let chunks = bridged(2, 4);
+        let view = view_of(&chunks);
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #3 all
+              #5 all
+            merge_split (1048576 B)
+              #2 all
+              #4 all
+            ");
+    }
+
+    /// The rest runs are formed from the rest slices' columns: an own column links nothing.
+    #[test]
+    fn own_columns_do_not_link_rest_runs() {
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let custom = untyped_descriptor();
+        let chunks = vec![
+            temporal_chunk_with(1, "entity", &[0, 1], &[&points, &colors]),
+            temporal_chunk_with(2, "entity", &[2, 3], &[&custom, &colors]),
+            temporal_chunk_with(3, "entity", &[4, 5], &[&points]),
+            temporal_chunk_with(4, "entity", &[6, 7], &[&custom]),
+        ];
+        let view = view_of(&chunks);
+
+        // Without rules, colors links chunks 1 and 2, and with them everything.
+        let global = settings(1024 * 1024, 0);
+        let units = plan(&view, &global);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 all
+              #2 all
+              #3 all
+              #4 all
+            ");
+
+        // With colors as an own column, the rest of chunks 1 and 2 share nothing.
+        let settings = with_rules(
+            global.clone(),
+            vec![OwnChunkRule::new(ColumnSelector::Column(colors.component))],
         );
+        let units = plan(&view, &settings);
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+              #2 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+              #3 all
+            merge_split (1048576 B)
+              #2 except[example.MyPoints:colors]
+              #4 all
+            ");
     }
 
     /// Rules are tried in order; the selector kinds match what they say; the entity filter
@@ -1319,7 +1562,6 @@ mod tests {
         ];
         let view = view_of(&chunks);
         let global = settings(1024 * 1024, 0);
-        let target = global.merge_split.unwrap();
         let custom = untyped_descriptor().component;
 
         let type_rule = OwnChunkRule::new(ColumnSelector::Type(MyColor::name()));
@@ -1336,75 +1578,74 @@ mod tests {
                 slice.chunk == idx_of(&view, 1)
                     && slice.columns == super::ColumnSelection::Only(color_set())
             };
-            units
+            let units: Vec<PlanUnit> = units
                 .into_iter()
                 .filter(|unit| match unit {
                     PlanUnit::Passthrough(slice) => is_colors_of_1(slice),
                     PlanUnit::MergeSplitRun { inputs, .. } => inputs.iter().any(is_colors_of_1),
                     PlanUnit::Drop(_) | PlanUnit::GopRun { .. } => false,
                 })
-                .collect::<Vec<_>>()
+                .collect();
+            render_plan(&view, &units)
         };
 
         // Rules are tried in order: a run with the type rule first, a passthrough with the column
         // rule first.
-        assert_eq!(
+        insta::assert_snapshot!(
             colors_units(&global, vec![type_rule.clone(), column_passthrough.clone()]),
-            vec![only_run(&view, &[1], colors(), target)]
+            @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            "
         );
-        assert_eq!(
+        insta::assert_snapshot!(
             colors_units(&global, vec![column_passthrough.clone(), type_rule.clone()]),
-            vec![PlanUnit::Passthrough(ChunkSlice::only(
-                idx_of(&view, 1),
-                color_set()
-            ))]
+            @r"
+            passthrough #1 only[example.MyPoints:colors]
+            "
         );
 
         // An untyped column matches `Column`, never `Type`.
-        let units_of = |rules: Vec<OwnChunkRule>| {
+        let plan_with = |rules: Vec<OwnChunkRule>| {
             let units = plan(&view, &with_rules(global.clone(), rules));
             assert!(plan_covers_view(&view, &units));
-            units
+            render_plan(&view, &units)
         };
-        let untyped_units = |units: &[PlanUnit]| {
-            units
-                .iter()
-                .filter(|unit| match unit {
-                    PlanUnit::Passthrough(slice) => slice.chunk == idx_of(&view, 4),
-                    PlanUnit::MergeSplitRun { inputs, .. } => {
-                        inputs.iter().any(|s| s.chunk == idx_of(&view, 4))
-                    }
-                    PlanUnit::Drop(_) | PlanUnit::GopRun { .. } => false,
-                })
-                .cloned()
-                .collect::<Vec<_>>()
-        };
-        let by_type = units_of(vec![OwnChunkRule::new(ColumnSelector::Type(
-            MyPoint::name(),
-        ))]);
-        assert_eq!(
-            untyped_units(&by_type),
-            vec![
-                only_run(&view, &[4], MyPoints::descriptor_points().component, target),
-                PlanUnit::MergeSplitRun {
-                    inputs: vec![ChunkSlice::except(
-                        idx_of(&view, 4),
-                        [MyPoints::descriptor_points().component]
-                    )],
-                    target,
-                },
-            ]
+        insta::assert_snapshot!(
+            plan_with(vec![OwnChunkRule::new(ColumnSelector::Type(MyPoint::name()))]),
+            @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:points]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:points]
+            merge_split (1048576 B)
+              #2 only[example.MyPoints:points]
+            merge_split (1048576 B)
+              #2 except[example.MyPoints:points]
+            merge_split (1048576 B)
+              #4 only[example.MyPoints:points]
+            merge_split (1048576 B)
+              #4 except[example.MyPoints:points]
+            merge_split (1048576 B)
+              #3 only[example.MyPoints:points]
+            merge_split (1048576 B)
+              #3 except[example.MyPoints:points]
+            "
         );
-        let by_column = units_of(vec![OwnChunkRule::new(ColumnSelector::Column(custom))]);
-        assert_eq!(
-            untyped_units(&by_column),
-            vec![
-                only_run(&view, &[4], custom, target),
-                PlanUnit::MergeSplitRun {
-                    inputs: vec![ChunkSlice::except(idx_of(&view, 4), [custom])],
-                    target,
-                },
-            ]
+        insta::assert_snapshot!(
+            plan_with(vec![OwnChunkRule::new(ColumnSelector::Column(custom))]),
+            @r"
+            merge_split (1048576 B)
+              #1 all
+            merge_split (1048576 B)
+              #2 all
+            merge_split (1048576 B)
+              #4 only[custom]
+            merge_split (1048576 B)
+              #4 except[custom]
+            merge_split (1048576 B)
+              #3 all
+            "
         );
 
         // The entity filter: a rule naming `entity` alone leaves `other` mixed; a plain `all()`
@@ -1413,30 +1654,54 @@ mod tests {
         let entity_only = type_rule
             .clone()
             .with_entity_filter(EntityPathFilter::parse_forgiving("+ /entity"));
-        let units = units_of(vec![entity_only]);
-        assert!(units.contains(&only_run(&view, &[1], colors(), target)));
-        assert!(units.contains(&merge_split_run(&view, &[2], &global)));
-        assert!(units.contains(&merge_split_run(&view, &[3], &global)));
+        insta::assert_snapshot!(plan_with(vec![entity_only]), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #2 all
+            merge_split (1048576 B)
+              #4 all
+            merge_split (1048576 B)
+              #3 all
+            ");
 
         let plain_all = type_rule
             .clone()
             .with_entity_filter(EntityPathFilter::all());
-        let units = units_of(vec![plain_all]);
-        assert!(units.contains(&only_run(&view, &[1], colors(), target)));
-        assert!(units.contains(&merge_split_run(&view, &[3], &global)));
+        insta::assert_snapshot!(plan_with(vec![plain_all]), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #2 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #2 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #4 all
+            merge_split (1048576 B)
+              #3 all
+            ");
 
         assert_eq!(type_rule.entity_filter, None);
-        let units = units_of(vec![type_rule.clone()]);
-        assert!(units.contains(&only_run(&view, &[1], colors(), target)));
-        assert!(units.contains(&only_run(&view, &[2], colors(), target)));
-        assert!(units.contains(&only_run(&view, &[3], colors(), target)));
-        for id in [1, 2, 3] {
-            assert!(units.contains(&PlanUnit::MergeSplitRun {
-                inputs: vec![ChunkSlice::except(idx_of(&view, id), color_set())],
-                target,
-            }));
-        }
-        assert!(units.contains(&merge_split_run(&view, &[4], &global)));
+        insta::assert_snapshot!(plan_with(vec![type_rule.clone()]), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #2 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #2 except[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #4 all
+            merge_split (1048576 B)
+              #3 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #3 except[example.MyPoints:colors]
+            ");
 
         // Overrides, under a global target and without one.
         let custom_target = merge_split_settings(64, 0);
@@ -1444,36 +1709,43 @@ mod tests {
             merge_split,
             ..type_rule.clone()
         };
-        let colors_run_of = |settings: &OptimizationSettings, rule: OwnChunkRule| {
-            let mut units = colors_units(settings, vec![rule]);
-            assert_eq!(units.len(), 1);
-            units.pop().unwrap()
-        };
         let disabled = OptimizationSettings {
             merge_split: None,
             ..global.clone()
         };
 
-        assert_eq!(
-            colors_run_of(&global, with_override(MergeSplitOverride::Inherit)),
-            only_run(&view, &[1], colors(), target)
+        insta::assert_snapshot!(
+            colors_units(&global, vec![with_override(MergeSplitOverride::Inherit)]),
+            @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            "
         );
-        assert_eq!(
-            colors_run_of(&disabled, with_override(MergeSplitOverride::Inherit)),
-            PlanUnit::Passthrough(ChunkSlice::only(idx_of(&view, 1), color_set()))
+        insta::assert_snapshot!(
+            colors_units(&disabled, vec![with_override(MergeSplitOverride::Inherit)]),
+            @r"
+            passthrough #1 only[example.MyPoints:colors]
+            "
         );
         for settings in [&global, &disabled] {
-            assert_eq!(
-                colors_run_of(settings, with_override(MergeSplitOverride::Passthrough)),
-                PlanUnit::Passthrough(ChunkSlice::only(idx_of(&view, 1), color_set()))
-            );
-            assert_eq!(
-                colors_run_of(
-                    settings,
-                    with_override(MergeSplitOverride::MergeSplit(custom_target))
-                ),
-                only_run(&view, &[1], colors(), custom_target)
-            );
+            insta::allow_duplicates! {
+                insta::assert_snapshot!(
+                    colors_units(settings, vec![with_override(MergeSplitOverride::Passthrough)]),
+                    @r"
+                    passthrough #1 only[example.MyPoints:colors]
+                    "
+                );
+                insta::assert_snapshot!(
+                    colors_units(
+                        settings,
+                        vec![with_override(MergeSplitOverride::MergeSplit(custom_target))]
+                    ),
+                    @r"
+                    merge_split (64 B)
+                      #1 only[example.MyPoints:colors]
+                    "
+                );
+            }
         }
     }
 
@@ -1486,14 +1758,11 @@ mod tests {
         let view = view_of(&chunks);
         let units = plan(&view, &with_rules(settings(1024 * 1024, 0), rules.clone()));
         assert!(plan_covers_view(&view, &units));
-        assert_eq!(
-            units,
-            vec![
-                PlanUnit::Passthrough(ChunkSlice::only(idx_of(&view, 1), color_set())),
-                PlanUnit::Passthrough(ChunkSlice::except(idx_of(&view, 1), [colors()])),
-                passthrough_all(&view, 2),
-            ]
-        );
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 only[example.MyPoints:colors]
+            passthrough #1 except[example.MyPoints:colors]
+            passthrough #2 all
+            ");
 
         // An orphan mixed chunk: its `:start` columns are null, so the index records no column
         // for it and it passes through whole.
@@ -1502,20 +1771,15 @@ mod tests {
             temporal_mixed_chunk(2, "entity", &[10, 11], 4, 4),
         ];
         let view = view_with_orphan(&chunks);
-        let settings = with_rules(settings(1024 * 1024, 0), rules);
-        let units = plan(&view, &settings);
+        let units = plan(&view, &with_rules(settings(1024 * 1024, 0), rules));
         assert!(plan_covers_view(&view, &units));
-        assert_eq!(
-            units,
-            vec![
-                only_run(&view, &[1], colors(), settings.merge_split.unwrap()),
-                PlanUnit::MergeSplitRun {
-                    inputs: vec![ChunkSlice::except(idx_of(&view, 1), color_set())],
-                    target: settings.merge_split.unwrap(),
-                },
-                passthrough_all(&view, 2),
-            ]
-        );
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            merge_split (1048576 B)
+              #1 only[example.MyPoints:colors]
+            merge_split (1048576 B)
+              #1 except[example.MyPoints:colors]
+            passthrough #2 all
+            ");
     }
 
     /// Hand-built plans that break the completeness invariant are rejected.
@@ -1715,7 +1979,6 @@ mod tests {
 
     /// The plan as text, for snapshots: one line per unit, its inputs indented below it, and
     /// chunks named `#<fixture id>`.
-    //TODO(ab): apply this to pre-existing tests.
     //TODO(ab): consider rolling some custom `Debug` instead (note: derived `Debug` makes overly
     //verbose snapshots).
     fn render_plan(view: &ChunkIndexView, units: &[PlanUnit]) -> String {
@@ -1820,10 +2083,6 @@ mod tests {
             .collect()
     }
 
-    fn starts(times: &[i64]) -> Vec<TimeInt> {
-        times.iter().map(|&t| TimeInt::new_temporal(t)).collect()
-    }
-
     /// A matched entity: the static codec chunk passes through and decides the codec, every
     /// temporal `is_keyframe` cell is dropped, on any timeline set, the samples form one GoP run in
     /// start order, and the sample chunks' other columns go to the entity's rest run.
@@ -1896,16 +2155,6 @@ mod tests {
     fn gop_rule_matching() {
         let keyframe_own_rule = OwnChunkRule::new(ColumnSelector::Column(keyframe_column()));
         let global = with_rules(settings(1024 * 1024, 0), vec![keyframe_own_rule.clone()]);
-        let target = global.merge_split.unwrap();
-        let samples_of = |units: &[PlanUnit]| -> Vec<GopChunkingConfig> {
-            gop_runs(units)
-                .into_iter()
-                .map(|unit| match unit {
-                    PlanUnit::GopRun { gop_chunking, .. } => *gop_chunking,
-                    _ => unreachable!(),
-                })
-                .collect()
-        };
 
         let chunks = vec![
             static_codec_chunk(1, "a"),
@@ -1922,29 +2171,61 @@ mod tests {
         let plan_with = |rules: Vec<GopBatchingRule>| {
             let units = plan(&view, &with_gop_rules(global.clone(), rules));
             assert!(plan_covers_view(&view, &units));
-            units
+            render_plan(&view, &units)
         };
-        assert_eq!(
-            samples_of(&plan_with(vec![
-                a_passthrough.clone(),
-                GopBatchingRule::default()
-            ])),
-            vec![
-                GopChunkingConfig::OnePerGop,
-                GopChunkingConfig::Packed(target)
-            ]
+        insta::assert_snapshot!(
+            plan_with(vec![a_passthrough.clone(), GopBatchingRule::default()]),
+            @r"
+            passthrough #1 all
+            passthrough #3 all
+            drop #2 only[VideoStream:is_keyframe]
+            gop_run /a on frame
+              codec: static #1
+              chunking: one per GoP
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+            drop #4 only[VideoStream:is_keyframe]
+            gop_run /b on frame
+              codec: static #3
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #4 only[VideoStream:sample] @0
+            "
         );
-        assert_eq!(
-            samples_of(&plan_with(vec![
-                GopBatchingRule::default(),
-                a_passthrough.clone()
-            ])),
-            vec![GopChunkingConfig::Packed(target); 2]
+        insta::assert_snapshot!(
+            plan_with(vec![GopBatchingRule::default(), a_passthrough.clone()]),
+            @r"
+            passthrough #1 all
+            passthrough #3 all
+            drop #2 only[VideoStream:is_keyframe]
+            gop_run /a on frame
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+            drop #4 only[VideoStream:is_keyframe]
+            gop_run /b on frame
+              codec: static #3
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #4 only[VideoStream:sample] @0
+            "
         );
         // `b` is filtered out: its `is_keyframe` follows the own-chunk rule.
-        let units = plan_with(vec![a_passthrough]);
-        assert_eq!(gop_runs(&units).len(), 1);
-        assert!(units.contains(&only_run(&view, &[4], keyframe_column(), target)));
+        insta::assert_snapshot!(plan_with(vec![a_passthrough]), @r"
+            passthrough #1 all
+            passthrough #3 all
+            drop #2 only[VideoStream:is_keyframe]
+            gop_run /a on frame
+              codec: static #1
+              chunking: one per GoP
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+            merge_split (1048576 B)
+              #4 only[VideoStream:is_keyframe]
+            merge_split (1048576 B)
+              #4 except[VideoStream:is_keyframe]
+            ");
 
         let chunks = vec![
             temporal_codec_chunk(1, "video", &[0, 1]),
@@ -1961,13 +2242,15 @@ mod tests {
             ),
         );
         assert!(plan_covers_view(&view, &units));
-        assert!(matches!(
-            gop_runs(&units).as_slice(),
-            [PlanUnit::GopRun { inputs, .. }]
-                if inputs.len() == 1
-                    && inputs[0].slice == ChunkSlice::only(idx_of(&view, 1), [sample_column()])
-        ));
-        assert!(units.contains(&passthrough_all(&view, 2)));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #2 all
+            drop #1 only[VideoStream:codec]
+            gop_run /video on frame
+              codec: static #2
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #1 only[VideoStream:sample] @0
+            ");
     }
 
     /// A static codec decides, wherever it is indexed, and shadows every temporal codec cell,
@@ -1989,70 +2272,60 @@ mod tests {
                 .unwrap()
         };
         let settings = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
-        let codec_and_inputs = |chunks: &[Chunk]| {
+        let plan_of = |chunks: &[Chunk]| {
             let view = view_of(chunks);
             let units = plan(&view, &settings);
             assert!(plan_covers_view(&view, &units));
-            let [PlanUnit::GopRun { codec, inputs, .. }] = gop_runs(&units).as_slice() else {
-                panic!("expected one GoP run: {units:?}");
-            };
-            let (source, codec_slices) = match codec {
-                CodecSource::Static(slices) => ("static", slices),
-                CodecSource::Temporal(slices) => ("temporal", slices),
-            };
-            let ids = |slices: &[ChunkSlice]| -> Vec<u128> {
-                slices
-                    .iter()
-                    .map(|slice| view.chunk(slice.chunk).chunk_id.as_u128())
-                    .collect()
-            };
-            let mut codec_dropped_from: Vec<u128> = units
-                .iter()
-                .filter_map(|unit| match unit {
-                    PlanUnit::Drop(slice) => Some(slice),
-                    _ => None,
-                })
-                .filter(|slice| *slice == &ChunkSlice::only(slice.chunk, [codec_column()]))
-                .map(|slice| view.chunk(slice.chunk).chunk_id.as_u128())
-                .collect();
-            codec_dropped_from.sort_unstable();
-            let input_keeps_codec: Vec<bool> = inputs
-                .iter()
-                .map(|MergeInput { slice, .. }| {
-                    *slice == ChunkSlice::only(slice.chunk, [sample_column(), codec_column()])
-                })
-                .collect();
-            (
-                source,
-                ids(codec_slices),
-                codec_dropped_from,
-                input_keeps_codec,
-            )
+            render_plan(&view, &units)
         };
 
         // Indexed after the temporal codec, the static one still decides.
-        assert_eq!(
-            codec_and_inputs(&[
+        insta::assert_snapshot!(
+            plan_of(&[
                 temporal_codec_chunk(1, "video", &[0, 1]),
                 codec_only(2),
                 static_codec_chunk(3, "video"),
             ]),
-            ("static", vec![3], vec![1, 2], vec![false])
+            @r"
+            passthrough #3 all
+            drop #1 only[VideoStream:codec]
+            drop #2 only[VideoStream:codec]
+            gop_run /video on frame
+              codec: static #3
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #1 only[VideoStream:sample] @0
+            "
         );
-        assert_eq!(
-            codec_and_inputs(&[
+        insta::assert_snapshot!(
+            plan_of(&[
                 temporal_codec_chunk(1, "video", &[0, 1]),
                 temporal_codec_chunk(2, "video", &[2, 3]),
             ]),
-            ("temporal", vec![1], vec![], vec![true, true])
+            @r"
+            gop_run /video on frame
+              codec: temporal #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #1 only[VideoStream:codec, VideoStream:sample] @0
+              #2 only[VideoStream:codec, VideoStream:sample] @2
+            "
         );
-        assert_eq!(
-            codec_and_inputs(&[
+        insta::assert_snapshot!(
+            plan_of(&[
                 temporal_codec_chunk(1, "video", &[0, 1]),
                 codec_only(2),
                 codec_only(3),
             ]),
-            ("temporal", vec![2, 3], vec![2, 3], vec![true])
+            @r"
+            drop #2 only[VideoStream:codec]
+            drop #3 only[VideoStream:codec]
+            gop_run /video on frame
+              codec: temporal #2 #3
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #1 only[VideoStream:codec, VideoStream:sample] @0
+            "
         );
     }
 
@@ -2240,36 +2513,43 @@ mod tests {
         ];
         let view = view_of(&chunks);
         let base = with_gop_rules(settings(1024 * 1024, 0), vec![GopBatchingRule::default()]);
-        let run_of = |target_timeline: Option<re_log_types::TimelineName>| {
+        let plan_with_target = |target_timeline: Option<re_log_types::TimelineName>| {
             let settings = OptimizationSettings {
                 target_timeline,
                 ..base.clone()
             };
             let units = plan(&view, &settings);
             assert!(plan_covers_view(&view, &units));
-            let [
-                PlanUnit::GopRun {
-                    inputs, timeline, ..
-                },
-            ] = gop_runs(&units).as_slice()
-            else {
-                panic!("expected one GoP run");
-            };
-            let ids: Vec<u128> = inputs
-                .iter()
-                .map(|input| view.chunk(input.slice.chunk).chunk_id.as_u128())
-                .collect();
-            let input_starts: Vec<TimeInt> = inputs.iter().map(|input| input.start).collect();
-            (*timeline, ids, input_starts)
+            render_plan(&view, &units)
         };
 
-        let on_other = (*other.name(), vec![3, 2], starts(&[20, 30]));
-        assert_eq!(run_of(Some(*other.name())), on_other);
-        assert_eq!(run_of(None), on_other);
-        assert_eq!(
-            run_of(Some(*frame().name())),
-            (*frame().name(), vec![2, 3], starts(&[0, 10]))
-        );
+        insta::assert_snapshot!(plan_with_target(Some(*other.name())), @r"
+            passthrough #1 all
+            gop_run /video on other
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #3 only[VideoStream:sample] @20
+              #2 only[VideoStream:sample] @30
+            ");
+        insta::assert_snapshot!(plan_with_target(None), @r"
+            passthrough #1 all
+            gop_run /video on other
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #3 only[VideoStream:sample] @20
+              #2 only[VideoStream:sample] @30
+            ");
+        insta::assert_snapshot!(plan_with_target(Some(*frame().name())), @r"
+            passthrough #1 all
+            gop_run /video on frame
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+              #3 only[VideoStream:sample] @10
+            ");
 
         let chunks = vec![
             static_codec_chunk(1, "video"),
@@ -2282,9 +2562,14 @@ mod tests {
         ];
         let view = view_of(&chunks);
         let units = plan(&view, &base);
-        assert!(matches!(
-            gop_runs(&units).as_slice(),
-            [PlanUnit::GopRun { timeline, .. }] if *timeline == *frame().name()
-        ));
+        assert!(plan_covers_view(&view, &units));
+        insta::assert_snapshot!(render_plan(&view, &units), @r"
+            passthrough #1 all
+            gop_run /video on frame
+              codec: static #1
+              chunking: packed (1048576 B)
+              keyframes: own chunk (1048576 B)
+              #2 only[VideoStream:sample] @0
+            ");
     }
 }

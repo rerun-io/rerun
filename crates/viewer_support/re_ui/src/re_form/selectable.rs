@@ -3,8 +3,7 @@ use crate::re_form::{ConstructFormStrip, FormStrip, Fractions, form_field_frame}
 use egui::epaint::RectShape;
 use egui::layers::ShapeIdx;
 use egui::{
-    Atoms, Direction, Frame, IntoAtoms, Layout, Response, Shape, Stroke, StrokeKind, Ui, Widget,
-    WidgetAtom,
+    Atoms, Direction, Frame, IntoAtoms, Layout, Response, Shape, StrokeKind, Ui, Widget, WidgetAtom,
 };
 use std::ops::{Deref, DerefMut};
 
@@ -108,7 +107,7 @@ impl Widget for SelectableToggle<'_> {
         if self.selected {
             atom_layout.frame = atom_layout
                 .frame
-                .stroke(Stroke::new(1.0, ui.tokens().form_selectable_stroke_color))
+                .stroke(ui.tokens().control_stroke)
                 .fill(ui.tokens().form_selectable_bg_color);
         }
 

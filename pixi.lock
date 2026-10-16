@@ -18502,7 +18502,7 @@ packages:
   timestamp: 1764777142545
 - pypi: ./rerun_pixi_env
   name: rerun-pixi-env
-  requires_python: '>=3.10'
+  requires_python: '>=3.11'
 - pypi: https://files.pythonhosted.org/packages/02/08/9c41fb51ab5b43eb21674aff13df270e8ba6c4b29c8624e328dc7a9482af/distlib-0.4.3-py2.py3-none-any.whl
   name: distlib
   version: 0.4.3

@@ -226,9 +226,8 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: ColormapArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, (Colormap, int, str)):
-            data = [data]
+        items: Sequence[ColormapLike | str] = [data] if isinstance(data, (Colormap, int, str)) else data
 
-        pa_data = [Colormap.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
+        pa_data = [Colormap.auto(v).value if v is not None else None for v in items]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

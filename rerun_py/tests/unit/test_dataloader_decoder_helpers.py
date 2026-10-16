@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import pickle
+import weakref
 from fractions import Fraction
+from itertools import pairwise
 from typing import cast
 
 import av
@@ -35,6 +37,7 @@ from rerun.experimental.dataloader.decoders import (
     ImageDecoder,
     NumericDecoder,
     VideoFrameDecoder,
+    _video,
 )
 from rerun.experimental.dataloader.decoders._arrow import _flatten_blob, _unwrap_to_numpy
 from rerun.experimental.dataloader.decoders._video import _decoder_name, _extract_video_samples, _starts_with
@@ -402,7 +405,7 @@ def test_extract_video_samples_preserves_identical_packets() -> None:
     packet = b"same encoded packet"
     column = pa.array([[packet], [packet]], type=pa.list_(pa.binary()))
 
-    samples, rows = _extract_video_samples(column, range(2), video_codec=None)
+    samples, rows = _extract_video_samples(FieldBatch(column=column), range(2), video_codec=None)
 
     assert samples == [packet, packet]
     assert rows == [0, 1]
@@ -867,7 +870,7 @@ def test_video_frame_decoder_window_stacks_do_not_share_memory() -> None:
     assert torch.count_nonzero(second) > 0
 
 
-def test_video_frame_decoder_contiguous_windows_can_share_frame_bank() -> None:
+def test_video_frame_decoder_contiguous_windows_can_share_frame_bank(monkeypatch: pytest.MonkeyPatch) -> None:
     samples = _encode_h264(num_frames=5, gop=5)
     requests = [
         DecodeRequest(
@@ -883,11 +886,25 @@ def test_video_frame_decoder_contiguous_windows_can_share_frame_bank() -> None:
 
     batch = _sample_batch(samples, is_windowed=True)
     expected = VideoFrameDecoder(codec="h264").decode(batch, requests)
-    first, second = VideoFrameDecoder(codec="h264", window_storage="view").decode(
-        batch,
-        requests,
-    )
+    decoder = VideoFrameDecoder(codec="h264", window_storage="view")
+    original_convert = decoder._frame_to_tensor
+    converted: list[weakref.ReferenceType[torch.Tensor]] = []
 
+    def convert(frame: av.VideoFrame) -> torch.Tensor:
+        assert all(ref() is None for ref in converted), "Earlier RGB frames must be released before converting the next"
+        tensor = original_convert(frame)
+        converted.append(weakref.ref(tensor))
+        return tensor
+
+    def unexpected_stack(_frames: object) -> None:
+        pytest.fail("RGB windows must use the captured bank without another allocation")
+
+    monkeypatch.setattr(decoder, "_frame_to_tensor", convert)
+    monkeypatch.setattr(_video, "_stack_decoded_frames", unexpected_stack)
+    first, second = decoder.decode(batch, requests)
+
+    assert len(converted) == 3
+    assert all(ref() is None for ref in converted)
     assert first is not None and second is not None
     assert expected[0] is not None and expected[1] is not None
     torch.testing.assert_close(first, expected[0])
@@ -1123,7 +1140,7 @@ def test_video_frame_decoder_rejects_unknown_window_storage() -> None:
 
 def test_video_frame_decoder_rejects_unknown_output_format() -> None:
     with pytest.raises(ValueError, match="output_format"):
-        VideoFrameDecoder(output_format="unknown")  # type: ignore[call-overload]
+        VideoFrameDecoder(output_format="unknown")  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def test_video_frame_decoder_accepts_automatic_thread_count() -> None:
@@ -1142,7 +1159,7 @@ def test_video_frame_decoder_accepts_automatic_thread_count() -> None:
 )
 def test_video_frame_decoder_rejects_invalid_resource_limits(kwargs: dict[str, int], message: str) -> None:
     with pytest.raises(ValueError, match=message):
-        VideoFrameDecoder(**kwargs)  # type: ignore[call-overload]
+        VideoFrameDecoder(**kwargs)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
 
 def _group_table(segment_ids: list[str], index_values: list[int]) -> pa.Table:
@@ -1415,3 +1432,71 @@ def test_resolve_decode_requests_omits_a_segment_with_no_rows() -> None:
     )
 
     assert requests == []
+
+
+def _chunked(rows: list[list[bytes]], splits: list[int], *, empty_chunks: bool = False) -> pa.ChunkedArray:
+    """Split `rows` into a `list<binary>` chunked column at `splits`; each chunk is a slice with a non-zero offset."""
+    bounds = [0, *splits, len(rows)]
+    chunks: list[pa.Array] = []
+    for start, stop in pairwise(bounds):
+        padded = pa.array([[b"pad"], *rows[start:stop], [b"pad"]], type=pa.list_(pa.binary()))
+        chunks.append(padded.slice(1, stop - start))
+        if empty_chunks:
+            chunks.append(pa.array([], type=pa.list_(pa.binary())))
+    return pa.chunked_array(chunks, type=pa.list_(pa.binary()))
+
+
+_ROWS = [[f"row{i}".encode()] if i % 4 else [] for i in range(10)]
+
+
+def test_field_batch_rows_match_combined_column() -> None:
+    chunked = _chunked(_ROWS, [3, 7], empty_chunks=True)
+    expected = chunked.combine_chunks()
+    batch = FieldBatch(column=chunked)
+
+    for start in range(len(_ROWS) + 1):
+        for stop in range(start, len(_ROWS) + 1):
+            assert batch.rows(start, stop).equals(expected.slice(start, stop - start)), (start, stop)
+
+
+def test_field_batch_take_rows_across_chunks() -> None:
+    chunked = _chunked(_ROWS, [3, 7], empty_chunks=True)
+    expected = chunked.combine_chunks()
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=8,
+        decode_row_indices=(1, 2, 3, 8),
+        output_row_indices=(2, 8, 8, 3),
+        starts_at_keyframe=False,
+    )
+    batch = FieldBatch(column=chunked)
+
+    decode_rows = batch.take_decode_rows(request)
+    output_rows = batch.take_output_rows(request)
+
+    assert isinstance(decode_rows, pa.Array) and isinstance(output_rows, pa.Array)
+    assert decode_rows.equals(expected.take([1, 2, 3, 8]))
+    assert output_rows.equals(expected.take([2, 8, 8, 3]))
+
+    empty = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=0,
+        decode_row_indices=(),
+        output_row_indices=(),
+        starts_at_keyframe=False,
+    )
+    assert len(batch.take_decode_rows(empty)) == 0
+    for out_of_bounds in (-1, len(_ROWS)):
+        with pytest.raises(IndexError):
+            batch.take_decode_rows(
+                DecodeRequest(
+                    sample_position=0,
+                    segment_id="seg",
+                    index_value=0,
+                    decode_row_indices=(out_of_bounds,),
+                    output_row_indices=(out_of_bounds,),
+                    starts_at_keyframe=False,
+                )
+            )

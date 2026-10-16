@@ -1,4 +1,6 @@
-use re_ui::DesignTokens;
+use re_ui::{DesignTokens, UiExt as _};
+
+use super::entrance_animation::{EntranceAnimation, EntranceAnimationItem};
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "The data layer for physical AI";
@@ -8,23 +10,35 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Query with dataframes or SQL, and stream directly to training",
 ];
 
+const TITLE_ANIMATION: EntranceAnimationItem =
+    EntranceAnimationItem::new(0.38, 0.07).translated_y(30.0);
+
 /// Show the welcome section.
-pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
+pub(super) fn welcome_section_ui(ui: &mut egui::Ui, animation: &mut EntranceAnimation) {
+    re_tracing::profile_function!();
+
     ui.vertical(|ui| {
-        let (style, line_height) = if ui.available_width() > 400.0 {
-            (DesignTokens::welcome_screen_h1(), 50.0)
+        let style = if ui.available_width() > 400.0 {
+            DesignTokens::heading_1()
         } else {
-            (DesignTokens::welcome_screen_h2(), 36.0)
+            DesignTokens::heading_2()
         };
 
-        ui.add(
-            egui::Label::new(
-                egui::RichText::new(WELCOME_SCREEN_TITLE)
-                    .strong()
-                    .line_height(Some(line_height))
-                    .text_style(style),
-            )
-            .wrap(),
+        animation.show(
+            ui,
+            ui.scope_id().with("welcome_title"),
+            TITLE_ANIMATION,
+            |ui| {
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(WELCOME_SCREEN_TITLE)
+                            .strong()
+                            .text_style(style)
+                            .color(ui.tokens().text_strong),
+                    )
+                    .wrap(),
+                );
+            },
         );
     });
 }

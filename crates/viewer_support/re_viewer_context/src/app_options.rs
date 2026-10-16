@@ -23,7 +23,7 @@ pub struct AppOptions {
     /// Warn if the e2e latency exceeds this value.
     pub warn_e2e_latency: f32,
 
-    /// Show milliseconds, RAM usage, etc.
+    /// Show top bar diagnostics such as the debug-build warning and performance metrics.
     pub show_metrics: bool,
 
     /// Show toasts for log messages?

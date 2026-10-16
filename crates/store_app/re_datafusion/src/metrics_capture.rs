@@ -194,6 +194,39 @@ impl QueryMetrics {
     }
 }
 
+/// RAII gauge for the number of fetch tasks in flight at once.
+///
+/// Bumps `current_inflight_fetches` on entry — updating the
+/// `peak_inflight_fetches` high-water mark via `fetch_max` — and decrements on
+/// drop, so the reported peak is correct even when a task returns early on
+/// error. `QueryMetrics` is shared across every partition, so the peak is the
+/// true global concurrency, one unit per fetch task.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct InflightFetchGuard<'a>(&'a QueryMetrics);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> InflightFetchGuard<'a> {
+    pub fn enter(metrics: &'a QueryMetrics) -> Self {
+        let in_flight = metrics
+            .current_inflight_fetches
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+        metrics
+            .peak_inflight_fetches
+            .fetch_max(in_flight, Ordering::Relaxed);
+        Self(metrics)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Drop for InflightFetchGuard<'_> {
+    fn drop(&mut self) {
+        self.0
+            .current_inflight_fetches
+            .fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 /// One completed query's metrics, as seen from the client side.
 ///
 /// Built once via `build_query_snapshot` and consumed by:

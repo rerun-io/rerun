@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import argparse
 import webbrowser
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 from embeddings import (
@@ -29,7 +29,7 @@ from embeddings import (
 from vector_store import BACKENDS, DEFAULT_PATHS, open_store
 
 import rerun as rr
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, DatasetEntry
 
 TIMELINE = "real_time"
 
@@ -81,10 +81,10 @@ def embed_image_query(path: str, model: EmbeddingModel, processor: EmbeddingProc
     return cast("list[float]", vector.tolist())
 
 
-def viewer_url(dataset: object, segment_id: str, timestamp_ms: int, window_secs: float) -> str:
-    ts = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+def viewer_url(dataset: DatasetEntry, segment_id: str, timestamp_ms: int, window_secs: float) -> str:
+    ts = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC)
     half = timedelta(seconds=window_secs / 2)
-    return dataset.segment_url(segment_id, timeline=TIMELINE, start=ts - half, end=ts + half)  # type: ignore[attr-defined, no-any-return]
+    return dataset.segment_url(segment_id, timeline=TIMELINE, start=ts - half, end=ts + half)
 
 
 def main() -> None:
@@ -109,7 +109,7 @@ def main() -> None:
     print(f'\nTop {len(hits)} matches for: "{query_label}"\n')
     print(f"{'#':>2}  {'sim':>5}  {'camera':<6}  {'timestamp (UTC)':<24}  segment")
     for rank, hit in enumerate(hits, start=1):
-        ts_iso = datetime.fromtimestamp(hit["timestamp_ms"] / 1000, tz=timezone.utc).isoformat(timespec="milliseconds")
+        ts_iso = datetime.fromtimestamp(hit["timestamp_ms"] / 1000, tz=UTC).isoformat(timespec="milliseconds")
         print(f"{rank:>2}  {hit['similarity']:>5.3f}  {hit['camera']:<6}  {ts_iso:<24}  {hit['segment_id']}")
 
     # Mint a deep-link into the viewer for the best match.

@@ -22,6 +22,7 @@ pub mod loading_indicator;
 mod markdown_utils;
 pub mod menu;
 pub mod modal;
+mod motion;
 pub mod notifications;
 mod panel_title_bar;
 mod relative_time_range;
@@ -54,8 +55,9 @@ pub use self::command::{
     BoundCommand, CommandEnvironment, CommandKind, CommandScope, ListedCommand, RecordingCommand,
     RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
     RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
-    UICommand, UICommandSender, consume_timeline_shortcut, listen_for_kb_shortcuts,
-    palette_commands, refresh_shortcuts,
+    UICommand, UICommandSender, conflicts_with_text_editing, consume_timeline_shortcut,
+    format_shortcut, key_symbol_or_name, listen_for_kb_shortcuts, palette_commands,
+    refresh_shortcuts,
 };
 pub use self::command_palette::{
     CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,
@@ -243,6 +245,7 @@ pub fn try_set_design_tokens(
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();
 
+    egui_ctx.add_plugin(motion::PopupAnimationPlugin::default());
     egui_extras::install_image_loaders(egui_ctx);
 
     egui_ctx.include_bytes(

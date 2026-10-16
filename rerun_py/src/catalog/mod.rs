@@ -1,3 +1,12 @@
+//! Python owns the dataset and segment resource handles and their object-oriented API.
+//!
+//! Handles retain the Python catalog client or Python connection handle so that connection
+//! state and credentials stay shared. Delegate high-level operations to
+//! [`re_redap_client::ConnectionHandle`], with explicit dataset and segment IDs.
+//! [`re_redap_client::ConnectionClient`] is the low-level protocol API.
+//!
+//! NOTE: Existing bindings still call the low-level client directly in some paths.
+
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 mod catalog_client;
@@ -6,13 +15,16 @@ mod connection_handle;
 mod dataframe_rendering;
 mod datafusion_catalog;
 mod dataset_entry;
+mod dataset_info;
 mod dataset_view;
 mod entry;
 mod errors;
 mod index_columns;
+mod layer;
 mod object_store;
 mod registration_handle;
 mod schema;
+mod segment;
 mod segment_url_udf;
 mod table_entry;
 mod table_provider_adapter;
@@ -31,13 +43,16 @@ pub use self::component_columns::{PyComponentColumnDescriptor, PyComponentColumn
 pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
+pub use self::dataset_info::PyDatasetInfoInternal;
 pub use self::dataset_view::PyDatasetViewInternal;
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
+pub use self::layer::PyLayerInternal;
 pub use self::object_store::{AnyObjectStoreAuthenticator, BearerTokenObjectStoreAuthenticator};
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
+pub use self::segment::PySegmentInternal;
 pub use self::segment_url_udf::PySegmentUrlUdfInternal;
 pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
@@ -53,6 +68,9 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntryKind>()?;
     m.add_class::<PyEntryDetails>()?;
     m.add_class::<PyDatasetEntryInternal>()?;
+    m.add_class::<PySegmentInternal>()?;
+    m.add_class::<PyDatasetInfoInternal>()?;
+    m.add_class::<PyLayerInternal>()?;
     m.add_class::<PyTableEntryInternal>()?;
     m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;

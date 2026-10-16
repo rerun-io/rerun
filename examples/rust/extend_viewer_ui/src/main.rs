@@ -120,7 +120,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
 
     ui.separator();
 
-    ui.strong("Entities:");
+    ui.strong("Entities");
 
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])

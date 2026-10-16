@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 use re_build_info::{BuildInfo, CrateVersion};
 use url::Url;
+use uuid::Uuid;
 
 use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 
@@ -545,7 +546,52 @@ impl Properties for AgentTurn {
 
 // -----------------------------------------------
 
-/// The user sent feedback on a conversation in the Rerun Viewer's agent panel.
+/// Who wrote a [`Feedback`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackAuthor {
+    /// The user, for example in the agent panel's feedback dialog.
+    User,
+
+    /// An agent, for example through a viewer control or MCP tool.
+    Agent,
+}
+
+impl FeedbackAuthor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Agent => "agent",
+        }
+    }
+}
+
+/// What a [`Feedback`] is about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackSubject {
+    /// One agent session: how the agent did in that conversation.
+    Session,
+
+    /// Rerun itself: its tools, docs, and API.
+    Product,
+}
+
+impl FeedbackSubject {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Session => "session",
+            Self::Product => "product",
+        }
+    }
+}
+
+/// Feedback sent from the Rerun Viewer.
+///
+/// All feedback is one event. [`Self::author`] says who wrote it, [`Self::subject`] says what it
+/// is about, and [`Self::source`] says where it came from.
+///
+/// ## User feedback on an agent session
+///
+/// `author: user`, `subject: session`, `source: viewer_panel`.
 ///
 /// It carries the user's feedback text and the whole conversation: the user's prompts,
 /// the agent's answers, and its tool calls.
@@ -557,39 +603,76 @@ impl Properties for AgentTurn {
 /// with placeholders such as `<name>` or `<secret>`, and keeps everything else.
 /// Nothing is sent when the session fails, takes more than two minutes, or returns JSON in
 /// another shape.
-pub struct AgentFeedback {
-    /// What the user typed.
+pub struct Feedback {
+    /// A random id for this feedback.
+    ///
+    /// When there is a trajectory, it also carries the id as `extra.feedback_id`, so the event
+    /// can be joined with the trajectory wherever the trajectory is stored.
+    pub feedback_id: Uuid,
+
+    /// Who wrote the feedback.
+    pub author: FeedbackAuthor,
+
+    /// What the feedback is about.
+    pub subject: FeedbackSubject,
+
+    /// Where the feedback was given, e.g. `viewer_panel`.
+    pub source: &'static str,
+
+    /// The feedback text.
     pub feedback: String,
 
-    /// Which agent handled the conversation, e.g. "Claude Code".
+    /// Which agent handled the conversation or wrote the feedback, e.g. "Claude Code".
     pub agent: String,
 
-    /// The conversation as ATIF JSON, or `None` when it was too large to send.
+    /// The conversation as ATIF JSON, or `None` when there is none or it was too large to send.
     ///
     /// ATIF is the [Agent Trajectory Interchange Format](https://docs.harborframework.com/agents/atif)
     /// of the Harbor eval framework.
     pub trajectory: Option<String>,
 
-    /// Size of the trajectory JSON in bytes, also when [`Self::trajectory`] is left out.
-    pub trajectory_bytes: usize,
+    /// Size of the trajectory JSON in bytes, also when [`Self::trajectory`] is left out
+    /// because it was too large. `None` when there is no conversation.
+    pub trajectory_bytes: Option<usize>,
+
+    /// Images in the conversation: pasted by the user or shown by the agent.
+    ///
+    /// The trajectory does not carry them. The count tells how much of the conversation is missing.
+    pub image_count: Option<usize>,
 }
 
-impl Event for AgentFeedback {
-    const NAME: &'static str = "agent_feedback";
+impl Event for Feedback {
+    const NAME: &'static str = "feedback";
 }
 
-impl Properties for AgentFeedback {
+impl Properties for Feedback {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            feedback_id,
+            author,
+            subject,
+            source,
             feedback,
             agent,
             trajectory,
             trajectory_bytes,
+            image_count,
         } = self;
+        event.insert("feedback_id", feedback_id.to_string());
+        event.insert("author", author.as_str());
+        event.insert("subject", subject.as_str());
+        event.insert("source", source);
         event.insert("feedback", feedback);
         event.insert("agent", agent);
         event.insert_opt("trajectory", trajectory);
-        event.insert_opt("trajectory_bytes", i64::try_from(trajectory_bytes).ok());
+        event.insert_opt(
+            "trajectory_bytes",
+            trajectory_bytes.and_then(|bytes| i64::try_from(bytes).ok()),
+        );
+        event.insert_opt(
+            "image_count",
+            image_count.and_then(|count| i64::try_from(count).ok()),
+        );
     }
 }
 

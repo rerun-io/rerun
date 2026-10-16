@@ -59,7 +59,7 @@ pub async fn test_add_visualizer_axes() {
     harness.click_label("Expand all");
     harness.snapshot_app("add_visualizer_axes_2");
 
-    harness.blueprint_tree().click_label("boxes3d");
+    harness.blueprint_tree().click_list_item("boxes3d");
     harness.snapshot_app("add_visualizer_axes_3");
 
     harness.selection_panel().click_label("Add new visualizer…");

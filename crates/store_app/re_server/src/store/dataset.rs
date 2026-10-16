@@ -44,7 +44,7 @@ pub struct SegmentProperties {
     /// One row, with `property:<key>:<component>` columns.
     pub properties: RecordBatch,
 
-    /// Bumped on every write, starting at 1. Gates conditional writes.
+    /// A new random value on every write, never `0`. Gates conditional writes and removals.
     pub revision: u64,
 }
 
@@ -202,7 +202,7 @@ impl Dataset {
             });
         }
 
-        let revision = current + 1;
+        let revision = random_revision();
         self.segment_properties.insert(
             segment_id,
             SegmentProperties {
@@ -211,6 +211,22 @@ impl Dataset {
             },
         );
         Ok(revision)
+    }
+
+    /// Drop one segment's mutable properties. A segment without any is left alone.
+    ///
+    /// With `expected_revision` set the properties are only dropped if the stored revision
+    /// matches, and are left untouched otherwise.
+    pub fn remove_segment_properties(
+        &mut self,
+        segment_id: &SegmentId,
+        expected_revision: Option<u64>,
+    ) {
+        if let Some(stored) = self.segment_properties.get(segment_id)
+            && expected_revision.is_none_or(|expected| expected == stored.revision)
+        {
+            self.segment_properties.remove(segment_id);
+        }
     }
 
     pub fn dataset_details(&self) -> &DatasetDetails {
@@ -737,6 +753,17 @@ impl Dataset {
         }
 
         Ok(new_segment_ids)
+    }
+}
+
+/// A random nonzero segment properties revision.
+fn random_revision() -> u64 {
+    loop {
+        let revision =
+            getrandom::u64().expect("the OS random number generator should be available");
+        if revision != 0 {
+            return revision;
+        }
     }
 }
 

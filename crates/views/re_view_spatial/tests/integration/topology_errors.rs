@@ -203,6 +203,65 @@ fn snapshot_visualizer_errors(
 }
 
 #[test]
+fn test_invalid_pinhole_projection() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
+    test_context.log_entity("camera", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &archetypes::Pinhole::new([[0.0; 3]; 3])
+                .with_resolution([100.0, 100.0])
+                .with_child_frame("camera")
+                .with_parent_frame("world"),
+        )
+    });
+    test_context.log_entity("image", |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Image::from_elements(
+                    &[255u8, 0, 0],
+                    [1, 1],
+                    re_sdk_types::encodings::ColorModel::RGB,
+                ),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::CoordinateFrame::new("camera"),
+            )
+    });
+
+    for (view_class, target_frame) in [
+        (re_view_spatial::SpatialView3D::identifier(), "world"),
+        (re_view_spatial::SpatialView2D::identifier(), "camera"),
+    ] {
+        let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view = ViewBlueprint::new(view_class, RecommendedView::root());
+            ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+                ctx, view.id,
+            )
+            .save_blueprint_component(
+                ctx,
+                &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_tf::TransformFrameId::new(target_frame),
+            );
+            blueprint.add_view_at_root(view)
+        });
+        let errors = snapshot_visualizer_errors(&test_context, view_id);
+        assert!(errors.contains("Invalid projection matrix"), "{errors}");
+        assert!(
+            errors.contains("focal lengths fx and fy must be nonzero"),
+            "{errors}"
+        );
+        assert!(
+            !errors.contains("Can't visualize pinholes at the view's origin"),
+            "{errors}"
+        );
+    }
+}
+
+#[test]
 fn test_topology_errors() {
     let mut test_context = TestContext::new();
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();

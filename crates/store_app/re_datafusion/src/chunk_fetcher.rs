@@ -4,6 +4,7 @@ mod auth;
 pub use auth::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use std::{error::Error as _, fmt::Write as _};
@@ -113,6 +114,35 @@ const MAX_MERGED_RANGE_SIZE: u64 = 16 * 1024 * 1024;
 
 /// Number of times to retry direct fetch on transient errors before returning a hard error.
 const DIRECT_FETCH_MAX_RETRIES: usize = 10;
+
+/// Connect timeout for direct-URL (S3) fetches. Bounds DNS + TCP + TLS
+/// setup so a hung connect cannot indefinitely hold one of the scarce
+/// process-global direct-fetch permits. Mirrors the gRPC client's 10s.
+const DIRECT_FETCH_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Idle read timeout for direct-URL fetches: the max gap between received
+/// bytes. Idle-based (not a total-request cap) so a large-but-progressing
+/// merged range is never falsely cancelled, while a stalled body still
+/// releases its permit.
+const DIRECT_FETCH_READ_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// How long an unused connection stays in the pool before it is closed.
+const DIRECT_FETCH_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Process-wide HTTP client for direct-URL (presigned object-store) chunk
+/// fetches, so the connection pool stays warm across queries and partitions
+/// instead of paying a cold handshake per partition.
+///
+/// Cloning is a cheap `Arc` bump that shares the same pool.
+pub static DIRECT_FETCH_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
+        .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
+        .pool_idle_timeout(DIRECT_FETCH_POOL_IDLE_TIMEOUT)
+        .http1_only()
+        .build()
+        .expect("static reqwest client config is valid")
+});
 
 /// Maximum number of `Error::source` levels to unwind when building an error
 /// message. A safety bound against a pathological self-referential source chain.

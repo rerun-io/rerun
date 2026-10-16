@@ -196,15 +196,15 @@ fn tiny_chunks_file() {
 /// under the target (a fitting tail runt would legitimately coalesce on pass 2).
 #[test]
 fn convergence() {
-    // Heterogeneous group: alternating points and colors chunks of near-equal measured size
-    // (8 KiB per row either way). Homogeneous group: five points chunks.
+    // Heterogeneous group: alternating points and points + colors chunks of near-equal measured
+    // size (8 KiB per row either way). Homogeneous group: five points chunks.
     let mut inputs: Vec<Arc<Chunk>> = Vec::new();
     for i in 0..8_u128 {
         let times: Vec<i64> = (i as i64 * 10..i as i64 * 10 + 8).collect();
         inputs.push(if i % 2 == 0 {
             temporal_point_chunk(i + 1, "hetero", &times, 1024)
         } else {
-            temporal_color_chunk(i + 1, "hetero", &times, 2048)
+            temporal_mixed_chunk(i + 1, "hetero", &times, 512, 1024)
         });
     }
     for i in 0..5_u128 {

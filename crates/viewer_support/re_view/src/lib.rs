@@ -16,6 +16,7 @@ mod component_mapping_query_plan;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
+mod range_result_bootstrapping;
 mod source_selector;
 mod system_execution;
 mod time_axis;

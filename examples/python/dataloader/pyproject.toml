@@ -12,9 +12,6 @@ dependencies = [
   "lerobot==0.6.1",
 ]
 
-[dependency-groups]
-dev = ["mypy==2.4.0"]
-
 [tool.rerun-example]
 # Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
 isolated = true
@@ -22,7 +19,7 @@ isolated = true
 [tool.uv]
 # The example is flat scripts, not a wheel — skip project build, just sync deps.
 package = false
-# pyarrow 24.0.0 segfaults rerun on import and ships an incomplete py.typed that breaks mypy.
+# pyarrow 24.0.0 segfaults rerun on import.
 # Isolated examples don't inherit the workspace root's constraint-dependencies, so pin it here.
 # pyarrow arrives transitively (via rerun-sdk), hence a constraint rather than a direct dependency.
 constraint-dependencies = ["pyarrow>=23.0.1,<24"]
@@ -40,9 +37,7 @@ constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 [tool.uv.sources]
 rerun-sdk = { path = "../../../rerun_py", editable = true }
 
-# Merged onto the shared base at `../_isolated/mypy.ini` by
-# scripts/ci/isolated_examples.py — list the untyped third-party libs this
-# example actually imports.
-[[tool.mypy.overrides]]
-module = ["lerobot.*", "torch.*", "torchvision.*", "diffusers.*", "accelerate.*"]
-ignore_missing_imports = true
+# Makes ty treat this example as its own project instead of walking up to the workspace config.
+[tool.ty.environment]
+python = ".venv"
+extra-paths = ["../../../rerun_py", "../../../rerun_py/rerun_sdk"]

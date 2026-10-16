@@ -40,7 +40,9 @@ pub(crate) fn view_space_origin_widget_ui(
     match &mut state {
         SpaceOriginEditState::NotEditing => {
             let mut space_origin_string = view.space_origin.to_string();
-            let output = egui::TextEdit::singleline(&mut space_origin_string).show(ui);
+            let output = re_ui::text_edit::text_edit_scope(ui, |ui| {
+                egui::TextEdit::singleline(&mut space_origin_string).show(ui)
+            });
 
             // Delay opening the popup until the click is finished, otherwise the popup will close
             // immediately because the popup thinks this is a clicked_elsewhere.
@@ -151,7 +153,9 @@ fn view_space_origin_widget_editing_ui(
     // Draw the text edit
     //
 
-    let mut output = egui::TextEdit::singleline(&mut state.origin_string).show(ui);
+    let mut output = re_ui::text_edit::text_edit_scope(ui, |ui| {
+        egui::TextEdit::singleline(&mut state.origin_string).show(ui)
+    });
 
     if state.entered_editing {
         output.response.request_focus();
@@ -203,8 +207,7 @@ fn view_space_origin_widget_editing_ui(
         if excluded_count > 0 {
             ui.list_item_flat_noninteractive(
                 list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
-                    .weak(true)
-                    .italics(true),
+                    .weak(true),
             );
         }
     };

@@ -45,8 +45,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         ui.add(egui::Label::new(
             egui::RichText::new("Settings")
                 .strong()
-                .line_height(Some(32.0))
-                .text_style(DesignTokens::welcome_screen_h2()),
+                .text_style(DesignTokens::heading_2()),
         ));
 
         ui.allocate_ui_with_layout(
@@ -157,8 +156,11 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             );
     }
 
-    ui.re_checkbox(show_metrics, "Show performance metrics")
-        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
+    ui.re_checkbox(show_metrics, "Show top bar diagnostics")
+        .on_hover_text(
+            "Show the debug-build warning, milliseconds/frame, RAM usage, FPS, and connection \
+             diagnostics in the top bar",
+        );
 
     ui.re_checkbox(show_notification_toasts, "Show notification toasts")
         .on_hover_text("Show toasts for log messages and other notifications");
@@ -430,7 +432,7 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
         // TODO(ab): needed for alignment, we should use egui flex instead
         ui.set_height(19.0);
 
-        let label = ui.label("Mapbox access token:").on_hover_ui(|ui| {
+        let label = ui.label("Mapbox access token").on_hover_ui(|ui| {
             ui.markdown_ui(
                 "This token is used to enable Mapbox-based map view backgrounds.\n\n\
                 Note that the token will be saved in clear text in the configuration file. \
@@ -439,8 +441,10 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
             );
         });
 
-        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
-            .labelled_by(label.id);
+        re_ui::text_edit::text_edit_scope(ui, |ui| {
+            ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
+                .labelled_by(label.id)
+        });
     });
 }
 
@@ -452,7 +456,7 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
 
             let hardware_acceleration = &mut options.hw_acceleration;
             ui.horizontal(|ui| {
-                let label = ui.label("Decoder:");
+                let label = ui.label("Decoder");
                 let combo_box = egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
                     .selected_text(hardware_acceleration.to_string())
                     .show_ui(ui, |ui| {
@@ -495,10 +499,12 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
                     // TODO(ab): needed for alignment, we should use egui flex instead
                     ui.set_height(19.0);
 
-                    let label = ui.label("Path:");
+                    let label = ui.label("Path");
 
-                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path))
-                        .labelled_by(label.id);
+                    re_ui::text_edit::text_edit_scope(ui, |ui| {
+                        ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path))
+                            .labelled_by(label.id)
+                    });
                 });
             });
 

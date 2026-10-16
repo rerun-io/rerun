@@ -49,7 +49,7 @@ def test_visible_time_ranges_invalid_parameters() -> None:
 
     with pytest.raises(ValueError):
         # Numpy correctly flags this as an invalid overload, make sure it also throws.
-        rr.blueprint.archetypes.VisibleTimeRanges(
+        rr.blueprint.archetypes.VisibleTimeRanges(  # ty: ignore[no-matching-overload]
             ranges=[time_range],
             timeline="timeline",
             start=rr.TimeRangeBoundary.cursor_relative(),
@@ -58,7 +58,7 @@ def test_visible_time_ranges_invalid_parameters() -> None:
 
     with pytest.raises(ValueError):
         # Numpy correctly flags this as an invalid overload, make sure it also throws.
-        rr.blueprint.archetypes.VisibleTimeRanges(
+        rr.blueprint.archetypes.VisibleTimeRanges(  # ty: ignore[no-matching-overload]
             timeline="timeline",
             start=rr.TimeRangeBoundary.cursor_relative(),
             end=rr.TimeRangeBoundary.absolute(seconds=1.0),

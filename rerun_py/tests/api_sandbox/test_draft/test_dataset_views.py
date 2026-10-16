@@ -74,7 +74,7 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
 
 def test_dataset_view_filter_entities(complex_dataset: DatasetEntry) -> None:
-    assert sorted_schema_str(complex_dataset.arrow_schema()) == inline_snapshot("""\
+    assert sorted_schema_str(complex_dataset.schema().to_arrow()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
 /points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
 /text:TextLog:text: list<item: string>
@@ -85,7 +85,7 @@ timeline: timestamp[ns]\
 
     entity_filt = complex_dataset.filter_contents(["/points/**"])
 
-    assert sorted_schema_str(entity_filt.arrow_schema()) == inline_snapshot("""\
+    assert sorted_schema_str(entity_filt.schema().to_arrow()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
 /points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
 rerun.controls.RowId: fixed_size_binary[16]
@@ -123,7 +123,7 @@ def test_dataset_view_dataframe(complex_dataset: DatasetEntry) -> None:
         "complex_recording_2",
     ])
 
-    schema = filtered.arrow_schema()
+    schema = filtered.schema().to_arrow()
 
     assert sorted_schema_str(schema) == inline_snapshot("""\
 /text:TextLog:text: list<item: string>

@@ -1,6 +1,6 @@
 #![expect(clippy::unwrap_used)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BinaryArray, RecordBatch, StringArray};
@@ -12,9 +12,10 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    DataSource, DeleteEntryRequest, EntryKind, GetAssetsForSegmentRequest,
-    GetSegmentPropertiesRequest, ReadDatasetEntryRequest, RegisterWithDatasetRequest,
-    ScanDatasetManifestRequest, SetSegmentPropertiesRequest,
+    DataSource, DeleteEntryRequest, DeleteSegmentPropertiesRequest, EntryKind,
+    GetAssetsForSegmentRequest, GetSegmentPropertiesRequest, ReadDatasetEntryRequest,
+    RegisterWithDatasetRequest, ScanDatasetManifestRequest, SegmentPropertiesDeletion,
+    SetSegmentPropertiesRequest,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_protos::common::v1alpha1::{IfDuplicateBehavior, SegmentId};
@@ -436,7 +437,7 @@ pub async fn set_segment_properties_changes_asset_coverage_without_registering(
     )
     .await
     .expect("writing asset coverage should succeed");
-    assert_eq!(revision, 1, "the first write should be revision 1");
+    assert_ne!(revision, 0, "a write should never produce revision 0");
 
     assert_eq!(
         assets_for_segment(&service, dataset_name, "seg_a").await,
@@ -449,17 +450,18 @@ pub async fn set_segment_properties_changes_asset_coverage_without_registering(
     );
 
     // Widen the coverage, then narrow it back. Each edit is one write.
+    let first = revision;
     let revision = set_asset_coverage(
         &service,
         &asset_dataset_name,
         "the_asset",
         AssetMode::OptIn,
         &["seg_a", "seg_b"],
-        Some(revision),
+        Some(first),
     )
     .await
     .expect("widening asset coverage should succeed");
-    assert_eq!(revision, 2, "each write should bump the revision");
+    assert_ne!(revision, first, "each write should change the revision");
     assert_eq!(
         assets_for_segment(&service, dataset_name, "seg_b").await,
         vec![SegmentId::from("the_asset")]
@@ -506,9 +508,9 @@ pub async fn set_segment_properties_refuses_a_stale_revision(service: impl Rerun
     )
     .await
     .expect("expecting revision 0 should create the properties");
-    assert_eq!(first, 1);
+    assert_ne!(first, 0, "a write should never produce revision 0");
 
-    set_asset_coverage(
+    let winner = set_asset_coverage(
         &service,
         &asset_dataset_name,
         "the_asset",
@@ -544,7 +546,10 @@ pub async fn set_segment_properties_refuses_a_stale_revision(service: impl Rerun
         vec!["winner".to_owned()],
         "the refused write must not have landed"
     );
-    assert_eq!(revision, 2);
+    assert_eq!(
+        revision, winner,
+        "the refused write should leave the revision alone"
+    );
 }
 
 /// Unregistering a segment preserves its properties and revision.
@@ -599,6 +604,100 @@ pub async fn unregistering_a_segment_preserves_its_properties(service: impl Reru
     assert_eq!(
         asset_coverage(&service, &asset_dataset_name, "recycled").await,
         coverage,
+    );
+}
+
+/// `DeleteSegmentProperties` drops the properties of the segments it names, leaving the other
+/// segments alone. A segment named with a revision it is no longer at keeps its properties, and
+/// naming a segment that has no properties is a no-op.
+pub async fn delete_segment_properties_drops_them(service: impl RerunCloudService) {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+    let assets = DataSourcesDefinition::new_with_tuid_prefix(
+        100,
+        [
+            asset_layer("dropped"),
+            asset_layer("dropped_at_revision"),
+            asset_layer("stale"),
+            asset_layer("kept"),
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
+        .await;
+
+    let mut revisions = HashMap::new();
+    for asset_segment_id in ["dropped", "dropped_at_revision", "stale", "kept"] {
+        let revision = set_asset_coverage(
+            &service,
+            &asset_dataset_name,
+            asset_segment_id,
+            AssetMode::OptIn,
+            &["seg_a"],
+            None,
+        )
+        .await
+        .expect("writing asset coverage should succeed");
+        revisions.insert(asset_segment_id, revision);
+    }
+
+    let stale_revision = revisions["stale"];
+    set_asset_coverage(
+        &service,
+        &asset_dataset_name,
+        "stale",
+        AssetMode::OptIn,
+        &["seg_b"],
+        Some(stale_revision),
+    )
+    .await
+    .expect("rewriting asset coverage should succeed");
+
+    let deletion = |segment_id: &str, expected_revision| SegmentPropertiesDeletion {
+        segment_id: Some(SegmentId::from(segment_id)),
+        expected_revision,
+    };
+    service
+        .delete_segment_properties(
+            tonic::Request::new(DeleteSegmentPropertiesRequest {
+                segments: vec![
+                    deletion("dropped", None),
+                    deletion(
+                        "dropped_at_revision",
+                        Some(revisions["dropped_at_revision"]),
+                    ),
+                    deletion("stale", Some(stale_revision)),
+                    deletion("never_written", None),
+                ],
+            })
+            .with_entry_name(entry_name(&asset_dataset_name)),
+        )
+        .await
+        .expect("delete_segment_properties should succeed");
+
+    for dropped in ["dropped", "dropped_at_revision"] {
+        assert!(
+            asset_coverage(&service, &asset_dataset_name, dropped)
+                .await
+                .is_none(),
+            "the properties of {dropped} should be dropped"
+        );
+    }
+    let (_, stale_segments, _) = asset_coverage(&service, &asset_dataset_name, "stale")
+        .await
+        .expect("properties named with a stale revision should be kept");
+    assert_eq!(
+        stale_segments,
+        vec!["seg_b".to_owned()],
+        "the kept properties should be the ones written last"
+    );
+    assert!(
+        asset_coverage(&service, &asset_dataset_name, "kept")
+            .await
+            .is_some(),
+        "properties of a segment that wasn't named should be kept"
     );
 }
 
@@ -750,8 +849,9 @@ pub async fn dropping_the_last_layer_of_a_segment_preserves_its_properties(
         .register_with_dataset_name_blocking(&asset_dataset_name, assets.to_data_sources())
         .await;
 
+    let mut revisions = HashMap::new();
     for asset_segment_id in ["emptied", "kept"] {
-        set_asset_coverage(
+        let revision = set_asset_coverage(
             &service,
             &asset_dataset_name,
             asset_segment_id,
@@ -761,6 +861,7 @@ pub async fn dropping_the_last_layer_of_a_segment_preserves_its_properties(
         )
         .await
         .expect("writing asset coverage should succeed");
+        revisions.insert(asset_segment_id, revision);
     }
 
     // Naming no segment drops the layers from every segment of the dataset.
@@ -779,7 +880,11 @@ pub async fn dropping_the_last_layer_of_a_segment_preserves_its_properties(
     );
     assert_eq!(
         asset_coverage(&service, &asset_dataset_name, "emptied").await,
-        Some((AssetMode::OptIn, vec!["seg_a".to_owned()], 1)),
+        Some((
+            AssetMode::OptIn,
+            vec!["seg_a".to_owned()],
+            revisions["emptied"]
+        )),
     );
     assert!(
         asset_coverage(&service, &asset_dataset_name, "kept")

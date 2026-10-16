@@ -1,4 +1,6 @@
-use crate::list_item::{ItemButtons, ListItemContentButtonsExt};
+use egui::emath::GuiRounding as _;
+
+use crate::list_item::{CollapseButtonPlacement, ItemButtons, ListItemContentButtonsExt};
 use crate::{UiExt as _, list_item};
 
 /// A collapsible section header, with support for optional help tooltip and button.
@@ -46,6 +48,7 @@ impl SectionCollapsingHeader<'_> {
         } = self;
 
         let id = ui.make_persistent_id(label.text());
+        let label = ui.tokens().eyebrow_text(ui.style(), label.text());
 
         let mut content = list_item::LabelContent::new(label);
         *content.buttons_mut() = buttons;
@@ -53,12 +56,25 @@ impl SectionCollapsingHeader<'_> {
         let resp = list_item::ListItem::new()
             .interactive(true)
             .force_background(ui.tokens().section_header_color)
+            .with_height(ui.tokens().section_header_height())
+            .with_content_top_padding(ui.tokens().section_header_top_padding())
+            .with_collapse_button_placement(CollapseButtonPlacement::AfterLabel)
             .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
                 //TODO(ab): this space is not desirable when the content actually is list items
                 ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
                 add_body(ui);
                 ui.add_space(4.0); // Same here
             });
+
+        if ui.is_rect_visible(resp.item_response.rect) {
+            let separator_y = resp
+                .item_response
+                .rect
+                .top()
+                .round_to_pixels(ui.pixels_per_point());
+            ui.painter()
+                .hline(ui.full_span(), separator_y, ui.tokens().divider_stroke);
+        }
 
         if resp.item_response.clicked() {
             // `show_hierarchical_with_children_unindented` already toggles on double-click,
