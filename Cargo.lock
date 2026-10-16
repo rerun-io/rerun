@@ -9007,6 +9007,7 @@ dependencies = [
  "pulldown-cmark",
  "re_agent",
  "re_log",
+ "re_log_types",
  "re_tracing",
  "re_ui",
  "re_workspace_hack",
