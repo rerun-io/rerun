@@ -1,0 +1,11 @@
+flowchart LR
+    User[User right-clicks a container] --> Menu[Viewer context menu: CloneContentsAction]
+    Menu --> Model[ViewportBlueprint: request and coordinate copy]
+    Model --> Queue[ViewportCommand: DuplicateContainer]
+    Queue --> Copy[End of frame: copy the entire subtree]
+    Copy --> Container[ContainerBlueprint.duplicate: settings and child references]
+    Copy --> View[Existing ViewBlueprint.duplicate: view settings and overrides]
+    Container --> Store[Blueprint store: viewer configuration]
+    View --> Store
+    Store --> Viewer[Next frame: viewer displays the independent layout]
+    Data[Recorded entity data] --> Viewer

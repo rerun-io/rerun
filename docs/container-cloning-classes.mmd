@@ -1,0 +1,22 @@
+classDiagram
+    class CloneContentsAction {
+        +process_container(ctx: ContextMenuContext, container_id: ContainerId) void
+    }
+    class ViewportBlueprint {
+        +duplicate_container(container_id: ContainerId, ctx: ViewerContext) Option~ContainerId~
+    }
+    class ContainerBlueprint {
+        +id: ContainerId
+        +contents: Vec~Contents~
+        +active_tab: Option~Contents~
+        +duplicate(id: ContainerId, duplicate_child: FnMut) Option~ContainerBlueprint~
+    }
+    class ViewBlueprint {
+        +id: ViewId
+        +duplicate(store_context: ActiveStoreContext, query: LatestAtQuery) ViewBlueprint
+    }
+    CloneContentsAction ..> ViewportBlueprint : requests copy
+    ViewportBlueprint ..> ContainerBlueprint : copies recursively
+    ViewportBlueprint ..> ViewBlueprint : reuses existing prototype operation
+    ContainerBlueprint o-- ContainerBlueprint : nested containers
+    ContainerBlueprint o-- ViewBlueprint : child views
