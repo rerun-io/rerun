@@ -288,7 +288,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn enqueue_command(&self, action: ViewportCommand) {
+    pub(super) fn enqueue_command(&self, action: ViewportCommand) {
         self.deferred_commands.lock().push(action);
     }
 
@@ -984,6 +984,10 @@ fn apply_viewport_command(
     match command {
         ViewportCommand::SetTree(new_tree) => {
             bp.tree = new_tree;
+        }
+
+        ViewportCommand::DuplicateContainer { source, target } => {
+            crate::duplicate::apply_duplicate_container(ctx, bp, source, target);
         }
 
         ViewportCommand::AddView {

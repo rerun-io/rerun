@@ -1,7 +1,7 @@
 pub mod add_container;
 pub mod add_entities_to_new_view;
 pub mod add_view;
-pub mod clone_view;
+pub mod clone_contents;
 pub mod collapse_expand_all;
 pub mod lock_unlock;
 pub mod move_contents_to_new_container;
