@@ -74,18 +74,24 @@ pub struct RerunCloudHandlerSettings {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl Default for RerunCloudHandlerSettings {
-    fn default() -> Self {
-        Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            storage_dir: create_data_dir().expect("Failed to create data directory"),
-        }
+impl RerunCloudHandlerSettings {
+    fn new() -> Result<Self, crate::store::Error> {
+        Ok(Self {
+            storage_dir: create_data_dir()?,
+        })
     }
 }
 
+/// Create the directory for the handler's on-disk state.
+///
+/// The name includes the process id: `tempfile` seeds its random suffix from the current time
+/// and thread id, so processes started in the same instant can pick the same suffix, and a
+/// collision with a directory another process is still removing fails on Windows with
+/// `PermissionDenied`, which `tempfile` does not retry.
 #[cfg(not(target_arch = "wasm32"))]
 fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
-    Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
+    let prefix = format!("rerun-data-{}-", std::process::id());
+    Ok(tempfile::Builder::new().prefix(&prefix).tempdir()?)
 }
 
 fn apply_segment_id_filter(
@@ -116,21 +122,18 @@ fn apply_segment_id_filter(
         .map_err(|err| Status::internal(format!("Unable to apply segment ID filter: {err:#}")))
 }
 
+/// Builds a [`RerunCloudHandler`].
+///
+/// Touches the filesystem only in [`Self::build`] and [`Self::build_with_write_access`], which
+/// create the handler's storage directory.
 #[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
-    settings: RerunCloudHandlerSettings,
     store: InMemoryStore,
 }
 
 impl RerunCloudHandlerBuilder {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn with_storage_dir(mut self, storage_dir: tempfile::TempDir) -> Self {
-        self.settings.storage_dir = storage_dir;
-        self
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -198,23 +201,25 @@ impl RerunCloudHandlerBuilder {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(self.settings, self.store, None)
+    pub fn build(self) -> Result<RerunCloudHandler, crate::store::Error> {
+        let settings = RerunCloudHandlerSettings::new()?;
+        Ok(RerunCloudHandler::new(settings, self.store, None))
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(self.settings, self.store)
+        RerunCloudHandler::new(RerunCloudHandlerSettings::default(), self.store)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build_with_write_access(
         self,
     ) -> anyhow::Result<(RerunCloudHandler, axum::routing::MethodRouter)> {
+        let settings = RerunCloudHandlerSettings::new()?;
         let write_access_grants =
-            crate::routes::WriteAccessGrants::new(self.settings.storage_dir.path().to_owned())?;
+            crate::routes::WriteAccessGrants::new(settings.storage_dir.path().to_owned())?;
         let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
-        let handler = RerunCloudHandler::new(self.settings, self.store, Some(write_access_grants));
+        let handler = RerunCloudHandler::new(settings, self.store, Some(write_access_grants));
         Ok((handler, write_upload_route))
     }
 }
@@ -249,6 +254,14 @@ impl RerunCloudHandler {
             store: tokio::sync::RwLock::new(store),
             events_tx,
         }
+    }
+
+    /// The directory holding this handler's on-disk state, such as staged uploads.
+    ///
+    /// Removed together with the handler.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn storage_dir(&self) -> &std::path::Path {
+        self.settings.storage_dir.path()
     }
 
     /// Broadcast a catalog event to all `WatchEvents` subscribers.
@@ -2428,11 +2441,40 @@ mod tests {
     use re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest;
     use re_protos::headers::RerunHeadersInjectorExt as _;
 
+    fn build_handler() -> RerunCloudHandler {
+        cfg_select! {
+            target_arch = "wasm32" => RerunCloudHandlerBuilder::new().build(),
+            _ => RerunCloudHandlerBuilder::new()
+                .build()
+                .expect("failed to build handler"),
+        }
+    }
+
+    /// The storage directory is created by `build`, is unique to this process, and is removed
+    /// together with the handler.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn storage_dir_lives_as_long_as_the_handler() {
+        let handler = build_handler();
+        let storage_dir = handler.storage_dir().to_owned();
+        assert!(storage_dir.is_dir());
+
+        let dir_name = storage_dir.file_name().unwrap().to_string_lossy();
+        let expected_prefix = format!("rerun-data-{}-", std::process::id());
+        assert!(
+            dir_name.starts_with(&expected_prefix),
+            "{dir_name:?} should start with {expected_prefix:?}"
+        );
+
+        drop(handler);
+        assert!(!storage_dir.exists());
+    }
+
     /// Datasets created before asset datasets were introduced don't have one. Querying assets on
     /// such a dataset returns no assets, and updating its entry creates the missing asset dataset.
     #[tokio::test]
     async fn legacy_dataset_without_asset_dataset() {
-        let handler = RerunCloudHandlerBuilder::new().build();
+        let handler = build_handler();
 
         let dataset_id = EntryId::new();
         handler
