@@ -15,7 +15,8 @@ use re_chunk::{
 use re_chunk_index::RrdManifest;
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
-    ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStoreSubscriber as _, ChunkTrackingMode, GarbageCollectionOptions,
+    GarbageCollectionTarget, IsStartOfGop,
 };
 use re_log::{debug_assert, debug_assert_eq};
 use re_log_channel::LogSource;
@@ -37,6 +38,19 @@ use crate::rrd_manifest_index::RrdManifestIndex;
 
 /// See [`GarbageCollectionOptions::time_budget`].
 pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
+
+/// A time range to export with [`EntityDb::to_messages`].
+#[derive(Clone)]
+pub struct ExportTimeSelection {
+    /// The timeline the selection is on.
+    pub timeline: TimelineName,
+
+    /// The selected time range, rounded outwards to whole time points.
+    pub range: AbsoluteTimeRangeF,
+
+    /// Used to start video streams on a keyframe, see [`ChunkStore::split_by_time_ranges`].
+    pub is_start_of_gop: Option<IsStartOfGop>,
+}
 
 // ----------------------------------------------------------------------------¨
 
@@ -1027,11 +1041,11 @@ impl EntityDb {
 
     /// Export the contents of the current database to a sequence of messages.
     ///
-    /// If `time_selection` is specified, then only data for that specific timeline over that
-    /// specific time range will be accounted for.
+    /// If `time_selection` is specified, then only the data needed to view that specific time
+    /// range on that specific timeline will be accounted for, see [`ChunkStore::split_by_time_ranges`].
     pub fn to_messages(
         &self,
-        time_selection: Option<(TimelineName, AbsoluteTimeRangeF)>,
+        time_selection: Option<ExportTimeSelection>,
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
@@ -1042,38 +1056,40 @@ impl EntityDb {
             .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
         let data_messages = {
-            let time_filter = time_selection.map(|(timeline, range)| {
-                (
+            let chunks: Vec<Arc<Chunk>> = if let Some(time_selection) = time_selection {
+                let ExportTimeSelection {
                     timeline,
-                    AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
-                )
-            });
+                    range,
+                    is_start_of_gop,
+                } = time_selection;
 
-            let mut chunks: Vec<Arc<Chunk>> = engine
-                .store()
-                .iter_physical_chunks()
-                .filter(move |chunk| {
-                    if chunk.is_static() {
-                        return true; // always keep all static data
-                    }
+                // Only what is loaded can be saved.
+                let tracking = ChunkTrackingMode::Ignore;
 
-                    let Some((timeline, time_range)) = time_filter else {
-                        return true; // no filter -> keep all data
-                    };
+                // The chunks come ordered by their original chunk ID, which preserves the loading order.
+                engine
+                    .store()
+                    .split_by_time_ranges(
+                        tracking,
+                        &timeline,
+                        &[range.to_int()],
+                        is_start_of_gop.as_ref(),
+                    )
+                    .into_iter()
+                    .flatten()
+                    .map(|(_original_chunk_id, chunk)| Arc::new(chunk))
+                    .collect()
+            } else {
+                let mut chunks: Vec<Arc<Chunk>> =
+                    engine.store().iter_physical_chunks().cloned().collect();
 
-                    // TODO(cmc): chunk.slice_time_selection(time_selection)
-                    chunk
-                        .timelines()
-                        .get(&timeline)
-                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
-                })
-                .cloned() // refcount
-                .collect();
+                // Try to roughly preserve the order of the chunks
+                // from how they were originally logged.
+                // See https://github.com/rerun-io/rerun/issues/7175 for why.
+                chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
 
-            // Try to roughly preserve the order of the chunks
-            // from how they were originally logged.
-            // See https://github.com/rerun-io/rerun/issues/7175 for why.
-            chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
+                chunks
+            };
 
             chunks.into_iter().map(|chunk| {
                 chunk
@@ -1385,6 +1401,7 @@ impl MemUsageTreeCapture for EntityDb {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
@@ -1439,6 +1456,99 @@ mod tests {
             /parent/child1/grandchild
               example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
         "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_messages_slices_chunks_to_time_selection() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_tick = Timeline::new_sequence("tick");
+
+        // One chunk per entity, with one row per timepoint.
+        let mut add_chunk = |entity_path: &str, timepoints: &[TimePoint]| -> anyhow::Result<()> {
+            let mut builder = Chunk::builder(entity_path);
+            for timepoint in timepoints {
+                builder = builder.with_component_batches(
+                    RowId::new(),
+                    timepoint.clone(),
+                    [(
+                        MyPoints::descriptor_points(),
+                        &[MyPoint::new(1.0, 2.0)] as _,
+                    )],
+                );
+            }
+            db.add_chunk(&Arc::new(builder.build()?))?;
+            Ok(())
+        };
+        let frames = |frames: &[i64]| -> Vec<TimePoint> {
+            frames
+                .iter()
+                .map(|&frame| {
+                    TimePoint::from_iter([(timeline_frame, frame), (timeline_tick, frame + 100)])
+                })
+                .collect()
+        };
+
+        add_chunk("partially_inside", &frames(&[2, 4, 6, 8, 10]))?;
+        add_chunk("fully_inside", &frames(&[5, 6]))?;
+        add_chunk("outside", &frames(&[20, 22]))?;
+        add_chunk("no_rows_inside", &frames(&[2, 10]))?;
+        add_chunk("unsorted", &frames(&[10, 4, 2, 6]))?;
+        add_chunk(
+            "other_timeline",
+            &[TimePoint::from_iter([(timeline_tick, 5)])],
+        )?;
+        add_chunk("static", &[TimePoint::default()])?;
+
+        let time_selection = ExportTimeSelection {
+            timeline: *timeline_frame.name(),
+            // Rounded outwards to [4, 8].
+            range: AbsoluteTimeRangeF::new(4.5, 7.5),
+            is_start_of_gop: None,
+        };
+
+        let mut frames_per_entity: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+        let mut static_entities = Vec::new();
+        for msg in db.to_messages(Some(time_selection)) {
+            let LogMsg::ArrowMsg(_, msg) = msg? else {
+                continue;
+            };
+            let chunk = Chunk::from_arrow_msg(&msg)?;
+            if chunk.is_static() {
+                static_entities.push(chunk.entity_path().to_string());
+            } else {
+                let times = &chunk.timelines()[timeline_frame.name()];
+                // The other timeline must be sliced the same way.
+                let ticks = chunk.timelines()[timeline_tick.name()].times_raw();
+                let expected_ticks: Vec<i64> = times.times_raw().iter().map(|t| t + 100).collect();
+                assert_eq!(ticks, expected_ticks);
+
+                frames_per_entity
+                    .entry(chunk.entity_path().to_string())
+                    .or_default()
+                    .extend(times.times_raw());
+            }
+        }
+
+        assert_eq!(static_entities, vec!["/static".to_owned()]);
+        assert_eq!(
+            frames_per_entity,
+            BTreeMap::from([
+                ("/fully_inside".to_owned(), vec![5, 6]),
+                // The latest value before the selection is kept, so that it can be viewed on its own.
+                ("/no_rows_inside".to_owned(), vec![2]),
+                ("/partially_inside".to_owned(), vec![4, 6, 8]),
+                ("/unsorted".to_owned(), vec![4, 6]),
+            ])
+        );
 
         Ok(())
     }

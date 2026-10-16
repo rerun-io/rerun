@@ -9,18 +9,16 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
-use re_chunk::{Chunk, ChunkId, RowId, TimeInt, TimelineName};
+use re_chunk::{Chunk, TimeInt, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode};
+use re_log_types::AbsoluteTimeRange;
 use re_quota_channel::send_crossbeam;
 use re_sdk::external::arrow;
-use re_sdk::external::nohash_hasher::IntMap;
-use re_sdk::{Archetype as _, ComponentIdentifier, EntityPath, StoreId, StoreKind, Timeline};
+use re_sdk::{StoreId, StoreKind, Timeline};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
 // ---
-
-// TODO(RR-3809): we should expose a `ChunkStore::split()` API.
 
 // TODO(RR-3810): There exists an optimal version of this that uses virtual chunk stores instead of physical
 // chunk stores, and only goes physical for chunks that require it (anything that could benefit
@@ -199,34 +197,6 @@ impl SplitCommand {
             "extracted cutoff times",
         );
 
-        re_log::info!("extracting keyframes…");
-        #[cfg(feature = "video")]
-        let mut keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
-        #[cfg(not(feature = "video"))]
-        let keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
-        // Without the `video` feature there is no keyframe detection, so no entity ever
-        // gets keyframe-based rebatching.
-        #[cfg(feature = "video")]
-        for store in stores.values() {
-            for entity in store.all_entities() {
-                let keyframes = extract_keyframes(&entity, store, cutoff_timeline);
-                if !keyframes.is_empty() {
-                    keyframes_per_entity
-                        .entry(entity.clone())
-                        .or_default()
-                        .extend(keyframes);
-                }
-            }
-        }
-        re_log::info!(
-            timeline = %cutoff_timeline.name(),
-            keyframes = ?keyframes_per_entity
-                .iter()
-                .map(|(entity, keyframes)| (entity, keyframes.len()))
-                .collect_vec(),
-            "extracted video keyframes"
-        );
-
         // This block computes the list of output paths for the newly split recordings.
         // There are always exactly as many output paths as there are cutoff times.
         let path_to_output_rrds = {
@@ -366,13 +336,7 @@ impl SplitCommand {
                 continue;
             }
 
-            self.split_store(
-                &store,
-                cutoff_timeline,
-                &cutoff_times,
-                &keyframes_per_entity,
-                &txs_encoding,
-            )?;
+            self.split_store(&store, cutoff_timeline, &cutoff_times, &txs_encoding)?;
         }
 
         let rrd_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
@@ -531,212 +495,38 @@ impl SplitCommand {
 
     /// Optimally split a [`ChunkStore`] at the specified `cutoff_times`.
     ///
-    /// Video keyframes and transform coordinate frames will be dealt with appropriately.
-    //
-    // TODO(RR-3809): implement this on `ChunkStore` directly, with a test suite.
+    /// Video keyframes and transform coordinate frames will be dealt with appropriately,
+    /// see [`ChunkStore::split_by_time_ranges`].
     fn split_store(
         &self,
         store: &ChunkStore,
         cutoff_timeline: Timeline,
         cutoff_times: &[TimeInt],
-        keyframes_per_entity: &IntMap<EntityPath, Vec<TimeInt>>,
         txs_encoding: &[re_log::Sender<(StoreId, Vec<re_log_msg::LogMsg>)>],
     ) -> anyhow::Result<()> {
-        // `VideoStream`s must be split on a keyframe, always.
-        //
-        // The solution is to find the closest past keyframe, and then duplicate the entire stream
-        // from there up to the cutoff point. See `extract_keyframes`.
-        let video_sample_identifier =
-            re_sdk_types::archetypes::VideoStream::descriptor_sample().component;
-
-        // `Transform3D`s can be multiplexed on a single entity stream using `CoordinateFrame`s,
-        // making them completely opaque to the query engine.
-        //
-        // The solution is to always duplicate the entire stream up to the cutoff point whenever that happens.
-        let transform_parent_frame_identifier =
-            re_sdk_types::archetypes::Transform3D::descriptor_parent_frame().component;
-        let transform_child_frame_identifier =
-            re_sdk_types::archetypes::Transform3D::descriptor_child_frame().component;
-
-        // `Pinhole`s can be multiplexed on a single entity stream using `CoordinateFrame`s,
-        // making them completely opaque to the query engine.
-        //
-        // The solution is to always duplicate the entire stream up to the cutoff point whenever that happens.
-        let pinhole_parent_frame_identifier =
-            re_sdk_types::archetypes::Pinhole::descriptor_parent_frame().component;
-        let pinhole_child_frame_identifier =
-            re_sdk_types::archetypes::Pinhole::descriptor_child_frame().component;
-
-        let special_components: HashSet<_> = itertools::chain!(
-            [video_sample_identifier],
-            re_sdk_types::archetypes::Transform3D::all_component_identifiers(),
-            re_sdk_types::archetypes::Pinhole::all_component_identifiers(),
-        )
-        .collect();
-
-        let all_entities_and_their_components = store
-            .all_entities()
-            .into_iter()
-            .filter_map(|entity| {
-                store
-                    .schema()
-                    .all_components_for_entity(&entity)
-                    .map(|components| (entity, components))
+        let ranges = cutoff_times
+            .iter()
+            .copied()
+            .tuple_windows::<(_, _)>()
+            .map(|(start_inclusive, end_exclusive)| {
+                AbsoluteTimeRange::new(start_inclusive, end_exclusive.dec())
             })
             .collect_vec();
 
-        for (i, cutoff_time) in cutoff_times
-            .iter()
-            .take(cutoff_times.len() - 1)
-            .copied()
-            .enumerate()
-        {
-            let mut all_chunks_in_split = Vec::new();
+        #[cfg(feature = "video")]
+        let is_start_of_gop = crate::rrd::gop_detector();
 
-            re_log::debug!(
-                cutoff_timeline = %cutoff_timeline.name(),
-                cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
-                "splitting…"
-            );
+        let splits = store.split_by_time_ranges(
+            ChunkTrackingMode::PanicOnMissing,
+            cutoff_timeline.name(),
+            &ranges,
+            cfg_select! {
+                feature = "video" => Some(&is_start_of_gop),
+                _ => None,
+            },
+        );
 
-            for (entity, components) in &all_entities_and_their_components {
-                let start_inclusive = cutoff_time;
-                let end_exclusive = cutoff_times.get(i + 1).copied().unwrap_or(TimeInt::MAX);
-
-                // Base case: everything
-                {
-                    // We must not try to bootstrap special components, as they will undergo some
-                    // custom bootstrap logic below anyway.
-                    // Normally this would be fine, but again we cannot afford the presence of any
-                    // duplicate data when it comes to video decoding.
-                    let components_special = components
-                        .iter()
-                        .copied()
-                        .filter(|component| special_components.contains(component))
-                        .collect();
-                    let bootstrap = false;
-                    let chunks = extract_chunks_for_single_split(
-                        store,
-                        entity,
-                        &components_special,
-                        cutoff_timeline,
-                        start_inclusive,
-                        end_exclusive,
-                        bootstrap,
-                    );
-                    all_chunks_in_split.extend(chunks);
-
-                    let components = components
-                        .iter()
-                        .copied()
-                        .filter(|component| !special_components.contains(component))
-                        .collect();
-                    let bootstrap = true;
-                    let chunks = extract_chunks_for_single_split(
-                        store,
-                        entity,
-                        &components,
-                        cutoff_timeline,
-                        start_inclusive,
-                        end_exclusive,
-                        bootstrap,
-                    );
-                    all_chunks_in_split.extend(chunks);
-                }
-
-                // Special case: video keyframes
-                {
-                    let cutoff_time_revised = keyframes_per_entity.get(entity).and_then(|keyframes| {
-                        let p = keyframes
-                            .partition_point(|t| *t <= cutoff_time)
-                            .saturating_sub(1);
-                        let cutoff_time_revised = keyframes[p];
-
-                        if cutoff_time_revised < cutoff_time {
-                            re_log::info!(
-                                %entity,
-                                cutoff_timeline = %cutoff_timeline.name(),
-                                cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
-                                cutoff_time_revised = %time_to_human_string(cutoff_timeline, cutoff_time_revised),
-                                "revising cutoff time to match video keyframe…"
-                            );
-                            Some(cutoff_time_revised)
-                        } else {
-                            None
-                        }
-                    });
-
-                    if let Some(cutoff_time_revised) = cutoff_time_revised {
-                        let components = std::iter::once(video_sample_identifier).collect();
-                        let bootstrap = false;
-                        let chunks = extract_chunks_for_single_split(
-                            store,
-                            entity,
-                            &components,
-                            cutoff_timeline,
-                            cutoff_time_revised,
-                            start_inclusive,
-                            bootstrap,
-                        );
-                        all_chunks_in_split.extend(chunks);
-                    }
-                }
-
-                // Special cases: transforms and/or pinholes with multiplexed coordinate frames
-                let entity_has_multiplexed_transforms_on_timeline =
-                    store.entity_has_component_on_timeline(
-                        Some(cutoff_timeline.name()),
-                        entity,
-                        transform_parent_frame_identifier,
-                    ) || store.entity_has_component_on_timeline(
-                        Some(cutoff_timeline.name()),
-                        entity,
-                        transform_child_frame_identifier,
-                    );
-                let entity_has_multiplexed_pinholes_on_timeline =
-                    store.entity_has_component_on_timeline(
-                        Some(cutoff_timeline.name()),
-                        entity,
-                        pinhole_parent_frame_identifier,
-                    ) || store.entity_has_component_on_timeline(
-                        Some(cutoff_timeline.name()),
-                        entity,
-                        pinhole_child_frame_identifier,
-                    );
-                if entity_has_multiplexed_transforms_on_timeline
-                    || entity_has_multiplexed_pinholes_on_timeline
-                {
-                    re_log::info!(
-                        %entity,
-                        cutoff_timeline = %cutoff_timeline.name(),
-                        cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
-                        "gathering all transforms/pinholes up to cutoff point due to multiplexed coordinate frames…"
-                    );
-
-                    let components = itertools::chain!(
-                        re_sdk_types::archetypes::Transform3D::all_component_identifiers(),
-                        re_sdk_types::archetypes::Pinhole::all_component_identifiers(),
-                    )
-                    .collect();
-                    let bootstrap = false;
-                    let chunks = extract_chunks_for_single_split(
-                        store,
-                        entity,
-                        &components,
-                        cutoff_timeline,
-                        TimeInt::MIN,
-                        start_inclusive,
-                        bootstrap,
-                    );
-                    all_chunks_in_split.extend(chunks);
-                }
-            }
-
-            // We must make sure that the new recordings have their chunks in the same order as the original
-            // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
-            // given that we've just queried the data per-entity per-component.
-            all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
-
+        for (i, all_chunks_in_split) in splits.into_iter().enumerate() {
             let mut all_unique_indexes_in_split = HashSet::default();
 
             send_crossbeam(
@@ -792,248 +582,6 @@ impl SplitCommand {
 
         Ok(())
     }
-}
-
-// TODO(RR-3810): For a virtual store implementation, we'd want this to load no more than 1 chunk at a time.
-#[cfg(feature = "video")]
-fn extract_keyframes(
-    entity_path: &EntityPath,
-    store: &ChunkStore,
-    cutoff_timeline: Timeline,
-) -> Vec<TimeInt> {
-    let codec = {
-        let codec_identifier = re_sdk_types::archetypes::VideoStream::descriptor_codec().component;
-        let results = store.latest_at_relevant_chunks(
-            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
-            &re_chunk_store::LatestAtQuery::new(*cutoff_timeline.name(), TimeInt::MAX),
-            entity_path,
-            codec_identifier,
-        );
-
-        results
-            .chunks
-            .iter()
-            .flat_map(|chunk| {
-                chunk.iter_component::<re_sdk_types::components::VideoCodec>(codec_identifier)
-            })
-            .find_map(|data| data.as_slice().first().copied())
-    };
-
-    let Some(codec) = codec else {
-        return vec![];
-    };
-
-    let sample_identifier = re_sdk_types::archetypes::VideoStream::descriptor_sample().component;
-    let results = store.range_relevant_chunks(
-        re_chunk_store::ChunkTrackingMode::PanicOnMissing,
-        &re_chunk_store::RangeQuery::everything(*cutoff_timeline.name()),
-        entity_path,
-        sample_identifier,
-    );
-
-    let mut keyframes = Vec::new();
-    for chunk in &results.chunks {
-        let it = itertools::izip!(
-            chunk.iter_indices(cutoff_timeline.name()),
-            chunk.iter_component::<re_sdk_types::components::VideoSample>(sample_identifier)
-        );
-
-        for ((time, _row_id), sample) in it {
-            let Some(sample) = sample.as_slice().first() else {
-                continue;
-            };
-
-            let sample = sample.0.inner().as_slice();
-            match re_video::is_start_of_gop(sample, codec.into()) {
-                Ok(true) => {
-                    re_log::debug!(
-                        entity = %entity_path,
-                        time = %time_to_human_string(cutoff_timeline, time),
-                        "detected video keyframe",
-                    );
-
-                    keyframes.push(time);
-                }
-
-                Ok(false) => {}
-
-                Err(err) => {
-                    re_log::warn!(entity = %entity_path, chunk = %chunk.id(), %err, "keyframe detection failed");
-                }
-            }
-        }
-    }
-
-    keyframes.sort(); // we'll be binary searching later on
-    keyframes.dedup(); // just to be safe
-
-    keyframes
-}
-
-fn extract_chunks_for_single_split(
-    store: &ChunkStore,
-    entity: &EntityPath,
-    components: &HashSet<ComponentIdentifier>,
-    timeline: Timeline,
-    start_inclusive: TimeInt,
-    end_exclusive: TimeInt,
-    bootstrap: bool,
-) -> impl Iterator<Item = (ChunkId, Chunk)> {
-    re_log::debug_assert!(
-        start_inclusive < end_exclusive,
-        "start_inclusive={}, end_exclusive={}",
-        time_to_human_string(timeline, start_inclusive),
-        time_to_human_string(timeline, end_exclusive),
-    );
-
-    let query_bootstrap = re_chunk_store::LatestAtQuery::new(*timeline.name(), start_inclusive);
-    let query = re_chunk_store::RangeQuery::new(
-        *timeline.name(),
-        re_log_types::AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
-    );
-
-    // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
-    // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
-    // to what we do below for ranges.
-    let chunks_bootstrap =
-        components
-            .iter()
-            .filter(move |_| bootstrap)
-            .flat_map(move |component| {
-                let chunks = store
-                    .latest_at_relevant_chunks(
-                        ChunkTrackingMode::PanicOnMissing,
-                        &query_bootstrap,
-                        entity,
-                        *component,
-                    )
-                    .chunks
-                    .into_iter()
-                    .filter_map(|chunk| chunk.latest_at(&query_bootstrap, *component));
-
-                // Due to the overlap heuristics, the bootstrap query might return an arbitrary amount of
-                // chunks: we need to find the most relevant in those, which in this case is whichever has
-                // the highest (time, row_id) index.
-                let Some(chunk) = chunks.max_by_key(|chunk| {
-                    chunk
-                        .iter_indices(timeline.name())
-                        .next()
-                        .expect("non-empty latest-at chunk must have a single row")
-                }) else {
-                    return vec![];
-                };
-
-                re_log::debug_assert!(chunk.num_rows() == 1);
-
-                let (time, _row_id) = chunk
-                    .iter_indices(timeline.name())
-                    .next()
-                    .expect("non-empty latest-at chunk must have a single row");
-
-                if start_inclusive <= time && time < end_exclusive {
-                    // If this chunk overlaps with the range results that will follow, then we will create
-                    // duplicate data with different chunk and row IDs.
-                    // This is wasteful and useless in general, but the video decoder in particular really
-                    // hates it, so make sure to filter it out.
-                    return vec![];
-                }
-
-                vec![(
-                    chunk.id(),
-                    chunk
-                        // We're bootstrapping at the component batch level, so might as well discard everything else.
-                        .component_sliced(*component)
-                        // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                        .row_sliced_unit_deep(0)
-                        // This chunk might be re-used in other places in this split, and because we're slicing it
-                        // (and we really, really need to slice it), we must make sure that it doesn't share
-                        // a chunk ID nor a row ID with anything else.
-                        .clone_as(ChunkId::new(), RowId::new()),
-                )]
-            });
-
-    let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
-    for component in components {
-        let results = store.range_relevant_chunks(
-            ChunkTrackingMode::PanicOnMissing,
-            &query,
-            entity,
-            *component,
-        );
-
-        for chunk in results.chunks {
-            // NOTE: Do not perform range queries here!
-            //
-            // Actual range queries might lead to different chunk spans for the different
-            // components, which will make deduplication across the different components either
-            // hard or impossible.
-            // It is also just suboptimal in this instance: we want to keep all components no
-            // matter what! Just sort and slice.
-            //
-            // Finally, keep in mind that this only works because we enforce a single timeline
-            // when using this tool.
-            // It is much, much harder to deduplicate appropriately across multiple timelines at once.
-            if chunks.contains_key(&chunk.id()) {
-                continue;
-            }
-
-            let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
-            let Some(time_col) = chunk.timelines().get(timeline.name()) else {
-                continue;
-            };
-            let times = time_col.times_raw();
-            assert!(times.is_sorted());
-
-            let start_idx = times.partition_point(|t| *t < start_inclusive.as_i64());
-            let end_idx_excl = times.partition_point(|t| *t < end_exclusive.as_i64());
-            let slice_len = end_idx_excl.saturating_sub(start_idx);
-
-            if slice_len == 0 {
-                continue;
-            }
-
-            let end_idx = end_idx_excl.saturating_sub(1);
-
-            re_log::debug_assert!(
-                start_inclusive.as_i64() <= times[start_idx]
-                    && times[start_idx] < end_exclusive.as_i64(),
-                "{} <= {} < {}",
-                time_to_human_string(timeline, start_inclusive),
-                time_to_human_string(timeline, TimeInt::new_temporal(times[start_idx])),
-                time_to_human_string(timeline, end_exclusive),
-            );
-            re_log::debug_assert!(
-                start_inclusive.as_i64() <= times[end_idx]
-                    && times[end_idx] < end_exclusive.as_i64(),
-                "{} <= {} < {}",
-                time_to_human_string(timeline, start_inclusive),
-                time_to_human_string(timeline, TimeInt::new_temporal(times[end_idx])),
-                time_to_human_string(timeline, end_exclusive),
-            );
-
-            // TODO(RR-3810): If we were to implement this with a virtual store instead, this would be
-            // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
-            // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-            let (original_chunk_id, chunk) = if slice_len == chunk.num_rows() {
-                // If we're re-using the original chunk as-is, then make sure to not update its ID.
-                (chunk.id(), chunk)
-            } else {
-                // TODO(cmc): It could be worthwhile to implement and use a `Chunk::components_sliced` here (plural).
-                // (We've already decided to generate a new chunk ID anyhow, so column slicing is fine at this point.)
-                (
-                    chunk.id(),
-                    chunk
-                        // Reminder: always perform deep copies if the intent is to write back to disk.
-                        .row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len)),
-                )
-            };
-
-            let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
-            re_log::debug_assert!(!already_exists);
-        }
-    }
-
-    std::iter::chain(chunks_bootstrap, chunks)
 }
 
 // ---
