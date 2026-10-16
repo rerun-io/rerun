@@ -160,12 +160,8 @@ impl<'a> RecordingPanelData<'a> {
             })
             .collect();
 
-        let show_example_section = (ctx
-            .app_options
-            .include_rerun_examples_button_in_recordings_panel
-            && !hide_examples)
-            || !example_apps.is_empty()
-            || !loading_examples.is_empty();
+        let show_example_section =
+            !hide_examples || !example_apps.is_empty() || !loading_examples.is_empty();
 
         let local_tables = ctx.table_stores().keys().sorted().cloned().collect();
 

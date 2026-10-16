@@ -8,7 +8,14 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
-pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+use crate::StartupOptions;
+
+pub fn settings_screen_ui(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &StartupOptions,
+    keep_open: &mut bool,
+) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -25,7 +32,7 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, startup_options, keep_open);
             });
 
         if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
@@ -34,7 +41,12 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
     });
 }
 
-fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+fn settings_screen_ui_impl(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &StartupOptions,
+    keep_open: &mut bool,
+) {
     //
     // Title
     //
@@ -85,7 +97,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         show_notification_toasts,
         check_for_updates_on_startup,
         custom_window_decorations,
-        include_rerun_examples_button_in_recordings_panel,
+        enable_welcome_screen,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
         blueprint_gc: _,               // not yet exposed
@@ -125,10 +137,11 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.add_space(8.0);
 
-    ui.re_checkbox(
-        include_rerun_examples_button_in_recordings_panel,
-        "Show 'Rerun examples' button",
-    );
+    // The startup option hides the welcome screen regardless of this setting.
+    if !startup_options.hide_welcome_screen {
+        ui.re_checkbox(enable_welcome_screen, "Enable welcome screen")
+            .on_hover_text("Show the Rerun examples when no data is loaded.");
+    }
 
     ui.re_checkbox(
         visualizer_limits_enabled,

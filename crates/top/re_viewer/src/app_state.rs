@@ -436,7 +436,7 @@ impl AppState {
             } => {
                 let mut show_settings_ui = true;
                 let app_options = new_app_options.insert(self.app_options.clone());
-                settings_screen_ui(ui, app_options, &mut show_settings_ui);
+                settings_screen_ui(ui, app_options, startup_options, &mut show_settings_ui);
                 if !show_settings_ui {
                     command_sender.send_system(SystemCommand::SetRoute((**previous).clone()));
                 }
