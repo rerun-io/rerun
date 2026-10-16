@@ -251,6 +251,9 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
+        #[cfg(feature = "analytics")]
+        re_analytics::set_enabled(startup_options.analytics_enabled);
+
         let is_test = app_env.is_test();
         let egui_renderer = creation_context
             .wgpu_render_state
