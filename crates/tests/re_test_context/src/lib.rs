@@ -731,6 +731,7 @@ impl TestContext {
                 last_loading_error: &Default::default(),
 
                 storage_context: &storage_context,
+                blueprint_undo_states: &Default::default(),
                 active_store_context: Some(&store_context),
                 app_caches: &self.app_caches,
                 audio_output: Some(&self.audio_output),

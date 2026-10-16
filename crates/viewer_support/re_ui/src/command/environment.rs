@@ -14,4 +14,9 @@ pub struct CommandEnvironment {
 
     /// The table currently being viewed, if any.
     pub table: Option<re_uri::TableReference>,
+
+    /// Does the table being viewed have an active blueprint?
+    ///
+    /// Only then can its blueprint edits be undone and redone.
+    pub has_table_blueprint: bool,
 }

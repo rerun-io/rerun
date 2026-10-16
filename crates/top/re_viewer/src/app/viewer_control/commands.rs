@@ -243,6 +243,7 @@ mod tests {
             redap_server: None,
             has_editable_redap_server: false,
             table: None,
+            has_table_blueprint: false,
         }
     }
 

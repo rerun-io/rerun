@@ -67,6 +67,8 @@ impl MenuGroup {
             Self::Edit => &[
                 Command(Recording(RecordingCommand::UndoBlueprintEdit)),
                 Command(Recording(RecordingCommand::RedoBlueprintEdit)),
+                Command(Table(TableCommandKind::UndoBlueprintEdit)),
+                Command(Table(TableCommandKind::RedoBlueprintEdit)),
                 Separator,
                 Command(Ui(UICommand::CopyDirectLinkToClipboard)),
                 Command(Ui(UICommand::CopyTimeSelectionLinkToClipboard)),
@@ -346,6 +348,7 @@ mod tests {
                 redap_server: None,
                 has_editable_redap_server: false,
                 table: None,
+                has_table_blueprint: false,
             },
             has_recording_data: false,
             has_time_selection: false,
@@ -461,6 +464,28 @@ mod tests {
             RedapServerCommandKind::OpenEditDialog
         )));
         assert!(context.is_visible(CommandKind::RedapServer(RedapServerCommandKind::Remove)));
+    }
+
+    /// Undo and redo for a table only show up once the table has an active blueprint.
+    /// A table without one, like the welcome page, has nothing to undo.
+    #[test]
+    fn table_undo_follows_active_blueprint() {
+        let mut context = context();
+        let undo = CommandKind::Table(TableCommandKind::UndoBlueprintEdit);
+        let redo = CommandKind::Table(TableCommandKind::RedoBlueprintEdit);
+
+        context.environment.table = Some(re_uri::TableReference::RedapServerEntries {
+            origin: "rerun://localhost:51234".parse().expect("valid server URL"),
+        });
+        for kind in [undo, redo] {
+            assert!(!context.is_visible(kind));
+            assert!(context.resolve(kind).is_none());
+        }
+
+        context.environment.has_table_blueprint = true;
+        for kind in [undo, redo] {
+            assert!(context.resolve(kind).is_some());
+        }
     }
 
     #[cfg(feature = "testing")]
