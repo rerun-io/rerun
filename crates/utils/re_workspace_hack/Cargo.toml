@@ -365,7 +365,7 @@ hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
-libc = { version = "0.2" }
+libc = { version = "0.2", features = ["extra_traits"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
@@ -409,7 +409,7 @@ hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
-libc = { version = "0.2" }
+libc = { version = "0.2", features = ["extra_traits"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
@@ -539,6 +539,7 @@ hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
+libc = { version = "0.2", features = ["extra_traits"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
@@ -582,6 +583,7 @@ hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
+libc = { version = "0.2", features = ["extra_traits"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["msl-out", "spv-out", "wgsl-in"] }
 objc2 = { version = "0.6", features = ["relax-sign-encoding"] }
