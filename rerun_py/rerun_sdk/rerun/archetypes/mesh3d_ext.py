@@ -13,6 +13,7 @@ from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from .. import components, encodings
+    from .mesh3d import Mesh3D
 
     ImageLike = (
         npt.NDArray[np.float16]
@@ -39,6 +40,34 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
         return tensor.numpy(force=True)
     except AttributeError:
         return np.asarray(tensor)
+
+
+def _albedo_texture_fields(albedo_texture: ImageLike) -> tuple[bytes | None, ImageFormat | None]:
+    """Convert an image into the `albedo_texture_buffer` and `albedo_texture_format` of a `Mesh3D`."""
+    albedo_texture = _to_numpy(albedo_texture)
+
+    if len(albedo_texture.shape) != 3:
+        _send_warning_or_raise(f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 dimensions")
+        return None, None
+
+    h, w, c = albedo_texture.shape
+    if c not in (3, 4):
+        _send_warning_or_raise(f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 or 4 channels")
+        return None, None
+
+    try:
+        datatype = ChannelDatatype.from_np_dtype(albedo_texture.dtype)
+    except KeyError:
+        _send_warning_or_raise(f"Unsupported dtype {albedo_texture.dtype} for Mesh3D:s albedo texture")
+        return None, None
+
+    albedo_texture_format = ImageFormat(
+        width=w,
+        height=h,
+        color_model=ColorModel.RGB if c == 3 else ColorModel.RGBA,
+        channel_datatype=datatype,
+    )
+    return albedo_texture.tobytes(), albedo_texture_format
 
 
 class Mesh3DExt:
@@ -94,31 +123,7 @@ class Mesh3DExt:
         albedo_texture_format = None
 
         if albedo_texture is not None:
-            albedo_texture = _to_numpy(albedo_texture)
-
-            if len(albedo_texture.shape) != 3:
-                _send_warning_or_raise(f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 dimensions")
-            else:
-                h = albedo_texture.shape[0]
-                w = albedo_texture.shape[1]
-                c = albedo_texture.shape[2]
-                if c not in (3, 4):
-                    _send_warning_or_raise(
-                        f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 or 4 channels"
-                    )
-                else:
-                    color_model = ColorModel.RGB if c == 3 else ColorModel.RGBA
-                    try:
-                        datatype = ChannelDatatype.from_np_dtype(albedo_texture.dtype)
-                        albedo_texture_buffer = albedo_texture.tobytes()
-                        albedo_texture_format = ImageFormat(
-                            width=w,
-                            height=h,
-                            color_model=color_model,
-                            channel_datatype=datatype,
-                        )
-                    except KeyError:
-                        _send_warning_or_raise(f"Unsupported dtype {albedo_texture.dtype} for Mesh3D:s albedo texture")
+            albedo_texture_buffer, albedo_texture_format = _albedo_texture_fields(albedo_texture)
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
@@ -136,3 +141,29 @@ class Mesh3DExt:
             return
 
         self.__attrs_clear__()
+
+    @classmethod
+    def from_albedo_texture(cls, albedo_texture: ImageLike) -> Mesh3D:
+        """
+        Update only the albedo texture of a `Mesh3D`.
+
+        Helper for [`Mesh3D.from_fields`][rerun.archetypes.Mesh3D.from_fields] that takes an image,
+        like the `albedo_texture` argument of the constructor,
+        and sets both `albedo_texture_buffer` and `albedo_texture_format`.
+        This makes it possible to change the texture over time without logging the geometry again.
+
+        Parameters
+        ----------
+        albedo_texture:
+            The new albedo texture.
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the texture must have 3 or 4 channels)
+
+        """
+        from .. import Mesh3D
+
+        albedo_texture_buffer, albedo_texture_format = _albedo_texture_fields(albedo_texture)
+        return Mesh3D.from_fields(
+            albedo_texture_buffer=albedo_texture_buffer,
+            albedo_texture_format=albedo_texture_format,
+        )

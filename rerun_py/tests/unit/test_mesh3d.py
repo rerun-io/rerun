@@ -3,11 +3,24 @@ from __future__ import annotations
 import itertools
 from typing import Any, cast
 
+import numpy as np
+import numpy.typing as npt
+import pytest
 import rerun as rr
-from rerun.components import AlbedoFactorBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
+from rerun.components import (
+    AlbedoFactorBatch,
+    ImageBufferBatch,
+    ImageFormat,
+    ImageFormatBatch,
+    Position3DBatch,
+    TriangleIndicesBatch,
+    Vector3DBatch,
+)
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.encodings import (
+    ChannelDatatype,
     ClassIdArrayLike,
+    ColorModel,
     Rgba32,
     Rgba32ArrayLike,
     Rgba32Like,
@@ -110,5 +123,50 @@ def test_mesh3d() -> None:
         assert arch.class_ids == class_ids_expected(class_ids)
 
 
+def test_mesh3d_from_albedo_texture() -> None:
+    textures: list[npt.NDArray[Any]] = [
+        np.arange(2 * 3 * 3, dtype=np.uint8).reshape(2, 3, 3),
+        np.arange(4 * 2 * 4, dtype=np.uint8).reshape(4, 2, 4),
+        np.linspace(0.0, 1.0, 2 * 2 * 3, dtype=np.float32).reshape(2, 2, 3),
+    ]
+
+    for texture in textures:
+        update = rr.Mesh3D.from_albedo_texture(texture)
+        full = rr.Mesh3D(vertex_positions=[[0.0, 0.0, 0.0]], albedo_texture=texture)
+
+        height, width, channels = texture.shape
+        assert update.albedo_texture_buffer == ImageBufferBatch._converter(texture.tobytes())
+        assert update.albedo_texture_format == ImageFormatBatch._converter(
+            ImageFormat(
+                width=width,
+                height=height,
+                color_model=ColorModel.RGB if channels == 3 else ColorModel.RGBA,
+                channel_datatype=ChannelDatatype.from_np_dtype(texture.dtype),
+            )
+        )
+        assert update.albedo_texture_buffer == full.albedo_texture_buffer
+        assert update.albedo_texture_format == full.albedo_texture_format
+
+        # Only the texture is updated.
+        assert update.vertex_positions is None
+        assert update.triangle_indices is None
+        assert update.vertex_texcoords is None
+        assert update.albedo_factor is None
+
+
+def test_mesh3d_from_albedo_texture_bad_shape() -> None:
+    previous = rr.strict_mode()
+    rr.set_strict_mode(True)
+    try:
+        with pytest.raises(ValueError, match="expected 3 dimensions"):
+            rr.Mesh3D.from_albedo_texture(np.zeros((2, 2), dtype=np.uint8))
+        with pytest.raises(ValueError, match="expected 3 or 4 channels"):
+            rr.Mesh3D.from_albedo_texture(np.zeros((2, 2, 2), dtype=np.uint8))
+    finally:
+        rr.set_strict_mode(previous)
+
+
 if __name__ == "__main__":
     test_mesh3d()
+    test_mesh3d_from_albedo_texture()
+    test_mesh3d_from_albedo_texture_bad_shape()
