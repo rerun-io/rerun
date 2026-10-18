@@ -426,10 +426,14 @@ impl ChunkStore {
                 // Finally, keep in mind that this only works because we enforce a single timeline
                 // when using this tool.
                 // It is much, much harder to deduplicate appropriately across multiple timelines at once.
-                if chunks.contains_key(&chunk.id()) {
+                //
+                // Sorting gives unsorted chunks a new ID, so deduplicate on the original one.
+                let original_chunk_id = chunk.id();
+                if chunks.contains_key(&original_chunk_id) {
                     continue;
                 }
 
+                let is_sorted = chunk.is_timeline_sorted(timeline);
                 let chunk = chunk.sorted_by_timeline_if_unsorted(timeline); // binsearch incoming
                 let Some(time_col) = chunk.timelines().get(timeline) else {
                     continue;
@@ -467,12 +471,15 @@ impl ChunkStore {
                     .then(|| Span::from_start_len(start_idx, slice_len));
                 let components =
                     (!keep_other_components).then(|| components.iter().copied().collect_vec());
-                let original_chunk_id = chunk.id();
-                let chunk = SplitChunk {
+                let mut chunk = SplitChunk {
                     chunk,
                     rows,
                     components,
                 };
+                if !is_sorted {
+                    // The sorted chunk is already a copy: slice it now rather than keep all of it around.
+                    chunk = SplitChunk::whole(chunk.into_chunk());
+                }
 
                 let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
                 re_log::debug_assert!(!already_exists);

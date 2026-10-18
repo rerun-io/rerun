@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimeInt};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkTrackingMode, IsStartOfGop};
-use re_log_types::example_components::{MyPoint, MyPoints};
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, TimePoint, Timeline};
 use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
 use re_sdk_types::components::{
@@ -380,4 +380,32 @@ fn mixed_chunks_are_not_duplicated() {
         some(&[1, 2, 3, 4, 5, 6])
     );
     assert_eq!(times["/tf:example.MyPoints:points"], some(&[4, 5, 6]));
+}
+
+#[test]
+fn unsorted_chunks_are_not_duplicated() {
+    let mut store = new_store();
+    let color = MyColor(0xFF0000FF);
+    insert_chunk(
+        &mut store,
+        "/unsorted",
+        [10, 4, 2, 6]
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        points(),
+                        (MyPoints::descriptor_colors(), &color as &dyn ComponentBatch),
+                    ],
+                )
+            })
+            .into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    assert_eq!(times["/unsorted:example.MyPoints:points"], some(&[4, 6]));
+    assert_eq!(times["/unsorted:example.MyPoints:colors"], some(&[4, 6]));
 }
