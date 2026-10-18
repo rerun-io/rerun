@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
-use re_chunk::{Chunk, ChunkId, RowId, TimeInt};
+use re_chunk::{Chunk, RowId, TimeInt};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkTrackingMode, IsStartOfGop};
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, TimePoint, Timeline};
@@ -50,28 +50,42 @@ fn points() -> (
     (MyPoints::descriptor_points(), &POINTS)
 }
 
+fn split_many(
+    store: &ChunkStore,
+    ranges: &[(i64, i64)],
+    is_start_of_gop: Option<&IsStartOfGop>,
+) -> Vec<Vec<Chunk>> {
+    let ranges = ranges
+        .iter()
+        .map(|(min, max)| {
+            AbsoluteTimeRange::new(TimeInt::new_temporal(*min), TimeInt::new_temporal(*max))
+        })
+        .collect::<Vec<_>>();
+    let splits: Vec<Vec<Chunk>> = store
+        .split_by_time_ranges(
+            ChunkTrackingMode::PanicOnMissing,
+            frame().name(),
+            &ranges,
+            is_start_of_gop,
+        )
+        .map(Iterator::collect)
+        .collect();
+    assert_eq!(splits.len(), ranges.len());
+    splits
+}
+
 fn split(
     store: &ChunkStore,
     range: (i64, i64),
     is_start_of_gop: Option<&IsStartOfGop>,
-) -> Vec<(ChunkId, Chunk)> {
-    let mut splits = store.split_by_time_ranges(
-        ChunkTrackingMode::PanicOnMissing,
-        frame().name(),
-        &[AbsoluteTimeRange::new(
-            TimeInt::new_temporal(range.0),
-            TimeInt::new_temporal(range.1),
-        )],
-        is_start_of_gop,
-    );
-    assert_eq!(splits.len(), 1);
-    splits.remove(0)
+) -> Vec<Chunk> {
+    split_many(store, &[range], is_start_of_gop).remove(0)
 }
 
 /// For every `entity:component`, the times of the rows that carry data for it (`None` = static).
-fn times_per_component(chunks: &[(ChunkId, Chunk)]) -> BTreeMap<String, Vec<Option<i64>>> {
+fn times_per_component(chunks: &[Chunk]) -> BTreeMap<String, Vec<Option<i64>>> {
     let mut result: BTreeMap<String, Vec<Option<i64>>> = BTreeMap::new();
-    for (_, chunk) in chunks {
+    for chunk in chunks {
         for component in chunk.components_identifiers() {
             for (time, _row_id) in chunk.iter_component_indices(*frame().name(), component) {
                 result
@@ -88,9 +102,9 @@ fn times_per_component(chunks: &[(ChunkId, Chunk)]) -> BTreeMap<String, Vec<Opti
 }
 
 /// No two chunks of a split may contain the same row.
-fn assert_no_duplicate_rows(chunks: &[(ChunkId, Chunk)]) {
+fn assert_no_duplicate_rows(chunks: &[Chunk]) {
     let mut seen = HashSet::new();
-    for (_, chunk) in chunks {
+    for chunk in chunks {
         for row_id in chunk.row_ids() {
             assert!(
                 seen.insert(row_id),

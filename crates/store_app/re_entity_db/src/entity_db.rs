@@ -1056,7 +1056,7 @@ impl EntityDb {
             .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
         let data_messages = {
-            let chunks: Vec<Arc<Chunk>> = if let Some(time_selection) = time_selection {
+            let chunks = if let Some(time_selection) = time_selection {
                 let ExportTimeSelection {
                     timeline,
                     range,
@@ -1066,8 +1066,10 @@ impl EntityDb {
                 // Only what is loaded can be saved.
                 let tracking = ChunkTrackingMode::Ignore;
 
+                // Only the outer iterator borrows the store: the rows of the split are copied out as
+                // the messages are consumed, after the store lock is released.
                 // The chunks come ordered by their original chunk ID, which preserves the loading order.
-                engine
+                let split = engine
                     .store()
                     .split_by_time_ranges(
                         tracking,
@@ -1075,10 +1077,9 @@ impl EntityDb {
                         &[range.to_int()],
                         is_start_of_gop.as_ref(),
                     )
-                    .into_iter()
-                    .flatten()
-                    .map(|(_original_chunk_id, chunk)| Arc::new(chunk))
-                    .collect()
+                    .next();
+
+                itertools::Either::Left(split.into_iter().flatten().map(Arc::new))
             } else {
                 let mut chunks: Vec<Arc<Chunk>> =
                     engine.store().iter_physical_chunks().cloned().collect();
@@ -1088,10 +1089,10 @@ impl EntityDb {
                 // See https://github.com/rerun-io/rerun/issues/7175 for why.
                 chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
 
-                chunks
+                itertools::Either::Right(chunks.into_iter())
             };
 
-            chunks.into_iter().map(|chunk| {
+            chunks.map(|chunk| {
                 chunk
                     .to_arrow_msg()
                     .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))

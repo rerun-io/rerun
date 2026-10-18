@@ -20,15 +20,19 @@ impl ChunkStore {
     ///
     /// Keyframes are only detected if `is_start_of_gop` is provided, which can use `re_video::is_start_of_gop`.
     ///
-    /// Returns one list per range, in the same order. Each list contains `(original chunk ID, chunk)`
-    /// pairs, ordered by original chunk ID so that the loading order of the original recording is preserved.
-    pub fn split_by_time_ranges(
-        &self,
+    /// Yields one split per range, in the same order, each as an iterator over its chunks.
+    ///
+    /// Splits are computed one at a time, as the outer iterator advances. The rows inside the range
+    /// are mostly copied out of the store's chunks once the split is iterated, which doesn't borrow
+    /// the store anymore (e.g. after a lock on it has been released).
+    /// The chunks of a split are ordered like in the original recording.
+    pub fn split_by_time_ranges<'a>(
+        &'a self,
         tracking: ChunkTrackingMode,
-        timeline: &TimelineName,
-        ranges: &[AbsoluteTimeRange],
+        timeline: &'a TimelineName,
+        ranges: &'a [AbsoluteTimeRange],
         is_start_of_gop: Option<&IsStartOfGop>,
-    ) -> Vec<Vec<(ChunkId, Chunk)>> {
+    ) -> impl Iterator<Item = impl Iterator<Item = Chunk> + use<>> + use<'a> {
         re_tracing::profile_function!();
 
         // `VideoStream`s must be split on a keyframe, always.
@@ -95,134 +99,109 @@ impl ChunkStore {
             }
         }
 
-        ranges
-            .iter()
-            .map(|range| {
-                let start_inclusive = range.min();
-                let end_exclusive = range.max().inc();
+        ranges.iter().map(move |range| {
+            re_tracing::profile_scope!("split");
 
-                // Static data applies to all times, so it is kept as-is in every split.
-                let mut all_chunks_in_split = self
-                    .iter_physical_chunks()
-                    .filter(|chunk| chunk.is_static())
-                    .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
-                    .collect_vec();
+            let start_inclusive = range.min();
+            let end_exclusive = range.max().inc();
 
-                for (entity, components) in &all_entities_and_their_components {
-                    // Transforms and/or pinholes with multiplexed coordinate frames, see the special case below.
-                    let entity_has_multiplexed_transforms_on_timeline =
-                        self.entity_has_component_on_timeline(
-                            Some(timeline),
-                            entity,
-                            transform_parent_frame_identifier,
-                        ) || self.entity_has_component_on_timeline(
-                            Some(timeline),
-                            entity,
-                            transform_child_frame_identifier,
-                        );
-                    let entity_has_multiplexed_pinholes_on_timeline =
-                        self.entity_has_component_on_timeline(
-                            Some(timeline),
-                            entity,
-                            pinhole_parent_frame_identifier,
-                        ) || self.entity_has_component_on_timeline(
-                            Some(timeline),
-                            entity,
-                            pinhole_child_frame_identifier,
-                        );
-                    let entity_has_multiplexed_frames = entity_has_multiplexed_transforms_on_timeline
-                        || entity_has_multiplexed_pinholes_on_timeline;
+            // Static data applies to all times, so it is kept as-is in every split.
+            let mut all_chunks_in_split = self
+                .iter_physical_chunks()
+                .filter(|chunk| chunk.is_static())
+                .map(|chunk| (chunk.id(), SplitChunk::whole(Chunk::clone(chunk))))
+                .collect_vec();
 
-                    // Base case: everything
-                    {
-                        // We must not try to bootstrap special components, as they will undergo some
-                        // custom bootstrap logic below anyway.
-                        // Normally this would be fine, but again we cannot afford the presence of any
-                        // duplicate data when it comes to video decoding.
-                        // Transforms and pinholes without multiplexed coordinate frames are plain
-                        // latest-at data though.
-                        let components_to_bootstrap = components
-                            .iter()
-                            .copied()
-                            .filter(|component| {
-                                !special_components.contains(component)
-                                    || (!entity_has_multiplexed_frames
-                                        && frame_components.contains(component))
-                            })
-                            .collect();
-                        let components = components.iter().copied().collect();
-                        let keep_other_components = true;
-                        let chunks = self.extract_chunks_for_single_split(
-                            tracking,
-                            entity,
-                            &components,
-                            &components_to_bootstrap,
-                            timeline,
-                            start_inclusive,
-                            end_exclusive,
-                            keep_other_components,
-                        );
-                        all_chunks_in_split.extend(chunks);
-                    }
+            for (entity, components) in &all_entities_and_their_components {
+                // Transforms and/or pinholes with multiplexed coordinate frames, see the special case below.
+                let entity_has_multiplexed_transforms_on_timeline =
+                    self.entity_has_component_on_timeline(
+                        Some(timeline),
+                        entity,
+                        transform_parent_frame_identifier,
+                    ) || self.entity_has_component_on_timeline(
+                        Some(timeline),
+                        entity,
+                        transform_child_frame_identifier,
+                    );
+                let entity_has_multiplexed_pinholes_on_timeline =
+                    self.entity_has_component_on_timeline(
+                        Some(timeline),
+                        entity,
+                        pinhole_parent_frame_identifier,
+                    ) || self.entity_has_component_on_timeline(
+                        Some(timeline),
+                        entity,
+                        pinhole_child_frame_identifier,
+                    );
+                let entity_has_multiplexed_frames = entity_has_multiplexed_transforms_on_timeline
+                    || entity_has_multiplexed_pinholes_on_timeline;
 
-                    // Special case: video keyframes
-                    {
-                        let start_revised = keyframes_per_entity.get(entity).and_then(|keyframes| {
-                            let p = keyframes
-                                .partition_point(|t| *t <= start_inclusive)
-                                .saturating_sub(1);
-                            let start_revised = keyframes[p];
+                // Base case: everything
+                {
+                    // We must not try to bootstrap special components, as they will undergo some
+                    // custom bootstrap logic below anyway.
+                    // Normally this would be fine, but again we cannot afford the presence of any
+                    // duplicate data when it comes to video decoding.
+                    // Transforms and pinholes without multiplexed coordinate frames are plain
+                    // latest-at data though.
+                    let components_to_bootstrap = components
+                        .iter()
+                        .copied()
+                        .filter(|component| {
+                            !special_components.contains(component)
+                                || (!entity_has_multiplexed_frames
+                                    && frame_components.contains(component))
+                        })
+                        .collect();
+                    let components = components.iter().copied().collect();
+                    let keep_other_components = true;
+                    let chunks = self.extract_chunks_for_single_split(
+                        tracking,
+                        entity,
+                        &components,
+                        &components_to_bootstrap,
+                        timeline,
+                        start_inclusive,
+                        end_exclusive,
+                        keep_other_components,
+                    );
+                    all_chunks_in_split.extend(chunks);
+                }
 
-                            if start_revised < start_inclusive {
-                                re_log::debug!(
-                                    %entity,
-                                    %timeline,
-                                    ?start_inclusive,
-                                    ?start_revised,
-                                    "revising start time to match video keyframe…"
-                                );
-                                Some(start_revised)
-                            } else {
-                                None
-                            }
-                        });
+                // Special case: video keyframes
+                {
+                    let start_revised = keyframes_per_entity.get(entity).and_then(|keyframes| {
+                        let p = keyframes
+                            .partition_point(|t| *t <= start_inclusive)
+                            .saturating_sub(1);
+                        let start_revised = keyframes[p];
 
-                        if let Some(start_revised) = start_revised {
-                            let components = video_components.into_iter().collect();
-                            // Data logged next to the video samples is already covered by the base case.
-                            let keep_other_components = false;
-                            let chunks = self.extract_chunks_for_single_split(
-                                tracking,
-                                entity,
-                                &components,
-                                &no_bootstrap,
-                                timeline,
-                                start_revised,
-                                start_inclusive,
-                                keep_other_components,
+                        if start_revised < start_inclusive {
+                            re_log::debug!(
+                                %entity,
+                                %timeline,
+                                ?start_inclusive,
+                                ?start_revised,
+                                "revising start time to match video keyframe…"
                             );
-                            all_chunks_in_split.extend(chunks);
+                            Some(start_revised)
+                        } else {
+                            None
                         }
-                    }
+                    });
 
-                    // Special cases: transforms and/or pinholes with multiplexed coordinate frames
-                    if entity_has_multiplexed_frames {
-                        re_log::debug!(
-                            %entity,
-                            %timeline,
-                            ?start_inclusive,
-                            "gathering all transforms/pinholes up to start time due to multiplexed coordinate frames…"
-                        );
-
-                        // Data logged next to the transforms is already covered by the base case.
+                    if let Some(start_revised) = start_revised {
+                        let components = video_components.into_iter().collect();
+                        // Data logged next to the video samples is already covered by the base case.
                         let keep_other_components = false;
                         let chunks = self.extract_chunks_for_single_split(
                             tracking,
                             entity,
-                            &frame_components,
+                            &components,
                             &no_bootstrap,
                             timeline,
-                            TimeInt::MIN,
+                            start_revised,
                             start_inclusive,
                             keep_other_components,
                         );
@@ -230,14 +209,40 @@ impl ChunkStore {
                     }
                 }
 
-                // We must make sure that the new recordings have their chunks in the same order as the original
-                // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
-                // given that we've just queried the data per-entity per-component.
-                all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
+                // Special cases: transforms and/or pinholes with multiplexed coordinate frames
+                if entity_has_multiplexed_frames {
+                    re_log::debug!(
+                        %entity,
+                        %timeline,
+                        ?start_inclusive,
+                        "gathering all transforms/pinholes before the range (multiplexed frames)…"
+                    );
 
-                all_chunks_in_split
-            })
-            .collect()
+                    // Data logged next to the transforms is already covered by the base case.
+                    let keep_other_components = false;
+                    let chunks = self.extract_chunks_for_single_split(
+                        tracking,
+                        entity,
+                        &frame_components,
+                        &no_bootstrap,
+                        timeline,
+                        TimeInt::MIN,
+                        start_inclusive,
+                        keep_other_components,
+                    );
+                    all_chunks_in_split.extend(chunks);
+                }
+            }
+
+            // We must make sure that the new recordings have their chunks in the same order as the original
+            // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
+            // given that we've just queried the data per-entity per-component.
+            all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
+
+            all_chunks_in_split
+                .into_iter()
+                .map(|(_original_chunk_id, chunk)| chunk.into_chunk())
+        })
     }
 
     // TODO(RR-3810): For a virtual store implementation, we'd want this to load no more than 1 chunk at a time.
@@ -335,7 +340,7 @@ impl ChunkStore {
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         keep_other_components: bool,
-    ) -> impl Iterator<Item = (ChunkId, Chunk)> + 'a {
+    ) -> impl Iterator<Item = (ChunkId, SplitChunk)> + 'a {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
@@ -391,19 +396,21 @@ impl ChunkStore {
 
             vec![(
                 chunk.id(),
-                chunk
-                    // We're bootstrapping at the component batch level, so might as well discard everything else.
-                    .component_sliced(*component)
-                    // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                    .row_sliced_unit_deep(0)
-                    // This chunk might be re-used in other places in this split, and because we're slicing it
-                    // (and we really, really need to slice it), we must make sure that it doesn't share
-                    // a chunk ID nor a row ID with anything else.
-                    .clone_as(ChunkId::new(), RowId::new()),
+                SplitChunk::whole(
+                    chunk
+                        // We're bootstrapping at the component batch level, so might as well discard everything else.
+                        .component_sliced(*component)
+                        // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
+                        .row_sliced_unit_deep(0)
+                        // This chunk might be re-used in other places in this split, and because we're slicing it
+                        // (and we really, really need to slice it), we must make sure that it doesn't share
+                        // a chunk ID nor a row ID with anything else.
+                        .clone_as(ChunkId::new(), RowId::new()),
+                ),
             )]
         });
 
-        let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
+        let mut chunks: HashMap<ChunkId, SplitChunk> = Default::default();
         for component in components {
             let results = self.range_relevant_chunks(tracking, &query, entity, *component);
 
@@ -456,24 +463,15 @@ impl ChunkStore {
                 // TODO(RR-3810): If we were to implement this with a virtual store instead, this would be
                 // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
                 // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-                let (original_chunk_id, chunk) = if slice_len == chunk.num_rows() {
-                    // If we're re-using the original chunk as-is, then make sure to not update its ID.
-                    (chunk.id(), chunk)
-                } else {
-                    // TODO(cmc): It could be worthwhile to implement and use a `Chunk::components_sliced` here (plural).
-                    // (We've already decided to generate a new chunk ID anyhow, so column slicing is fine at this point.)
-                    (
-                        chunk.id(),
-                        chunk
-                            // Reminder: always perform deep copies if the intent is to write back to disk.
-                            .row_sliced_deep(Span::from_start_len(start_idx, slice_len)),
-                    )
-                };
-
-                let chunk = if keep_other_components {
-                    chunk
-                } else {
-                    chunk.components_sliced(&components.iter().copied().collect_vec())
+                let rows = (slice_len != chunk.num_rows())
+                    .then(|| Span::from_start_len(start_idx, slice_len));
+                let components =
+                    (!keep_other_components).then(|| components.iter().copied().collect_vec());
+                let original_chunk_id = chunk.id();
+                let chunk = SplitChunk {
+                    chunk,
+                    rows,
+                    components,
                 };
 
                 let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
@@ -482,5 +480,48 @@ impl ChunkStore {
         }
 
         std::iter::chain(chunks_bootstrap, chunks)
+    }
+}
+
+/// A chunk of a split, see [`ChunkStore::split_by_time_ranges`].
+///
+/// Slicing is deferred to [`Self::into_chunk`], so that a split mostly holds references to the
+/// chunks of the store rather than copies of the rows it keeps.
+struct SplitChunk {
+    chunk: Chunk,
+
+    /// The rows to keep, or `None` to keep the chunk as-is.
+    rows: Option<Span<usize>>,
+
+    /// The components to keep, or `None` to keep all of them.
+    components: Option<Vec<ComponentIdentifier>>,
+}
+
+impl SplitChunk {
+    fn whole(chunk: Chunk) -> Self {
+        Self {
+            chunk,
+            rows: None,
+            components: None,
+        }
+    }
+
+    fn into_chunk(self) -> Chunk {
+        let Self {
+            chunk,
+            rows,
+            components,
+        } = self;
+
+        let chunk = match rows {
+            None => chunk,
+            // Reminder: always perform deep copies if the intent is to write back to disk.
+            Some(rows) => chunk.row_sliced_deep(rows),
+        };
+
+        match components {
+            None => chunk,
+            Some(components) => chunk.components_sliced(&components),
+        }
     }
 }

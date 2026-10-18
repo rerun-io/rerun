@@ -526,7 +526,8 @@ impl SplitCommand {
             },
         );
 
-        for (i, all_chunks_in_split) in splits.into_iter().enumerate() {
+        // One split at a time: each is sent to its encoder before the next one is computed.
+        for (i, all_chunks_in_split) in splits.enumerate() {
             let mut all_unique_indexes_in_split = HashSet::default();
 
             send_crossbeam(
@@ -534,18 +535,14 @@ impl SplitCommand {
                 (
                     store.id(),
                     all_chunks_in_split
-                        .into_iter()
-                        .map(move |(original_chunk_id, chunk)| {
-                            (
-                                original_chunk_id,
-                                if self.discard_unused_timelines {
-                                    chunk.timeline_sliced(*cutoff_timeline.name())
-                                } else {
-                                    chunk
-                                },
-                            )
+                        .map(move |chunk| {
+                            if self.discard_unused_timelines {
+                                chunk.timeline_sliced(*cutoff_timeline.name())
+                            } else {
+                                chunk
+                            }
                         })
-                        .inspect(|(_original_chunk_id, chunk)| {
+                        .inspect(|chunk| {
                             if cfg!(debug_assertions) {
                                 for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
                                     if !all_unique_indexes_in_split.insert((time, row_id)) {
@@ -558,23 +555,19 @@ impl SplitCommand {
                                 }
                             }
                         })
-                        .map(move |(original_chunk_id, chunk)| {
-                            (
-                                original_chunk_id,
-                                re_log_msg::LogMsg::ArrowMsg(
-                                    store.id(),
-                                    re_log_msg::ArrowMsg {
-                                        batch: std::sync::Arc::new(
-                                            chunk
-                                                .to_chunk_batch()
-                                                .expect("we got it in, surely we can get it out"),
-                                        ),
-                                        on_release: None,
-                                    },
-                                ),
+                        .map(move |chunk| {
+                            re_log_msg::LogMsg::ArrowMsg(
+                                store.id(),
+                                re_log_msg::ArrowMsg {
+                                    batch: std::sync::Arc::new(
+                                        chunk
+                                            .to_chunk_batch()
+                                            .expect("we got it in, surely we can get it out"),
+                                    ),
+                                    on_release: None,
+                                },
                             )
                         })
-                        .map(|(_, chunk)| chunk)
                         .collect(),
                 ),
             )?;
