@@ -409,3 +409,79 @@ fn unsorted_chunks_are_not_duplicated() {
     assert_eq!(times["/unsorted:example.MyPoints:points"], some(&[4, 6]));
     assert_eq!(times["/unsorted:example.MyPoints:colors"], some(&[4, 6]));
 }
+
+#[test]
+fn splits_multiple_ranges() {
+    let mut store = new_store();
+    insert_chunk(
+        &mut store,
+        "/points",
+        [1, 3, 5, 7, 9, 11, 13]
+            .map(|t| (Some(t), vec![points()]))
+            .into(),
+    );
+    let codec = VideoCodec::H264;
+    insert_chunk(
+        &mut store,
+        "/video",
+        vec![(None, vec![(VideoStream::descriptor_codec(), &codec as _)])],
+    );
+    let samples: Vec<VideoSample> = (0..15u8).map(|i| VideoSample::from(vec![i])).collect();
+    insert_chunk(
+        &mut store,
+        "/video",
+        itertools::izip!(&samples, 0..)
+            .map(|(sample, i)| {
+                (
+                    Some(i),
+                    vec![(
+                        VideoStream::descriptor_sample(),
+                        sample as &dyn ComponentBatch,
+                    )],
+                )
+            })
+            .collect(),
+    );
+
+    // Every 5th sample is a keyframe.
+    let is_start_of_gop: IsStartOfGop =
+        Arc::new(|data, _codec| Ok(data.first().is_some_and(|i| i % 5 == 0)));
+
+    // Like `rrd split -t 4 -t 8` on this recording.
+    let splits = split_many(&store, &[(0, 3), (4, 7), (8, 14)], Some(&is_start_of_gop));
+
+    for chunks in &splits {
+        assert_no_duplicate_rows(chunks);
+    }
+    let times = splits
+        .iter()
+        .map(|chunks| times_per_component(chunks))
+        .collect::<Vec<_>>();
+
+    // Each split has its own rows, plus the latest value before it.
+    assert_eq!(times[0]["/points:example.MyPoints:points"], some(&[1, 3]));
+    assert_eq!(
+        times[1]["/points:example.MyPoints:points"],
+        some(&[3, 5, 7])
+    );
+    assert_eq!(
+        times[2]["/points:example.MyPoints:points"],
+        some(&[7, 9, 11, 13])
+    );
+
+    // Static data is in every split.
+    for times in &times {
+        assert_eq!(times["/video:VideoStream:codec"], vec![None]);
+    }
+
+    // Each split starts its video on the keyframe before it.
+    assert_eq!(times[0]["/video:VideoStream:sample"], some(&[0, 1, 2, 3]));
+    assert_eq!(
+        times[1]["/video:VideoStream:sample"],
+        some(&[0, 1, 2, 3, 4, 5, 6, 7])
+    );
+    assert_eq!(
+        times[2]["/video:VideoStream:sample"],
+        some(&[5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    );
+}
