@@ -1066,9 +1066,9 @@ impl EntityDb {
                 // Only what is loaded can be saved.
                 let tracking = ChunkTrackingMode::Ignore;
 
-                // Only the outer iterator borrows the store: the rows of the split are copied out as
-                // the messages are consumed, after the store lock is released.
-                // The chunks come ordered by their original chunk ID, which preserves the loading order.
+                // Only the outer iterator borrows the store: the rows of the split are mostly copied
+                // out as the messages are consumed, after the store lock is released.
+                // The chunks come roughly in the order they were logged, like below.
                 let split = engine
                     .store()
                     .split_by_time_ranges(

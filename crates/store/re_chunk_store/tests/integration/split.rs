@@ -485,3 +485,39 @@ fn splits_multiple_ranges() {
         some(&[5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
     );
 }
+
+#[test]
+fn keeps_logging_order() {
+    let mut store = new_store();
+    insert_chunk(&mut store, "/a", vec![(Some(1), vec![points()])]);
+    insert_chunk(&mut store, "/b", vec![(Some(5), vec![points()])]);
+    insert_chunk(
+        &mut store,
+        "/c",
+        [1, 3, 5, 9].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    // Chunks follow the first row they keep: `/a` and `/b` were logged before `/c`, and the latest
+    // `/c` before the range before the one inside it.
+    let order = chunks
+        .iter()
+        .map(|chunk| {
+            let times = chunk
+                .iter_indices(frame().name())
+                .map(|(time, _row_id)| time.as_i64())
+                .collect::<Vec<_>>();
+            (chunk.entity_path().to_string(), times)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        order,
+        [
+            ("/a".to_owned(), vec![1]),
+            ("/b".to_owned(), vec![5]),
+            ("/c".to_owned(), vec![3]),
+            ("/c".to_owned(), vec![5]),
+        ]
+    );
+}

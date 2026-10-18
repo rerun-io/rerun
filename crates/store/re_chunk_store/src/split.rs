@@ -22,10 +22,12 @@ impl ChunkStore {
     ///
     /// Yields one split per range, in the same order, each as an iterator over its chunks.
     ///
-    /// Splits are computed one at a time, as the outer iterator advances. The rows inside the range
-    /// are mostly copied out of the store's chunks once the split is iterated, which doesn't borrow
-    /// the store anymore (e.g. after a lock on it has been released).
-    /// The chunks of a split are ordered like in the original recording.
+    /// Splits are computed one at a time, as the outer iterator advances. Chunks that are only
+    /// partially inside a range are sliced once the split is iterated, which doesn't borrow the store
+    /// anymore (e.g. after a lock on it has been released). Latest-at rows and unsorted chunks are
+    /// copied right away.
+    /// The chunks of a split are ordered by the first row they keep, to roughly preserve the order
+    /// in which they were logged (see <https://github.com/rerun-io/rerun/issues/7175>).
     pub fn split_by_time_ranges<'a>(
         &'a self,
         tracking: ChunkTrackingMode,
@@ -109,7 +111,7 @@ impl ChunkStore {
             let mut all_chunks_in_split = self
                 .iter_physical_chunks()
                 .filter(|chunk| chunk.is_static())
-                .map(|chunk| (chunk.id(), SplitChunk::whole(Chunk::clone(chunk))))
+                .map(|chunk| (first_row_id(chunk), SplitChunk::whole(Chunk::clone(chunk))))
                 .collect_vec();
 
             for (entity, components) in &all_entities_and_their_components {
@@ -234,14 +236,15 @@ impl ChunkStore {
                 }
             }
 
-            // We must make sure that the new recordings have their chunks in the same order as the original
-            // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
-            // given that we've just queried the data per-entity per-component.
-            all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
+            // We must make sure that the new recordings have their chunks in roughly the same order as
+            // the original one, otherwise the loading experience would be absolutely awful, given that
+            // we've just queried the data per-entity per-component.
+            // Chunk IDs don't work for this: the store gives new IDs to chunks it splits or compacts.
+            all_chunks_in_split.sort_by_key(|(row_id, _)| *row_id);
 
             all_chunks_in_split
                 .into_iter()
-                .map(|(_original_chunk_id, chunk)| chunk.into_chunk())
+                .map(|(_row_id, chunk)| chunk.into_chunk())
         })
     }
 
@@ -340,7 +343,7 @@ impl ChunkStore {
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         keep_other_components: bool,
-    ) -> impl Iterator<Item = (ChunkId, SplitChunk)> + 'a {
+    ) -> impl Iterator<Item = (Option<RowId>, SplitChunk)> + 'a {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
@@ -381,7 +384,7 @@ impl ChunkStore {
 
             re_log::debug_assert!(chunk.num_rows() == 1);
 
-            let (time, _row_id) = chunk
+            let (time, row_id) = chunk
                 .iter_indices(timeline)
                 .next()
                 .expect("non-empty latest-at chunk must have a single row");
@@ -394,8 +397,9 @@ impl ChunkStore {
                 return vec![];
             }
 
+            // Sorted by the original row, while the copy below gets a fresh row ID.
             vec![(
-                chunk.id(),
+                Some(row_id),
                 SplitChunk::whole(
                     chunk
                         // We're bootstrapping at the component batch level, so might as well discard everything else.
@@ -410,7 +414,7 @@ impl ChunkStore {
             )]
         });
 
-        let mut chunks: HashMap<ChunkId, SplitChunk> = Default::default();
+        let mut chunks: HashMap<ChunkId, (Option<RowId>, SplitChunk)> = Default::default();
         for component in components {
             let results = self.range_relevant_chunks(tracking, &query, entity, *component);
 
@@ -450,6 +454,10 @@ impl ChunkStore {
                 }
 
                 let end_idx = end_idx_excl.saturating_sub(1);
+                let first_kept_row_id = chunk.row_ids_slice()[start_idx..end_idx_excl]
+                    .iter()
+                    .min()
+                    .copied();
 
                 re_log::debug_assert!(
                     start_inclusive.as_i64() <= times[start_idx]
@@ -481,13 +489,19 @@ impl ChunkStore {
                     chunk = SplitChunk::whole(chunk.into_chunk());
                 }
 
-                let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
+                let already_exists = chunks
+                    .insert(original_chunk_id, (first_kept_row_id, chunk))
+                    .is_some();
                 re_log::debug_assert!(!already_exists);
             }
         }
 
-        std::iter::chain(chunks_bootstrap, chunks)
+        std::iter::chain(chunks_bootstrap, chunks.into_values())
     }
+}
+
+fn first_row_id(chunk: &Chunk) -> Option<RowId> {
+    chunk.row_id_range().map(|(min, _)| min)
 }
 
 /// A chunk of a split, see [`ChunkStore::split_by_time_ranges`].
