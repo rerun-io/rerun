@@ -53,6 +53,18 @@ rerun mcap convert input.mcap -o output.rrd
 rerun output.rrd
 ```
 
+## Recording ROS 2 bags as RRD
+
+If you use rosbag2, you can record straight to RRD with [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd), an experimental rosbag2 storage plugin:
+
+```bash
+ros2 bag record -s rrd --all
+```
+
+`ros2 bag play` replays the bag, and Rerun opens and queries it like any other `.rrd`.
+It can also stream to a running Viewer while recording.
+See the plugin's [README](https://github.com/rerun-io/rosbag2_storage_rrd#readme) for its current status and build instructions.
+
 ## Data model
 
 Rerun's data model is based on an [entity component system (ECS)](../../concepts/logging-and-ingestion/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).

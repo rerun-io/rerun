@@ -1001,6 +1001,8 @@ impl TestContext {
                 | SystemCommand::EditRedapServerModal { .. }
                 | SystemCommand::RedapServer(_)
                 | SystemCommand::Table(_)
+                | SystemCommand::EnsureTableBlueprint(_)
+                | SystemCommand::EnsureRecordingBlueprint(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries

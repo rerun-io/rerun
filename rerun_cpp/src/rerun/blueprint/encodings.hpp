@@ -7,6 +7,8 @@
 #include "blueprint/encodings/filter_by_range.hpp"
 #include "blueprint/encodings/filter_is_not_null.hpp"
 #include "blueprint/encodings/selected_columns.hpp"
+#include "blueprint/encodings/sort_by.hpp"
+#include "blueprint/encodings/sort_direction.hpp"
 #include "blueprint/encodings/tensor_dimension_index_slider.hpp"
 #include "blueprint/encodings/text_log_column.hpp"
 #include "blueprint/encodings/text_log_column_kind.hpp"

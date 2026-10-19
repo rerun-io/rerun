@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
-use arrow::datatypes::{Field, Schema};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference as DataFusionTableReference;
 use egui::containers::menu::MenuConfig;
@@ -25,13 +25,15 @@ use re_viewer_context::{
     AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, TableReference,
 };
 
+use re_types_core::reflection::Enum as _;
+
 use crate::DisplayRecordBatch;
-use crate::blueprint::{TableBlueprint, TableColumn};
+use crate::blueprint::{ResolvedSortBy, TableBlueprint, TableColumn};
 use crate::cards_view::FlagChangeEvent;
-use crate::column_sorting::{SortBy, SortDirection};
+use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
-    EntryLinksSpec, SegmentLinksSpec, query_error_message,
+    EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -81,6 +83,33 @@ impl DataColumn<'_> {
     pub fn physical_name(&self) -> &ColumnName {
         &self.physical_name
     }
+}
+
+/// One column of a table as the table layout last showed it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TableSchemaColumn {
+    /// The original Arrow field name, which table blueprints refer to the column by.
+    pub physical_name: ColumnName,
+
+    /// The name the column header shows.
+    pub display_name: String,
+
+    /// The Arrow datatype of the column.
+    pub datatype: arrow::datatypes::DataType,
+}
+
+/// The schema of a table as it was last shown.
+#[derive(Clone, PartialEq)]
+struct ShownTableSchema {
+    /// The columns in display order.
+    columns: Arc<[TableSchemaColumn]>,
+
+    /// The schema the table's filters run against.
+    arrow_schema: SchemaRef,
+}
+
+fn table_schema_id(table_ref: &TableReference) -> Id {
+    Id::unique(("table_schema", table_ref))
 }
 
 /// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their original order.
@@ -389,6 +418,32 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|adapter| adapter.queried_at)
     }
 
+    /// The columns of a table in display order, as the table layout last showed them, or `None`
+    /// if the table has not been shown yet.
+    pub fn table_schema(
+        egui_ctx: &egui::Context,
+        table_ref: &TableReference,
+    ) -> Option<Arc<[TableSchemaColumn]>> {
+        egui_ctx.data(|data| {
+            data.get_temp::<ShownTableSchema>(table_schema_id(table_ref))
+                .map(|schema| schema.columns)
+        })
+    }
+
+    /// Check that `sql` is a filter the table can run, against the columns it last showed.
+    ///
+    /// The error is the message the filter bar shows for the filter. `None` if the table has not
+    /// been shown yet.
+    pub fn check_filter(
+        egui_ctx: &egui::Context,
+        table_ref: &TableReference,
+        sql: &str,
+    ) -> Option<Result<(), String>> {
+        let schema =
+            egui_ctx.data(|data| data.get_temp::<ShownTableSchema>(table_schema_id(table_ref)))?;
+        Some(check_filter(schema.arrow_schema, sql))
+    }
+
     /// Invalidate the streaming cache so the next query re-fetches from the server.
     ///
     /// Unlike [`Self::refresh`], this does NOT clear the adapter state, so the current
@@ -450,8 +505,8 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    /// Set the initial sort used when no egui-owned adapter state exists yet.
-    pub fn sort_by(mut self, sort_by: SortBy) -> Self {
+    /// Set the sort used when the table blueprint has no sort.
+    pub fn default_sort_by(mut self, sort_by: SortBy) -> Self {
         self.initial_query_data.sort_by = Some(sort_by);
         self
     }
@@ -612,9 +667,12 @@ impl<'a> DataFusionTableWidget<'a> {
         // The TableConfig should be persisted across sessions, so we also need a static id.
         let session_id =
             id_from_session_context_and_table(&self.session_ctx, &self.datafusion_table_ref);
+        let blueprint_ctx = table_blueprints.blueprint_context_for(app_ctx, &self.table_ref);
         let initial_query_data = DataFusionQueryData {
-            filters: TableBlueprint::load_filters(
-                &table_blueprints.blueprint_context_for(app_ctx, &self.table_ref),
+            filters: TableBlueprint::load_filters(&blueprint_ctx),
+            sort_by: TableBlueprint::load_sort_by(
+                &blueprint_ctx,
+                self.initial_query_data.sort_by.as_ref(),
             ),
             ..self.initial_query_data.clone()
         };
@@ -723,7 +781,8 @@ impl<'a> DataFusionTableWidget<'a> {
     /// UI for a query that failed.
     ///
     /// Shows the filter bar above the error, so the filters of the query can still be edited
-    /// and removed. The query runs again when the filters of the table blueprint change.
+    /// and removed. The query runs again when the filters or the sort of the table blueprint
+    /// change.
     #[expect(clippy::too_many_arguments)]
     fn query_error_ui(
         &self,
@@ -761,11 +820,15 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         let mut filter_state = FilterState::load(ui.ctx(), session_id, &filters, &schema);
-        let new_filters = filter_state.filter_bar_ui(
-            ui,
-            app_ctx.app_options.timestamp_format,
-            &err.filter_errors,
-        );
+        let new_filters = filter_state
+            .filter_bar_ui(
+                ui,
+                app_ctx.app_options.timestamp_format,
+                &err.filter_errors,
+                None,
+                None,
+            )
+            .filters;
         filter_state.store(ui.ctx(), session_id);
 
         let error = format!("Could not load table: {}", query_error_message(&err.error));
@@ -793,16 +856,54 @@ impl<'a> DataFusionTableWidget<'a> {
         if let Some(new_filters) = &new_filters {
             TableBlueprint::save_filters(&blueprint_ctx, new_filters);
         }
-        let filters = new_filters.unwrap_or(filters);
-        if table_state.query_data().filters != filters {
-            let query_data = DataFusionQueryData {
-                filters,
-                ..table_state.query_data().clone()
-            };
+        let query_data = DataFusionQueryData {
+            filters: new_filters.unwrap_or(filters),
+            sort_by: TableBlueprint::load_sort_by(
+                &blueprint_ctx,
+                self.initial_query_data.sort_by.as_ref(),
+            ),
+            ..table_state.query_data().clone()
+        };
+        if table_state.query_data() != &query_data {
             table_state.update_query(runtime, ui, query_data);
         }
 
         TableStatus::Error(error)
+    }
+
+    /// Store the columns of the table layout for [`Self::table_schema`].
+    fn store_table_schema(
+        &self,
+        egui_ctx: &egui::Context,
+        blueprint: &TableBlueprint<'_>,
+        original_schema: &SchemaRef,
+    ) {
+        let columns: Arc<[TableSchemaColumn]> = blueprint
+            .table_layout
+            .columns
+            .iter()
+            .filter_map(|column| {
+                let field = original_schema
+                    .field_with_name(column.physical_name().as_str())
+                    .ok()?;
+                Some(TableSchemaColumn {
+                    physical_name: column.physical_name().clone(),
+                    display_name: column.display_name(),
+                    datatype: field.data_type().clone(),
+                })
+            })
+            .collect();
+
+        let schema = ShownTableSchema {
+            columns,
+            arrow_schema: Arc::clone(original_schema),
+        };
+        let id = table_schema_id(&self.table_ref);
+        egui_ctx.data_mut(|data| {
+            if data.get_temp::<ShownTableSchema>(id).as_ref() != Some(&schema) {
+                data.insert_temp(id, schema);
+            }
+        });
     }
 
     /// Actual UI code to render a table.
@@ -835,10 +936,36 @@ impl<'a> DataFusionTableWidget<'a> {
             &blueprint_ctx,
             &data_columns,
             &self.additional_column_heuristics,
+            self.initial_query_data.sort_by.as_ref(),
         );
+        self.store_table_schema(ui.ctx(), &blueprint, &query_result.original_schema);
         let mut column_display_mode = blueprint.column_display_mode;
 
         query_data.filters.clone_from(&blueprint.filters);
+        let mut sort_by = blueprint
+            .sort_by
+            .as_ref()
+            .map(|sort_by| sort_by.sort_by().clone());
+        query_data.sort_by.clone_from(&sort_by);
+
+        // A missing sort from the table blueprint shows as a pill that removes it. A missing
+        // default sort only logs a warning.
+        let missing_sort_by = blueprint.sort_by.as_ref().filter(|sort_by| {
+            query_result.missing_sort_column.as_ref() == Some(&sort_by.sort_by().column_name)
+        });
+        let missing_blueprint_sort_column = match missing_sort_by {
+            Some(ResolvedSortBy::Blueprint(sort_by)) => Some(&sort_by.column_name),
+            Some(ResolvedSortBy::Default(sort_by)) => {
+                // The default sort comes from the code creating the widget, so a missing column
+                // here is a bug in that code.
+                re_log::debug_warn_once!(
+                    "The table has no column {:?} to sort by",
+                    sort_by.column_name.as_str()
+                );
+                None
+            }
+            None => None,
+        };
         let mut filter_state = FilterState::load(
             ui.ctx(),
             session_id,
@@ -939,14 +1066,58 @@ impl<'a> DataFusionTableWidget<'a> {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
         }
 
-        if let Some(filters) = filter_state.filter_bar_ui(
+        let filter_controls = crate::filters::FilterControls {
+            columns: blueprint
+                .iter_visible_columns(layout_kind)
+                .filter_map(|column| {
+                    let index = data_columns.index_by_physical_name(column.physical_name())?;
+                    let field = &query_result.original_schema.fields()[index];
+                    ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
+                        crate::filters::FilterableColumn {
+                            display_name: column.display_name(),
+                            column_filter,
+                        }
+                    })
+                })
+                .collect(),
+            hidden_columns: blueprint
+                .iter_columns(layout_kind)
+                .filter(|column| !column.is_visible(layout_kind))
+                .filter_map(|column| {
+                    let index = data_columns.index_by_physical_name(column.physical_name())?;
+                    let field = &query_result.original_schema.fields()[index];
+                    ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
+                        crate::filters::FilterableColumn {
+                            display_name: column.display_name(),
+                            column_filter,
+                        }
+                    })
+                })
+                .collect(),
+        };
+        let applied_filters = query_data.filters.clone();
+        let filter_bar = filter_state.filter_bar_ui(
             ui,
             ctx.app_options.timestamp_format,
             &query_result.filter_errors,
-        ) {
+            Some(&filter_controls),
+            missing_blueprint_sort_column,
+        );
+        if let Some(filters) = filter_bar.filters {
             TableBlueprint::save_filters(&blueprint_ctx, &filters);
             query_data.filters = filters;
         }
+        if filter_bar.remove_sort {
+            TableBlueprint::clear_sort_by(&blueprint_ctx);
+            sort_by.clone_from(&self.initial_query_data.sort_by);
+            query_data.sort_by.clone_from(&sort_by);
+        }
+
+        let no_matches = !should_show_loading_indicator
+            && query_result.finished
+            && num_rows == 0
+            && !applied_filters.is_empty()
+            && query_data.filters == applied_filters;
 
         let migrated_fields = query_result
             .sorbet_schema
@@ -995,6 +1166,7 @@ impl<'a> DataFusionTableWidget<'a> {
             None => {}
         }
 
+        let content_rect = ui.available_rect_before_wrap();
         let mut flag_changes = Vec::new();
         match layout_kind {
             TableLayoutKind::Table => {
@@ -1071,6 +1243,11 @@ impl<'a> DataFusionTableWidget<'a> {
                 Frame::new()
                     .fill(ui.tokens().extreme_bg_color)
                     .show(ui, |ui| {
+                        if no_matches {
+                            ui.shrink_clip_rect(content_rect.with_max_y(
+                                content_rect.top() + ui.tokens().table_header_height(),
+                            ));
+                        }
                         ReTable::new(
                             ui.ctx(),
                             session_id,
@@ -1081,6 +1258,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         .with_preview_columns(preview_columns)
                         .show(ui);
                     });
+
+                if query_data.sort_by != sort_by
+                    && let Some(new_sort_by) = &query_data.sort_by
+                {
+                    TableBlueprint::save_sort_by(&blueprint_ctx, new_sort_by);
+                }
             }
             TableLayoutKind::Cards => {
                 if let Some(card_layout) = blueprint.card_layout {
@@ -1101,6 +1284,43 @@ impl<'a> DataFusionTableWidget<'a> {
                     ui.error_label("No card layout defined in the table blueprint");
                 }
             }
+        }
+
+        if no_matches {
+            let header_height = match layout_kind {
+                TableLayoutKind::Table => ui.tokens().table_header_height(),
+                TableLayoutKind::Cards => 0.0,
+            };
+            let body = egui::Rect::from_min_max(
+                egui::pos2(content_rect.left(), content_rect.top() + header_height),
+                content_rect.max,
+            );
+            ui.scope_builder(
+                egui::UiBuilder::new()
+                    .max_rect(body)
+                    .layout(egui::Layout::top_down(egui::Align::Center)),
+                |ui| {
+                    ui.add_space(64.0);
+                    ui.add(
+                        re_ui::icons::FILTER
+                            .as_image()
+                            .fit_to_exact_size(egui::vec2(24.0, 24.0))
+                            .tint(ui.visuals().weak_text_color()),
+                    );
+                    ui.add_space(8.0);
+                    ui.strong("No matching rows");
+                    ui.weak("Try changing or removing a filter.");
+                    ui.add_space(8.0);
+                    if ui
+                        .add(re_ui::ReButton::new("Clear filters").secondary())
+                        .clicked()
+                    {
+                        filter_state.clear();
+                        TableBlueprint::save_filters(&blueprint_ctx, &[]);
+                        query_data.filters.clear();
+                    }
+                },
+            );
         }
 
         filter_state.store(ui.ctx(), session_id);
@@ -1672,9 +1892,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                 .monospace(),
                         );
 
-                        if let Some(dir_icon) =
-                            current_sort_direction.as_ref().map(SortDirection::icon)
-                        {
+                        if let Some(dir_icon) = current_sort_direction.map(|d| d.icon()) {
                             ui.add_space(-5.0);
                             ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
                         }
@@ -1688,7 +1906,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         )
                         .config(MenuConfig::new().style(menu_style()))
                         .ui(ui, |ui| {
-                            for sort_direction in SortDirection::iter() {
+                            for &sort_direction in SortDirection::variants() {
                                 let already_sorted = Some(sort_direction) == current_sort_direction;
 
                                 if ui

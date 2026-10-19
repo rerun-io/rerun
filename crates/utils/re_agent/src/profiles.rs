@@ -121,12 +121,18 @@ fn builtin_profiles() -> Vec<AgentProfile> {
                 .to_owned(),
             url: "https://github.com/agentclientprotocol/codex-acp".to_owned(),
             login_hint: "codex login".to_owned(),
-            // TODO(michael): Remove this override once Codex enables structured questions in Default mode:
-            // https://github.com/openai/codex/issues/24750
-            env: vec![(
-                "CODEX_CONFIG".to_owned(),
-                r#"{"features":{"default_mode_request_user_input":true}}"#.to_owned(),
-            )],
+            env: vec![
+                // By default codex-acp drops any session MCP server whose name is also in the user's
+                // Codex config, so a `[mcp_servers.rerun]` entry there would replace ours.
+                // With filtering off, Codex merges our definition over theirs instead.
+                ("DISABLE_MCP_CONFIG_FILTERING".to_owned(), "true".to_owned()),
+                // TODO(michael): Remove this override once Codex enables structured questions in Default mode:
+                // https://github.com/openai/codex/issues/24750
+                (
+                    "CODEX_CONFIG".to_owned(),
+                    r#"{"features":{"default_mode_request_user_input":true}}"#.to_owned(),
+                ),
+            ],
         },
         AgentProfile {
             id: "gemini".to_owned(),

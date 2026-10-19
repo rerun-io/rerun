@@ -13,6 +13,10 @@ Some things it is useful for:
 - **Adding a custom blueprint**: "Create a blueprint with two tabs: The first is a grid of the cameras, the second shows the map and 3D view. Verify with rerun viewer-mcp."
 - **Explore recordings**: "Look at each recording in this dataset and find where it rains. Write a report including screenshots."
 
+To change how the Viewer looks, an agent writes a blueprint with `rerun_set_blueprint` instead of clicking through the Viewer's menus.
+This covers a recording's layout and views as well as a table's columns, row filters, and cards.
+See [Reading and writing the blueprint](#reading-and-writing-the-blueprint).
+
 ## Setup
 
 The server is the `viewer-mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
@@ -98,7 +102,11 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 It works for any open recording, whatever it was loaded from.
 Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
+`rerun_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
+Without a `dataset_url` it describes the dataset on screen, or the dataset of the segment on screen.
 It can also ask for the entity paths alone, which lists a whole recording at a size worth reading and leaves the components for a follow-up call.
+For a dataset, entity paths alone are the default when no `entity_path` is given.
+These describe the entities in the segments, not the columns of a table, which `rerun_get_table_schema` names.
 
 Values are another matter: the MCP tools drive the UI, and deliberately do not read data.
 Instead, the Viewer hosts a catalog server, and `rerun_get_viewer_state` reports its address as `catalog_url`, along with each recording's `store_id`.
@@ -109,7 +117,8 @@ For a recording that is not in the catalog, such as one streamed from an SDK or 
 
 ## Reading and writing the blueprint
 
-`rerun_get_blueprint` returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
+`rerun_get_blueprint` with a `recording` target returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
+The target's `store_id` defaults to the active recording.
 The JSON mirrors the blueprint store row for row, so it matches what the SDKs log and what the blueprint panel shows:
 
 ```json
@@ -125,6 +134,63 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 `rerun_set_blueprint` replaces the whole blueprint with JSON of the same form, and clears anything it leaves out.
 So an agent reads the blueprint, edits it, and sends all of it back.
 The write is a normal blueprint edit, so the user can undo it.
+
+### Table blueprints
+
+A table, such as a dataset's segment table or a catalog table, has a blueprint of its own with its row filters, layout, and column settings.
+`rerun_get_blueprint` and `rerun_set_blueprint` read and replace it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+Their answer names the recording or table it used, as `store_id` or `table_url`.
+Row filters are SQL expressions such as `"task" ILIKE '%pick%'`, and the `filters` docs of `TableBlueprint` list the forms the Viewer shows as editable filter widgets.
+A filter that does not fit the table's columns comes back as an error.
+`rerun_get_table_schema` names each column's Arrow field name, header name, and datatype, as the table was last shown.
+
+To hide, show, reorder, or rename columns, or to filter rows, write the table blueprint rather than clicking through the **Columns** menu with the low-level tools.
+The server instructions and the description of `rerun_set_blueprint` give the agent this rule and its steps: read the column names with `rerun_get_table_schema`, read the blueprint, write it back, and check it with one screenshot.
+
+For example, to tidy up the segment table of a DROID dataset, the agent first opens the table with `rerun_open_url`.
+`rerun_get_table_schema` then lists its columns in display order.
+It answers `NOT_FOUND` until the table has been shown once, so call it again if it was opened in the same step.
+
+```json
+{"columns": [
+  {"name": "rerun_segment_id", "display_name": "Segment id", "datatype": "Utf8"},
+  {"name": "recording link", "display_name": "Recording link", "datatype": "Utf8"},
+  …
+  {"name": "property:episode:current_task", "display_name": "Current task", "datatype": "List(Utf8)"},
+  {"name": "property:episode:ext1_cam_serial", "display_name": "Ext1 cam serial", "datatype": "List(Utf8)"},
+  {"name": "property:episode:ext2_cam_serial", "display_name": "Ext2 cam serial", "datatype": "List(Utf8)"},
+  …
+  {"name": "property:episode:success", "display_name": "Success", "datatype": "List(Boolean)"},
+  …
+]}
+```
+
+`rerun_get_blueprint` with `{"table": {}}` gives `{}` for a table that was never configured.
+`rerun_set_blueprint` with `{"table": {}}` and this `json` shows the recording link, task, and success columns first, and hides both external camera serials:
+
+```json
+{
+  "/table/layouts/table": {
+    "TableLayout": {
+      "column_order": ["recording link", "property:episode:current_task", "property:episode:success"]
+    }
+  },
+  "/table/layouts/table/columns/property\\:episode\\:ext1_cam_serial": { "TableColumn": { "visible": false } },
+  "/table/layouts/table/columns/property\\:episode\\:ext2_cam_serial": { "TableColumn": { "visible": false } }
+}
+```
+
+`column_order` takes the plain column names from `name`, and puts them first.
+The other columns keep their default order and visibility.
+In a column's entity path, `:` and spaces are escaped as `\:` and `\ `, which JSON writes as `\\:` and `\\ `.
+To show a column again, set `"visible": true` or leave its entry out.
+Calling `rerun_get_table_schema` again lists the columns in the new order, hidden ones included.
+
+The user can undo and redo a table blueprint write, as with a recording's blueprint.
+To go back to the table's default blueprint, run the `table.reset_blueprint_to_default` command, **Reset to default blueprint** in the command palette, with `rerun_run_command`.
+
+To make a layout the default for everyone who opens the table, build it in Python and register it on the server, as described in [Configure table layouts and segment previews](../../howto/visualization/configure-table-blueprints.md).
+The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) gives agents the same steps.
 
 ## Closing recordings
 

@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -48,7 +48,8 @@ pub mod viewer_control_request {
         #[prost(message, tag = "3")]
         GetViewerState(super::GetViewerStateRequest),
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
-        /// server/catalog URL, or an intra-recording link).
+        /// server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
+        /// segment, becomes the active recording and is shown.
         ///
         /// Returns once the initial load is done, or after about ten seconds, whichever comes first.
         /// What the initial load covers depends on the URL:
@@ -120,10 +121,23 @@ pub mod viewer_control_request {
         /// Ask the user before running a `destructive` command.
         #[prost(message, tag = "11")]
         RunCommand(super::RunCommandRequest),
-        /// Read a recording's active blueprint (layout, views, their properties and overrides) as
-        /// JSON, keyed by blueprint entity path, then archetype, then field.
+        /// Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then
+        /// archetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.
         ///
-        /// `NOT_FOUND` if the recording is not open or has no active blueprint.
+        /// A recording's blueprint has the layout, views, their properties and overrides. A table's
+        /// blueprint only has what it sets, such as row filters, the layout, and column settings, so a
+        /// table that was never configured gives `{}`. `GetTableSchema` names all columns of a table.
+        ///
+        /// Set exactly one of `recording` and `table`, such as `{"recording": {}}` or
+        /// `{"table": {"table_url": "…"}}`. Without a `store_id` it reads the active recording's
+        /// blueprint, and without a `table_url` the blueprint of the table on screen. The response
+        /// names the recording or table it read. A recording or table without a blueprint yet gets
+        /// the one showing it would give it.
+        ///
+        /// `INVALID_ARGUMENT` if neither `recording` nor `table` is set. `FAILED_PRECONDITION` if the
+        /// default recording or table is not there. `NOT_FOUND` if the recording is not open or the
+        /// viewer does not know the table.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintRequest),
         /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
@@ -138,13 +152,61 @@ pub mod viewer_control_request {
         /// to disk failed.
         #[prost(message, tag = "13")]
         CaptureProfileTrace(super::CaptureProfileTraceRequest),
-        /// Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.
+        /// Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
+        /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
+        /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
         ///
         /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
-        /// single value may be written as that value or as an array of one.
-        /// `INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.
+        /// single value may be written as that value or as an array of one. Exactly one of
+        /// `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
+        /// response names which one it wrote.
+        ///
+        /// ## Tables
+        ///
+        /// To change how a table looks, write its blueprint with this rather than clicking through the
+        /// viewer's Columns menu. Read the column names with `GetTableSchema` and the blueprint with
+        /// `GetBlueprint` first, and keep what it returned. `column_order` in `TableLayout` sets the
+        /// order, and a column's `TableColumn` sets its `name` and `visible`. Row filters go in
+        /// `filters` of `TableBlueprint` at `/table`.
+        ///
+        /// Rows show either as a table or as cards with segment previews. A request about columns or
+        /// rows only changes the table layout, so write it without asking. For any other request, such
+        /// as to make a table look nice, ask the user before the first write which layout they want and
+        /// what it shows, unless they already said.
+        /// The docs of `table` describe how to write a table blueprint, with examples of both layouts.
+        ///
+        /// ## Errors
+        ///
+        /// `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
+        /// against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
+        /// `table` is set.
+        /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
+        /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "14")]
         SetBlueprint(super::SetBlueprintRequest),
+        /// Name a table's columns in display order, as last shown: the name a table blueprint uses,
+        /// the header name, and the Arrow datatype. Read it before writing a table blueprint.
+        ///
+        /// `FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if
+        /// the viewer does not know the table or has not shown it yet, so open it with `OpenUrl`.
+        #[prost(message, tag = "17")]
+        GetTableSchema(super::GetTableSchemaRequest),
+        /// Describe a dataset on a server: the entities of all its segments and the components logged
+        /// on each, in the form `GetRecordingSchema` describes one recording. Nothing is opened or
+        /// loaded, so read it to learn what a dataset holds before opening any of it.
+        ///
+        /// It names the entities in the segments, not a table's columns. For the columns of a table,
+        /// such as to change how a table looks, call `GetTableSchema` instead.
+        ///
+        /// This is the schema, not the data: a component listed here has been logged in some segment,
+        /// not necessarily in all of them.
+        ///
+        /// `FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.
+        /// `INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not
+        /// know the dataset, or nothing in it is at or below `entity_path`.
+        #[prost(message, tag = "18")]
+        GetDatasetSchema(super::GetDatasetSchemaRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -163,7 +225,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -214,6 +276,12 @@ pub mod viewer_control_response {
         /// Result of `set_blueprint`.
         #[prost(message, tag = "14")]
         SetBlueprint(super::SetBlueprintResponse),
+        /// Result of `get_table_schema`.
+        #[prost(message, tag = "17")]
+        GetTableSchema(super::GetTableSchemaResponse),
+        /// Result of `get_dataset_schema`.
+        #[prost(message, tag = "18")]
+        GetDatasetSchema(super::GetDatasetSchemaResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -417,12 +485,22 @@ impl ::prost::Name for EguiInspectResponse {
 /// Request for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintRequest {
-    /// Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.
-    /// If omitted, the active recording is used.
-    ///
-    /// Blueprints belong to an application, so every recording of the same application shares one.
-    #[prost(string, optional, tag = "1")]
-    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    #[prost(oneof = "get_blueprint_request::Target", tags = "2, 3")]
+    pub target: ::core::option::Option<get_blueprint_request::Target>,
+}
+/// Nested message and enum types in `GetBlueprintRequest`.
+pub mod get_blueprint_request {
+    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Target {
+        /// Read the blueprint of a recording.
+        #[prost(message, tag = "2")]
+        Recording(super::RecordingBlueprintTarget),
+        /// Read the blueprint of a table.
+        #[prost(message, tag = "3")]
+        Table(super::TableBlueprintTarget),
+    }
 }
 impl ::prost::Name for GetBlueprintRequest {
     const NAME: &'static str = "GetBlueprintRequest";
@@ -434,15 +512,59 @@ impl ::prost::Name for GetBlueprintRequest {
         "/rerun.viewer_control.v1alpha1.GetBlueprintRequest".into()
     }
 }
+/// The recording a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
+///
+/// Blueprints belong to an application, so every recording of the same application shares one.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RecordingBlueprintTarget {
+    /// The recording, as `{kind}:{application_id}:{recording_id}`. Defaults to the active recording.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for RecordingBlueprintTarget {
+    const NAME: &'static str = "RecordingBlueprintTarget";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RecordingBlueprintTarget".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RecordingBlueprintTarget".into()
+    }
+}
+/// The table a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableBlueprintTarget {
+    /// The table: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// `origin` for its list of entries. Defaults to the table on screen.
+    #[prost(string, optional, tag = "1")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for TableBlueprintTarget {
+    const NAME: &'static str = "TableBlueprintTarget";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.TableBlueprintTarget".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.TableBlueprintTarget".into()
+    }
+}
 /// Response for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintResponse {
-    /// The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
+    /// The blueprint that was read.
     #[prost(string, tag = "1")]
     pub blueprint_id: ::prost::alloc::string::String,
     /// The whole blueprint as a JSON object, as `GetBlueprint` returns it.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
+    /// The recording whose blueprint was read, set when the blueprint is a recording's.
+    #[prost(string, optional, tag = "3")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The table whose blueprint was read, set when the blueprint is a table's. A table that only
+    /// exists in the viewer has no URL, so neither this nor `store_id` is set for it.
+    #[prost(string, optional, tag = "4")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetBlueprintResponse {
     const NAME: &'static str = "GetBlueprintResponse";
@@ -452,6 +574,125 @@ impl ::prost::Name for GetBlueprintResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetBlueprintResponse".into()
+    }
+}
+/// Request for `GetTableSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTableSchemaRequest {
+    /// The table's URL: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// `origin` for its list of entries. Defaults to the table on screen.
+    #[prost(string, optional, tag = "1")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for GetTableSchemaRequest {
+    const NAME: &'static str = "GetTableSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTableSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTableSchemaRequest".into()
+    }
+}
+/// Response for `GetTableSchema`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTableSchemaResponse {
+    /// Every column of the table, in display order, hidden ones included.
+    #[prost(message, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<TableColumnSchema>,
+}
+impl ::prost::Name for GetTableSchemaResponse {
+    const NAME: &'static str = "GetTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTableSchemaResponse".into()
+    }
+}
+/// One column of a table.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableColumnSchema {
+    /// The Arrow field name, e.g. `rerun_segment_id`. Table blueprints use it in `column_order` at
+    /// `/table/layouts/table` and in `/table/layouts/table/columns/<name>`.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The header name: the blueprint's `TableColumn` `name`, or else derived from `name`.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Arrow datatype of the column, e.g. `Utf8`.
+    #[prost(string, tag = "3")]
+    pub datatype: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TableColumnSchema {
+    const NAME: &'static str = "TableColumnSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.TableColumnSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.TableColumnSchema".into()
+    }
+}
+/// Request for `GetDatasetSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetDatasetSchemaRequest {
+    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// the dataset of the segment on screen.
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Omit for the whole
+    /// dataset.
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them.
+    ///
+    /// Defaults to true without an `entity_path` and to false with one. So a first call shows the
+    /// shape of the dataset, and a call with `entity_path` gives the components of the entities
+    /// that turned out to matter.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetDatasetSchemaRequest {
+    const NAME: &'static str = "GetDatasetSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetSchemaRequest".into()
+    }
+}
+/// Response for `GetDatasetSchema`: the dataset's entities and the components on them.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetSchemaResponse {
+    /// The names of the dataset's timelines.
+    #[prost(string, repeated, tag = "1")]
+    pub timelines: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// The matching entities in path order, each with the components logged on it.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out.
+    ///
+    /// Anything above zero means this answer describes only part of the dataset: narrow with
+    /// `entity_path`, or raise `max_entities`.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+}
+impl ::prost::Name for GetDatasetSchemaResponse {
+    const NAME: &'static str = "GetDatasetSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
     }
 }
 /// Request for `GetRecordingSchema`.
@@ -1196,14 +1437,84 @@ impl ::prost::Name for CaptureProfileTraceResponse {
 /// Request for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintRequest {
-    /// Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.
-    /// If omitted, the active recording is used.
-    #[prost(string, optional, tag = "1")]
-    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
     /// The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
     /// returns it.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
+    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    #[prost(oneof = "set_blueprint_request::Target", tags = "3, 4")]
+    pub target: ::core::option::Option<set_blueprint_request::Target>,
+}
+/// Nested message and enum types in `SetBlueprintRequest`.
+pub mod set_blueprint_request {
+    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Target {
+        /// Write the blueprint of a recording.
+        #[prost(message, tag = "3")]
+        Recording(super::RecordingBlueprintTarget),
+        /// Write the blueprint of a table.
+        /// Use this to customize tables, enable card layouts, and add preview cells.
+        ///
+        /// The entity paths and archetypes of a table blueprint are described by
+        /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
+        /// <<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.>
+        ///
+        /// `TableBlueprint` at `/table` has these fields:
+        /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
+        ///    `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table.
+        /// * `column_display_mode`: how column names show, `Compact`, `Component` or `Full`.
+        ///    Defaults to `Compact`.
+        /// * `filters`: SQL row filters, described below.
+        ///
+        /// Enum values in the JSON are the variant names, such as `"Cards"`. The Python SDK takes
+        /// lowercase strings instead, such as `default_layout="cards"`.
+        ///
+        /// This blueprint shows three columns first, renames one and hides another:
+        ///
+        /// ```json
+        /// {
+        ///    "/table/layouts/table": {"TableLayout": {"column_order": \["recording link", "property:my_props:my_score", "rerun_segment_id"\]}},
+        ///    "/table/layouts/table/columns/property\\:my_props\\:my_score": {"TableColumn": {"name": "Score"}},
+        ///    "/table/layouts/table/columns/rerun_segment_id": {"TableColumn": {"visible": false}}
+        /// }
+        /// ```
+        ///
+        /// `column_order` takes plain column names. In a column's entity path, `:` and spaces are
+        /// escaped as `\:` and `\ `, so `recording link` becomes `columns/recording\ link`.
+        ///
+        /// This blueprint shows rows as cards, with a 3D view of `/my_scene` on each card, titled by
+        /// `my_title`:
+        ///
+        /// ```json
+        /// {
+        ///    "/table": {"TableBlueprint": {"layout": "Cards"}},
+        ///    "/table/layouts/cards": {"CardLayout": {"title": "my_title", "link": "recording link", "field_order": \["recording link", "my_title"\]}},
+        ///    "/table/layouts/cards/fields/recording\\ link": {"TableColumn": {"cell_kind": "Preview"}, "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
+        ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {"ViewBlueprint": {"class_identifier": "3D", "space_origin": "/my_scene"}},
+        ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {"ViewContents": {"query": "+ /my_scene/**"}}
+        /// }
+        /// ```
+        ///
+        /// Card fields live under `fields/`, not `columns/`, and only the fields in `field_order`
+        /// show. Each preview view has its own UUID, in the form a recording blueprint writes views.
+        ///
+        /// Learn what the dataset holds with `GetDatasetSchema` before choosing a preview. Then ask the
+        /// user what the preview shows, and suggest what tells the segments apart at a glance, such as
+        /// a moving robot model, a trajectory, or a video. To refine a preview, inspect the recordings
+        /// it loads rather than opening a segment.
+        /// Each card's recording shows in `recordings` of `GetViewerState`, with the dataset id as its
+        /// application id and the segment id as its recording id, and works with `GetRecordingSchema`.
+        /// Every visible card renders its own recording, which is costly, so keep previews small: few
+        /// views, and only the entities that matter.
+        ///
+        /// Row filters are SQL expressions in `filters` of `TableBlueprint` at `/table`, such as
+        /// `"my_column" ILIKE '%text%'`. Its docs list the forms the filter bar shows as editable widgets.
+        /// Users cannot write SQL in the viewer. They only add those forms from a column header's menu,
+        /// and can only remove any other filter.
+        #[prost(message, tag = "4")]
+        Table(super::TableBlueprintTarget),
+    }
 }
 impl ::prost::Name for SetBlueprintRequest {
     const NAME: &'static str = "SetBlueprintRequest";
@@ -1218,9 +1529,16 @@ impl ::prost::Name for SetBlueprintRequest {
 /// Response for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintResponse {
-    /// The blueprint that was written, as `{kind}:{application_id}:{recording_id}`.
+    /// The blueprint that was written.
     #[prost(string, tag = "1")]
     pub blueprint_id: ::prost::alloc::string::String,
+    /// The recording whose blueprint was written, set when the blueprint is a recording's.
+    #[prost(string, optional, tag = "2")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The table whose blueprint was written, set when the blueprint is a table's. A table that
+    /// only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
+    #[prost(string, optional, tag = "3")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for SetBlueprintResponse {
     const NAME: &'static str = "SetBlueprintResponse";

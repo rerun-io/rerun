@@ -30,5 +30,5 @@ pub use self::raw_rrd_manifest::{
     RawRrdManifest, RrdManifestSha256, RrdManifestStaticMap, RrdManifestTemporalMap,
     RrdManifestTemporalMapEntry, sha256_to_hex,
 };
-pub use self::rrd_manifest::RrdManifest;
+pub use self::rrd_manifest::{RrdManifest, SegmentLayer};
 pub use self::rrd_manifest_builder::RrdManifestBuilder;

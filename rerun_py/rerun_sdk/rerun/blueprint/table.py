@@ -7,7 +7,7 @@ Configure catalog table layouts, columns, and segment previews.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import rerun_bindings as bindings
 
@@ -36,6 +36,7 @@ from .archetypes import (
     TableColumnPreview,
     TableLayout as TableLayoutArchetype,
 )
+from .encodings import SortBy as SortBy
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -55,6 +56,7 @@ __all__ = [
     "ListFilters",
     "PreviewCell",
     "PreviewsConfig",
+    "SortBy",
     "StringFilters",
     "TableBlueprint",
     "TableLayout",
@@ -233,6 +235,11 @@ class TableBlueprint:
         A row is only shown when all filters select it.
         Build filters for one column with [`col`][rerun.blueprint.table.col], which the Viewer shows as editable filters.
         Instead of a [`Filter`][rerun.blueprint.table.Filter], you can also provide a string with a raw SQL expression.
+    sort_by:
+        Source column the rows are sorted by, with an optional direction.
+        Without a direction the viewer sorts ascending.
+        Use [`SortBy`][rerun.blueprint.table.SortBy] to set the direction.
+        If unset, rows keep the order of the data.
 
     """
 
@@ -242,6 +249,7 @@ class TableBlueprint:
     column_display_mode: ColumnDisplayModeLike | None = None
     previews_config: PreviewsConfig | None = None
     filters: Sequence[Filter | str] = ()
+    sort_by: str | SortBy | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.filters, (str, Filter)):
@@ -262,6 +270,11 @@ class TableBlueprint:
             raise ValueError("default_layout='cards' requires card_layout to be configured")
         if self.previews_config is not None and not isinstance(self.previews_config, PreviewsConfig):
             raise TypeError("TableBlueprint.previews_config must be a PreviewsConfig or None")
+        if isinstance(self.sort_by, str):
+            _validate_optional_string(self.sort_by, "TableBlueprint.sort_by", allow_empty=False)
+            object.__setattr__(self, "sort_by", SortBy(self.sort_by))
+        elif self.sort_by is not None and not isinstance(self.sort_by, SortBy):
+            raise TypeError("TableBlueprint.sort_by must be a str, SortBy, or None")
 
     def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
@@ -313,6 +326,8 @@ class TableBlueprint:
             layout=self.default_layout,
             column_display_mode=self.column_display_mode,
             filters=[str(entry) for entry in self.filters] or None,
+            # `__post_init__` converts a plain column name to `SortBy`.
+            sort_by=cast("SortBy | None", self.sort_by),
         ).as_component_batches()
         if components:
             stream.log("table", components)
@@ -342,5 +357,3 @@ class TableBlueprint:
             for field in self.card_layout.fields:
                 source = escape_entity_path_part(field.source)
                 field._log_to_stream(stream, f"table/layouts/cards/fields/{source}")
-
-    # TODO(RR-4810): Add sorting after the type definitions model it.

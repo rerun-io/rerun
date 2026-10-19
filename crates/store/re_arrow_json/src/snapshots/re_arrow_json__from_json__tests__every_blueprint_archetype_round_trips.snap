@@ -10,6 +10,7 @@ expression: fields_without_placeholder
     "LineGrid3D:plane (FixedSizeList(4 x non-null Float32))",
     "SpatialInformation:target_frame (Utf8)",
     "TableBlueprint:filters (Utf8)",
+    "TableBlueprint:sort_by (Struct(\"column\": non-null Utf8, \"direction\": UInt8))",
     "TableColumn:editable (Boolean)",
     "TableLayout:column_order (Utf8)",
     "TimeAxis:view_range (Struct(\"start\": Union(Dense, 0: (\"_null_markers\": Null), 1: (\"CursorRelative\": non-null Int64), 2: (\"Absolute\": non-null Int64), 3: (\"Infinite\": Null)), \"end\": Union(Dense, 0: (\"_null_markers\": Null), 1: (\"CursorRelative\": non-null Int64), 2: (\"Absolute\": non-null Int64), 3: (\"Infinite\": Null))))",

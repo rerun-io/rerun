@@ -8,6 +8,8 @@ mod filter_by_range;
 mod filter_is_not_null;
 #[path = "encodings/selected_columns.def.rs"]
 mod selected_columns;
+#[path = "encodings/sort_by.def.rs"]
+mod sort_by;
 #[path = "encodings/tensor_dimension_index_slider.def.rs"]
 mod tensor_dimension_index_slider;
 #[path = "encodings/text_log_column.def.rs"]
@@ -21,6 +23,7 @@ pub use self::component_column_selector::*;
 pub use self::filter_by_range::*;
 pub use self::filter_is_not_null::*;
 pub use self::selected_columns::*;
+pub use self::sort_by::*;
 pub use self::tensor_dimension_index_slider::*;
 pub use self::text_log_column::*;
 pub use self::timeline_column::*;

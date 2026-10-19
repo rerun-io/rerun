@@ -5,11 +5,13 @@ use ahash::HashMap;
 use arrow::datatypes::{DataType, SchemaRef};
 use arrow::error::ArrowError;
 use crossbeam::channel::{Receiver, TryRecvError};
-use datafusion::common::{DataFusionError, SchemaError, TableReference};
+use datafusion::common::{DFSchema, DataFusionError, SchemaError, TableReference};
 use datafusion::execution::SendableRecordBatchStream;
 use datafusion::execution::SessionState;
 use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{Expr, LogicalPlanBuilder, binary_expr, col as datafusion_col, lit};
+use datafusion::logical_expr::{
+    EmptyRelation, Expr, LogicalPlan, LogicalPlanBuilder, binary_expr, col as datafusion_col, lit,
+};
 use datafusion::prelude::DataFrame;
 use datafusion::prelude::{SessionContext, cast, encode};
 use datafusion::sql::sqlparser::parser::ParserError;
@@ -99,6 +101,11 @@ pub struct DataFusionQueryResult {
 
     /// The error of each filter that the query left out, by the filter's SQL.
     pub filter_errors: FilterErrors,
+
+    /// The sort column, if the table has no column with that name.
+    ///
+    /// The query leaves out a sort on a missing column.
+    pub missing_sort_column: Option<ColumnName>,
 
     pub finished: bool,
 }
@@ -194,6 +201,36 @@ fn plan_filter(
     Ok(expr)
 }
 
+/// Check that `sql` is a filter that a table with `schema` can run.
+///
+/// The error is the message the filter bar shows for the filter.
+pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
+    let plan = || -> Result<Expr, DataFusionError> {
+        let mut session_state = SessionContext::new().state();
+        set_filter_time_zone(&mut session_state);
+        let plan = LogicalPlan::EmptyRelation(EmptyRelation {
+            produce_one_row: false,
+            schema: Arc::new(DFSchema::try_from(schema)?),
+        });
+        plan_filter(
+            &session_state,
+            &DataFrame::new(session_state.clone(), plan),
+            sql,
+        )
+    };
+    plan().map(|_| ()).map_err(|err| query_error_message(&err))
+}
+
+/// Relative timestamp filters, such as "today", use the session time zone. With a time zone,
+/// `TIMESTAMPTZ` literals in filters compare as instants against columns of any time zone.
+fn set_filter_time_zone(session_state: &mut SessionState) {
+    let time_zone = jiff::tz::TimeZone::system()
+        .iana_name()
+        .unwrap_or("UTC")
+        .to_owned();
+    session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+}
+
 impl DataFusionQueryResult {
     /// Resolve a global row index to `(batch_index, row_offset_within_batch)`.
     fn find_row_indices(&self, global_row: u64) -> Option<(usize, usize)> {
@@ -230,6 +267,17 @@ struct DataFusionQuery {
     query_data: DataFusionQueryData,
 }
 
+/// The stream of a query, with what the query left out.
+struct QueryBatchStream {
+    stream: SendableRecordBatchStream,
+
+    /// The error of each filter that the query left out, by the filter's SQL.
+    filter_errors: FilterErrors,
+
+    /// The sort column, if the table has no column with that name.
+    missing_sort_column: Option<ColumnName>,
+}
+
 impl DataFusionQuery {
     fn new(
         session_ctx: Arc<SessionContext>,
@@ -243,19 +291,9 @@ impl DataFusionQuery {
         }
     }
 
-    /// Returns the stream of the query, and the errors of the filters it left out.
-    async fn batch_stream(
-        self,
-    ) -> Result<(SendableRecordBatchStream, FilterErrors), DataFusionError> {
-        // Relative timestamp filters, such as "today", use the session time zone. With a time
-        // zone, `TIMESTAMPTZ` literals in filters compare as instants against columns of any time
-        // zone.
+    async fn batch_stream(self) -> Result<QueryBatchStream, DataFusionError> {
         let (mut session_state, plan) = self.session_ctx.table(self.table_ref).await?.into_parts();
-        let time_zone = jiff::tz::TimeZone::system()
-            .iana_name()
-            .unwrap_or("UTC")
-            .to_owned();
-        session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+        set_filter_time_zone(&mut session_state);
         let mut dataframe = DataFrame::new(session_state.clone(), plan);
 
         let DataFusionQueryData {
@@ -337,10 +375,18 @@ impl DataFusionQuery {
         // Sort
         //
 
+        let mut missing_sort_column = None;
         if let Some(sort_by) = sort_by {
-            let ascending = sort_by.direction.is_ascending();
-            dataframe =
-                dataframe.sort(vec![col(&sort_by.column_name).sort(ascending, ascending)])?;
+            if dataframe
+                .schema()
+                .has_column_with_unqualified_name(&sort_by.column_name)
+            {
+                let ascending = sort_by.direction.is_ascending();
+                dataframe =
+                    dataframe.sort(vec![col(&sort_by.column_name).sort(ascending, ascending)])?;
+            } else {
+                missing_sort_column = Some(sort_by.column_name.clone());
+            }
         }
 
         //
@@ -349,7 +395,11 @@ impl DataFusionQuery {
 
         let stream = dataframe.execute_stream().await?;
 
-        Ok((stream, Arc::new(filter_errors)))
+        Ok(QueryBatchStream {
+            stream,
+            filter_errors: Arc::new(filter_errors),
+            missing_sort_column,
+        })
     }
 
     /// Execute the query to produce the data to display.
@@ -371,7 +421,11 @@ impl DataFusionQuery {
                     )
                     .ok();
                 }
-                Ok((stream, filter_errors)) => {
+                Ok(QueryBatchStream {
+                    stream,
+                    filter_errors,
+                    missing_sort_column,
+                }) => {
                     let schema = stream.schema();
 
                     let mut sorbet_stream = stream.and_then(|s| {
@@ -395,6 +449,7 @@ impl DataFusionQuery {
                                         original_schema: Arc::clone(&schema),
                                         sorbet_schema: batch.sorbet_schema().clone(),
                                         filter_errors: Arc::clone(&filter_errors),
+                                        missing_sort_column: missing_sort_column.clone(),
                                         first_batch: Some(batch),
                                     }
                                 };
@@ -428,6 +483,7 @@ impl DataFusionQuery {
                                         original_schema: schema,
                                         sorbet_schema,
                                         filter_errors,
+                                        missing_sort_column,
                                         first_batch: None,
                                     },
                                 )
@@ -478,6 +534,7 @@ pub enum QueryEvent {
         original_schema: SchemaRef,
         sorbet_schema: re_sorbet::SorbetSchema,
         filter_errors: FilterErrors,
+        missing_sort_column: Option<ColumnName>,
         first_batch: Option<SorbetBatch>,
     },
 
@@ -570,6 +627,7 @@ impl DataFusionAdapter {
                         sorbet_schema,
                         original_schema,
                         filter_errors,
+                        missing_sort_column,
                         first_batch,
                     }) => {
                         if first_batch.is_some() {
@@ -579,6 +637,7 @@ impl DataFusionAdapter {
                             original_schema,
                             sorbet_schema,
                             filter_errors,
+                            missing_sort_column,
                             sorbet_batches: first_batch.into_iter().collect(),
                             finished: false,
                         }));
@@ -761,7 +820,8 @@ mod tests {
     use re_log_types::EntryId;
 
     use super::{
-        DataFusionQuery, DataFusionQueryData, EntryLinksSpec, QueryEvent, SegmentLinksSpec,
+        DataFusionQuery, DataFusionQueryData, EntryLinksSpec, QueryBatchStream, QueryEvent,
+        SegmentLinksSpec, check_filter,
     };
     use crate::column_sorting::SortBy;
 
@@ -796,7 +856,7 @@ mod tests {
                 ..Default::default()
             },
         );
-        let (_stream, filter_errors) = query.batch_stream().await.unwrap();
+        let QueryBatchStream { filter_errors, .. } = query.batch_stream().await.unwrap();
 
         assert_eq!(filter_errors.len(), 3, "{filter_errors:?}");
         assert_eq!(
@@ -811,6 +871,47 @@ mod tests {
             !filter_errors[syntax_error].contains("ParserError"),
             "{filter_errors:?}"
         );
+    }
+
+    /// Checking a filter against a schema alone gives the same result and message as running it
+    /// in a query on a table with that schema.
+    #[tokio::test]
+    async fn check_filter_matches_the_query() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch = RecordBatch::try_from_iter([
+            ("a", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+            ("B", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+        ])
+        .unwrap();
+        let schema = batch.schema();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let filters = [
+            r#""a" > 1"#,
+            r#""missing" > 1"#,
+            "b > 1",
+            r#""a" >"#,
+            r#""a" + 1"#,
+            r#""a" > 'hello'"#,
+            "sum(\"a\") > 1",
+        ];
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                filters: filters.map(str::to_owned).to_vec(),
+                ..Default::default()
+            },
+        );
+        let QueryBatchStream { filter_errors, .. } = query.batch_stream().await.unwrap();
+
+        for filter in filters {
+            assert_eq!(
+                check_filter(Arc::clone(&schema), filter).err().as_ref(),
+                filter_errors.get(filter),
+                "{filter}"
+            );
+        }
     }
 
     /// Filters that parse but fail type checks, constant folding or use aggregate functions are
@@ -857,7 +958,11 @@ mod tests {
                 ..Default::default()
             },
         );
-        let (stream, filter_errors) = query.batch_stream().await.unwrap();
+        let QueryBatchStream {
+            stream,
+            filter_errors,
+            ..
+        } = query.batch_stream().await.unwrap();
 
         for (filter, error) in errors {
             assert_eq!(filter_errors.get(filter).map(String::as_str), Some(error));
@@ -865,6 +970,49 @@ mod tests {
         let batches: Vec<RecordBatch> = futures::TryStreamExt::try_collect(stream).await.unwrap();
         let num_rows: usize = batches.iter().map(RecordBatch::num_rows).sum();
         assert_eq!(num_rows, 2);
+    }
+
+    /// The query leaves out a sort on a column the table doesn't have and returns that column.
+    /// A sort on a column the table has returns no column.
+    #[tokio::test]
+    async fn missing_sort_column_is_returned() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch =
+            RecordBatch::try_from_iter([("a", Arc::new(Int64Array::from(vec![3, 1, 2])) as _)])
+                .unwrap();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let query = DataFusionQuery::new(
+            Arc::clone(&session_ctx),
+            "table".into(),
+            DataFusionQueryData {
+                sort_by: Some(SortBy::ascending("missing".into())),
+                ..Default::default()
+            },
+        );
+        let QueryBatchStream {
+            stream,
+            missing_sort_column,
+            ..
+        } = query.batch_stream().await.unwrap();
+        assert_eq!(missing_sort_column, Some("missing".into()));
+        let batches: Vec<RecordBatch> = futures::TryStreamExt::try_collect(stream).await.unwrap();
+        let num_rows: usize = batches.iter().map(RecordBatch::num_rows).sum();
+        assert_eq!(num_rows, 3);
+
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                sort_by: Some(SortBy::ascending("a".into())),
+                ..Default::default()
+            },
+        );
+        let QueryBatchStream {
+            missing_sort_column,
+            ..
+        } = query.batch_stream().await.unwrap();
+        assert_eq!(missing_sort_column, None);
     }
 
     /// A query with rows sends its schema and first batch as one event, and a query without rows

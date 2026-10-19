@@ -10,6 +10,7 @@ You will write a simple ROS 2 Python node that subscribes to some common ROS top
 
 If your data is already recorded as MCAP, you do not need a node.
 Rerun opens MCAP files directly and decodes standard ROS 2 messages natively, see [Working with MCAP](../../howto/logging-and-ingestion/mcap.md).
+To record straight to RRD instead, try the experimental [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd) plugin (`ros2 bag record -s rrd`).
 
 The following is primarily intended for existing ROS 2 users. It will not spend much time
 covering how to use ROS 2 itself. If you are a Rerun user that is curious about ROS,

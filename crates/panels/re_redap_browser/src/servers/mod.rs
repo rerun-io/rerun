@@ -1401,41 +1401,38 @@ impl RedapServers {
             return;
         }
 
-        for server in self.servers.values() {
-            if let Some(entry) = server.find_entry(active_entry) {
-                match entry.inner() {
-                    Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(
-                            ctx,
-                            &browser_ctx,
-                            ui,
-                            dataset,
-                            table_blueprints,
-                            view_states,
-                            kind,
-                        );
+        // The same server can be connected under two origins, such as `localhost` and
+        // `127.0.0.1`, with the same entry ids. The entry is shown from the server of `origin`.
+        let Some(server) = self.servers.get(origin) else {
+            return;
+        };
+        let Some(entry) = server.find_entry(active_entry) else {
+            return;
+        };
 
-                        // If we're connected twice to the same server, we will find this entry
-                        // multiple times. We avoid it by returning here.
-                        return;
-                    }
-                    Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
-
-                        // If we're connected twice to the same server, we will find this entry
-                        // multiple times. We avoid it by returning here.
-                        return;
-                    }
-                    Err(err) => {
-                        Frame::new().inner_margin(16.0).show(ui, |ui| {
-                            Alert::error().show_text(
-                                ui,
-                                format!("Error loading entry {}", entry.name()),
-                                Some(err.to_string()),
-                            );
-                        });
-                    }
-                }
+        match entry.inner() {
+            Ok(crate::entries::EntryInner::Dataset(dataset)) => {
+                server.dataset_entry_ui(
+                    ctx,
+                    &browser_ctx,
+                    ui,
+                    dataset,
+                    table_blueprints,
+                    view_states,
+                    kind,
+                );
+            }
+            Ok(crate::entries::EntryInner::Table(table)) => {
+                server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
+            }
+            Err(err) => {
+                Frame::new().inner_margin(16.0).show(ui, |ui| {
+                    Alert::error().show_text(
+                        ui,
+                        format!("Error loading entry {}", entry.name()),
+                        Some(err.to_string()),
+                    );
+                });
             }
         }
     }

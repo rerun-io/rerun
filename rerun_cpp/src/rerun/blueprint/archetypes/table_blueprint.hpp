@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/column_display_mode.hpp"
+#include "../../blueprint/components/sort_by.hpp"
 #include "../../blueprint/components/sql_filter_expression.hpp"
 #include "../../blueprint/components/table_layout_kind.hpp"
 #include "../../collection.hpp"
@@ -46,16 +47,31 @@ namespace rerun::blueprint::archetypes {
         ///
         /// A row in the table is only shown when *all* filters evaluate to true for it.
         /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+        /// Write one condition per filter instead of joining them with `AND`.
         ///
-        /// The viewer shows an editable filter for a single column compared to a literal value, for example:
-        /// * `"score">= 3`
-        /// * `"success" = true`
-        /// * `"task" ILIKE '%pick%'`
-        /// * `"created">= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
+        /// Users cannot write SQL in the viewer.
+        /// They add filters with "Filter" in a column header's menu, which only writes the forms below.
+        /// The viewer shows these forms on a single column `"c"` as filters the user can edit.
+        /// Any other expression shows as a `Custom "c" filter` chip, which the user can only remove and whose SQL only shows on hover:
+        /// * Numbers: `"c" = 7`, `"c" <7`, `"c" <= 7`, `"c"> 7`, `"c">= 7`.
+        ///   For a 32-bit float column, write the value as `CAST(0.1 AS REAL)`.
+        /// * Strings: `"c" ILIKE '%text%'` for contains, `'text%'` for starts with, `'%text'` for ends with.
+        ///   Put a backslash before a literal `%`, `_` or backslash, and follow the pattern with an ESCAPE clause that names a quoted backslash.
+        /// * Booleans: `"c" = true`, `"c" = false`, and `"c" IS NULL` for a nullable column.
+        /// * Timestamps: `"c" <TIMESTAMPTZ '2026-01-01T00:00:00Z'` for before, `>=` for after, and both joined with `AND` for between.
+        ///   Relative ranges have the same shape, such as `"c">= now() - INTERVAL '24 hours' AND "c" <now()` for the last 24 hours,
+        ///   or `"c">= date_trunc('day', now()) AND "c" <date_trunc('day', now()) + INTERVAL '1 day'` for today.
+        ///   Use `'week'` with `INTERVAL '7 days'` for this week, and shift both bounds back for yesterday or last week.
+        ///   For an `Int64` column of nanoseconds, use `to_timestamp_nanos("c")`.
+        /// * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
         ///
-        /// For a list column, the comparison goes in `any_match("column", x -> …)`.
-        /// Other expressions still filter the table, and the viewer shows them as SQL text.
+        /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
         std::optional<ComponentBatch> filters;
+
+        /// The column and direction the table's rows are sorted by.
+        ///
+        /// Rows keep the order of the data when unset.
+        std::optional<ComponentBatch> sort_by;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -75,6 +91,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_filters = ComponentDescriptor(
             ArchetypeName, "TableBlueprint:filters",
             Loggable<rerun::blueprint::components::SqlFilterExpression>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `sort_by` field.
+        static constexpr auto Descriptor_sort_by = ComponentDescriptor(
+            ArchetypeName, "TableBlueprint:sort_by",
+            Loggable<rerun::blueprint::components::SortBy>::ComponentType
         );
 
       public:
@@ -119,19 +140,37 @@ namespace rerun::blueprint::archetypes {
         ///
         /// A row in the table is only shown when *all* filters evaluate to true for it.
         /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+        /// Write one condition per filter instead of joining them with `AND`.
         ///
-        /// The viewer shows an editable filter for a single column compared to a literal value, for example:
-        /// * `"score">= 3`
-        /// * `"success" = true`
-        /// * `"task" ILIKE '%pick%'`
-        /// * `"created">= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
+        /// Users cannot write SQL in the viewer.
+        /// They add filters with "Filter" in a column header's menu, which only writes the forms below.
+        /// The viewer shows these forms on a single column `"c"` as filters the user can edit.
+        /// Any other expression shows as a `Custom "c" filter` chip, which the user can only remove and whose SQL only shows on hover:
+        /// * Numbers: `"c" = 7`, `"c" <7`, `"c" <= 7`, `"c"> 7`, `"c">= 7`.
+        ///   For a 32-bit float column, write the value as `CAST(0.1 AS REAL)`.
+        /// * Strings: `"c" ILIKE '%text%'` for contains, `'text%'` for starts with, `'%text'` for ends with.
+        ///   Put a backslash before a literal `%`, `_` or backslash, and follow the pattern with an ESCAPE clause that names a quoted backslash.
+        /// * Booleans: `"c" = true`, `"c" = false`, and `"c" IS NULL` for a nullable column.
+        /// * Timestamps: `"c" <TIMESTAMPTZ '2026-01-01T00:00:00Z'` for before, `>=` for after, and both joined with `AND` for between.
+        ///   Relative ranges have the same shape, such as `"c">= now() - INTERVAL '24 hours' AND "c" <now()` for the last 24 hours,
+        ///   or `"c">= date_trunc('day', now()) AND "c" <date_trunc('day', now()) + INTERVAL '1 day'` for today.
+        ///   Use `'week'` with `INTERVAL '7 days'` for this week, and shift both bounds back for yesterday or last week.
+        ///   For an `Int64` column of nanoseconds, use `to_timestamp_nanos("c")`.
+        /// * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
         ///
-        /// For a list column, the comparison goes in `any_match("column", x -> …)`.
-        /// Other expressions still filter the table, and the viewer shows them as SQL text.
+        /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
         TableBlueprint with_filters(
             const Collection<rerun::blueprint::components::SqlFilterExpression>& _filters
         ) && {
             filters = ComponentBatch::from_loggable(_filters, Descriptor_filters).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The column and direction the table's rows are sorted by.
+        ///
+        /// Rows keep the order of the data when unset.
+        TableBlueprint with_sort_by(const rerun::blueprint::components::SortBy& _sort_by) && {
+            sort_by = ComponentBatch::from_loggable(_sort_by, Descriptor_sort_by).value_or_throw();
             return std::move(*this);
         }
 

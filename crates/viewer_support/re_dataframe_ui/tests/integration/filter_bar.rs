@@ -11,14 +11,11 @@ use egui::{Key, Modifiers, Role};
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use egui_kittest::{Harness, SnapshotResults};
 use re_async::AsyncRuntimeHandle;
-use re_chunk_store::external::re_chunk::Chunk;
 use re_dataframe_ui::{ColumnFilter, DataFusionTableWidget, TableBlueprints, TimestampFilter};
-use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
 use re_sdk_types::blueprint::archetypes::TableBlueprint;
 use re_sdk_types::blueprint::components::SqlFilterExpression;
 use re_test_context::TestContext;
-use re_viewer_context::{TableReference, blueprint_timepoint_for_writes};
+use re_viewer_context::TableReference;
 
 use common::run_async_harness;
 
@@ -52,7 +49,7 @@ async fn test_filter_edit_survives_blueprint_change() {
         });
 
     run_async_harness(&test_context, &mut harness).await;
-    assert_eq!(filter_pill_labels(&harness), ["a > 1"]);
+    assert_eq!(filter_pill_labels(&harness), ["A > 1"]);
 
     // Add a filter on the first column from its menu.
     harness
@@ -63,7 +60,7 @@ async fn test_filter_edit_survives_blueprint_change() {
     run_async_harness(&test_context, &mut harness).await;
     harness.get_by_label("Filter").click();
     run_async_harness(&test_context, &mut harness).await;
-    assert_eq!(filter_pill_labels(&harness), ["a > 1", "a == …"]);
+    assert_eq!(filter_pill_labels(&harness), ["A > 1", "A == …"]);
 
     let changed_filters = vec![
         r#""a" > 1"#.to_owned(),
@@ -72,13 +69,13 @@ async fn test_filter_edit_survives_blueprint_change() {
     ];
     write_active_filters(&test_context, &table_blueprints, &changed_filters);
     run_async_harness(&test_context, &mut harness).await;
-    assert_eq!(filter_pill_labels(&harness), ["a > 1", "a == …"]);
+    assert_eq!(filter_pill_labels(&harness), ["A > 1", "A == …"]);
 
     harness.key_press(Key::Escape);
     run_async_harness(&test_context, &mut harness).await;
     assert_eq!(
         filter_pill_labels(&harness),
-        ["a > 1", r#"Custom "a" filter"#, "a < 5"]
+        ["A > 1", r#"Custom "a" filter"#, "A < 5"]
     );
     assert_eq!(
         blueprint_filters(&test_context, &table_blueprints),
@@ -116,7 +113,7 @@ async fn test_timestamp_filter_on_commit() {
 
     run_async_harness(&test_context, &mut harness).await;
     harness
-        .get_by_label("ts is after 1973-03-03 09:46:40Z")
+        .get_by_label("Ts is after 1973-03-03 09:46:40Z")
         .click();
     run_async_harness(&test_context, &mut harness).await;
 
@@ -134,7 +131,7 @@ async fn test_timestamp_filter_on_commit() {
     );
 
     harness
-        .get_by_label("ts is after 1979-07-10 00:00:00Z")
+        .get_by_label("Ts is after 1979-07-10 00:00:00Z")
         .click();
     run_async_harness(&test_context, &mut harness).await;
     assert_eq!(
@@ -223,12 +220,58 @@ async fn test_remove_filter_after_query_error() {
     );
     assert_eq!(
         filter_pill_labels(&harness),
-        ["a > 1", r#"Custom "missing" filter"#]
+        ["A > 1", r#"Custom "missing" filter"#]
     );
     harness.snapshot_options(
         "remove_filter_after_query_error_2_removed",
         &re_ui::testing::default_snapshot_options_for_ui(),
     );
+}
+
+/// Filters that match no rows show the column headers and an empty state below them.
+/// The empty state's "Clear filters" button removes all filters.
+#[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
+async fn test_no_matching_rows() {
+    let (session_context, table_ref) = setup_test_table();
+    let test_context = TestContext::new();
+    let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+    let table_blueprints = setup_table_blueprint(&test_context, &[r#""a" > 100"#.to_owned()]);
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([800.0, 400.0])
+        .build_ui(|ui| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Test table")
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &table_blueprints,
+                    &mut test_context.view_states.lock(),
+                );
+            });
+        });
+
+    run_async_harness(&test_context, &mut harness).await;
+    assert!(harness.query_by_label("No matching rows").is_some());
+    harness.snapshot_options(
+        "filter_no_matching_rows",
+        &re_ui::testing::default_snapshot_options_for_ui(),
+    );
+
+    harness
+        .query_all_by_label("Clear filters")
+        .last()
+        .unwrap()
+        .click();
+    run_async_harness(&test_context, &mut harness).await;
+    assert!(blueprint_filters(&test_context, &table_blueprints).is_empty());
+    assert!(harness.query_by_label("No matching rows").is_none());
 }
 
 /// A failing filter shows as an error pill next to the valid filters, and the table still loads
@@ -301,7 +344,7 @@ async fn test_filter_planning_errors() {
         );
         assert_eq!(
             filter_pill_labels(&harness),
-            ["a > 1", case.pill_label],
+            ["A > 1", case.pill_label],
             "{}",
             case.name
         );
@@ -347,22 +390,7 @@ fn timestamp_field() -> Field {
 
 /// Sets up a default table blueprint with the given filters.
 fn setup_table_blueprint(test_context: &TestContext, filters: &[String]) -> TableBlueprints {
-    let blueprint_id = StoreId::random(StoreKind::Blueprint, "table-blueprint-test");
-    let mut store_hub = test_context.store_hub.lock();
-    write_filters(
-        store_hub.store_bundle_mut().blueprint_entry(&blueprint_id),
-        filters,
-    );
-
-    let mut table_blueprints = TableBlueprints::default();
-    table_blueprints
-        .set_default_blueprint(
-            &TableReference::local("test_table"),
-            &blueprint_id,
-            &mut store_hub,
-        )
-        .expect("default table blueprint should be set");
-    table_blueprints
+    common::setup_table_blueprint(test_context, &filters_fields(filters))
 }
 
 /// Writes the filters to the active table blueprint.
@@ -371,34 +399,15 @@ fn write_active_filters(
     table_blueprints: &TableBlueprints,
     filters: &[String],
 ) {
-    let active_id = table_blueprints
-        .active_id(&TableReference::local("test_table"))
-        .expect("table should have an active blueprint");
-    let mut store_hub = test_context.store_hub.lock();
-    write_filters(
-        store_hub.store_bundle_mut().blueprint_entry(active_id),
-        filters,
-    );
+    common::write_active_table_blueprint(test_context, table_blueprints, &filters_fields(filters));
 }
 
-fn write_filters(store: &mut EntityDb, filters: &[String]) {
-    let timepoint = blueprint_timepoint_for_writes(store);
-    let chunk = Arc::new(
-        Chunk::builder("table")
-            .with_archetype_auto_row(
-                timepoint,
-                &TableBlueprint::update_fields().with_filters(
-                    filters
-                        .iter()
-                        .map(|sql| SqlFilterExpression::from(sql.as_str())),
-                ),
-            )
-            .build()
-            .expect("filter chunk should build"),
-    );
-    store
-        .add_chunk(&chunk)
-        .expect("filter chunk should be added");
+fn filters_fields(filters: &[String]) -> TableBlueprint {
+    TableBlueprint::update_fields().with_filters(
+        filters
+            .iter()
+            .map(|sql| SqlFilterExpression::from(sql.as_str())),
+    )
 }
 
 /// The filters in the active table blueprint.
@@ -406,26 +415,15 @@ fn blueprint_filters(
     test_context: &TestContext,
     table_blueprints: &TableBlueprints,
 ) -> Vec<String> {
-    let active_id = table_blueprints
-        .active_id(&TableReference::local("test_table"))
-        .expect("table should have an active blueprint");
-    let store_hub = test_context.store_hub.lock();
-    let store = store_hub
-        .store_bundle()
-        .get(active_id)
-        .expect("active blueprint should exist");
-    let component = TableBlueprint::descriptor_filters().component;
-    store
-        .latest_at(
-            &re_chunk_store::LatestAtQuery::latest(re_viewer_context::blueprint_timeline()),
-            &"/table".into(),
-            [component],
-        )
-        .component_batch::<SqlFilterExpression>(component)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|filter| filter.as_str().to_owned())
-        .collect()
+    common::read_active_table_blueprint::<SqlFilterExpression>(
+        test_context,
+        table_blueprints,
+        TableBlueprint::descriptor_filters().component,
+    )
+    .unwrap_or_default()
+    .into_iter()
+    .map(|filter| filter.as_str().to_owned())
+    .collect()
 }
 
 /// Sets up a table with an integer and a timestamp column.

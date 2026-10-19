@@ -10965,6 +10965,7 @@ dependencies = [
  "nohash-hasher",
  "re_case",
  "re_chunk",
+ "re_chunk_index",
  "re_chunk_store",
  "re_component_ui",
  "re_context_menu",
