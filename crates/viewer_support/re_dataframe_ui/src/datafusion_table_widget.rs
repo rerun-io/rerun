@@ -818,6 +818,7 @@ impl<'a> DataFusionTableWidget<'a> {
             ui,
             app_ctx.app_options.timestamp_format,
             &err.filter_errors,
+            None,
         );
         filter_state.store(ui.ctx(), session_id);
 
@@ -1028,14 +1029,51 @@ impl<'a> DataFusionTableWidget<'a> {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
         }
 
+        let filter_controls = crate::filters::FilterControls {
+            columns: blueprint
+                .iter_visible_columns(layout_kind)
+                .filter_map(|column| {
+                    let index = data_columns.index_by_physical_name(column.physical_name())?;
+                    let field = &query_result.original_schema.fields()[index];
+                    ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
+                        crate::filters::FilterableColumn {
+                            display_name: column.display_name(),
+                            column_filter,
+                        }
+                    })
+                })
+                .collect(),
+            hidden_columns: blueprint
+                .iter_columns(layout_kind)
+                .filter(|column| !column.is_visible(layout_kind))
+                .filter_map(|column| {
+                    let index = data_columns.index_by_physical_name(column.physical_name())?;
+                    let field = &query_result.original_schema.fields()[index];
+                    ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
+                        crate::filters::FilterableColumn {
+                            display_name: column.display_name(),
+                            column_filter,
+                        }
+                    })
+                })
+                .collect(),
+        };
+        let applied_filters = query_data.filters.clone();
         if let Some(filters) = filter_state.filter_bar_ui(
             ui,
             ctx.app_options.timestamp_format,
             &query_result.filter_errors,
+            Some(&filter_controls),
         ) {
             TableBlueprint::save_filters(&blueprint_ctx, &filters);
             query_data.filters = filters;
         }
+
+        let no_matches = !should_show_loading_indicator
+            && query_result.finished
+            && num_rows == 0
+            && !applied_filters.is_empty()
+            && query_data.filters == applied_filters;
 
         let migrated_fields = query_result
             .sorbet_schema
@@ -1084,6 +1122,7 @@ impl<'a> DataFusionTableWidget<'a> {
             None => {}
         }
 
+        let content_rect = ui.available_rect_before_wrap();
         let mut flag_changes = Vec::new();
         match layout_kind {
             TableLayoutKind::Table => {
@@ -1160,6 +1199,11 @@ impl<'a> DataFusionTableWidget<'a> {
                 Frame::new()
                     .fill(ui.tokens().extreme_bg_color)
                     .show(ui, |ui| {
+                        if no_matches {
+                            ui.shrink_clip_rect(content_rect.with_max_y(
+                                content_rect.top() + ui.tokens().table_header_height(),
+                            ));
+                        }
                         ReTable::new(
                             ui.ctx(),
                             session_id,
@@ -1190,6 +1234,43 @@ impl<'a> DataFusionTableWidget<'a> {
                     ui.error_label("No card layout defined in the table blueprint");
                 }
             }
+        }
+
+        if no_matches {
+            let header_height = match layout_kind {
+                TableLayoutKind::Table => ui.tokens().table_header_height(),
+                TableLayoutKind::Cards => 0.0,
+            };
+            let body = egui::Rect::from_min_max(
+                egui::pos2(content_rect.left(), content_rect.top() + header_height),
+                content_rect.max,
+            );
+            ui.scope_builder(
+                egui::UiBuilder::new()
+                    .max_rect(body)
+                    .layout(egui::Layout::top_down(egui::Align::Center)),
+                |ui| {
+                    ui.add_space(64.0);
+                    ui.add(
+                        re_ui::icons::FILTER
+                            .as_image()
+                            .fit_to_exact_size(egui::vec2(24.0, 24.0))
+                            .tint(ui.visuals().weak_text_color()),
+                    );
+                    ui.add_space(8.0);
+                    ui.strong("No matching rows");
+                    ui.weak("Try changing or removing a filter.");
+                    ui.add_space(8.0);
+                    if ui
+                        .add(re_ui::ReButton::new("Clear filters").secondary())
+                        .clicked()
+                    {
+                        filter_state.clear();
+                        TableBlueprint::save_filters(&blueprint_ctx, &[]);
+                        query_data.filters.clear();
+                    }
+                },
+            );
         }
 
         filter_state.store(ui.ctx(), session_id);

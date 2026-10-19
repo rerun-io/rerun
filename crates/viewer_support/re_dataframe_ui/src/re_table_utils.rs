@@ -1,4 +1,4 @@
-use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::containers::menu::MenuConfig;
 use egui::emath::GuiRounding as _;
 use egui::{Color32, Frame, IdSalt, Label, Link, PopupCloseBehavior, RichText, Stroke, Style};
 use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLayoutKind};
@@ -323,9 +323,16 @@ pub fn columns_edit_menu_ui<'a>(
     column_display_mode: &mut ColumnDisplayMode,
     columns: impl Iterator<Item = &'a TableColumn<'a>>,
 ) {
-    MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
-        .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
-        .ui(ui, |ui| {
+    let popup_id = ui.make_persistent_id(("columns_menu", layout_kind));
+    let response = ui.add(
+        ReButton::new((icons::TABLE_COLUMNS, "Columns"))
+            .small()
+            .highlighted(egui::Popup::is_id_open(ui.ctx(), popup_id)),
+    );
+    egui::Popup::menu(&response)
+        .id(popup_id)
+        .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+        .show(|ui| {
             let filter_id = ui.make_persistent_id(("column_filter", layout_kind));
             let mut config = UiTableConfig {
                 columns: columns

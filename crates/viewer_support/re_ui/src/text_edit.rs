@@ -105,6 +105,19 @@ impl ReTextEdit<'_> {
         self
     }
 
+    /// Pin the id of the underlying [`TextEdit`].
+    ///
+    /// Needed to query or request focus for the text edit before it is shown.
+    pub fn id(mut self, id: egui::Id) -> Self {
+        self.text_edit = self.text_edit.id(id);
+        self
+    }
+
+    pub fn desired_width(mut self, desired_width: f32) -> Self {
+        self.text_edit = self.text_edit.desired_width(desired_width);
+        self
+    }
+
     pub fn variant(mut self, variant: TextEditVariant) -> Self {
         self.variant = variant;
         self
