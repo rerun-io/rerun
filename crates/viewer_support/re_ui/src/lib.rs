@@ -244,7 +244,7 @@ pub fn try_set_design_tokens(
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();
 
-    egui_ctx.add_plugin(motion::PopupAnimationPlugin::default());
+    egui_ctx.add_plugin(motion::PopupAnimationPlugin);
     egui_extras::install_image_loaders(egui_ctx);
 
     egui_ctx.include_bytes(

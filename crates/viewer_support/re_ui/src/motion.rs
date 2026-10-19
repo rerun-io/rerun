@@ -8,10 +8,7 @@ const INITIAL_SCALE: f32 = 0.95;
 ///
 /// Popups are separate foreground areas, and their placement pivot is the natural origin for the
 /// animation.
-#[derive(Default)]
-pub struct PopupAnimationPlugin {
-    transformed_layers: Vec<LayerId>,
-}
+pub struct PopupAnimationPlugin;
 
 impl egui::Plugin for PopupAnimationPlugin {
     fn debug_name(&self) -> &'static str {
@@ -21,7 +18,6 @@ impl egui::Plugin for PopupAnimationPlugin {
     fn on_end_pass(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx();
         if !animations_enabled(ctx) {
-            self.clear_transforms(ctx);
             return;
         }
 
@@ -32,7 +28,6 @@ impl egui::Plugin for PopupAnimationPlugin {
                 .collect::<Vec<_>>()
         });
 
-        let mut transformed_layers = Vec::new();
         for layer_id in foreground_layers {
             if !is_popup_layer(ctx, layer_id) || !is_layer_painted(ctx, layer_id) {
                 continue;
@@ -50,24 +45,8 @@ impl egui::Plugin for PopupAnimationPlugin {
                 let origin = area_state
                     .pivot_pos
                     .unwrap_or_else(|| area_state.rect().left_top());
-                ctx.set_transform_layer(layer_id, scale_transform(origin, scale));
-                transformed_layers.push(layer_id);
+                ctx.transform_layer_shapes_after_rounding(layer_id, scale_transform(origin, scale));
             }
-        }
-
-        for layer_id in &self.transformed_layers {
-            if !transformed_layers.contains(layer_id) {
-                ctx.set_transform_layer(*layer_id, TSTransform::IDENTITY);
-            }
-        }
-        self.transformed_layers = transformed_layers;
-    }
-}
-
-impl PopupAnimationPlugin {
-    fn clear_transforms(&mut self, ctx: &egui::Context) {
-        for layer_id in self.transformed_layers.drain(..) {
-            ctx.set_transform_layer(layer_id, TSTransform::IDENTITY);
         }
     }
 }
@@ -120,7 +99,17 @@ fn animations_enabled(ctx: &egui::Context) -> bool {
 mod tests {
     use super::*;
 
-    fn render_floating_uis(ctx: &egui::Context, time: f64, show_popup: bool) {
+    const POPUP_POS: Pos2 = egui::pos2(100.0, 100.0);
+    const PLAIN_AREA_POS: Pos2 = egui::pos2(250.0, 250.0);
+
+    /// After-rounding scale of each rect painted by [`render_floating_uis`], or `None` if it
+    /// wasn't painted.
+    struct FloatingUiScales {
+        popup: Option<f32>,
+        plain_area: Option<f32>,
+    }
+
+    fn render_floating_uis(ctx: &egui::Context, time: f64) -> FloatingUiScales {
         let mut output = ctx.run_ui(
             egui::RawInput {
                 time: Some(time),
@@ -132,50 +121,66 @@ mod tests {
             },
             |ui| {
                 let ctx = ui.ctx();
-                if show_popup {
-                    egui::Popup::new(
-                        egui::Id::unique("animated_popup"),
-                        ctx.clone(),
-                        egui::pos2(100.0, 100.0),
-                        egui::LayerId::background(),
-                    )
-                    .frame(egui::Frame::NONE)
-                    .show(|ui| {
+                egui::Popup::new(
+                    egui::Id::unique("animated_popup"),
+                    ctx.clone(),
+                    POPUP_POS,
+                    egui::LayerId::background(),
+                )
+                .frame(egui::Frame::NONE)
+                .show(|ui| {
+                    let (rect, _) =
                         ui.allocate_exact_size(egui::vec2(100.0, 100.0), egui::Sense::hover());
-                    });
-                }
+                    ui.painter().rect_filled(rect, 0.0, egui::Color32::RED);
+                });
 
                 egui::Area::new(egui::Id::unique("plain_foreground_area"))
                     .order(egui::Order::Foreground)
-                    .fixed_pos(egui::pos2(250.0, 250.0))
+                    .fixed_pos(PLAIN_AREA_POS)
                     .show(ctx, |ui| {
-                        ui.allocate_exact_size(egui::vec2(50.0, 50.0), egui::Sense::hover());
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(50.0, 50.0), egui::Sense::hover());
+                        ui.painter().rect_filled(rect, 0.0, egui::Color32::BLUE);
                     });
             },
         );
         output.textures_delta.clear();
+
+        let scale_of = |pos| {
+            output
+                .shapes
+                .iter()
+                .find_map(|clipped| match &clipped.shape {
+                    egui::Shape::Rect(rect) if rect.rect.min == pos => {
+                        Some(clipped.transform_after_tessellation.scaling)
+                    }
+                    _ => None,
+                })
+        };
+        FloatingUiScales {
+            popup: scale_of(POPUP_POS),
+            plain_area: scale_of(PLAIN_AREA_POS),
+        }
     }
 
     #[test]
     fn plugin_only_scales_new_popups() {
         let ctx = egui::Context::default();
-        ctx.add_plugin(PopupAnimationPlugin::default());
+        ctx.add_plugin(PopupAnimationPlugin);
         ctx.all_styles_mut(|style| style.animation_time = 0.2);
 
-        render_floating_uis(&ctx, 0.0, true);
-        render_floating_uis(&ctx, 0.016, true);
+        render_floating_uis(&ctx, 0.0);
+        let opening = render_floating_uis(&ctx, 0.016);
+        assert!(opening.popup.expect("the popup should be painted") < 1.0);
+        assert_eq!(opening.plain_area, Some(1.0));
 
         let popup_layer = LayerId::new(Order::Foreground, egui::Id::unique("animated_popup"));
-        let popup_transform = ctx
-            .layer_transform_to_global(popup_layer)
-            .expect("the opening popup should have an input-aware transform");
-        assert!(popup_transform.scaling < 1.0);
+        assert_eq!(
+            ctx.layer_transform_to_global(popup_layer),
+            None,
+            "the animation must not move the popup's pixel grid or input coordinates"
+        );
 
-        let plain_area_layer =
-            LayerId::new(Order::Foreground, egui::Id::unique("plain_foreground_area"));
-        assert_eq!(ctx.layer_transform_to_global(plain_area_layer), None);
-
-        render_floating_uis(&ctx, 0.032, false);
-        assert_eq!(ctx.layer_transform_to_global(popup_layer), None);
+        assert_eq!(render_floating_uis(&ctx, 1.0).popup, Some(1.0));
     }
 }

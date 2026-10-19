@@ -83,10 +83,6 @@ impl ModalHandler {
             let response = modal.ui_with_scale(ctx, scale, content_ui);
 
             if self.should_close || (self.allow_escape && response.should_close()) {
-                ctx.set_transform_layer(
-                    modal.content_layer_id(),
-                    egui::emath::TSTransform::IDENTITY,
-                );
                 self.modal = None;
                 self.animation_started_at = None;
                 self.should_close = false;
@@ -387,7 +383,7 @@ impl ModalWrapper {
                     .inner;
 
                 if is_animating {
-                    ctx.set_transform_layer(
+                    ctx.transform_layer_shapes_after_rounding(
                         content_layer_id,
                         crate::motion::scale_transform(surface_rect.center(), scale),
                     );
@@ -500,33 +496,51 @@ mod tests {
     fn modal_animation_only_transforms_the_surface_layer() {
         let ctx = egui::Context::default();
         let modal = ModalWrapper::new("Animated modal").min_width(240.0);
-        let mut modal_layer_id = None;
+        let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(700.0, 700.0));
 
-        let mut output = ctx.run_ui(
-            egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(700.0, 700.0),
-                )),
-                ..Default::default()
-            },
-            |ui| {
-                let response = modal.ui_with_scale(ui.ctx(), 0.5, |ui| {
-                    ui.add_sized(egui::vec2(200.0, 160.0), egui::Button::new("Action"));
-                });
-                modal_layer_id = Some(response.response.layer_id);
-            },
+        let render = || {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen_rect),
+                    ..Default::default()
+                },
+                |ui| {
+                    modal.ui_with_scale(ui.ctx(), 0.5, |ui| {
+                        ui.add_sized(egui::vec2(200.0, 160.0), egui::Button::new("Action"));
+                    });
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+
+        // The first frame is an invisible sizing pass.
+        render();
+        let output = render();
+
+        assert!(
+            output
+                .shapes
+                .iter()
+                .any(|clipped| clipped.transform_after_tessellation.scaling == 0.5),
+            "the modal surface should be scaled"
         );
-        output.textures_delta.clear();
-
-        let surface_transform = ctx
-            .layer_transform_to_global(modal.content_layer_id())
-            .expect("the modal surface should have an input-aware transform");
-        assert_eq!(surface_transform.scaling, 0.5);
+        let backdrop = output
+            .shapes
+            .iter()
+            .find(|clipped| {
+                matches!(&clipped.shape, egui::Shape::Rect(rect) if rect.rect == screen_rect)
+            })
+            .expect("the modal should paint a full-screen backdrop");
         assert_eq!(
-            ctx.layer_transform_to_global(modal_layer_id.expect("the modal should be shown")),
-            None,
+            backdrop.transform_after_tessellation,
+            egui::emath::TSTransform::IDENTITY,
             "the full-screen backdrop must not be scaled"
+        );
+        assert_eq!(
+            ctx.layer_transform_to_global(modal.content_layer_id()),
+            None,
+            "the animation must not move the surface's pixel grid or input coordinates"
         );
     }
 }
