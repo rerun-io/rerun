@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_span::Span;
-use re_types_core::SerializedComponentColumn;
+use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
 
 use crate::chunk::ChunkComponents;
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
@@ -183,9 +183,7 @@ impl Chunk {
                     if let Some(&rhs_column) =
                         rhs_per_component.get(&lhs_column.descriptor.component)
                     {
-                        if lhs_column.descriptor != rhs_column.descriptor {
-                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {} != {}", lhs_column.descriptor, rhs_column.descriptor);
-                        }
+                        warn_if_descriptor_mismatch(&lhs_column.descriptor, &rhs_column.descriptor);
 
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
@@ -193,8 +191,11 @@ impl Chunk {
                             re_format::format_uint(rhs_column.list_array.values().len()),
                         ));
 
-                        let list_array =
-                            re_arrow_util::concat_arrays(&[&lhs_column.list_array, &rhs_column.list_array]).ok()?;
+                        let list_array = re_arrow_util::concat_arrays(&[
+                            &lhs_column.list_array,
+                            &rhs_column.list_array,
+                        ])
+                        .ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
                         Some((lhs_column.descriptor.clone(), list_array))
@@ -228,9 +229,7 @@ impl Chunk {
                     if let Some(&lhs_column) =
                         lhs_per_component.get(&rhs_column.descriptor.component)
                     {
-                        if lhs_column.descriptor != rhs_column.descriptor {
-                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {} != {}", lhs_column.descriptor, rhs_column.descriptor);
-                        }
+                        warn_if_descriptor_mismatch(&lhs_column.descriptor, &rhs_column.descriptor);
 
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
@@ -238,11 +237,20 @@ impl Chunk {
                             re_format::format_uint(rhs_column.list_array.values().len()),
                         ));
 
-                        let list_array =
-                            re_arrow_util::concat_arrays(&[&lhs_column.list_array, &rhs_column.list_array]).ok()?;
+                        let list_array = re_arrow_util::concat_arrays(&[
+                            &lhs_column.list_array,
+                            &rhs_column.list_array,
+                        ])
+                        .ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
-                        Some((rhs_column.descriptor.component, SerializedComponentColumn::new(list_array, rhs_column.descriptor.clone())))
+                        Some((
+                            rhs_column.descriptor.component,
+                            SerializedComponentColumn::new(
+                                list_array,
+                                rhs_column.descriptor.clone(),
+                            ),
+                        ))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
@@ -497,6 +505,20 @@ impl TimeColumn {
             time_range,
         })
     }
+}
+
+/// Warn if `lhs` and `rhs` have the same component identifier but differ in archetype or
+/// component type.
+fn warn_if_descriptor_mismatch(lhs: &ComponentDescriptor, rhs: &ComponentDescriptor) {
+    if lhs == rhs {
+        return;
+    }
+
+    re_log::warn_once!(
+        "lhs and rhs have different component descriptors for the same component: {} != {}",
+        lhs.full_description(),
+        rhs.full_description()
+    );
 }
 
 /// Consecutive rows of one source that are also consecutive in the output, gathered as one slice.

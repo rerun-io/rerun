@@ -18,13 +18,15 @@ use re_log_types::{EntityPath, StoreId, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, GetBlueprintRequest, GetBlueprintResponse,
-    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetViewerLogsRequest,
-    GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
-    OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema,
-    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetBlueprintRequest,
-    SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
-    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerServer, ViewerServerEntry, ViewerTimeline, ViewerView,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetRecordingSchemaRequest,
+    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
+    GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest,
+    HighlightRectResponse, OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema,
+    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect,
+    SetBlueprintRequest, SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    TableColumnSchema, TimeCursor, ViewerControlRequest, ViewerControlResponse,
+    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerServer, ViewerServerEntry,
+    ViewerTimeline, ViewerView, get_blueprint_request, set_blueprint_request,
     viewer_control_request,
 };
 use re_sdk_types::external::uuid;
@@ -90,6 +92,73 @@ enum PendingAnswer {
         registrations_before: Vec<RegistrationId>,
         deadline: web_time::Instant,
     },
+
+    /// `get_blueprint`, read once the target has an active blueprint.
+    GetBlueprint(BlueprintTarget),
+
+    /// `set_blueprint`, written once the target has an active blueprint.
+    SetBlueprint {
+        target: BlueprintTarget,
+        json: serde_json::Value,
+    },
+}
+
+/// The `target` of a `get_blueprint` or `set_blueprint` request, before a missing id is filled in.
+enum RequestedBlueprint {
+    /// The blueprint of the recording with this store id, or of the active recording.
+    Recording(Option<String>),
+
+    /// The blueprint of the table with this URL, or of the table on screen.
+    Table(Option<String>),
+}
+
+impl From<get_blueprint_request::Target> for RequestedBlueprint {
+    fn from(target: get_blueprint_request::Target) -> Self {
+        match target {
+            get_blueprint_request::Target::Recording(recording) => {
+                Self::Recording(recording.store_id)
+            }
+            get_blueprint_request::Target::Table(table) => Self::Table(table.table_url),
+        }
+    }
+}
+
+impl From<set_blueprint_request::Target> for RequestedBlueprint {
+    fn from(target: set_blueprint_request::Target) -> Self {
+        match target {
+            set_blueprint_request::Target::Recording(recording) => {
+                Self::Recording(recording.store_id)
+            }
+            set_blueprint_request::Target::Table(table) => Self::Table(table.table_url),
+        }
+    }
+}
+
+/// The blueprint a `get_blueprint` or `set_blueprint` request reads or writes.
+enum BlueprintTarget {
+    /// The blueprint of the application of this open recording.
+    Recording(StoreId),
+
+    /// The blueprint of a table.
+    Table(re_uri::TableReference),
+}
+
+impl BlueprintTarget {
+    /// The command that gives the target an active blueprint if it has none yet.
+    fn ensure_blueprint_command(&self) -> SystemCommand {
+        match self {
+            Self::Recording(store_id) => SystemCommand::EnsureRecordingBlueprint(store_id.clone()),
+            Self::Table(table) => SystemCommand::EnsureTableBlueprint(table.clone()),
+        }
+    }
+
+    /// The target as the `store_id` and `table_url` fields of a response.
+    fn response_fields(&self) -> (Option<String>, Option<String>) {
+        match self {
+            Self::Recording(store_id) => (Some(store_id.to_string()), None),
+            Self::Table(table) => (None, table.url().map(|url| url.to_string())),
+        }
+    }
 }
 
 impl App {
@@ -118,7 +187,7 @@ impl App {
     ///
     /// Must be called right after draining the system commands, so that an empty queue means
     /// the commands a reply waits for have run rather than not yet been sent.
-    pub(super) fn answer_pending_viewer_control_replies(&mut self) {
+    pub(super) fn answer_pending_viewer_control_replies(&mut self, store_hub: &StoreHub) {
         if self.pending_viewer_control_replies.is_empty() {
             return;
         }
@@ -159,6 +228,25 @@ impl App {
                         self.egui_ctx.request_repaint_after(OPEN_URL_POLL_INTERVAL);
                     } else {
                         on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
+                    }
+                }
+                PendingAnswer::GetBlueprint(target) => {
+                    on_done.call(
+                        self.collect_blueprint_json(store_hub, &target)
+                            .map(ViewerControlResponse::from),
+                    );
+                }
+                PendingAnswer::SetBlueprint { target, json } => {
+                    match self.apply_set_blueprint(store_hub, &target, &json) {
+                        // The write is queued, so the answer waits for it to run.
+                        Ok(response) => {
+                            self.pending_viewer_control_replies.push(PendingReply {
+                                on_done,
+                                answer: PendingAnswer::Ready(Ok(response.into())),
+                            });
+                            self.egui_ctx.request_repaint();
+                        }
+                        Err(err) => on_done.call(Err(err)),
                     }
                 }
             }
@@ -217,9 +305,20 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetBlueprint(request) => {
+            Kind::GetBlueprint(GetBlueprintRequest { target }) => match self
+                .requested_blueprint_target(store_hub, target.map(RequestedBlueprint::from))
+            {
+                Ok(target) => self.answer_after_blueprint(
+                    on_done,
+                    target.ensure_blueprint_command(),
+                    PendingAnswer::GetBlueprint(target),
+                    egui_ctx,
+                ),
+                Err(err) => on_done.call(Err(err)),
+            },
+            Kind::GetTableSchema(GetTableSchemaRequest { table_url }) => {
                 on_done.call(
-                    self.collect_blueprint_json(store_hub, request)
+                    self.collect_table_schema(table_url, egui_ctx)
                         .map(ViewerControlResponse::from),
                 );
             }
@@ -228,6 +327,9 @@ impl App {
                     entries: self.viewer_log.entries_after(after_sequence),
                 }
                 .into()));
+            }
+            Kind::GetDatasetSchema(request) => {
+                self.answer_dataset_schema(store_hub, on_done, request);
             }
             Kind::GetRecordingSchema(request) => {
                 on_done.call(
@@ -264,7 +366,16 @@ impl App {
                             .snapshot()
                             .into_keys()
                             .collect();
-                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
+                        // Opens like a URL the user pastes: a recording becomes the active one.
+                        open_url.open(
+                            egui_ctx,
+                            &OpenUrlOptions {
+                                recording_open_behavior:
+                                    re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+                                show_loader: true,
+                            },
+                            &self.command_sender,
+                        );
                         self.pending_viewer_control_replies.push(PendingReply {
                             on_done,
                             answer: PendingAnswer::OpenUrl {
@@ -292,11 +403,29 @@ impl App {
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
 
-            Kind::SetBlueprint(request) => {
-                let result = self
-                    .apply_set_blueprint(store_hub, request)
-                    .map(ViewerControlResponse::from);
-                self.reply_after_commands(on_done, result, egui_ctx);
+            Kind::SetBlueprint(SetBlueprintRequest { json, target }) => {
+                let parsed = serde_json::from_str(&json)
+                    .map_err(|err| {
+                        ViewerControlError::invalid_argument(format!(
+                            "`json` is not valid JSON: {err}"
+                        ))
+                    })
+                    .and_then(|json| {
+                        let target = self.requested_blueprint_target(
+                            store_hub,
+                            target.map(RequestedBlueprint::from),
+                        )?;
+                        Ok((target, json))
+                    });
+                match parsed {
+                    Ok((target, json)) => self.answer_after_blueprint(
+                        on_done,
+                        target.ensure_blueprint_command(),
+                        PendingAnswer::SetBlueprint { target, json },
+                        egui_ctx,
+                    ),
+                    Err(err) => on_done.call(Err(err)),
+                }
             }
 
             Kind::SetTimeCursor(request) => {
@@ -581,18 +710,16 @@ impl App {
             .collect()
     }
 
-    /// The active blueprint of a recording's application, as JSON, for the `get_blueprint`
+    /// The active blueprint of a recording or a table, as JSON, for the `get_blueprint`
     /// operation.
     fn collect_blueprint_json(
         &mut self,
         store_hub: &StoreHub,
-        request: GetBlueprintRequest,
+        target: &BlueprintTarget,
     ) -> Result<GetBlueprintResponse, ViewerControlError> {
         re_tracing::profile_function!();
 
-        let GetBlueprintRequest { store_id } = request;
-        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
-
+        let blueprint_db = self.active_blueprint(store_hub, target)?;
         let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
         let json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
@@ -600,77 +727,404 @@ impl App {
             &self.reflection,
         );
 
+        let (store_id, table_url) = target.response_fields();
         Ok(GetBlueprintResponse {
             blueprint_id: blueprint_db.store_id().to_string(),
             json: json.to_string(),
+            store_id,
+            table_url,
         })
     }
 
-    /// Replace the active blueprint of a recording's application with JSON, for the
+    /// Replace the active blueprint of a recording or a table with JSON, for the
     /// `set_blueprint` operation.
     ///
     /// Only queues the write, so the caller must hold the answer back until it has run.
     fn apply_set_blueprint(
         &self,
         store_hub: &StoreHub,
-        request: SetBlueprintRequest,
+        target: &BlueprintTarget,
+        json: &serde_json::Value,
     ) -> Result<SetBlueprintResponse, ViewerControlError> {
         re_tracing::profile_function!();
 
-        let SetBlueprintRequest { store_id, json } = request;
+        let blueprint_db = self.active_blueprint(store_hub, target)?;
+        let chunks = self.blueprint_chunks_from_json(blueprint_db, json)?;
+        if let BlueprintTarget::Table(table) = target {
+            self.check_table_filters(table, &chunks)?;
+        }
+        self.queue_blueprint_write(blueprint_db, chunks);
 
-        let json: serde_json::Value = serde_json::from_str(&json).map_err(|err| {
-            ViewerControlError::invalid_argument(format!("`json` is not valid JSON: {err}"))
-        })?;
-
-        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
-        let chunks = re_arrow_json::chunks_from_json(
-            &json,
-            blueprint_db.storage_engine().store(),
-            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
-            &self.reflection,
-        )
-        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
-
-        let blueprint_id = blueprint_db.store_id().clone();
-        self.command_sender
-            .send_system(SystemCommand::AppendToStore(blueprint_id.clone(), chunks));
-
+        let (store_id, table_url) = target.response_fields();
         Ok(SetBlueprintResponse {
-            blueprint_id: blueprint_id.to_string(),
+            blueprint_id: blueprint_db.store_id().to_string(),
+            store_id,
+            table_url,
         })
     }
 
-    /// The active blueprint of the application of `store_id`, or of the active recording.
-    fn active_blueprint<'hub>(
+    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with the active
+    /// recording or the table on screen filled in for a missing id.
+    fn requested_blueprint_target(
         &self,
-        store_hub: &'hub StoreHub,
-        store_id: Option<String>,
-    ) -> Result<&'hub re_entity_db::EntityDb, ViewerControlError> {
-        let store_id = store_id
-            .map(|store_id| store_id.parse::<StoreId>())
-            .transpose()
-            .map_err(|err| {
-                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
-            })?
-            .or_else(|| self.state.active_recording_id().cloned())
-            .ok_or_else(|| {
-                ViewerControlError::failed_precondition("no active recording, and no `store_id`")
-            })?;
+        store_hub: &StoreHub,
+        requested: Option<RequestedBlueprint>,
+    ) -> Result<BlueprintTarget, ViewerControlError> {
+        let store_id = match requested {
+            // A `oneof` is an enum: an unset target names neither a recording nor a table.
+            None => {
+                return Err(ViewerControlError::invalid_argument(
+                    "set exactly one of `recording` and `table`: `{\"recording\": {}}` for the \
+                     active recording, or `{\"table\": {}}` for the table on screen",
+                ));
+            }
+            Some(RequestedBlueprint::Table(table_url)) => {
+                return Ok(BlueprintTarget::Table(self.requested_table(table_url)?));
+            }
+            Some(RequestedBlueprint::Recording(Some(store_id))) => {
+                store_id.parse::<StoreId>().map_err(|err| {
+                    ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+                })?
+            }
+            Some(RequestedBlueprint::Recording(None)) => {
+                self.state.active_recording_id().cloned().ok_or_else(|| {
+                    ViewerControlError::failed_precondition(
+                        "no active recording, and no `store_id`",
+                    )
+                })?
+            }
+        };
 
         if store_hub.entity_db(&store_id).is_none() {
             return Err(ViewerControlError::not_found(format!(
                 "recording {store_id} is not open"
             )));
         }
+        Ok(BlueprintTarget::Recording(store_id))
+    }
 
-        store_hub
-            .active_blueprint_for_app(store_id.application_id())
+    /// The table a request names, or else the table on screen.
+    fn requested_table(
+        &self,
+        table_url: Option<String>,
+    ) -> Result<re_uri::TableReference, ViewerControlError> {
+        let Some(url) = table_url else {
+            return self
+                .state
+                .navigation
+                .current()
+                .table_reference()
+                .ok_or_else(|| {
+                    ViewerControlError::failed_precondition(
+                        "no table is on screen, and no `table_url`",
+                    )
+                });
+        };
+
+        let uri = url.parse::<re_uri::RedapUri>().map_err(|err| {
+            ViewerControlError::invalid_argument(format!("invalid `table_url` {url:?}: {err}"))
+        })?;
+
+        let redap_servers = &self.state.redap_servers;
+        match uri {
+            re_uri::RedapUri::Catalog(catalog) if redap_servers.has_server(&catalog.origin) => {
+                Ok(re_uri::TableReference::RedapServerEntries {
+                    origin: catalog.origin,
+                })
+            }
+            re_uri::RedapUri::Entry(entry)
+                if redap_servers
+                    .entry_kind(&entry.origin, entry.entry_id)
+                    .is_some() =>
+            {
+                Ok(entry.into())
+            }
+            re_uri::RedapUri::Catalog(_) | re_uri::RedapUri::Entry(_) => {
+                Err(ViewerControlError::not_found(format!(
+                    "the viewer has no table at {url:?}. `GetViewerState` lists the tables it has"
+                )))
+            }
+            re_uri::RedapUri::Dataset(_)
+            | re_uri::RedapUri::Proxy(_)
+            | re_uri::RedapUri::Folder(_) => Err(ViewerControlError::invalid_argument(format!(
+                "{url:?} is not a table URL"
+            ))),
+        }
+    }
+
+    /// The dataset a `get_dataset_schema` request names, or else the dataset on screen.
+    fn requested_dataset(
+        &self,
+        store_hub: &StoreHub,
+        dataset_url: Option<String>,
+    ) -> Result<re_uri::EntryUri, ViewerControlError> {
+        let Some(url) = dataset_url else {
+            return self.dataset_on_screen(store_hub, self.state.navigation.current());
+        };
+
+        let uri = url.parse::<re_uri::RedapUri>().map_err(|err| {
+            ViewerControlError::invalid_argument(format!("invalid `dataset_url` {url:?}: {err}"))
+        })?;
+        let re_uri::RedapUri::Entry(entry) = uri else {
+            return Err(ViewerControlError::invalid_argument(format!(
+                "{url:?} is not a dataset URL"
+            )));
+        };
+
+        match self
+            .state
+            .redap_servers
+            .entry_kind(&entry.origin, entry.entry_id)
+        {
+            Some(re_viewer_context::EntryKind::Dataset(_)) => Ok(entry),
+            Some(re_viewer_context::EntryKind::Table) => Err(ViewerControlError::invalid_argument(
+                format!("{url:?} is a table, not a dataset"),
+            )),
+            None => Err(ViewerControlError::not_found(format!(
+                "the viewer has no dataset at {url:?}. `GetViewerState` lists the datasets it has"
+            ))),
+        }
+    }
+
+    /// The dataset entry `route` shows, or the dataset of the segment it shows.
+    ///
+    /// An entry of unknown kind counts as a dataset, and the server answers for it.
+    fn dataset_on_screen(
+        &self,
+        store_hub: &StoreHub,
+        route: &Route,
+    ) -> Result<re_uri::EntryUri, ViewerControlError> {
+        let no_dataset = || {
+            ViewerControlError::failed_precondition("no dataset is on screen, and no `dataset_url`")
+        };
+
+        match route {
+            Route::Settings { return_route } => self.dataset_on_screen(store_hub, return_route),
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                let kind = self
+                    .state
+                    .redap_servers
+                    .entry_kind(origin, *entry_id)
+                    .or(*kind);
+                if matches!(kind, Some(re_viewer_context::EntryKind::Table)) {
+                    return Err(ViewerControlError::invalid_argument(
+                        "the table on screen is not a dataset. `GetTableSchema` names its columns",
+                    ));
+                }
+                Ok(re_uri::EntryUri {
+                    origin: origin.clone(),
+                    entry_id: *entry_id,
+                })
+            }
+            Route::LocalRecording { recording_id } => {
+                let uri = store_hub
+                    .entity_db(recording_id)
+                    .and_then(|db| db.data_source.as_ref())
+                    .and_then(|source| source.redap_uri());
+                let Some(re_uri::RedapUri::Dataset(uri)) = uri else {
+                    return Err(no_dataset());
+                };
+                Ok(re_uri::EntryUri {
+                    origin: uri.origin,
+                    entry_id: uri.dataset_id.into(),
+                })
+            }
+            _ => Err(no_dataset()),
+        }
+    }
+
+    /// Fetch the schema of a dataset from its server, for the `get_dataset_schema` operation.
+    ///
+    /// Answers once the server has replied.
+    fn answer_dataset_schema(
+        &self,
+        store_hub: &StoreHub,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        request: GetDatasetSchemaRequest,
+    ) {
+        let GetDatasetSchemaRequest {
+            dataset_url,
+            entity_path,
+            max_entities,
+            paths_only,
+        } = request;
+        // A whole dataset describes many components on each entity, so without an `entity_path`
+        // it only names the entities.
+        let paths_only = paths_only.unwrap_or_else(|| entity_path.is_none());
+        let max_entities = max_entities.unwrap_or(if paths_only {
+            DEFAULT_MAX_SCHEMA_PATHS
+        } else {
+            DEFAULT_MAX_SCHEMA_ENTITIES
+        }) as usize;
+
+        let parsed = self
+            .requested_dataset(store_hub, dataset_url)
+            .and_then(|entry| Ok((entry, parse_schema_root(entity_path)?)));
+        let (entry, root) = match parsed {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                on_done.call(Err(err));
+                return;
+            }
+        };
+
+        let connection = self
+            .connections
+            .registry
+            .connection_handle(entry.origin.clone());
+        self.async_runtime.spawn_future(async move {
+            let schema = async {
+                connection
+                    .client()
+                    .await?
+                    .get_dataset_schema(entry.entry_id)
+                    .await
+            }
+            .await;
+            let response = schema
+                .map_err(|err| {
+                    ViewerControlError::internal(format!(
+                        "failed to fetch the schema of {entry}: {err}"
+                    ))
+                })
+                .and_then(|schema| {
+                    describe_dataset_schema(&schema, root.as_ref(), max_entities, paths_only)
+                })
+                .map(ViewerControlResponse::from);
+            on_done.call(response);
+        });
+    }
+
+    /// Hold `answer` back until `ensure_blueprint` has run, which gives the blueprint target an
+    /// active blueprint if it has none yet.
+    fn answer_after_blueprint(
+        &mut self,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        ensure_blueprint: SystemCommand,
+        answer: PendingAnswer,
+        egui_ctx: &egui::Context,
+    ) {
+        self.command_sender.send_system(ensure_blueprint);
+        self.pending_viewer_control_replies
+            .push(PendingReply { on_done, answer });
+        egui_ctx.request_repaint();
+    }
+
+    /// The columns of a table as it was last shown, for the `get_table_schema` operation.
+    fn collect_table_schema(
+        &self,
+        table_url: Option<String>,
+        egui_ctx: &egui::Context,
+    ) -> Result<GetTableSchemaResponse, ViewerControlError> {
+        let table = self.requested_table(table_url)?;
+        let columns = re_dataframe_ui::DataFusionTableWidget::table_schema(egui_ctx, &table)
             .ok_or_else(|| {
                 ViewerControlError::not_found(format!(
-                    "recording {store_id} has no active blueprint"
+                    "table {table:?} has not been shown yet. Open it with `OpenUrl` first"
                 ))
-            })
+            })?;
+
+        Ok(GetTableSchemaResponse {
+            columns: columns
+                .iter()
+                .map(|column| TableColumnSchema {
+                    name: column.physical_name.to_string(),
+                    display_name: column.display_name.clone(),
+                    datatype: column.datatype.to_string(),
+                })
+                .collect(),
+        })
+    }
+
+    /// Check the filters of a table blueprint against the columns the table last showed.
+    ///
+    /// Nothing is checked if the table has not been shown yet.
+    fn check_table_filters(
+        &self,
+        table: &re_uri::TableReference,
+        chunks: &[re_chunk::Chunk],
+    ) -> Result<(), ViewerControlError> {
+        use re_sdk_types::blueprint::archetypes::TableBlueprint;
+        use re_sdk_types::blueprint::components::SqlFilterExpression;
+
+        let table_entity = EntityPath::from("/table");
+        let component = TableBlueprint::descriptor_filters().component;
+        let filters = chunks
+            .iter()
+            .filter(|chunk| chunk.entity_path() == &table_entity)
+            .filter_map(|chunk| chunk.component_batch::<SqlFilterExpression>(component, 0))
+            .flatten()
+            .flatten();
+
+        for filter in filters {
+            let sql = filter.as_str();
+            if let Some(Err(err)) =
+                re_dataframe_ui::DataFusionTableWidget::check_filter(&self.egui_ctx, table, sql)
+            {
+                return Err(ViewerControlError::invalid_argument(format!(
+                    "/table → TableBlueprint → filters: the filter {sql:?} fails: {err}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// The chunks that replace the whole of `blueprint_db` with the blueprint in `json`.
+    fn blueprint_chunks_from_json(
+        &self,
+        blueprint_db: &re_entity_db::EntityDb,
+        json: &serde_json::Value,
+    ) -> Result<Vec<re_chunk::Chunk>, ViewerControlError> {
+        re_arrow_json::chunks_from_json(
+            json,
+            blueprint_db.storage_engine().store(),
+            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
+            &self.reflection,
+        )
+        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))
+    }
+
+    /// Queue a write of `chunks` to `blueprint_db`.
+    fn queue_blueprint_write(
+        &self,
+        blueprint_db: &re_entity_db::EntityDb,
+        chunks: Vec<re_chunk::Chunk>,
+    ) {
+        self.command_sender
+            .send_system(SystemCommand::AppendToStore(
+                blueprint_db.store_id().clone(),
+                chunks,
+            ));
+    }
+
+    /// The active blueprint of `target`.
+    fn active_blueprint<'hub>(
+        &self,
+        store_hub: &'hub StoreHub,
+        target: &BlueprintTarget,
+    ) -> Result<&'hub re_entity_db::EntityDb, ViewerControlError> {
+        match target {
+            BlueprintTarget::Recording(store_id) => store_hub
+                .active_blueprint_for_app(store_id.application_id())
+                .ok_or_else(|| {
+                    ViewerControlError::not_found(format!(
+                        "recording {store_id} has no active blueprint"
+                    ))
+                }),
+            BlueprintTarget::Table(table) => self
+                .table_blueprints
+                .active_id(table)
+                .and_then(|blueprint_id| store_hub.store_bundle().get(blueprint_id))
+                .ok_or_else(|| {
+                    ViewerControlError::not_found(format!(
+                        "table {table:?} has no active blueprint"
+                    ))
+                }),
+        }
     }
 
     /// Snapshot a recording's schema for the `get_recording_schema` operation: every entity
@@ -706,12 +1160,7 @@ impl App {
             ViewerControlError::not_found(format!("recording {store_id} is not open"))
         })?;
 
-        let root = entity_path
-            .map(|entity_path| EntityPath::parse_strict(&entity_path))
-            .transpose()
-            .map_err(|err| {
-                ViewerControlError::invalid_argument(format!("invalid entity_path: {err}"))
-            })?;
+        let root = parse_schema_root(entity_path)?;
 
         let engine = db.storage_engine();
         let columns = engine
@@ -996,6 +1445,62 @@ fn group_schema_by_entity<'a>(
         .collect();
 
     (entities, omitted_entities)
+}
+
+/// The `entity_path` of a schema request, which limits the answer to that entity and below it.
+fn parse_schema_root(
+    entity_path: Option<String>,
+) -> Result<Option<EntityPath>, ViewerControlError> {
+    entity_path
+        .map(|entity_path| EntityPath::parse_strict(&entity_path))
+        .transpose()
+        .map_err(|err| ViewerControlError::invalid_argument(format!("invalid entity_path: {err}")))
+}
+
+/// Describe a dataset's schema, as the server sends it, for the `get_dataset_schema` operation.
+fn describe_dataset_schema(
+    schema: &arrow::datatypes::Schema,
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> Result<GetDatasetSchemaResponse, ViewerControlError> {
+    let columns = re_sorbet::SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
+        .map_err(|err| {
+            ViewerControlError::internal(format!("the dataset schema cannot be read: {err}"))
+        })?;
+
+    let components = columns.component_columns().map(|column| {
+        let component = (!paths_only).then(|| RecordingComponentSchema {
+            component: column.component.to_string(),
+            archetype: column.archetype.as_ref().map(|name| name.to_string()),
+            component_type: column
+                .component_type
+                .as_ref()
+                .map(|component_type| component_type.to_string()),
+            datatype: column.inner_datatype().to_string(),
+            has_static: Some(column.is_static),
+        });
+        (&column.entity_path, component)
+    });
+    let (entities, omitted_entities) = group_schema_by_entity(components, root, max_entities);
+
+    if let Some(root) = root
+        && entities.is_empty()
+        && omitted_entities == 0
+    {
+        return Err(ViewerControlError::not_found(format!(
+            "the dataset has nothing at or below {root}"
+        )));
+    }
+
+    Ok(GetDatasetSchemaResponse {
+        timelines: columns
+            .index_columns()
+            .map(|column| column.timeline_name().to_string())
+            .collect(),
+        entities,
+        omitted_entities,
+    })
 }
 
 /// Handle one `egui_inspection` request against the running viewer UI.

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
-use arrow::datatypes::{Field, Schema};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference as DataFusionTableReference;
 use egui::containers::menu::MenuConfig;
@@ -31,7 +31,7 @@ use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
-    EntryLinksSpec, SegmentLinksSpec, query_error_message,
+    EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -81,6 +81,33 @@ impl DataColumn<'_> {
     pub fn physical_name(&self) -> &ColumnName {
         &self.physical_name
     }
+}
+
+/// One column of a table as the table layout last showed it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TableSchemaColumn {
+    /// The original Arrow field name, which table blueprints refer to the column by.
+    pub physical_name: ColumnName,
+
+    /// The name the column header shows.
+    pub display_name: String,
+
+    /// The Arrow datatype of the column.
+    pub datatype: arrow::datatypes::DataType,
+}
+
+/// The schema of a table as it was last shown.
+#[derive(Clone, PartialEq)]
+struct ShownTableSchema {
+    /// The columns in display order.
+    columns: Arc<[TableSchemaColumn]>,
+
+    /// The schema the table's filters run against.
+    arrow_schema: SchemaRef,
+}
+
+fn table_schema_id(table_ref: &TableReference) -> Id {
+    Id::unique(("table_schema", table_ref))
 }
 
 /// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their original order.
@@ -387,6 +414,32 @@ impl<'a> DataFusionTableWidget<'a> {
         let id = id_from_session_context_and_table(session_ctx, &table_ref.into());
         ui.data(|data| data.get_temp::<DataFusionAdapter>(id))
             .map(|adapter| adapter.queried_at)
+    }
+
+    /// The columns of a table in display order, as the table layout last showed them, or `None`
+    /// if the table has not been shown yet.
+    pub fn table_schema(
+        egui_ctx: &egui::Context,
+        table_ref: &TableReference,
+    ) -> Option<Arc<[TableSchemaColumn]>> {
+        egui_ctx.data(|data| {
+            data.get_temp::<ShownTableSchema>(table_schema_id(table_ref))
+                .map(|schema| schema.columns)
+        })
+    }
+
+    /// Check that `sql` is a filter the table can run, against the columns it last showed.
+    ///
+    /// The error is the message the filter bar shows for the filter. `None` if the table has not
+    /// been shown yet.
+    pub fn check_filter(
+        egui_ctx: &egui::Context,
+        table_ref: &TableReference,
+        sql: &str,
+    ) -> Option<Result<(), String>> {
+        let schema =
+            egui_ctx.data(|data| data.get_temp::<ShownTableSchema>(table_schema_id(table_ref)))?;
+        Some(check_filter(schema.arrow_schema, sql))
     }
 
     /// Invalidate the streaming cache so the next query re-fetches from the server.
@@ -805,6 +858,41 @@ impl<'a> DataFusionTableWidget<'a> {
         TableStatus::Error(error)
     }
 
+    /// Store the columns of the table layout for [`Self::table_schema`].
+    fn store_table_schema(
+        &self,
+        egui_ctx: &egui::Context,
+        blueprint: &TableBlueprint<'_>,
+        original_schema: &SchemaRef,
+    ) {
+        let columns: Arc<[TableSchemaColumn]> = blueprint
+            .table_layout
+            .columns
+            .iter()
+            .filter_map(|column| {
+                let field = original_schema
+                    .field_with_name(column.physical_name().as_str())
+                    .ok()?;
+                Some(TableSchemaColumn {
+                    physical_name: column.physical_name().clone(),
+                    display_name: column.display_name(),
+                    datatype: field.data_type().clone(),
+                })
+            })
+            .collect();
+
+        let schema = ShownTableSchema {
+            columns,
+            arrow_schema: Arc::clone(original_schema),
+        };
+        let id = table_schema_id(&self.table_ref);
+        egui_ctx.data_mut(|data| {
+            if data.get_temp::<ShownTableSchema>(id).as_ref() != Some(&schema) {
+                data.insert_temp(id, schema);
+            }
+        });
+    }
+
     /// Actual UI code to render a table.
     fn table_ui(
         &self,
@@ -836,6 +924,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &data_columns,
             &self.additional_column_heuristics,
         );
+        self.store_table_schema(ui.ctx(), &blueprint, &query_result.original_schema);
         let mut column_display_mode = blueprint.column_display_mode;
 
         query_data.filters.clone_from(&blueprint.filters);

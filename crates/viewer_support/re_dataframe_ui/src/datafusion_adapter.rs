@@ -5,11 +5,13 @@ use ahash::HashMap;
 use arrow::datatypes::{DataType, SchemaRef};
 use arrow::error::ArrowError;
 use crossbeam::channel::{Receiver, TryRecvError};
-use datafusion::common::{DataFusionError, SchemaError, TableReference};
+use datafusion::common::{DFSchema, DataFusionError, SchemaError, TableReference};
 use datafusion::execution::SendableRecordBatchStream;
 use datafusion::execution::SessionState;
 use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{Expr, LogicalPlanBuilder, binary_expr, col as datafusion_col, lit};
+use datafusion::logical_expr::{
+    EmptyRelation, Expr, LogicalPlan, LogicalPlanBuilder, binary_expr, col as datafusion_col, lit,
+};
 use datafusion::prelude::DataFrame;
 use datafusion::prelude::{SessionContext, cast, encode};
 use datafusion::sql::sqlparser::parser::ParserError;
@@ -194,6 +196,36 @@ fn plan_filter(
     Ok(expr)
 }
 
+/// Check that `sql` is a filter that a table with `schema` can run.
+///
+/// The error is the message the filter bar shows for the filter.
+pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
+    let plan = || -> Result<Expr, DataFusionError> {
+        let mut session_state = SessionContext::new().state();
+        set_filter_time_zone(&mut session_state);
+        let plan = LogicalPlan::EmptyRelation(EmptyRelation {
+            produce_one_row: false,
+            schema: Arc::new(DFSchema::try_from(schema)?),
+        });
+        plan_filter(
+            &session_state,
+            &DataFrame::new(session_state.clone(), plan),
+            sql,
+        )
+    };
+    plan().map(|_| ()).map_err(|err| query_error_message(&err))
+}
+
+/// Relative timestamp filters, such as "today", use the session time zone. With a time zone,
+/// `TIMESTAMPTZ` literals in filters compare as instants against columns of any time zone.
+fn set_filter_time_zone(session_state: &mut SessionState) {
+    let time_zone = jiff::tz::TimeZone::system()
+        .iana_name()
+        .unwrap_or("UTC")
+        .to_owned();
+    session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+}
+
 impl DataFusionQueryResult {
     /// Resolve a global row index to `(batch_index, row_offset_within_batch)`.
     fn find_row_indices(&self, global_row: u64) -> Option<(usize, usize)> {
@@ -247,15 +279,8 @@ impl DataFusionQuery {
     async fn batch_stream(
         self,
     ) -> Result<(SendableRecordBatchStream, FilterErrors), DataFusionError> {
-        // Relative timestamp filters, such as "today", use the session time zone. With a time
-        // zone, `TIMESTAMPTZ` literals in filters compare as instants against columns of any time
-        // zone.
         let (mut session_state, plan) = self.session_ctx.table(self.table_ref).await?.into_parts();
-        let time_zone = jiff::tz::TimeZone::system()
-            .iana_name()
-            .unwrap_or("UTC")
-            .to_owned();
-        session_state.config_mut().options_mut().execution.time_zone = Some(time_zone);
+        set_filter_time_zone(&mut session_state);
         let mut dataframe = DataFrame::new(session_state.clone(), plan);
 
         let DataFusionQueryData {
@@ -762,6 +787,7 @@ mod tests {
 
     use super::{
         DataFusionQuery, DataFusionQueryData, EntryLinksSpec, QueryEvent, SegmentLinksSpec,
+        check_filter,
     };
     use crate::column_sorting::SortBy;
 
@@ -811,6 +837,47 @@ mod tests {
             !filter_errors[syntax_error].contains("ParserError"),
             "{filter_errors:?}"
         );
+    }
+
+    /// Checking a filter against a schema alone gives the same result and message as running it
+    /// in a query on a table with that schema.
+    #[tokio::test]
+    async fn check_filter_matches_the_query() {
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch = RecordBatch::try_from_iter([
+            ("a", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+            ("B", Arc::new(Int64Array::from(vec![1, 2, 3])) as _),
+        ])
+        .unwrap();
+        let schema = batch.schema();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let filters = [
+            r#""a" > 1"#,
+            r#""missing" > 1"#,
+            "b > 1",
+            r#""a" >"#,
+            r#""a" + 1"#,
+            r#""a" > 'hello'"#,
+            "sum(\"a\") > 1",
+        ];
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                filters: filters.map(str::to_owned).to_vec(),
+                ..Default::default()
+            },
+        );
+        let (_stream, filter_errors) = query.batch_stream().await.unwrap();
+
+        for filter in filters {
+            assert_eq!(
+                check_filter(Arc::clone(&schema), filter).err().as_ref(),
+                filter_errors.get(filter),
+                "{filter}"
+            );
+        }
     }
 
     /// Filters that parse but fail type checks, constant folding or use aggregate functions are

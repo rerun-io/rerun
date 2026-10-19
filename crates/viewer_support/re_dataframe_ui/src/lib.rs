@@ -16,7 +16,7 @@ mod table_blueprints;
 mod table_selection;
 
 pub use self::blueprint::TableColumn;
-pub use self::datafusion_table_widget::{DataFusionTableWidget, TableStatus};
+pub use self::datafusion_table_widget::{DataFusionTableWidget, TableSchemaColumn, TableStatus};
 pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes
 pub use self::column_sorting::{SortBy, SortDirection};

@@ -11,6 +11,10 @@ Use table blueprints to order, rename, or hide columns, embed segment previews, 
 
 Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
 
+An agent changes the table on screen through the [Viewer MCP server](../../reference/viewer/mcp.md#table-blueprints), which reads and writes the same blueprint as JSON.
+It writes the table blueprint rather than clicking through the **Columns** menu.
+The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) covers both the Python API and the MCP tools.
+
 The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
 ## Prerequisites
@@ -38,6 +42,7 @@ snippet: howto/visualization/configure_table_blueprints[preview]
 You configure these views just as you would in a [recording blueprint](build-a-blueprint-programmatically.md), including their contents and view properties.
 Pass the views directly to `PreviewCell`, without the container layout tree (`Horizontal`, `Vertical`, `Tabs`, etc.) used to arrange a recording's viewport.
 Multiple views are shown side by side.
+Previews only come from a table blueprint, since the Viewer has no option to turn a column into a preview.
 
 ### Configuring card and table layouts
 
@@ -149,6 +154,23 @@ Upload the `.rbl` file to storage the server has permission to read, then regist
 snippet: howto/visualization/configure_table_blueprints[register_remote]
 
 For dataset segment tables, use `get_dataset(…).register_blueprint(uri, segment_table=True)` instead.
+
+## What the blueprint stores
+
+A table blueprint is stored as blueprint entities, which is what an `.rbl` file holds and what the [Viewer MCP server](../../reference/viewer/mcp.md) reads and writes as JSON.
+Each Python class maps to these entity paths and archetypes:
+
+| Python | Entity path | Archetypes |
+|--------|-------------|------------|
+| `TableBlueprint` | `/table` | `TableBlueprint`, `PreviewsConfig` |
+| `TableLayout` | `/table/layouts/table` | `TableLayout`, with the columns in `column_order` |
+| `Column` in a `TableLayout` | `/table/layouts/table/columns/{column}` | `TableColumn`, and `TableColumnPreview` for a `PreviewCell` |
+| `CardLayout` | `/table/layouts/cards` | `CardLayout`, with the fields in `field_order` |
+| `Column` in a `CardLayout` | `/table/layouts/cards/fields/{column}` | `TableColumn`, and `TableColumnPreview` for a `PreviewCell` |
+| A view in a `PreviewCell` | `/view/{view_id}` | `ViewBlueprint` and its view properties, as in a recording blueprint |
+
+In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
+`TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
 
 ## Further examples
 

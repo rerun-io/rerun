@@ -56,7 +56,7 @@ impl App {
         while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
             self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
-        self.answer_pending_viewer_control_replies();
+        self.answer_pending_viewer_control_replies(store_hub);
     }
 
     pub(super) fn run_pending_ui_commands(
@@ -565,6 +565,19 @@ impl App {
 
             SystemCommand::Table(command) => {
                 self.run_table_command(command, store_hub, egui_ctx);
+            }
+
+            SystemCommand::EnsureTableBlueprint(table) => {
+                if let Err(err) = self
+                    .table_blueprints
+                    .ensure_active_blueprint(&table, store_hub)
+                {
+                    re_log::warn!("Failed to create table blueprint: {err}");
+                }
+            }
+
+            SystemCommand::EnsureRecordingBlueprint(store_id) => {
+                store_hub.ensure_active_blueprint_for_app(store_id.application_id());
             }
 
             SystemCommand::LoadDataSource(data_source) => {

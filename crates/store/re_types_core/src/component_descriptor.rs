@@ -94,6 +94,21 @@ impl ComponentDescriptor {
         self.sanity_check();
         self.component.as_str()
     }
+
+    /// Lists the identifier, archetype and component type, used in log messages.
+    ///
+    /// Example: `{identifier: Points3D:positions, archetype: rerun.archetypes.Points3D, type: rerun.components.Position3D}`.
+    pub fn full_description(&self) -> String {
+        let Self {
+            archetype,
+            component,
+            component_type,
+        } = self;
+        let archetype = archetype.map_or_else(|| "none".to_owned(), |name| name.to_string());
+        let component_type =
+            component_type.map_or_else(|| "none".to_owned(), |name| name.to_string());
+        format!("{{identifier: {component}, archetype: {archetype}, type: {component_type}}}")
+    }
 }
 
 impl ComponentDescriptor {
