@@ -121,8 +121,9 @@ pub mod viewer_control_request {
         /// Ask the user before running a `destructive` command.
         #[prost(message, tag = "11")]
         RunCommand(super::RunCommandRequest),
-        /// Read the active blueprint of a recording or a table as JSON, keyed by blueprint entity path,
-        /// then archetype, then field.
+        /// Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then
+        /// archetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.
         ///
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings, so a
@@ -151,8 +152,10 @@ pub mod viewer_control_request {
         /// to disk failed.
         #[prost(message, tag = "13")]
         CaptureProfileTrace(super::CaptureProfileTraceRequest),
-        /// Replace the active blueprint of a recording or a table with JSON, in the form
-        /// `GetBlueprint` reads.
+        /// Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
+        /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
+        /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
         ///
         /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
         /// single value may be written as that value or as an array of one. Exactly one of
@@ -1451,6 +1454,7 @@ pub mod set_blueprint_request {
         #[prost(message, tag = "3")]
         Recording(super::RecordingBlueprintTarget),
         /// Write the blueprint of a table.
+        /// Use this to customize tables, enable card layouts, and add preview cells.
         ///
         /// The entity paths and archetypes of a table blueprint are described by
         /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in

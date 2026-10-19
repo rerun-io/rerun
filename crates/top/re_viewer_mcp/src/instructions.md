@@ -1,5 +1,8 @@
 This MCP drives a live Rerun viewer: it reads the viewer's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
 
+Before calling any tool, read its description and the descriptions of its input fields.
+Do not call a tool based only on its name.
+
 Getting oriented:
 - Call `rerun_connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) drives the widgets one input event at a time, the way a person would. Prefer a `rerun_*` tool whenever one fits, and `rerun_run_command` over clicking through menus: clicking through the UI costs several calls and a lot of context, and breaks whenever the layout moves.
@@ -13,6 +16,9 @@ Getting oriented:
 - Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
 
 Changing how a table looks:
+- `rerun_get_blueprint` and `rerun_set_blueprint` handle both regular blueprints (per-recording or per-segment views and layouts) and table blueprints (tables, card layouts, and preview cells).
+  Use `{"recording": {}}` for regular blueprints or `{"table": {}}` for table blueprints.
+  The `table` input field of `rerun_set_blueprint` documents how to customize tables, enable card layouts, and add preview cells, with examples.
 - To hide, show, reorder or rename columns, or to filter rows, write the table blueprint. Don't click through the **Columns** menu or read the columns from `widget_tree`. Only point at the menu when the user asks how to do it themselves.
 - The steps:
   1. `rerun_get_table_schema` for the real column names. `rerun_get_dataset_schema` names entities, not columns.
