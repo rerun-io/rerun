@@ -61,6 +61,10 @@ ignore = [
   # cacache (content/write.rs) only calls `MmapMut::map_mut` and the whole-map `flush_async()`, whose
   # range is always the map itself, so none of the affected functions run.
   { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 via cacache 13.1.0 <- http-cache 0.21.0 <- http-cache-reqwest 0.16.0 <- walkers 0.58.0 <- re_view_map. Not exercised because cacache never calls the affected range functions (see comment above). Blocked by cacache 13.1.0 (latest) requiring memmap2 ^0.5.8; walkers 0.60.0 still uses cacache, so updating walkers does not lift this. Remove when cacache allows memmap2 0.9.11+ or walkers drops cacache. No ticket yet." },
+  # zbus 6 absorbed these crates, so the zbus 5 versions are marked unmaintained.
+  { id = "RUSTSEC-2026-0370", reason = "zvariant 5.15.0 via zbus 5.19.0 and atspi-common 0.13.0 <- accesskit_unix 0.24.0 <- accesskit_winit 0.34.1 <- egui-winit (Linux/BSD only). Exercised for AT-SPI D-Bus messages; unmaintained, not a vulnerability. Blocked by accesskit_unix 0.24.0 (latest) requiring zbus ^5.19. Remove when egui-winit uses an accesskit on zbus 6. RR-6010" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names 4.3.4 via zbus 5.19.0 and atspi-common 0.13.0 <- accesskit_unix 0.24.0 <- accesskit_winit 0.34.1 <- egui-winit (Linux/BSD only). Exercised for D-Bus name validation; unmaintained, not a vulnerability. Blocked by accesskit_unix 0.24.0 (latest) requiring zbus ^5.19. Remove when egui-winit uses an accesskit on zbus 6. RR-6010" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive 5.15.0 via zvariant 5.15.0 <- zbus 5.19.0 <- accesskit_unix 0.24.0 <- accesskit_winit 0.34.1 <- egui-winit (Linux/BSD only). Not exercised because it is a proc-macro with no runtime code. Blocked by accesskit_unix 0.24.0 (latest) requiring zbus ^5.19. Remove when egui-winit uses an accesskit on zbus 6. RR-6010" },
 ]
 
 
