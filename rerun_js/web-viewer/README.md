@@ -55,6 +55,7 @@ Setting the values to empty strings is valid, as long as you style the canvas th
 
 For a full example, see https://github.com/rerun-io/web-viewer-example.
 You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-io/web-viewer-example
+For controlling playback from TypeScript, see https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control.
 
 ℹ️ Note:
 This package only targets recent versions of browsers.

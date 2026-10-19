@@ -431,6 +431,9 @@ js-install = { cmd = "npm install", cwd = "rerun_js" }
 
 # Build JS packages
 js-build-base = { cmd = "npm run build", cwd = "rerun_js/web-viewer", depends-on = ["js-install"] }
+js-build-base-debug = { cmd = "npm run build:debug", cwd = "rerun_js/web-viewer", depends-on = [
+  "js-install",
+] }
 js-build-all = { cmd = "npm run build --workspaces", cwd = "rerun_js", depends-on = ["js-install"] }
 
 # Build web-viewer and web-viewer-react without rebuilding re_viewer Wasm
@@ -447,6 +450,14 @@ js-build-package-docs = { cmd = "npm run docs --workspaces", cwd = "rerun_js", d
 js-docs = { cmd = "npm run docs", cwd = "rerun_js", depends-on = ["js-build-package-docs"] }
 
 js-docs-serve = { cmd = "npm run docs:serve", cwd = "rerun_js", depends-on = ["js-docs"] }
+
+# Run the `examples/js/viewer_control` example against a local debug build of the web-viewer
+js-example-viewer-control = { cmd = "npm install && npm run dev", cwd = "examples/js/viewer_control", depends-on = [
+  "js-build-base-debug",
+] }
+
+# Smoke test `examples/js/viewer_control` with Playwright. Needs a built web-viewer and `$CHROME` (or `npx playwright install chromium`).
+js-example-viewer-control-test = { cmd = "npm ci && npm test", cwd = "examples/js/viewer_control" }
 
 
 # Build and install a development version of the rerun-sdk Python package.
