@@ -388,7 +388,7 @@ fn debug_menu_options_ui(
 }
 
 #[cfg(debug_assertions)]
-pub(crate) fn debug_tools_ui(
+pub fn debug_tools_ui(
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
     active_recording_id: Option<&re_log_types::StoreId>,

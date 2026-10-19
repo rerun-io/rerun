@@ -370,6 +370,20 @@ fn command_palette_trigger_ui(
     }
 }
 
+impl App {
+    /// Whether navigating back and forward in history would do anything.
+    pub fn navigation_availability(&self) -> (bool, bool) {
+        match navigation_buttons_state(self) {
+            #[cfg(target_arch = "wasm32")]
+            NavigationButtonsState::Hidden => (false, false),
+            NavigationButtonsState::Visible {
+                can_go_back,
+                can_go_forward,
+            } => (can_go_back, can_go_forward),
+        }
+    }
+}
+
 fn navigation_buttons_state(app: &App) -> NavigationButtonsState {
     #[cfg(target_arch = "wasm32")]
     if app.startup_options().web_history_enabled() {

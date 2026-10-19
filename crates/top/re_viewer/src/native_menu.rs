@@ -190,14 +190,10 @@ impl NativeMenu {
                     item.setTarget(Some(&target));
                     item
                 };
-                item.setTag(
-                    kinds
-                        .iter()
-                        .position(|candidate| *candidate == kind)
-                        .expect("menu commands belong to the shared catalog")
-                        .try_into()
-                        .expect("command index fits in an AppKit tag"),
-                );
+                // Tags index into `catalog_commands()`, which yields commands in this same order.
+                // Out-of-range tags are ignored by `run_command`.
+                re_log::debug_assert_eq!(kinds.get(entries.len()), Some(&kind));
+                item.setTag(entries.len().try_into().unwrap_or(-1));
                 item.setToolTip(Some(&NSString::from_str(kind.tooltip())));
                 menu.addItem(&item);
                 entries.push(MenuEntry {
@@ -300,9 +296,7 @@ fn key_equivalent(shortcut: KeyboardShortcut) -> (String, NSEventModifierFlags) 
 
 /// `AppKit` identifies non-character keys by private-use code points in key equivalents.
 fn function_key(code: u32) -> String {
-    char::from_u32(code)
-        .expect("AppKit function keys are valid code points")
-        .into()
+    char::from_u32(code).map(String::from).unwrap_or_default()
 }
 
 #[cfg(test)]

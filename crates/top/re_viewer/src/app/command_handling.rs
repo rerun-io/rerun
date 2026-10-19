@@ -1043,16 +1043,17 @@ impl App {
             }
 
             UICommand::NavigateBackInHistory => {
-                #[cfg(target_arch = "wasm32")]
-                let url = if self.startup_options().web_history_enabled() {
-                    let _ = crate::web_history::go_back();
-                    None
-                } else {
-                    self.state.history.go_back().cloned()
+                let url = cfg_select! {
+                    target_arch = "wasm32" => {
+                        if self.startup_options().web_history_enabled() {
+                            crate::web_history::go_back();
+                            None
+                        } else {
+                            self.state.history.go_back().cloned()
+                        }
+                    }
+                    _ => self.state.history.go_back().cloned(),
                 };
-
-                #[cfg(not(target_arch = "wasm32"))]
-                let url = self.state.history.go_back().cloned();
 
                 if let Some(url) = url {
                     url.open(
@@ -1066,16 +1067,17 @@ impl App {
                 }
             }
             UICommand::NavigateForwardInHistory => {
-                #[cfg(target_arch = "wasm32")]
-                let url = if self.startup_options().web_history_enabled() {
-                    let _ = crate::web_history::go_forward();
-                    None
-                } else {
-                    self.state.history.go_forward().cloned()
+                let url = cfg_select! {
+                    target_arch = "wasm32" => {
+                        if self.startup_options().web_history_enabled() {
+                            crate::web_history::go_forward();
+                            None
+                        } else {
+                            self.state.history.go_forward().cloned()
+                        }
+                    }
+                    _ => self.state.history.go_forward().cloned(),
                 };
-
-                #[cfg(not(target_arch = "wasm32"))]
-                let url = self.state.history.go_forward().cloned();
 
                 if let Some(url) = url {
                     url.open(

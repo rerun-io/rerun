@@ -170,7 +170,8 @@ impl ListVisuals {
         }
     }
 
-    pub(crate) fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
+    /// Color of the collapse caret.
+    pub fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
             design_tokens.list_item_collapse_default
@@ -778,7 +779,8 @@ impl ListItem {
     }
 }
 
-pub(crate) fn collapse_button_ui(
+/// Interactive collapse caret, painted in `rect`.
+pub fn collapse_button_ui(
     ui: &Ui,
     id: egui::Id,
     openness: f32,

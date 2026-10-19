@@ -52,12 +52,11 @@ use egui::{NumExt as _, Style};
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
-    BoundCommand, CommandEnvironment, CommandKind, CommandScope, ListedCommand, RecordingCommand,
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
     RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
     RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
     UICommand, UICommandSender, conflicts_with_text_editing, consume_timeline_shortcut,
-    format_shortcut, key_symbol_or_name, listen_for_kb_shortcuts, palette_commands,
-    refresh_shortcuts,
+    format_shortcut, key_symbol_or_name, listen_for_kb_shortcuts, refresh_shortcuts,
 };
 pub use self::command_palette::{
     CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,

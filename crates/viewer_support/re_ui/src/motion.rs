@@ -9,7 +9,7 @@ const INITIAL_SCALE: f32 = 0.95;
 /// Popups are separate foreground areas, and their placement pivot is the natural origin for the
 /// animation.
 #[derive(Default)]
-pub(crate) struct PopupAnimationPlugin {
+pub struct PopupAnimationPlugin {
     transformed_layers: Vec<LayerId>,
 }
 
@@ -89,7 +89,8 @@ fn is_layer_painted(ctx: &egui::Context, layer_id: LayerId) -> bool {
     })
 }
 
-pub(crate) fn scale_for_opened_at(ctx: &egui::Context, opened_at: f64) -> f32 {
+/// Scale of an opening surface, from `INITIAL_SCALE` to 1. Requests a repaint until done.
+pub fn scale_for_opened_at(ctx: &egui::Context, opened_at: f64) -> f32 {
     let animation_time = ctx.global_style().animation_time;
     if animation_time <= 0.0 {
         return 1.0;
@@ -104,7 +105,8 @@ pub(crate) fn scale_for_opened_at(ctx: &egui::Context, opened_at: f64) -> f32 {
     scale
 }
 
-pub(crate) fn scale_transform(origin: Pos2, scale: f32) -> TSTransform {
+/// Transform that scales by `scale` around `origin`.
+pub fn scale_transform(origin: Pos2, scale: f32) -> TSTransform {
     TSTransform::from_translation(origin.to_vec2())
         * TSTransform::from_scaling(scale)
         * TSTransform::from_translation(-origin.to_vec2())

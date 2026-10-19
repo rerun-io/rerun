@@ -13,7 +13,7 @@ mod settings_screen;
 
 pub use app_modals::about_rerun_ui;
 #[cfg(debug_assertions)]
-pub(crate) use app_modals::debug_tools_ui;
+pub use app_modals::debug_tools_ui;
 
 pub(crate) use open_url_modal::OpenUrlModal;
 pub(crate) use settings_screen::settings_screen_ui;

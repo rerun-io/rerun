@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use egui::emath::{TSTransform, easing};
 
 #[derive(Clone, Copy)]
-pub(super) struct EntranceAnimationItem {
+pub struct EntranceAnimationItem {
     duration: f32,
     next_item_offset: f32,
     translation_y: f32,
 }
 
 impl EntranceAnimationItem {
-    pub(super) const fn new(duration: f32, next_item_offset: f32) -> Self {
+    pub const fn new(duration: f32, next_item_offset: f32) -> Self {
         Self {
             duration,
             next_item_offset,
@@ -18,14 +18,14 @@ impl EntranceAnimationItem {
         }
     }
 
-    pub(super) const fn translated_y(mut self, translation_y: f32) -> Self {
+    pub const fn translated_y(mut self, translation_y: f32) -> Self {
         self.translation_y = translation_y;
         self
     }
 }
 
 #[derive(Default)]
-pub(super) struct EntranceAnimation {
+pub struct EntranceAnimation {
     started_at: Option<f64>,
     item_started_at: HashMap<egui::Id, f64>,
     now: f64,
@@ -34,20 +34,20 @@ pub(super) struct EntranceAnimation {
 }
 
 impl EntranceAnimation {
-    pub(super) fn begin_frame(&mut self, now: f64, enabled: bool) {
+    pub fn begin_frame(&mut self, now: f64, enabled: bool) {
         let started_at = *self.started_at.get_or_insert(now);
         self.now = now;
         self.cursor = started_at;
         self.enabled = enabled;
     }
 
-    pub(super) fn add_delay(&mut self, delay: f32) {
+    pub fn add_delay(&mut self, delay: f32) {
         self.cursor += f64::from(delay);
     }
 
     /// `id` must identify the same logical item across frames so that inserting or removing
     /// siblings cannot move an animation that has already started.
-    pub(super) fn show<R>(
+    pub fn show<R>(
         &mut self,
         ui: &mut egui::Ui,
         id: egui::Id,

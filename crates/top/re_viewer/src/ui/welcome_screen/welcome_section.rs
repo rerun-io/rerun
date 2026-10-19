@@ -14,7 +14,7 @@ const TITLE_ANIMATION: EntranceAnimationItem =
     EntranceAnimationItem::new(0.38, 0.07).translated_y(30.0);
 
 /// Show the welcome section.
-pub(super) fn welcome_section_ui(ui: &mut egui::Ui, animation: &mut EntranceAnimation) {
+pub fn welcome_section_ui(ui: &mut egui::Ui, animation: &mut EntranceAnimation) {
     re_tracing::profile_function!();
 
     ui.vertical(|ui| {

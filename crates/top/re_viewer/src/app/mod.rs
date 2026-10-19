@@ -98,6 +98,10 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     egui_renderer: Option<Arc<egui::epaint::mutex::RwLock<egui_wgpu::Renderer>>>,
+
+    /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
+    adapter_backend: wgpu::Backend,
+
     screenshotter: crate::screenshotter::Screenshotter,
 
     /// Screenshots delivered by the renderer, waiting to be processed on the next frame.
@@ -420,7 +424,7 @@ impl App {
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
 
-        let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
+        let (adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
                 re_renderer::device_caps::DeviceCapabilityTier::Limited,
@@ -453,7 +457,7 @@ impl App {
             analytics.record(event::viewer_started(
                 &app_env,
                 &creation_context.egui_ctx,
-                _adapter_backend,
+                adapter_backend,
                 _device_tier,
             ));
         }
@@ -528,6 +532,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             egui_renderer,
+            adapter_backend,
             screenshotter,
             screenshot_tx,
             screenshot_rx,
@@ -679,6 +684,11 @@ impl App {
         } else {
             re_log::info!("The agent panel is disabled. Enable it under Settings → Experimental.");
         }
+    }
+
+    /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
+    pub fn adapter_backend(&self) -> wgpu::Backend {
+        self.adapter_backend
     }
 
     pub fn app_env(&self) -> &crate::AppEnvironment {

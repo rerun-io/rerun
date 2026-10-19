@@ -7,7 +7,7 @@ use egui::{CornerRadius, emath::GuiRounding as _};
 
 use crate::alert::Alert;
 use crate::button::ReButton;
-use crate::list_item::{self, LabelContent, ListItemContentButtonsExt as _};
+use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
@@ -396,52 +396,25 @@ pub trait UiExt {
 
     /// Static title bar used to separate panels into section.
     ///
-    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
-    /// set.
-    ///
-    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons.
+    /// Shorthand for [`crate::PanelTitleBar`].
     fn panel_title_bar(&mut self, label: &str, hover_text: Option<&str>) {
         self.panel_title_bar_with_buttons(label, hover_text, |_ui| {});
     }
 
     /// Static title bar used to separate panels into section, with buttons at its right edge.
     ///
-    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
-    /// set.
-    ///
-    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons after the label.
+    /// Shorthand for [`crate::PanelTitleBar::show_with_right_buttons`].
     fn panel_title_bar_with_buttons<R>(
         &mut self,
         label: &str,
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> Option<R> {
-        let tokens = self.tokens();
-        let ui = self.ui_mut();
-        let scope_id = ui.next_auto_id();
-        let mut right_result = None;
-
-        list_item::list_item_scope(ui, scope_id, |ui| {
-            let content = LabelContent::new(tokens.eyebrow_text(ui.style(), label))
-                .with_buttons(|ui| {
-                    right_result = Some(add_right_buttons(ui));
-                })
-                .with_always_show_buttons(true);
-
-            let response = ui
-                .list_item()
-                .interactive(false)
-                .force_background(tokens.section_header_color)
-                .with_height(tokens.section_header_height())
-                .with_content_top_padding(tokens.section_header_top_padding())
-                .show_flat(ui, content);
-
-            if let Some(hover_text) = hover_text {
-                response.on_hover_text(hover_text);
-            }
-        });
-
-        right_result
+    ) -> R {
+        let mut title_bar = crate::PanelTitleBar::new(label);
+        if let Some(hover_text) = hover_text {
+            title_bar = title_bar.hover_text(hover_text);
+        }
+        title_bar.show_with_right_buttons(self.ui_mut(), add_right_buttons)
     }
 
     /// Replacement for [`egui::CollapsingHeader`] that respect our style.
