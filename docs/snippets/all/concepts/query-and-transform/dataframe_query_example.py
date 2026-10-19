@@ -37,10 +37,10 @@ with rr.server.Server(datasets={"dataset": [RRD_PATH]}) as server:
     dataset = server.client().get_dataset("dataset")
 
     # (optional) filter interesting data
-    dataset_view = dataset.filter_contents("/data")
+    selection = dataset.filter_contents("/data")
 
     # obtain a DataFusion dataframe
-    df = dataset_view.reader(index="step")
+    df = selection.reader(index="step")
 
     # (optional) filter rows using DataFusion expressions
     df = df.filter(col("/data:Scalars:scalars")[0] > 0.95)

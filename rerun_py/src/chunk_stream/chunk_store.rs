@@ -259,7 +259,7 @@ impl PyChunkStoreInternal {
 /// Build a `ViewContentsSelector` from `contents` expressions, applied
 /// against the store's currently known entities.
 ///
-/// Semantics mirror [`PyDatasetViewInternal::filter_contents`]:
+/// Semantics mirror [`PyDatasetSelectionInternal::filter_contents`]:
 /// * `None` → everything (`/**`)
 /// * `Some([])` → nothing (`-/**`)
 /// * `Some(exprs)` → join `exprs` with spaces and parse as a filter.

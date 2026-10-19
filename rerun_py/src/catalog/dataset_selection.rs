@@ -23,10 +23,13 @@ use crate::catalog::{
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
-/// A view over a dataset with optional segment and content filters applied lazily.
+/// A selection of a dataset with optional segment and content filters applied lazily.
 //TODO(RR-3157): add the ability to filter on components, not just entity paths
-#[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")]
-pub struct PyDatasetViewInternal {
+#[pyclass(
+    name = "DatasetSelectionInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyDatasetSelectionInternal {
     dataset: Py<PyDatasetEntryInternal>,
 
     /// Segment filter: `None` means no filtering, `Some` means filter to these segment IDs
@@ -42,8 +45,8 @@ pub struct PyDatasetViewInternal {
     content_filters: Option<Vec<String>>,
 }
 
-impl PyDatasetViewInternal {
-    /// Create a new `DatasetView` from a dataset with optional initial filters.
+impl PyDatasetSelectionInternal {
+    /// Create a new `DatasetSelection` from a dataset with optional initial filters.
     pub fn new(
         dataset: Py<PyDatasetEntryInternal>,
         segment_filter: Option<HashSet<String>>,
@@ -83,7 +86,7 @@ impl PyDatasetViewInternal {
 }
 
 #[pymethods]
-impl PyDatasetViewInternal {
+impl PyDatasetSelectionInternal {
     /// Return the underlying dataset entry.
     #[getter]
     fn dataset(&self, py: Python<'_>) -> Py<PyDatasetEntryInternal> {
@@ -104,10 +107,10 @@ impl PyDatasetViewInternal {
         self.content_filters.clone()
     }
 
-    /// Return the schema of the data contained in this view.
+    /// Return the schema of the data contained in this selection.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetView.schema").entered();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.schema").entered();
         let (connection, dataset_id) = {
             let dataset = self_.dataset.borrow(py);
             (
@@ -128,17 +131,17 @@ impl PyDatasetViewInternal {
         })
     }
 
-    /// Return the Arrow schema of the data contained in this view.
+    /// Return the Arrow schema of the data contained in this selection.
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
         let _span =
-            read_trace_context_from_python(self_.py(), "DatasetView.arrow_schema").entered();
+            read_trace_context_from_python(self_.py(), "DatasetSelection.arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
     }
 
-    /// Returns a list of segment IDs for this view (filtered if segment filter is set).
+    /// Returns a list of segment IDs for this selection (filtered if segment filter is set).
     fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetView.segment_ids").entered();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.segment_ids").entered();
         let dataset = self_.dataset.borrow(py);
 
         let all_segment_ids = PyDatasetEntryInternal::segment_ids(dataset)?;
@@ -152,7 +155,7 @@ impl PyDatasetViewInternal {
         }
     }
 
-    /// Returns a new DatasetView filtered to the given segment IDs.
+    /// Returns a new DatasetSelection filtered to the given segment IDs.
     ///
     /// Parameters
     /// ----------
@@ -160,7 +163,8 @@ impl PyDatasetViewInternal {
     ///     A list of segment ID strings.
     fn filter_segments(self_: PyRef<'_, Self>, segment_ids: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetView.filter_segments").entered();
+        let _span =
+            read_trace_context_from_python(py, "DatasetSelection.filter_segments").entered();
 
         // Extract segment IDs from input
         let new_segments: HashSet<String> = segment_ids.into_iter().collect();
@@ -180,7 +184,7 @@ impl PyDatasetViewInternal {
         )
     }
 
-    /// Returns a new DatasetView filtered to the given entity paths.
+    /// Returns a new DatasetSelection filtered to the given entity paths.
     ///
     /// Parameters
     /// ----------
@@ -188,7 +192,8 @@ impl PyDatasetViewInternal {
     ///     Entity path expressions like "/points/**", "-/text/**".
     fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> PyResult<Py<Self>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetView.filter_contents").entered();
+        let _span =
+            read_trace_context_from_python(py, "DatasetSelection.filter_contents").entered();
 
         // Combine with existing content filters
         let combined_filters = match &self_.content_filters {
@@ -210,14 +215,14 @@ impl PyDatasetViewInternal {
         )
     }
 
-    /// Create a reader over this DatasetView.
+    /// Create a reader over this DatasetSelection.
     ///
     /// Returns a DataFusion DataFrame.
     ///
     /// Parameters
     /// ----------
     /// index : str | None
-    ///     The index (timeline) to use for the view.
+    ///     The index (timeline) to use for the query.
     /// include_semantically_empty_columns : bool
     ///     Whether to include columns that are semantically empty.
     /// include_tombstone_columns : bool
@@ -244,7 +249,7 @@ impl PyDatasetViewInternal {
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetView.reader").entered();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.reader").entered();
 
         // Convert IndexValuesLike to BTreeSet<TimeInt>
         let using_index_values = using_index_values

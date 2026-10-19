@@ -238,8 +238,8 @@ class DatasetEntry(Entry):
             Whether to fill null values with the latest valid data.
 
         """
-        # Delegate to DatasetView which handles all the complex logic
-        view = DatasetView(self._inner.filter_contents(["/**"]))
+        # Delegate to DatasetSelection which handles all the complex logic
+        view = DatasetSelection(self._inner.filter_contents(["/**"]))
         return view.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
@@ -269,31 +269,31 @@ class DatasetEntry(Entry):
             unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
         )
 
-    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetSelection:
         """
-        Returns a new DatasetView filtered to the given segment IDs.
+        Returns a new DatasetSelection filtered to the given segment IDs.
 
         Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
         or a sequence of segment ID strings.
         """
-        # Wrap in draft mock's DatasetView which adds dict-based using_index_values support
-        return DatasetView(self._inner.filter_segments(segment_ids))
+        # Wrap in draft mock's DatasetSelection which adds dict-based using_index_values support
+        return DatasetSelection(self._inner.filter_segments(segment_ids))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
-        """Returns a new DatasetView filtered to the given entity paths."""
-        # Wrap in draft mock's DatasetView which adds dict-based using_index_values support
-        return DatasetView(self._inner.filter_contents(list(exprs)))
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetSelection:
+        """Returns a new DatasetSelection filtered to the given entity paths."""
+        # Wrap in draft mock's DatasetSelection which adds dict-based using_index_values support
+        return DatasetSelection(self._inner.filter_contents(list(exprs)))
 
 
-class DatasetView:
+class DatasetSelection:
     """
-    A filtered view of a dataset.
+    A selection of a dataset.
 
-    This is a wrapper around the SDK's DatasetView that adds dict-based
+    This is a wrapper around the SDK's DatasetSelection that adds dict-based
     using_index_values support for the reader() method.
     """
 
-    def __init__(self, inner: _catalog.DatasetView) -> None:
+    def __init__(self, inner: _catalog.DatasetSelection) -> None:
         self._inner = inner
 
     def __repr__(self) -> str:
@@ -323,7 +323,7 @@ class DatasetView:
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
-        Create a reader over this dataset view.
+        Create a reader over this dataset selection.
 
         Returns a DataFusion DataFrame.
 
@@ -359,13 +359,13 @@ class DatasetView:
 
         return self.segment_table().select(*exprs)
 
-    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
-        """Returns a new DatasetView filtered to the given segment IDs."""
-        return DatasetView(self._inner.filter_segments(segment_ids))
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetSelection:
+        """Returns a new DatasetSelection filtered to the given segment IDs."""
+        return DatasetSelection(self._inner.filter_segments(segment_ids))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
-        """Returns a new DatasetView filtered to the given entity paths."""
-        return DatasetView(self._inner.filter_contents(list(exprs)))
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetSelection:
+        """Returns a new DatasetSelection filtered to the given entity paths."""
+        return DatasetSelection(self._inner.filter_contents(list(exprs)))
 
 
 class TableEntry(Entry):

@@ -11,7 +11,7 @@
 //!   pushes it onto the `_active_collectors` `ContextVar` for the duration of
 //!   the `with` block.
 //! - [`active_metrics_collectors`]: read that ContextVar from Rust so
-//!   `dataset_view.rs::reader()` can attach the collectors to a freshly-built
+//!   `dataset_selection.rs::reader()` can attach the collectors to a freshly-built
 //!   `DataframeQueryTableProvider`.
 //!
 //! The actual snapshot-on-stream-completion logic lives in
@@ -447,7 +447,7 @@ impl PyQueryMetrics {
 ///
 /// Held by the Python `query_metrics()` context manager between
 /// `__enter__` and `__exit__`, and pushed onto the `_active_collectors`
-/// `ContextVar` so `dataset_view.rs::reader()` can pick it up at plan time.
+/// `ContextVar` so `dataset_selection.rs::reader()` can pick it up at plan time.
 /// Cheap to clone — the inner `MetricsCollector` is itself an `Arc` wrapper,
 /// so each attached `DataframeQueryTableProvider` and the Python-side handle
 /// share the same buffer.

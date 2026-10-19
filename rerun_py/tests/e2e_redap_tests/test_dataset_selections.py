@@ -1,4 +1,4 @@
-"""Tests for the DatasetView API."""
+"""Tests for the DatasetSelection API."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from e2e_redap_tests.conftest import EntryFactory
 
 
-def test_dataset_view_filter_segments(readonly_test_dataset: DatasetEntry) -> None:
+def test_dataset_selection_filter_segments(readonly_test_dataset: DatasetEntry) -> None:
     """Test filtering a dataset by segment IDs."""
 
     # Get actual segment IDs from the dataset
@@ -31,12 +31,12 @@ def test_dataset_view_filter_segments(readonly_test_dataset: DatasetEntry) -> No
 
     # Simple filter by segment list - pick first two segments
     filter_segments = all_segments[:2]
-    view = readonly_test_dataset.filter_segments(filter_segments)
-    assert sorted(view.segment_ids()) == filter_segments
+    selection = readonly_test_dataset.filter_segments(filter_segments)
+    assert sorted(selection.segment_ids()) == filter_segments
 
 
 @pytest.mark.local_only
-def test_dataset_view_filter_segments_with_dataframe(
+def test_dataset_selection_filter_segments_with_dataframe(
     readonly_test_dataset: DatasetEntry, entry_factory: EntryFactory, tmp_path: Path
 ) -> None:
     """Test filtering a dataset using a metadata table."""
@@ -61,10 +61,10 @@ def test_dataset_view_filter_segments_with_dataframe(
     )
 
     # Filter to only successful segments using DataFrame
-    view = readonly_test_dataset.filter_segments(segments.reader())
+    selection = readonly_test_dataset.filter_segments(segments.reader())
 
-    assert set(view.segment_ids()) == set(test_segments)
-    assert view.segment_table().count() == len(test_segments)
+    assert set(selection.segment_ids()) == set(test_segments)
+    assert selection.segment_table().count() == len(test_segments)
 
 
 def sort_schema(schema: pa.Schema) -> str:
@@ -90,64 +90,64 @@ def sort_schema(schema: pa.Schema) -> str:
     return output
 
 
-def test_dataset_view_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
+def test_dataset_selection_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test filtering a dataset by entity paths."""
 
     schema = sort_schema(pa.schema(readonly_test_dataset.schema()))
     assert str(schema) == snapshot()
 
-    view = readonly_test_dataset.filter_contents(["/obj1/**"])
-    schema = sort_schema(pa.schema(view.schema()))
+    selection = readonly_test_dataset.filter_contents(["/obj1/**"])
+    schema = sort_schema(pa.schema(selection.schema()))
     assert str(schema) == snapshot()
 
 
-def test_dataset_view_filter_contents_nonexistent_path(
+def test_dataset_selection_filter_contents_nonexistent_path(
     readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
 ) -> None:
     """Test that filtering by a non-existent path returns no data columns."""
 
     # Filter by a path that doesn't exist
-    view = readonly_test_dataset.filter_contents(["/this/does/not/exist/**"])
-    schema = sort_schema(pa.schema(view.schema()))
+    selection = readonly_test_dataset.filter_contents(["/this/does/not/exist/**"])
+    schema = sort_schema(pa.schema(selection.schema()))
     assert str(schema) == snapshot()
 
-    df = view.reader(index="time_1")
+    df = selection.reader(index="time_1")
     schema = sort_schema(pa.schema(df.schema()))
     assert str(schema) == snapshot()
 
 
-def test_dataset_view_filter_contents_empty_list(
+def test_dataset_selection_filter_contents_empty_list(
     readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
 ) -> None:
     """Test that filtering with an empty list returns no data columns."""
 
-    view = readonly_test_dataset.filter_contents([])
+    selection = readonly_test_dataset.filter_contents([])
 
-    schema = sort_schema(pa.schema(view.schema()))
+    schema = sort_schema(pa.schema(selection.schema()))
     assert str(schema) == snapshot()
 
-    df = view.reader(index="time_1")
+    df = selection.reader(index="time_1")
     schema = sort_schema(pa.schema(df.schema()))
     assert str(schema) == snapshot()
 
 
-def test_dataset_view_no_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
+def test_dataset_selection_no_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test that not using filter_contents returns all data columns."""
 
     all_segments = sorted(readonly_test_dataset.segment_ids())
-    view = readonly_test_dataset.filter_segments(all_segments[:1])
+    selection = readonly_test_dataset.filter_segments(all_segments[:1])
 
     # Schema should include all data columns
-    schema = sort_schema(pa.schema(view.schema()))
+    schema = sort_schema(pa.schema(selection.schema()))
     assert str(schema) == snapshot()
 
-    df = view.reader(index="time_1")
+    df = selection.reader(index="time_1")
     schema = sort_schema(pa.schema(df.schema()))
     assert str(schema) == snapshot()
 
 
-def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
-    """Test reading data through a DatasetView."""
+def test_dataset_selection_reader(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
+    """Test reading data through a DatasetSelection."""
 
     # Get first segment ID
     all_segments = sorted(readonly_test_dataset.segment_ids())
@@ -155,8 +155,8 @@ def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: Snap
 
     first_segment = all_segments[0]
 
-    view = readonly_test_dataset.filter_segments([first_segment]).filter_contents(["/obj1/**"])
-    df = view.reader(index="time_1")
+    selection = readonly_test_dataset.filter_segments([first_segment]).filter_contents(["/obj1/**"])
+    df = selection.reader(index="time_1")
 
     df = sorted_df(df)
     df_schema = df.schema()
@@ -172,13 +172,13 @@ def sorted_df(df: datafusion.DataFrame) -> datafusion.DataFrame:
 
 
 def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
-    dataset_view = readonly_test_dataset.filter_segments([
+    selection = readonly_test_dataset.filter_segments([
         "3ee345b2e801448cace33a1097b9b49b",
         "68224eead5ed40838b3f3bdb0edfd2b2",
     ])
 
     df = (
-        dataset_view
+        selection
         .reader(
             index="time_1",
         )
@@ -191,9 +191,9 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
         assert batch.schema.equals(df_schema, check_metadata=True)
     assert str(df) == snapshot
 
-    # Create a view with all partitions
+    # Create a selection with all partitions
     df = (
-        dataset_view
+        selection
         .reader(
             index="time_1",
             using_index_values={
@@ -228,7 +228,7 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, s
 def test_dataframe_api_using_index_values_same_indices_on_all_segments(
     readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
 ) -> None:
-    dataset_view = readonly_test_dataset.filter_segments([
+    selection = readonly_test_dataset.filter_segments([
         "3ee345b2e801448cace33a1097b9b49b",
         "68224eead5ed40838b3f3bdb0edfd2b2",
     ])
@@ -251,7 +251,7 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(
     arrow_results = []
     for index_values in all_index_values:
         df = (
-            dataset_view
+            selection
             .reader(
                 index="time_1",
                 using_index_values=index_values,
@@ -288,7 +288,7 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(
         dtype="datetime64[ns]",
     )
     df = (
-        dataset_view
+        selection
         .reader(
             index="time_1",
             using_index_values=datetime_index_values,
@@ -318,13 +318,13 @@ def test_dataframe_api_using_index_values_partial_overlap(
 
     Expected: 3 rows total (2 for 141a866d, 1 for 3ee345b2).
     """
-    dataset_view = readonly_test_dataset.filter_segments([
+    selection = readonly_test_dataset.filter_segments([
         "3ee345b2e801448cace33a1097b9b49b",
         "141a866deb2d49f69eb3215e8a404ffc",
     ])
 
     df = (
-        dataset_view
+        selection
         .reader(
             index="time_1",
             using_index_values=np.array(
@@ -502,15 +502,15 @@ def test_content_filter_exclude_matches_raw(readonly_test_dataset: DatasetEntry,
     assert builder == snapshot()
 
 
-def test_content_filter_on_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
-    """ContentFilter should work when called on a DatasetView (chained from filter_segments)."""
+def test_content_filter_on_dataset_selection(readonly_test_dataset: DatasetEntry) -> None:
+    """ContentFilter should work when called on a DatasetSelection (chained from filter_segments)."""
     all_segments = sorted(readonly_test_dataset.segment_ids())
     assert len(all_segments) >= 1
 
-    view = readonly_test_dataset.filter_segments(all_segments[:1])
+    selection = readonly_test_dataset.filter_segments(all_segments[:1])
 
-    raw = sort_schema(pa.schema(view.filter_contents(["/obj1/**"]).schema()))
+    raw = sort_schema(pa.schema(selection.filter_contents(["/obj1/**"]).schema()))
     builder = sort_schema(
-        pa.schema(view.filter_contents(ContentFilter.nothing().include("/obj1", subtree=True)).schema())
+        pa.schema(selection.filter_contents(ContentFilter.nothing().include("/obj1", subtree=True)).schema())
     )
     assert builder == raw

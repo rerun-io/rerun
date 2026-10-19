@@ -618,7 +618,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // were it not that the server treats a non-empty list as exhaustive and drops
             // static-only components (those with no temporal index). Leaving it empty is correct.
             //
-            // TODO(RR-3157): ideally `DatasetView` would let users select components explicitly,
+            // TODO(RR-3157): ideally `DatasetSelection` would let users select components explicitly,
             // so we wouldn't have to infer them from the query.
             if self.query_expression.sparse_fill_strategy == SparseFillStrategy::None
                 && let Some(projected_components) = projection.map(|projection| {

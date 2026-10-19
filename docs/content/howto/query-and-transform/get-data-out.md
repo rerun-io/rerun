@@ -149,25 +149,25 @@ See [Where a query runs](query_performance_tuning.md#where-a-query-runs) for wha
 
 ## Querying a subset of a dataset
 
-In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetView` objects:
+In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetSelection` objects:
 
 ```python
 # Filter by entity paths
-dataset_view = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
 
 # Filter by segment IDs (recording IDs)
-dataset_view = dataset.filter_segments(["recording_001", "recording_002"])
+selection = dataset.filter_segments(["recording_001", "recording_002"])
 
 # Chain filters
-dataset_view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
+selection = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
 ```
 
 `filter_contents()` takes [entity path filter](../../concepts/logging-and-ingestion/entity-path.md#entity-path-filters) expressions.
 
-`DatasetView` instances have the exact same `reader()` method as the original dataset:
+`DatasetSelection` instances have the exact same `reader()` method as the original dataset:
 
 ```python
-df = dataset_view.reader(index="frame_nr")
+df = selection.reader(index="frame_nr")
 
 print(df)
 ```
