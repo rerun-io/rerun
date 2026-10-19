@@ -793,7 +793,11 @@ impl AgentSession {
                 if let Some(failure) =
                     McpStartupFailure::from_codex_update(&update, &self.requested_mcp_servers)
                 {
-                    self.transcript.push_mcp_startup_failure(failure);
+                    if let Some(note) = failure.replaced_by_agent_config_note() {
+                        self.transcript.push_note(note, false);
+                    } else {
+                        self.transcript.push_mcp_startup_failure(failure);
+                    }
                 } else {
                     self.transcript.apply(update);
                 }
@@ -1284,6 +1288,34 @@ mod tests {
         let report = session.take_finished_turns().pop().unwrap();
         assert_eq!(report.tool_calls, 0);
         assert!(report.failed_tool_calls.is_empty());
+    }
+
+    #[test]
+    fn codex_config_replacing_our_mcp_server_is_a_notice() {
+        let mut session = AgentSession::default();
+        let error = "[codex-acp] MCP server `rerun` was not started, because the Codex config \
+                     already defines an MCP server with this name. Codex uses its own entry, \
+                     or no server if that entry is disabled.";
+        session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("mcp_startup.rerun.1", "mcp__rerun__startup")
+                .status(ToolCallStatus::Failed)
+                .content(vec![ToolCallContent::from(ContentBlock::Text(
+                    TextContent::new(error),
+                ))]),
+        )));
+
+        let TranscriptItem::Note { text, is_error } = &session.transcript.items[0].item else {
+            panic!(
+                "expected a note, got {:?}",
+                session.transcript.items[0].item
+            );
+        };
+        assert!(!is_error);
+        assert_eq!(
+            text,
+            "Codex uses the `rerun` MCP server from `[mcp_servers.rerun]` in your Codex config \
+             instead of the one Rerun provides."
+        );
     }
 
     #[test]
