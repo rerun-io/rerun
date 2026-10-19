@@ -1,5 +1,7 @@
 //! Independent copies of configured container hierarchies.
 
+use std::collections::BTreeMap;
+
 use re_viewer_context::{ContainerId, Contents, ViewerContext};
 
 use crate::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint, ViewportCommand};
@@ -9,7 +11,7 @@ impl ContainerBlueprint {
     ///
     /// Unlike [`Clone::clone`], this creates a new identity and remaps the active tab.
     /// Returns `None` if any child cannot be copied.
-    pub fn duplicate(
+    fn duplicate(
         &self,
         id: ContainerId,
         mut duplicate_child: impl FnMut(Contents) -> Option<Contents>,
@@ -41,6 +43,7 @@ impl ViewportBlueprint {
     ///
     /// Cloning the root puts the original and the copy in a new tab container.
     /// The operation is deferred until the end of the frame, like other layout edits.
+    /// The copy includes layout commands preceding it, but not commands following it.
     pub fn duplicate_container(
         &self,
         container_id: &ContainerId,
@@ -58,31 +61,74 @@ impl ViewportBlueprint {
 
     fn duplicate_container_tree(
         &self,
+        current_containers: &BTreeMap<ContainerId, ContainerBlueprint>,
         source: ContainerId,
         target: ContainerId,
         ctx: &ViewerContext<'_>,
         containers: &mut Vec<ContainerBlueprint>,
         views: &mut Vec<ViewBlueprint>,
     ) -> Option<()> {
-        let container = self.container(&source)?.duplicate(target, |child| {
-            Some(match child {
-                Contents::View(id) => {
-                    let view = self
-                        .view(&id)?
-                        .duplicate(ctx.store_context, ctx.blueprint_query);
-                    let new_id = view.id;
-                    views.push(view);
-                    Contents::View(new_id)
-                }
-                Contents::Container(id) => {
-                    let new_id = ContainerId::random();
-                    self.duplicate_container_tree(id, new_id, ctx, containers, views)?;
-                    Contents::Container(new_id)
-                }
-            })
-        })?;
+        let container = current_containers
+            .get(&source)?
+            .duplicate(target, |child| {
+                Some(match child {
+                    Contents::View(id) => {
+                        let view = self
+                            .view(&id)?
+                            .duplicate(ctx.store_context, ctx.blueprint_query);
+                        let new_id = view.id;
+                        views.push(view);
+                        Contents::View(new_id)
+                    }
+                    Contents::Container(id) => {
+                        let new_id = ContainerId::random();
+                        self.duplicate_container_tree(
+                            current_containers,
+                            id,
+                            new_id,
+                            ctx,
+                            containers,
+                            views,
+                        )?;
+                        Contents::Container(new_id)
+                    }
+                })
+            })?;
         containers.push(container);
         Some(())
+    }
+
+    fn containers_for_duplication(&self) -> BTreeMap<ContainerId, ContainerBlueprint> {
+        let contents_from_tile_id = self.contents_from_tile_id();
+        self.tree
+            .tiles
+            .iter()
+            .filter_map(|(tile_id, tile)| {
+                let egui_tiles::Tile::Container(container) = tile else {
+                    return None;
+                };
+                let Contents::Container(id) = *contents_from_tile_id.get(tile_id)? else {
+                    return None; // Temporary single-view tabs map directly to their view.
+                };
+                // Do not silently omit a missing child while reconstructing the source.
+                if !container.children().all(|child| {
+                    self.tree.tiles.get(*child).is_some()
+                        && contents_from_tile_id.contains_key(child)
+                }) {
+                    return None;
+                }
+                let mut snapshot = ContainerBlueprint::from_egui_tiles_container(
+                    id,
+                    container,
+                    self.tree.is_visible(*tile_id),
+                    &contents_from_tile_id,
+                );
+                snapshot.display_name = self
+                    .container(&id)
+                    .and_then(|original| original.display_name.clone());
+                Some((id, snapshot))
+            })
+            .collect()
     }
 }
 
@@ -101,8 +147,16 @@ pub(super) fn apply_duplicate_container(
     // a partly inserted hierarchy behind.
     let mut containers = Vec::new();
     let mut views = Vec::new();
+    let current_containers = blueprint.containers_for_duplication();
     if blueprint
-        .duplicate_container_tree(source, target, ctx, &mut containers, &mut views)
+        .duplicate_container_tree(
+            &current_containers,
+            source,
+            target,
+            ctx,
+            &mut containers,
+            &mut views,
+        )
         .is_none()
     {
         re_log::warn_once!("Cannot clone a container with missing contents");

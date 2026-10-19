@@ -9,7 +9,7 @@ classDiagram
         +id: ContainerId
         +contents: Vec~Contents~
         +active_tab: Option~Contents~
-        +duplicate(id: ContainerId, duplicate_child: FnMut) Option~ContainerBlueprint~
+        -duplicate(id: ContainerId, duplicate_child: FnMut) Option~ContainerBlueprint~
     }
     class ViewBlueprint {
         +id: ViewId

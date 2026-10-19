@@ -50,7 +50,7 @@ classDiagram
         +id: ContainerId
         +contents: Vec~Contents~
         +active_tab: Option~Contents~
-        +duplicate(id: ContainerId, duplicate_child: FnMut) Option~ContainerBlueprint~
+        -duplicate(id: ContainerId, duplicate_child: FnMut) Option~ContainerBlueprint~
     }
     class ViewBlueprint {
         +id: ViewId
@@ -119,10 +119,11 @@ fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &Contain
 }
 ```
 
-The concrete Prototype operation is owned by `ContainerBlueprint`:
+The concrete Prototype operation is a private helper owned by `ContainerBlueprint`:
+Only `ViewportBlueprint::duplicate_container()` is exposed to the context-menu crate.
 
 ```rust
-pub fn duplicate(
+fn duplicate(
     &self,
     id: ContainerId,
     mut duplicate_child: impl FnMut(Contents) -> Option<Contents>,
@@ -152,11 +153,32 @@ pub fn duplicate(
 In plain language: copy the settings, replace every child with its own copy, and point the active tab at the corresponding copied child.
 `ViewportBlueprint::duplicate_container_tree()` supplies the recursive callback: containers repeat this operation, while views reuse `ViewBlueprint::duplicate()` to retain their stored properties and entity overrides.
 
+Before traversing the hierarchy, the command snapshots the current working layout with `ContainerBlueprint::from_egui_tiles_container()`.
+Saving and cloning share the same internal tile-to-blueprint mapping, including newly added containers and temporary single-view tab wrappers.
+Names are retained from the stored container model; layout kind, children, proportions, visibility, and active tabs come from the current tree.
 The whole subtree is constructed before insertion, so a missing descendant does not leave a partly inserted copy.
 Insertion is queued as `ViewportCommand::DuplicateContainer` and applied at the end of the frame, matching Rerun's existing layout-edit workflow.
 A normal copy is placed immediately after the original in the same parent.
 Copying the root creates a new tab container holding the original and its copy.
 The copy is activated when necessary so it is visible inside a tab parent.
+
+### Review follow-up: command ordering and helper visibility
+
+The original implementation commit is `84b6da8994`.
+The separate local review follow-up fixes command ordering and broadens regression coverage; neither source commit has been pushed.
+
+**Rule:** Clone includes earlier layout commands in the same queue and excludes later commands.
+For example, changing a dashboard from Grid to Horizontal and then cloning it produces a Horizontal copy.
+Cloning it first and then changing the original to Horizontal leaves the copy as Grid.
+
+A regression test reproduced the original defect before the fix: the original became Horizontal, but its copy stayed Grid.
+The cause was two representations of the layout: earlier commands updated the working tree, while cloning still read the older container map.
+The fix builds an in-memory snapshot from the working tree when the Clone command executes, without saving or reloading the database midway through processing.
+Recursive copying then uses that snapshot.
+
+The container-level `duplicate()` helper is now private because it only serves this implementation.
+The menu-facing `ViewportBlueprint::duplicate_container()` remains public.
+This changes visibility, not the Prototype responsibilities or normal menu behavior.
 
 ### Where the change sits in the program
 
@@ -165,7 +187,8 @@ flowchart LR
     User[User right-clicks a container] --> Menu[Viewer context menu: CloneContentsAction]
     Menu --> Model[ViewportBlueprint: request and coordinate copy]
     Model --> Queue[ViewportCommand: DuplicateContainer]
-    Queue --> Copy[End of frame: copy the entire subtree]
+    Queue --> Snapshot[At this command: snapshot the current working layout]
+    Snapshot --> Copy[Copy the entire subtree from that snapshot]
     Copy --> Container[ContainerBlueprint.duplicate: settings and child references]
     Copy --> View[Existing ViewBlueprint.duplicate: view settings and overrides]
     Container --> Store[Blueprint store: viewer configuration]
@@ -229,13 +252,18 @@ Users can also reuse a configured dashboard without manually rebuilding its hier
 
 ### Validation
 
-- All 13 tests passed across `re_viewport_blueprint` and `re_context_menu`, using `cargo nextest run --all-features --no-fail-fast`.
-- Four new regression tests cover nested independent copies, root cloning, unknown containers, and missing descendants.
+- All 21 tests passed across `re_viewport_blueprint` and `re_context_menu`, using `cargo nextest run --all-features --no-fail-fast`.
+- Twelve cloning regression tests now cover the original four scenarios plus eight review-follow-up scenarios: queue order, moved children, sizing and tab changes, newly added views and containers, every parent layout, independent view overrides, and replaced trees with temporary tabs.
 - The nested test checks all four container kinds, an empty hidden container, fresh identifiers, names, visibility, row and column shares, grid column count, remapped active tabs, view origins, entity filters, title-bar settings, and copied stored entity overrides.
 - A persisted rename and visibility change on the copied container leaves the original unchanged.
+- Changing a copied view's stored visibility override, then saving and reloading, leaves the original override unchanged.
+- Insertion between siblings is tested in Tabs, Horizontal, Vertical, and Grid parents, preserving unaffected siblings' order and applicable sizing settings.
+- The stale-layout regression failed before the fix and passes afterward.
 - Clippy passed for both affected crates with all targets and features, without warnings.
 - Rust formatting passed, and the modified development viewer built successfully.
 - Manual viewer verification confirmed the new menu action, copied nested tabs, independent container and view names, and the unchanged original.
+- The rebuilt review-follow-up viewer was checked again on October 18: nested cloning and independent container renaming still work.
+  The original before/after videos are retained as evidence of the unchanged normal behavior.
 - The complete final fast-lint run passed, covering code generation, repository conventions, Rust formatting, Python formatting and typing, spelling, file sizes, and notebook cleanliness.
   Final lint review corrected the new test's iterator style and a short-hash spelling false positive; the file-size check also passed after staging the renamed source file.
 
