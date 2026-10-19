@@ -741,6 +741,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SortBy as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The column and direction a table's rows are sorted by.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SortBy::arrow_data_type(),
+                encoding: Some("rerun.blueprint.encodings.SortBy"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: SortBy::verify_arrow_array,
+            },
+        ),
+        (
             <SqlFilterExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "A SQL expression that selects the rows of a table.\n\nThe expression evaluates to a boolean.\nIt is written in the generic SQL dialect of DataFusion, with lambdas such as `x -> x > 1` for list columns.\n\nColumn names are double-quoted, e.g. `\"task\" ILIKE '%pick%'`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -5758,6 +5771,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Filters",
                         component_type: "rerun.blueprint.components.SqlFilterExpression".into(),
                         docstring_md: "Filters for the table's rows.\n\nA row in the table is only shown when *all* filters evaluate to true for it.\nEach filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.\nWrite one condition per filter instead of joining them with `AND`.\n\nUsers cannot write SQL in the viewer.\nThey add filters with \"Filter\" in a column header's menu, which only writes the forms below.\nThe viewer shows these forms on a single column `\"c\"` as filters the user can edit.\nAny other expression shows as a `Custom \"c\" filter` chip, which the user can only remove and whose SQL only shows on hover:\n* Numbers: `\"c\" = 7`, `\"c\" < 7`, `\"c\" <= 7`, `\"c\" > 7`, `\"c\" >= 7`.\n  For a 32-bit float column, write the value as `CAST(0.1 AS REAL)`.\n* Strings: `\"c\" ILIKE '%text%'` for contains, `'text%'` for starts with, `'%text'` for ends with.\n  Put a backslash before a literal `%`, `_` or backslash, and follow the pattern with an ESCAPE clause that names a quoted backslash.\n* Booleans: `\"c\" = true`, `\"c\" = false`, and `\"c\" IS NULL` for a nullable column.\n* Timestamps: `\"c\" < TIMESTAMPTZ '2026-01-01T00:00:00Z'` for before, `>=` for after, and both joined with `AND` for between.\n  Relative ranges have the same shape, such as `\"c\" >= now() - INTERVAL '24 hours' AND \"c\" < now()` for the last 24 hours,\n  or `\"c\" >= date_trunc('day', now()) AND \"c\" < date_trunc('day', now()) + INTERVAL '1 day'` for today.\n  Use `'week'` with `INTERVAL '7 days'` for this week, and shift both bounds back for yesterday or last week.\n  For an `Int64` column of nanoseconds, use `to_timestamp_nanos(\"c\")`.\n* Lists: any form above on `x` inside `any_match(\"c\", x -> …)`, true when any element is.\n\nWrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "sort_by",
+                        display_name: "Sort by",
+                        component_type: "rerun.blueprint.components.SortBy".into(),
+                        docstring_md: "The column and direction the table's rows are sorted by.\n\nRows keep the order of the data when unset.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/column_display_mode.hpp"
+#include "../../blueprint/components/sort_by.hpp"
 #include "../../blueprint/components/sql_filter_expression.hpp"
 #include "../../blueprint/components/table_layout_kind.hpp"
 #include "../../collection.hpp"
@@ -67,6 +68,11 @@ namespace rerun::blueprint::archetypes {
         /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
         std::optional<ComponentBatch> filters;
 
+        /// The column and direction the table's rows are sorted by.
+        ///
+        /// Rows keep the order of the data when unset.
+        std::optional<ComponentBatch> sort_by;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TableBlueprint";
@@ -85,6 +91,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_filters = ComponentDescriptor(
             ArchetypeName, "TableBlueprint:filters",
             Loggable<rerun::blueprint::components::SqlFilterExpression>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `sort_by` field.
+        static constexpr auto Descriptor_sort_by = ComponentDescriptor(
+            ArchetypeName, "TableBlueprint:sort_by",
+            Loggable<rerun::blueprint::components::SortBy>::ComponentType
         );
 
       public:
@@ -152,6 +163,14 @@ namespace rerun::blueprint::archetypes {
             const Collection<rerun::blueprint::components::SqlFilterExpression>& _filters
         ) && {
             filters = ComponentBatch::from_loggable(_filters, Descriptor_filters).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The column and direction the table's rows are sorted by.
+        ///
+        /// Rows keep the order of the data when unset.
+        TableBlueprint with_sort_by(const rerun::blueprint::components::SortBy& _sort_by) && {
+            sort_by = ComponentBatch::from_loggable(_sort_by, Descriptor_sort_by).value_or_throw();
             return std::move(*this);
         }
 

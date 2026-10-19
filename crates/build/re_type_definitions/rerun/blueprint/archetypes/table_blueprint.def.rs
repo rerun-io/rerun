@@ -53,6 +53,11 @@ pub struct TableBlueprint {
     /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
     #[rerun(optional)]
     pub filters: Option<Vec<rerun::blueprint::components::SqlFilterExpression>>,
+
+    /// The column and direction the table's rows are sorted by.
+    ///
+    /// Rows keep the order of the data when unset.
+    #[rerun(optional)]
+    pub sort_by: Option<rerun::blueprint::components::SortBy>,
     // TODO(andreas): Reject `Cards` without a configured card layout in the ergonomic API.
-    // TODO(andreas): Add persisted column sorting.
 }

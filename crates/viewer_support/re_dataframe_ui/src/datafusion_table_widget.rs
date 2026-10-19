@@ -25,10 +25,12 @@ use re_viewer_context::{
     AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, TableReference,
 };
 
+use re_types_core::reflection::Enum as _;
+
 use crate::DisplayRecordBatch;
-use crate::blueprint::{TableBlueprint, TableColumn};
+use crate::blueprint::{ResolvedSortBy, TableBlueprint, TableColumn};
 use crate::cards_view::FlagChangeEvent;
-use crate::column_sorting::{SortBy, SortDirection};
+use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
     EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
@@ -503,8 +505,8 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    /// Set the initial sort used when no egui-owned adapter state exists yet.
-    pub fn sort_by(mut self, sort_by: SortBy) -> Self {
+    /// Set the sort used when the table blueprint has no sort.
+    pub fn default_sort_by(mut self, sort_by: SortBy) -> Self {
         self.initial_query_data.sort_by = Some(sort_by);
         self
     }
@@ -665,9 +667,12 @@ impl<'a> DataFusionTableWidget<'a> {
         // The TableConfig should be persisted across sessions, so we also need a static id.
         let session_id =
             id_from_session_context_and_table(&self.session_ctx, &self.datafusion_table_ref);
+        let blueprint_ctx = table_blueprints.blueprint_context_for(app_ctx, &self.table_ref);
         let initial_query_data = DataFusionQueryData {
-            filters: TableBlueprint::load_filters(
-                &table_blueprints.blueprint_context_for(app_ctx, &self.table_ref),
+            filters: TableBlueprint::load_filters(&blueprint_ctx),
+            sort_by: TableBlueprint::load_sort_by(
+                &blueprint_ctx,
+                self.initial_query_data.sort_by.as_ref(),
             ),
             ..self.initial_query_data.clone()
         };
@@ -776,7 +781,8 @@ impl<'a> DataFusionTableWidget<'a> {
     /// UI for a query that failed.
     ///
     /// Shows the filter bar above the error, so the filters of the query can still be edited
-    /// and removed. The query runs again when the filters of the table blueprint change.
+    /// and removed. The query runs again when the filters or the sort of the table blueprint
+    /// change.
     #[expect(clippy::too_many_arguments)]
     fn query_error_ui(
         &self,
@@ -814,12 +820,15 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         let mut filter_state = FilterState::load(ui.ctx(), session_id, &filters, &schema);
-        let new_filters = filter_state.filter_bar_ui(
-            ui,
-            app_ctx.app_options.timestamp_format,
-            &err.filter_errors,
-            None,
-        );
+        let new_filters = filter_state
+            .filter_bar_ui(
+                ui,
+                app_ctx.app_options.timestamp_format,
+                &err.filter_errors,
+                None,
+                None,
+            )
+            .filters;
         filter_state.store(ui.ctx(), session_id);
 
         let error = format!("Could not load table: {}", query_error_message(&err.error));
@@ -847,12 +856,15 @@ impl<'a> DataFusionTableWidget<'a> {
         if let Some(new_filters) = &new_filters {
             TableBlueprint::save_filters(&blueprint_ctx, new_filters);
         }
-        let filters = new_filters.unwrap_or(filters);
-        if table_state.query_data().filters != filters {
-            let query_data = DataFusionQueryData {
-                filters,
-                ..table_state.query_data().clone()
-            };
+        let query_data = DataFusionQueryData {
+            filters: new_filters.unwrap_or(filters),
+            sort_by: TableBlueprint::load_sort_by(
+                &blueprint_ctx,
+                self.initial_query_data.sort_by.as_ref(),
+            ),
+            ..table_state.query_data().clone()
+        };
+        if table_state.query_data() != &query_data {
             table_state.update_query(runtime, ui, query_data);
         }
 
@@ -924,11 +936,36 @@ impl<'a> DataFusionTableWidget<'a> {
             &blueprint_ctx,
             &data_columns,
             &self.additional_column_heuristics,
+            self.initial_query_data.sort_by.as_ref(),
         );
         self.store_table_schema(ui.ctx(), &blueprint, &query_result.original_schema);
         let mut column_display_mode = blueprint.column_display_mode;
 
         query_data.filters.clone_from(&blueprint.filters);
+        let mut sort_by = blueprint
+            .sort_by
+            .as_ref()
+            .map(|sort_by| sort_by.sort_by().clone());
+        query_data.sort_by.clone_from(&sort_by);
+
+        // A missing sort from the table blueprint shows as a pill that removes it. A missing
+        // default sort only logs a warning.
+        let missing_sort_by = blueprint.sort_by.as_ref().filter(|sort_by| {
+            query_result.missing_sort_column.as_ref() == Some(&sort_by.sort_by().column_name)
+        });
+        let missing_blueprint_sort_column = match missing_sort_by {
+            Some(ResolvedSortBy::Blueprint(sort_by)) => Some(&sort_by.column_name),
+            Some(ResolvedSortBy::Default(sort_by)) => {
+                // The default sort comes from the code creating the widget, so a missing column
+                // here is a bug in that code.
+                re_log::debug_warn_once!(
+                    "The table has no column {:?} to sort by",
+                    sort_by.column_name.as_str()
+                );
+                None
+            }
+            None => None,
+        };
         let mut filter_state = FilterState::load(
             ui.ctx(),
             session_id,
@@ -1059,14 +1096,21 @@ impl<'a> DataFusionTableWidget<'a> {
                 .collect(),
         };
         let applied_filters = query_data.filters.clone();
-        if let Some(filters) = filter_state.filter_bar_ui(
+        let filter_bar = filter_state.filter_bar_ui(
             ui,
             ctx.app_options.timestamp_format,
             &query_result.filter_errors,
             Some(&filter_controls),
-        ) {
+            missing_blueprint_sort_column,
+        );
+        if let Some(filters) = filter_bar.filters {
             TableBlueprint::save_filters(&blueprint_ctx, &filters);
             query_data.filters = filters;
+        }
+        if filter_bar.remove_sort {
+            TableBlueprint::clear_sort_by(&blueprint_ctx);
+            sort_by.clone_from(&self.initial_query_data.sort_by);
+            query_data.sort_by.clone_from(&sort_by);
         }
 
         let no_matches = !should_show_loading_indicator
@@ -1214,6 +1258,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         .with_preview_columns(preview_columns)
                         .show(ui);
                     });
+
+                if query_data.sort_by != sort_by
+                    && let Some(new_sort_by) = &query_data.sort_by
+                {
+                    TableBlueprint::save_sort_by(&blueprint_ctx, new_sort_by);
+                }
             }
             TableLayoutKind::Cards => {
                 if let Some(card_layout) = blueprint.card_layout {
@@ -1842,9 +1892,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                 .monospace(),
                         );
 
-                        if let Some(dir_icon) =
-                            current_sort_direction.as_ref().map(SortDirection::icon)
-                        {
+                        if let Some(dir_icon) = current_sort_direction.map(|d| d.icon()) {
                             ui.add_space(-5.0);
                             ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
                         }
@@ -1858,7 +1906,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         )
                         .config(MenuConfig::new().style(menu_style()))
                         .ui(ui, |ui| {
-                            for sort_direction in SortDirection::iter() {
+                            for &sort_direction in SortDirection::variants() {
                                 let already_sorted = Some(sort_direction) == current_sort_direction;
 
                                 if ui

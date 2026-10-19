@@ -11,14 +11,11 @@ use egui::{Key, Modifiers, Role};
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use egui_kittest::{Harness, SnapshotResults};
 use re_async::AsyncRuntimeHandle;
-use re_chunk_store::external::re_chunk::Chunk;
 use re_dataframe_ui::{ColumnFilter, DataFusionTableWidget, TableBlueprints, TimestampFilter};
-use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
 use re_sdk_types::blueprint::archetypes::TableBlueprint;
 use re_sdk_types::blueprint::components::SqlFilterExpression;
 use re_test_context::TestContext;
-use re_viewer_context::{TableReference, blueprint_timepoint_for_writes};
+use re_viewer_context::TableReference;
 
 use common::run_async_harness;
 
@@ -393,22 +390,7 @@ fn timestamp_field() -> Field {
 
 /// Sets up a default table blueprint with the given filters.
 fn setup_table_blueprint(test_context: &TestContext, filters: &[String]) -> TableBlueprints {
-    let blueprint_id = StoreId::random(StoreKind::Blueprint, "table-blueprint-test");
-    let mut store_hub = test_context.store_hub.lock();
-    write_filters(
-        store_hub.store_bundle_mut().blueprint_entry(&blueprint_id),
-        filters,
-    );
-
-    let mut table_blueprints = TableBlueprints::default();
-    table_blueprints
-        .set_default_blueprint(
-            &TableReference::local("test_table"),
-            &blueprint_id,
-            &mut store_hub,
-        )
-        .expect("default table blueprint should be set");
-    table_blueprints
+    common::setup_table_blueprint(test_context, &filters_fields(filters))
 }
 
 /// Writes the filters to the active table blueprint.
@@ -417,34 +399,15 @@ fn write_active_filters(
     table_blueprints: &TableBlueprints,
     filters: &[String],
 ) {
-    let active_id = table_blueprints
-        .active_id(&TableReference::local("test_table"))
-        .expect("table should have an active blueprint");
-    let mut store_hub = test_context.store_hub.lock();
-    write_filters(
-        store_hub.store_bundle_mut().blueprint_entry(active_id),
-        filters,
-    );
+    common::write_active_table_blueprint(test_context, table_blueprints, &filters_fields(filters));
 }
 
-fn write_filters(store: &mut EntityDb, filters: &[String]) {
-    let timepoint = blueprint_timepoint_for_writes(store);
-    let chunk = Arc::new(
-        Chunk::builder("table")
-            .with_archetype_auto_row(
-                timepoint,
-                &TableBlueprint::update_fields().with_filters(
-                    filters
-                        .iter()
-                        .map(|sql| SqlFilterExpression::from(sql.as_str())),
-                ),
-            )
-            .build()
-            .expect("filter chunk should build"),
-    );
-    store
-        .add_chunk(&chunk)
-        .expect("filter chunk should be added");
+fn filters_fields(filters: &[String]) -> TableBlueprint {
+    TableBlueprint::update_fields().with_filters(
+        filters
+            .iter()
+            .map(|sql| SqlFilterExpression::from(sql.as_str())),
+    )
 }
 
 /// The filters in the active table blueprint.
@@ -452,26 +415,15 @@ fn blueprint_filters(
     test_context: &TestContext,
     table_blueprints: &TableBlueprints,
 ) -> Vec<String> {
-    let active_id = table_blueprints
-        .active_id(&TableReference::local("test_table"))
-        .expect("table should have an active blueprint");
-    let store_hub = test_context.store_hub.lock();
-    let store = store_hub
-        .store_bundle()
-        .get(active_id)
-        .expect("active blueprint should exist");
-    let component = TableBlueprint::descriptor_filters().component;
-    store
-        .latest_at(
-            &re_chunk_store::LatestAtQuery::latest(re_viewer_context::blueprint_timeline()),
-            &"/table".into(),
-            [component],
-        )
-        .component_batch::<SqlFilterExpression>(component)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|filter| filter.as_str().to_owned())
-        .collect()
+    common::read_active_table_blueprint::<SqlFilterExpression>(
+        test_context,
+        table_blueprints,
+        TableBlueprint::descriptor_filters().component,
+    )
+    .unwrap_or_default()
+    .into_iter()
+    .map(|filter| filter.as_str().to_owned())
+    .collect()
 }
 
 /// Sets up a table with an integer and a timestamp column.

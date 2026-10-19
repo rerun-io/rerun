@@ -73,6 +73,11 @@ pub struct TableBlueprint {
     ///
     /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
     pub filters: Option<SerializedComponentBatch>,
+
+    /// The column and direction the table's rows are sorted by.
+    ///
+    /// Rows keep the order of the data when unset.
+    pub sort_by: Option<SerializedComponentBatch>,
 }
 
 impl TableBlueprint {
@@ -117,6 +122,20 @@ impl TableBlueprint {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::sort_by`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::SortBy`].
+    #[inline]
+    pub fn descriptor_sort_by() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:sort_by".into(),
+                component_type: Some("rerun.blueprint.components.SortBy".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -125,27 +144,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
             TableBlueprint::descriptor_filters(),
+            TableBlueprint::descriptor_sort_by(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
             TableBlueprint::descriptor_filters(),
+            TableBlueprint::descriptor_sort_by(),
         ]
     });
 
 impl TableBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 impl ::re_types_core::Archetype for TableBlueprint {
@@ -202,10 +223,14 @@ impl ::re_types_core::Archetype for TableBlueprint {
         let filters = arrays_by_descr
             .get(&Self::descriptor_filters())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_filters()));
+        let sort_by = arrays_by_descr
+            .get(&Self::descriptor_sort_by())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_sort_by()));
         Ok(Self {
             layout,
             column_display_mode,
             filters,
+            sort_by,
         })
     }
 }
@@ -218,6 +243,7 @@ impl ::re_types_core::AsComponents for TableBlueprint {
             self.layout.clone(),
             self.column_display_mode.clone(),
             self.filters.clone(),
+            self.sort_by.clone(),
         ]
         .into_iter()
         .flatten()
@@ -235,6 +261,7 @@ impl TableBlueprint {
             layout: None,
             column_display_mode: None,
             filters: None,
+            sort_by: None,
         }
     }
 
@@ -260,6 +287,10 @@ impl TableBlueprint {
             filters: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::SqlFilterExpression::arrow_empty(),
                 Self::descriptor_filters(),
+            )),
+            sort_by: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::SortBy::arrow_empty(),
+                Self::descriptor_sort_by(),
             )),
         }
     }
@@ -322,6 +353,18 @@ impl TableBlueprint {
         filters: impl IntoIterator<Item = impl Into<crate::blueprint::components::SqlFilterExpression>>,
     ) -> Self {
         self.filters = try_serialize_field(Self::descriptor_filters(), filters);
+        self
+    }
+
+    /// The column and direction the table's rows are sorted by.
+    ///
+    /// Rows keep the order of the data when unset.
+    #[inline]
+    pub fn with_sort_by(
+        mut self,
+        sort_by: impl Into<crate::blueprint::components::SortBy>,
+    ) -> Self {
+        self.sort_by = try_serialize_field(Self::descriptor_sort_by(), [sort_by]);
         self
     }
 }

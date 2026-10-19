@@ -4,6 +4,6 @@ mod table_column;
 mod table_layout;
 
 pub use card_layout::CardLayout;
-pub use table_blueprint::{PreviewsConfig, TableBlueprint};
+pub use table_blueprint::{PreviewsConfig, ResolvedSortBy, TableBlueprint};
 pub use table_column::TableColumn;
 pub use table_layout::TableLayout;

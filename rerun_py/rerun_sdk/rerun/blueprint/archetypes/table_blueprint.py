@@ -13,7 +13,7 @@ from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, encodings as blueprint_encodings
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -46,6 +46,7 @@ class TableBlueprint(Archetype):
         layout: blueprint_components.TableLayoutKindLike | None = None,
         column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
         filters: encodings.Utf8ArrayLike | None = None,
+        sort_by: blueprint_encodings.SortByLike | None = None,
     ) -> None:
         """
         Create a new instance of the TableBlueprint archetype.
@@ -86,12 +87,18 @@ class TableBlueprint(Archetype):
             * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
 
             Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
+        sort_by:
+            The column and direction the table's rows are sorted by.
+
+            Rows keep the order of the data when unset.
 
         """
 
         # You can define your own __init__ function as a member of TableBlueprintExt in table_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(layout=layout, column_display_mode=column_display_mode, filters=filters)
+            self.__attrs_init__(
+                layout=layout, column_display_mode=column_display_mode, filters=filters, sort_by=sort_by
+            )
             return
         self.__attrs_clear__()
 
@@ -101,6 +108,7 @@ class TableBlueprint(Archetype):
             layout=None,
             column_display_mode=None,
             filters=None,
+            sort_by=None,
         )
 
     @classmethod
@@ -118,6 +126,7 @@ class TableBlueprint(Archetype):
         layout: blueprint_components.TableLayoutKindLike | None = None,
         column_display_mode: blueprint_components.ColumnDisplayModeLike | None = None,
         filters: encodings.Utf8ArrayLike | None = None,
+        sort_by: blueprint_encodings.SortByLike | None = None,
     ) -> TableBlueprint:
         """
         Update only some specific fields of a `TableBlueprint`.
@@ -160,6 +169,10 @@ class TableBlueprint(Archetype):
             * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
 
             Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
+        sort_by:
+            The column and direction the table's rows are sorted by.
+
+            Rows keep the order of the data when unset.
 
         """
 
@@ -169,6 +182,7 @@ class TableBlueprint(Archetype):
                 "layout": layout,
                 "column_display_mode": column_display_mode,
                 "filters": filters,
+                "sort_by": sort_by,
             }
 
             if clear_unset:
@@ -207,6 +221,14 @@ class TableBlueprint(Archetype):
             "TableBlueprint:filters",
             archetype=TableBlueprint.NAME,
             component_type=blueprint_components.SqlFilterExpressionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_sort_by() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TableBlueprint:sort_by",
+            archetype=TableBlueprint.NAME,
+            component_type=blueprint_components.SortByBatch._COMPONENT_TYPE,
         )
 
     layout: blueprint_components.TableLayoutKindBatch | None = field(
@@ -261,6 +283,17 @@ class TableBlueprint(Archetype):
     # * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
     #
     # Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    sort_by: blueprint_components.SortByBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.SortByBatch._converter,  # type: ignore[misc]
+    )
+    # The column and direction the table's rows are sorted by.
+    #
+    # Rows keep the order of the data when unset.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

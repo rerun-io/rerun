@@ -3,6 +3,7 @@ use std::mem;
 use arrow::datatypes::Schema;
 use egui::{Atom, Atoms, Frame, Margin, Sense, WidgetAtom};
 use re_log_types::TimestampFormat;
+use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::filter_widget::{FilterMatcher, PathRanges, format_matching_text};
 use re_ui::list_item::CustomContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -420,9 +421,9 @@ impl FilterState {
     /// Display the filter bar UI.
     ///
     /// A custom filter with an entry in `filter_errors` shows as an error pill.
+    /// A `missing_sort_column` shows as an error pill with a button to remove the sort.
     ///
-    /// Returns the filters to write to the table blueprint when the user commits an edit.
-    /// Filters that select every row are left out.
+    /// Filters that select every row are left out of the returned filters.
     #[must_use]
     pub fn filter_bar_ui(
         &mut self,
@@ -430,50 +431,22 @@ impl FilterState {
         timestamp_format: TimestampFormat,
         filter_errors: &FilterErrors,
         controls: Option<&FilterControls>,
-    ) -> Option<Vec<String>> {
+        missing_sort_column: Option<&ColumnName>,
+    ) -> FilterBarOutput {
         // From there on, we always want to show the "today" date, because not doing so leads
         // to some very confusing display.
         let timestamp_format =
             timestamp_format.with_date_visibility(re_log_types::DateVisibility::ShowDate);
 
-        let action = self.filter_bar_ui_impl(ui, timestamp_format, filter_errors, controls);
-
-        // On cancel the state isn't stored, so the next frame reads the blueprint again.
-        if action != FilterUiAction::CommitStateToBlueprint {
-            return None;
-        }
-
-        // give a chance to filters to clean themselves up before committing to the table
-        // blueprint
-        for filter in &mut self.filters {
-            if let TableFilter::Column(column_filter) = filter {
-                column_filter.filter.on_commit();
-            }
-        }
-        Some(
-            self.filters
-                .iter()
-                .filter_map(TableFilter::to_sql)
-                .collect(),
-        )
-    }
-
-    #[must_use]
-    fn filter_bar_ui_impl(
-        &mut self,
-        ui: &mut egui::Ui,
-        timestamp_format: TimestampFormat,
-        filter_errors: &FilterErrors,
-        controls: Option<&FilterControls>,
-    ) -> FilterUiAction {
         self.popup_open = false;
 
-        if self.filters.is_empty() && controls.is_none() {
+        if self.filters.is_empty() && controls.is_none() && missing_sort_column.is_none() {
             return Default::default();
         }
 
         let mut added_filter = None;
         let mut action = FilterUiAction::None;
+        let mut remove_sort = false;
 
         Frame::new()
             .inner_margin(Margin {
@@ -487,6 +460,10 @@ impl FilterState {
                 let mut remove_idx = None;
 
                 ui.horizontal_wrapped(|ui| {
+                    if let Some(column) = missing_sort_column {
+                        remove_sort = missing_sort_pill_ui(ui, column);
+                    }
+
                     if controls.is_some() && self.filters.len() > 1 {
                         ui.add_sized(
                             [0.0, ui.text_style_height(&egui::TextStyle::Body) + 8.0],
@@ -572,8 +549,42 @@ impl FilterState {
             self.push_new_filter(filter);
             ui.ctx().request_repaint();
         }
-        action
+
+        // On cancel the state isn't stored, so the next frame reads the blueprint again.
+        if action != FilterUiAction::CommitStateToBlueprint {
+            return FilterBarOutput {
+                filters: None,
+                remove_sort,
+            };
+        }
+
+        // give a chance to filters to clean themselves up before committing to the table
+        // blueprint
+        for filter in &mut self.filters {
+            if let TableFilter::Column(column_filter) = filter {
+                column_filter.filter.on_commit();
+            }
+        }
+        FilterBarOutput {
+            filters: Some(
+                self.filters
+                    .iter()
+                    .filter_map(TableFilter::to_sql)
+                    .collect(),
+            ),
+            remove_sort,
+        }
     }
+}
+
+/// What the user changed in the filter bar.
+#[derive(Debug, Default)]
+pub struct FilterBarOutput {
+    /// The filters to write to the table blueprint when the user commits an edit.
+    pub filters: Option<Vec<String>>,
+
+    /// Whether the user removed the sort on a missing column.
+    pub remove_sort: bool,
 }
 
 /// Output of the `DisplayFilter::ui` method.
@@ -611,7 +622,8 @@ impl ColumnFilter {
             .with(&TimestampFormatted::new(&self.filter, timestamp_format))
             .to_job(ui.style());
 
-        let (response, should_delete_filter) = filter_pill_ui(ui, None, layout_job);
+        let (response, should_delete_filter) =
+            filter_pill_ui(ui, None, layout_job, "Remove filter");
         let response = response.on_hover_text(self.field.name());
         let action_due_to_filter_deletion = if should_delete_filter {
             FilterUiAction::CommitStateToBlueprint
@@ -703,11 +715,14 @@ impl ColumnFilter {
 
 /// A filter pill with an optional leading icon and a button to remove the filter.
 ///
+/// `remove_label` is the label of the remove button.
+///
 /// Returns the pill's response, and whether the remove button was clicked.
 fn filter_pill_ui(
     ui: &mut egui::Ui,
     icon: Option<egui::Image<'static>>,
     layout_job: egui::text::LayoutJob,
+    remove_label: &str,
 ) -> (egui::Response, bool) {
     let label = layout_job.text.clone();
     let mut atoms = Atoms::default();
@@ -736,7 +751,7 @@ fn filter_pill_ui(
         if ui
             .place(
                 rect,
-                ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, "Remove filter")
+                ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, remove_label)
                     // Without small the button would grow to interact_size and be off-center
                     .small(),
             )
@@ -787,24 +802,14 @@ fn custom_filter_ui(
                 Some(column) => format!(r#"Custom "{column}" filter"#),
                 None => "Error".to_owned(),
             };
-            SyntaxHighlightedBuilder::new().with_format(
-                &text,
-                egui::TextFormat::simple(
-                    egui::TextStyle::Body.resolve(ui.style()),
-                    ui.visuals().error_fg_color,
-                ),
-            )
+            error_text(ui, &text)
         }
     }
     .to_job(ui.style());
 
-    let icon = error.map(|_| {
-        re_ui::icons::ERROR
-            .as_image()
-            .tint(ui.tokens().alert_error.icon)
-    });
+    let icon = error.map(|_| error_icon(ui));
 
-    let (response, should_delete_filter) = filter_pill_ui(ui, icon, layout_job);
+    let (response, should_delete_filter) = filter_pill_ui(ui, icon, layout_job, "Remove filter");
     response.on_hover_ui(|ui| {
         let theme = egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style());
         egui_extras::syntax_highlighting::code_view_ui(ui, &theme, &custom_filter.sql, "sql");
@@ -822,6 +827,40 @@ fn custom_filter_ui(
         should_delete_filter,
         popup_open: false,
     }
+}
+
+/// UI for a sort on a column the table doesn't have, in the error color with an error icon.
+///
+/// Returns whether the user removed the sort.
+fn missing_sort_pill_ui(ui: &mut egui::Ui, column: &ColumnName) -> bool {
+    let column = column.as_str();
+    let layout_job = error_text(ui, &format!(r#"Can't sort by "{column}""#)).to_job(ui.style());
+    let icon = error_icon(ui);
+
+    let (response, should_remove_sort) = filter_pill_ui(ui, Some(icon), layout_job, "Remove sort");
+    response.on_hover_ui(|ui| {
+        ui.error_label(format!(
+            r#"The table has no column "{column}", so the rows are not sorted"#
+        ));
+    });
+
+    should_remove_sort
+}
+
+fn error_text(ui: &egui::Ui, text: &str) -> SyntaxHighlightedBuilder {
+    SyntaxHighlightedBuilder::new().with_format(
+        text,
+        egui::TextFormat::simple(
+            egui::TextStyle::Body.resolve(ui.style()),
+            ui.visuals().error_fg_color,
+        ),
+    )
+}
+
+fn error_icon(ui: &egui::Ui) -> egui::Image<'static> {
+    re_ui::icons::ERROR
+        .as_image()
+        .tint(ui.tokens().alert_error.icon)
 }
 
 /// Get a filter ui action from a text edit response.
@@ -947,12 +986,16 @@ mod tests {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
                 let mut filters = FilterState::load(ui.ctx(), state_id, &saved, &schema);
-                if let Some(new_filters) = filters.filter_bar_ui(
-                    ui,
-                    TimestampFormat::utc(),
-                    &Default::default(),
-                    Some(&controls),
-                ) {
+                if let Some(new_filters) = filters
+                    .filter_bar_ui(
+                        ui,
+                        TimestampFormat::utc(),
+                        &Default::default(),
+                        Some(&controls),
+                        None,
+                    )
+                    .filters
+                {
                     saved = new_filters;
                 }
                 filters.store(ui.ctx(), state_id);
@@ -996,6 +1039,7 @@ mod tests {
                     TimestampFormat::utc(),
                     &Default::default(),
                     Some(&controls),
+                    None,
                 );
             });
         harness.run();
@@ -1070,12 +1114,16 @@ mod tests {
             .with_size(egui::vec2(800.0, 200.0))
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
-                if let Some(new_filters) = filters.filter_bar_ui(
-                    ui,
-                    TimestampFormat::utc(),
-                    &Default::default(),
-                    Some(&controls),
-                ) {
+                if let Some(new_filters) = filters
+                    .filter_bar_ui(
+                        ui,
+                        TimestampFormat::utc(),
+                        &Default::default(),
+                        Some(&controls),
+                        None,
+                    )
+                    .filters
+                {
                     saved = Some(new_filters);
                 }
             });
@@ -1202,10 +1250,11 @@ mod tests {
                         ColumnFilter::new(dummy_field("column:name"), filter.clone()),
                     )]);
 
-                    let _res = filter_state.filter_bar_ui_impl(
+                    let _res = filter_state.filter_bar_ui(
                         ui,
                         TimestampFormat::utc(),
                         &Default::default(),
+                        None,
                         None,
                     );
                 });
@@ -1289,8 +1338,13 @@ mod tests {
             .with_context_setup(re_ui::apply_style_and_install_loaders)
             .with_size(egui::Vec2::new(700.0, 500.0))
             .build_ui(|ui| {
-                let _filters_to_save =
-                    filters.filter_bar_ui(ui, TimestampFormat::utc(), &Default::default(), None);
+                let _filters_to_save = filters.filter_bar_ui(
+                    ui,
+                    TimestampFormat::utc(),
+                    &Default::default(),
+                    None,
+                    None,
+                );
             });
 
         harness.run();
@@ -1337,6 +1391,7 @@ mod tests {
                     TimestampFormat::utc(),
                     &Default::default(),
                     Some(&controls),
+                    None,
                 );
             });
         let mut snapshot_results = SnapshotResults::new();
