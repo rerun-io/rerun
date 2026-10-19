@@ -1,12 +1,13 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
+use re_catalog_client::{Asset, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
 use re_dataframe_ui::{TableCellKind, TableLayoutKind};
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, Asset, ConnectionHandle, DEFAULT_ASSET_TASK_TIMEOUT};
+use re_redap_client::{ApiError, ConnectionHandle};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
@@ -759,7 +760,7 @@ fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
         // written a few milliseconds apart, so the two differ slightly even for an asset that was
         // never updated. Comparing the formatted text instead of the raw timestamps keeps the line
         // from showing the same moment twice. A re-registration is seconds or more later, see
-        // `ConnectionHandle::register_asset`.
+        // `CatalogClient::register_asset`.
         if short_duration_text(asset.last_updated_at, date_format)
             != short_duration_text(asset.registered_at, date_format)
         {
@@ -1288,7 +1289,7 @@ pub(crate) async fn unregister_asset(
     asset_id: SegmentId,
     has_failed: bool,
 ) -> bool {
-    match connection
+    match CatalogClient::new(connection)
         .unregister_asset(
             dataset_id,
             asset_id.clone(),

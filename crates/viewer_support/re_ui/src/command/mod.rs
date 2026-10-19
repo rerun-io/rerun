@@ -46,6 +46,28 @@ pub fn refresh_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardSho
     }
 }
 
+/// The keyboard shortcut for undoing a blueprint edit.
+pub fn undo_shortcuts() -> SmallVec<[KeyboardShortcut; 2]> {
+    use egui::{Key, KeyboardShortcut, Modifiers};
+    smallvec![KeyboardShortcut::new(Modifiers::COMMAND, Key::Z)]
+}
+
+/// The keyboard shortcuts for redoing a blueprint edit.
+pub fn redo_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
+    use egui::{Key, KeyboardShortcut, Modifiers};
+    if os == egui::os::OperatingSystem::Mac {
+        smallvec![
+            KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z),
+            KeyboardShortcut::new(Modifiers::COMMAND, Key::Y),
+        ]
+    } else {
+        smallvec![
+            KeyboardShortcut::new(Modifiers::CTRL, Key::Y),
+            KeyboardShortcut::new(Modifiers::CTRL | Modifiers::SHIFT, Key::Z),
+        ]
+    }
+}
+
 /// A command bound to its target from a [`CommandEnvironment`], ready to dispatch.
 #[derive(Clone, Debug)]
 pub enum BoundCommand {
@@ -115,8 +137,10 @@ pub fn listen_for_kb_shortcuts(
             }),
         // Timeline commands (space/arrows) are consumed earlier, in `on_begin_pass`
         // via `consume_timeline_shortcut`, so exclude them here to avoid handling them twice.
+        // Recording and table commands share the undo and redo shortcuts, and only the one
+        // that can run in the current environment consumes them.
         RecordingCommandKind::iter()
-            .filter(|kind| !kind.is_timeline())
+            .filter(|kind| !kind.is_timeline() && kind.for_environment(env).is_some())
             .flat_map(|kind| {
                 kind.kb_shortcuts(os)
                     .into_iter()
@@ -237,6 +261,7 @@ fn undo_redo_shortcuts_preserve_text_editing() {
         redap_server: None,
         has_editable_redap_server: false,
         table: None,
+        has_table_blueprint: false,
     };
     for os in [
         OperatingSystem::Mac,
@@ -345,9 +370,16 @@ fn check_for_clashing_command_shortcuts() {
         // Server refresh and table refresh intentionally share the refresh shortcut:
         // `listen_for_kb_shortcuts` resolves both against the environment, and prefers
         // the more specific table refresh when an entry is being viewed.
+        // Recording and table undo and redo share their shortcuts too, and an environment
+        // never has both a recording and a table.
         let intentional_clash = |a: &str, b: &str| {
-            let pair = ("RedapServer::Refresh", "Table::Refresh");
-            (a, b) == pair || (b, a) == pair
+            [
+                ("RedapServer::Refresh", "Table::Refresh"),
+                ("Recording::UndoBlueprintEdit", "Table::UndoBlueprintEdit"),
+                ("Recording::RedoBlueprintEdit", "Table::RedoBlueprintEdit"),
+            ]
+            .iter()
+            .any(|pair| (a, b) == *pair || (b, a) == *pair)
         };
 
         for (a_name, a_shortcut) in &all_commands {

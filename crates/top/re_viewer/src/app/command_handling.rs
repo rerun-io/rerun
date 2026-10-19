@@ -80,6 +80,51 @@ impl App {
         }
     }
 
+    fn run_table_command(
+        &mut self,
+        command: re_ui::TableCommand,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+    ) {
+        let re_ui::TableCommand { table, kind } = command;
+        match kind {
+            re_ui::TableCommandKind::Refresh => {
+                if let re_uri::TableReference::RedapEntry { origin, entry_id } = &table {
+                    self.state
+                        .redap_servers
+                        .refresh_entry(origin, *entry_id, egui_ctx);
+                    self.state.redap_servers.refresh_entry_default_blueprint(
+                        origin,
+                        *entry_id,
+                        &self.command_sender,
+                    );
+                }
+            }
+            re_ui::TableCommandKind::ResetBlueprintToDefault => {
+                if let Err(err) = self.table_blueprints.reset(&table, store_hub) {
+                    re_log::warn!("Failed to reset table blueprint: {err}");
+                }
+                egui_ctx.request_repaint();
+            }
+            re_ui::TableCommandKind::UndoBlueprintEdit => {
+                if let Some(blueprint_id) = self.table_blueprints.active_id(&table) {
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint {
+                            blueprint_id: blueprint_id.clone(),
+                        });
+                }
+            }
+            re_ui::TableCommandKind::RedoBlueprintEdit => {
+                if let Some(blueprint_id) = self.table_blueprints.active_id(&table) {
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint {
+                            blueprint_id: blueprint_id.clone(),
+                        });
+                }
+            }
+        }
+    }
+
     fn run_system_command(
         &mut self,
         sent_from: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
@@ -519,27 +564,7 @@ impl App {
             }
 
             SystemCommand::Table(command) => {
-                let re_ui::TableCommand { table, kind } = command;
-                match kind {
-                    re_ui::TableCommandKind::Refresh => {
-                        if let re_uri::TableReference::RedapEntry { origin, entry_id } = &table {
-                            self.state
-                                .redap_servers
-                                .refresh_entry(origin, *entry_id, egui_ctx);
-                            self.state.redap_servers.refresh_entry_default_blueprint(
-                                origin,
-                                *entry_id,
-                                &self.command_sender,
-                            );
-                        }
-                    }
-                    re_ui::TableCommandKind::ResetBlueprintToDefault => {
-                        if let Err(err) = self.table_blueprints.reset(&table, store_hub) {
-                            re_log::warn!("Failed to reset table blueprint: {err}");
-                        }
-                        egui_ctx.request_repaint();
-                    }
-                }
+                self.run_table_command(command, store_hub, egui_ctx);
             }
 
             SystemCommand::LoadDataSource(data_source) => {

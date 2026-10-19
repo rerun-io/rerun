@@ -608,7 +608,7 @@ impl ExampleDescLayout {
                 .max_rect(content_rect)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
-        main_ui.set_clip_rect(content_rect);
+        main_ui.set_clip_rect(ui.clip_rect().intersect(content_rect));
         main_ui.set_width(content_rect.width());
         main_ui.spacing_mut().item_spacing.y = TITLE_TO_METADATA_VSPACE;
         main_ui.add(

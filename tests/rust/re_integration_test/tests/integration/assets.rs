@@ -12,14 +12,14 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 
+use re_catalog_client::{CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
 use re_chunk_index::RrdManifest;
 use re_integration_test::{
     HarnessExt as _, TestServer, ViewerHarnessExt as _, asset_rrd, file_url, register_asset,
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
 use re_redap_client::{
-    ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    DEFAULT_ASSET_TASK_TIMEOUT, StreamingOptions,
+    ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, StreamingOptions,
 };
 use re_sdk::external::re_log_types::{EntityPath, EntryId, StoreId};
 use re_sdk::external::re_tuid::Tuid;
@@ -136,8 +136,8 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
@@ -147,7 +147,7 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
     let mut expected_segments = Vec::new();
     for recording_id in ["robot_urdf", "warehouse_mesh"] {
         expected_segments.push(
-            register_asset(&connection, asset_dataset, recording_id)
+            register_asset(&catalog_client, asset_dataset, recording_id)
                 .await
                 .expect("Failed to register asset"),
         );
@@ -165,7 +165,7 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
     assert_eq!(segments, expected_segments);
 }
 
-/// Registering an asset takes the recording dataset and a url, with the connection resolving the
+/// Registering an asset takes the recording dataset and a url, with the catalog client resolving the
 /// asset dataset itself. The registered asset then shows up among the dataset's assets.
 #[tokio::test(flavor = "multi_thread")]
 async fn register_asset_registers_with_the_datasets_asset_dataset() {
@@ -173,8 +173,8 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
@@ -182,7 +182,7 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
     let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
-    let segment_id = connection
+    let segment_id = catalog_client
         .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
         .expect("Failed to register asset");
@@ -204,8 +204,8 @@ async fn register_asset_replaces_an_already_registered_asset() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
@@ -213,11 +213,11 @@ async fn register_asset_replaces_an_already_registered_asset() {
     let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
-    let first = connection
+    let first = catalog_client
         .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
         .expect("Failed to register asset");
-    let second = connection
+    let second = catalog_client
         .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
         .expect("Failed to re-register asset");
@@ -241,8 +241,8 @@ async fn unregister_asset_drops_the_asset() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
@@ -250,12 +250,12 @@ async fn unregister_asset_drops_the_asset() {
     let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
-    let segment_id = connection
+    let segment_id = catalog_client
         .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
         .expect("Failed to register asset");
 
-    connection
+    catalog_client
         .unregister_asset(
             dataset_id(),
             segment_id.clone(),
@@ -276,7 +276,7 @@ async fn unregister_asset_drops_the_asset() {
         "the unregistered asset should be gone, got {segments:?}"
     );
 
-    connection
+    catalog_client
         .unregister_asset(dataset_id(), segment_id, false, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
         .expect("unregistering an asset that is already gone should do nothing");
@@ -290,14 +290,14 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
 
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -378,14 +378,14 @@ async fn asset_chunks_are_only_downloaded_once() {
 
     // Every client handed out by one registry shares a connection, and with it a chunk cache.
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    let connection = registry.connection_handle(origin(&server));
-    let mut client = connection
+    let catalog_client = CatalogClient::new(registry.connection_handle(origin(&server)));
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
 
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -594,13 +594,13 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
         .try_into()
         .expect("two recordings were registered");
 
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -644,15 +644,15 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
 #[tokio::test(flavor = "multi_thread")]
 async fn concurrent_connections_to_one_origin_share_a_chunk_cache() {
     let server = TestServer::spawn().await;
-    let connection = server.connection_handle();
+    let handle = server.catalog_client().connection().clone();
 
     let connections = futures::future::join_all((0..8).map(|_| {
-        let connection = connection.clone();
-        tokio::spawn(async move { connection.connection().await })
+        let handle = handle.clone();
+        tokio::spawn(async move { handle.connection().await })
     }))
     .await;
 
-    let kept = connection
+    let kept = handle
         .connection()
         .await
         .expect("Failed to connect to server");
@@ -725,11 +725,11 @@ async fn dataset_assets_tab() {
         .await;
     let dataset = EntryId::from_str(dataset_id_str).expect("valid entry id");
 
-    let connection = server.connection_handle();
-    let mut client = connection.client().await.expect("Failed to connect");
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client.client().await.expect("Failed to connect");
     let asset_dataset = asset_dataset(&mut client, dataset).await;
     for recording_id in ASSET_IDS {
-        register_asset(&connection, asset_dataset, recording_id)
+        register_asset(&catalog_client, asset_dataset, recording_id)
             .await
             .expect("Failed to register asset");
     }
@@ -813,14 +813,14 @@ async fn open_asset_lists_it_under_owning_dataset() {
         .with_named_test_data("robot_data", dataset_id_str, "robot_recording")
         .await;
 
-    let connection = server.connection_handle();
-    let mut client = connection.client().await.expect("Failed to connect");
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client.client().await.expect("Failed to connect");
     let asset_dataset = asset_dataset(
         &mut client,
         EntryId::from_str(dataset_id_str).expect("valid entry id"),
     )
     .await;
-    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_mesh")
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_mesh")
         .await
         .expect("Failed to register asset");
 
@@ -894,18 +894,18 @@ async fn assets_of_a_dataset_do_not_share_a_blueprint() {
         .with_named_test_data("robot_data", dataset_id_str, "robot_recording")
         .await;
 
-    let connection = server.connection_handle();
-    let mut client = connection.client().await.expect("Failed to connect");
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client.client().await.expect("Failed to connect");
     let asset_dataset = asset_dataset(
         &mut client,
         EntryId::from_str(dataset_id_str).expect("valid entry id"),
     )
     .await;
 
-    let robot = register_asset(&connection, asset_dataset, "robot_mesh")
+    let robot = register_asset(&catalog_client, asset_dataset, "robot_mesh")
         .await
         .expect("Failed to register asset");
-    let gripper = register_asset(&connection, asset_dataset, "gripper_mesh")
+    let gripper = register_asset(&catalog_client, asset_dataset, "gripper_mesh")
         .await
         .expect("Failed to register asset");
 
@@ -1012,13 +1012,13 @@ async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() 
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
 
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    register_asset(&connection, asset_dataset, "robot_urdf")
+    register_asset(&catalog_client, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 

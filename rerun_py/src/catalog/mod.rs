@@ -2,7 +2,7 @@
 //!
 //! Handles retain the Python catalog client or Python connection handle so that connection
 //! state and credentials stay shared. Delegate high-level operations to
-//! [`re_redap_client::ConnectionHandle`], with explicit dataset and segment IDs.
+//! [`re_catalog_client::CatalogClient`], with explicit dataset and segment IDs.
 //! [`re_redap_client::ConnectionClient`] is the low-level protocol API.
 //!
 //! NOTE: Existing bindings still call the low-level client directly in some paths.

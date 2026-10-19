@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use re_catalog_client::{CatalogClient, StagingError};
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyPoint, MyPoints};
@@ -11,7 +12,7 @@ use re_log_types::{EntityPath, EntryName, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{DataSource, ObjectKey};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::{ConnectionRegistry, StagingError};
+use re_redap_client::ConnectionRegistry;
 use re_server::{RerunCloudHandlerBuilder, ServerBuilder};
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(30);
@@ -32,31 +33,27 @@ async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
         .await?;
 
     let origin = format!("rerun+http://{}", handle.connect_addr()).parse()?;
-    let connection = ConnectionRegistry::new_without_stored_credentials().connection_handle(origin);
+    let catalog_client = CatalogClient::new(
+        ConnectionRegistry::new_without_stored_credentials().connection_handle(origin),
+    );
 
     let dataset_name = EntryName::new("uploads")?;
-    let dataset_id = connection
-        .client()
-        .await?
-        .find_or_create_dataset(&dataset_name)
-        .await?;
+    let dataset_id = catalog_client.find_or_create_dataset(&dataset_name).await?;
 
     let key = ObjectKey::try_new("user/project/recording.rrd")?;
-    let storage_url = connection.stage(key.clone(), rrd.clone()).await?;
+    let storage_url = catalog_client.stage(key.clone(), rrd.clone()).await?;
     assert!(
-        connection
-            .client()
-            .await?
+        catalog_client
             .get_dataset_segment_ids(dataset_id)
             .await?
             .is_empty()
     );
     assert!(matches!(
-        connection.stage(key, rrd).await,
+        catalog_client.stage(key, rrd).await,
         Err(StagingError::Rejected { status: 409, .. })
     ));
 
-    let segment_ids = connection
+    let segment_ids = catalog_client
         .register_with_dataset(
             dataset_id,
             vec![DataSource::new_rrd_url(storage_url, None)],

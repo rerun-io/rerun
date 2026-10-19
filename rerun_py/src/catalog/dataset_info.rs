@@ -1,6 +1,6 @@
 use pyo3::pyclass;
+use re_catalog_client::DatasetInfo;
 use re_log_types::TimeType;
-use re_redap_client::DatasetInfo;
 use re_sorbet::BatchType;
 
 /// `(name, kind, num_segments, min, max)`, with `min` and `max` in nanoseconds for temporal kinds.

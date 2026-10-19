@@ -257,9 +257,9 @@ fn warning_ui(ui: &mut egui::Ui) {
     });
 }
 
-/// The prompt-sharing opt-out, and one line on what the current setting means.
+/// The prompt-sharing opt-in, and one line on what the current setting means.
 ///
-/// Both states get the same weight: sharing is the default, so it must not read as a hazard.
+/// Both states get the same weight, so neither reads as a hazard.
 /// The particulars stay in the tooltip that the checkbox and "What is shared?" share.
 fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
     ui.scope(|ui| {

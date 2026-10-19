@@ -11,7 +11,7 @@ use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, SorbetColumnDescriptors};
 use re_types_core::LayerName;
 
-use crate::{ApiError, ApiResult, TraceId};
+use re_redap_client::{ApiError, ApiResult, TraceId};
 
 /// An overview of a dataset: its segments, layers, timelines, contents and properties.
 ///

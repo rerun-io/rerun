@@ -44,6 +44,9 @@ const IMAGE_HEIGHT: u32 = 24;
 const NUM_ARM_LINKS: usize = 8;
 const NUM_JOINTS: usize = 24;
 
+/// The entities with data that [`log_fleet`] logs for each robot.
+const NUM_ENTITIES_PER_ROBOT: usize = 3 + 3 * NUM_CAMERAS + NUM_ARM_LINKS + NUM_JOINTS;
+
 // ---
 
 criterion_group!(benches, viewer_frame_many_views);
@@ -61,29 +64,17 @@ fn viewer_frame_many_views(c: &mut Criterion) {
 
     for &num_robots in NUM_ROBOTS {
         for &num_views in NUM_VIEWS {
-            let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-                window_size: Some(egui::vec2(1920.0, 1080.0)),
-                ..Default::default()
-            });
-            harness.init_recording();
-            let num_entities = log_fleet(&mut harness, num_robots);
-            harness.clear_current_blueprint();
+            let num_entities = num_robots * NUM_ENTITIES_PER_ROBOT;
+            let mut harness = None;
 
-            let tabs = harness.add_blueprint_container(egui_tiles::ContainerKind::Tabs, None);
-            let views = fleet_views(num_robots, num_views);
-            harness.setup_viewport_blueprint(move |_viewer_context, blueprint| {
-                blueprint.add_views(views.into_iter(), Some(tabs), None);
-            });
-            harness.set_selection_panel_opened(false);
-            harness.set_time_panel_opened(false);
-
-            // Apply the blueprint changes and build the caches of the first frames, so the
-            // benchmark only measures frames where nothing changes.
-            harness.run();
-
+            // Criterion calls this many times, and only for the benchmarks it runs.
             group.bench_function(
                 BenchmarkId::from_parameter(format!("{num_entities} entities, {num_views} views")),
-                |b| b.iter(|| harness.step()),
+                |b| {
+                    let harness =
+                        harness.get_or_insert_with(|| fleet_harness(num_robots, num_views));
+                    b.iter(|| harness.step());
+                },
             );
         }
     }
@@ -93,12 +84,37 @@ fn viewer_frame_many_views(c: &mut Criterion) {
 
 // --- Helpers ---
 
+/// A viewer showing a fleet of robots in many views, with the caches of the first frames built.
+fn fleet_harness(
+    num_robots: usize,
+    num_views: usize,
+) -> egui_kittest::Harness<'static, re_viewer::App> {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1920.0, 1080.0)),
+        ..Default::default()
+    });
+    harness.init_recording();
+    log_fleet(&mut harness, num_robots);
+    harness.clear_current_blueprint();
+
+    let tabs = harness.add_blueprint_container(egui_tiles::ContainerKind::Tabs, None);
+    let views = fleet_views(num_robots, num_views);
+    harness.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+        blueprint.add_views(views.into_iter(), Some(tabs), None);
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    // Apply the blueprint changes and build the caches of the first frames, so the
+    // benchmark only measures frames where nothing changes.
+    harness.run();
+
+    harness
+}
+
 /// Logs a fleet of robots, each with a colored lidar point cloud, a text log, pinhole cameras
 /// with an image and labeled detections, an arm of boxes and joint scalars.
-/// Returns the number of entities that have data.
-fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots: usize) -> usize {
-    let mut num_entities = 0;
-
+fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots: usize) {
     for robot in 0..num_robots {
         let robot_path = format!("world/robot_{robot}");
         log_frames(harness, &robot_path, |frame| {
@@ -117,7 +133,6 @@ fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots
             TextLog::new(format!("robot {robot} reached waypoint {frame}"))
                 .with_level(TextLogLevel::INFO)
         });
-        num_entities += 3;
 
         for camera in 0..NUM_CAMERAS {
             let camera_path = format!("{robot_path}/camera_{camera}");
@@ -144,7 +159,6 @@ fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots
                 .with_labels(["person", "forklift"])
                 .with_class_ids([1, 2])
             });
-            num_entities += 3;
         }
 
         let mut link_path = format!("{robot_path}/arm");
@@ -156,7 +170,6 @@ fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots
             log_frames(harness, &link_path, |_| {
                 Boxes3D::from_half_sizes([[0.02, 0.02, 0.05]]).with_colors([[200, 200, 200]])
             });
-            num_entities += 1;
         }
 
         for joint in 0..NUM_JOINTS {
@@ -165,11 +178,8 @@ fn log_fleet(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, num_robots
                 &format!("{robot_path}/joints/joint_{joint}"),
                 |frame| Scalars::single(joint as f64 + frame as f64),
             );
-            num_entities += 1;
         }
     }
-
-    num_entities
 }
 
 /// Logs one chunk with a row of the archetype on each frame.

@@ -37,9 +37,14 @@ pub struct AppOptions {
     /// Use Rerun's custom window decorations instead of the native OS decorations.
     pub custom_window_decorations: bool,
 
-    /// Include the "Welcome screen" application in the recordings panel?
-    #[serde(alias = "include_welcome_screen_button_in_recordings_panel")]
-    pub include_rerun_examples_button_in_recordings_panel: bool,
+    /// Show the welcome screen with the Rerun examples, and its entry in the recordings panel.
+    ///
+    /// Has no effect if the viewer was started with `hide_welcome_screen`.
+    #[serde(
+        alias = "include_rerun_examples_button_in_recordings_panel",
+        alias = "include_welcome_screen_button_in_recordings_panel"
+    )]
+    pub enable_welcome_screen: bool,
 
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
@@ -112,7 +117,7 @@ impl AppOptions {
 
             custom_window_decorations,
 
-            include_rerun_examples_button_in_recordings_panel: true,
+            enable_welcome_screen: true,
 
             show_picking_debug_overlay: false,
 

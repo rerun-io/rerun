@@ -68,68 +68,63 @@ pub(super) fn ui(
     };
 
     let (model, settings_changed) = ui
-        .allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
-            egui::Layout::left_to_right(egui::Align::TOP),
-            |ui| {
-                let previous_settings = (
+        .horizontal(|ui| {
+            let previous_settings = (
+                state.frame_filter,
+                state.edge_filter,
+                state.layout_direction,
+            );
+
+            frame_filter_ui(ui, state);
+            ui.separator();
+
+            edge_filter_ui(ui, state);
+            ui.separator();
+
+            layout_direction_ui(ui, state);
+            ui.separator();
+
+            let filter = ModelFilter {
+                frame_filter: state.frame_filter,
+                edge_filter: state.edge_filter,
+            };
+            let current_model = caches.memoizer(|cache: &mut TransformDatabaseStoreCache| {
+                build_transform_cache_model(recording, cache, &query, filter)
+            });
+
+            if current_model.snapshot.frames.is_empty() {
+                ui.warning_label("No transform frames match the current filter.");
+            } else {
+                ui.info_label(format!(
+                    "{}, {}, {}",
+                    re_format::format_plural_s(current_model.num_trees(), "tree"),
+                    re_format::format_plural_s(current_model.snapshot.frames.len(), "frame"),
+                    re_format::format_plural_s(current_model.snapshot.edges.len(), "transform")
+                ));
+            }
+            ui.separator();
+
+            if current_model.any_missing_chunks {
+                ui.warning_label("Some chunks are missing");
+            }
+
+            let store_id = recording.store_id();
+            let recording_name = format!(
+                "{} ({})",
+                store_id.application_id(),
+                store_id.recording_id()
+            );
+            ui.add(egui::Label::new(&recording_name).truncate())
+                .on_hover_text(&recording_name);
+
+            let settings_changed = previous_settings
+                != (
                     state.frame_filter,
                     state.edge_filter,
                     state.layout_direction,
                 );
-
-                frame_filter_ui(ui, state);
-                ui.separator();
-
-                edge_filter_ui(ui, state);
-                ui.separator();
-
-                layout_direction_ui(ui, state);
-                ui.separator();
-
-                let filter = ModelFilter {
-                    frame_filter: state.frame_filter,
-                    edge_filter: state.edge_filter,
-                };
-                let current_model = caches.memoizer(|cache: &mut TransformDatabaseStoreCache| {
-                    build_transform_cache_model(recording, cache, &query, filter)
-                });
-
-                if current_model.snapshot.frames.is_empty() {
-                    ui.warning_label("No transform frames match the current filter.");
-                } else {
-                    ui.info_label(format!(
-                        "{}, {}, {}",
-                        re_format::format_plural_s(current_model.num_trees(), "tree"),
-                        re_format::format_plural_s(current_model.snapshot.frames.len(), "frame"),
-                        re_format::format_plural_s(current_model.snapshot.edges.len(), "transform")
-                    ));
-                }
-                ui.separator();
-
-                // Center the recording name label horizontally to align it with the widgets' text.
-                ui.horizontal_centered(|ui| {
-                    let store_id = recording.store_id();
-                    ui.label(format!(
-                        "{} ({})",
-                        store_id.application_id(),
-                        store_id.recording_id()
-                    ));
-
-                    if current_model.any_missing_chunks {
-                        ui.warning_label("Some chunks are missing");
-                    }
-                });
-
-                let settings_changed = previous_settings
-                    != (
-                        state.frame_filter,
-                        state.edge_filter,
-                        state.layout_direction,
-                    );
-                (current_model, settings_changed)
-            },
-        )
+            (current_model, settings_changed)
+        })
         .inner;
 
     draw_transform_cache(ui, &model, state, settings_changed);

@@ -1,0 +1,54 @@
+[package]
+name = "re_catalog_client"
+authors.workspace = true
+description = "High-level client for Rerun catalogs"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+
+[dependencies]
+re_async.workspace = true
+re_chunk.workspace = true
+re_chunk_index.workspace = true
+re_error.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
+re_protos.workspace = true
+re_redap_client.workspace = true
+re_sorbet.workspace = true
+re_span.workspace = true
+re_tracing.workspace = true
+re_types_core.workspace = true
+re_uri.workspace = true
+
+ahash.workspace = true
+arrow.workspace = true
+ehttp.workspace = true
+futures.workspace = true
+itertools.workspace = true
+jiff.workspace = true
+thiserror.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

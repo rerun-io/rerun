@@ -247,8 +247,9 @@ async fn internal_catalog_load_rbl() {
     let origin = origin.clone();
     let entry_id = *entry_id;
     let connection_registry = harness.state().connection_registry().clone();
-    let mut client = connection_registry
-        .connection_handle(origin)
+    let catalog =
+        re_catalog_client::CatalogClient::new(connection_registry.connection_handle(origin));
+    let mut client = catalog
         .client()
         .await
         .expect("failed to connect to internal catalog");
@@ -265,7 +266,7 @@ async fn internal_catalog_load_rbl() {
         Some(expected_default_segment)
     );
 
-    let mut actual_segment_ids = client
+    let mut actual_segment_ids = catalog
         .get_dataset_segment_ids(blueprint_dataset_id)
         .await
         .expect("failed to list registered blueprints");

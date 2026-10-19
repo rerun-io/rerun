@@ -66,23 +66,18 @@ impl InternalCatalog {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn build(proxy_addr: SocketAddr) -> InternalCatalog {
     let origin = re_uri::Origin::http_local_host(proxy_addr.port());
-    let storage_dir = tempfile::Builder::new()
-        .prefix("rerun-data-")
-        .tempdir()
-        .expect("failed to create internal catalog storage directory");
-    let storage_path = storage_dir.path().to_owned();
     let (handler, write_upload_route) = RerunCloudHandlerBuilder::new()
-        .with_storage_dir(storage_dir)
         .build_with_write_access()
         .expect("failed to build internal catalog");
     let handler = Arc::new(handler);
+    let storage_dir = handler.storage_dir().to_owned();
     let connection = Connection::from_service(origin, handler.clone(), re_server::capabilities());
 
     InternalCatalog {
         connection,
         handler,
         write_upload_route,
-        storage_dir: storage_path,
+        storage_dir,
     }
 }
 

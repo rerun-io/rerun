@@ -24,6 +24,7 @@ re_async.workspace = true
 re_auth.workspace = true
 re_backoff.workspace = true
 re_dataframe_ui.workspace = true
+re_catalog_client.workspace = true
 re_datafusion.workspace = true
 re_error.workspace = true
 re_format.workspace = true

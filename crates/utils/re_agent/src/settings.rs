@@ -203,7 +203,7 @@ impl Default for AgentSettings {
             log_protocol: false,
             preferred_mode: None,
             preferred_models: BTreeMap::new(),
-            share_redacted_prompts: true,
+            share_redacted_prompts: false,
             setup_done: false,
         }
     }
@@ -304,7 +304,7 @@ mod tests {
         let Ok(settings) = serde_json::from_str::<AgentSettings>("{}") else {
             panic!("empty settings should deserialize");
         };
-        assert!(settings.share_redacted_prompts);
+        assert!(!settings.share_redacted_prompts);
         assert_eq!(settings.preferred_mode, None);
         assert!(settings.preferred_models.is_empty());
     }

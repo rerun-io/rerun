@@ -707,6 +707,7 @@ impl App {
     /// against this, so they agree on what a command does.
     pub fn command_environment(&self) -> re_ui::CommandEnvironment {
         let active_recording = self.state.navigation.current().recording_id().cloned();
+        let table = self.state.navigation.current().table_reference();
 
         let selected_redap_server = match self.state.selection_state.selected_items().single_item()
         {
@@ -722,7 +723,10 @@ impl App {
                 .as_ref()
                 .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
             redap_server: selected_redap_server,
-            table: self.state.navigation.current().table_reference(),
+            has_table_blueprint: table
+                .as_ref()
+                .is_some_and(|table| self.table_blueprints.active_id(table).is_some()),
+            table,
         }
     }
 

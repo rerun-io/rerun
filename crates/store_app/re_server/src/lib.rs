@@ -16,9 +16,7 @@ mod server;
 mod store;
 
 pub use self::named_path::{NamedPath, NamedPathCollection};
-pub use self::rerun_cloud::{
-    RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings,
-};
+pub use self::rerun_cloud::{RerunCloudHandler, RerunCloudHandlerBuilder};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     entrypoint::Args,

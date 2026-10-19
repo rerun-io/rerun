@@ -156,7 +156,8 @@ impl App {
                         &self.rx_log,
                         &self.command_sender,
                         &WelcomeScreenState {
-                            hide_examples: self.startup_options.hide_welcome_screen,
+                            hide_examples: self.startup_options.hide_welcome_screen
+                                || !self.app_options().enable_welcome_screen,
                             opacity: self.welcome_screen_opacity(ui),
                         },
                         self.event_dispatcher.as_ref(),

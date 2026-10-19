@@ -4,6 +4,7 @@ use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
+use re_catalog_client::{CatalogClient, RegistrationHandle};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::EntryFilter;
@@ -14,9 +15,7 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
-use re_redap_client::{
-    ConnectionClient, ConnectionHandle, ConnectionRegistryHandle, RegistrationHandle, TraceId,
-};
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, TraceId};
 use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
@@ -26,13 +25,13 @@ use crate::utils::wait_for_future;
 /// Connection handle to a catalog service.
 #[derive(Clone)]
 pub(crate) struct PyConnectionHandle {
-    inner: ConnectionHandle,
+    inner: CatalogClient,
 }
 
 impl PyConnectionHandle {
     pub fn new(connection_registry: ConnectionRegistryHandle, origin: re_uri::Origin) -> Self {
         Self {
-            inner: connection_registry.connection_handle(origin),
+            inner: CatalogClient::new(connection_registry.connection_handle(origin)),
         }
     }
 
@@ -40,7 +39,7 @@ impl PyConnectionHandle {
         self.inner.client().await.map_err(to_py_err)
     }
 
-    pub fn inner(&self) -> &ConnectionHandle {
+    pub fn inner(&self) -> &CatalogClient {
         &self.inner
     }
 
@@ -115,22 +114,14 @@ impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .find_entries(filter)
-                .await
-                .map_err(to_py_err)
+            self.inner.find_entries(filter).await.map_err(to_py_err)
         })
     }
 
     #[tracing::instrument(level = "info", skip_all)]
     pub fn delete_entry(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .delete_entry(entry_id)
-                .await
-                .map_err(to_py_err)
+            self.inner.delete_entry(entry_id).await.map_err(to_py_err)
         })
     }
 
@@ -142,8 +133,7 @@ impl PyConnectionHandle {
         entry_details_update: cloud_ext::EntryDetailsUpdate,
     ) -> PyResult<cloud_ext::EntryDetails> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .update_entry(entry_id, entry_details_update)
                 .await
                 .map_err(to_py_err)
@@ -154,22 +144,14 @@ impl PyConnectionHandle {
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .create_dataset_entry(name, None)
-                .await
-                .map_err(to_py_err)
+            self.inner.create_dataset(name).await.map_err(to_py_err)
         })
     }
 
     #[tracing::instrument(level = "info", skip_all)]
     pub fn read_dataset(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .read_dataset_entry(entry_id)
-                .await
-                .map_err(to_py_err)
+            self.inner.read_dataset(entry_id).await.map_err(to_py_err)
         })
     }
 
@@ -181,9 +163,8 @@ impl PyConnectionHandle {
         dataset_details: DatasetDetails,
     ) -> PyResult<DatasetEntry> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .update_dataset_entry(entry_id, dataset_details)
+            self.inner
+                .update_dataset(entry_id, dataset_details)
                 .await
                 .map_err(to_py_err)
         })
@@ -197,8 +178,7 @@ impl PyConnectionHandle {
     ) -> PyResult<Vec<String>> {
         wait_for_future(py, async {
             Ok(self
-                .client()
-                .await?
+                .inner
                 .get_dataset_segment_ids(entry_id)
                 .await
                 .map_err(to_py_err)?
@@ -217,8 +197,7 @@ impl PyConnectionHandle {
     ) -> PyResult<Vec<String>> {
         wait_for_future(py, async {
             Ok(self
-                .client()
-                .await?
+                .inner
                 .get_assets_for_segment(entry_id, Some(SegmentId::from(segment_id)))
                 .await
                 .map_err(to_py_err)?
@@ -240,8 +219,7 @@ impl PyConnectionHandle {
         segment_id: String,
     ) -> PyResult<Option<(RecordBatch, u64)>> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .get_segment_properties(entry_id, SegmentId::from(segment_id))
                 .await
                 .map_err(to_py_err)
@@ -262,8 +240,7 @@ impl PyConnectionHandle {
         expected_revision: Option<u64>,
     ) -> PyResult<u64> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .set_segment_properties(
                     entry_id,
                     SegmentId::from(segment_id),
@@ -284,8 +261,7 @@ impl PyConnectionHandle {
         segment_ids: Vec<String>,
     ) -> PyResult<()> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .delete_segment_properties(
                     entry_id,
                     segment_ids.into_iter().map(SegmentId::from).collect(),
@@ -303,8 +279,7 @@ impl PyConnectionHandle {
         url: url::Url,
     ) -> PyResult<TableEntry> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .register_table(name, url)
                 .await
                 .map_err(to_py_err)
@@ -320,9 +295,8 @@ impl PyConnectionHandle {
         url: Option<url::Url>,
     ) -> PyResult<TableEntry> {
         let entry_id = wait_for_future(py, async {
-            self.client()
-                .await?
-                .create_table_entry(name.clone(), url, schema)
+            self.inner
+                .create_table(name.clone(), url, schema)
                 .await
                 .map_err(to_py_err)
         })?;
@@ -333,11 +307,7 @@ impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .read_table_entry(entry_id)
-                .await
-                .map_err(to_py_err)
+            self.inner.read_table(entry_id).await.map_err(to_py_err)
         })
     }
 
@@ -349,9 +319,8 @@ impl PyConnectionHandle {
         table_details: TableDetails,
     ) -> PyResult<TableEntry> {
         wait_for_future(py, async {
-            self.client()
-                .await?
-                .update_table_entry(entry_id, table_details)
+            self.inner
+                .update_table(entry_id, table_details)
                 .await
                 .map_err(to_py_err)
         })
@@ -377,8 +346,7 @@ impl PyConnectionHandle {
                 }
             }));
 
-            self.client()
-                .await?
+            self.inner
                 .write_table(stream, entry_id, insert_mode.into())
                 .await
                 .map_err(to_py_err)
@@ -464,8 +432,7 @@ impl PyConnectionHandle {
         force: bool,
     ) -> PyResult<(Option<TraceId>, Vec<TaskId>)> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            self.inner
                 .unregister_from_dataset(dataset_id, segments_to_drop, layers_to_drop, force)
                 .await
                 .map_err(to_py_err)
@@ -498,34 +465,6 @@ impl PyConnectionHandle {
         wait_for_future(py, async {
             self.inner
                 .register_with_dataset(dataset_id, data_sources, on_duplicate)
-                .await
-                .map_err(to_py_err)
-        })
-    }
-
-    #[tracing::instrument(level = "info", skip_all)]
-    #[expect(clippy::fn_params_excessive_bools)]
-    pub fn do_maintenance(
-        &self,
-        py: Python<'_>,
-        dataset_id: EntryId,
-        optimize_indexes: bool,
-        retrain_indexes: bool,
-        compact_fragments: bool,
-        cleanup_before: Option<jiff::Timestamp>,
-        unsafe_allow_recent_cleanup: bool,
-    ) -> PyResult<()> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .do_maintenance(
-                    dataset_id,
-                    optimize_indexes,
-                    retrain_indexes,
-                    compact_fragments,
-                    cleanup_before,
-                    unsafe_allow_recent_cleanup,
-                )
                 .await
                 .map_err(to_py_err)
         })

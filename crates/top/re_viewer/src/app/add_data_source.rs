@@ -12,9 +12,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::Context as _;
+use re_catalog_client::CatalogClient;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
-use re_redap_client::ConnectionHandle;
 use re_types_core::LayerName;
 
 use crate::catalog_handle::CatalogHandle;
@@ -440,7 +440,7 @@ impl App {
             self.connections
                 .registrations_in_flight
                 .begin(InFlightRegistration {
-                    origin: catalog.connection().origin().clone(),
+                    origin: catalog.client().origin().clone(),
                     name: path.display().to_string(),
                 })
         });
@@ -604,7 +604,7 @@ async fn register_file(
         )
         .await?;
 
-    register_rrd_file_url(catalog.connection(), file_url, rrd_metadata, layer).await
+    register_rrd_file_url(catalog.client(), file_url, rrd_metadata, layer).await
 }
 
 /// Makes use of the fact that we don't need to scan for `default_blueprint_by_app_id`,
@@ -634,9 +634,9 @@ pub enum RegistrationTarget {
     Entry(EntryId),
 }
 
-/// Register a URL the server can read with the catalog behind `connection`.
+/// Register a URL the server can read with the catalog behind `catalog_client`.
 async fn register_rrd_file_url(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
     layer: Option<LayerName>,
@@ -657,7 +657,7 @@ async fn register_rrd_file_url(
         );
     }
 
-    let origin = connection.origin().clone();
+    let origin = catalog_client.origin().clone();
     // The hidden blueprint dataset keeps its base layer; only recordings get per-file layers.
     let blueprint_data_source = DataSource::new_rrd_url(file_url.clone(), None);
     let mut data_source = DataSource::new_rrd_url(file_url, None);
@@ -668,13 +668,9 @@ async fn register_rrd_file_url(
 
     // If there are recordings in the file, register them with the dataset.
     // Otherwise, create the dataset so it can hold the blueprints.
-    let dataset_id = connection
-        .client()
-        .await?
-        .find_or_create_dataset(&dataset_name)
-        .await?;
+    let dataset_id = catalog_client.find_or_create_dataset(&dataset_name).await?;
     let segment_id = if rrd_metadata.store_ids.iter().any(StoreId::is_recording) {
-        connection
+        catalog_client
             .register_with_dataset(
                 dataset_id,
                 vec![data_source.clone()],
@@ -692,7 +688,7 @@ async fn register_rrd_file_url(
     };
 
     if let Err(err) = register_blueprints(
-        connection,
+        catalog_client,
         dataset_id,
         blueprint_data_source,
         &rrd_metadata,
@@ -722,7 +718,7 @@ async fn register_rrd_file_url(
 /// The blueprint stores live in the same RRD, so the server can select and serve them lazily from
 /// the same data source.
 async fn register_blueprints(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     dataset_id: EntryId,
     data_source: DataSource,
     rrd_metadata: &RrdMetadata,
@@ -732,14 +728,14 @@ async fn register_blueprints(
         return Ok(());
     }
 
-    let mut client = connection.client().await?;
+    let mut client = catalog_client.client().await?;
     let mut dataset_details = client.read_dataset_entry(dataset_id).await?.dataset_details;
     let Some(blueprint_dataset_id) = dataset_details.blueprint_dataset else {
         re_log::warn!("Dataset {dataset_id} has no hidden blueprint dataset");
         return Ok(());
     };
 
-    let registration = connection
+    let registration = catalog_client
         .register_with_dataset(
             blueprint_dataset_id,
             vec![data_source],

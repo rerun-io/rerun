@@ -1,8 +1,11 @@
+//! Stage objects in catalog storage.
+
 use re_async::AsyncReadAt;
 use re_protos::cloud::v1alpha1::ext::{GetWriteAccessGrantResponse, ObjectKey, Redemption};
 use re_span::Span;
 
-use crate::{ApiError, ConnectionHandle};
+use crate::CatalogClient;
+use re_redap_client::ApiError;
 
 /// An error staging an object in a catalog's storage.
 #[derive(Debug, thiserror::Error)]
@@ -23,7 +26,7 @@ pub enum StagingError {
     Rejected { status: u16, status_text: String },
 }
 
-impl ConnectionHandle {
+impl CatalogClient {
     /// Stages `source` in the catalog's storage under `key` and returns its credential-free URL
     /// after the upload succeeds.
     //

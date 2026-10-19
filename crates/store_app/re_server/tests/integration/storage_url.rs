@@ -22,7 +22,9 @@ use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 /// loaded into memory, so the URI is also where the layer's chunks still live.
 #[tokio::test]
 async fn file_registration_reports_its_file_url() {
-    let service = RerunCloudHandlerBuilder::new().build();
+    let service = RerunCloudHandlerBuilder::new()
+        .build()
+        .expect("failed to build handler");
 
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
@@ -53,7 +55,9 @@ async fn file_registration_reports_its_file_url() {
 /// Registering a `memory://` URL that was never registered returns `NOT_FOUND`.
 #[tokio::test]
 async fn register_memory_url_not_found() {
-    let service = RerunCloudHandlerBuilder::new().build();
+    let service = RerunCloudHandlerBuilder::new()
+        .build()
+        .expect("failed to build handler");
 
     service.create_dataset_entry_with_name("dataset_nf").await;
 

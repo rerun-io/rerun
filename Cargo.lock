@@ -4428,9 +4428,9 @@ dependencies = [
 
 [[package]]
 name = "gilrs-core"
-version = "0.6.7"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d23f2cc5144060a7f8d9e02d3fce5d06705376568256a509cdbc3c24d47e4f04"
+checksum = "dc7f0ce6237abcc0523f2a5502b1e3fe5802daaae47ac14e166fe49551301ea9"
 dependencies = [
  "inotify",
  "js-sys",
@@ -6971,9 +6971,9 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 
 [[package]]
 name = "nix"
-version = "0.30.1"
+version = "0.31.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
+checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
 dependencies = [
  "bitflags 2.13.1",
  "cfg-if",
@@ -9007,6 +9007,7 @@ dependencies = [
  "pulldown-cmark",
  "re_agent",
  "re_log",
+ "re_log_types",
  "re_tracing",
  "re_ui",
  "re_workspace_hack",
@@ -9282,6 +9283,37 @@ version = "0.40.0-alpha.1+dev"
 dependencies = [
  "convert_case 0.11.0",
  "re_workspace_hack",
+]
+
+[[package]]
+name = "re_catalog_client"
+version = "0.40.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "ehttp",
+ "futures",
+ "itertools 0.15.0",
+ "jiff",
+ "re_async",
+ "re_chunk",
+ "re_chunk_index",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_protos",
+ "re_redap_client",
+ "re_sorbet",
+ "re_span",
+ "re_tracing",
+ "re_types_core",
+ "re_uri",
+ "re_workspace_hack",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -10006,6 +10038,7 @@ dependencies = [
  "re_analytics",
  "re_arrow_util",
  "re_build_info",
+ "re_catalog_client",
  "re_chunk_index",
  "re_datafusion",
  "re_entity_db",
@@ -10595,6 +10628,7 @@ dependencies = [
  "re_async",
  "re_auth",
  "re_backoff",
+ "re_catalog_client",
  "re_dataframe_ui",
  "re_datafusion",
  "re_error",
@@ -10655,8 +10689,6 @@ dependencies = [
  "re_mutex",
  "re_perf_telemetry",
  "re_protos",
- "re_sorbet",
- "re_span",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -10989,6 +11021,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_store",
@@ -11860,6 +11893,7 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_capabilities",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_store",
@@ -12703,6 +12737,7 @@ dependencies = [
  "re_auth",
  "re_build_info",
  "re_build_tools",
+ "re_catalog_client",
  "re_chunk",
  "re_chunk_index",
  "re_chunk_optimizer",
@@ -16635,14 +16670,15 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "8.6.0"
+version = "9.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
+checksum = "e49ade69c4434c55dd651d36fe05f38e0578db948b773cbc01c48c4b5e560692"
 dependencies = [
  "crc32fast",
  "flate2",
  "indexmap 2.14.0",
  "memchr",
+ "nix",
  "typed-path",
  "zopfli",
 ]
