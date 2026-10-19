@@ -264,10 +264,9 @@ impl RrdManifest {
     pub fn try_new(manifest: &RawRrdManifest) -> ChunkIndexResult<Self> {
         re_tracing::profile_function!();
 
+        manifest.sanity_check_cheap()?;
         if cfg!(debug_assertions) {
             manifest.sanity_check_heavy()?;
-        } else {
-            manifest.sanity_check_cheap()?;
         }
 
         let chunk_ids = manifest.col_chunk_id()?;
