@@ -24,16 +24,19 @@ use re_viewer_context::{
     SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
 };
 
+use crate::asset_coverage_modal::{AssetCoverageModal, AssetTarget};
 use crate::asset_registration::{AssetRegistrations, AssetUnregistrations};
 use crate::asset_source_modal::AssetSourceModal;
 use crate::context::Context;
 use crate::entries::{Entries, Entry, Table};
-use crate::entry_meta::EntryMetaQuery;
-use crate::register_asset_modal::{AssetTarget, RegisterAssetModal};
+use crate::entry_meta::{DatasetSegments, EntryMetaQuery};
+use crate::register_asset_modal::RegisterAssetModal;
 use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
 use crate::unregister_asset_modal::UnregisterAssetModal;
 
 mod dataset;
+
+pub use dataset::PILL_MARGIN;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ServerKind {
@@ -597,6 +600,8 @@ pub struct RedapServers {
 
     register_asset_modal_ui: RegisterAssetModal,
 
+    asset_coverage_modal_ui: AssetCoverageModal,
+
     asset_source_modal_ui: AssetSourceModal,
 
     unregister_asset_modal_ui: UnregisterAssetModal,
@@ -652,6 +657,7 @@ impl Default for RedapServers {
             command_receiver,
             server_modal_ui: Default::default(),
             register_asset_modal_ui: Default::default(),
+            asset_coverage_modal_ui: Default::default(),
             asset_source_modal_ui: Default::default(),
             unregister_asset_modal_ui: Default::default(),
             inline_login_flow: None,
@@ -697,6 +703,12 @@ pub enum Command {
 
     /// Open a modal to register an asset with a dataset.
     OpenRegisterAssetModal(AssetTarget),
+
+    /// Open a modal to pick which segments of a dataset load an asset.
+    OpenAssetCoverageModal {
+        target: AssetTarget,
+        asset_id: SegmentId,
+    },
 
     /// Open a modal asking whether to unregister an asset.
     OpenUnregisterAssetModal {
@@ -1099,6 +1111,15 @@ impl RedapServers {
                 );
             }
 
+            Command::OpenAssetCoverageModal { target, asset_id } => {
+                self.asset_coverage_modal_ui.open(
+                    target,
+                    asset_id,
+                    connection_registry.clone(),
+                    runtime.clone(),
+                );
+            }
+
             Command::OpenAssetSourceModal { asset_id, layers } => {
                 self.asset_source_modal_ui.open(asset_id, layers);
             }
@@ -1437,6 +1458,18 @@ impl RedapServers {
         }
     }
 
+    /// The segments of the dataset an asset modal points at, as the modal names and searches them.
+    fn asset_target_segments(
+        &self,
+        egui_ctx: &egui::Context,
+        target: &AssetTarget,
+    ) -> DatasetSegments {
+        self.servers
+            .get(&target.origin)
+            .map(|server| server.dataset_segments(egui_ctx, target.dataset_id))
+            .unwrap_or_default()
+    }
+
     pub fn modals_ui(&mut self, app_ctx: &AppContext<'_>, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
@@ -1455,7 +1488,46 @@ impl RedapServers {
             })
             .unwrap_or_default();
 
-        self.register_asset_modal_ui.ui(&ctx, ui, &asset_slots);
+        let register_segments = self
+            .register_asset_modal_ui
+            .target()
+            .map(|target| self.asset_target_segments(ui.ctx(), target))
+            .unwrap_or_default();
+        let stores_coverage = self
+            .register_asset_modal_ui
+            .target()
+            .and_then(|target| {
+                let server = self.servers.get(&target.origin)?;
+                Some(server.dataset_stores_coverage(ui.ctx(), target.dataset_id))
+            })
+            .unwrap_or(true);
+        let coverage_segments = self
+            .asset_coverage_modal_ui
+            .target()
+            .map(|target| self.asset_target_segments(ui.ctx(), target))
+            .unwrap_or_default();
+
+        let stored_coverage = Option::zip(
+            self.asset_coverage_modal_ui.target(),
+            self.asset_coverage_modal_ui.asset_id(),
+        )
+        .and_then(|(target, asset_id)| {
+            self.servers.get(&target.origin)?.dataset_asset_coverage(
+                ui.ctx(),
+                target.dataset_id,
+                asset_id,
+            )
+        });
+
+        self.register_asset_modal_ui.ui(
+            &ctx,
+            ui,
+            &asset_slots,
+            &register_segments,
+            stores_coverage,
+        );
+        self.asset_coverage_modal_ui
+            .ui(&ctx, ui, &coverage_segments, stored_coverage.as_ref());
         self.asset_source_modal_ui.ui(ui);
         self.unregister_asset_modal_ui.ui(&ctx, ui);
     }

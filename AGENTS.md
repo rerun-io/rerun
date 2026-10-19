@@ -48,6 +48,13 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
   - Update from failed CI run: `./scripts/update_snapshots_from_ci.sh`
   - Best practices: see [egui_kittest README](https://github.com/emilk/egui/tree/master/crates/egui_kittest#snapshot-testing)
 
+### Long-running commands (for agents)
+
+Builds and test runs here take a long time, so run them in the background.
+A background command notifies you when it exits, so never start a second command to watch the first one.
+No `sleep`-and-`tail` pollers, no `until` loops on the log.
+Start the build, do something else, and read its output once the notification arrives.
+
 ### Driving a running egui UI (for agents)
 
 Two MCP servers let an agent see and click a running UI instead of guessing from code:

@@ -54,6 +54,8 @@ webbrowser.workspace = true
 re_ui = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
 
+egui_kittest.workspace = true
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rfd.workspace = true
 

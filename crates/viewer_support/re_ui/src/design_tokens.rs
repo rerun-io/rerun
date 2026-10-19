@@ -529,6 +529,21 @@ pub struct DesignTokens {
     /// Fill of a card whose flag is set.
     pub card_marked_fill: Color32,
 
+    /// Fill of the selected card of a set, e.g. the picked coverage mode.
+    pub card_selected_fill: Color32,
+
+    /// Outline of the selected card of a set.
+    pub card_selected_stroke: Stroke,
+
+    /// Fill of a text field on a card.
+    pub card_text_edit_bg_color: Color32,
+
+    /// Text of a link on a card.
+    pub card_link_color: Color32,
+
+    /// The unfilled part of a bar on a card.
+    pub card_bar_track_color: Color32,
+
     // Flag button when it is not set, at rest and hovered. A set flag takes
     // [`Self::button_blue`].
     pub flag_untoggled_bg: Color32,
@@ -789,6 +804,11 @@ impl DesignTokens {
             card_hover_fill: get_color("card_hover_fill"),
             card_hover_stroke: get_stroke("card_hover_stroke"),
             card_marked_fill: get_color("card_marked_fill"),
+            card_selected_fill: get_color("card_selected_fill"),
+            card_selected_stroke: get_stroke("card_selected_stroke"),
+            card_text_edit_bg_color: get_color("card_text_edit_bg_color"),
+            card_link_color: get_color("card_link_color"),
+            card_bar_track_color: get_color("card_bar_track_color"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
             flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),

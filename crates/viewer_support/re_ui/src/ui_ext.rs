@@ -277,11 +277,11 @@ pub trait UiExt {
     }
 
     #[expect(clippy::disallowed_methods)]
-    fn re_radio_value<Value: PartialEq>(
+    fn re_radio_value<'a, Value: PartialEq>(
         &mut self,
         current_value: &mut Value,
         alternative: Value,
-        text: impl Into<egui::WidgetText>,
+        text: impl IntoAtoms<'a>,
     ) -> egui::Response {
         self.ui_mut()
             .scope(|ui| {

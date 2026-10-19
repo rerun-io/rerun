@@ -9,19 +9,21 @@ use std::time::Duration;
 use arrow::array::RecordBatch;
 use egui::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::kittest::{AccessKitNode, Queryable as _};
 use futures::StreamExt as _;
 
-use re_catalog_client::{CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
+use re_catalog_client::{AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
 use re_chunk_index::RrdManifest;
 use re_integration_test::{
     HarnessExt as _, TestServer, ViewerHarnessExt as _, asset_rrd, file_url, register_asset,
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
+use re_protos::cloud::v1alpha1::ext::AssetMode;
 use re_redap_client::{
-    ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, StreamingOptions,
+    ApiError, ApiErrorKind, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    StreamingOptions,
 };
-use re_sdk::external::re_log_types::{EntityPath, EntryId, StoreId};
+use re_sdk::external::re_log_types::{EntityPath, EntryId, StoreId, Timestamp};
 use re_sdk::external::re_tuid::Tuid;
 use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
@@ -183,7 +185,12 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     let segment_id = catalog_client
-        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
         .await
         .expect("Failed to register asset");
 
@@ -214,11 +221,21 @@ async fn register_asset_replaces_an_already_registered_asset() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     let first = catalog_client
-        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
         .await
         .expect("Failed to register asset");
     let second = catalog_client
-        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
         .await
         .expect("Failed to re-register asset");
 
@@ -231,6 +248,249 @@ async fn register_asset_replaces_an_already_registered_asset() {
         .expect("the dataset should have assets");
 
     assert_eq!(segments, vec![second]);
+}
+
+/// An asset registered with an opt-in coverage keeps that coverage, so it only reaches the
+/// segments it lists. The listed segments read back sorted, whatever order they were given in.
+#[tokio::test(flavor = "multi_thread")]
+async fn register_asset_stores_the_coverage_it_is_given() {
+    const SEGMENT_NOT_IN_DATASET: &str = "zzz_segment_not_in_dataset";
+
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let asset_segment_id = catalog_client
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage {
+                mode: AssetMode::OptIn,
+                segments: vec![SegmentId::from(SEGMENT_NOT_IN_DATASET), segment_id.clone()],
+            }),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to register asset");
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(
+        stored,
+        AssetCoverage {
+            mode: AssetMode::OptIn,
+            segments: vec![segment_id.clone(), SegmentId::from(SEGMENT_NOT_IN_DATASET),],
+        }
+    );
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(segment_id))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert_eq!(segments, vec![asset_segment_id]);
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert!(segments.is_empty());
+}
+
+/// Writing an asset's coverage replaces the one it was registered with. The write only lands on
+/// the revision it was read at, so a second write from a stale revision is refused.
+#[tokio::test(flavor = "multi_thread")]
+async fn set_asset_coverage_replaces_the_stored_coverage() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let asset_segment_id = catalog_client
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to register asset");
+
+    let (_stored, revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+
+    let coverage = AssetCoverage {
+        mode: AssetMode::OptOut,
+        segments: vec![segment_id.clone()],
+    };
+
+    catalog_client
+        .set_asset_coverage(
+            dataset_id(),
+            asset_segment_id.clone(),
+            &coverage,
+            Some(revision),
+        )
+        .await
+        .expect("Failed to write the asset's coverage");
+
+    let (stored, new_revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, coverage);
+    assert_ne!(new_revision, revision);
+
+    let stale = catalog_client
+        .set_asset_coverage(
+            dataset_id(),
+            asset_segment_id.clone(),
+            &AssetCoverage::default(),
+            Some(revision),
+        )
+        .await
+        .expect_err("a write from a stale revision should fail");
+    assert_eq!(stale.kind, ApiErrorKind::FailedPrecondition);
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id)
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, coverage);
+}
+
+/// Registering an asset again without a coverage leaves the coverage stored for it as it is.
+/// Registering it again with a coverage replaces the stored one.
+#[tokio::test(flavor = "multi_thread")]
+async fn register_asset_without_coverage_keeps_the_stored_coverage() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let coverage = AssetCoverage {
+        mode: AssetMode::OptIn,
+        segments: vec![segment_id.clone()],
+    };
+    let asset_segment_id = catalog_client
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&coverage),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to register asset");
+
+    catalog_client
+        .register_asset(dataset_id(), &asset_url, None, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("Failed to re-register asset");
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, coverage);
+
+    catalog_client
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to re-register asset");
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id)
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, AssetCoverage::default());
+}
+
+/// An asset registered without ever storing a coverage applies to every segment, and has no
+/// revision yet. A write that expects no stored coverage lands on it, and a second such write is
+/// refused.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_asset_without_a_stored_coverage_applies_to_every_segment() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_urdf")
+        .await
+        .expect("Failed to register asset");
+
+    let (stored, revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, AssetCoverage::default());
+    assert_eq!(revision, 0);
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(segment_id.clone()))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert_eq!(segments, vec![asset_segment_id.clone()]);
+
+    let coverage = AssetCoverage {
+        mode: AssetMode::OptOut,
+        segments: vec![segment_id.clone()],
+    };
+    catalog_client
+        .set_asset_coverage(dataset_id(), asset_segment_id.clone(), &coverage, Some(0))
+        .await
+        .expect("Failed to write the asset's first coverage");
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, coverage);
+
+    let second = catalog_client
+        .set_asset_coverage(
+            dataset_id(),
+            asset_segment_id,
+            &AssetCoverage::default(),
+            Some(0),
+        )
+        .await
+        .expect_err("the asset has a coverage stored now");
+    assert_eq!(second.kind, ApiErrorKind::FailedPrecondition);
 }
 
 /// Unregistering an asset drops it from the dataset's assets. Dropping one that isn't registered
@@ -251,7 +511,12 @@ async fn unregister_asset_drops_the_asset() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     let segment_id = catalog_client
-        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&AssetCoverage::default()),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
         .await
         .expect("Failed to register asset");
 
@@ -476,7 +741,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -532,7 +797,7 @@ async fn a_refused_registration_is_listed_as_failed() {
     const REFUSED_ASSET_URI: &str = "file://somehost/file/path.rrd";
 
     harness
-        .get_by_role_and_label(Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
         .type_text(REFUSED_ASSET_URI);
     harness.run_ok();
 
@@ -759,8 +1024,8 @@ async fn dataset_assets_tab() {
     harness.run_ok();
 
     // Each card shows its asset's age as a duration from now, which drifts as the test runs. The
-    // mask is wider than any age text so its own width stays fixed, and narrow enough to leave
-    // the size column visible.
+    // mask is wider than any age text so its own width stays fixed, and narrow enough to stay
+    // clear of the size column.
     const AGE_MASK_WIDTH: f32 = 420.0;
     let ages: Vec<egui::Rect> = harness
         .query_all_by_label_contains("Registered ")
@@ -779,8 +1044,28 @@ async fn dataset_assets_tab() {
     }
 
     // Each asset's size is the compressed size of its chunks, which varies by a few bytes between
-    // runs and is enough to change the rounded total. The mask starts where the asset count ends
-    // and is wider than the rest of the line, so its own width stays fixed.
+    // runs and is enough to change the rounded number. Each card's mask covers the column under
+    // its `SIZE` header, which is right aligned.
+    const SIZE_COLUMN_WIDTH: f32 = 74.0;
+    const SIZE_COLUMN_HEIGHT: f32 = 40.0;
+    let size_headers: Vec<egui::Rect> = harness
+        .query_all_by_label("SIZE")
+        .map(|node| node.rect())
+        .collect();
+    assert_eq!(
+        size_headers.len(),
+        ASSET_IDS.len(),
+        "every asset card should say how big its asset is"
+    );
+    for header in size_headers {
+        harness.mask(egui::Rect::from_min_size(
+            egui::pos2(header.max.x - SIZE_COLUMN_WIDTH, header.min.y),
+            egui::vec2(SIZE_COLUMN_WIDTH, SIZE_COLUMN_HEIGHT),
+        ));
+    }
+
+    // The toolbar's total varies the same way. The mask starts where the asset count ends and is
+    // wider than the rest of the line, so its own width stays fixed.
     const SIZE_MASK_WIDTH: f32 = 240.0;
     let asset_count = harness
         .query_by_label("assets")
@@ -988,7 +1273,7 @@ async fn registering_an_asset_reaches_segments_the_viewer_already_has() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(Role::TextInput, "Source URI")
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -1064,6 +1349,336 @@ async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() 
     );
 }
 
+/// Editing the coverage of an asset from its card writes the new coverage to the server, and the
+/// card counts the segments the asset applies to from then on.
+#[tokio::test(flavor = "multi_thread")]
+async fn editing_the_coverage_of_an_asset_updates_its_card() {
+    let (server, segment_ids) = TestServer::spawn()
+        .await
+        .with_static_preview_data(DATASET_NAME, DATASET_ID, RECORDING_ID, 2)
+        .await;
+
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let asset_segment_id = register_asset(&catalog_client, asset_dataset, "robot_urdf")
+        .await
+        .expect("Failed to register asset");
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(asset_list_uri(&server).to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    viewer_test_utils::step_until("the card counts every segment", &mut harness, |harness| {
+        harness.query_by_label("2 / 2").is_some()
+    });
+
+    harness.get_by_label("more").click_accesskit();
+    viewer_test_utils::step_until("the asset's menu is open", &mut harness, |harness| {
+        harness.query_by_label("Edit coverage").is_some()
+    });
+    harness.get_by_label("Edit coverage").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "the modal shows the asset's coverage",
+        &mut harness,
+        |harness| harness.query_by_label(OPT_IN_HEADING).is_some(),
+    );
+
+    list_segment_in_coverage(&mut harness, OPT_IN_HEADING, &segment_ids[0]);
+
+    harness.get_by_label("Save coverage").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the card counts the one listed segment",
+        &mut harness,
+        |harness| harness.query_by_label("1 / 2").is_some(),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id)
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(
+        stored,
+        AssetCoverage {
+            mode: AssetMode::OptIn,
+            segments: vec![segment_ids[0].clone()],
+        }
+    );
+}
+
+/// The coverage picked in the register modal is stored for the asset it registers.
+#[tokio::test(flavor = "multi_thread")]
+async fn registering_through_the_modal_stores_the_picked_coverage() {
+    let (server, segment_ids) = TestServer::spawn()
+        .await
+        .with_static_preview_data(DATASET_NAME, DATASET_ID, RECORDING_ID, 2)
+        .await;
+    let catalog_client = server.catalog_client();
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(asset_list_uri(&server).to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    viewer_test_utils::step_until(
+        "the dataset reports that it has no assets yet",
+        &mut harness,
+        |harness| harness.query_by_label("No assets registered").is_some(),
+    );
+
+    open_register_asset_modal(&mut harness);
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    harness
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
+        .type_text(&asset_url);
+    harness.run_ok();
+
+    harness.get_by_label("Keep current coverage").click();
+    harness.run_ok();
+
+    list_segment_in_coverage(&mut harness, OPT_IN_HEADING, &segment_ids[0]);
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the registered asset counts the one listed segment",
+        &mut harness,
+        |harness| harness.query_by_label("1 / 2").is_some(),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let assets = catalog_client
+        .scan_asset_dataset(asset_dataset)
+        .await
+        .expect("Failed to scan the asset dataset");
+    let [asset]: [_; 1] = assets.try_into().expect("one asset was registered");
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset.id)
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(
+        stored,
+        AssetCoverage {
+            mode: AssetMode::OptIn,
+            segments: vec![segment_ids[0].clone()],
+        }
+    );
+}
+
+/// Registering a source that an asset is already registered from offers to keep the coverage of
+/// that asset, and keeps it by default. Unchecking it stores the coverage picked in the modal.
+#[tokio::test(flavor = "multi_thread")]
+async fn registering_a_source_again_keeps_the_coverage_of_its_asset() {
+    let (server, segment_ids) = TestServer::spawn()
+        .await
+        .with_static_preview_data(DATASET_NAME, DATASET_ID, RECORDING_ID, 2)
+        .await;
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let coverage = AssetCoverage {
+        mode: AssetMode::OptIn,
+        segments: vec![segment_ids[0].clone()],
+    };
+    let asset_segment_id = catalog_client
+        .register_asset(
+            dataset_id(),
+            &asset_url,
+            Some(&coverage),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to register asset");
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(asset_list_uri(&server).to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    viewer_test_utils::step_until(
+        "the card counts the one listed segment",
+        &mut harness,
+        |harness| harness.query_by_label("1 / 2").is_some(),
+    );
+
+    let registered_at = asset_last_updated_at(&catalog_client, asset_dataset).await;
+
+    open_register_asset_modal(&mut harness);
+    harness
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
+        .type_text(&asset_url);
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "the modal offers to keep the asset's coverage",
+        &mut harness,
+        |harness| harness.query_by_label("Keep current coverage").is_some(),
+    );
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    step_until_asset_is_registered_again(
+        &mut harness,
+        &catalog_client,
+        asset_dataset,
+        registered_at,
+    )
+    .await;
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id.clone())
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, coverage);
+
+    open_register_asset_modal(&mut harness);
+    harness
+        .get_by_role_and_label(Role::TextInput, "SOURCE URI")
+        .type_text(&asset_url);
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "the modal offers to keep the asset's coverage",
+        &mut harness,
+        |harness| harness.query_by_label("Keep current coverage").is_some(),
+    );
+    harness.get_by_label("Keep current coverage").click();
+    harness.run_ok();
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the card counts every segment",
+        &mut harness,
+        |harness| harness.query_by_label("2 / 2").is_some(),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+
+    let (stored, _revision) = catalog_client
+        .asset_coverage(dataset_id(), asset_segment_id)
+        .await
+        .expect("Failed to read the asset's coverage");
+    assert_eq!(stored, AssetCoverage::default());
+}
+
+/// The heading of the coverage card that lists the only segments an asset applies to.
+const OPT_IN_HEADING: &str = "Only these segments:";
+
+/// Selects the coverage mode headed `heading` in the open modal, and lists `segment` under it
+/// through that mode's search field.
+fn list_segment_in_coverage(
+    harness: &mut Harness<'static, re_viewer::App>,
+    heading: &str,
+    segment: &SegmentId,
+) {
+    harness.get_by_label(heading).click();
+    harness.run_ok();
+
+    // The search field of the selected mode is the only one enabled, and its hint is the only
+    // name it has.
+    let search_field = |node: &AccessKitNode<'_>| {
+        node.role() == Role::TextInput
+            && !node.is_disabled()
+            && node
+                .placeholder()
+                .is_some_and(|hint| hint.starts_with("Search"))
+    };
+    harness.get_by(search_field).focus();
+    harness.run_ok();
+    harness.get_by(search_field).type_text(segment.as_str());
+    harness.run_ok();
+
+    // The search only offers segments once the dataset's segment IDs have arrived.
+    viewer_test_utils::step_until("the search offers the segment", harness, |harness| {
+        harness.query_by_label(segment.as_str()).is_some()
+    });
+    harness.get_by_label(segment.as_str()).click();
+    harness.run_ok();
+}
+
+/// When the last layer of the one asset in `asset_dataset` was touched.
+async fn asset_last_updated_at(
+    catalog_client: &CatalogClient,
+    asset_dataset: EntryId,
+) -> Timestamp {
+    let assets = catalog_client
+        .scan_asset_dataset(asset_dataset)
+        .await
+        .expect("Failed to scan the asset dataset");
+    let [asset]: [_; 1] = assets.try_into().expect("one asset is registered");
+    asset.last_updated_at
+}
+
+/// Steps the viewer until the server touched the one asset in `asset_dataset` after
+/// `last_updated_at`, and the viewer no longer lists a pending registration.
+async fn step_until_asset_is_registered_again(
+    harness: &mut Harness<'static, re_viewer::App>,
+    catalog_client: &CatalogClient,
+    asset_dataset: EntryId,
+    last_updated_at: Timestamp,
+) {
+    const TIMEOUT: Duration = Duration::from_secs(10);
+
+    let start = std::time::Instant::now();
+    while asset_last_updated_at(catalog_client, asset_dataset).await == last_updated_at {
+        assert!(
+            start.elapsed() < TIMEOUT,
+            "the server should register the asset again"
+        );
+        harness.step();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the viewer is done with the registration",
+        harness,
+        |harness| {
+            harness
+                .query_by_label("Waiting for the server to register it")
+                .is_none()
+        },
+        Duration::from_millis(100),
+        TIMEOUT,
+    );
+}
+
 /// Opens the modal that registers an asset.
 ///
 /// The register button is centered with a width measured the frame before, so it moves once after
@@ -1076,18 +1691,22 @@ fn open_register_asset_modal(harness: &mut Harness<'static, re_viewer::App>) {
     harness.run_ok();
 }
 
-/// Navigates to the dataset's asset list, which is where assets are registered and unregistered.
-fn open_asset_list(harness: &mut Harness<'static, re_viewer::App>, server: &TestServer) {
-    let asset_list_uri = re_uri::DatasetUri {
+/// The url of the dataset's asset list.
+fn asset_list_uri(server: &TestServer) -> re_uri::DatasetUri {
+    re_uri::DatasetUri {
         origin: origin(server),
         dataset_id: dataset_id().id,
         resource: DatasetResource::Assets,
         segment_id: None,
         fragment: re_uri::Fragment::default(),
-    };
+    }
+}
+
+/// Navigates to the dataset's asset list, which is where assets are registered and unregistered.
+fn open_asset_list(harness: &mut Harness<'static, re_viewer::App>, server: &TestServer) {
     harness
         .state()
-        .open_url_or_file(&asset_list_uri.to_string());
+        .open_url_or_file(&asset_list_uri(server).to_string());
 
     viewer_test_utils::step_until("the asset list is up", harness, |harness| {
         harness.query_by_label("Register asset").is_some()

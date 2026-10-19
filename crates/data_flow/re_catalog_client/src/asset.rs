@@ -7,10 +7,11 @@ use arrow::array::RecordBatch;
 
 use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, LayerRegistrationStatus, ScanDatasetManifestDataframe,
+    AssetMode, DataSource, LayerRegistrationStatus, ScanDatasetManifestDataframe, asset_properties,
+    read_asset_mode, read_asset_segments,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::{ApiError, ApiResult};
+use re_redap_client::{ApiError, ApiErrorKind, ApiResult};
 use re_types_core::{LayerName, SegmentId};
 
 use crate::CatalogClient;
@@ -58,6 +59,42 @@ pub struct AssetLayer {
 
     /// The URI the layer was registered from.
     pub storage_url: String,
+}
+
+/// Which segments of a dataset load an asset.
+///
+/// Stored in the asset's `asset` property. An asset the server stored no coverage for applies to
+/// every segment.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AssetCoverage {
+    pub mode: AssetMode,
+
+    /// The segment ids the mode applies to.
+    pub segments: Vec<SegmentId>,
+}
+
+impl AssetCoverage {
+    /// The coverage an asset's properties hold.
+    ///
+    /// The properties hold the segment ids as a set, so they are sorted here to read the same way
+    /// every time.
+    pub fn from_properties(properties: &RecordBatch) -> Self {
+        let mut segments: Vec<SegmentId> = read_asset_segments(properties, 0)
+            .into_iter()
+            .map(SegmentId::new)
+            .collect();
+        segments.sort();
+
+        Self {
+            mode: read_asset_mode(properties, 0),
+            segments,
+        }
+    }
+
+    /// The properties holding this coverage.
+    pub fn to_properties(&self) -> RecordBatch {
+        asset_properties(self.mode, self.segments.iter().map(SegmentId::as_str))
+    }
 }
 
 /// How long to wait for the server to register or unregister an asset.
@@ -279,7 +316,9 @@ impl CatalogClient {
     /// Register an existing `.rrd` that the server can reach as an asset of `dataset_id`, and wait
     /// for the registration to finish.
     ///
-    /// Registering an asset that is already registered replaces it.
+    /// Registering an asset that is already registered replaces its data. `coverage` replaces the
+    /// coverage the server stored for it, and with no `coverage` the stored one stays as it is. A
+    /// server without segment properties ignores `coverage`, and the asset applies to every segment.
     ///
     /// The server has restrictions on what an asset can contain; See
     /// [`re_protos::common::v1alpha1::ext::DatasetKind::limits`].
@@ -288,6 +327,7 @@ impl CatalogClient {
         &self,
         dataset_id: EntryId,
         asset_uri: impl AsRef<str>,
+        coverage: Option<&AssetCoverage>,
         timeout: std::time::Duration,
     ) -> Result<SegmentId, AssetRegistrationError> {
         let data_source = crate::asset_data_source(self.origin(), asset_uri)
@@ -321,7 +361,7 @@ impl CatalogClient {
             .into_iter()
             .next();
 
-        registered.ok_or_else(|| {
+        let registered = registered.ok_or_else(|| {
             AssetRegistrationError::new(
                 asset_id,
                 ApiError::internal(
@@ -329,7 +369,88 @@ impl CatalogClient {
                     "the server registered the asset but returned no segment",
                 ),
             )
-        })
+        })?;
+
+        // The asset only exists once the server registered it, so its coverage is written after
+        // the fact. Until this lands the asset applies to every segment.
+        if let Some(coverage) = coverage {
+            let written = self
+                .set_segment_properties(
+                    asset_dataset,
+                    registered.clone(),
+                    &coverage.to_properties(),
+                    None,
+                )
+                .await;
+
+            match written {
+                Ok(_) => {}
+
+                // A server without segment properties loads every asset into every segment.
+                Err(err) if err.kind == ApiErrorKind::Unimplemented => {
+                    re_log::debug_once!("The server does not store asset coverage");
+                }
+
+                Err(err) => return Err(AssetRegistrationError::new(Some(registered), err)),
+            }
+        }
+
+        Ok(registered)
+    }
+
+    /// Read which segments of `dataset_id` load one of its assets, and the revision that gates
+    /// writes to it.
+    ///
+    /// An asset the server stored no coverage for applies to every segment, and its revision is
+    /// `0`.
+    pub async fn asset_coverage(
+        &self,
+        dataset_id: EntryId,
+        asset_id: SegmentId,
+    ) -> ApiResult<(AssetCoverage, u64)> {
+        // No asset dataset means no asset was ever registered, so there is no coverage to read.
+        let Some(asset_dataset) = self.asset_dataset(dataset_id).await? else {
+            return Ok((AssetCoverage::default(), 0));
+        };
+
+        let stored = self.get_segment_properties(asset_dataset, asset_id).await?;
+
+        Ok(stored.map_or_else(
+            || (AssetCoverage::default(), 0),
+            |(properties, revision)| (AssetCoverage::from_properties(&properties), revision),
+        ))
+    }
+
+    /// Replace which segments of `dataset_id` load one of its assets, returning the new revision.
+    ///
+    /// The write replaces every property stored on the asset, and coverage is the only property an
+    /// asset carries.
+    ///
+    /// With `expected_revision` set the write only lands if the stored revision matches, and fails
+    /// with `FailedPrecondition` otherwise, leaving the stored coverage untouched. `0` means "only
+    /// if the asset has no coverage stored yet". Without it the write overwrites whatever is
+    /// stored.
+    pub async fn set_asset_coverage(
+        &self,
+        dataset_id: EntryId,
+        asset_id: SegmentId,
+        coverage: &AssetCoverage,
+        expected_revision: Option<u64>,
+    ) -> ApiResult<u64> {
+        let Some(asset_dataset) = self.asset_dataset(dataset_id).await? else {
+            return Err(ApiError::internal(
+                self.origin(),
+                "the dataset holds no assets",
+            ));
+        };
+
+        self.set_segment_properties(
+            asset_dataset,
+            asset_id,
+            &coverage.to_properties(),
+            expected_revision,
+        )
+        .await
     }
 
     /// Unregister an asset previously registered with [`Self::register_asset`], and wait for the

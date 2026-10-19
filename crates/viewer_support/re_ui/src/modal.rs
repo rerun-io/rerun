@@ -156,6 +156,8 @@ impl ModalWrapper {
     }
 
     /// Set the maximum width of the modal window.
+    ///
+    /// The modal is never wider than the window.
     #[inline]
     pub fn max_width(mut self, max_width: f32) -> Self {
         self.max_width = Some(max_width);
@@ -163,6 +165,9 @@ impl ModalWrapper {
     }
 
     /// Set the maximum height of the modal window.
+    ///
+    /// The modal is never taller than the window, so `f32::INFINITY` makes it as tall as the window
+    /// allows.
     #[inline]
     pub fn max_height(mut self, max_height: f32) -> Self {
         self.max_height = Some(max_height);
@@ -264,20 +269,29 @@ impl ModalWrapper {
                             let item_spacing_y = ui.spacing().item_spacing.y;
                             ui.spacing_mut().item_spacing.y = 0.0;
 
+                            /// The space kept free between the modal and each edge of the window.
+                            const WINDOW_MARGIN: f32 = 20.0;
+
+                            // The modal never grows past the window, also when the window shrinks
+                            // while the modal is open.
+                            let window_size = (ui.content_rect().size()
+                                - Vec2::splat(2.0 * WINDOW_MARGIN))
+                            .max(Vec2::ZERO);
+
                             if let Some(min_width) = self.min_width {
-                                ui.set_min_width(min_width);
+                                ui.set_min_width(min_width.min(window_size.x));
                             }
-                            if let Some(max_width) = self.max_width {
-                                ui.set_max_width(max_width);
-                            } else {
-                                ui.set_max_width(tokens.default_modal_width);
-                            }
+                            ui.set_max_width(
+                                self.max_width
+                                    .unwrap_or(tokens.default_modal_width)
+                                    .min(window_size.x),
+                            );
 
                             if let Some(min_height) = self.min_height {
-                                ui.set_min_height(min_height);
+                                ui.set_min_height(min_height.min(window_size.y));
                             }
                             if let Some(max_height) = self.max_height {
-                                ui.set_max_height(max_height);
+                                ui.set_max_height(max_height.min(window_size.y));
                             }
 
                             //

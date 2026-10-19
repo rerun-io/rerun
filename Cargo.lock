@@ -10623,6 +10623,7 @@ dependencies = [
  "datafusion",
  "egui",
  "egui_extras",
+ "egui_kittest",
  "futures",
  "itertools 0.15.0",
  "re_async",

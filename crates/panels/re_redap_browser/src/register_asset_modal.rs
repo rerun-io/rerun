@@ -2,7 +2,8 @@
 
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::{
-    AssetRegistrationError, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
+    AssetCoverage, AssetRegistrationError, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT,
+    asset_data_source,
 };
 use re_format::{format_bytes, format_plural_s};
 use re_log_types::EntryId;
@@ -13,16 +14,13 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _, icons};
 
+use crate::asset_coverage_modal::{
+    AssetEditState, AssetTarget, COVERAGE_MODAL_WIDTH, COVERAGE_NOT_STORED, assets_docs_link,
+    modal_body_max_height, remember_footer_height,
+};
 use crate::context::Context;
+use crate::entry_meta::DatasetSegments;
 use crate::servers::Command;
-
-/// The dataset an asset is registered into.
-#[derive(Clone, Debug)]
-pub struct AssetTarget {
-    pub origin: re_uri::Origin,
-
-    pub dataset_id: EntryId,
-}
 
 /// What a server takes as the source of an asset. A server that advertised no capabilities
 /// lets every source through, for the server itself to answer.
@@ -152,10 +150,10 @@ fn source_uri_field(
     };
 
     egui::Frame::new()
-        .inner_margin(egui::Margin::symmetric(3, 2))
+        .inner_margin(egui::Margin::symmetric(12, 9))
         .fill(ui.visuals().extreme_bg_color)
         .stroke(stroke)
-        .corner_radius(visuals.corner_radius)
+        .corner_radius(9)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(FIELD_HEIGHT);
@@ -168,6 +166,7 @@ fn source_uri_field(
                     ui.add(
                         egui::TextEdit::singleline(source_uri)
                             .id(textedit_id)
+                            .font(egui::TextStyle::Monospace)
                             .frame(egui::Frame::new())
                             .hint_text(hint_text)
                             .desired_width(ui.available_width()),
@@ -328,12 +327,13 @@ pub struct RegisterAssetModal {
 
 /// What the modal works on while it is open.
 struct State {
-    target: AssetTarget,
-    connection_registry: ConnectionRegistryHandle,
-    runtime: AsyncRuntimeHandle,
+    edit_state: AssetEditState,
 
     /// Where the asset is read from, as typed by the user.
     source_uri: String,
+
+    /// Whether registering leaves the coverage the server stores for the asset as it is.
+    keep_coverage: bool,
 }
 
 impl RegisterAssetModal {
@@ -344,10 +344,14 @@ impl RegisterAssetModal {
         runtime: AsyncRuntimeHandle,
     ) {
         self.state = Some(State {
-            target,
-            connection_registry,
-            runtime,
+            edit_state: AssetEditState {
+                target,
+                connection_registry,
+                runtime,
+                coverage: Default::default(),
+            },
             source_uri: String::new(),
+            keep_coverage: true,
         });
         self.just_opened = true;
         self.modal.open();
@@ -355,10 +359,21 @@ impl RegisterAssetModal {
 
     /// The dataset the modal registers into, while it is open.
     pub fn target(&self) -> Option<&AssetTarget> {
-        self.state.as_ref().map(|state| &state.target)
+        self.state.as_ref().map(|state| &state.edit_state.target)
     }
 
-    pub fn ui(&mut self, ctx: &Context<'_>, ui: &egui::Ui, slots: &AssetSlots) {
+    /// `dataset_segments` are the segments the coverage cards name and search.
+    ///
+    /// Without `stores_coverage` the modal offers no coverage, and the asset applies to every
+    /// segment.
+    pub fn ui(
+        &mut self,
+        ctx: &Context<'_>,
+        ui: &egui::Ui,
+        slots: &AssetSlots,
+        dataset_segments: &DatasetSegments,
+        stores_coverage: bool,
+    ) {
         let Some(state) = &mut self.state else {
             return;
         };
@@ -366,141 +381,218 @@ impl RegisterAssetModal {
 
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Register an asset"),
+            || {
+                ModalWrapper::new("Register an asset")
+                    .max_width(COVERAGE_MODAL_WIDTH)
+                    .max_height(f32::INFINITY)
+            },
             |ui| {
                 // Read every frame, so the modal keeps up with a connection made while it is open.
-                let sources =
-                    AssetSourcesCapabilities::new(&state.connection_registry, &state.target.origin);
+                let sources = AssetSourcesCapabilities::new(
+                    &state.edit_state.connection_registry,
+                    &state.edit_state.target.origin,
+                );
 
                 // `style_invalid_field` has to be applied before the field is added, so the outline
                 // lags the text by one frame.
                 let previous_source_is_invalid =
-                    match asset_data_source(&state.target.origin, &state.source_uri) {
+                    match asset_data_source(&state.edit_state.target.origin, &state.source_uri) {
                         Ok(source) => sources
                             .scheme_rejection_reason(source.storage_url.scheme())
                             .is_some(),
                         Err(_) => true,
                     };
 
-                let label = ui.strong("Source URI");
+                let footer_id = ui.make_persistent_id("register_asset_footer");
 
-                ui.scope(|ui| {
-                    if previous_source_is_invalid && !state.source_uri.is_empty() {
-                        ui.style_invalid_field();
-                    }
+                let (source, rejected_scheme_reason) = egui::ScrollArea::vertical()
+                    .id_salt("register_asset_body")
+                    .max_height(modal_body_max_height(ui, footer_id))
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        ui.add_space(10.0);
+                        let label =
+                            ui.weak(egui::RichText::new("SOURCE URI").monospace().size(10.0));
+                        ui.add_space(4.0);
 
-                    let field = source_uri_field(
-                        ui,
-                        &mut state.source_uri,
-                        &sources.source_example(),
-                        sources.show_file_picker(),
-                    )
-                    .labelled_by(label.id);
+                        ui.scope(|ui| {
+                            if previous_source_is_invalid && !state.source_uri.is_empty() {
+                                ui.style_invalid_field();
+                            }
 
-                    if just_opened {
-                        field.request_focus();
-                    }
-                });
-
-                // Parsed after the field, so the register button and what it sends both use the
-                // text the user sees.
-                let source = asset_data_source(&state.target.origin, &state.source_uri);
-                let rejected_scheme_reason = source.as_ref().ok().and_then(|source| {
-                    sources.scheme_rejection_reason(source.storage_url.scheme())
-                });
-
-                ui.label(sources.source_hint());
-
-                if let Some(reason) = &rejected_scheme_reason {
-                    ui.add_space(4.0);
-                    ui.error_label(reason);
-                }
-
-                ui.add_space(4.0);
-                for rule in slots.limit_rules() {
-                    ui.horizontal(|ui| {
-                        ui.bullet(ui.tokens().text_subdued);
-                        ui.weak(rule);
-                    });
-                }
-
-                let no_room_reason = slots.no_room_reason();
-                if let Some(reason) = &no_room_reason {
-                    ui.add_space(4.0);
-                    ui.warning_label(reason);
-                }
-
-                let already_registering = slots.is_registering(&state.source_uri);
-                if already_registering {
-                    ui.add_space(4.0);
-                    ui.warning_label("The server is already registering this asset.");
-                }
-
-                ui.add_space(4.0);
-                ui.label(
-                    "Registering runs in the background. \
-                     The asset list shows how far the server got with it.",
-                );
-
-                ui.add_space(8.0);
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let can_register = source.is_ok()
-                        && rejected_scheme_reason.is_none()
-                        && no_room_reason.is_none()
-                        && !already_registering;
-
-                    let register_response =
-                        ui.add_enabled(can_register, ReButton::new("Register").blue().small());
-
-                    if can_register
-                        && (register_response.clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::Enter)))
-                    {
-                        let AssetTarget { origin, dataset_id } = state.target.clone();
-                        let connection_registry = state.connection_registry.clone();
-                        let source_uri = std::mem::take(&mut state.source_uri);
-                        let command_sender = ctx.command_sender.clone();
-                        let egui_ctx = ui.ctx().clone();
-
-                        send_crossbeam(
-                            &command_sender,
-                            Command::AssetRegistrationStarted {
-                                origin: origin.clone(),
-                                entry_id: dataset_id,
-                                source_uri: source_uri.clone(),
-                            },
-                        )
-                        .ok();
-
-                        state.runtime.spawn_future(async move {
-                            let result = register_asset(
-                                connection_registry,
-                                origin.clone(),
-                                dataset_id,
-                                &source_uri,
+                            let field = source_uri_field(
+                                ui,
+                                &mut state.source_uri,
+                                &sources.source_example(),
+                                sources.show_file_picker(),
                             )
-                            .await;
+                            .labelled_by(label.id);
 
-                            send_crossbeam(
-                                &command_sender,
-                                Command::AssetRegistrationFinished {
-                                    origin,
-                                    entry_id: dataset_id,
-                                    source_uri,
-                                    result,
-                                },
-                            )
-                            .ok();
-                            egui_ctx.request_repaint();
+                            if just_opened {
+                                field.request_focus();
+                            }
                         });
 
-                        ui.close();
-                    }
+                        // Parsed after the field, so the register button and what it sends both
+                        // use the text the user sees.
+                        let source =
+                            asset_data_source(&state.edit_state.target.origin, &state.source_uri);
+                        let rejected_scheme_reason = source.as_ref().ok().and_then(|source| {
+                            sources.scheme_rejection_reason(source.storage_url.scheme())
+                        });
 
-                    if ui.add(ReButton::new("Cancel").small()).clicked() {
-                        ui.close();
-                    }
+                        ui.add_space(3.0);
+                        ui.weak(sources.source_hint());
+                        ui.weak(
+                            "There is no upload. The file must already be accessible to the \
+                             server.",
+                        );
+
+                        if let Some(reason) = &rejected_scheme_reason {
+                            ui.add_space(4.0);
+                            ui.error_label(reason);
+                        }
+
+                        ui.add_space(10.0);
+                        for rule in slots.limit_rules() {
+                            ui.horizontal(|ui| {
+                                ui.bullet(ui.tokens().text_subdued);
+                                ui.weak(rule);
+                            });
+                        }
+
+                        if let Some(reason) = &slots.no_room_reason() {
+                            ui.add_space(4.0);
+                            ui.warning_label(reason);
+                        }
+
+                        ui.add_space(14.0);
+                        egui::Sides::new().show(
+                            ui,
+                            |ui| {
+                                ui.weak(egui::RichText::new("APPLIES TO").monospace().size(10.0));
+                            },
+                            |ui| {
+                                if stores_coverage {
+                                    ui.re_checkbox(
+                                        &mut state.keep_coverage,
+                                        "Keep current coverage",
+                                    )
+                                    .on_hover_text(
+                                        "An asset that is already registered keeps the coverage it \
+                                         has. A new asset applies to every segment.",
+                                    );
+                                }
+                            },
+                        );
+                        ui.add_space(4.0);
+
+                        if stores_coverage {
+                            let keep_coverage = state.keep_coverage;
+                            ui.add_enabled_ui(!keep_coverage, |ui| {
+                                state.edit_state.coverage.ui(ui, dataset_segments, 50.0);
+                            });
+                        } else {
+                            ui.weak(COVERAGE_NOT_STORED);
+                        }
+
+                        if slots.is_registering(&state.source_uri) {
+                            ui.add_space(4.0);
+                            ui.warning_label("The server is already registering this asset.");
+                        }
+
+                        ui.add_space(10.0);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.weak(
+                                "Registration runs in the background. \
+                                 The asset appears as pending until the server validates it.",
+                            );
+                            assets_docs_link(ui);
+                        });
+
+                        (source, rejected_scheme_reason)
+                    })
+                    .inner;
+
+                let no_room_reason = slots.no_room_reason();
+                let keep_coverage = state.keep_coverage || !stores_coverage;
+                let already_registering = slots.is_registering(&state.source_uri);
+
+                let footer = ui.scope(|ui| {
+                    ui.add_space(16.0);
+                    egui::Sides::new().shrink_left().truncate().show(
+                        ui,
+                        |ui| {
+                            if !keep_coverage {
+                                state.edit_state.coverage.summary_ui(ui, dataset_segments);
+                            }
+                        },
+                        |ui| {
+                            let can_register = source.is_ok()
+                                && rejected_scheme_reason.is_none()
+                                && no_room_reason.is_none()
+                                && !already_registering;
+
+                            let register_response =
+                                ui.add_enabled(can_register, ReButton::new("Register").blue());
+
+                            if can_register
+                                && (register_response.clicked()
+                                    || ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                            {
+                                let AssetTarget { origin, dataset_id } =
+                                    state.edit_state.target.clone();
+                                let connection_registry =
+                                    state.edit_state.connection_registry.clone();
+                                let coverage =
+                                    (!keep_coverage).then(|| state.edit_state.coverage.coverage());
+                                let source_uri = std::mem::take(&mut state.source_uri);
+                                let command_sender = ctx.command_sender.clone();
+                                let egui_ctx = ui.ctx().clone();
+
+                                send_crossbeam(
+                                    &command_sender,
+                                    Command::AssetRegistrationStarted {
+                                        origin: origin.clone(),
+                                        entry_id: dataset_id,
+                                        source_uri: source_uri.clone(),
+                                    },
+                                )
+                                .ok();
+
+                                state.edit_state.runtime.spawn_future(async move {
+                                    let result = register_asset(
+                                        connection_registry,
+                                        origin.clone(),
+                                        dataset_id,
+                                        &source_uri,
+                                        coverage.as_ref(),
+                                    )
+                                    .await;
+
+                                    send_crossbeam(
+                                        &command_sender,
+                                        Command::AssetRegistrationFinished {
+                                            origin,
+                                            entry_id: dataset_id,
+                                            source_uri,
+                                            result,
+                                        },
+                                    )
+                                    .ok();
+                                    egui_ctx.request_repaint();
+                                });
+
+                                ui.close();
+                            }
+
+                            if ui.add(ReButton::new("Cancel")).clicked() {
+                                ui.close();
+                            }
+                        },
+                    );
                 });
+                remember_footer_height(ui, footer_id, footer.response.rect);
             },
         );
 
@@ -510,15 +602,17 @@ impl RegisterAssetModal {
     }
 }
 
-/// Registers what `source_uri` points at as an asset of a dataset.
+/// Registers what `source_uri` points at as an asset of a dataset, covering the segments the user
+/// picked.
 async fn register_asset(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
     dataset_id: EntryId,
     source_uri: &str,
+    coverage: Option<&AssetCoverage>,
 ) -> Result<(), AssetRegistrationError> {
     match CatalogClient::new(connection_registry.connection_handle(origin))
-        .register_asset(dataset_id, source_uri, DEFAULT_ASSET_TASK_TIMEOUT)
+        .register_asset(dataset_id, source_uri, coverage, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
     {
         Ok(asset_id) => {
