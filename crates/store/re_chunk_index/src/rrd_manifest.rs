@@ -1,10 +1,13 @@
+use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 
 use arrow::array::RecordBatch;
+use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
-use re_chunk::{ChunkId, EntityPath};
+use re_chunk::{ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::StoreId;
 use re_sorbet::SorbetSchema;
+use re_types_core::{LayerName, SegmentId};
 
 use crate::{
     ChunkIndexError, ChunkIndexResult, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap,
@@ -90,6 +93,25 @@ pub struct RrdManifest {
     /// Built on first use: it costs one hash entry per chunk, and most holders of a manifest
     /// never look chunks up by id.
     chunk_rows: OnceLock<ahash::HashMap<ChunkId, usize>>,
+
+    /// The layers of every component on every entity; see [`Self::layers_of_component`].
+    component_layers: IntMap<EntityPath, IntMap<ComponentIdentifier, BTreeSet<SegmentLayer>>>,
+}
+
+/// A layer of a segment that chunks in a manifest come from.
+///
+/// In the manifest of a dataset segment, chunks of an asset have the asset's segment id.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SegmentLayer {
+    pub segment_id: SegmentId,
+    pub layer: LayerName,
+}
+
+impl re_byte_size::SizeBytes for SegmentLayer {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { segment_id, layer } = self;
+        segment_id.heap_size_bytes() + layer.heap_size_bytes()
+    }
 }
 
 /// The schema of [`RrdManifest::merge`].
@@ -130,7 +152,8 @@ impl PartialEq for RrdManifest {
             chunk_keys,
             static_data_map,
             temporal_data_map,
-            chunk_rows: _, // derived from `chunk_ids`
+            chunk_rows: _,       // derived from `chunk_ids`
+            component_layers: _, // derived from the layer column and the data maps
         } = self;
 
         *chunk_fetcher_rb == other.chunk_fetcher_rb
@@ -159,26 +182,43 @@ impl re_byte_size::SizeBytes for RrdManifest {
     fn heap_size_bytes(&self) -> u64 {
         re_tracing::profile_function!();
 
-        // After `try_new`, some extracted arrays (chunk_ids, chunk_is_static, …) share their
-        // underlying `Arc<Buffer>` with the pruned `RecordBatch` columns, so they are already
-        // covered by `chunk_fetcher_rb.heap_size_bytes()`. However, after `merge` all arrays
-        // are independently allocated, so the pruned-batch size alone would undercount.
-        // We intentionally accept that minor double-count (via Arc sharing) from `try_new`
-        // in exchange for always being correct after `merge`.
-        //
-        // Fields that are never in the pruned batch must always be counted separately:
-        self.chunk_fetcher_rb.heap_size_bytes()
-            + column_heap_size_bytes(&self.chunk_entity_paths)
-            + column_heap_size_bytes(&self.chunk_num_rows)
-            + column_heap_size_bytes(&self.chunk_byte_sizes)
-            + column_heap_size_bytes(&self.chunk_byte_sizes_uncompressed)
-            + self.sorbet_schema.heap_size_bytes()
-            + self.static_data_map.heap_size_bytes()
-            + self.temporal_data_map.heap_size_bytes()
-            + self
-                .chunk_rows
-                .get()
-                .map_or(0, |rows| rows.heap_size_bytes())
+        let Self {
+            chunk_fetcher_rb,
+            store_id: _,
+            recording_schema: _, // same fields as `sorbet_schema`
+            sorbet_schema,
+            sorbet_schema_sha256: _,
+            schema_covers_all_chunks: _,
+            chunk_ids,
+            chunk_entity_paths,
+            chunk_is_static,
+            chunk_num_rows,
+            chunk_byte_offsets,
+            chunk_byte_sizes,
+            chunk_byte_sizes_uncompressed,
+            chunk_keys,
+            static_data_map,
+            temporal_data_map,
+            chunk_rows,
+            component_layers,
+        } = self;
+
+        // The columns that are also in `chunk_fetcher_rb` can share their buffers with it,
+        // in which case this counts them twice.
+        chunk_fetcher_rb.heap_size_bytes()
+            + column_heap_size_bytes(chunk_ids)
+            + column_heap_size_bytes(chunk_entity_paths)
+            + column_heap_size_bytes(chunk_is_static)
+            + column_heap_size_bytes(chunk_byte_offsets)
+            + chunk_keys.as_ref().map_or(0, column_heap_size_bytes)
+            + column_heap_size_bytes(chunk_num_rows)
+            + column_heap_size_bytes(chunk_byte_sizes)
+            + column_heap_size_bytes(chunk_byte_sizes_uncompressed)
+            + sorbet_schema.heap_size_bytes()
+            + static_data_map.heap_size_bytes()
+            + temporal_data_map.heap_size_bytes()
+            + chunk_rows.get().map_or(0, |rows| rows.heap_size_bytes())
+            + component_layers.heap_size_bytes()
     }
 }
 
@@ -260,7 +300,7 @@ impl RrdManifest {
 
         let pruned_batch = manifest.chunk_fetcher_record_batch();
 
-        Ok(Self {
+        let mut parsed = Self {
             chunk_fetcher_rb: pruned_batch,
             store_id: manifest.store_id.clone(),
             recording_schema,
@@ -278,7 +318,11 @@ impl RrdManifest {
             static_data_map,
             temporal_data_map,
             chunk_rows: OnceLock::new(),
-        })
+            component_layers: IntMap::default(),
+        };
+        parsed.component_layers = parsed.collect_component_layers();
+
+        Ok(parsed)
     }
 
     /// The schema for the entire recording.
@@ -505,7 +549,7 @@ impl RrdManifest {
             }
         }
 
-        Ok(Self {
+        let mut merged = Self {
             chunk_fetcher_rb: combined_batches,
             store_id: first.store_id.clone(),
             recording_schema,
@@ -523,7 +567,11 @@ impl RrdManifest {
             static_data_map,
             temporal_data_map,
             chunk_rows: OnceLock::new(),
-        })
+            component_layers: IntMap::default(),
+        };
+        merged.component_layers = merged.collect_component_layers();
+
+        Ok(merged)
     }
 
     /// Builds an [`RrdManifest`] for in-memory chunks (useful for tests).
@@ -684,6 +732,79 @@ impl RrdManifest {
             .ok()
     }
 
+    /// The layer each chunk comes from, row-aligned with [`Self::col_chunk_ids`].
+    ///
+    /// A manifest served from a server always has this column, since `FetchChunks`
+    /// needs it. One read from an RRD file doesn't.
+    pub fn col_rerun_partition_layer(&self) -> Option<quiver::Column<LayerName>> {
+        Self::COLUMN_RERUN_PARTITION_LAYER
+            .extract(&self.chunk_fetcher_rb)
+            .ok()
+    }
+
+    /// The segment layers of the chunks that hold `component` on `entity`, static or on any
+    /// timeline.
+    ///
+    /// Empty for a manifest without a layer column, like one read from an RRD file.
+    pub fn layers_of_component(
+        &self,
+        entity: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> &BTreeSet<SegmentLayer> {
+        static NO_LAYERS: BTreeSet<SegmentLayer> = BTreeSet::new();
+
+        self.component_layers
+            .get(entity)
+            .and_then(|per_component| per_component.get(&component))
+            .unwrap_or(&NO_LAYERS)
+    }
+
+    /// The layers of every component on every entity, read off the segment id and layer columns
+    /// and the data maps.
+    fn collect_component_layers(
+        &self,
+    ) -> IntMap<EntityPath, IntMap<ComponentIdentifier, BTreeSet<SegmentLayer>>> {
+        re_tracing::profile_function!();
+
+        let (Some(segment_ids), Some(layers)) = (
+            self.col_chunk_partition_id(),
+            self.col_rerun_partition_layer(),
+        ) else {
+            return IntMap::default();
+        };
+        let layer_of = |chunk_id: &ChunkId| {
+            let row = self.chunk_row(*chunk_id)?;
+            Some(SegmentLayer {
+                segment_id: segment_ids.get_owned(row)?,
+                layer: layers.get_owned(row)?,
+            })
+        };
+
+        let mut component_layers: IntMap<EntityPath, IntMap<ComponentIdentifier, BTreeSet<_>>> =
+            IntMap::default();
+
+        for (entity, per_component) in &self.static_data_map {
+            let entity_layers = component_layers.entry(entity.clone()).or_default();
+            for (component, chunk_id) in per_component {
+                if let Some(layer) = layer_of(chunk_id) {
+                    entity_layers.entry(*component).or_default().insert(layer);
+                }
+            }
+        }
+
+        for (entity, per_timeline) in &self.temporal_data_map {
+            let entity_layers = component_layers.entry(entity.clone()).or_default();
+            for per_component in per_timeline.values() {
+                for (component, per_chunk) in per_component {
+                    let layers_of_component = entity_layers.entry(*component).or_default();
+                    layers_of_component.extend(per_chunk.keys().filter_map(layer_of));
+                }
+            }
+        }
+
+        component_layers
+    }
+
     /// Returns the map-based representation of the static data in this RRD manifest.
     #[inline]
     pub fn static_map(&self) -> &RrdManifestStaticMap {
@@ -726,5 +847,114 @@ impl RrdManifest {
             &arrow::array::RecordBatchOptions::new().with_row_count(Some(num_rows)),
         )
         .expect("adding a null column to a valid batch should not fail")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{StoreId, StoreKind};
+
+    use super::*;
+
+    /// A manifest of the given chunks, with segment id and layer columns naming `segment_layer`
+    /// on every row, or without those columns for `None`.
+    fn manifest_of_layer(segment_layer: Option<(&str, &str)>, chunks: &[Chunk]) -> RrdManifest {
+        let store_id = StoreId::new(StoreKind::Recording, "app", "segment");
+        let raw = RawRrdManifest::build_in_memory_from_chunks(store_id, chunks.iter()).unwrap();
+
+        let Some((segment_id, layer)) = segment_layer else {
+            return RrdManifest::try_new(&raw).unwrap();
+        };
+
+        let num_rows = raw.data.num_rows();
+        let raw = raw
+            .with_segment_layers(
+                std::iter::repeat_n(segment_id, num_rows),
+                std::iter::repeat_n(layer, num_rows),
+            )
+            .unwrap();
+
+        RrdManifest::try_new(&raw).unwrap()
+    }
+
+    /// A base layer logs points and colors over time, a second layer adds static points to the
+    /// same entity, and an asset adds static colors. Merged, the points come from both layers of
+    /// the segment and the colors from the base layer and the asset. A manifest without a layer
+    /// column has no layers for any component.
+    #[test]
+    fn layers_of_component_across_merged_layers() {
+        let entity_path = EntityPath::from("points");
+        let timeline = Timeline::new_sequence("frame");
+        let point = MyPoint::new(1.0, 1.0);
+
+        let base_chunk = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, 1)]),
+                [
+                    (MyPoints::descriptor_points(), &[point] as _),
+                    (MyPoints::descriptor_colors(), &[MyColor(0xFF0000FF)] as _),
+                ],
+            )
+            .build()
+            .unwrap();
+        let annotation_chunk = Chunk::builder(entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                TimePoint::STATIC,
+                (MyPoints::descriptor_points(), &[point] as _),
+            )
+            .build()
+            .unwrap();
+
+        let asset_chunk = Chunk::builder(entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                TimePoint::STATIC,
+                (MyPoints::descriptor_colors(), &[MyColor(0x00FF00FF)] as _),
+            )
+            .build()
+            .unwrap();
+
+        let base = manifest_of_layer(Some(("segment", "base")), std::slice::from_ref(&base_chunk));
+        let annotations = manifest_of_layer(
+            Some(("segment", "annotations")),
+            std::slice::from_ref(&annotation_chunk),
+        );
+        let asset = manifest_of_layer(Some(("robot", "mesh")), std::slice::from_ref(&asset_chunk));
+        let merged = RrdManifest::merge(&[&base, &annotations, &asset]).unwrap();
+
+        let points = MyPoints::descriptor_points().component;
+        let colors = MyPoints::descriptor_colors().component;
+        let layers = |names: &[(&str, &'static str)]| -> BTreeSet<SegmentLayer> {
+            names
+                .iter()
+                .map(|&(segment_id, layer)| SegmentLayer {
+                    segment_id: segment_id.into(),
+                    layer: LayerName::from(layer),
+                })
+                .collect()
+        };
+
+        assert_eq!(
+            *merged.layers_of_component(&entity_path, points),
+            layers(&[("segment", "annotations"), ("segment", "base")])
+        );
+        assert_eq!(
+            *merged.layers_of_component(&entity_path, colors),
+            layers(&[("robot", "mesh"), ("segment", "base")])
+        );
+        assert_eq!(
+            *merged.layers_of_component(&EntityPath::from("unknown"), points),
+            layers(&[])
+        );
+
+        let without_layers = manifest_of_layer(None, &[base_chunk, annotation_chunk]);
+        assert_eq!(
+            *without_layers.layers_of_component(&entity_path, points),
+            layers(&[])
+        );
     }
 }

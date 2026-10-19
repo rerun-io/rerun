@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BinaryArray, RecordBatch, StringArray, UInt64Array};
-use arrow::datatypes::Schema;
+use arrow::array::{ArrayRef, BinaryArray, RecordBatch, UInt64Array};
 use arrow::error::ArrowError;
 use re_chunk::external::re_byte_size;
 use re_chunk_index::RawRrdManifest;
@@ -76,35 +75,25 @@ impl HubRrdManifest {
         )?;
 
         let num_rows = raw.data.num_rows();
-        let partition_ids =
-            StringArray::from_iter_values(std::iter::repeat_n(segment_id.to_string(), num_rows));
-        let layers = StringArray::from_iter_values(std::iter::repeat_n(layer.as_str(), num_rows));
-
-        let (schema, mut columns, row_count) = raw.data.clone().into_parts();
-        let mut fields = schema.fields.to_vec();
-
-        fields.push(Self::COLUMN_CHUNK_PARTITION_ID.arrow_field_ref());
-        columns.push(Arc::new(partition_ids) as ArrayRef);
-
-        fields.push(Self::COLUMN_RERUN_PARTITION_LAYER.arrow_field_ref());
-        columns.push(Arc::new(layers) as ArrayRef);
-
-        fields.push(Self::COLUMN_CHUNK_KEY.arrow_field_ref());
-        columns.push(Arc::new(chunk_keys) as ArrayRef);
-
-        let schema = Arc::new(Schema::new_with_metadata(fields, schema.metadata.clone()));
-        let data = RecordBatch::try_new_with_options(
-            schema,
-            columns,
-            &arrow::array::RecordBatchOptions::new().with_row_count(Some(row_count)),
-        )
-        .map_err(CodecError::ArrowSerialization)?;
+        let extended = raw
+            .clone()
+            .with_segment_layers(
+                std::iter::repeat_n(segment_id.as_str(), num_rows),
+                std::iter::repeat_n(layer.as_str(), num_rows),
+            )
+            .and_then(|extended| {
+                extended.with_appended_columns([(
+                    Self::COLUMN_CHUNK_KEY.arrow_field_ref(),
+                    Arc::new(chunk_keys) as ArrayRef,
+                )])
+            })
+            .map_err(CodecError::ArrowSerialization)?;
 
         Ok(Self {
-            store_id: raw.store_id.clone(),
-            sorbet_schema: raw.sorbet_schema.clone(),
-            sorbet_schema_sha256: raw.sorbet_schema_sha256,
-            data,
+            store_id: extended.store_id,
+            sorbet_schema: extended.sorbet_schema,
+            sorbet_schema_sha256: extended.sorbet_schema_sha256,
+            data: extended.data,
         })
     }
 

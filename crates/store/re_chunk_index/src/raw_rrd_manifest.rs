@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::buffer::NullBuffer;
-use arrow::datatypes::{Field, FieldRef};
+use arrow::datatypes::{Field, FieldRef, Schema};
 use arrow::{
     array::{BooleanArray, UInt64Array},
     error::ArrowError,
@@ -291,6 +292,49 @@ impl RawRrdManifest {
             .map_err(ChunkIndexError::ArrowDeserialization)?;
 
         Ok(Self { data, ..self })
+    }
+
+    /// Returns this manifest with `columns` appended after its own, in order.
+    ///
+    /// Each array has one entry per chunk.
+    pub fn with_appended_columns(
+        self,
+        columns: impl IntoIterator<Item = (FieldRef, ArrayRef)>,
+    ) -> Result<Self, ArrowError> {
+        let (schema, mut arrays, row_count) = self.data.into_parts();
+        let mut fields = schema.fields.to_vec();
+        for (field, array) in columns {
+            fields.push(field);
+            arrays.push(array);
+        }
+
+        let data = RecordBatch::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(fields, schema.metadata.clone())),
+            arrays,
+            &RecordBatchOptions::new().with_row_count(Some(row_count)),
+        )?;
+
+        Ok(Self { data, ..self })
+    }
+
+    /// Returns this manifest with the segment id and layer columns appended.
+    ///
+    /// Both have one entry per chunk.
+    pub fn with_segment_layers(
+        self,
+        segment_ids: impl IntoIterator<Item = impl AsRef<str>>,
+        layers: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<Self, ArrowError> {
+        self.with_appended_columns([
+            (
+                Self::COLUMN_CHUNK_PARTITION_ID.arrow_field_ref(),
+                Arc::new(StringArray::from_iter_values(segment_ids)) as ArrayRef,
+            ),
+            (
+                Self::COLUMN_RERUN_PARTITION_LAYER.arrow_field_ref(),
+                Arc::new(StringArray::from_iter_values(layers)) as ArrayRef,
+            ),
+        ])
     }
 
     /// Merges multiple manifests into one, tolerating schema differences.
