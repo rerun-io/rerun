@@ -171,6 +171,8 @@ Each Python class maps to these entity paths and archetypes:
 
 In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
 `TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
+A column only shows as a preview when its `TableColumn.cell_kind` is `Preview`.
+`PreviewCell` sets this for you, but a blueprint written as entities, such as through the Viewer MCP server, sets it next to `TableColumnPreview`.
 
 ## Further examples
 

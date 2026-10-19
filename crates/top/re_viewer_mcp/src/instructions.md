@@ -23,7 +23,7 @@ Changing how a table looks:
 - The steps:
   1. `rerun_get_table_schema` for the real column names. `rerun_get_dataset_schema` names entities, not columns.
   2. `rerun_get_blueprint` with `{"table": {}}`.
-  3. `rerun_set_blueprint` with `{"table": {}}` and a `json` that keeps what step 2 returned. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. Row filters go in `filters` of `TableBlueprint` at `/table`.
+  3. `rerun_set_blueprint` with `{"table": {}}` and a `json` that keeps what step 2 returned. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. A column's `TableColumn` is at `/table/layouts/table/columns/<column name>`, with each `:` and space in the column name escaped as `\:` and `\ `. In the JSON string that backslash is doubled, e.g. `"/table/layouts/table/columns/property\\:episode\\:date"`. Row filters go in `filters` of `TableBlueprint` at `/table`.
   4. One `rerun_save_screenshot` to check the result.
 
 Targeting widgets:

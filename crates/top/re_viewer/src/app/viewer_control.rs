@@ -64,6 +64,20 @@ const _: () = assert!(
     "`open_url` must answer well before the transport gives up"
 );
 
+/// How long `get_blueprint` waits for the recording or table on screen to get the blueprint the
+/// viewer shows for it by default.
+///
+/// A recording or table that is not on screen answers right away. A table gets its default
+/// blueprint once its query returns. A recording gets its default views a frame after its data
+/// arrives, so a recording with no data waits the full time.
+const DEFAULT_BLUEPRINT_MAX_WAIT: Duration = Duration::from_secs(2);
+
+const _: () = assert!(
+    DEFAULT_BLUEPRINT_MAX_WAIT.as_millis() + 5_000
+        <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
+    "`get_blueprint` must answer well before the transport gives up"
+);
+
 /// How often a waiting `open_url` checks whether its catalog registration is done.
 ///
 /// Nothing wakes the viewer when a registration finishes, so it has to poll. A few frames is
@@ -93,8 +107,12 @@ enum PendingAnswer {
         deadline: web_time::Instant,
     },
 
-    /// `get_blueprint`, read once the target has an active blueprint.
-    GetBlueprint(BlueprintTarget),
+    /// `get_blueprint`, read once the target has an active blueprint, and once a target on screen
+    /// has the blueprint the viewer shows for it by default, or `deadline` has passed.
+    GetBlueprint {
+        target: BlueprintTarget,
+        deadline: web_time::Instant,
+    },
 
     /// `set_blueprint`, written once the target has an active blueprint.
     SetBlueprint {
@@ -230,11 +248,20 @@ impl App {
                         on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
                     }
                 }
-                PendingAnswer::GetBlueprint(target) => {
-                    on_done.call(
-                        self.collect_blueprint_json(store_hub, &target)
-                            .map(ViewerControlResponse::from),
-                    );
+                PendingAnswer::GetBlueprint { target, deadline } => {
+                    if now < deadline && self.waits_for_default_blueprint(store_hub, &target) {
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::GetBlueprint { target, deadline },
+                        });
+                        // The default views and table columns are only made while the UI paints.
+                        self.egui_ctx.request_repaint();
+                    } else {
+                        on_done.call(
+                            self.collect_blueprint_json(store_hub, &target)
+                                .map(ViewerControlResponse::from),
+                        );
+                    }
                 }
                 PendingAnswer::SetBlueprint { target, json } => {
                     match self.apply_set_blueprint(store_hub, &target, &json) {
@@ -305,17 +332,22 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetBlueprint(GetBlueprintRequest { target }) => match self
-                .requested_blueprint_target(store_hub, target.map(RequestedBlueprint::from))
-            {
-                Ok(target) => self.answer_after_blueprint(
-                    on_done,
-                    target.ensure_blueprint_command(),
-                    PendingAnswer::GetBlueprint(target),
-                    egui_ctx,
-                ),
-                Err(err) => on_done.call(Err(err)),
-            },
+            Kind::GetBlueprint(GetBlueprintRequest { target }) => {
+                let requested =
+                    target.map_or_else(|| self.blueprint_on_screen(), RequestedBlueprint::from);
+                match self.requested_blueprint_target(store_hub, Some(requested)) {
+                    Ok(target) => self.answer_after_blueprint(
+                        on_done,
+                        target.ensure_blueprint_command(),
+                        PendingAnswer::GetBlueprint {
+                            target,
+                            deadline: web_time::Instant::now() + DEFAULT_BLUEPRINT_MAX_WAIT,
+                        },
+                        egui_ctx,
+                    ),
+                    Err(err) => on_done.call(Err(err)),
+                }
+            }
             Kind::GetTableSchema(GetTableSchemaRequest { table_url }) => {
                 on_done.call(
                     self.collect_table_schema(table_url, egui_ctx)
@@ -721,11 +753,17 @@ impl App {
 
         let blueprint_db = self.active_blueprint(store_hub, target)?;
         let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
-        let json = re_arrow_json::json_from_store(
+        let mut json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
             &query,
             &self.reflection,
         );
+        if let BlueprintTarget::Table(table) = target
+            && json.as_object().is_some_and(serde_json::Map::is_empty)
+            && let Some(default_json) = self.default_table_blueprint_json(table)
+        {
+            json = default_json;
+        }
 
         let (store_id, table_url) = target.response_fields();
         Ok(GetBlueprintResponse {
@@ -801,6 +839,86 @@ impl App {
             )));
         }
         Ok(BlueprintTarget::Recording(store_id))
+    }
+
+    /// The blueprint of what is on screen: the table if one is shown, else the active recording.
+    fn blueprint_on_screen(&self) -> RequestedBlueprint {
+        if self.state.navigation.current().table_reference().is_some() {
+            RequestedBlueprint::Table(None)
+        } else {
+            RequestedBlueprint::Recording(None)
+        }
+    }
+
+    /// Whether `target` is on screen and does not have the blueprint the viewer shows for it by
+    /// default yet.
+    ///
+    /// If the recording or table doesn't have an assigned blueprint and isn't the active route,
+    /// the returned blueprint is empty.
+    fn waits_for_default_blueprint(
+        &mut self,
+        store_hub: &StoreHub,
+        target: &BlueprintTarget,
+    ) -> bool {
+        let route = self.state.navigation.current().clone();
+        match target {
+            BlueprintTarget::Recording(store_id) => {
+                let on_screen = route
+                    .recording_id()
+                    .is_some_and(|shown| shown.application_id() == store_id.application_id());
+                if !on_screen {
+                    return false;
+                }
+                let Some(blueprint_db) =
+                    store_hub.active_blueprint_for_app(store_id.application_id())
+                else {
+                    return false;
+                };
+                let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+                let viewport =
+                    re_viewport_blueprint::ViewportBlueprint::from_db(blueprint_db, &query);
+                viewport.auto_views() && viewport.views.is_empty()
+            }
+            BlueprintTarget::Table(table) => {
+                route.table_reference().as_ref() == Some(table)
+                    && re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)
+                        .is_none()
+            }
+        }
+    }
+
+    /// The blueprint a table that was never configured shows: its column order, and the columns
+    /// it hides, as it was last shown.
+    ///
+    /// `None` if the table has not been shown yet.
+    fn default_table_blueprint_json(
+        &self,
+        table: &re_uri::TableReference,
+    ) -> Option<serde_json::Value> {
+        use re_dataframe_ui::{TableColumn, TableLayoutKind};
+
+        let columns = re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)?;
+
+        let mut json = serde_json::Map::new();
+        json.insert(
+            "/table/layouts/table".to_owned(),
+            serde_json::json!({
+                "TableLayout": {
+                    "column_order": columns
+                        .iter()
+                        .map(|column| column.physical_name.as_str())
+                        .collect::<Vec<_>>(),
+                }
+            }),
+        );
+        for column in columns.iter().filter(|column| !column.visible) {
+            json.insert(
+                TableColumn::blueprint_path(TableLayoutKind::Table, &column.physical_name)
+                    .to_string(),
+                serde_json::json!({ "TableColumn": { "visible": false } }),
+            );
+        }
+        Some(json.into())
     }
 
     /// The table a request names, or else the table on screen.

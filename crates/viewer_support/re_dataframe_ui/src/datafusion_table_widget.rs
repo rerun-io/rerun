@@ -96,6 +96,9 @@ pub struct TableSchemaColumn {
 
     /// The Arrow datatype of the column.
     pub datatype: arrow::datatypes::DataType,
+
+    /// Whether the table layout shows the column.
+    pub visible: bool,
 }
 
 /// The schema of a table as it was last shown.
@@ -890,6 +893,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     physical_name: column.physical_name().clone(),
                     display_name: column.display_name(),
                     datatype: field.data_type().clone(),
+                    visible: column.is_visible(TableLayoutKind::Table),
                 })
             })
             .collect();

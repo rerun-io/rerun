@@ -119,6 +119,8 @@ For a recording that is not in the catalog, such as one streamed from an SDK or 
 
 `rerun_get_blueprint` with a `recording` target returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
 The target's `store_id` defaults to the active recording.
+Without any target it reads the blueprint of what is on screen: the table if one is shown, else the active recording.
+A recording on screen without a blueprint of its own gives the views the Viewer adds by itself, so the agent always has a layout to start from.
 The JSON mirrors the blueprint store row for row, so it matches what the SDKs log and what the blueprint panel shows:
 
 ```json
@@ -165,7 +167,7 @@ It answers `NOT_FOUND` until the table has been shown once, so call it again if 
 ]}
 ```
 
-`rerun_get_blueprint` with `{"table": {}}` gives `{}` for a table that was never configured.
+For a table that was never configured, `rerun_get_blueprint` with `{"table": {}}` gives the blueprint the table shows by default: every column in display order, and the columns it hides.
 `rerun_set_blueprint` with `{"table": {}}` and this `json` shows the recording link, task, and success columns first, and hides both external camera serials:
 
 ```json
@@ -185,6 +187,28 @@ The other columns keep their default order and visibility.
 In a column's entity path, `:` and spaces are escaped as `\:` and `\ `, which JSON writes as `\\:` and `\\ `.
 To show a column again, set `"visible": true` or leave its entry out.
 Calling `rerun_get_table_schema` again lists the columns in the new order, hidden ones included.
+
+A preview column needs both `"cell_kind": "Preview"` in its `TableColumn` and a `TableColumnPreview` that lists its views.
+Without the cell kind, the Viewer ignores `TableColumnPreview`.
+This shows a 3D view of `/my_scene` as a preview of the recording link on each card:
+
+```json
+{
+  "/table/layouts/cards": {
+    "CardLayout": { "link": "recording link", "field_order": ["recording link"] }
+  },
+  "/table/layouts/cards/fields/recording\\ link": {
+    "TableColumn": { "cell_kind": "Preview" },
+    "TableColumnPreview": { "views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d" }
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {
+    "ViewBlueprint": { "class_identifier": "3D", "space_origin": "/my_scene" }
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {
+    "ViewContents": { "query": "+ /my_scene/**" }
+  }
+}
+```
 
 The user can undo and redo a table blueprint write, as with a recording's blueprint.
 To go back to the table's default blueprint, run the `table.reset_blueprint_to_default` command, **Reset to default blueprint** in the command palette, with `rerun_run_command`.

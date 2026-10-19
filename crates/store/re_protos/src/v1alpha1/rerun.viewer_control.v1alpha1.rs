@@ -126,18 +126,21 @@ pub mod viewer_control_request {
         /// archetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.
         ///
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
-        /// blueprint only has what it sets, such as row filters, the layout, and column settings, so a
-        /// table that was never configured gives `{}`. `GetTableSchema` names all columns of a table.
+        /// blueprint only has what it sets, such as row filters, the layout, and column settings.
+        /// `GetTableSchema` names all columns of a table.
         ///
-        /// Set exactly one of `recording` and `table`, such as `{"recording": {}}` or
-        /// `{"table": {"table_url": "…"}}`. Without a `store_id` it reads the active recording's
-        /// blueprint, and without a `table_url` the blueprint of the table on screen. The response
-        /// names the recording or table it read. A recording or table without a blueprint yet gets
-        /// the one showing it would give it.
+        /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
+        /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
+        /// the table if one is shown, else the active recording. Without a `store_id` it reads the
+        /// active recording's blueprint, and without a `table_url` the blueprint of the table on
+        /// screen. The response names the recording or table it read.
         ///
-        /// `INVALID_ARGUMENT` if neither `recording` nor `table` is set. `FAILED_PRECONDITION` if the
-        /// default recording or table is not there. `NOT_FOUND` if the recording is not open or the
-        /// viewer does not know the table.
+        /// A recording or table without a blueprint gets a default one. For a recording on screen,
+        /// this is the heuristic blueprint unless the user did manual changes to it. A table shows
+        /// a set of columns by default, with potential sorting and filtering done by the user.
+        ///
+        /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
+        /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintRequest),
         /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
@@ -485,13 +488,13 @@ impl ::prost::Name for EguiInspectResponse {
 /// Request for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintRequest {
-    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
     #[prost(oneof = "get_blueprint_request::Target", tags = "2, 3")]
     pub target: ::core::option::Option<get_blueprint_request::Target>,
 }
 /// Nested message and enum types in `GetBlueprintRequest`.
 pub mod get_blueprint_request {
-    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
         /// Read the blueprint of a recording.

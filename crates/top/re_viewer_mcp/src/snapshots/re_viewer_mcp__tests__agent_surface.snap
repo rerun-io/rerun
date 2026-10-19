@@ -29,7 +29,7 @@ Changing how a table looks:
 - The steps:
   1. `rerun_get_table_schema` for the real column names. `rerun_get_dataset_schema` names entities, not columns.
   2. `rerun_get_blueprint` with `{"table": {}}`.
-  3. `rerun_set_blueprint` with `{"table": {}}` and a `json` that keeps what step 2 returned. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. Row filters go in `filters` of `TableBlueprint` at `/table`.
+  3. `rerun_set_blueprint` with `{"table": {}}` and a `json` that keeps what step 2 returned. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. A column's `TableColumn` is at `/table/layouts/table/columns/<column name>`, with each `:` and space in the column name escaped as `\:` and `\ `. In the JSON string that backslash is doubled, e.g. `"/table/layouts/table/columns/property\\:episode\\:date"`. Row filters go in `filters` of `TableBlueprint` at `/table`.
   4. One `rerun_save_screenshot` to check the result.
 
 Targeting widgets:
@@ -841,7 +841,7 @@ Conventions:
 
 {
   "name": "rerun_get_blueprint",
-  "description": "Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then\narchetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.\n\nA recording's blueprint has the layout, views, their properties and overrides. A table's\nblueprint only has what it sets, such as row filters, the layout, and column settings, so a\ntable that was never configured gives `{}`. `GetTableSchema` names all columns of a table.\n\nSet exactly one of `recording` and `table`, such as `{\"recording\": {}}` or\n`{\"table\": {\"table_url\": \"…\"}}`. Without a `store_id` it reads the active recording's\nblueprint, and without a `table_url` the blueprint of the table on screen. The response\nnames the recording or table it read. A recording or table without a blueprint yet gets\nthe one showing it would give it.\n\n`INVALID_ARGUMENT` if neither `recording` nor `table` is set. `FAILED_PRECONDITION` if the\ndefault recording or table is not there. `NOT_FOUND` if the recording is not open or the\nviewer does not know the table.\n\nRequires `rerun_connect`.",
+  "description": "Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then\narchetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.\n\nA recording's blueprint has the layout, views, their properties and overrides. A table's\nblueprint only has what it sets, such as row filters, the layout, and column settings.\n`GetTableSchema` names all columns of a table.\n\nSet at most one of `recording` and `table`, such as `{\"recording\": {}}` or\n`{\"table\": {\"table_url\": \"…\"}}`. With neither it reads the blueprint of what is on screen:\nthe table if one is shown, else the active recording. Without a `store_id` it reads the\nactive recording's blueprint, and without a `table_url` the blueprint of the table on\nscreen. The response names the recording or table it read.\n\nA recording or table without a blueprint gets a default one. For a recording on screen,\nthis is the heuristic blueprint unless the user did manual changes to it. A table shows\na set of columns by default, with potential sorting and filtering done by the user.\n\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -876,9 +876,25 @@ Conventions:
         "required": [
           "table"
         ]
+      },
+      {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "recording"
+              ]
+            },
+            {
+              "required": [
+                "table"
+              ]
+            }
+          ]
+        }
       }
     ],
-    "description": "Request for `GetBlueprint`.\n\nExactly one of `recording`, `table` must be set."
+    "description": "Request for `GetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
   }
 }
 

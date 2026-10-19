@@ -58,7 +58,9 @@ With the viewer MCP, change the table on screen directly:
 `rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
 `{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
 `{"table": {}}` replaces it. `rerun_set_blueprint` returns an error for a filter
-that fails. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
+that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
+with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
+as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
 have a worked example of the JSON. For the whole Python API, including cards
 and segment previews, see
 [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
