@@ -60,9 +60,9 @@
     "tsconfig.json"
   ],
   "devDependencies": {
-    "dts-buddy": "^0.3.0",
+    "dts-buddy": "^0.8.3",
     "typedoc": "^0.28.20",
     "typedoc-github-theme": "^0.3.0",
-    "typescript": "^5.2.2"
+    "typescript": "^6.0.3"
   }
 }
