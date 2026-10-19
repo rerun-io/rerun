@@ -511,7 +511,7 @@ impl FilterState {
                                 .highlighted(egui::Popup::is_id_open(ui.ctx(), popup_id)),
                         );
 
-                        let popup = egui::Popup::menu(&response)
+                        egui::Popup::menu(&response)
                             .id(popup_id)
                             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                             .show(|ui| {
@@ -524,10 +524,6 @@ impl FilterState {
                                     ui.close();
                                 }
                             });
-
-                        if popup.is_some_and(|popup| popup.response.should_close()) {
-                            response.request_focus();
-                        }
                     }
 
                     if let Some(remove_idx) = remove_idx {
