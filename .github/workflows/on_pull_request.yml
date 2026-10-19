@@ -110,7 +110,6 @@ jobs:
               - "**/*.json"
               - "**/*.rs"
               - "**/*.toml"
-              - "**/yarn.lock"
               - "crates/viewer_support/re_ui/data/**"
 
   protobuf-checks:

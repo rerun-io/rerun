@@ -16,7 +16,7 @@
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
-    "pack": "yarn pack --filename web-viewer.tar.gz",
+    "pack": "npm pack && mv rerun-io-web-viewer-*.tgz web-viewer.tar.gz",
     "docs": "typedoc"
   },
   "repository": {

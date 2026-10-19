@@ -14,7 +14,7 @@
     "build:types": "tsc --noEmit && dts-buddy",
     "build": "npm run build:types",
     "build:js": "npm run build:types",
-    "pack": "yarn pack --filename web-viewer-react.tar.gz",
+    "pack": "npm pack && mv rerun-io-web-viewer-react-*.tgz web-viewer-react.tar.gz",
     "docs": "typedoc"
   },
   "repository": {

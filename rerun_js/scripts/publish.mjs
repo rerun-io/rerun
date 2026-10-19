@@ -38,7 +38,7 @@ const unpublished = all_packages.filter((pkg) => {
   return true;
 });
 
-$(`yarn install`, { cwd: root_dir });
+$(`npm ci`, { cwd: root_dir });
 
 for (const pkg of all_packages) {
   console.log(`building ${pkg.name}@${pkg.version}`);
@@ -58,7 +58,7 @@ if (unpublished.length === 0) {
 
 const tarballs = [];
 for (const pkg of all_packages) {
-  $(`yarn run pack`, { cwd: pkg.dir });
+  $(`npm run pack`, { cwd: pkg.dir });
   const filename = `${pkg.name.split("/")[1]}.tar.gz`;
   tarballs.push(path.join(pkg.dir, filename));
 }

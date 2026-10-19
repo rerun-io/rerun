@@ -426,30 +426,27 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
 
-# Setup JS tools
-js-setup = "npm i -g yarn"
-
 # Install JS package dependencies
-js-install = { cmd = "yarn install --cwd rerun_js", depends-on = ["js-setup"] }
+js-install = { cmd = "npm install", cwd = "rerun_js" }
 
 # Build JS packages
-js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on = ["js-install"] }
-js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = ["js-install"] }
+js-build-base = { cmd = "npm run build", cwd = "rerun_js/web-viewer", depends-on = ["js-install"] }
+js-build-all = { cmd = "npm run build --workspaces", cwd = "rerun_js", depends-on = ["js-install"] }
 
 # Build web-viewer and web-viewer-react without rebuilding re_viewer Wasm
-js-build-no-wasm = { cmd = "yarn --cwd rerun_js workspaces run build:js", depends-on = [
+js-build-no-wasm = { cmd = "npm run build:js --workspaces", cwd = "rerun_js", depends-on = [
   "js-install",
 ] }
 
 # Build individual package JS docs in their own directories
-js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depends-on = [
+js-build-package-docs = { cmd = "npm run docs --workspaces", cwd = "rerun_js", depends-on = [
   "js-install",
 ] }
 
 # Combine the output of individual package docs into a single directory
-js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-package-docs"] }
+js-docs = { cmd = "npm run docs", cwd = "rerun_js", depends-on = ["js-build-package-docs"] }
 
-js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
+js-docs-serve = { cmd = "npm run docs:serve", cwd = "rerun_js", depends-on = ["js-docs"] }
 
 
 # Build and install a development version of the rerun-sdk Python package.
