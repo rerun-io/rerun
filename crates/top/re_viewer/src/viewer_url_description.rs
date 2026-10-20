@@ -104,6 +104,16 @@ impl ViewerUrlDescription {
                 category: "Chunk store browser",
                 target_short: None,
             },
+
+            ViewerUrl::LocalRecording(store_id) => Self {
+                category: "Recording",
+                target_short: Some(store_id.recording_id().to_string()),
+            },
+
+            ViewerUrl::LocalTable(table_id) => Self {
+                category: "Table",
+                target_short: Some(table_id.as_str().to_owned()),
+            },
         }
     }
 }

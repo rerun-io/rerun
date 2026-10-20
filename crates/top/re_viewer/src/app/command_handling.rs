@@ -368,9 +368,8 @@ impl App {
             }
 
             SystemCommand::OpenSettings => {
-                self.state.navigation.replace(Route::Settings {
-                    return_route: Box::new(self.state.navigation.current().clone()),
-                });
+                let settings = Route::settings(self.state.navigation.current());
+                self.state.navigation.replace(settings);
 
                 #[cfg(feature = "analytics")]
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
@@ -379,28 +378,14 @@ impl App {
             SystemCommand::OpenChunkStoreBrowser {
                 store_id,
                 selected_chunk,
-            } => match self.state.navigation.current() {
-                Route::ChunkStoreBrowser {
-                    store_id: current_store_id,
-                    return_route,
-                    ..
-                } => {
-                    self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        // History/share URLs may carry an explicit store; otherwise keep
-                        // using the current chunk browser store context.
-                        store_id: store_id.or_else(|| current_store_id.clone()),
-                        selected_chunk,
-                        return_route: return_route.clone(),
-                    });
-                }
-                current => {
-                    self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        store_id,
-                        selected_chunk,
-                        return_route: Box::new(current.clone()),
-                    });
-                }
-            },
+            } => {
+                let browser = Route::chunk_store_browser(
+                    self.state.navigation.current(),
+                    store_id,
+                    selected_chunk,
+                );
+                self.state.navigation.replace(browser);
+            }
 
             SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
@@ -1783,6 +1768,12 @@ impl App {
                     closing.is_none_or(|closing| id != closing) && store_hub.is_opened(id)
                 })
             }
+
+            ViewerUrl::LocalRecording(store_id) => {
+                closing.is_none_or(|closing| store_id != closing) && store_hub.is_opened(store_id)
+            }
+
+            ViewerUrl::LocalTable(table_id) => store_hub.has_table(table_id),
         }
     }
 

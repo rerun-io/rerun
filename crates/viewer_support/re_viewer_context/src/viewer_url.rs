@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use re_chunk::ChunkId;
 use re_data_source::LogDataSource;
 use re_log_channel::{LogSource, RecordingOpenBehavior};
-use re_log_types::StoreId;
+use re_log_types::{StoreId, TableId};
 use re_uri::Scheme;
 use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
@@ -19,6 +19,12 @@ pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 pub const SETTINGS_URL: &str = "about:settings";
 
 pub const CHUNK_STORE_BROWSER_URL: &str = "about:chunk_store";
+
+/// Shows a recording that is open in the viewer: `about:recording?app_id=…&recording_id=…`.
+pub const LOCAL_RECORDING_URL: &str = "about:recording";
+
+/// Shows a table that only exists in the viewer: `about:table?id=…`.
+pub const LOCAL_TABLE_URL: &str = "about:table";
 
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
@@ -38,7 +44,7 @@ pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::
 /// The only higher level way of opening URLs is `ui.open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
 ///
-/// Many of these name a [`crate::Route`], see [`Self::from_route`].
+/// Many of these name a [`Route`]: see [`Self::from_route`] and [`Self::to_route`].
 /// Others load data or select something.
 // TODO(emilk): there is a lot of overlap between this and `LogDataSource`
 #[derive(Clone, PartialEq)]
@@ -99,6 +105,16 @@ pub enum ViewerUrl {
     /// The url to the settings screen.
     Settings,
 
+    /// A recording that is open in the viewer, named by its store id.
+    ///
+    /// Only shows the recording. It loads nothing, so the recording must already be open.
+    LocalRecording(StoreId),
+
+    /// A table that only exists in the viewer, named by its table id.
+    ///
+    /// Only shows the table. It loads nothing, so the table must already be in the viewer.
+    LocalTable(TableId),
+
     /// A url to the chunk store browser, optionally focused on a specific chunk.
     ChunkStoreBrowser {
         recording_id: Option<StoreId>,
@@ -128,6 +144,8 @@ impl std::fmt::Debug for ViewerUrl {
                 .field("url_parameters", url_parameters)
                 .finish(),
             Self::Settings => write!(f, "Settings"),
+            Self::LocalRecording(store_id) => write!(f, "LocalRecording({store_id})"),
+            Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
             Self::ChunkStoreBrowser {
                 recording_id,
                 selected_chunk,
@@ -176,6 +194,10 @@ impl ViewerUrl {
         if url == SETTINGS_URL {
             Ok(Self::Settings)
         } else if let Some(url) = parse_chunk_store_browser_url(url)? {
+            Ok(url)
+        } else if let Some(url) = parse_local_recording_url(url)? {
+            Ok(url)
+        } else if let Some(url) = parse_local_table_url(url)? {
             Ok(url)
         } else if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
@@ -356,7 +378,69 @@ impl ViewerUrl {
         }
     }
 
+    /// The [`Route`] this URL names, which goes to `return_route` when closed, if it can be closed.
+    ///
+    /// Roughly the inverse of [`Self::from_route`].
+    /// `None` for a URL that loads data or selects something, rather than naming a place.
+    ///
+    /// This only reads the URL: it does not check that the place exists.
+    /// An entry URL (`…/entry/<id>`) does not say whether the entry is a table or a dataset,
+    /// so its route has `kind: None` until the viewer learns it from the server.
+    pub fn to_route(&self, return_route: &Route) -> Option<Route> {
+        match self {
+            Self::Settings => Some(Route::settings(return_route)),
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => Some(Route::chunk_store_browser(
+                return_route,
+                recording_id.clone(),
+                *selected_chunk,
+            )),
+            Self::LocalRecording(store_id) => Some(Route::LocalRecording {
+                recording_id: store_id.clone(),
+            }),
+            Self::LocalTable(table_id) => Some(Route::LocalTable(table_id.clone())),
+            Self::RedapCatalog(re_uri::CatalogUri { origin }) => {
+                Some(Route::RedapServer(origin.clone()))
+            }
+            Self::RedapEntry(re_uri::EntryUri { origin, entry_id }) => Some(Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id: *entry_id,
+                kind: None,
+            }),
+            Self::RedapDataset(re_uri::DatasetUri {
+                origin,
+                dataset_id,
+                resource,
+                segment_id: None,
+                fragment: _,
+            }) => Some(Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id: (*dataset_id).into(),
+                kind: Some(crate::EntryKind::Dataset(*resource)),
+            }),
+            Self::RedapFolder(re_uri::FolderUri { origin, path }) => Some(Route::RedapFolder {
+                origin: origin.clone(),
+                path: path.clone(),
+            }),
+            Self::RedapDataset(re_uri::DatasetUri {
+                segment_id: Some(_),
+                ..
+            })
+            | Self::IntraRecordingSelection(_)
+            | Self::HttpUrl(_)
+            | Self::RedapProxy(_)
+            | Self::WebEventListener
+            | Self::WebViewer { .. } => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(_) => None,
+        }
+    }
+
     /// Tries to create a viewer import URL for a [`Route`] (typically for sharing purposes).
+    ///
+    /// Roughly the inverse of [`Self::to_route`].
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
@@ -509,6 +593,17 @@ impl ViewerUrl {
             Self::Settings => {
                 vec1![SETTINGS_URL.to_owned()]
             }
+            Self::LocalRecording(store_id) => {
+                let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+                serializer.append_pair("app_id", store_id.application_id().as_str());
+                serializer.append_pair("recording_id", store_id.recording_id().as_str());
+                vec1![format!("{LOCAL_RECORDING_URL}?{}", serializer.finish())]
+            }
+            Self::LocalTable(table_id) => {
+                let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+                serializer.append_pair("id", table_id.as_str());
+                vec1![format!("{LOCAL_TABLE_URL}?{}", serializer.finish())]
+            }
             Self::ChunkStoreBrowser {
                 recording_id,
                 selected_chunk,
@@ -555,6 +650,8 @@ impl ViewerUrl {
             | Self::RedapFolder(_)
             | Self::IntraRecordingSelection(_)
             | Self::Settings
+            | Self::LocalRecording(_)
+            | Self::LocalTable(_)
             | Self::ChunkStoreBrowser { .. } => None,
 
             Self::HttpUrl(url) => Some(LogSource::HttpStream {
@@ -713,6 +810,14 @@ impl ViewerUrl {
             Self::Settings => {
                 command_sender.send_system(SystemCommand::OpenSettings);
             }
+            Self::LocalRecording(store_id) => {
+                command_sender.send_system(SystemCommand::SetRoute(Route::LocalRecording {
+                    recording_id: store_id,
+                }));
+            }
+            Self::LocalTable(table_id) => {
+                command_sender.send_system(SystemCommand::SetRoute(Route::LocalTable(table_id)));
+            }
             Self::ChunkStoreBrowser {
                 recording_id,
                 selected_chunk,
@@ -739,7 +844,7 @@ impl ViewerUrl {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => self,
 
-            Self::ChunkStoreBrowser { .. } => self,
+            Self::LocalRecording(_) | Self::LocalTable(_) | Self::ChunkStoreBrowser { .. } => self,
 
             Self::RedapDataset(uri) => Self::RedapDataset(uri.without_fragment()),
             Self::WebViewer {
@@ -789,6 +894,8 @@ impl ViewerUrl {
                 }
             }
             Self::Settings => None,
+            Self::LocalRecording(_) => None,
+            Self::LocalTable(_) => None,
             Self::ChunkStoreBrowser { .. } => None,
         }
     }
@@ -821,6 +928,54 @@ fn open_redap_entry(
         entry_id,
         kind,
     }));
+}
+
+fn parse_local_recording_url(url: &str) -> anyhow::Result<Option<ViewerUrl>> {
+    let query = match url.strip_prefix(LOCAL_RECORDING_URL) {
+        Some("") => {
+            anyhow::bail!("Expected `{LOCAL_RECORDING_URL}?app_id=…&recording_id=…`, got {url:?}")
+        }
+        Some(rest) => match rest.strip_prefix('?') {
+            Some(query) => query,
+            None => return Ok(None),
+        },
+        None => return Ok(None),
+    };
+
+    let mut application_id = None;
+    let mut recording_id = None;
+    for (key, value) in url::form_urlencoded::parse(query.as_bytes()) {
+        match key.as_ref() {
+            "app_id" => application_id = Some(value.into_owned()),
+            "recording_id" => recording_id = Some(value.into_owned()),
+            _ => {}
+        }
+    }
+
+    let (Some(application_id), Some(recording_id)) = (application_id, recording_id) else {
+        anyhow::bail!("A local recording URL must include both app_id and recording_id: {url:?}");
+    };
+    Ok(Some(ViewerUrl::LocalRecording(StoreId::recording(
+        re_log_types::ApplicationId::try_new(application_id)?,
+        recording_id,
+    ))))
+}
+
+fn parse_local_table_url(url: &str) -> anyhow::Result<Option<ViewerUrl>> {
+    let query = match url.strip_prefix(LOCAL_TABLE_URL) {
+        Some("") => anyhow::bail!("Expected `{LOCAL_TABLE_URL}?id=…`, got {url:?}"),
+        Some(rest) => match rest.strip_prefix('?') {
+            Some(query) => query,
+            None => return Ok(None),
+        },
+        None => return Ok(None),
+    };
+
+    let Some((_, id)) = url::form_urlencoded::parse(query.as_bytes()).find(|(key, _)| key == "id")
+    else {
+        anyhow::bail!("A local table URL must include an id: {url:?}");
+    };
+    Ok(Some(ViewerUrl::LocalTable(TableId::new(id.into_owned()))))
 }
 
 fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerUrl>> {
@@ -956,15 +1111,16 @@ mod tests {
     use re_chunk::ChunkId;
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::{LogSource, RecordingOpenBehavior};
-    use re_log_types::TableId;
-    use re_log_types::{EntryId, StoreId, StoreKind};
+    use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_uri::{CatalogUri, DatasetUri, Fragment, Scheme};
     use re_uri::{
         Origin,
         external::url::{self, Url},
     };
 
-    use super::{CHUNK_STORE_BROWSER_URL, OpenUrlOptions, ViewerUrl};
+    use super::{
+        CHUNK_STORE_BROWSER_URL, LOCAL_RECORDING_URL, LOCAL_TABLE_URL, OpenUrlOptions, ViewerUrl,
+    };
     use crate::{Item, Route, StoreHub, SystemCommand, command_channel};
 
     #[test]
@@ -1115,6 +1271,80 @@ mod tests {
             let result = url.parse::<ViewerUrl>();
             assert!(result.is_err(), "Expected error for {url}: {result:?}");
         }
+    }
+
+    #[test]
+    fn test_to_route() {
+        let home = Route::welcome_page();
+        let parse = |url: &str| url.parse::<ViewerUrl>().unwrap();
+
+        let settings = parse("about:settings").to_route(&home).unwrap();
+        assert_eq!(
+            settings,
+            Route::Settings {
+                return_route: Box::new(home.clone())
+            }
+        );
+        // Settings opened from the settings must not return to themselves.
+        assert_eq!(parse("about:settings").to_route(&settings), Some(settings));
+
+        let dataset = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae";
+        assert!(matches!(
+            parse(dataset).to_route(&home),
+            Some(Route::RedapEntry {
+                kind: Some(crate::EntryKind::Dataset(_)),
+                ..
+            })
+        ));
+        assert_eq!(
+            parse(&format!("{dataset}?segment_id=sid")).to_route(&home),
+            None
+        );
+        assert_eq!(parse("https://example.com/a.rrd").to_route(&home), None);
+    }
+
+    #[test]
+    fn test_local_recording_url_round_trips() {
+        let store_id = re_log_types::StoreId::recording(
+            re_log_types::ApplicationId::try_new("my app: v2".to_owned()).unwrap(),
+            "rec:1 & 2",
+        );
+        let url = ViewerUrl::LocalRecording(store_id.clone())
+            .sharable_url(None)
+            .unwrap();
+        assert_eq!(
+            url,
+            "about:recording?app_id=my+app%3A+v2&recording_id=rec%3A1+%26+2"
+        );
+        assert_eq!(
+            ViewerUrl::from_str(&url).unwrap(),
+            ViewerUrl::LocalRecording(store_id)
+        );
+
+        for incomplete in [
+            LOCAL_RECORDING_URL.to_owned(),
+            format!("{LOCAL_RECORDING_URL}?app_id=my_app"),
+        ] {
+            assert!(
+                ViewerUrl::from_str(&incomplete).is_err(),
+                "{incomplete} must name both the application and the recording"
+            );
+        }
+    }
+
+    #[test]
+    fn test_local_table_url_round_trips() {
+        let table_id = TableId::new("a table & more".to_owned());
+        let url = ViewerUrl::LocalTable(table_id.clone())
+            .sharable_url(None)
+            .unwrap();
+        assert_eq!(url, "about:table?id=a+table+%26+more");
+        assert_eq!(
+            ViewerUrl::from_str(&url).unwrap(),
+            ViewerUrl::LocalTable(table_id)
+        );
+        assert!(ViewerUrl::from_str(LOCAL_TABLE_URL).is_err());
+        assert!(ViewerUrl::from_str("about:table?name=x").is_err());
     }
 
     /// An entry url opens the entry and routes there with an unresolved kind.

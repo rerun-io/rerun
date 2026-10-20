@@ -16,7 +16,11 @@ pub enum EntryKind {
 /// What are we currently showing in the viewer?
 ///
 /// A [`crate::viewer_url::ViewerUrl`] names a route as a URL, for sharing and history.
-/// `ViewerUrl::from_route` turns a route into one, and opening one navigates to its route.
+/// [`crate::viewer_url::ViewerUrl::from_route`] and
+/// [`crate::viewer_url::ViewerUrl::to_route`] convert between the two.
+///
+/// The URL of each route is documented in `docs/content/reference/viewer/urls.md`.
+/// Keep that page up to date when adding or changing a route.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Route {
     /// The settings dialog for application-wide configuration.
@@ -103,6 +107,46 @@ impl Route {
     /// The example page / welcome screen
     pub fn welcome_page() -> Self {
         Self::RedapServer(EXAMPLES_ORIGIN.clone())
+    }
+
+    /// The settings page, which goes to `return_route` when closed.
+    ///
+    /// If `return_route` is itself the settings page, it is returned unchanged,
+    /// so closing the settings never leads back to the settings.
+    pub fn settings(return_route: &Self) -> Self {
+        match return_route {
+            Self::Settings { .. } => return_route.clone(),
+            _ => Self::Settings {
+                return_route: Box::new(return_route.clone()),
+            },
+        }
+    }
+
+    /// The chunk store browser, which goes to `return_route` when closed.
+    ///
+    /// If `return_route` is itself the chunk store browser, the new one goes where that one
+    /// goes, and keeps its store unless `store_id` names one.
+    pub fn chunk_store_browser(
+        return_route: &Self,
+        store_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
+    ) -> Self {
+        match return_route {
+            Self::ChunkStoreBrowser {
+                store_id: browsed_store_id,
+                selected_chunk: _,
+                return_route: browser_return_route,
+            } => Self::ChunkStoreBrowser {
+                store_id: store_id.or_else(|| browsed_store_id.clone()),
+                selected_chunk,
+                return_route: browser_return_route.clone(),
+            },
+            _ => Self::ChunkStoreBrowser {
+                store_id,
+                selected_chunk,
+                return_route: Box::new(return_route.clone()),
+            },
+        }
     }
 
     /// The active recording [`StoreId`], if any.

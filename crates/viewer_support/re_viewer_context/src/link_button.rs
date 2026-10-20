@@ -142,6 +142,19 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
             ))
         }
 
+        ViewerUrl::LocalRecording(store_id) => Some(LinkButton::new(
+            url,
+            (
+                LinkKind::Recording.icon(theme),
+                store_id.recording_id().to_string(),
+            ),
+        )),
+
+        ViewerUrl::LocalTable(table_id) => Some(LinkButton::new(
+            url,
+            (LinkKind::Table.icon(theme), table_id.as_str().to_owned()),
+        )),
+
         ViewerUrl::WebViewer { url_parameters, .. } => {
             // A web-viewer share link wrapping one or more content URLs: show the inner one's button,
             // but keep opening the outer share link on click.
