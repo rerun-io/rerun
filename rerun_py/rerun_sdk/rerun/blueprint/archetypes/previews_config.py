@@ -34,7 +34,13 @@ class PreviewsConfig(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.PreviewsConfig"
 
-    def __init__(self: Any, *, timeline: encodings.Utf8Like | None = None) -> None:
+    def __init__(
+        self: Any,
+        *,
+        timeline: encodings.Utf8Like | None = None,
+        play_state: blueprint_components.PlayStateLike | None = None,
+        playback_speed: encodings.Float64Like | None = None,
+    ) -> None:
         """
         Create a new instance of the PreviewsConfig archetype.
 
@@ -44,12 +50,21 @@ class PreviewsConfig(Archetype):
             The timeline used by every preview cell.
 
             If left empty a timeline is automatically picked, preferring custom over built-in.
+        play_state:
+            Whether every preview cell plays.
+
+            A single preview can still be played or paused on its own.
+            Defaults to paused, and following plays like playing.
+        playback_speed:
+            Playback speed of every preview cell.
+
+            Defaults to 1.0.
 
         """
 
         # You can define your own __init__ function as a member of PreviewsConfigExt in previews_config_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(timeline=timeline)
+            self.__attrs_init__(timeline=timeline, play_state=play_state, playback_speed=playback_speed)
             return
         self.__attrs_clear__()
 
@@ -57,6 +72,8 @@ class PreviewsConfig(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             timeline=None,
+            play_state=None,
+            playback_speed=None,
         )
 
     @classmethod
@@ -72,6 +89,8 @@ class PreviewsConfig(Archetype):
         *,
         clear_unset: bool = False,
         timeline: encodings.Utf8Like | None = None,
+        play_state: blueprint_components.PlayStateLike | None = None,
+        playback_speed: encodings.Float64Like | None = None,
     ) -> PreviewsConfig:
         """
         Update only some specific fields of a `PreviewsConfig`.
@@ -84,6 +103,15 @@ class PreviewsConfig(Archetype):
             The timeline used by every preview cell.
 
             If left empty a timeline is automatically picked, preferring custom over built-in.
+        play_state:
+            Whether every preview cell plays.
+
+            A single preview can still be played or paused on its own.
+            Defaults to paused, and following plays like playing.
+        playback_speed:
+            Playback speed of every preview cell.
+
+            Defaults to 1.0.
 
         """
 
@@ -91,6 +119,8 @@ class PreviewsConfig(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs: dict[str, Any] = {
                 "timeline": timeline,
+                "play_state": play_state,
+                "playback_speed": playback_speed,
             }
 
             if clear_unset:
@@ -115,6 +145,22 @@ class PreviewsConfig(Archetype):
             component_type=blueprint_components.TimelineNameBatch._COMPONENT_TYPE,
         )
 
+    @staticmethod
+    def descriptor_play_state() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PreviewsConfig:play_state",
+            archetype=PreviewsConfig.NAME,
+            component_type=blueprint_components.PlayStateBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_playback_speed() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PreviewsConfig:playback_speed",
+            archetype=PreviewsConfig.NAME,
+            component_type=blueprint_components.PlaybackSpeedBatch._COMPONENT_TYPE,
+        )
+
     timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -123,6 +169,29 @@ class PreviewsConfig(Archetype):
     # The timeline used by every preview cell.
     #
     # If left empty a timeline is automatically picked, preferring custom over built-in.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    play_state: blueprint_components.PlayStateBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.PlayStateBatch._converter,  # type: ignore[misc]
+    )
+    # Whether every preview cell plays.
+    #
+    # A single preview can still be played or paused on its own.
+    # Defaults to paused, and following plays like playing.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    playback_speed: blueprint_components.PlaybackSpeedBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.PlaybackSpeedBatch._converter,  # type: ignore[misc]
+    )
+    # Playback speed of every preview cell.
+    #
+    # Defaults to 1.0.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

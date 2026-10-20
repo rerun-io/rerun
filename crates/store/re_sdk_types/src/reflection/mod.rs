@@ -5674,13 +5674,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Previews config",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                fields: vec![ArchetypeFieldReflection {
-                    name: "timeline",
-                    display_name: "Timeline",
-                    component_type: "rerun.blueprint.components.TimelineName".into(),
-                    docstring_md: "The timeline used by every preview cell.\n\nIf left empty a timeline is automatically picked, preferring custom over built-in.",
-                    flags: ArchetypeFieldFlags::UI_EDITABLE,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "timeline",
+                        display_name: "Timeline",
+                        component_type: "rerun.blueprint.components.TimelineName".into(),
+                        docstring_md: "The timeline used by every preview cell.\n\nIf left empty a timeline is automatically picked, preferring custom over built-in.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "play_state",
+                        display_name: "Play state",
+                        component_type: "rerun.blueprint.components.PlayState".into(),
+                        docstring_md: "Whether every preview cell plays.\n\nA single preview can still be played or paused on its own.\nDefaults to paused, and following plays like playing.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "playback_speed",
+                        display_name: "Playback speed",
+                        component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
+                        docstring_md: "Playback speed of every preview cell.\n\nDefaults to 1.0.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
             },
         ),
         (

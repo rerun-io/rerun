@@ -11,14 +11,28 @@ namespace rerun::blueprint::archetypes {
         archetype.timeline =
             ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
                 .value_or_throw();
+        archetype.play_state =
+            ComponentBatch::empty<rerun::blueprint::components::PlayState>(Descriptor_play_state)
+                .value_or_throw();
+        archetype.playback_speed =
+            ComponentBatch::empty<rerun::blueprint::components::PlaybackSpeed>(
+                Descriptor_playback_speed
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> PreviewsConfig::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(3);
         if (timeline.has_value()) {
             columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
+        }
+        if (play_state.has_value()) {
+            columns.push_back(play_state.value().partitioned(lengths_).value_or_throw());
+        }
+        if (playback_speed.has_value()) {
+            columns.push_back(playback_speed.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -26,6 +40,12 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> PreviewsConfig::columns() {
         if (timeline.has_value()) {
             return columns(std::vector<uint32_t>(timeline.value().length(), 1));
+        }
+        if (play_state.has_value()) {
+            return columns(std::vector<uint32_t>(play_state.value().length(), 1));
+        }
+        if (playback_speed.has_value()) {
+            return columns(std::vector<uint32_t>(playback_speed.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -39,10 +59,16 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(1);
+        cells.reserve(3);
 
         if (archetype.timeline.has_value()) {
             cells.push_back(archetype.timeline.value());
+        }
+        if (archetype.play_state.has_value()) {
+            cells.push_back(archetype.play_state.value());
+        }
+        if (archetype.playback_speed.has_value()) {
+            cells.push_back(archetype.playback_speed.value());
         }
 
         return rerun::take_ownership(std::move(cells));

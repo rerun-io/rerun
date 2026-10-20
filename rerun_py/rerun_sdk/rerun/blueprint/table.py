@@ -228,8 +228,9 @@ class TableBlueprint:
         Column-name formatting in both layouts; defaults to compact formatting.
         Explicit `Column.name` labels take precedence.
     previews_config:
-        Timeline selection shared by every [`PreviewCell`][rerun.blueprint.table.PreviewCell] in both layouts.
+        Timeline, play state, and playback speed shared by every [`PreviewCell`][rerun.blueprint.table.PreviewCell] in both layouts.
         If no timeline is specified, one is picked automatically, preferring custom over built-in timelines.
+        Previews start paused at 1x speed unless `play_state` or `playback_speed` is set.
     filters:
         Row filters, shared by both layouts.
         A row is only shown when all filters select it.

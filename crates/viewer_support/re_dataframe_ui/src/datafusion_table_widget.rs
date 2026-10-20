@@ -28,7 +28,7 @@ use re_viewer_context::{
 use re_types_core::reflection::Enum as _;
 
 use crate::DisplayRecordBatch;
-use crate::blueprint::{ResolvedSortBy, TableBlueprint, TableColumn};
+use crate::blueprint::{PreviewsConfig, ResolvedSortBy, TableBlueprint, TableColumn};
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
@@ -1034,6 +1034,15 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|field| field.physical_name());
         let marked_rows = marked_rows(&data_columns, &display_record_batches, flag_column);
 
+        let has_previews = !view_renderers.is_empty();
+        if has_previews {
+            let preview_state = view_states.preview_state.get_or_insert_default();
+            if preview_state.playing() != blueprint.previews_config.playing {
+                preview_state.set_playing(blueprint.previews_config.playing);
+            }
+        }
+
+        let mut playback_speed = blueprint.previews_config.playback_speed;
         let blueprint_columns = blueprint.iter_columns(layout_kind);
         let layout_kind_ref = if card_layout_available {
             MaybeMutRef::MutRef(&mut layout_kind)
@@ -1056,8 +1065,9 @@ impl<'a> DataFusionTableWidget<'a> {
                     ToolbarControls {
                         column_display_mode: &mut column_display_mode,
                         layout_kind: layout_kind_ref,
-                        preview_state: (!view_renderers.is_empty())
+                        preview_state: has_previews
                             .then(|| view_states.preview_state.get_or_insert_default()),
+                        playback_speed: &mut playback_speed,
                         num_marked_rows: marked_rows.iter().filter(|marked| **marked).count(),
                     },
                 );
@@ -1068,6 +1078,9 @@ impl<'a> DataFusionTableWidget<'a> {
         }
         if layout_kind != blueprint.layout() {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
+        }
+        if playback_speed != blueprint.previews_config.playback_speed {
+            PreviewsConfig::save_playback_speed(&blueprint_ctx, playback_speed);
         }
 
         let filter_controls = crate::filters::FilterControls {
@@ -1290,6 +1303,14 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         }
 
+        // The play-all button and a command-click on a preview both change the shared play state.
+        if has_previews
+            && let Some(preview_state) = &view_states.preview_state
+            && preview_state.playing() != blueprint.previews_config.playing
+        {
+            PreviewsConfig::save_playing(&blueprint_ctx, preview_state.playing());
+        }
+
         if no_matches {
             let header_height = match layout_kind {
                 TableLayoutKind::Table => ui.tokens().table_header_height(),
@@ -1458,6 +1479,9 @@ struct ToolbarControls<'a> {
     /// Set when the table shows previews, which puts the playback controls in the toolbar.
     preview_state: Option<&'a mut re_viewer_context::PreviewState>,
 
+    /// Playback speed of every preview, shown next to the playback controls.
+    playback_speed: &'a mut f32,
+
     /// How many rows have their flag set.
     num_marked_rows: usize,
 }
@@ -1551,6 +1575,7 @@ fn toolbar_controls_ui<'a>(
         column_display_mode,
         mut layout_kind,
         preview_state,
+        playback_speed,
         num_marked_rows,
     } = controls;
 
@@ -1606,20 +1631,55 @@ fn toolbar_controls_ui<'a>(
             state.set_playing(!playing);
         }
 
+        // A speed other than these three replaces the one on its side of 1x.
+        let faster = if *playback_speed > 1.0 {
+            *playback_speed
+        } else {
+            2.0
+        };
+        let slower = if *playback_speed < 1.0 {
+            *playback_speed
+        } else {
+            0.5
+        };
+
         // `Sides` lays its right-hand side out right to left, so the fastest
         // speed is listed first.
-        let mut speed = state.speed();
         ui.selectable_toggle_sized(Some(row_height), |ui| {
-            for value in [2.0, 1.0, 0.5] {
-                ui.selectable_value(&mut speed, value, format!("{value}×"));
+            for value in [faster, 1.0, slower] {
+                ui.selectable_value(playback_speed, value, format_playback_speed(value));
             }
         });
-        state.set_speed(speed);
     }
 
     if num_marked_rows > 0 {
         ui.label(RichText::new(format!("{num_marked_rows} marked")).weak());
     }
+}
+
+/// Formats a playback speed for the speed toggle, e.g. `12x`, `1.5x` or `0.05x`.
+///
+/// Speeds from 1000 up and under 0.001 use scientific notation with at most one decimal, speeds
+/// from 10 up have no decimals, speeds from 1 up have at most one, and speeds under 1 are
+/// rounded to their first non-zero decimal.
+fn format_playback_speed(speed: f32) -> String {
+    if speed.is_finite() && (speed >= 1000.0 || (0.0 < speed && speed < 0.001)) {
+        let label = format!("{speed:.1e}").replace(".0e", "e");
+        return format!("{label}x");
+    }
+
+    let num_decimals = if speed >= 10.0 {
+        0
+    } else if speed >= 1.0 || speed <= 0.0 || !speed.is_finite() {
+        1
+    } else {
+        (-speed.log10()).ceil() as usize
+    };
+
+    let label = re_format::FloatFormatOptions::DEFAULT_f32
+        .with_decimals(num_decimals)
+        .format(speed);
+    format!("{label}x")
 }
 
 /// Find the record batch and local row index for a global row index.
@@ -2082,6 +2142,24 @@ mod tests {
             )]
             .into(),
         )
+    }
+
+    /// Playback speed labels drop decimals as the speed grows, and speeds under 1 keep their
+    /// first non-zero decimal.
+    #[test]
+    fn playback_speed_labels() {
+        let labels = [
+            1e-9, 1e-6, 0.003, 0.05, 0.26, 0.5, 1.0, 1.5, 2.0, 2.26, 12.6, 100.0, 1000.0, 1.5e6,
+            1e6,
+        ]
+        .map(format_playback_speed);
+        assert_eq!(
+            labels,
+            [
+                "1e-9x", "1e-6x", "0.003x", "0.05x", "0.3x", "0.5x", "1x", "1.5x", "2x", "2.3x",
+                "13x", "100x", "1e3x", "1.5e6x", "1e6x"
+            ]
+        );
     }
 
     #[test]
