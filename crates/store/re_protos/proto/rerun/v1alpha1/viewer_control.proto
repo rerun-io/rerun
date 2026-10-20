@@ -108,6 +108,14 @@ message ViewerControlRequest {
     // server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
     // segment, becomes the active recording and is shown.
     //
+    // Roughly the inverse of `get_location`: opening the location it reports goes back there.
+    //
+    // A location the viewer already has open is not loaded again: the viewer only navigates there,
+    // like `set_location` does, but also refreshes a server, folder, or entry. Unlike
+    // `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+    // yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
+    // nothing can load it.
+    //
     // Returns once the initial load is done, or after about ten seconds, whichever comes first.
     // What the initial load covers depends on the URL:
     // * A file or HTTP URL that is opened directly: the whole file is read.
@@ -266,6 +274,27 @@ message ViewerControlRequest {
     // `INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not
     // know the dataset, or nothing in it is at or below `entity_path`.
     GetDatasetSchemaRequest get_dataset_schema = 18;
+
+    // Report the URL of what the viewer is showing: a recording, a table, a catalog entry,
+    // the settings, … Pass it to `set_location` to come back to it later.
+    //
+    // A recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether
+    // or not the recording was loaded from a URL, and a table that only exists in the viewer as
+    // `about:table?id=…`. While the viewer is loading, this is the URL of what it loads.
+    //
+    // `FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.
+    GetLocationRequest get_location = 19;
+
+    // Show a location the viewer already has open, as `get_location` reports it.
+    // Each recording in `get_viewer_state` carries its location too.
+    // This only navigates, and never loads anything: use `open_url` for that.
+    //
+    // Like a user navigating, it leaves the page shown before in the viewer's history, so the
+    // back button of the native viewer, or of the browser for the web viewer, returns to it.
+    //
+    // `INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it
+    // open.
+    SetLocationRequest set_location = 20;
   }
 }
 
@@ -319,6 +348,12 @@ message ViewerControlResponse {
 
     // Result of `get_dataset_schema`.
     GetDatasetSchemaResponse get_dataset_schema = 18;
+
+    // Result of `get_location`.
+    GetLocationResponse get_location = 19;
+
+    // Result of `set_location`.
+    SetLocationResponse set_location = 20;
   }
 }
 
@@ -683,8 +718,9 @@ message GetViewerStateRequest {}
 
 // Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 message GetViewerStateResponse {
-  // The current viewer page/route (e.g. which recording or hub page is shown).
-  string url = 1;
+  // What the viewer is showing, as `get_location` reports it. Empty if that has no location.
+  // See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  string location = 1;
 
   // The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
   optional string active_store_id = 2;
@@ -809,6 +845,9 @@ message ViewerRecording {
 
   // The recording's current time cursor.
   TimeCursor current_time = 3;
+
+  // The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  string location = 4;
 }
 
 // A timeline of a recording, with its time range.
@@ -901,6 +940,12 @@ message OpenUrlRequest {
   // The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
   // dataset URI, a redap server/catalog URL, or an intra-recording link.
   string url = 1;
+
+  // Whether to also show what it opens, making a recording the active one. Defaults to true.
+  //
+  // Without it, a recording loads in the background, a server is connected to without being
+  // shown, and a location the viewer already has open is left as it is.
+  optional bool navigate = 2;
 }
 
 // Response for `OpenUrl`.
@@ -1123,3 +1168,27 @@ message TimeCursor {
   // Current time on the timeline. Absent if the cursor is not set.
   optional rerun.common.v1alpha1.TimelineTime time = 3;
 }
+
+// ----------------------------------------------------------------------------
+// GetLocation
+
+// Request for `GetLocation`.
+message GetLocationRequest {}
+
+// Response for `GetLocation`.
+message GetLocationResponse {
+  // What the viewer is showing. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  string location = 1;
+}
+
+// ----------------------------------------------------------------------------
+// SetLocation
+
+// Request for `SetLocation`.
+message SetLocationRequest {
+  // A location, as `GetLocation` reports it.
+  string location = 1;
+}
+
+// Response for `SetLocation`.
+message SetLocationResponse {}

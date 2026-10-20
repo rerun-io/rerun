@@ -466,6 +466,7 @@ async fn open_url_answers_once_the_recording_has_arrived() {
         let request = ViewerControlRequest {
             kind: Some(viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
                 url: rrd_path.display().to_string(),
+                navigate: None,
             })),
         };
         let on_done = UiCallback::new({

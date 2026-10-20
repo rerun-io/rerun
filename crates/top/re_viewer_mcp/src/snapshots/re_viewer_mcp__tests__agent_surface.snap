@@ -928,6 +928,18 @@ Conventions:
   }
 }
 
+## rerun_get_location
+
+{
+  "name": "rerun_get_location",
+  "description": "Report the URL of what the viewer is showing: a recording, a table, a catalog entry,\nthe settings, … Pass it to `set_location` to come back to it later.\n\nA recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether\nor not the recording was loaded from a URL, and a table that only exists in the viewer as\n`about:table?id=…`. While the viewer is loading, this is the URL of what it loads.\n\n`FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "description": "Request for `GetLocation`."
+  }
+}
+
 ## rerun_get_recording_schema
 
 {
@@ -1083,13 +1095,17 @@ Conventions:
 
 {
   "name": "rerun_open_url",
-  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link). A recording it opens, such as a dataset\nsegment, becomes the active recording and is shown.\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response says `still_loading`, poll `GetViewerState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
+  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link). A recording it opens, such as a dataset\nsegment, becomes the active recording and is shown.\n\nRoughly the inverse of `get_location`: opening the location it reports goes back there.\n\nA location the viewer already has open is not loaded again: the viewer only navigates there,\nlike `set_location` does, but also refreshes a server, folder, or entry. Unlike\n`set_location`, which never loads anything, `open_url` loads what the viewer does not have\nyet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since\nnothing can load it.\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response says `still_loading`, poll `GetViewerState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "url": {
         "type": "string",
         "description": "The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`\ndataset URI, a redap server/catalog URL, or an intra-recording link."
+      },
+      "navigate": {
+        "type": "boolean",
+        "description": "Whether to also show what it opens, making a recording the active one. Defaults to true.\n\nWithout it, a recording loads in the background, a server is connected to without being\nshown, and a location the viewer already has open is left as it is."
       }
     },
     "required": [
@@ -1209,6 +1225,26 @@ Conventions:
       }
     ],
     "description": "Request for `SetBlueprint`.\n\nExactly one of `recording`, `table` must be set."
+  }
+}
+
+## rerun_set_location
+
+{
+  "name": "rerun_set_location",
+  "description": "Show a location the viewer already has open, as `get_location` reports it.\nEach recording in `get_viewer_state` carries its location too.\nThis only navigates, and never loads anything: use `open_url` for that.\n\nLike a user navigating, it leaves the page shown before in the viewer's history, so the\nback button of the native viewer, or of the browser for the web viewer, returns to it.\n\n`INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it\nopen.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "A location, as `GetLocation` reports it."
+      }
+    },
+    "required": [
+      "location"
+    ],
+    "description": "Request for `SetLocation`."
   }
 }
 

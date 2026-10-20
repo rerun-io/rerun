@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -50,6 +50,14 @@ pub mod viewer_control_request {
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
         /// server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
         /// segment, becomes the active recording and is shown.
+        ///
+        /// Roughly the inverse of `get_location`: opening the location it reports goes back there.
+        ///
+        /// A location the viewer already has open is not loaded again: the viewer only navigates there,
+        /// like `set_location` does, but also refreshes a server, folder, or entry. Unlike
+        /// `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+        /// yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
+        /// nothing can load it.
         ///
         /// Returns once the initial load is done, or after about ten seconds, whichever comes first.
         /// What the initial load covers depends on the URL:
@@ -210,6 +218,27 @@ pub mod viewer_control_request {
         /// know the dataset, or nothing in it is at or below `entity_path`.
         #[prost(message, tag = "18")]
         GetDatasetSchema(super::GetDatasetSchemaRequest),
+        /// Report the URL of what the viewer is showing: a recording, a table, a catalog entry,
+        /// the settings, … Pass it to `set_location` to come back to it later.
+        ///
+        /// A recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether
+        /// or not the recording was loaded from a URL, and a table that only exists in the viewer as
+        /// `about:table?id=…`. While the viewer is loading, this is the URL of what it loads.
+        ///
+        /// `FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationRequest),
+        /// Show a location the viewer already has open, as `get_location` reports it.
+        /// Each recording in `get_viewer_state` carries its location too.
+        /// This only navigates, and never loads anything: use `open_url` for that.
+        ///
+        /// Like a user navigating, it leaves the page shown before in the viewer's history, so the
+        /// back button of the native viewer, or of the browser for the web viewer, returns to it.
+        ///
+        /// `INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it
+        /// open.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -228,7 +257,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -285,6 +314,12 @@ pub mod viewer_control_response {
         /// Result of `get_dataset_schema`.
         #[prost(message, tag = "18")]
         GetDatasetSchema(super::GetDatasetSchemaResponse),
+        /// Result of `get_location`.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationResponse),
+        /// Result of `set_location`.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -917,9 +952,10 @@ impl ::prost::Name for GetViewerStateRequest {
 /// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetViewerStateResponse {
-    /// The current viewer page/route (e.g. which recording or hub page is shown).
+    /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
+    /// See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
     #[prost(string, tag = "1")]
-    pub url: ::prost::alloc::string::String,
+    pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
     #[prost(string, optional, tag = "2")]
     pub active_store_id: ::core::option::Option<::prost::alloc::string::String>,
@@ -1110,6 +1146,9 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "4")]
+    pub location: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ViewerRecording {
     const NAME: &'static str = "ViewerRecording";
@@ -1280,6 +1319,12 @@ pub struct OpenUrlRequest {
     /// dataset URI, a redap server/catalog URL, or an intra-recording link.
     #[prost(string, tag = "1")]
     pub url: ::prost::alloc::string::String,
+    /// Whether to also show what it opens, making a recording the active one. Defaults to true.
+    ///
+    /// Without it, a recording loads in the background, a server is connected to without being
+    /// shown, and a location the viewer already has open is left as it is.
+    #[prost(bool, optional, tag = "2")]
+    pub navigate: ::core::option::Option<bool>,
 }
 impl ::prost::Name for OpenUrlRequest {
     const NAME: &'static str = "OpenUrlRequest";
@@ -1634,6 +1679,66 @@ impl ::prost::Name for TimeCursor {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.TimeCursor".into()
+    }
+}
+/// Request for `GetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationRequest {}
+impl ::prost::Name for GetLocationRequest {
+    const NAME: &'static str = "GetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+}
+/// Response for `GetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationResponse {
+    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetLocationResponse {
+    const NAME: &'static str = "GetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+}
+/// Request for `SetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationRequest {
+    /// A location, as `GetLocation` reports it.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetLocationRequest {
+    const NAME: &'static str = "SetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+}
+/// Response for `SetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationResponse {}
+impl ::prost::Name for SetLocationResponse {
+    const NAME: &'static str = "SetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationResponse".into()
     }
 }
 /// Generated client implementations.

@@ -65,10 +65,17 @@ impl PyViewerClientInternal {
         conn.close_recordings(py, target, store_ids)
     }
 
-    fn open_url(self_: Py<Self>, url: String, py: Python<'_>) -> PyResult<bool> {
+    fn get_location(self_: Py<Self>, py: Python<'_>) -> PyResult<String> {
         let mut conn = self_.borrow(py).conn.clone();
 
-        conn.open_url(py, url)
+        conn.get_location(py)
+    }
+
+    #[pyo3(signature = (url, *, navigate = true))]
+    fn open_url(self_: Py<Self>, url: String, navigate: bool, py: Python<'_>) -> PyResult<bool> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.open_url(py, url, navigate)
     }
 
     fn save_screenshot(
@@ -87,6 +94,12 @@ impl PyViewerClientInternal {
             .transpose()?;
 
         conn.save_screenshot(py, file_path, view_id_str)
+    }
+
+    fn set_location(self_: Py<Self>, location: String, py: Python<'_>) -> PyResult<()> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.set_location(py, location)
     }
 
     #[pyo3(signature = (timeline, time, play, store_id = None))]
@@ -203,11 +216,23 @@ impl ViewerConnectionHandle {
         to_json(&response)
     }
 
-    fn open_url(&mut self, py: Python<'_>, url: String) -> PyResult<bool> {
+    fn get_location(&mut self, py: Python<'_>) -> PyResult<String> {
+        let re_protos::viewer_control::v1alpha1::GetLocationResponse { location } = self.execute(
+            py,
+            re_protos::viewer_control::v1alpha1::GetLocationRequest {},
+        )?;
+
+        Ok(location)
+    }
+
+    fn open_url(&mut self, py: Python<'_>, url: String, navigate: bool) -> PyResult<bool> {
         let re_protos::viewer_control::v1alpha1::OpenUrlResponse { still_loading } =
             self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
                 py,
-                re_protos::viewer_control::v1alpha1::OpenUrlRequest { url },
+                re_protos::viewer_control::v1alpha1::OpenUrlRequest {
+                    url,
+                    navigate: Some(navigate),
+                },
             )?;
 
         Ok(!still_loading)
@@ -236,6 +261,15 @@ impl ViewerConnectionHandle {
             response.into_inner(),
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        Ok(())
+    }
+
+    fn set_location(&mut self, py: Python<'_>, location: String) -> PyResult<()> {
+        let re_protos::viewer_control::v1alpha1::SetLocationResponse {} = self.execute(
+            py,
+            re_protos::viewer_control::v1alpha1::SetLocationRequest { location },
+        )?;
 
         Ok(())
     }

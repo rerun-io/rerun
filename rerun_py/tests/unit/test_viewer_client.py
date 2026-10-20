@@ -258,12 +258,13 @@ def test_viewer_state_normalizes_enum_names() -> None:
 
 def test_viewer_state_reads_nested_recording_and_view_fields() -> None:
     state = _viewer_state_from_json({
-        "url": "rerun+http://127.0.0.1:9876/proxy",
+        "location": "about:recording?app_id=app&recording_id=rec",
         "catalog_url": "rerun+http://127.0.0.1:9876",
         "active_store_id": "Recording:app:rec",
         "recordings": [
             {
                 "store_id": "Recording:app:rec",
+                "location": "about:recording?app_id=app&recording_id=rec",
                 "timelines": [
                     {
                         "timeline": {"name": "frame"},
@@ -285,6 +286,8 @@ def test_viewer_state_reads_nested_recording_and_view_fields() -> None:
         ],
     })
 
+    assert state.location == "about:recording?app_id=app&recording_id=rec"
+    assert state.recordings[0].location == "about:recording?app_id=app&recording_id=rec"
     assert state.active_recording == "Recording:app:rec"
     assert state.catalog_url == "rerun+http://127.0.0.1:9876"
     (timeline,) = state.recordings[0].timelines
@@ -299,7 +302,7 @@ def test_viewer_state_of_an_empty_viewer() -> None:
     """Every field holds its default, so canonical protobuf JSON sends an empty object."""
     state = _viewer_state_from_json({})
 
-    assert state.url == ""
+    assert state.location == ""
     assert state.active_recording is None
     assert state.catalog_url is None
     assert state.recordings == []

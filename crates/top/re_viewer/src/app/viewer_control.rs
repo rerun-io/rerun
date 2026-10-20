@@ -14,16 +14,17 @@ use re_entity_db::LogSource;
 use re_log_channel::{
     CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
 };
-use re_log_types::{EntityPath, StoreId, TimeReal, TimeType};
+use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, GetBlueprintRequest, GetBlueprintResponse,
-    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetRecordingSchemaRequest,
-    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
-    GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest,
-    HighlightRectResponse, OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema,
-    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect,
-    SetBlueprintRequest, SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
+    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
+    OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest,
+    SaveScreenshotResponse, ScreenRect, SetBlueprintRequest, SetBlueprintResponse,
+    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
     TableColumnSchema, TimeCursor, ViewerControlRequest, ViewerControlResponse,
     ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerServer, ViewerServerEntry,
     ViewerTimeline, ViewerView, get_blueprint_request, set_blueprint_request,
@@ -369,7 +370,42 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetViewerState(_) => {
+            Kind::GetLocation(GetLocationRequest {}) => {
+                let location = self.current_viewer_url(store_hub).and_then(|url| {
+                    url.sharable_url(None).map_err(|err| {
+                        ViewerControlError::internal(format!(
+                            "Failed to format the location as a URL: {err}"
+                        ))
+                    })
+                });
+                on_done.call(location.map(|location| GetLocationResponse { location }.into()));
+            }
+            Kind::SetLocation(SetLocationRequest { location }) => {
+                let navigated = location
+                    .parse::<ViewerUrl>()
+                    .map_err(|err| {
+                        ViewerControlError::invalid_argument(format!(
+                            "Not a location: {err}\nLocation: {location:?}"
+                        ))
+                    })
+                    .and_then(|url| self.route_if_open(store_hub, &url));
+                match navigated {
+                    Err(err) => on_done.call(Err(err)),
+                    Ok(None) => on_done.call(Err(ViewerControlError::not_found(format!(
+                        "The viewer does not have this location open: {location:?}"
+                    )))),
+                    Ok(Some(route)) => {
+                        self.command_sender
+                            .send_system(SystemCommand::SetRoute(route));
+                        self.reply_after_commands(
+                            on_done,
+                            Ok(SetLocationResponse {}.into()),
+                            egui_ctx,
+                        );
+                    }
+                }
+            }
+            Kind::GetViewerState(GetViewerStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
             }
             Kind::HighlightRect(request) => {
@@ -382,7 +418,8 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::OpenUrl(OpenUrlRequest { url }) => {
+            Kind::OpenUrl(OpenUrlRequest { url, navigate }) => {
+                let navigate = navigate.unwrap_or(true);
                 let parsed = ViewerUrl::parse_with_options(
                     &url,
                     &re_data_source::FromUriOptions {
@@ -390,39 +427,73 @@ impl App {
                     },
                 );
                 match parsed {
-                    Ok(open_url) => {
-                        let sources_before = self.rx_log.sources();
-                        let registrations_before = self
-                            .connections
-                            .registrations_in_flight
-                            .snapshot()
-                            .into_keys()
-                            .collect();
-                        // Opens like a URL the user pastes: a recording becomes the active one.
-                        open_url.open(
-                            egui_ctx,
-                            &OpenUrlOptions {
-                                recording_open_behavior:
-                                    re_log_channel::RecordingOpenBehavior::OpenAndSelect,
-                                show_loader: true,
-                            },
-                            &self.command_sender,
-                        );
-                        self.pending_viewer_control_replies.push(PendingReply {
-                            on_done,
-                            answer: PendingAnswer::OpenUrl {
-                                sources_before,
-                                registrations_before,
-                                deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
-                            },
-                        });
-                        egui_ctx.request_repaint();
-                    }
                     Err(err) => {
                         on_done.call(Err(ViewerControlError::invalid_argument(format!(
-                            "Failed to open URL {url:?}: {err}"
+                            "Failed to parse the URL: {err}\nURL: {url:?}"
                         ))));
                     }
+                    Ok(open_url) => match self.route_if_open(store_hub, &open_url) {
+                        Err(err) => on_done.call(Err(err)),
+                        // Opening a server, folder, or entry again also refreshes it, unlike
+                        // `set_location`.
+                        Ok(Some(route))
+                            if !matches!(
+                                route,
+                                Route::RedapServer(_)
+                                    | Route::RedapFolder { .. }
+                                    | Route::RedapEntry { .. }
+                            ) =>
+                        {
+                            if navigate {
+                                self.command_sender
+                                    .send_system(SystemCommand::SetRoute(route));
+                            }
+                            let response = OpenUrlResponse {
+                                still_loading: false,
+                            };
+                            self.reply_after_commands(on_done, Ok(response.into()), egui_ctx);
+                        }
+                        Ok(_) => {
+                            let sources_before = self.rx_log.sources();
+                            let registrations_before = self
+                                .connections
+                                .registrations_in_flight
+                                .snapshot()
+                                .into_keys()
+                                .collect();
+                            if navigate {
+                                // Opens like a URL the user pastes: a recording becomes the active one.
+                                open_url.open(
+                                    egui_ctx,
+                                    &OpenUrlOptions {
+                                        recording_open_behavior:
+                                            re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+                                        show_loader: true,
+                                    },
+                                    &self.command_sender,
+                                );
+                            } else if !self.connect_without_navigating(&open_url) {
+                                open_url.open(
+                                    egui_ctx,
+                                    &OpenUrlOptions {
+                                        recording_open_behavior:
+                                            re_log_channel::RecordingOpenBehavior::Open,
+                                        show_loader: false,
+                                    },
+                                    &self.command_sender,
+                                );
+                            }
+                            self.pending_viewer_control_replies.push(PendingReply {
+                                on_done,
+                                answer: PendingAnswer::OpenUrl {
+                                    sources_before,
+                                    registrations_before,
+                                    deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
+                                },
+                            });
+                            egui_ctx.request_repaint();
+                        }
+                    },
                 }
             }
 
@@ -632,19 +703,139 @@ fn close_recordings_target(
 }
 
 impl App {
+    /// What the viewer is showing, as a URL that [`Self::route_if_open`] returns to.
+    ///
+    /// A recording is named by its store id, since it may not have been loaded from a URL.
+    fn current_viewer_url(&self, store_hub: &StoreHub) -> Result<ViewerUrl, ViewerControlError> {
+        Ok(match self.state.navigation.current() {
+            Route::LocalRecording { recording_id } => {
+                ViewerUrl::LocalRecording(recording_id.clone())
+            }
+            // Nothing but this API names a local table, so it gets no sharable URL.
+            Route::LocalTable(table_id) => ViewerUrl::LocalTable(table_id.clone()),
+            Route::ChunkStoreBrowser {
+                store_id: Some(store_id),
+                ..
+            } if store_id.kind() != StoreKind::Recording => {
+                // A chunk store browser URL can only name a recording.
+                return Err(ViewerControlError::failed_precondition(
+                    "The chunk store browser shows a blueprint, which has no URL",
+                ));
+            }
+            route => ViewerUrl::from_route(store_hub, route).map_err(|err| {
+                ViewerControlError::failed_precondition(format!(
+                    "What the viewer shows has no URL: {err}"
+                ))
+            })?,
+        })
+    }
+
+    /// The route to what `url` names, if the viewer already has it open.
+    ///
+    /// Showing it takes a plain route change, which navigates like the user does, so the back
+    /// button returns to the page shown before. `ViewerUrl::open` would also add servers,
+    /// refresh their entries, and load data again.
+    fn route_if_open(
+        &self,
+        store_hub: &StoreHub,
+        url: &ViewerUrl,
+    ) -> Result<Option<Route>, ViewerControlError> {
+        let not_loaded = |store_id: &StoreId| {
+            // Nothing can load an `about:recording` URL, so it must name a loaded recording.
+            ViewerControlError::not_found(format!("Recording {store_id} is not loaded"))
+        };
+        let has_server = |origin: &re_uri::Origin| {
+            // The welcome page is a built-in server that the viewer never connects to.
+            *origin == *re_redap_browser::EXAMPLES_ORIGIN
+                || self.state.redap_servers.has_server(origin)
+        };
+
+        let Some(mut route) = url.to_route(self.state.navigation.current()) else {
+            return Ok(None);
+        };
+        match &mut route {
+            Route::LocalRecording { recording_id }
+            | Route::ChunkStoreBrowser {
+                store_id: Some(recording_id),
+                ..
+            } => {
+                if store_hub.entity_db(recording_id).is_none() {
+                    return Err(not_loaded(recording_id));
+                }
+            }
+            Route::RedapServer(origin) | Route::RedapFolder { origin, .. } => {
+                if !has_server(origin) {
+                    return Ok(None);
+                }
+            }
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                let Some(known_kind) = self.state.redap_servers.entry_kind(origin, *entry_id)
+                else {
+                    return Ok(None);
+                };
+                if matches!(kind, Some(re_viewer_context::EntryKind::Dataset(_)))
+                    && known_kind == re_viewer_context::EntryKind::Table
+                {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "The URL names a table, not a dataset\nURL: {url:?}"
+                    )));
+                }
+                kind.get_or_insert(known_kind);
+            }
+            Route::LocalTable(table_id) => {
+                if !store_hub.has_table(table_id) {
+                    // Nothing can load an `about:table` URL either.
+                    return Err(ViewerControlError::not_found(format!(
+                        "Table {table_id} is not in the viewer"
+                    )));
+                }
+            }
+            Route::Settings { .. } | Route::ChunkStoreBrowser { store_id: None, .. } => {}
+            Route::Loading(_) => return Ok(None),
+        }
+
+        Ok(Some(route))
+    }
+
+    /// Connect to the server that `url` names, without showing it.
+    ///
+    /// Returns `false` for a URL that names no server.
+    fn connect_without_navigating(&self, url: &ViewerUrl) -> bool {
+        let (ViewerUrl::RedapCatalog(re_uri::CatalogUri { origin })
+        | ViewerUrl::RedapFolder(re_uri::FolderUri { origin, .. })
+        | ViewerUrl::RedapEntry(re_uri::EntryUri { origin, .. })
+        | ViewerUrl::RedapDataset(re_uri::DatasetUri {
+            origin,
+            segment_id: None,
+            ..
+        })) = url
+        else {
+            return false;
+        };
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer(origin.clone()));
+        self.command_sender
+            .send_system(SystemCommand::RefreshRedapServer(origin.clone()));
+        true
+    }
+
     /// Snapshot the current viewer state for the `get_viewer_state` operation:
-    /// the active recording, the current page as a sharable URL, the catalog the viewer hosts,
+    /// the active recording, the current page as a Viewer URL, the catalog the viewer hosts,
     /// and every open recording's timelines with their time ranges and current time cursor.
     pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetViewerStateResponse {
         let active_id = self.state.active_recording_id().cloned();
         let route = self.state.navigation.current().clone();
         let views = self.collect_views(store_hub, &route, active_id.as_ref());
-        let route = &route;
 
-        // Best-effort sharable URL for the current page; some routes (e.g. local tables) can't be
-        // turned into a URL, in which case we leave it empty.
-        let url = ViewerUrl::from_route(store_hub, route)
-            .and_then(|open_url| open_url.sharable_url(None))
+        // Empty when what is shown has no URL, like a local table.
+        let location = self
+            .current_viewer_url(store_hub)
+            .ok()
+            .and_then(|url| url.sharable_url(None).ok())
             .unwrap_or_default();
 
         let recordings = store_hub
@@ -667,6 +858,9 @@ impl App {
                     store_id: store_id.to_string(),
                     timelines,
                     current_time,
+                    location: ViewerUrl::LocalRecording(store_id.clone())
+                        .sharable_url(None)
+                        .unwrap_or_default(),
                 }
             })
             .collect();
@@ -695,7 +889,7 @@ impl App {
         let loading = std::iter::chain(loading_registrations, loading_sources).collect();
 
         GetViewerStateResponse {
-            url,
+            location,
             active_store_id: active_id.map(|store_id| store_id.to_string()),
             recordings,
             loading,
@@ -1764,6 +1958,235 @@ mod tests {
                 store_hub.entity_db(&open).is_some(),
                 "closed despite the error"
             );
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    mod locations {
+        use re_protos::viewer_control::v1alpha1::viewer_control_response::Kind as ResponseKind;
+
+        use super::*;
+
+        type Answer = std::sync::Arc<
+            parking_lot::Mutex<Option<Result<ViewerControlResponse, ViewerControlError>>>,
+        >;
+
+        /// Serve `kind`, and return where its answer lands.
+        fn serve(
+            app: &mut App,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+            kind: viewer_control_request::Kind,
+        ) -> Answer {
+            let answer = Answer::default();
+            app.serve_viewer_control(
+                ViewerControlRequest { kind: Some(kind) },
+                UiCallback::new({
+                    let answer = answer.clone();
+                    move |result| *answer.lock() = Some(result)
+                }),
+                store_hub,
+                egui_ctx,
+            );
+            answer
+        }
+
+        fn open_url(url: String, navigate: bool) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+                url,
+                navigate: Some(navigate),
+            })
+        }
+
+        fn set_location(location: String) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::SetLocation(SetLocationRequest { location })
+        }
+
+        fn location_of(store_id: &StoreId) -> String {
+            ViewerUrl::LocalRecording(store_id.clone())
+                .sharable_url(None)
+                .expect("a store id always makes a URL")
+        }
+
+        fn error_code(answer: &Answer) -> ViewerControlErrorCode {
+            answer
+                .lock()
+                .take()
+                .and_then(Result::err)
+                .expect("answered with an error")
+                .code
+        }
+
+        /// A viewer with its store hub taken out, as during a frame.
+        fn viewer() -> (egui_kittest::Harness<'static, App>, StoreHub) {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let store_hub = harness
+                .state_mut()
+                .store_hub
+                .take()
+                .expect("the hub is only taken during a frame");
+            (harness, store_hub)
+        }
+
+        fn get_location(app: &mut App, store_hub: &StoreHub, egui_ctx: &egui::Context) -> String {
+            let answer = serve(
+                app,
+                store_hub,
+                egui_ctx,
+                viewer_control_request::Kind::GetLocation(GetLocationRequest {}),
+            );
+            match answer.lock().take() {
+                Some(Ok(ViewerControlResponse {
+                    kind: Some(ResponseKind::GetLocation(GetLocationResponse { location })),
+                })) => location,
+                other => panic!("expected a get_location response, got {other:?}"),
+            }
+        }
+
+        #[tokio::test]
+        async fn set_location_shows_a_loaded_recording_and_get_location_reports_it() {
+            let (mut harness, mut store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+
+            let first = StoreId::random(StoreKind::Recording, "test_app");
+            let second = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&first);
+            store_hub.entity_db_entry(&second);
+            assert_ne!(app.active_recording_id(), Some(&second));
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                set_location(location_of(&second)),
+            );
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.active_recording_id(), Some(&second));
+            assert_eq!(
+                get_location(app, &store_hub, &egui_ctx),
+                location_of(&second)
+            );
+            assert_eq!(
+                app.collect_viewer_state(&store_hub).location,
+                location_of(&second)
+            );
+        }
+
+        #[tokio::test]
+        async fn open_url_of_an_open_location_navigates_only_if_asked() {
+            let (mut harness, mut store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+
+            let recording = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&recording);
+            let welcome = app.state.navigation.current().clone();
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                open_url(location_of(&recording), false),
+            );
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.state.navigation.current(), &welcome);
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                open_url(location_of(&recording), true),
+            );
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.active_recording_id(), Some(&recording));
+        }
+
+        #[tokio::test]
+        async fn the_welcome_page_location_round_trips() {
+            let (mut harness, mut store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+
+            let welcome = get_location(app, &store_hub, &egui_ctx);
+            let answer = serve(app, &store_hub, &egui_ctx, set_location(welcome));
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.state.navigation.current(), &Route::welcome_page());
+        }
+
+        #[tokio::test]
+        async fn get_location_round_trips_through_set_location() {
+            let (mut harness, mut store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                set_location("about:settings".to_owned()),
+            );
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+
+            let location = get_location(app, &store_hub, &egui_ctx);
+            assert_eq!(location, "about:settings");
+            let answer = serve(app, &store_hub, &egui_ctx, set_location(location));
+            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+
+            let Route::Settings { return_route } = app.state.navigation.current() else {
+                panic!("expected the settings");
+            };
+            assert!(
+                !matches!(**return_route, Route::Settings { .. }),
+                "closing the settings must leave them"
+            );
+        }
+
+        #[tokio::test]
+        async fn a_recording_location_that_is_not_loaded_is_not_found() {
+            let (mut harness, store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+
+            let missing = StoreId::random(StoreKind::Recording, "test_app");
+            for kind in [
+                open_url(location_of(&missing), true),
+                set_location(location_of(&missing)),
+            ] {
+                let answer = serve(app, &store_hub, &egui_ctx, kind);
+                assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
+            }
+        }
+
+        #[tokio::test]
+        async fn set_location_never_loads() {
+            let (mut harness, store_hub) = viewer();
+            let egui_ctx = harness.ctx.clone();
+            let app = harness.state_mut();
+            let sources_before = app.rx_log.sources().len();
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                set_location("https://example.com/recording.rrd".to_owned()),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
+            assert_eq!(app.rx_log.sources().len(), sources_before);
+
+            let answer = serve(
+                app,
+                &store_hub,
+                &egui_ctx,
+                set_location("not a url".to_owned()),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
         }
     }
 
