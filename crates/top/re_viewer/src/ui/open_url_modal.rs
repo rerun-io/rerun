@@ -1,5 +1,6 @@
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{UICommand, UiExt as _};
+use re_ui::text_edit::ReTextEdit;
+use re_ui::{Size, UICommand, UiExt as _};
 use re_viewer_context::viewer_url::ViewerUrl;
 
 use crate::viewer_url_description::ViewerUrlDescription;
@@ -39,10 +40,13 @@ impl OpenUrlModal {
                     }
                 });
 
-                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-                    ui.add(egui::TextEdit::singleline(&mut self.url).desired_width(f32::INFINITY))
-                        .accessible_name("URL")
-                });
+                let response = ui
+                    .add(
+                        ReTextEdit::singleline(&mut self.url)
+                            .size(Size::Tiny)
+                            .desired_width(f32::INFINITY),
+                    )
+                    .accessible_name("URL");
 
                 // If we just opened the dialog, focus the text edit so user can just paste.
                 if self.just_opened {
