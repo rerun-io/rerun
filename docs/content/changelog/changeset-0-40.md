@@ -22,6 +22,12 @@ See [Configure the Viewer](../getting-started/configure-the-viewer.md) for an in
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/1200w.png">
 </picture>
 
+### Inspect transform graphs via MCP
+
+Rerun already provides a [transform debugging UI](../concepts/logging-and-ingestion/transforms.md#debugging-transform-trees) for inspecting frame connections and transform values at the current time cursor.
+Agents can now inspect that same transform graph via MCP using `rerun_get_transform_graph`, which returns frame connections and their sources as JSON, with optional filters and numerical transform values to help debug spatial relationships.
+See [Inspecting transforms via MCP](../reference/viewer/mcp.md#inspecting-transforms) for details.
+
 ## New features
 
 ### Experimental: table filters and sorting can be defined in the table blueprint and filters run faster

@@ -14,6 +14,7 @@
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/1200w.png">
   </picture>
 
+- Agents can [inspect transform graphs via MCP](https://rerun.io/docs/reference/viewer/mcp#inspecting-transforms) with `rerun_get_transform_graph`
 - [Catalog API improvements](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#managing-segment-layers-with-the-python-catalog-api): `Segment` and `Layer` handles, `DatasetEntry.schema()`, and [`DatasetEntry.info()`](https://rerun.io/docs/howto/query-and-transform/get-data-out#getting-an-overview)
 - The selection panel shows which [layers](https://rerun.io/docs/howto/logging-and-ingestion/layers) a component comes from
 
@@ -77,6 +78,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - [Asset coverage](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) edit UI [1405a80](https://github.com/rerun-io/rerun/commit/1405a800727f1e477095e97285d99cbe58942f9b)
 - Compute [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) normals when they are missing [7df8021](https://github.com/rerun-io/rerun/commit/7df80219ea39bde56859587da21568bfa41dbd9f)
 - Table blueprint undo & redo [a8f579e](https://github.com/rerun-io/rerun/commit/a8f579e83851f52e823f6c08ae062dbd32f6dd64)
+- Add [MCP interface for inspecting transform graphs](https://rerun.io/docs/reference/viewer/mcp#inspecting-transforms) [9184397](https://github.com/rerun-io/rerun/commit/918439733127c7ecaaa46b3c694bd960927a654b)
 - Answer [viewer-control](https://rerun.io/docs/reference/viewer/mcp) operations once their commands have run [cc15755](https://github.com/rerun-io/rerun/commit/cc1575549773fe0c8ae535d06501e43b668321e1)
 - Emit [LeRobot](https://rerun.io/docs/howto/logging-and-ingestion/lerobot) v2 videos as `VideoStream`, like v3 [d0afc97](https://github.com/rerun-io/rerun/commit/d0afc9795811aa3b63aa11824edf2eeb9d149883)
 
