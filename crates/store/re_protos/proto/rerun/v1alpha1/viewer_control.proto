@@ -295,6 +295,51 @@ message ViewerControlRequest {
     // `INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it
     // open.
     SetLocationRequest set_location = 20;
+
+    // Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.
+    // Read the full guidance below before calling this tool or interpreting its results:
+    // it explains which frames to query and what this graph can and cannot tell you.
+    //
+    // Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
+    // This is a latest-at snapshot, not transform history. To inspect another time, call
+    // `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+    // If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
+    // If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
+    //
+    // Entity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships
+    // unless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with
+    // a frame, and Transform3D connects child and parent frames independently of entity paths.
+    // Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
+    // per-instance poses and view-specific blueprint overrides; it is not the rendering result.
+    // See https://rerun.io/docs/concepts/logging-and-ingestion/transforms.
+    //
+    // Choose the representation before diagnosing connectivity:
+    // 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
+    // 2. If named frames exist, assume they are the user's intended representation and keep
+    //    inspecting and reporting on named frames only, unless the user indicates otherwise.
+    // 3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.
+    // Implicit tf# frames always exist, even for entities assigned to named frames. Their separate
+    // tree is normal: do not report it as "two disconnected trees", a problem, or something to connect.
+    // Named and entity-path frames are usually not mixed; mixing is supported but discouraged.
+    // Use FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.
+    // If intent remains unclear, use your structured question tool.
+    //
+    // For transform trees with named frames, Transform3D connects frames; CoordinateFrame values
+    // assign entities to frames. For named-frame topologies, this API shows frame connections,
+    // not entity assignments.
+    // Do not flag uninspected frame assignments as potential problems.
+    // In named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame
+    // value matches the pinhole's child_frame.
+    // Inspecting frame assignments is a separate concern from this API, do it only when asked or
+    // necessary for debugging.
+    //
+    // Use also rerun_get_viewer_state to check spatial-view topology errors.
+    // For missing content, check if the blueprint's target frame is set to a meaningful value.
+    // tf#/ is the default root for entity-path frame topologies, but is also a fallback when
+    // there are multiple disconnected trees with named frames.
+    // Inspect potential roots to use as target frames and use your structured question tool to
+    // clarify with the user if there are ambiguities.
+    GetTransformGraphRequest get_transform_graph = 15;
   }
 }
 
@@ -354,7 +399,62 @@ message ViewerControlResponse {
 
     // Result of `set_location`.
     SetLocationResponse set_location = 20;
+
+    // Result of `get_transform_graph`.
+    GetTransformGraphResponse get_transform_graph = 15;
   }
+}
+
+// ----------------------------------------------------------------------------
+// GetTransformGraph
+
+// Request for `GetTransformGraph`.
+message GetTransformGraphRequest {
+  // Which kinds of transform frames to include.
+  enum FrameFilter {
+    // Use the default: include all frames.
+    FRAME_FILTER_UNSPECIFIED = 0;
+    // Include only frames derived from entity paths.
+    FRAME_FILTER_ENTITY_PATH = 1;
+    // Include only explicitly named frames.
+    FRAME_FILTER_NAMED = 2;
+    // Include both entity-path-derived and named frames.
+    FRAME_FILTER_ALL = 3;
+  }
+  // Which kinds of transform edges to include.
+  enum EdgeFilter {
+    // Use the default: include all edges.
+    EDGE_FILTER_UNSPECIFIED = 0;
+    // Include static edges, including implicit hierarchy identities.
+    EDGE_FILTER_STATIC = 1;
+    // Include only temporal edges.
+    EDGE_FILTER_TEMPORAL = 2;
+    // Include both static and temporal edges.
+    EDGE_FILTER_ALL = 3;
+  }
+
+  // Recording store id from GetViewerState. Defaults to the active recording.
+  optional string store_id = 1;
+  // Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
+  optional FrameFilter frame_filter = 2;
+  // Defaults to ALL. Implicit hierarchy identity edges count as static.
+  optional EdgeFilter edge_filter = 3;
+  // Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.
+  // Connectivity, source entity paths and sample times are always included.
+  optional bool include_transforms = 4;
+}
+
+// Response for `GetTransformGraph`.
+message GetTransformGraphResponse {
+  // Recording that was queried.
+  string store_id = 1;
+  // JSON object with query, options, missing_chunks, frames and edges.
+  // Frame ids are canonical frame names. has_transform refers to the unfiltered latest-at graph;
+  // registered frames may have no active edges. Edge sample times use kind=static or
+  // kind=temporal with an integer string value, on the query timeline.
+  // Matrices are arrays of rows acting on column vectors. parent_from_child maps child coordinates
+  // into parent coordinates; image_from_camera is a pinhole's intrinsic matrix, not an affine transform.
+  string json = 2;
 }
 
 // ----------------------------------------------------------------------------

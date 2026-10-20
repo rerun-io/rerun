@@ -13,6 +13,7 @@ Getting oriented:
 - Call `rerun_connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) drives the widgets one input event at a time, the way a person would. Prefer a `rerun_*` tool whenever one fits, and `rerun_run_command` over clicking through menus: clicking through the UI costs several calls and a lot of context, and breaks whenever the layout moves.
 - Start most tasks with `rerun_get_viewer_state`: it names the recordings, timelines, views and Redap servers that are loaded. Confirm a load with it too, not with `screenshot`; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks.
+- Use `rerun_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
 - To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
   `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the entities in the segments, not a table's columns: `rerun_get_table_schema` names those.
@@ -984,6 +985,47 @@ Conventions:
       }
     },
     "description": "Request for `GetTableSchema`."
+  }
+}
+
+## rerun_get_transform_graph
+
+{
+  "name": "rerun_get_transform_graph",
+  "description": "Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.\nRead the full guidance below before calling this tool or interpreting its results:\nit explains which frames to query and what this graph can and cannot tell you.\n\nReturns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.\nThis is a latest-at snapshot, not transform history. To inspect another time, call\n`rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.\nIf no cursor is set, queries latest values and explicitly reports query.mode = \"latest\".\nIf chunks are missing, the graph is incomplete: missing edges do not prove disconnection.\n\nEntity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships\nunless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with\na frame, and Transform3D connects child and parent frames independently of entity paths.\nParents can change over time; pinholes connect 3D and 2D spaces. This graph excludes\nper-instance poses and view-specific blueprint overrides; it is not the rendering result.\nSee https://rerun.io/docs/concepts/logging-and-ingestion/transforms.\n\nChoose the representation before diagnosing connectivity:\n1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.\n2. If named frames exist, assume they are the user's intended representation and keep\n   inspecting and reporting on named frames only, unless the user indicates otherwise.\n3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.\nImplicit tf# frames always exist, even for entities assigned to named frames. Their separate\ntree is normal: do not report it as \"two disconnected trees\", a problem, or something to connect.\nNamed and entity-path frames are usually not mixed; mixing is supported but discouraged.\nUse FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.\nIf intent remains unclear, use your structured question tool.\n\nFor transform trees with named frames, Transform3D connects frames; CoordinateFrame values\nassign entities to frames. For named-frame topologies, this API shows frame connections,\nnot entity assignments.\nDo not flag uninspected frame assignments as potential problems.\nIn named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame\nvalue matches the pinhole's child_frame.\nInspecting frame assignments is a separate concern from this API, do it only when asked or\nnecessary for debugging.\n\nUse also rerun_get_viewer_state to check spatial-view topology errors.\nFor missing content, check if the blueprint's target frame is set to a meaningful value.\ntf#/ is the default root for entity-path frame topologies, but is also a fallback when\nthere are multiple disconnected trees with named frames.\nInspect potential roots to use as target frames and use your structured question tool to\nclarify with the user if there are ambiguities.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "store_id": {
+        "type": "string",
+        "description": "Recording store id from GetViewerState. Defaults to the active recording."
+      },
+      "frame_filter": {
+        "type": "string",
+        "enum": [
+          "FRAME_FILTER_UNSPECIFIED",
+          "FRAME_FILTER_ENTITY_PATH",
+          "FRAME_FILTER_NAMED",
+          "FRAME_FILTER_ALL"
+        ],
+        "description": "Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections."
+      },
+      "edge_filter": {
+        "type": "string",
+        "enum": [
+          "EDGE_FILTER_UNSPECIFIED",
+          "EDGE_FILTER_STATIC",
+          "EDGE_FILTER_TEMPORAL",
+          "EDGE_FILTER_ALL"
+        ],
+        "description": "Defaults to ALL. Implicit hierarchy identity edges count as static."
+      },
+      "include_transforms": {
+        "type": "boolean",
+        "description": "Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.\nConnectivity, source entity paths and sample times are always included."
+      }
+    },
+    "description": "Request for `GetTransformGraph`."
   }
 }
 

@@ -6,13 +6,13 @@ use crate::viewer_control::v1alpha1::{
     CloseRecordingsResponse, DescribeCommandsRequest, DescribeCommandsResponse,
     GetBlueprintRequest, GetBlueprintResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
     GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetTableSchemaRequest, GetTableSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse,
-    GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
-    ListCommandsRequest, ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest,
-    RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest,
-    SetBlueprintResponse, SetLocationRequest, SetLocationResponse, SetTimeCursorRequest,
-    SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse, viewer_control_request,
-    viewer_control_response,
+    GetTableSchemaRequest, GetTableSchemaResponse, GetTransformGraphRequest,
+    GetTransformGraphResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
+    ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
+    SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest, SetBlueprintResponse,
+    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -113,6 +113,7 @@ viewer_control_ops! {
     "get_blueprint" => GetBlueprint(GetBlueprintRequest, GetBlueprintResponse),
     "get_dataset_schema" => GetDatasetSchema(GetDatasetSchemaRequest, GetDatasetSchemaResponse),
     "get_location" => GetLocation(GetLocationRequest, GetLocationResponse),
+    "get_transform_graph" => GetTransformGraph(GetTransformGraphRequest, GetTransformGraphResponse),
     "get_recording_schema" => GetRecordingSchema(GetRecordingSchemaRequest, GetRecordingSchemaResponse),
     "get_table_schema" => GetTableSchema(GetTableSchemaRequest, GetTableSchemaResponse),
     "get_viewer_logs" => GetViewerLogs(GetViewerLogsRequest, GetViewerLogsResponse),

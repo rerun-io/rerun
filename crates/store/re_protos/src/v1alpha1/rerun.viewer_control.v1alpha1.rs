@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -239,6 +239,51 @@ pub mod viewer_control_request {
         /// open.
         #[prost(message, tag = "20")]
         SetLocation(super::SetLocationRequest),
+        /// Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.
+        /// Read the full guidance below before calling this tool or interpreting its results:
+        /// it explains which frames to query and what this graph can and cannot tell you.
+        ///
+        /// Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
+        /// This is a latest-at snapshot, not transform history. To inspect another time, call
+        /// `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+        /// If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
+        /// If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
+        ///
+        /// Entity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships
+        /// unless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with
+        /// a frame, and Transform3D connects child and parent frames independently of entity paths.
+        /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
+        /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
+        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        ///
+        /// Choose the representation before diagnosing connectivity:
+        /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
+        /// 2. If named frames exist, assume they are the user's intended representation and keep
+        ///     inspecting and reporting on named frames only, unless the user indicates otherwise.
+        /// 3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.
+        /// Implicit tf# frames always exist, even for entities assigned to named frames. Their separate
+        /// tree is normal: do not report it as "two disconnected trees", a problem, or something to connect.
+        /// Named and entity-path frames are usually not mixed; mixing is supported but discouraged.
+        /// Use FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.
+        /// If intent remains unclear, use your structured question tool.
+        ///
+        /// For transform trees with named frames, Transform3D connects frames; CoordinateFrame values
+        /// assign entities to frames. For named-frame topologies, this API shows frame connections,
+        /// not entity assignments.
+        /// Do not flag uninspected frame assignments as potential problems.
+        /// In named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame
+        /// value matches the pinhole's child_frame.
+        /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
+        /// necessary for debugging.
+        ///
+        /// Use also rerun_get_viewer_state to check spatial-view topology errors.
+        /// For missing content, check if the blueprint's target frame is set to a meaningful value.
+        /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
+        /// there are multiple disconnected trees with named frames.
+        /// Inspect potential roots to use as target frames and use your structured question tool to
+        /// clarify with the user if there are ambiguities.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -257,7 +302,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -320,6 +365,9 @@ pub mod viewer_control_response {
         /// Result of `set_location`.
         #[prost(message, tag = "20")]
         SetLocation(super::SetLocationResponse),
+        /// Result of `get_transform_graph`.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -330,6 +378,143 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphRequest {
+    /// Recording store id from GetViewerState. Defaults to the active recording.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
+    #[prost(
+        enumeration = "get_transform_graph_request::FrameFilter",
+        optional,
+        tag = "2"
+    )]
+    pub frame_filter: ::core::option::Option<i32>,
+    /// Defaults to ALL. Implicit hierarchy identity edges count as static.
+    #[prost(
+        enumeration = "get_transform_graph_request::EdgeFilter",
+        optional,
+        tag = "3"
+    )]
+    pub edge_filter: ::core::option::Option<i32>,
+    /// Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.
+    /// Connectivity, source entity paths and sample times are always included.
+    #[prost(bool, optional, tag = "4")]
+    pub include_transforms: ::core::option::Option<bool>,
+}
+/// Nested message and enum types in `GetTransformGraphRequest`.
+pub mod get_transform_graph_request {
+    /// Which kinds of transform frames to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum FrameFilter {
+        /// Use the default: include all frames.
+        Unspecified = 0,
+        /// Include only frames derived from entity paths.
+        EntityPath = 1,
+        /// Include only explicitly named frames.
+        Named = 2,
+        /// Include both entity-path-derived and named frames.
+        All = 3,
+    }
+    impl FrameFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "FRAME_FILTER_UNSPECIFIED",
+                Self::EntityPath => "FRAME_FILTER_ENTITY_PATH",
+                Self::Named => "FRAME_FILTER_NAMED",
+                Self::All => "FRAME_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FRAME_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "FRAME_FILTER_ENTITY_PATH" => Some(Self::EntityPath),
+                "FRAME_FILTER_NAMED" => Some(Self::Named),
+                "FRAME_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+    /// Which kinds of transform edges to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum EdgeFilter {
+        /// Use the default: include all edges.
+        Unspecified = 0,
+        /// Include static edges, including implicit hierarchy identities.
+        Static = 1,
+        /// Include only temporal edges.
+        Temporal = 2,
+        /// Include both static and temporal edges.
+        All = 3,
+    }
+    impl EdgeFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "EDGE_FILTER_UNSPECIFIED",
+                Self::Static => "EDGE_FILTER_STATIC",
+                Self::Temporal => "EDGE_FILTER_TEMPORAL",
+                Self::All => "EDGE_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "EDGE_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "EDGE_FILTER_STATIC" => Some(Self::Static),
+                "EDGE_FILTER_TEMPORAL" => Some(Self::Temporal),
+                "EDGE_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+}
+impl ::prost::Name for GetTransformGraphRequest {
+    const NAME: &'static str = "GetTransformGraphRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+}
+/// Response for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphResponse {
+    /// Recording that was queried.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+    /// JSON object with query, options, missing_chunks, frames and edges.
+    /// Frame ids are canonical frame names. has_transform refers to the unfiltered latest-at graph;
+    /// registered frames may have no active edges. Edge sample times use kind=static or
+    /// kind=temporal with an integer string value, on the query timeline.
+    /// Matrices are arrays of rows acting on column vectors. parent_from_child maps child coordinates
+    /// into parent coordinates; image_from_camera is a pinhole's intrinsic matrix, not an affine transform.
+    #[prost(string, tag = "2")]
+    pub json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetTransformGraphResponse {
+    const NAME: &'static str = "GetTransformGraphResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
     }
 }
 /// Request for `CloseRecordings`.

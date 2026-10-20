@@ -110,12 +110,84 @@ It can also ask for the entity paths alone, which lists a whole recording at a s
 For a dataset, entity paths alone are the default when no `entity_path` is given.
 These describe the entities in the segments, not the columns of a table, which `rerun_get_table_schema` names.
 
-Values are another matter: the MCP tools drive the UI, and deliberately do not read data.
-Instead, the Viewer hosts a catalog server, and `rerun_get_viewer_state` reports its address as `catalog_url`, along with each recording's `store_id`.
+The transform graph tool described below can return transform values, but for general recording values, use the catalog API.
+The Viewer hosts a catalog server, and `rerun_get_viewer_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.
 The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
 For a recording that is not in the catalog, such as one streamed from an SDK or imported from another file format, the agent is told to read the file directly with `rerun.chunk.RrdReader` instead.
+
+## Inspecting transforms
+
+`rerun_get_transform_graph` returns a JSON snapshot of the direct transform graph at the recording's current timeline and time cursor.
+It includes canonical frame names, parent/child edges, source entity paths, sample times, and whether chunks were missing.
+Missing chunks mean the graph is incomplete; missing edges then do not prove disconnection.
+The tool is also available to the built-in agent panel.
+
+Describe the frame relationships shown here.
+Do not guess which entities use those frames or how they appear in the viewer.
+A single snapshot cannot tell you whether something moves.
+Names alone cannot tell you how frames should connect, and a frame without children is normal.
+Only report a problem or suggest a fix if data you inspected or a viewer report supports it.
+Otherwise describe what you found, or use your structured question tool to ask the user whether there are specific issues they want diagnosed.
+
+All request fields are optional:
+
+- `store_id`: defaults to the active recording.
+- `frame_filter`: `FRAME_FILTER_ALL` (default), `FRAME_FILTER_ENTITY_PATH`, or `FRAME_FILTER_NAMED`.
+- `edge_filter`: `EDGE_FILTER_ALL` (default), `EDGE_FILTER_STATIC`, or `EDGE_FILTER_TEMPORAL`.
+- `include_transforms`: defaults to `false` for compact connectivity inspection; set it to `true` for affine matrices and pinhole parameters.
+
+Agents should choose the representation before diagnosing connectivity:
+
+1. First query with `frame_filter: "FRAME_FILTER_NAMED"` and `edge_filter: "EDGE_FILTER_ALL"`.
+2. If named frames exist, assume they are the user's intended representation and keep inspecting and reporting on named frames only, unless the user indicates otherwise.
+3. If no named frames exist, inspect `FRAME_FILTER_ENTITY_PATH` instead.
+
+Entity-path-derived frames (`tf#`) are always implicitly present.
+The presence of `tf#/some/entity` does **not** mean `/some/entity` uses that frame: the implicit frame can exist even when the entity is assigned to a named frame via `CoordinateFrame`.
+A working named tree plus a separate implicit `tf#` tree is normal: agents should not report this as "two disconnected trees", a broken transform setup, or something the user needs to connect.
+Named and entity-path frames are usually not mixed, and mixing them is not recommended, although explicit connections between them are supported.
+Robotics users often use named frames because they work like ROS TF.
+Inspect `FRAME_FILTER_ALL` only when the user asks for both representations or there is evidence of an intentional mixed-frame setup.
+If the intended representation is still unclear, use the agent's structured question tool to clarify with the user; the mere presence of implicit `tf#` frames is not ambiguity.
+
+For transform trees with named frames, there are two separate relationships: `Transform3D` connects frames; `CoordinateFrame` component values assign entities to frames.
+This API shows only the first.
+Entity assignments are omitted by design, not missing or suspect.
+Do not flag uninspected assignments as possible problems or things worth checking.
+Analyze assignments separately only when explicitly asked or when a concrete user-reported issue or relevant viewer error calls for it.
+Use the recording schema to locate `CoordinateFrame` components, then read their values at the relevant time and relevant blueprint overrides.
+Neither schema presence nor `source.entity_path` reveals an assignment: the latter only says where a transform was logged.
+`CoordinateFrame` does not join frame trees.
+
+When investigating transform problems, call `rerun_get_viewer_state` to check whether the viewer has a spatial view and inspect its reports for transform-topology errors.
+Use those reports as diagnostic evidence; absence of a spatial view or reports does not prove correctness.
+
+If a spatial view does not show the expected named-frame tree, check its target frame in the blueprint: a common cause is that the view still targets the default `tf#/` root.
+This can also happen with recordings containing several disconnected named-frame trees.
+Choose a root frame suitable for the content the user wants to see and set the view's target accordingly.
+Use the agent's structured question tool to let the user choose when the intent is unclear.
+A view targeting the wrong tree does not mean the recording's trees need to be connected.
+
+Frame filtering removes edges whose endpoints are excluded, including mixed named/entity-path connections.
+Implicit hierarchy identity edges count as static.
+Keep `edge_filter: "EDGE_FILTER_ALL"` when investigating connectivity within the chosen representation.
+Frame `has_transform` describes participation in the unfiltered latest-at graph, even if its edges are filtered out.
+
+The response echoes the effective options and query time.
+To inspect another time, call `rerun_set_time_cursor`, then request another graph; pause playback for repeatable inspection.
+If no cursor is set, the query uses latest values and reports `query.mode = "latest"` with a null time.
+Temporal timestamps are integer strings to preserve precision.
+Matrices are arrays of rows acting on column vectors: `parent_from_child` maps child coordinates into parent coordinates.
+
+Entity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships unless overridden.
+Named frames decouple spatial relationships from entity paths, like ROS TF: `CoordinateFrame` associates geometry with a frame, and `Transform3D` connects frames.
+Pinholes connect 3D and 2D spaces.
+In named transform hierarchies, an image or video entity is associated with a pinhole when its `CoordinateFrame` component matches the pinhole's `child_frame`.
+This association comes from the component values, not from matching entity paths or names, and is not included in the frame graph.
+The graph excludes per-instance poses and view-specific blueprint overrides.
+See [Transforms & Coordinate Frames](../../concepts/logging-and-ingestion/transforms.md) for details.
 
 ## Reading and writing the blueprint
 

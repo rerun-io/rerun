@@ -40,6 +40,7 @@ use super::App;
 use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
+mod transform_graph;
 
 /// How many entities `get_recording_schema` describes when the request does not say.
 ///
@@ -352,6 +353,12 @@ impl App {
             Kind::GetTableSchema(GetTableSchemaRequest { table_url }) => {
                 on_done.call(
                     self.collect_table_schema(table_url, egui_ctx)
+                        .map(ViewerControlResponse::from),
+                );
+            }
+            Kind::GetTransformGraph(request) => {
+                on_done.call(
+                    self.collect_transform_graph(store_hub, request)
                         .map(ViewerControlResponse::from),
                 );
             }
