@@ -10,3 +10,7 @@ index.js.map
 inlined.js
 inlined.d.ts
 docs/
+proto/**/*.js
+proto/**/*.js.map
+proto/**/*.d.ts
+proto/**/*.d.ts.map

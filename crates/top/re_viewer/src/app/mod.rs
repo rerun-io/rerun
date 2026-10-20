@@ -1310,9 +1310,15 @@ impl App {
                 cfg_select! {
                     target_arch = "wasm32" => {
                         _ = max_size;
-                        re_log::error!(
-                            "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
-                        );
+                        let reason = "saving screenshots to a path is not supported on web";
+                        if let Some(notifier) = self.pending_screenshot_notifiers.remove(&file_path) {
+                            notifier.call(Err(SaveScreenshotError::SaveToPathFailed {
+                                path: file_path.to_string(),
+                                reason: reason.to_owned(),
+                            }));
+                        } else {
+                            re_log::error!(%file_path, "Failed to save screenshot: {reason}");
+                        }
                     }
                     _ => {
                         let rgba = rgba.clone();

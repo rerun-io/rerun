@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build:wasm": "node build-wasm.mjs --mode release",
-    "build:js": "tsc",
+    "build:js": "tsc --emitDeclarationOnly && esbuild index.ts --bundle --format=esm --platform=browser --target=esnext --external:./re_viewer --legal-comments=inline --keep-names --sourcemap --outfile=index.js",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
@@ -53,6 +53,7 @@
     "index.js.map",
     "index.ts",
     "package.json",
+    "proto/**/*.d.ts",
     "re_viewer_bg.wasm",
     "re_viewer_bg.wasm.d.ts",
     "re_viewer.d.ts",
@@ -60,9 +61,14 @@
     "tsconfig.json"
   ],
   "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^2.16.0",
     "dts-buddy": "^0.8.3",
+    "esbuild": "^0.25.0",
     "typedoc": "^0.28.20",
     "typedoc-github-theme": "^0.3.0",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.16.0"
   }
 }

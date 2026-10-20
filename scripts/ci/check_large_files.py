@@ -26,6 +26,8 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "docs/snippets/INDEX.md",
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
+    "rerun_js/web-viewer/proto/rerun/v1alpha1/cloud_pb.ts",
+    "rerun_js/web-viewer/proto/rerun/v1alpha1/viewer_control_pb.ts",
     "uv.lock",
     # Examples excluded from the uv workspace so they maintain standalone lockfiles.
     "examples/python/dataloader/uv.lock",

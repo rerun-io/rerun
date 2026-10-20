@@ -38,6 +38,11 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     log_senders: HashMap<String, LogSender>,
 
+    /// Carries [`WebHandle::viewer_control`] requests to the viewer.
+    ///
+    /// Opened on the first request.
+    viewer_control_tx: std::cell::RefCell<Option<LogSender>>,
+
     /// The connection registry to use for the viewer.
     connection_registry: re_redap_client::ConnectionRegistryHandle,
 
@@ -70,6 +75,7 @@ impl WebHandle {
         Ok(Self {
             runner: eframe::WebRunner::new(),
             log_senders: Default::default(),
+            viewer_control_tx: Default::default(),
             connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
@@ -157,6 +163,61 @@ impl WebHandle {
             .map_err(|err| {
                 JsValue::from_str(&format!("Failed to encode inspection response: {err}"))
             })
+    }
+
+    /// Perform one operation of the [`ViewerControlService`] API, defined by `viewer_control.proto`.
+    ///
+    /// Takes an encoded [`ViewerControlRequest`], and resolves to the encoded
+    /// [`ViewerControlResponse`].
+    /// A failed operation rejects with an `Error` named `ViewerControlError`, whose `code` property
+    /// is the gRPC status code of the failure, e.g. `NOT_FOUND`.
+    ///
+    /// Not an `async fn`: that would borrow `self` until the viewer answers, and every `&mut self`
+    /// method, like `open_channel`, would fail while a request is pending.
+    ///
+    /// [`ViewerControlService`]: re_protos::viewer_control::v1alpha1::viewer_control_service_server::ViewerControlService
+    /// [`ViewerControlRequest`]: re_protos::viewer_control::v1alpha1::ViewerControlRequest
+    /// [`ViewerControlResponse`]: re_protos::viewer_control::v1alpha1::ViewerControlResponse
+    #[wasm_bindgen(unchecked_return_type = "Promise<Uint8Array>")]
+    pub fn viewer_control(&self, request_bytes: &[u8]) -> js_sys::Promise {
+        use re_log_channel::ViewerControlErrorCode;
+        use re_protos::external::prost::Message as _;
+        use re_protos::viewer_control::v1alpha1::ViewerControlRequest;
+
+        let reply_rx = ViewerControlRequest::decode(request_bytes)
+            .map_err(|err| {
+                viewer_control_error(
+                    "INVALID_ARGUMENT",
+                    &format!("Failed to decode `ViewerControlRequest`: {err}"),
+                )
+            })
+            .and_then(|request| self.send_viewer_control(request));
+        let reply_rx = match reply_rx {
+            Ok(reply_rx) => reply_rx,
+            Err(err) => return js_sys::Promise::reject(&err),
+        };
+
+        wasm_bindgen_futures::future_to_promise(async move {
+            let response = reply_rx
+                .await
+                .map_err(|err| {
+                    viewer_control_error(
+                        "INTERNAL",
+                        &format!("Viewer dropped the request without answering: {err}"),
+                    )
+                })?
+                .map_err(|err| {
+                    let code = match err.code {
+                        ViewerControlErrorCode::InvalidArgument => "INVALID_ARGUMENT",
+                        ViewerControlErrorCode::NotFound => "NOT_FOUND",
+                        ViewerControlErrorCode::FailedPrecondition => "FAILED_PRECONDITION",
+                        ViewerControlErrorCode::Internal => "INTERNAL",
+                    };
+                    viewer_control_error(code, &err.message)
+                })?;
+
+            Ok(js_sys::Uint8Array::from(response.encode_to_vec().as_slice()).into())
+        })
     }
 
     #[wasm_bindgen]
@@ -973,6 +1034,62 @@ fn integration_test() -> bool {
     };
     web_sys::UrlSearchParams::new_with_str(&search)
         .is_ok_and(|params| params.has("integration_test"))
+}
+
+/// Where the answer to a [`WebHandle::viewer_control`] request lands.
+type ViewerControlReply = futures::channel::oneshot::Receiver<
+    Result<
+        re_protos::viewer_control::v1alpha1::ViewerControlResponse,
+        re_log_channel::ViewerControlError,
+    >,
+>;
+
+impl WebHandle {
+    /// Hand a request to the viewer, and return where its answer will land.
+    fn send_viewer_control(
+        &self,
+        request: re_protos::viewer_control::v1alpha1::ViewerControlRequest,
+    ) -> Result<ViewerControlReply, JsValue> {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return Err(viewer_control_error(
+                "FAILED_PRECONDITION",
+                "Viewer is not running, or is busy painting a frame",
+            ));
+        };
+
+        let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
+        let mut viewer_control_tx = self.viewer_control_tx.borrow_mut();
+        let viewer_control_tx = viewer_control_tx.get_or_insert_with(|| {
+            let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+                channel_name: "viewer_control".to_owned(),
+            });
+            app.add_log_receiver(rx);
+            tx
+        });
+        viewer_control_tx
+            .send(re_log_channel::DataSourceMessage::ViewerControl(
+                re_log_channel::ViewerControlCommand::ViewerControl {
+                    request,
+                    on_done: re_log_channel::UiCallback::new(move |result| {
+                        reply_tx.send(result).ok();
+                    }),
+                },
+            ))
+            .map_err(|err| {
+                viewer_control_error("INTERNAL", &format!("Viewer stopped listening: {err}"))
+            })?;
+        app.egui_ctx.request_repaint();
+
+        Ok(reply_rx)
+    }
+}
+
+/// A JS `ViewerControlError` with the gRPC status `code`, for a failed [`WebHandle::viewer_control`].
+fn viewer_control_error(code: &str, message: &str) -> JsValue {
+    let error = js_sys::Error::new(message);
+    error.set_name("ViewerControlError");
+    js_sys::Reflect::set(&error, &"code".into(), &code.into()).ok();
+    error.into()
 }
 
 /// Used to set the "email" property in the analytics config,
