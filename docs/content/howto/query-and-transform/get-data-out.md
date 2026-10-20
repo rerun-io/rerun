@@ -95,7 +95,7 @@ DatasetInfo(robot_episodes: 3 segments, 41.1 KiB)
 ```
 
 The same information is available as fields, e.g. `{layer.name: layer.num_segments for layer in dataset.info().layers}`.
-See [`DatasetInfo`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetInfo) for the full list.
+See [`DatasetInfo`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetInfo) for the full list.
 
 ## Inspecting the schema
 

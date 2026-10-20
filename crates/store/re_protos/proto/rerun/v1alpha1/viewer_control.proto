@@ -819,7 +819,7 @@ message GetViewerStateRequest {}
 // Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 message GetViewerStateResponse {
   // What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-  // See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  // See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
   string location = 1;
 
   // The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
@@ -946,7 +946,7 @@ message ViewerRecording {
   // The recording's current time cursor.
   TimeCursor current_time = 3;
 
-  // The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  // The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
   string location = 4;
 }
 
@@ -1277,7 +1277,7 @@ message GetLocationRequest {}
 
 // Response for `GetLocation`.
 message GetLocationResponse {
-  // What the viewer is showing. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+  // What the viewer is showing. See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
   string location = 1;
 }
 

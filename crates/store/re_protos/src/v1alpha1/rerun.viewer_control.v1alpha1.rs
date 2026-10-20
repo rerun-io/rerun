@@ -1138,7 +1138,7 @@ impl ::prost::Name for GetViewerStateRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetViewerStateResponse {
     /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-    /// See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    /// See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
@@ -1331,7 +1331,7 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
-    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
     #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
 }
@@ -1882,7 +1882,7 @@ impl ::prost::Name for GetLocationRequest {
 /// Response for `GetLocation`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetLocationResponse {
-    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
 }
