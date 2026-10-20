@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -213,9 +213,12 @@ pub mod viewer_control_request {
         /// This is the schema, not the data: a component listed here has been logged in some segment,
         /// not necessarily in all of them.
         ///
+        /// The dataset's assets are only named by id. `GetDatasetAssetsSchema` names the entities in
+        /// them.
+        ///
         /// `FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.
         /// `INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not
-        /// know the dataset, or nothing in it is at or below `entity_path`.
+        /// know the dataset, or nothing in its segments is at or below `entity_path`.
         #[prost(message, tag = "18")]
         GetDatasetSchema(super::GetDatasetSchemaRequest),
         /// Report the URL of what the viewer is showing: a recording, a table, a catalog entry,
@@ -284,6 +287,20 @@ pub mod viewer_control_request {
         /// clarify with the user if there are ambiguities.
         #[prost(message, tag = "15")]
         GetTransformGraph(super::GetTransformGraphRequest),
+        /// Describe the assets of a dataset on a server: the entities of each asset and the components
+        /// logged on each, in the form `GetDatasetSchema` describes the segments.
+        ///
+        /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
+        /// viewer shows it as part of every segment it applies to, so an entity missing from
+        /// `GetDatasetSchema` may be in an asset. See
+        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        ///
+        /// Only assets the server is done registering are described.
+        ///
+        /// `FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where
+        /// `NOT_FOUND` means no asset has anything at or below `entity_path`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -302,7 +319,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -368,6 +385,9 @@ pub mod viewer_control_response {
         /// Result of `get_transform_graph`.
         #[prost(message, tag = "15")]
         GetTransformGraph(super::GetTransformGraphResponse),
+        /// Result of `get_dataset_assets_schema`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -907,6 +927,9 @@ pub struct GetDatasetSchemaResponse {
     /// `entity_path`, or raise `max_entities`.
     #[prost(uint32, tag = "3")]
     pub omitted_entities: u32,
+    /// The ids of the dataset's registered assets. `GetDatasetAssetsSchema` describes them.
+    #[prost(string, repeated, tag = "4")]
+    pub asset_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetDatasetSchemaResponse {
     const NAME: &'static str = "GetDatasetSchemaResponse";
@@ -916,6 +939,77 @@ impl ::prost::Name for GetDatasetSchemaResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+}
+/// Request for `GetDatasetAssetsSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaRequest {
+    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// the dataset of the segment on screen.
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Assets with nothing
+    /// there are left out. Omit for every entity.
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most, per asset.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them. Defaults to false.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaRequest {
+    const NAME: &'static str = "GetDatasetAssetsSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+}
+/// Response for `GetDatasetAssetsSchema`: the dataset's assets and the entities in each.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaResponse {
+    /// The matching assets, by asset id.
+    #[prost(message, repeated, tag = "1")]
+    pub assets: ::prost::alloc::vec::Vec<DatasetAssetSchema>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaResponse {
+    const NAME: &'static str = "GetDatasetAssetsSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+}
+/// One asset of a dataset, and the entities logged in it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetAssetSchema {
+    /// The asset's id, which is its segment id in the dataset's asset dataset.
+    #[prost(string, tag = "1")]
+    pub asset_id: ::prost::alloc::string::String,
+    /// The matching entities in path order, each with the components logged on it. All of an
+    /// asset's data is static.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out of this asset.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+}
+impl ::prost::Name for DatasetAssetSchema {
+    const NAME: &'static str = "DatasetAssetSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
     }
 }
 /// Request for `GetRecordingSchema`.

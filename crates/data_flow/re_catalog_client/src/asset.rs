@@ -4,6 +4,7 @@ use std::collections::hash_map;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
+use arrow::datatypes::Schema as ArrowSchema;
 
 use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
@@ -50,6 +51,15 @@ impl Asset {
     pub fn has_failed(&self) -> bool {
         self.status == LayerRegistrationStatus::Error
     }
+}
+
+/// The asset dataset of a dataset and the assets in it the server is done registering.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RegisteredAssets {
+    pub asset_dataset: EntryId,
+
+    /// Sorted by asset id.
+    pub assets: Vec<Asset>,
 }
 
 /// One layer of an [`Asset`], and where its data is stored.
@@ -497,6 +507,55 @@ impl CatalogClient {
             .await?
             .dataset_details
             .asset_dataset)
+    }
+
+    /// The assets of `dataset_id` the server is done registering.
+    ///
+    /// `None` if the dataset has no asset dataset.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn registered_assets(
+        &self,
+        dataset_id: EntryId,
+    ) -> ApiResult<Option<RegisteredAssets>> {
+        let Some(asset_dataset) = self.asset_dataset(dataset_id).await? else {
+            return Ok(None);
+        };
+
+        let mut assets = self.scan_asset_dataset(asset_dataset).await?;
+        assets.retain(Asset::is_registered);
+        Ok(Some(RegisteredAssets {
+            asset_dataset,
+            assets,
+        }))
+    }
+
+    /// The Sorbet schema of each asset of `dataset_id` the server is done registering, sorted by
+    /// asset id.
+    ///
+    /// Empty if the dataset has no asset dataset.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_asset_schemas(
+        &self,
+        dataset_id: EntryId,
+    ) -> ApiResult<Vec<(SegmentId, ArrowSchema)>> {
+        let Some(RegisteredAssets {
+            asset_dataset,
+            assets,
+        }) = self.registered_assets(dataset_id).await?
+        else {
+            return Ok(Vec::new());
+        };
+
+        // TODO(RR-5928): Fetch the asset schema without the full chunk manifest.
+        let schemas = assets.into_iter().map(|asset| async move {
+            let manifest = self
+                .client()
+                .await?
+                .get_rrd_manifest(asset_dataset, asset.id.clone())
+                .await?;
+            Ok((asset.id, manifest.sorbet_schema))
+        });
+        futures::future::try_join_all(schemas).await
     }
 
     /// The asset dataset of `dataset_id`, creating one if it has none yet.

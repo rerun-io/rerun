@@ -106,6 +106,8 @@ Without it an agent guesses entity paths and component names from an archetype's
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
 `rerun_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
 Without a `dataset_url` it describes the dataset on screen, or the dataset of the segment on screen.
+It names the dataset's [assets](../../concepts/query-and-transform/catalog-object-model.md#assets) by id, and `rerun_get_dataset_assets_schema` describes each asset in the same form.
+The viewer shows an asset's static data as part of the segments it applies to, so an entity missing from the segments may be in an asset.
 It can also ask for the entity paths alone, which lists a whole recording at a size worth reading and leaves the components for a follow-up call.
 For a dataset, entity paths alone are the default when no `entity_path` is given.
 These describe the entities in the segments, not the columns of a table, which `rerun_get_table_schema` names.

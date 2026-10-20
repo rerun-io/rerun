@@ -17,7 +17,8 @@ use re_log_channel::{
 use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, GetBlueprintRequest, GetBlueprintResponse,
+    CloseRecordingsRequest, CloseRecordingsResponse, DatasetAssetSchema, GetBlueprintRequest,
+    GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
     GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
     GetTableSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
@@ -31,6 +32,7 @@ use re_protos::viewer_control::v1alpha1::{
     viewer_control_request,
 };
 use re_sdk_types::external::uuid;
+use re_types_core::SegmentId;
 use re_viewer_context::{
     Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand,
     viewer_url::{OpenUrlOptions, ViewerUrl},
@@ -370,6 +372,9 @@ impl AppCore {
             }
             Kind::GetDatasetSchema(request) => {
                 self.answer_dataset_schema(store_hub, on_done, request);
+            }
+            Kind::GetDatasetAssetsSchema(request) => {
+                self.answer_dataset_assets_schema(store_hub, on_done, request);
             }
             Kind::GetRecordingSchema(request) => {
                 on_done.call(
@@ -1280,30 +1285,21 @@ impl AppCore {
             DEFAULT_MAX_SCHEMA_ENTITIES
         }) as usize;
 
-        let parsed = self
-            .requested_dataset(store_hub, dataset_url)
-            .and_then(|entry| Ok((entry, parse_schema_root(entity_path)?)));
-        let (entry, root) = match parsed {
-            Ok(parsed) => parsed,
-            Err(err) => {
-                on_done.call(Err(err));
-                return;
-            }
-        };
+        let (entry, root, catalog) =
+            match self.schema_request_target(store_hub, dataset_url, entity_path) {
+                Ok(target) => target,
+                Err(err) => {
+                    on_done.call(Err(err));
+                    return;
+                }
+            };
 
-        let connection = self
-            .connections
-            .registry
-            .connection_handle(entry.origin.clone());
         self.async_runtime.spawn_future(async move {
-            let schema = async {
-                connection
-                    .client()
-                    .await?
-                    .get_dataset_schema(entry.entry_id)
-                    .await
-            }
-            .await;
+            let (schema, assets) = futures::join!(
+                catalog.get_dataset_schema(entry.entry_id),
+                catalog.registered_assets(entry.entry_id)
+            );
+
             let response = schema
                 .map_err(|err| {
                     ViewerControlError::internal(format!(
@@ -1311,11 +1307,110 @@ impl AppCore {
                     ))
                 })
                 .and_then(|schema| {
-                    describe_dataset_schema(&schema, root.as_ref(), max_entities, paths_only)
+                    let asset_ids = assets
+                        .map_err(|err| {
+                            ViewerControlError::internal(format!(
+                                "failed to fetch the assets of {entry}: {err}"
+                            ))
+                        })?
+                        .map(|registered| {
+                            registered
+                                .assets
+                                .iter()
+                                .map(|asset| asset.id.to_string())
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    describe_dataset_schema(
+                        &schema,
+                        asset_ids,
+                        root.as_ref(),
+                        max_entities,
+                        paths_only,
+                    )
                 })
                 .map(ViewerControlResponse::from);
             on_done.call(response);
         });
+    }
+
+    /// Fetch the schema of each asset of a dataset from its server, for the
+    /// `get_dataset_assets_schema` operation.
+    ///
+    /// Answers once the server has replied.
+    fn answer_dataset_assets_schema(
+        &self,
+        store_hub: &StoreHub,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        request: GetDatasetAssetsSchemaRequest,
+    ) {
+        let GetDatasetAssetsSchemaRequest {
+            dataset_url,
+            entity_path,
+            max_entities,
+            paths_only,
+        } = request;
+        let paths_only = paths_only.unwrap_or(false);
+        let max_entities = max_entities.unwrap_or(if paths_only {
+            DEFAULT_MAX_SCHEMA_PATHS
+        } else {
+            DEFAULT_MAX_SCHEMA_ENTITIES
+        }) as usize;
+
+        let (entry, root, catalog) =
+            match self.schema_request_target(store_hub, dataset_url, entity_path) {
+                Ok(target) => target,
+                Err(err) => {
+                    on_done.call(Err(err));
+                    return;
+                }
+            };
+
+        self.async_runtime.spawn_future(async move {
+            let response = catalog
+                .get_asset_schemas(entry.entry_id)
+                .await
+                .map_err(|err| {
+                    ViewerControlError::internal(format!(
+                        "failed to fetch the assets of {entry}: {err}"
+                    ))
+                })
+                .and_then(|asset_schemas| {
+                    describe_dataset_assets_schema(
+                        &asset_schemas,
+                        root.as_ref(),
+                        max_entities,
+                        paths_only,
+                    )
+                })
+                .map(ViewerControlResponse::from);
+            on_done.call(response);
+        });
+    }
+
+    /// The dataset a dataset schema request names, the entity it limits the answer to, and a
+    /// client for the dataset's server.
+    fn schema_request_target(
+        &self,
+        store_hub: &StoreHub,
+        dataset_url: Option<String>,
+        entity_path: Option<String>,
+    ) -> Result<
+        (
+            re_uri::EntryUri,
+            Option<EntityPath>,
+            re_catalog_client::CatalogClient,
+        ),
+        ViewerControlError,
+    > {
+        let entry = self.requested_dataset(store_hub, dataset_url)?;
+        let root = parse_schema_root(entity_path)?;
+        let catalog = re_catalog_client::CatalogClient::new(
+            self.connections
+                .registry
+                .connection_handle(entry.origin.clone()),
+        );
+        Ok((entry, root, catalog))
     }
 
     /// Hold `answer` back until `ensure_blueprint` has run, which gives the blueprint target an
@@ -1780,15 +1875,95 @@ fn parse_schema_root(
 /// Describe a dataset's schema, as the server sends it, for the `get_dataset_schema` operation.
 fn describe_dataset_schema(
     schema: &arrow::datatypes::Schema,
+    asset_ids: Vec<String>,
     root: Option<&EntityPath>,
     max_entities: usize,
     paths_only: bool,
 ) -> Result<GetDatasetSchemaResponse, ViewerControlError> {
-    let columns = re_sorbet::SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
-        .map_err(|err| {
-            ViewerControlError::internal(format!("the dataset schema cannot be read: {err}"))
-        })?;
+    let columns = sorbet_columns(schema).map_err(|err| {
+        ViewerControlError::internal(format!("the dataset schema cannot be read: {err}"))
+    })?;
+    let (entities, omitted_entities) =
+        describe_schema_entities(&columns, root, max_entities, paths_only);
 
+    if let Some(root) = root
+        && entities.is_empty()
+        && omitted_entities == 0
+    {
+        let message = if asset_ids.is_empty() {
+            format!("the dataset has nothing at or below {root}")
+        } else {
+            format!(
+                "the segments of the dataset have nothing at or below {root}. It has {}, which `GetDatasetAssetsSchema` describes",
+                re_format::format_plural_s(asset_ids.len(), "asset")
+            )
+        };
+        return Err(ViewerControlError::not_found(message));
+    }
+
+    Ok(GetDatasetSchemaResponse {
+        timelines: columns
+            .index_columns()
+            .map(|column| column.timeline_name().to_string())
+            .collect(),
+        entities,
+        omitted_entities,
+        asset_ids,
+    })
+}
+
+/// Describe the schemas of a dataset's assets, as the server sends them, for the
+/// `get_dataset_assets_schema` operation.
+///
+/// An asset with nothing at or below `root` is left out.
+fn describe_dataset_assets_schema(
+    asset_schemas: &[(SegmentId, arrow::datatypes::Schema)],
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> Result<GetDatasetAssetsSchemaResponse, ViewerControlError> {
+    let mut assets = Vec::new();
+    for (asset_id, schema) in asset_schemas {
+        let columns = sorbet_columns(schema).map_err(|err| {
+            ViewerControlError::internal(format!(
+                "the schema of asset {asset_id} cannot be read: {err}"
+            ))
+        })?;
+        let (entities, omitted_entities) =
+            describe_schema_entities(&columns, root, max_entities, paths_only);
+        if root.is_none() || !entities.is_empty() || omitted_entities != 0 {
+            assets.push(DatasetAssetSchema {
+                asset_id: asset_id.to_string(),
+                entities,
+                omitted_entities,
+            });
+        }
+    }
+
+    if let Some(root) = root
+        && assets.is_empty()
+    {
+        return Err(ViewerControlError::not_found(format!(
+            "no asset of the dataset has anything at or below {root}"
+        )));
+    }
+
+    Ok(GetDatasetAssetsSchemaResponse { assets })
+}
+
+fn sorbet_columns(
+    schema: &arrow::datatypes::Schema,
+) -> Result<re_sorbet::SorbetColumnDescriptors, re_sorbet::SorbetError> {
+    re_sorbet::SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
+}
+
+/// The entities of a schema at or below `root`, and how many of them `max_entities` left out.
+fn describe_schema_entities(
+    columns: &re_sorbet::SorbetColumnDescriptors,
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> (Vec<RecordingEntitySchema>, u32) {
     let components = columns.component_columns().map(|column| {
         let component = (!paths_only).then(|| RecordingComponentSchema {
             component: column.component.to_string(),
@@ -1802,25 +1977,7 @@ fn describe_dataset_schema(
         });
         (&column.entity_path, component)
     });
-    let (entities, omitted_entities) = group_schema_by_entity(components, root, max_entities);
-
-    if let Some(root) = root
-        && entities.is_empty()
-        && omitted_entities == 0
-    {
-        return Err(ViewerControlError::not_found(format!(
-            "the dataset has nothing at or below {root}"
-        )));
-    }
-
-    Ok(GetDatasetSchemaResponse {
-        timelines: columns
-            .index_columns()
-            .map(|column| column.timeline_name().to_string())
-            .collect(),
-        entities,
-        omitted_entities,
-    })
+    group_schema_by_entity(components, root, max_entities)
 }
 
 /// Handle one `egui_inspection` request against the running viewer UI.
@@ -2316,6 +2473,103 @@ mod tests {
         );
         assert!(entities.is_empty());
         assert_eq!(omitted, 5);
+    }
+
+    /// A dataset schema with one static component on each of `entity_paths`.
+    fn sorbet_schema(entity_paths: &[&str]) -> arrow::datatypes::Schema {
+        let fields: Vec<_> = entity_paths
+            .iter()
+            .map(|entity_path| {
+                re_sorbet::ComponentColumnDescriptor {
+                    store_datatype: arrow::datatypes::DataType::new_list(
+                        arrow::datatypes::DataType::Float32,
+                        true,
+                    ),
+                    component_type: None,
+                    entity_path: EntityPath::from(*entity_path),
+                    archetype: None,
+                    component: "a".into(),
+                    is_static: true,
+                    is_tombstone: false,
+                    is_semantically_empty: false,
+                }
+                .to_arrow_field(re_sorbet::BatchType::Dataframe)
+            })
+            .collect();
+        arrow::datatypes::Schema::new_with_metadata(fields, Default::default())
+    }
+
+    /// An entity path below which only one asset has entities describes that asset alone. A path
+    /// no asset has is not found.
+    #[test]
+    fn an_assets_schema_subtree_leaves_out_other_assets() {
+        let assets = [
+            (
+                SegmentId::from("robot"),
+                sorbet_schema(&["/world/robot/mesh"]),
+            ),
+            (SegmentId::from("table"), sorbet_schema(&["/world/table"])),
+        ];
+        let robot = EntityPath::from("/world/robot");
+
+        let response = describe_dataset_assets_schema(&assets, Some(&robot), 10, false)
+            .expect("the asset has the path");
+
+        let asset_ids: Vec<&str> = response
+            .assets
+            .iter()
+            .map(|a| a.asset_id.as_str())
+            .collect();
+        assert_eq!(asset_ids, ["robot"]);
+        assert_eq!(
+            response.assets[0].entities[0].entity_path,
+            "/world/robot/mesh"
+        );
+
+        let err =
+            describe_dataset_assets_schema(&assets, Some(&EntityPath::from("/nowhere")), 10, false)
+                .expect_err("no asset has the path");
+        assert_eq!(err.code, ViewerControlErrorCode::NotFound);
+    }
+
+    /// Without an entity path, every asset is described, even one without entities.
+    #[test]
+    fn an_assets_schema_describes_every_asset() {
+        let assets = [
+            (
+                SegmentId::from("robot"),
+                sorbet_schema(&["/world/robot/mesh"]),
+            ),
+            (SegmentId::from("empty"), sorbet_schema(&[])),
+        ];
+
+        let response =
+            describe_dataset_assets_schema(&assets, None, 10, true).expect("no path to miss");
+
+        let asset_ids: Vec<&str> = response
+            .assets
+            .iter()
+            .map(|a| a.asset_id.as_str())
+            .collect();
+        assert_eq!(asset_ids, ["robot", "empty"]);
+    }
+
+    /// A path the segments do not have is not found, and the error names the assets tool when
+    /// the dataset has assets.
+    #[test]
+    fn a_dataset_schema_miss_points_at_the_assets() {
+        let dataset = sorbet_schema(&["/world/camera"]);
+        let robot = EntityPath::from("/world/robot");
+
+        let err =
+            describe_dataset_schema(&dataset, vec!["robot".to_owned()], Some(&robot), 10, false)
+                .expect_err("the segments do not have the path");
+        assert_eq!(err.code, ViewerControlErrorCode::NotFound);
+        assert!(err.message.contains("GetDatasetAssetsSchema"));
+
+        let err = describe_dataset_schema(&dataset, Vec::new(), Some(&robot), 10, false)
+            .expect_err("the segments do not have the path");
+        assert!(!err.message.contains("GetDatasetAssetsSchema"));
     }
 
     #[test]

@@ -16,7 +16,7 @@ Getting oriented:
 - Use `rerun_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
 - To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
-  `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the entities in the segments, not a table's columns: `rerun_get_table_schema` names those.
+  `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
 - Whenever the user asks where something is, answer with `rerun_highlight_rect` (below), not with prose about the layout.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
@@ -899,11 +899,41 @@ Conventions:
   }
 }
 
+## rerun_get_dataset_assets_schema
+
+{
+  "name": "rerun_get_dataset_assets_schema",
+  "description": "Describe the assets of a dataset on a server: the entities of each asset and the components\nlogged on each, in the form `GetDatasetSchema` describes the segments.\n\nAn asset holds static data shared by the dataset's segments, such as a robot's meshes. The\nviewer shows it as part of every segment it applies to, so an entity missing from\n`GetDatasetSchema` may be in an asset. See\n<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.\n\nOnly assets the server is done registering are described.\n\n`FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where\n`NOT_FOUND` means no asset has anything at or below `entity_path`.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dataset_url": {
+        "type": "string",
+        "description": "A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or\nthe dataset of the segment on screen."
+      },
+      "entity_path": {
+        "type": "string",
+        "description": "Only describe this entity and the entities below it, e.g. `/world/robot`. Assets with nothing\nthere are left out. Omit for every entity."
+      },
+      "max_entities": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many entities to describe at most, per asset.\n\nDefaults to 100, or to 10000 with `paths_only`."
+      },
+      "paths_only": {
+        "type": "boolean",
+        "description": "Name the entities without describing what is logged on them. Defaults to false."
+      }
+    },
+    "description": "Request for `GetDatasetAssetsSchema`."
+  }
+}
+
 ## rerun_get_dataset_schema
 
 {
   "name": "rerun_get_dataset_schema",
-  "description": "Describe a dataset on a server: the entities of all its segments and the components logged\non each, in the form `GetRecordingSchema` describes one recording. Nothing is opened or\nloaded, so read it to learn what a dataset holds before opening any of it.\n\nIt names the entities in the segments, not a table's columns. For the columns of a table,\nsuch as to change how a table looks, call `GetTableSchema` instead.\n\nThis is the schema, not the data: a component listed here has been logged in some segment,\nnot necessarily in all of them.\n\n`FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.\n`INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not\nknow the dataset, or nothing in it is at or below `entity_path`.\n\nRequires `rerun_connect`.",
+  "description": "Describe a dataset on a server: the entities of all its segments and the components logged\non each, in the form `GetRecordingSchema` describes one recording. Nothing is opened or\nloaded, so read it to learn what a dataset holds before opening any of it.\n\nIt names the entities in the segments, not a table's columns. For the columns of a table,\nsuch as to change how a table looks, call `GetTableSchema` instead.\n\nThis is the schema, not the data: a component listed here has been logged in some segment,\nnot necessarily in all of them.\n\nThe dataset's assets are only named by id. `GetDatasetAssetsSchema` names the entities in\nthem.\n\n`FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.\n`INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not\nknow the dataset, or nothing in its segments is at or below `entity_path`.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {

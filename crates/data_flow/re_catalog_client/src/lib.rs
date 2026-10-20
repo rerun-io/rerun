@@ -12,7 +12,7 @@ use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle};
 
 pub use self::asset::{
     Asset, AssetCoverage, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT,
-    asset_data_source,
+    RegisteredAssets, asset_data_source,
 };
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::registration::{RegistrationHandle, SegmentRegistrationResult};
