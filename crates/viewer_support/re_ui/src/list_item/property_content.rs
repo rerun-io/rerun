@@ -8,7 +8,8 @@ use super::{
     ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
     ListItemContentButtonsExt, ListVisuals,
 };
-use crate::{Icon, UiExt as _};
+use crate::text_edit::ReTextEdit;
+use crate::{Icon, Size, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -145,9 +146,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
         self.value_fn(|ui, _| {
-            crate::text_edit::text_edit_scope(ui, |ui| {
-                ui.text_edit_singleline(text);
-            });
+            ui.add(ReTextEdit::singleline(text).size(Size::Tiny));
         })
     }
 
