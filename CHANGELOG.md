@@ -64,6 +64,7 @@ These may change in future releases, and unstable types may not stay backwards c
 
 #### 🪳 Bug fixes
 - Fix anamorphic pinhole projection for 3D in 2D projections [55b565d](https://github.com/rerun-io/rerun/commit/55b565d009815c30cb34e8b9801b32a42021aa3d) (thanks [@mikamikasuki](https://github.com/mikamikasuki)!)
+- Don't react to clicks on popups covering the timeline [925dbad](https://github.com/rerun-io/rerun/commit/925dbad0b94e64f519341e9522c9d6784813aa26)
 - Stop masking connection errors when credentials are present [0be32f6](https://github.com/rerun-io/rerun/commit/0be32f6141d37812ae6a44c1e3f136c8f3f77f38)
 - Fix uneditable components showing edit ui [1760c3c](https://github.com/rerun-io/rerun/commit/1760c3c903579ed3acf061502c3ad8b91c17c5e3)
 - Disable blueprint UI editing of text-log bodies [2c87e2e](https://github.com/rerun-io/rerun/commit/2c87e2e7b058ca294b2c5f6291468a749f524f8e)
