@@ -1694,6 +1694,7 @@ impl App {
                 store_id: store_id.clone(),
                 time_commands,
             });
+        re_viewer_context::on_external_blueprint_edit(egui_ctx);
         egui_ctx.request_repaint();
 
         Ok(SetTimeCursorResponse {

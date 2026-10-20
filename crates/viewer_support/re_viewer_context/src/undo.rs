@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 use re_chunk::{LatestAtQuery, TimeInt};
 use re_entity_db::EntityDb;
@@ -10,6 +11,33 @@ use crate::blueprint_timeline;
 ///
 /// TODO(emilk): decide based on how much memory the blueprint uses instead.
 const MAX_UNDOS: usize = 100;
+
+/// Edits closer together than this after [`on_external_blueprint_edit`] share one undo point.
+const EXTERNAL_EDIT_SETTLE_TIME: Duration = Duration::from_millis(250);
+
+/// When the latest edit from outside of egui happened, see [`on_external_blueprint_edit`].
+#[derive(Clone, Copy)]
+enum ExternalEdit {
+    /// No frame has run since the edit.
+    Pending,
+
+    /// The first frame after the edit ran at this time, in seconds.
+    At(f64),
+}
+
+/// Call when something outside of egui, like a call to the JS or gRPC API, edits the blueprint.
+///
+/// egui can't see that the user is interacting, e.g. dragging an HTML slider that sets the time.
+/// This makes a quick succession of such edits a single undo point, instead of one per edit.
+pub fn on_external_blueprint_edit(egui_ctx: &egui::Context) {
+    // We are called between frames, so the next frame gives the edit its time.
+    egui_ctx.data_mut(|data| data.insert_temp(external_edit_id(), ExternalEdit::Pending));
+    egui_ctx.request_repaint();
+}
+
+fn external_edit_id() -> egui::Id {
+    egui::Id::unique("re_viewer_context::undo::external_edit")
+}
 
 /// We store the entire edit history of a blueprint in its store.
 ///
@@ -219,15 +247,41 @@ fn max_blueprint_time(blueprint_db: &EntityDb) -> TimeInt {
         .map_or(TimeInt::ZERO, TimeInt::new_temporal)
 }
 
+/// Was there an edit from outside of egui within the last [`EXTERNAL_EDIT_SETTLE_TIME`]?
+///
+/// While there was, this keeps requesting a repaint for when it settles.
+fn is_editing_externally(egui_ctx: &egui::Context) -> bool {
+    let Some(edit) = egui_ctx.data(|data| data.get_temp::<ExternalEdit>(external_edit_id())) else {
+        return false;
+    };
+
+    let now = egui_ctx.input(|i| i.time);
+    let edit_time = match edit {
+        ExternalEdit::Pending => {
+            egui_ctx.data_mut(|data| data.insert_temp(external_edit_id(), ExternalEdit::At(now)));
+            now
+        }
+        ExternalEdit::At(time) => time,
+    };
+
+    let remaining = EXTERNAL_EDIT_SETTLE_TIME.as_secs_f64() - (now - edit_time);
+    if 0.0 < remaining {
+        egui_ctx.request_repaint_after_secs(remaining as f32);
+        true
+    } else {
+        false
+    }
+}
+
 fn is_interacting(egui_ctx: &egui::Context) -> bool {
+    let is_editing_externally = is_editing_externally(egui_ctx);
+
     egui_ctx.input(|i| {
-        let is_scrolling = i.smooth_scroll_delta != egui::Vec2::ZERO
-                // TODO(RR-2730): If egui properly tracked when we're scrolling we wouldn't have to do this time check.
-                || i.time_since_last_scroll() < 0.1;
         let is_zooming = i.zoom_delta_2d() != egui::Vec2::splat(1.0);
         i.pointer.any_down()
             || i.any_touches()
-            || is_scrolling
+            || is_editing_externally
+            || i.is_scrolling()
             || !i.keys_down.is_empty()
             || is_zooming
     })
@@ -291,6 +345,40 @@ mod tests {
         let mut output = ctx.run_ui(input, |_| {});
         output.textures_delta.clear();
         undo.update(ctx, db);
+    }
+
+    /// Run an egui pass at `time` seconds.
+    fn run_frame(ctx: &egui::Context, time: f64) {
+        let input = egui::RawInput {
+            time: Some(time),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(input, |_| {});
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn quick_external_edits_share_one_undo_point() {
+        let ctx = egui::Context::default();
+        let mut db = make_blueprint_db();
+        let mut undo = BlueprintUndoState::default();
+
+        // The viewer is idle long before the first edit.
+        run_frame(&ctx, 0.0);
+
+        for (time, blueprint_time) in [(5.0, 10), (5.05, 20), (5.1, 30)] {
+            insert_at_time(&mut db, "entity", blueprint_time);
+            super::on_external_blueprint_edit(&ctx);
+            run_frame(&ctx, time);
+            undo.update(&ctx, &db);
+        }
+
+        // The edits have stopped:
+        run_frame(&ctx, 6.0);
+        undo.update(&ctx, &db);
+
+        let undo_points: Vec<TimeInt> = undo.inflection_points.keys().copied().collect();
+        assert_eq!(undo_points, vec![TimeInt::new_temporal(30)]);
     }
 
     /// Simulates an inflection point existing at a `TimeInt` above the current `max_blueprint_time`,

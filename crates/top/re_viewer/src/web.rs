@@ -534,6 +534,7 @@ impl WebHandle {
                 time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name)],
             });
 
+        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
         app.egui_ctx.request_repaint();
     }
 
@@ -582,6 +583,7 @@ impl WebHandle {
                 ],
             });
 
+        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
         app.egui_ctx.request_repaint();
     }
 
@@ -669,6 +671,7 @@ impl WebHandle {
             store_id: store_id.clone(),
             time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
         });
+        re_viewer_context::on_external_blueprint_edit(egui_ctx);
         egui_ctx.request_repaint();
     }
 

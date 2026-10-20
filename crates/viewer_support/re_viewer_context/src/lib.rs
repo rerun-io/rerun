@@ -136,7 +136,7 @@ pub use self::typed_entity_collections::{
     PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
     VisualizableEntities, VisualizableReason,
 };
-pub use self::undo::BlueprintUndoState;
+pub use self::undo::{BlueprintUndoState, on_external_blueprint_edit};
 pub use self::utils::{
     auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_stream_time_from_query,
     video_timestamp_component_to_video_time,
