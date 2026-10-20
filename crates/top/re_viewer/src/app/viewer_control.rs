@@ -1322,7 +1322,7 @@ impl AppCore {
                         })
                         .unwrap_or_default();
                     describe_dataset_schema(
-                        &schema,
+                        &schema.schema,
                         asset_ids,
                         root.as_ref(),
                         max_entities,

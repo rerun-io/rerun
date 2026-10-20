@@ -111,17 +111,13 @@ impl PyDatasetSelectionInternal {
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.schema").entered();
-        let (connection, dataset_id) = {
-            let dataset = self_.dataset.borrow(py);
-            (
-                dataset.client().borrow(py).connection().clone(),
-                dataset.entry_id(),
-            )
-        };
+        let dataset = self_.dataset.borrow(py);
         let PySchemaInternal {
             columns: base_columns,
             metadata,
-        } = PySchemaInternal::from_arrow_schema(connection.get_dataset_schema(py, dataset_id)?)?;
+        } = PySchemaInternal::from_arrow_schema(PyDatasetEntryInternal::fetch_arrow_schema(
+            &dataset,
+        )?)?;
 
         // Apply content filters
         let filtered_columns = self_.filter_schema(base_columns);
@@ -316,6 +312,16 @@ fn resolved_entity_path_filter(content_filters: Option<&Vec<String>>) -> Resolve
     }
 }
 
+/// Whether `schema` has an index column named `index`.
+fn has_index(schema: &ArrowSchema, index: &str) -> bool {
+    schema.field_with_name(index).ok().is_some_and(|field| {
+        field
+            .metadata()
+            .get(re_sorbet::metadata::RERUN_KIND)
+            .is_some_and(|value| value == "index")
+    })
+}
+
 /// Build a `ViewContentsSelector` from content filters.
 fn build_view_contents(
     schema: &ArrowSchema,
@@ -354,28 +360,29 @@ fn build_dataframe_query_table_provider(
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
-    let client_ref = dataset_ref.client().borrow(py);
-    let connection = client_ref.connection().clone();
-    let object_store_auth = client_ref.object_store_auth().clone();
-    drop(client_ref);
-    drop(dataset_ref);
-    let schema = connection.get_dataset_schema(py, dataset_id)?;
+    let mut schema = PyDatasetEntryInternal::cached_arrow_schema(&dataset_ref)?;
 
     // Error if the queried index is unknown.
     if let Some(index) = index.as_deref() {
-        let known_index = schema.field_with_name(index).ok().is_some_and(|field| {
-            field
-                .metadata()
-                .get(re_sorbet::metadata::RERUN_KIND)
-                .is_some_and(|value| value == "index")
-        });
+        // Rejecting the index here sends no request, so nothing would ever advance the revision
+        // watermark: an index added by another client would stay invisible on this handle. Refetch
+        // once before giving up.
+        if !has_index(&schema, index) {
+            schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref)?;
+        }
 
-        if !known_index {
+        if !has_index(&schema, index) {
             return Err(PyValueError::new_err(format!(
                 "Index '{index}' does not exist in the dataset."
             )));
         }
     }
+
+    let client_ref = dataset_ref.client().borrow(py);
+    let connection = client_ref.connection().clone();
+    let object_store_auth = client_ref.object_store_auth().clone();
+    drop(client_ref);
+    drop(dataset_ref);
 
     let view_contents = build_view_contents(&schema, content_filters);
     let segment_ids: Vec<String> = match &segment_filter {

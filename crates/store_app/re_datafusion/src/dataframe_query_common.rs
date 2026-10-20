@@ -1281,6 +1281,7 @@ mod tests {
     use std::{
         collections::HashMap,
         iter::once,
+        num::NonZeroU64,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
@@ -1751,7 +1752,7 @@ mod tests {
             );
             assert_eq!(
                 re_redap_client::dataset_revisions().get(entry_id),
-                Some(7),
+                Some(NonZeroU64::new(7).unwrap()),
                 "{rpc}: a single empty first batch carrying `meta` must still advance the watermark"
             );
         }

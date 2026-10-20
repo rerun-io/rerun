@@ -42,6 +42,7 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::missing_field;
 use re_types_core::LayerName;
 use std::borrow::Cow;
+use std::num::NonZeroU64;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -316,6 +317,18 @@ async fn fetch_rrd_manifest_via_key(
     // convert back to raw manifest so it can be interpreted
     // with no changes by downstream users
     Ok(hub.into_raw())
+}
+
+/// A dataset's Arrow schema, as returned by `/GetDatasetSchema`.
+pub struct DatasetSchema {
+    /// The union of the schemas of every registered layer of every segment in the dataset.
+    pub schema: ArrowSchema,
+
+    /// The dataset revision the schema describes.
+    ///
+    /// `None` if the server does not report revisions, or if the dataset has no promoted revision
+    /// yet (which the server reports as zero).
+    pub revision: Option<NonZeroU64>,
 }
 
 /// Low-level API over the gRPC client.
@@ -749,7 +762,7 @@ where
 
     /// Get the Arrow schema for a dataset entry.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
+    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<DatasetSchema> {
         let client = self.inner().clone();
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             crate::rpc_retry::retry(|| {
@@ -766,14 +779,20 @@ where
             .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema"))?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
-        inner.schema().map_err(|err| {
+        let revision = inner
+            .meta
+            .as_ref()
+            .and_then(|meta| NonZeroU64::new(meta.dataset_revision));
+        let schema = inner.schema().map_err(|err| {
             ApiError::deserialization_with_source(
                 &self.origin,
                 trace_id,
                 err,
                 "failed parsing /GetDatasetSchema response",
             )
-        })
+        })?;
+
+        Ok(DatasetSchema { schema, revision })
     }
 
     /// Create a new dataset entry.

@@ -68,13 +68,15 @@ def test_datafusion_error_surfaces_to_python_with_trace_id(grpc_method: str, exp
             batches = ds.reader(index="my_index").collect()
             assert len(batches) > 0, "Expected data from normal query"
 
+            # A new handle has an empty schema cache, so its reader() issues GetDatasetSchema.
+            fresh_ds = client.get_dataset(id=ds.id)
             server._inject_error(grpc_method)
 
             # GetDatasetSchema fails during reader construction; the other two
             # fail inside collect(). Wrap both so the test doesn't care which
             # call site raises.
             try:
-                ds.reader(index="my_index").collect()
+                fresh_ds.reader(index="my_index").collect()
                 pytest.fail(f"Expected an exception from {grpc_method} failure, but query succeeded silently")
             except Exception as exc:
                 msg = str(exc)

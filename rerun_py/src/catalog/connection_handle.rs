@@ -1,5 +1,5 @@
 use arrow::array::RecordBatch;
-use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use arrow::datatypes::SchemaRef;
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
@@ -15,7 +15,7 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
-use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, DatasetSchema, TraceId};
 use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
@@ -354,7 +354,7 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
+    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
                 .get_dataset_schema(entry_id)

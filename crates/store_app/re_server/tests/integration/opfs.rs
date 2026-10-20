@@ -104,7 +104,8 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let schema = client
         .get_dataset_schema(dataset.details.id)
         .await
-        .expect("failed to get dataset schema");
+        .expect("failed to get dataset schema")
+        .schema;
 
     assert!(schema.fields().iter().any(|field| {
         let metadata = field.metadata();
