@@ -3,10 +3,11 @@ use std::collections::HashSet;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::ext::{
+    ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, EntitySelection,
+    FillMode, FindChunksRequest, RangeSelection, SegmentSelection,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::external::re_log_encoding::ToApplication as _;
 
@@ -41,10 +42,27 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
+    // An unbounded Range on the fixture's `frame_nr` timeline selects every temporal and
+    // static chunk.
     let chunk_info = service
-        .query_dataset(
-            tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(entry_name(dataset_name)),
+        .find_chunks(
+            tonic::Request::new(
+                FindChunksRequest {
+                    contents: ContentSelection::All,
+                    mode: ChunkMode::Range {
+                        segments: SegmentSelection::All,
+                        range: RangeSelection {
+                            timeline: "frame_nr".into(),
+                            start_inclusive: None,
+                            end_inclusive: None,
+                            fill_mode: FillMode::None,
+                        },
+                    },
+                    direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+                }
+                .into(),
+            )
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -57,7 +75,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let required_columns = FetchChunksRequest::required_column_names();
     let required_columns_ref = required_columns.iter().map(|s| s.as_str()).collect_vec();
     let chunk_keys = concat_record_batches(&chunk_info)
-        .sort_rows_by(&[QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME])
+        .sort_rows_by(&[ChunkCandidatesDataframe::COLUMN_CHUNK_ID_NAME])
         .unwrap()
         .project_columns(&required_columns_ref);
 
@@ -131,23 +149,29 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     // Query some chunks from dataset 1
     //
 
+    // An unbounded Range on the fixture's `frame_nr` timeline selects every temporal and
+    // static chunk.
+    let entity_selection_request = |entity_path: &str| FindChunksRequest {
+        contents: ContentSelection::Explicit(vec![EntitySelection {
+            entity_path: entity_path.into(),
+            components: ComponentSelection::All,
+        }]),
+        mode: ChunkMode::Range {
+            segments: SegmentSelection::All,
+            range: RangeSelection {
+                timeline: "frame_nr".into(),
+                start_inclusive: None,
+                end_inclusive: None,
+                fill_mode: FillMode::None,
+            },
+        },
+        direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+    };
+
     let mut chunk_info_1 = service
-        .query_dataset(
-            tonic::Request::new(
-                QueryDatasetRequest {
-                    scan_parameters: Some(ScanParameters {
-                        // TODO(RR-2677): when `required_column_names` contains only the chunk key,
-                        // the chunk id will have to be added here
-                        columns: FetchChunksRequest::required_column_names(),
-                        ..Default::default()
-                    }),
-                    entity_paths: vec!["my/entity".into()],
-                    select_all_entity_paths: false,
-                    ..Default::default()
-                }
-                .into(),
-            )
-            .with_entry_name(entry_name(dataset_name_1)),
+        .find_chunks(
+            tonic::Request::new(entity_selection_request("my/entity").into())
+                .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -162,20 +186,9 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     //
 
     let chunk_info_2 = service
-        .query_dataset(
-            tonic::Request::new(
-                QueryDatasetRequest {
-                    scan_parameters: Some(ScanParameters {
-                        columns: FetchChunksRequest::required_column_names(),
-                        ..Default::default()
-                    }),
-                    entity_paths: vec!["my/other/entity".into()],
-                    select_all_entity_paths: false,
-                    ..Default::default()
-                }
-                .into(),
-            )
-            .with_entry_name(entry_name(dataset_name_1)),
+        .find_chunks(
+            tonic::Request::new(entity_selection_request("my/other/entity").into())
+                .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -211,7 +224,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     // Check we have everything.
     //
 
-    let requested_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+    let requested_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
         .extract(&chunk_info)
         .unwrap()
         .iter_owned()

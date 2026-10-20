@@ -1138,8 +1138,7 @@ pub struct QueryDatasetRequest {
     /// to the client. Ignored if `generate_direct_urls` is not `true`.
     #[prost(bool, tag = "13")]
     pub unsigned_direct_urls: bool,
-    /// Client can specify specific chunk ids to include. If left unspecified (empty list),
-    /// all chunks that match other query parameters will be included.
+    /// Must be empty. A nonempty list returns `INVALID_ARGUMENT`.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
     /// Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
@@ -1171,13 +1170,16 @@ pub struct QueryDatasetRequest {
     /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
     #[prost(string, repeated, tag = "10")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// If set, static data will be excluded from the results.
+    /// Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
     #[prost(bool, tag = "8")]
     pub exclude_static_data: bool,
-    /// If set, temporal data will be excluded from the results.
+    /// Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
     #[prost(bool, tag = "9")]
     pub exclude_temporal_data: bool,
-    /// Generic parameters that will influence the behavior of the Lance scanner.
+    /// Optional scan parameters.
+    ///
+    /// Leave `filter`, `limit_offset`, and `limit_len` unset, and `order_by` empty.
+    /// The server returns `INVALID_ARGUMENT` otherwise.
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
     /// The Rerun-native query to run. Leave unset to match on the other filters alone: an unset
@@ -1277,16 +1279,13 @@ impl ::prost::Name for Query {
         "/rerun.cloud.v1alpha1.Query".into()
     }
 }
-/// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
-///
-/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+/// A query for candidate chunks containing the latest values at or before the requested index values.
 ///
 /// Two modes of use (mutually exclusive):
 ///    1. Global: set `at`. Applied to all segments.
 ///    2. Per-segment: set `per_segment_values`. Each entry is positionally
-///       matched to `QueryDatasetRequest.segment_ids`. `at` and `Query.range`
-///       must be unset — the server reconstructs global bounds internally
-///       from the per-segment values.
+///       matched to `QueryDatasetRequest.segment_ids`.
+///       `at` and `Query.range` must be unset.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryLatestAt {
     /// Which index column should we perform the query on? E.g. `log_time`.
@@ -1303,18 +1302,16 @@ pub struct QueryLatestAt {
     /// Per-segment index values, positionally matched to
     /// `QueryDatasetRequest.segment_ids`.
     ///
-    /// When non-empty, `at` and `Query.range` must be unset — the server
-    /// reconstructs global bounds from the values for Lance pre-filtering,
-    /// then applies a per-segment post-filter for precision.
+    /// When non-empty, `at` and `Query.range` must be unset.
     ///
-    /// Constraints (server returns `invalid_argument` on violation):
+    /// Constraints (server returns `INVALID_ARGUMENT` on violation):
     ///    - `segment_ids` must be non-empty.
     ///    - `per_segment_values.len()` must equal `segment_ids.len()`.
     ///    - `segment_ids` must contain no duplicates.
     ///
     /// Each entry's values list corresponds to the segment at the same
-    /// position in `segment_ids`. An empty values list for a segment means
-    /// no temporal chunks are returned for that segment (only static data).
+    /// position in `segment_ids`. An empty values list selects nothing from
+    /// that segment.
     #[prost(message, repeated, tag = "4")]
     pub per_segment_values: ::prost::alloc::vec::Vec<IndexValueList>,
 }
@@ -1420,7 +1417,8 @@ pub struct FindChunksRequest {
     pub direct_url_mode: i32,
     /// The selection mode. Required.
     ///
-    /// A mode that names a timeline the dataset has no data on fails with `InvalidArgument`.
+    /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
+    /// has no data.
     #[prost(oneof = "find_chunks_request::Mode", tags = "2, 3, 4")]
     pub mode: ::core::option::Option<find_chunks_request::Mode>,
 }
@@ -1428,7 +1426,8 @@ pub struct FindChunksRequest {
 pub mod find_chunks_request {
     /// The selection mode. Required.
     ///
-    /// A mode that names a timeline the dataset has no data on fails with `InvalidArgument`.
+    /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
+    /// has no data.
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Mode {
         /// The static chunks of the selected segments.
@@ -3847,27 +3846,13 @@ pub mod rerun_cloud_service_client {
         }
         /// Deprecated: use `FindChunks`. Kept for older clients.
         ///
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
-        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
-        /// from the server about the chunks that contain relevant information. 2nd step is fetching
-        /// those chunks (the actual data).
+        /// Returns candidate chunk IDs and metadata for fetching them with `FetchChunks`.
         ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific segment and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
+        /// Supports segment filtering, latest-at queries, and range queries.
+        /// See `QueryDatasetRequest` for field restrictions.
         ///
-        /// To fetch the actual chunks themselves, see `FetchChunks`.
-        ///
-        /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-        ///
-        /// For latest-at queries, the returned chunks are a **correctness-preserving
-        /// superset** of the minimum set needed to answer the query: the server may
-        /// include additional candidate chunks (e.g., overlap siblings within the
-        /// global max chunk length, or chunks that pass segment-level bounds without
-        /// per-value narrowing). Clients are expected to run their own latest-at
-        /// resolution on the returned chunks.
+        /// The server may return more chunks than needed to answer a latest-at query.
+        /// Clients must resolve latest-at values from the fetched chunks.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
         #[deprecated]
@@ -4485,27 +4470,13 @@ pub mod rerun_cloud_service_server {
             + 'static;
         /// Deprecated: use `FindChunks`. Kept for older clients.
         ///
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
-        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
-        /// from the server about the chunks that contain relevant information. 2nd step is fetching
-        /// those chunks (the actual data).
+        /// Returns candidate chunk IDs and metadata for fetching them with `FetchChunks`.
         ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific segment and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
+        /// Supports segment filtering, latest-at queries, and range queries.
+        /// See `QueryDatasetRequest` for field restrictions.
         ///
-        /// To fetch the actual chunks themselves, see `FetchChunks`.
-        ///
-        /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-        ///
-        /// For latest-at queries, the returned chunks are a **correctness-preserving
-        /// superset** of the minimum set needed to answer the query: the server may
-        /// include additional candidate chunks (e.g., overlap siblings within the
-        /// global max chunk length, or chunks that pass segment-level bounds without
-        /// per-value narrowing). Clients are expected to run their own latest-at
-        /// resolution on the returned chunks.
+        /// The server may return more chunks than needed to answer a latest-at query.
+        /// Clients must resolve latest-at values from the fetched chunks.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
         async fn query_dataset(

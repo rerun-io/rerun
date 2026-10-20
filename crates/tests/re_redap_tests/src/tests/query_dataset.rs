@@ -1,19 +1,26 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use arrow::array::{RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
-use re_log_types::{AbsoluteTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, Query, QueryDatasetDataframe, QueryDatasetRequest, QueryLatestAt, QueryRange,
+    ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DataSource,
+    DirectUrlMode, EntitySelection, FillMode, FindChunksRequest, Query, QueryDatasetDataframe,
+    QueryDatasetRequest, QueryLatestAt, QueryRange, RangeSelection, SegmentSelection,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_types_core::ChunkId;
+use re_types_core::{ChunkId, SegmentId};
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
     entry_name,
 };
 use crate::utils::{
-    register_layered_dataset, register_mixed_timelines_dataset, register_simple_dataset,
+    register_layered_dataset, register_mixed_timelines_dataset, register_per_segment_dataset,
+    register_simple_dataset,
 };
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, TempPath};
 
@@ -53,22 +60,6 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             "single_entity",
         ),
         //TODO(RR-2613): add more test cases here when they are supported by OSS server
-        (
-            // Test exclude_static_data
-            QueryDatasetRequest {
-                exclude_static_data: true,
-                ..Default::default()
-            },
-            "exclude_static",
-        ),
-        (
-            // Test exclude_temporal_data
-            QueryDatasetRequest {
-                exclude_temporal_data: true,
-                ..Default::default()
-            },
-            "exclude_temporal",
-        ),
     ];
 
     for (request, snapshot_name) in requests {
@@ -165,44 +156,6 @@ pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunC
             "unexpected row presence for {descr}: got {} rows",
             merged.num_rows(),
         );
-    }
-}
-
-/// Test that failure cases return the correct error code.
-pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
-    let dataset_name = "dataset";
-    service.create_dataset_entry_with_name(dataset_name).await;
-
-    let test_cases = vec![
-        (
-            "cannot specify entity paths if `select_all_entity_paths` is true",
-            QueryDatasetRequest {
-                entity_paths: vec!["/entity/path".into()],
-                select_all_entity_paths: true,
-                ..Default::default()
-            },
-            tonic::Code::InvalidArgument,
-        ),
-        //TODO(#11591): add more failure cases
-    ];
-
-    for (descr, request, expected_code) in test_cases {
-        let response = service
-            .query_dataset(tonic::Request::new(request.into()))
-            .await;
-
-        match response {
-            Ok(_) => {
-                panic!("expected failure with code {expected_code}, but got success ({descr})");
-            }
-            Err(err) => {
-                assert_eq!(
-                    err.code(),
-                    expected_code,
-                    "expected failure with code {expected_code}, but got {err} ({descr})"
-                );
-            }
-        }
     }
 }
 
@@ -305,17 +258,6 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         (Some(Query::default()), vec![], "default"),
         (
             Some(Query {
-                latest_at: Some(QueryLatestAt::global(Some("frame_nr".into()), TimeInt::MAX)),
-                range: None,
-                ..Default::default()
-            }),
-            vec![ChunkId::from_tuid(re_tuid::Tuid::from_nanos_and_inc(
-                100, 3,
-            ))],
-            "latest_at_end",
-        ),
-        (
-            Some(Query {
                 latest_at: None,
                 range: Some(QueryRange {
                     index: "frame_nr".into(),
@@ -400,62 +342,65 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
     }
 }
 
-/// Verify that every response in the `query_dataset` stream has the same schema, even when
-/// different segments use different timelines. Regression test for a server bug where each
-/// (segment, layer) response only emitted `:start` columns for timelines present in its own
-/// chunks, producing mismatched schemas that broke client-side concatenation.
-pub async fn query_dataset_consistent_schema_across_timelines(service: impl RerunCloudService) {
-    let dataset_name = "dataset_mixed_timelines";
-    let _data_sources_def = register_mixed_timelines_dataset(&service, dataset_name).await;
+/// `QueryDataset` is deprecated, but released rerun SDKs still send it. For each wire shape those
+/// SDKs produce, the response must name the same chunks as a `FindChunks` request built by hand
+/// for the same selection.
+pub async fn query_dataset_matches_find_chunks(service: impl RerunCloudService) {
+    let _per_segment_ranges = register_per_segment_dataset(
+        &service,
+        "per_segment_ranges",
+        900,
+        re_log_types::TimeType::Sequence,
+    )
+    .await;
+    let _mixed_timelines_dataset =
+        register_mixed_timelines_dataset(&service, "mixed_timelines").await;
 
-    let request = QueryDatasetRequest {
-        query: Some(Query {
-            columns_always_include_global_indexes: true,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
+    let required_base_columns = QueryDatasetDataframe::min_schema()
+        .fields()
+        .iter()
+        .map(|field| field.name().to_owned())
+        .collect::<Vec<_>>();
 
-    let responses: Vec<RecordBatch> = service
-        .query_dataset(
-            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
-        )
-        .await
-        .unwrap()
-        .into_inner()
-        .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.try_into().unwrap())
-        .collect()
-        .await;
+    for case in matches_find_chunks_cases() {
+        let EquivalentRequests {
+            name,
+            dataset,
+            timeline,
+            query_dataset,
+            find_chunks,
+        } = case;
 
-    // Backends are free to split a query across any number of responses (the OSS test server
-    // emits one per `(segment, layer)`; other backends may fuse them into a single batch). The
-    // only invariants we care about here are that we got data back and that every response
-    // shares a schema covering both timelines.
-    assert!(
-        !responses.is_empty(),
-        "expected at least one response, got none",
-    );
-
-    let first_schema = responses[0].schema();
-    for (idx, rb) in responses.iter().enumerate() {
-        assert_eq!(
-            rb.schema(),
-            first_schema,
-            "response {idx} has a different schema than response 0 — client-side concatenation would fail",
-        );
-    }
-
-    for expected_col in ["frame_nr:start", "timestamp:start"] {
+        let query_dataset_response = query_dataset_batches(&service, dataset, query_dataset).await;
         assert!(
-            first_schema.field_with_name(expected_col).is_ok(),
-            "expected `{expected_col}` in response schema, got: {:#?}",
-            first_schema.fields(),
+            !query_dataset_response.is_empty(),
+            "case `{name}`: query_dataset must return at least one batch"
+        );
+        for (idx, batch) in query_dataset_response.iter().enumerate() {
+            let schema = batch.schema();
+            for column_name in &required_base_columns {
+                assert!(
+                    schema.field_with_name(column_name).is_ok(),
+                    "case `{name}`, batch {idx}: missing base column `{column_name}`"
+                );
+            }
+            if let Some(timeline) = timeline {
+                let start_column = format!("{timeline}:start");
+                assert!(
+                    schema.field_with_name(&start_column).is_ok(),
+                    "case `{name}`, batch {idx}: request names timeline `{timeline}`, expected `{start_column}`"
+                );
+            }
+        }
+
+        let find_chunks_response = find_chunks_batches(&service, dataset, find_chunks).await;
+
+        assert_eq!(
+            query_dataset_chunk_ids(&query_dataset_response),
+            find_chunks_chunk_ids(&find_chunks_response),
+            "case `{name}`: query_dataset and find_chunks must return the same chunk_id set"
         );
     }
-
-    // concat_batches should succeed now that all responses share a schema.
-    let _ = concat_record_batches(&responses);
 }
 
 // ---
@@ -553,4 +498,611 @@ fn remove_rows_containing_chunk_id(
 
     RecordBatch::try_new_with_options(rb.schema(), resultant_rows, &RecordBatchOptions::default())
         .expect("should create record batch")
+}
+
+/// Entity shared by every fixture [`query_dataset_matches_find_chunks`] uses.
+const ENTITY: &str = "my/entity";
+
+/// Timeline shared by every fixture except the mixed-timeline one.
+const TIMELINE: &str = "frame_nr";
+
+/// A `QueryDataset` request and a `FindChunks` request for the same selection on one dataset.
+struct EquivalentRequests {
+    name: &'static str,
+    dataset: &'static str,
+
+    /// The timeline the `QueryDataset` request names, if any. Its response must carry
+    /// `{timeline}:start`.
+    timeline: Option<&'static str>,
+    query_dataset: QueryDatasetRequest,
+    find_chunks: FindChunksRequest,
+}
+
+fn scan_parameters() -> ScanParameters {
+    ScanParameters {
+        columns: FetchChunksRequest::required_column_names(),
+        ..Default::default()
+    }
+}
+
+/// Builds a `QueryDataset` request as the SDK's planner does: explicit entities unless `select_all`,
+/// and the `scan_parameters`/`columns_always_include_byte_offsets` every production request
+/// carries (`query_from_query_expression` always sets the latter).
+#[expect(clippy::fn_params_excessive_bools)] // test helper, positional booleans read fine here
+fn sdk_query_dataset_request(
+    segment_ids: Vec<SegmentId>,
+    select_all: bool,
+    fuzzy_descriptors: Vec<String>,
+    query: Query,
+    generate_direct_urls: bool,
+) -> QueryDatasetRequest {
+    QueryDatasetRequest {
+        segment_ids,
+        entity_paths: if select_all {
+            vec![]
+        } else {
+            vec![EntityPath::from(ENTITY)]
+        },
+        select_all_entity_paths: select_all,
+        fuzzy_descriptors,
+        scan_parameters: Some(scan_parameters()),
+        query: Some(Query {
+            columns_always_include_byte_offsets: true,
+            ..query
+        }),
+        generate_direct_urls,
+        ..Default::default()
+    }
+}
+
+fn static_query() -> Query {
+    Query {
+        latest_at: Some(QueryLatestAt::new_static()),
+        range: None,
+        ..Default::default()
+    }
+}
+
+fn full_scan_query() -> Query {
+    Query {
+        latest_at: None,
+        range: None,
+        ..Default::default()
+    }
+}
+
+fn range_query(
+    timeline: &'static str,
+    min: TimeInt,
+    max: TimeInt,
+    fill_at: Option<TimeInt>,
+) -> Query {
+    Query {
+        latest_at: fill_at.map(|at| QueryLatestAt::global(Some(timeline.into()), at)),
+        range: Some(QueryRange {
+            index: timeline.into(),
+            index_range: AbsoluteTimeRange { min, max },
+        }),
+        ..Default::default()
+    }
+}
+
+fn samples_query(timeline: &'static str, per_segment_values: Vec<Vec<i64>>) -> Query {
+    Query {
+        latest_at: Some(QueryLatestAt {
+            index: Some(timeline.into()),
+            at: TimeInt::STATIC,
+            per_segment_values,
+        }),
+        range: None,
+        ..Default::default()
+    }
+}
+
+fn content_all() -> ContentSelection {
+    ContentSelection::All
+}
+
+fn content_explicit(components: ComponentSelection) -> ContentSelection {
+    ContentSelection::Explicit(vec![EntitySelection {
+        entity_path: EntityPath::from(ENTITY),
+        components,
+    }])
+}
+
+fn find_static(
+    segments: SegmentSelection,
+    contents: ContentSelection,
+    omit_direct_urls: bool,
+) -> FindChunksRequest {
+    FindChunksRequest {
+        contents,
+        mode: ChunkMode::Static { segments },
+        direct_url_mode: if omit_direct_urls {
+            DirectUrlMode::Omit
+        } else {
+            DirectUrlMode::Signed
+        },
+    }
+}
+
+fn find_range(
+    timeline: &'static str,
+    start_inclusive: Option<TimeInt>,
+    end_inclusive: Option<TimeInt>,
+    fill_mode: FillMode,
+    segments: SegmentSelection,
+    contents: ContentSelection,
+    omit_direct_urls: bool,
+) -> FindChunksRequest {
+    FindChunksRequest {
+        contents,
+        mode: ChunkMode::Range {
+            segments,
+            range: RangeSelection {
+                timeline: timeline.into(),
+                start_inclusive,
+                end_inclusive,
+                fill_mode,
+            },
+        },
+        direct_url_mode: if omit_direct_urls {
+            DirectUrlMode::Omit
+        } else {
+            DirectUrlMode::Signed
+        },
+    }
+}
+
+fn find_samples(
+    timeline: &'static str,
+    segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>,
+    contents: ContentSelection,
+    omit_direct_urls: bool,
+) -> FindChunksRequest {
+    FindChunksRequest {
+        contents,
+        mode: ChunkMode::Samples {
+            timeline: timeline.into(),
+            segments,
+            fill_mode: FillMode::LatestAt,
+        },
+        direct_url_mode: if omit_direct_urls {
+            DirectUrlMode::Omit
+        } else {
+            DirectUrlMode::Signed
+        },
+    }
+}
+
+fn seg(id: &str) -> SegmentId {
+    SegmentId::from(id)
+}
+
+fn matches_find_chunks_cases() -> Vec<EquivalentRequests> {
+    const RANGES: &str = "per_segment_ranges";
+    const MIXED_TIMELINES: &str = "mixed_timelines";
+
+    vec![
+        // `reader(index=None)`: Static, dataset scope (empty `segment_ids` means All).
+        EquivalentRequests {
+            name: "static_dataset_scope",
+            dataset: RANGES,
+            timeline: None,
+            query_dataset: sdk_query_dataset_request(vec![], false, vec![], static_query(), false),
+            find_chunks: find_static(
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // `query: None` or an empty `Query` names no timeline, but a `FindChunks` Range must. The
+        // fixture's segments use different timelines, so this shows that the unbounded Range does
+        // not narrow the result to its timeline.
+        EquivalentRequests {
+            name: "timeline_less_full_scan",
+            dataset: MIXED_TIMELINES,
+            timeline: None,
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                full_scan_query(),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                None,
+                None,
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // `reader(index=T)` with a bounded filter, segment scope, `generate_direct_urls = false`.
+        EquivalentRequests {
+            name: "bounded_range_segment_scope",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![seg("seg1")],
+                false,
+                vec![],
+                range_query(
+                    TIMELINE,
+                    TimeInt::new_temporal(1010),
+                    TimeInt::new_temporal(1030),
+                    None,
+                ),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::new_temporal(1010)),
+                Some(TimeInt::new_temporal(1030)),
+                FillMode::None,
+                SegmentSelection::Explicit(BTreeSet::from([seg("seg1")])),
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Same bounded range, `generate_direct_urls = true`: exercises both signing values on one
+        // populated Range row.
+        EquivalentRequests {
+            name: "bounded_range_direct_urls",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![seg("seg1")],
+                false,
+                vec![],
+                range_query(
+                    TIMELINE,
+                    TimeInt::new_temporal(1010),
+                    TimeInt::new_temporal(1030),
+                    None,
+                ),
+                true,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::new_temporal(1010)),
+                Some(TimeInt::new_temporal(1030)),
+                FillMode::None,
+                SegmentSelection::Explicit(BTreeSet::from([seg("seg1")])),
+                content_explicit(ComponentSelection::All),
+                false,
+            ),
+        },
+        // `T > t` / `T >= t`: lower-only range, no fill. Strict and inclusive inequalities share
+        // this wire shape, so one row covers both.
+        EquivalentRequests {
+            name: "lower_only_range",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                range_query(TIMELINE, TimeInt::new_temporal(1020), TimeInt::MAX, None),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::new_temporal(1020)),
+                None,
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // `T < t` / `T <= t`: upper-only range, no fill (no AND merge here, so no `latest_at`).
+        EquivalentRequests {
+            name: "upper_only_range",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                range_query(TIMELINE, TimeInt::MIN, TimeInt::new_temporal(1030), None),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                None,
+                Some(TimeInt::new_temporal(1030)),
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Range with fill, upper bound explicitly at `MAX` (not omitted): proves the literal
+        // endpoint round-trips distinctly from an unbounded upper side.
+        EquivalentRequests {
+            name: "range_with_fill_upper_bound_at_max",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                range_query(
+                    TIMELINE,
+                    TimeInt::new_temporal(1010),
+                    TimeInt::MAX,
+                    Some(TimeInt::new_temporal(1010)),
+                ),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::new_temporal(1010)),
+                Some(TimeInt::MAX),
+                FillMode::LatestAt,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Equal-bound range at the lower domain extreme, no fill: a legacy degenerate `[at, at]`.
+        EquivalentRequests {
+            name: "equal_bound_min_no_fill",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                range_query(TIMELINE, TimeInt::MIN, TimeInt::MIN, None),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::MIN),
+                Some(TimeInt::MIN),
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Equal-bound range at the upper domain extreme, with fill: a legacy degenerate `[at, at]`
+        // paired with a matching `latest_at(at)`, so the before/after comparison stays valid.
+        EquivalentRequests {
+            name: "equal_bound_max_with_fill",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![],
+                range_query(TIMELINE, TimeInt::MAX, TimeInt::MAX, Some(TimeInt::MAX)),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::MAX),
+                Some(TimeInt::MAX),
+                FillMode::LatestAt,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // `using_index_values={seg: values}`: per-segment sample lists.
+        EquivalentRequests {
+            name: "samples",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![seg("seg1"), seg("seg2")],
+                false,
+                vec![],
+                samples_query(TIMELINE, vec![vec![1010, 1020], vec![2010]]),
+                false,
+            ),
+            find_chunks: find_samples(
+                TIMELINE,
+                BTreeMap::from([
+                    (
+                        seg("seg1"),
+                        BTreeSet::from([TimeInt::new_temporal(1010), TimeInt::new_temporal(1020)]),
+                    ),
+                    (seg("seg2"), BTreeSet::from([TimeInt::new_temporal(2010)])),
+                ]),
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // One segment's value list is empty: that segment contributes no candidates, so only
+        // `seg1`'s samples remain.
+        EquivalentRequests {
+            name: "samples_one_segment_empty",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![seg("seg1"), seg("seg2")],
+                false,
+                vec![],
+                samples_query(TIMELINE, vec![vec![1010, 1020], vec![]]),
+                false,
+            ),
+            find_chunks: find_samples(
+                TIMELINE,
+                BTreeMap::from([(
+                    seg("seg1"),
+                    BTreeSet::from([TimeInt::new_temporal(1010), TimeInt::new_temporal(1020)]),
+                )]),
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Every segment's value list is empty: the request selects no chunks, so both servers
+        // answer with one empty batch.
+        EquivalentRequests {
+            name: "samples_all_segments_empty",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![seg("seg1"), seg("seg2")],
+                false,
+                vec![],
+                samples_query(TIMELINE, vec![vec![], vec![]]),
+                false,
+            ),
+            find_chunks: find_samples(
+                TIMELINE,
+                BTreeMap::new(),
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // Projection/filter narrows components to a flat `fuzzy_descriptors` list: only the
+        // static chunk carries `labels`, so this also proves component narrowing excludes the
+        // temporal chunks rather than being a no-op.
+        EquivalentRequests {
+            name: "exact_components_static",
+            dataset: RANGES,
+            timeline: None,
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                false,
+                vec![labels_component_name()],
+                static_query(),
+                false,
+            ),
+            find_chunks: find_static(
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::Explicit(BTreeSet::from([
+                    labels_component_name(),
+                ]))),
+                true,
+            ),
+        },
+        // A projected `reader(index=T)` without a time filter: released SDKs send the projected
+        // components without their entity (RR-5816). The server lists the dataset's entities, so
+        // the components still narrow the result.
+        EquivalentRequests {
+            name: "select_all_with_components",
+            dataset: RANGES,
+            timeline: None,
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                true,
+                vec![labels_component_name()],
+                full_scan_query(),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                None,
+                None,
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::Explicit(BTreeSet::from([
+                    labels_component_name(),
+                ]))),
+                true,
+            ),
+        },
+        // The viewer's manifest-less fallback: `select_all_entity_paths = true` and
+        // `Query::latest_at_range`, which pairs `at` with `range.min`.
+        EquivalentRequests {
+            name: "viewer_latest_at_range",
+            dataset: RANGES,
+            timeline: Some(TIMELINE),
+            query_dataset: sdk_query_dataset_request(
+                vec![],
+                true,
+                vec![],
+                Query::latest_at_range(
+                    TIMELINE.into(),
+                    AbsoluteTimeRange {
+                        min: TimeInt::new_temporal(1010),
+                        max: TimeInt::new_temporal(1040),
+                    },
+                ),
+                false,
+            ),
+            find_chunks: find_range(
+                TIMELINE,
+                Some(TimeInt::new_temporal(1010)),
+                Some(TimeInt::new_temporal(1040)),
+                FillMode::LatestAt,
+                SegmentSelection::All,
+                content_all(),
+                true,
+            ),
+        },
+    ]
+}
+
+/// The `labels` component's identifier, as `fuzzy_descriptors`/`ComponentSelection` name it: the
+/// only component on the static chunk `create_simple_recording_one_chunk_per_frame` emits, so
+/// selecting it alone excludes every temporal chunk.
+fn labels_component_name() -> String {
+    use re_log_types::example_components::MyPoints;
+    MyPoints::descriptor_labels().display_name().to_owned()
+}
+
+async fn query_dataset_batches<T: RerunCloudService>(
+    service: &T,
+    dataset_name: &str,
+    request: QueryDatasetRequest,
+) -> Vec<RecordBatch> {
+    let wire: re_protos::cloud::v1alpha1::QueryDatasetRequest = request.into();
+    service
+        .query_dataset(tonic::Request::new(wire).with_entry_name(entry_name(dataset_name)))
+        .await
+        .unwrap_or_else(|err| panic!("query_dataset must succeed: {err}"))
+        .into_inner()
+        .map(|resp| resp.unwrap_or_else(|err| panic!("query_dataset stream must not error: {err}")))
+        .filter_map(|resp| futures::future::ready(resp.data))
+        .map(|dfp| dfp.try_into().expect("valid record batch"))
+        .collect()
+        .await
+}
+
+async fn find_chunks_batches<T: RerunCloudService>(
+    service: &T,
+    dataset_name: &str,
+    request: FindChunksRequest,
+) -> Vec<RecordBatch> {
+    let wire: re_protos::cloud::v1alpha1::FindChunksRequest = request.into();
+    service
+        .find_chunks(tonic::Request::new(wire).with_entry_name(entry_name(dataset_name)))
+        .await
+        .unwrap_or_else(|err| panic!("find_chunks must succeed: {err}"))
+        .into_inner()
+        .map(|resp| resp.unwrap_or_else(|err| panic!("find_chunks stream must not error: {err}")))
+        .filter_map(|resp| futures::future::ready(resp.data))
+        .map(|dfp| dfp.try_into().expect("valid record batch"))
+        .collect()
+        .await
+}
+
+fn query_dataset_chunk_ids(batches: &[RecordBatch]) -> BTreeSet<ChunkId> {
+    let mut ids = BTreeSet::new();
+    for batch in batches {
+        let column = QueryDatasetDataframe::COLUMN_CHUNK_ID
+            .extract(batch)
+            .expect("bad chunk_id column in query_dataset response");
+        ids.extend(column.iter_owned());
+    }
+    ids
+}
+
+fn find_chunks_chunk_ids(batches: &[RecordBatch]) -> BTreeSet<ChunkId> {
+    let mut ids = BTreeSet::new();
+    for batch in batches {
+        let column = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
+            .extract(batch)
+            .expect("bad chunk_id column in find_chunks response");
+        ids.extend(column.iter_owned());
+    }
+    ids
 }

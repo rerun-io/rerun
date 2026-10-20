@@ -12,7 +12,10 @@ use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
-use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, QueryDatasetRequest};
+use re_protos::cloud::v1alpha1::ext::{
+    ChunkCandidatesDataframe, ChunkMode, ContentSelection, FillMode, FindChunksRequest,
+    RangeSelection, SegmentSelection,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
@@ -256,26 +259,14 @@ pub async fn unregister_then_query(service: impl RerunCloudService) {
         .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
-    query_dataset_snapshot(
-        &service,
-        QueryDatasetRequest::default(),
-        dataset_name,
-        "unregister_then_query_1_added",
-    )
-    .await;
+    find_chunks_snapshot(&service, dataset_name, "unregister_then_query_1_added").await;
 
     service
         .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id"], &[])
         .await
         .unwrap();
 
-    query_dataset_snapshot(
-        &service,
-        QueryDatasetRequest::default(),
-        dataset_name,
-        "unregister_then_query_2_removed",
-    )
-    .await;
+    find_chunks_snapshot(&service, dataset_name, "unregister_then_query_2_removed").await;
 }
 
 // ---
@@ -515,17 +506,32 @@ async fn snapshot_response(
     );
 }
 
-async fn query_dataset_snapshot(
+async fn find_chunks_snapshot(
     service: &impl RerunCloudService,
-    query_dataset_request: QueryDatasetRequest,
     dataset_name: &str,
     snapshot_name: &str,
 ) {
     use futures::StreamExt as _;
 
+    // An unbounded Range on the fixture's `frame_nr` timeline selects every temporal and
+    // static chunk.
+    let find_chunks_request = FindChunksRequest {
+        contents: ContentSelection::All,
+        mode: ChunkMode::Range {
+            segments: SegmentSelection::All,
+            range: RangeSelection {
+                timeline: "frame_nr".into(),
+                start_inclusive: None,
+                end_inclusive: None,
+                fill_mode: FillMode::None,
+            },
+        },
+        direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+    };
+
     let chunk_info = service
-        .query_dataset(
-            tonic::Request::new(query_dataset_request.into())
+        .find_chunks(
+            tonic::Request::new(find_chunks_request.into())
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
@@ -538,15 +544,15 @@ async fn query_dataset_snapshot(
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
 
-    // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
+    // these are the only columns guaranteed to be returned by `find_chunks`
+    let required_field = ChunkCandidatesDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
             .schema()
             .fields()
             .contains_unordered(&required_field),
-        "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
+        "find_chunks must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
         required_field,
         merged_chunk_info.schema().fields(),
     );
@@ -567,9 +573,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
-            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
-            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
+            ChunkCandidatesDataframe::COLUMN_CHUNK_KEY_NAME,
+            ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();
