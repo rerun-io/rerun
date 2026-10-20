@@ -204,3 +204,27 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     );
     assert!(input.accesskit_node().is_focused());
 }
+
+#[test]
+fn clicking_an_example_prompt_puts_it_in_the_input() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            ready_panel(),
+        );
+    harness.run_steps(2);
+
+    harness
+        .get_by_label("Set up a blueprint for this recording")
+        .click();
+    harness.run_steps(2);
+
+    let input = harness.get_by_role(Role::MultilineTextInput);
+    assert_eq!(
+        input.accesskit_node().value(),
+        Some("Set up a blueprint for this recording".into())
+    );
+    assert!(input.accesskit_node().is_focused());
+}

@@ -474,6 +474,15 @@ fn chat_plan_approval() {
 }
 
 #[test]
+fn chat_empty() {
+    let mut panel = panel();
+    panel.show_chat();
+    open_session(panel.session_mut().expect("one conversation"));
+
+    snapshot("chat_empty", panel);
+}
+
+#[test]
 fn chat_login_required() {
     let mut panel = panel();
     panel.show_chat();
