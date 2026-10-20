@@ -34,7 +34,6 @@ mod item_collection;
 mod item_counter;
 mod link_button;
 mod maybe_mut_ref;
-pub mod open_url;
 mod query_context;
 mod query_range;
 mod recording_or_table;
@@ -51,6 +50,7 @@ mod undo;
 mod utils;
 mod view;
 mod viewer_context;
+pub mod viewer_url;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;

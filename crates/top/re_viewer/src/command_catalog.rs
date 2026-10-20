@@ -5,7 +5,7 @@ use re_ui::{
     BoundCommand, CommandEnvironment, CommandKind, RecordingCommandKind, RedapServerCommandKind,
     TableCommandKind, UICommand,
 };
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ActiveStoreContext, CommandSender, StoreHub};
 
 use crate::App;
@@ -260,7 +260,7 @@ enum LinkAvailability {
 }
 
 impl LinkAvailability {
-    fn from_url(url: Option<ViewerOpenUrl>) -> Self {
+    fn from_url(url: Option<ViewerUrl>) -> Self {
         match url {
             Some(mut url) => {
                 if url.fragment_mut().is_some() {
@@ -380,7 +380,7 @@ impl App {
             ui_zoom_is_default: self.egui_ctx.zoom_factor() == 1.0,
             graphics_backend: self.adapter_backend(),
             links: LinkAvailability::from_url(
-                ViewerOpenUrl::from_route(store_hub, self.state.navigation.current()).ok(),
+                ViewerUrl::from_route(store_hub, self.state.navigation.current()).ok(),
             ),
         }
     }
@@ -457,7 +457,7 @@ mod tests {
             Route::Loading(Box::new(re_log_channel::LogSource::Sdk)),
         ] {
             context.links =
-                LinkAvailability::from_url(ViewerOpenUrl::from_route(&store_hub, &route).ok());
+                LinkAvailability::from_url(ViewerUrl::from_route(&store_hub, &route).ok());
             for kind in [share, direct, selection] {
                 assert!(!context.is_visible(kind));
                 assert!(context.resolve(kind).is_none());
@@ -466,7 +466,7 @@ mod tests {
 
         let origin = "rerun://localhost:51234".parse().expect("valid server URL");
         context.links = LinkAvailability::from_url(
-            ViewerOpenUrl::from_route(&store_hub, &Route::RedapServer(origin)).ok(),
+            ViewerUrl::from_route(&store_hub, &Route::RedapServer(origin)).ok(),
         );
         assert!(context.resolve(share).is_some());
         assert!(context.resolve(direct).is_some());
@@ -475,7 +475,7 @@ mod tests {
 
         let entry_id = re_log_types::EntryId::new();
         let url = format!("rerun://localhost:51234/dataset/{entry_id}?segment_id=test");
-        context.links = LinkAvailability::from_url(Some(ViewerOpenUrl::RedapDataset(
+        context.links = LinkAvailability::from_url(Some(ViewerUrl::RedapDataset(
             url.parse().expect("valid segment URL"),
         )));
         assert!(context.resolve(selection).is_some());

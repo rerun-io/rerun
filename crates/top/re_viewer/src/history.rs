@@ -4,17 +4,17 @@
 //! This, much like web history, tracks viewer urls. And pushes new history whenever
 //! the non-fragment part of an url changes.
 
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 
 /// History of url's the viewer has visited.
 #[derive(Default)]
 pub struct History {
-    entries: Vec<ViewerOpenUrl>,
+    entries: Vec<ViewerUrl>,
     current_entry: usize,
 }
 
 impl History {
-    pub fn update_current_url(&mut self, url: ViewerOpenUrl) {
+    pub fn update_current_url(&mut self, url: ViewerUrl) {
         // If just the fragment changed we don't push a new entry.
         if let Some(current) = self.entries.get_mut(self.current_entry)
             && current.clone().without_fragment() == url.clone().without_fragment()
@@ -34,21 +34,21 @@ impl History {
     }
 
     /// The closest earlier entry satisfying `predicate`.
-    pub fn find_back(&self, predicate: impl Fn(&ViewerOpenUrl) -> bool) -> Option<&ViewerOpenUrl> {
+    pub fn find_back(&self, predicate: impl Fn(&ViewerUrl) -> bool) -> Option<&ViewerUrl> {
         self.entries[..self.current_entry]
             .iter()
             .rfind(|url| predicate(url))
     }
 
     /// Goes back in history, returning the new url to open.
-    pub fn go_back(&mut self) -> Option<&ViewerOpenUrl> {
+    pub fn go_back(&mut self) -> Option<&ViewerUrl> {
         self.current_entry = self.current_entry.checked_sub(1)?;
 
         self.entries.get(self.current_entry)
     }
 
     /// Goes forward in history, returning the new url to open.
-    pub fn go_forward(&mut self) -> Option<&ViewerOpenUrl> {
+    pub fn go_forward(&mut self) -> Option<&ViewerUrl> {
         let new_entry = self.current_entry + 1;
 
         if new_entry >= self.entries.len() {

@@ -16,7 +16,7 @@ use re_log_types::TableId;
 use re_log_types::TimelineName;
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, viewer_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -282,11 +282,11 @@ impl WebHandle {
             return;
         };
 
-        match url.parse::<open_url::ViewerOpenUrl>() {
+        match url.parse::<viewer_url::ViewerUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
-                    &open_url::OpenUrlOptions {
+                    &viewer_url::OpenUrlOptions {
                         recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
@@ -940,11 +940,11 @@ fn create_app(
 
     if let Some(urls) = url {
         for url in urls.into_inner() {
-            match url.parse::<open_url::ViewerOpenUrl>() {
+            match url.parse::<viewer_url::ViewerUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,
-                        &open_url::OpenUrlOptions {
+                        &viewer_url::OpenUrlOptions {
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },

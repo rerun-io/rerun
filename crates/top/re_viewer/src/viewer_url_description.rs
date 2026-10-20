@@ -1,7 +1,7 @@
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 
-/// A description of what happens when opening a [`ViewerOpenUrl`].
-pub struct ViewerOpenUrlDescription {
+/// A description of what happens when opening a [`ViewerUrl`].
+pub struct ViewerUrlDescription {
     /// The general category of this URL.
     pub category: &'static str,
 
@@ -11,7 +11,7 @@ pub struct ViewerOpenUrlDescription {
     pub target_short: Option<String>,
 }
 
-impl std::fmt::Display for ViewerOpenUrlDescription {
+impl std::fmt::Display for ViewerUrlDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(target) = &self.target_short {
             write!(f, "{}: {target}", self.category)
@@ -21,15 +21,15 @@ impl std::fmt::Display for ViewerOpenUrlDescription {
     }
 }
 
-impl ViewerOpenUrlDescription {
-    pub fn from_url(open_url: &ViewerOpenUrl) -> Self {
+impl ViewerUrlDescription {
+    pub fn from_url(open_url: &ViewerUrl) -> Self {
         match open_url {
-            ViewerOpenUrl::IntraRecordingSelection(item) => Self {
+            ViewerUrl::IntraRecordingSelection(item) => Self {
                 category: "Selection",
                 target_short: item.entity_path().map(|p| p.to_string()),
             },
 
-            ViewerOpenUrl::HttpUrl(url) => {
+            ViewerUrl::HttpUrl(url) => {
                 let path = url.path();
                 let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
 
@@ -40,12 +40,12 @@ impl ViewerOpenUrlDescription {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            ViewerOpenUrl::FilePath(path) => Self {
+            ViewerUrl::FilePath(path) => Self {
                 category: "File",
                 target_short: path.file_name().map(|s| s.display().to_string()),
             },
 
-            ViewerOpenUrl::RedapDataset(uri) => {
+            ViewerUrl::RedapDataset(uri) => {
                 if let Some(segment_id) = &uri.segment_id {
                     Self {
                         category: "Segment",
@@ -59,32 +59,32 @@ impl ViewerOpenUrlDescription {
                 }
             }
 
-            ViewerOpenUrl::RedapProxy(_) => Self {
+            ViewerUrl::RedapProxy(_) => Self {
                 category: "GRPC proxy",
                 target_short: None,
             },
 
-            ViewerOpenUrl::RedapCatalog(uri) => Self {
+            ViewerUrl::RedapCatalog(uri) => Self {
                 category: "Catalog",
                 target_short: Some(uri.origin.host.to_string()),
             },
 
-            ViewerOpenUrl::RedapEntry(uri) => Self {
+            ViewerUrl::RedapEntry(uri) => Self {
                 category: "Redap entry",
                 target_short: Some(uri.entry_id.to_string()),
             },
 
-            ViewerOpenUrl::RedapFolder(uri) => Self {
+            ViewerUrl::RedapFolder(uri) => Self {
                 category: "Folder",
                 target_short: Some(uri.path.clone()),
             },
 
-            ViewerOpenUrl::WebEventListener => Self {
+            ViewerUrl::WebEventListener => Self {
                 category: "Web event listener",
                 target_short: None,
             },
 
-            ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
+            ViewerUrl::WebViewer { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
                     Self::from_url(url_parameters.first())
                 } else {
@@ -95,12 +95,12 @@ impl ViewerOpenUrlDescription {
                 }
             }
 
-            ViewerOpenUrl::Settings => Self {
+            ViewerUrl::Settings => Self {
                 category: "Settings",
                 target_short: None,
             },
 
-            ViewerOpenUrl::ChunkStoreBrowser { .. } => Self {
+            ViewerUrl::ChunkStoreBrowser { .. } => Self {
                 category: "Chunk store browser",
                 target_short: None,
             },

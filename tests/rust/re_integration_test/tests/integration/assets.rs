@@ -28,7 +28,7 @@ use re_sdk::external::re_tuid::Tuid;
 use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
 use re_viewer::external::re_entity_db::FetchStage;
-use re_viewer::external::re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer::external::re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 
 const DATASET_NAME: &str = "my_dataset";
@@ -1117,7 +1117,7 @@ async fn open_asset_lists_it_under_owning_dataset() {
         segment_id: Some(asset_segment_id.clone()),
         fragment: re_uri::Fragment::default(),
     };
-    let url = ViewerOpenUrl::RedapDataset(asset_uri);
+    let url = ViewerUrl::RedapDataset(asset_uri);
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),

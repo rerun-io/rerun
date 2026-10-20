@@ -2,7 +2,7 @@ use re_chunk::ChunkId;
 use re_log_types::TableId;
 use re_log_types::{ApplicationId, EntryId, StoreId};
 
-use crate::{Item, RedapEntryKind, TableReference, open_url::EXAMPLES_ORIGIN};
+use crate::{Item, RedapEntryKind, TableReference, viewer_url::EXAMPLES_ORIGIN};
 
 /// What a redap entry is, and for a dataset which of its resources we show.
 ///
@@ -14,6 +14,9 @@ pub enum EntryKind {
 }
 
 /// What are we currently showing in the viewer?
+///
+/// A [`crate::viewer_url::ViewerUrl`] names a route as a URL, for sharing and history.
+/// `ViewerUrl::from_route` turns a route into one, and opening one navigates to its route.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Route {
     /// The settings dialog for application-wide configuration.

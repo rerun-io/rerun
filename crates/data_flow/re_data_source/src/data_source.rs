@@ -13,7 +13,7 @@ pub type AuthErrorHandler =
     Arc<dyn Fn(re_uri::DatasetUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
 
 /// Somewhere we can get Rerun logging data from.
-// TODO(emilk): there is a lot of overlap between this and `ViewerOpenUrl`
+// TODO(emilk): there is a lot of overlap between this and `ViewerUrl`
 // TODO(RR-5034): Once all loading goes to the internal catalog unconditionally,
 // we can get rid of some of the variants here.
 #[derive(Clone, Debug)]
@@ -182,7 +182,7 @@ impl LogDataSource {
                 .and_then(|e| e.to_str())
                 .unwrap_or("");
 
-            // If the url contains a `?url=…` param, it'll be parsed as a `ViewerOpenUrl` later
+            // If the url contains a `?url=…` param, it'll be parsed as a `ViewerUrl` later
             // so don't try loading it as a `HttpUrl` if it doesn't have a file extension we know.
             let contains_viewer_query_url_param = url.query_pairs().any(|(key, _)| key == "url");
 
@@ -598,7 +598,7 @@ mod tests {
             "https://example.com/photo.png",
             "https://example.com/video.mp4",
             // Since the path has an explicit extension, this will be parsed as a DataSource and
-            // not a `ViewerOpenUrl` (see invalid section below)
+            // not a `ViewerUrl` (see invalid section below)
             "https://example.com/some-file.rrd?url=recording.rrd",
         ];
         // Extensionless URLs — only accepted when accept_extensionless_http is true
@@ -625,7 +625,7 @@ mod tests {
 
         let invalid = [
             // This will be ignored as a DataSource so it can later be parsed as a
-            // `ViewerOpenUrl` (due to the ?url=)
+            // `ViewerUrl` (due to the ?url=)
             "https://example.com/some-file?url=recording.rrd",
             // Extensionless urls need a proper http protocol present, otherwise even `aaaa` would
             // be parsed as an http url.

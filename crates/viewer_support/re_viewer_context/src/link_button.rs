@@ -10,7 +10,7 @@ use egui::{AtomExt as _, Theme};
 use re_log_types::{EntryId, EntryName};
 use re_ui::{Icon, LinkButton, icons};
 
-use crate::open_url::{INTRA_RECORDING_URL_SCHEME, ViewerOpenUrl};
+use crate::viewer_url::{INTRA_RECORDING_URL_SCHEME, ViewerUrl};
 
 /// The icon to use
 #[derive(Clone, Copy)]
@@ -76,8 +76,8 @@ pub fn make_url_decorator(
 /// Dataset/entry ids are resolved to catalog names via `lookup`, falling back to a short-id
 /// placeholder on a miss.
 pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<LinkButton> {
-    let button = match ViewerOpenUrl::from_str(url).ok()? {
-        ViewerOpenUrl::RedapDataset(uri) => {
+    let button = match ViewerUrl::from_str(url).ok()? {
+        ViewerUrl::RedapDataset(uri) => {
             let (kind, dataset_label) = resolve(lookup, &uri.origin, EntryId::from(uri.dataset_id));
             let atoms = if let Some(segment_id) = &uri.segment_id {
                 dataset_segment_button(&dataset_label, segment_id.as_str(), theme)
@@ -87,27 +87,27 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
             Some(LinkButton::new(url, atoms))
         }
 
-        ViewerOpenUrl::RedapEntry(uri) => {
+        ViewerUrl::RedapEntry(uri) => {
             let (kind, label) = resolve(lookup, &uri.origin, uri.entry_id);
             Some(LinkButton::new(url, (kind.icon(theme), label)))
         }
 
-        ViewerOpenUrl::RedapCatalog(uri) => {
+        ViewerUrl::RedapCatalog(uri) => {
             let label = uri.origin.host.to_string();
             Some(LinkButton::new(url, (LinkKind::Proxy.icon(theme), label)))
         }
 
-        ViewerOpenUrl::RedapProxy(uri) => {
+        ViewerUrl::RedapProxy(uri) => {
             let label = uri.origin.host.to_string();
             Some(LinkButton::new(url, (LinkKind::Proxy.icon(theme), label)))
         }
 
-        ViewerOpenUrl::RedapFolder(uri) => {
+        ViewerUrl::RedapFolder(uri) => {
             let label = folder_leaf(&uri.path);
             Some(LinkButton::new(url, (LinkKind::Folder.icon(theme), label)))
         }
 
-        ViewerOpenUrl::IntraRecordingSelection(_) => {
+        ViewerUrl::IntraRecordingSelection(_) => {
             let image = icons::ENTITY.as_image().tint(icon_tint(theme));
             let label = url
                 .strip_prefix(INTRA_RECORDING_URL_SCHEME)
@@ -116,7 +116,7 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
             Some(LinkButton::new(url, (image, label)))
         }
 
-        ViewerOpenUrl::HttpUrl(http_url) => {
+        ViewerUrl::HttpUrl(http_url) => {
             // Show just the file name:
             let name = http_url
                 .path_segments()
@@ -130,7 +130,7 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        ViewerOpenUrl::FilePath(path) => {
+        ViewerUrl::FilePath(path) => {
             // Show just the file name:
             let name = path
                 .file_name()
@@ -142,7 +142,7 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
             ))
         }
 
-        ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
+        ViewerUrl::WebViewer { url_parameters, .. } => {
             // A web-viewer share link wrapping one or more content URLs: show the inner one's button,
             // but keep opening the outer share link on click.
             let inner = url_atoms(
@@ -154,9 +154,9 @@ pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<Link
         }
 
         // No meaningful button content.
-        ViewerOpenUrl::WebEventListener
-        | ViewerOpenUrl::Settings
-        | ViewerOpenUrl::ChunkStoreBrowser { .. } => None,
+        ViewerUrl::WebEventListener | ViewerUrl::Settings | ViewerUrl::ChunkStoreBrowser { .. } => {
+            None
+        }
     };
 
     // The icons have a blue arrow so we may not tint them:

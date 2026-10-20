@@ -13,7 +13,7 @@ mod server_modal;
 mod servers;
 mod unregister_asset_modal;
 
-pub use re_viewer_context::open_url::EXAMPLES_ORIGIN;
+pub use re_viewer_context::viewer_url::EXAMPLES_ORIGIN;
 
 pub use self::entries::{Entries, Entry, EntryInner};
 pub use self::servers::{AddServerCommand, Command, RedapServers, Server};

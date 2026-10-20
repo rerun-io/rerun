@@ -13,7 +13,7 @@ use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _, WindowFrameConfig};
-use re_viewer_context::open_url::{self, ViewerOpenUrl};
+use re_viewer_context::viewer_url::{self, ViewerUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
     AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
@@ -28,9 +28,9 @@ use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::app_blueprint::AppBlueprint;
 use crate::navigation::Navigation;
-use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
 use crate::ui::{CloudState, LoginState};
+use crate::viewer_url_description::ViewerUrlDescription;
 use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -708,8 +708,8 @@ impl AppState {
                     None,
                 );
 
-                let source_name = if let Ok(url) = ViewerOpenUrl::from_data_source(log_source) {
-                    Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
+                let source_name = if let Ok(url) = ViewerUrl::from_data_source(log_source) {
+                    Cow::Owned(ViewerUrlDescription::from_url(&url).to_string())
                 } else {
                     // In practice this shouldn't happen.
                     Cow::Borrowed("<unknown>")
@@ -1268,7 +1268,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(url) = open_url::ViewerOpenUrl::parse_with_options(
+                if let Ok(url) = viewer_url::ViewerUrl::parse_with_options(
                     &open_url.url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: false,
@@ -1276,7 +1276,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                 ) {
                     url.open(
                         egui_ctx,
-                        &open_url::OpenUrlOptions {
+                        &viewer_url::OpenUrlOptions {
                             recording_open_behavior: if open_url.new_tab {
                                 RecordingOpenBehavior::Open
                             } else {
@@ -1368,7 +1368,7 @@ mod tests {
         );
         assert_eq!(kind, Some(EntryKind::Table));
 
-        let url = ViewerOpenUrl::from_route(
+        let url = ViewerUrl::from_route(
             &StoreHub::test_hub(),
             &Route::RedapEntry {
                 origin: origin.clone(),
@@ -1380,7 +1380,7 @@ mod tests {
 
         assert_eq!(
             url,
-            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::new(origin, entry_id))
+            ViewerUrl::RedapEntry(re_uri::EntryUri::new(origin, entry_id))
         );
     }
 

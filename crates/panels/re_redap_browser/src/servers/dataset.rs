@@ -825,7 +825,7 @@ fn tab_meta_line_ui(ui: &mut egui::Ui, terms: &[MetaTerm<'_>]) {
 
 /// Opens an asset, from its card or from its "Open" button.
 fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool) {
-    let url = re_viewer_context::open_url::ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
+    let url = re_viewer_context::viewer_url::ViewerUrl::RedapDataset(re_uri::DatasetUri {
         origin: dataset.origin.clone(),
         dataset_id: dataset.id().id,
         resource: DatasetResource::Assets,

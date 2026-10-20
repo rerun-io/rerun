@@ -4,7 +4,7 @@ use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::{BlueprintId, ContainerId, Contents, ViewId};
-use crate::{blueprint_id::ViewIdRegistry, open_url::EXAMPLES_ORIGIN};
+use crate::{blueprint_id::ViewIdRegistry, viewer_url::EXAMPLES_ORIGIN};
 
 /// `Item` state for a dataresult interaction, i.e. when hovering or selecting an item in a view's data results.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

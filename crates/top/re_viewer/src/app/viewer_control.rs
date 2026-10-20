@@ -32,7 +32,7 @@ use re_protos::viewer_control::v1alpha1::{
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
     Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand,
-    open_url::{OpenUrlOptions, ViewerOpenUrl},
+    viewer_url::{OpenUrlOptions, ViewerUrl},
 };
 
 use super::App;
@@ -383,7 +383,7 @@ impl App {
                 );
             }
             Kind::OpenUrl(OpenUrlRequest { url }) => {
-                let parsed = ViewerOpenUrl::parse_with_options(
+                let parsed = ViewerUrl::parse_with_options(
                     &url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: true,
@@ -643,7 +643,7 @@ impl App {
 
         // Best-effort sharable URL for the current page; some routes (e.g. local tables) can't be
         // turned into a URL, in which case we leave it empty.
-        let url = ViewerOpenUrl::from_route(store_hub, route)
+        let url = ViewerUrl::from_route(store_hub, route)
             .and_then(|open_url| open_url.sharable_url(None))
             .unwrap_or_default();
 

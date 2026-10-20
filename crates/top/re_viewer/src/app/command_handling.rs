@@ -5,10 +5,10 @@ use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::{RecordingCommand, UICommand};
-use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
+use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, Route, StorageContext, StoreHub,
-    SystemCommand, open_url::combine_with_base_url,
+    SystemCommand, viewer_url::combine_with_base_url,
 };
 use re_viewer_context::{
     RecordingOrLocalTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
@@ -291,7 +291,7 @@ impl App {
                         .cloned();
 
                     back_target.or_else(|| {
-                        ViewerOpenUrl::from_route(
+                        ViewerUrl::from_route(
                             store_hub,
                             &Self::fallback_route_after_close(store_hub, closing),
                         )
@@ -1246,14 +1246,14 @@ impl App {
                 }
             }
             UICommand::CopyDirectLinkToClipboard => {
-                match ViewerOpenUrl::from_route(storage_context.hub, route) {
+                match ViewerUrl::from_route(storage_context.hub, route) {
                     Ok(url) => self.run_copy_link_command(&url),
                     Err(err) => re_log::error!("{err}"),
                 }
             }
 
             UICommand::CopyTimeSelectionLinkToClipboard => {
-                match ViewerOpenUrl::from_route(storage_context.hub, route) {
+                match ViewerUrl::from_route(storage_context.hub, route) {
                     Ok(mut url) => {
                         if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = route
@@ -1589,7 +1589,7 @@ impl App {
         }
     }
 
-    fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
+    fn run_copy_link_command(&mut self, content_url: &ViewerUrl) {
         let base_url = self.startup_options.web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
@@ -1700,7 +1700,7 @@ impl App {
     }
 
     /// Opens `url` through the normal navigation flow.
-    fn navigate_to(&self, egui_ctx: &egui::Context, url: &ViewerOpenUrl) {
+    fn navigate_to(&self, egui_ctx: &egui::Context, url: &ViewerUrl) {
         url.clone().open(
             egui_ctx,
             &OpenUrlOptions {
@@ -1717,7 +1717,7 @@ impl App {
     fn is_back_destination_open(
         &self,
         store_hub: &StoreHub,
-        url: &ViewerOpenUrl,
+        url: &ViewerUrl,
         closing: Option<&StoreId>,
     ) -> bool {
         // A redap origin is reachable as long as its server is still registered.
@@ -1728,21 +1728,21 @@ impl App {
 
         // Whether some still-open recording, other than the one we're closing, was loaded from
         // `url`.
-        let recording_loaded_from = |url: &ViewerOpenUrl| {
+        let recording_loaded_from = |url: &ViewerUrl| {
             store_hub.store_bundle().recordings().any(|db| {
                 closing.is_none_or(|closing| db.store_id() != closing)
                     && store_hub.is_opened(db.store_id())
                     && db.data_source.as_ref().is_some_and(|source| {
-                        ViewerOpenUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
+                        ViewerUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
                     })
             })
         };
 
         match url {
             // Points into the recording we're closing, so there's nothing left to step back to.
-            ViewerOpenUrl::IntraRecordingSelection(_) => false,
+            ViewerUrl::IntraRecordingSelection(_) => false,
 
-            ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
+            ViewerUrl::WebViewer { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
                     self.is_back_destination_open(store_hub, url_parameters.first(), closing)
                 } else {
@@ -1751,19 +1751,17 @@ impl App {
             }
 
             // Not a place to land on after closing a recording.
-            ViewerOpenUrl::Settings => false,
+            ViewerUrl::Settings => false,
 
             // Resolve to a recording loaded from that source: only step back while it's still open.
-            ViewerOpenUrl::HttpUrl(_) | ViewerOpenUrl::WebEventListener => {
-                recording_loaded_from(url)
-            }
+            ViewerUrl::HttpUrl(_) | ViewerUrl::WebEventListener => recording_loaded_from(url),
             #[cfg(not(target_arch = "wasm32"))]
-            ViewerOpenUrl::FilePath(_) => recording_loaded_from(url),
+            ViewerUrl::FilePath(_) => recording_loaded_from(url),
 
             // Resolves to a recording: it must still be loaded, and not be the one we're closing.
             // We don't re-stream a closed recording, that would land us on a blank, unloaded one.
             // Without a segment it resolves to the dataset, which stays reachable with its server.
-            ViewerOpenUrl::RedapDataset(uri) => match uri.store_id() {
+            ViewerUrl::RedapDataset(uri) => match uri.store_id() {
                 Some(store_id) => {
                     closing.is_none_or(|closing| &store_id != closing)
                         && store_hub.is_opened(&store_id)
@@ -1772,15 +1770,15 @@ impl App {
             },
 
             // Redap destinations are reachable while their server is still registered.
-            ViewerOpenUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapCatalog(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapEntry(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapFolder(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapCatalog(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapEntry(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapFolder(uri) => origin_reachable(&uri.origin),
 
             // Tied to a specific store: it must exist, still be opened, and not be the one we're
             // closing. Without an explicit store it falls back to the active recording, which is the
             // one we're closing, so there's nowhere to step back to.
-            ViewerOpenUrl::ChunkStoreBrowser { recording_id, .. } => {
+            ViewerUrl::ChunkStoreBrowser { recording_id, .. } => {
                 recording_id.as_ref().is_some_and(|id| {
                     closing.is_none_or(|closing| id != closing) && store_hub.is_opened(id)
                 })

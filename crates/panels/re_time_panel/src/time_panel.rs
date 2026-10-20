@@ -20,7 +20,7 @@ use re_ui::{
     ContextExt as _, DesignTokens, Help, IconText, Size, UiExt as _, filter_widget, icons,
     list_item,
 };
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     AppContext, AppOptions, CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext,
     StoreViewContext, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
@@ -1888,7 +1888,7 @@ fn timeline_properties_context_menu(
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
-    let mut url = ViewerOpenUrl::from_context(&ctx.app_ctx);
+    let mut url = ViewerUrl::from_context(&ctx.app_ctx);
     let has_fragment = url.as_mut().is_ok_and(|url| {
         if let Some(fragment) = url.fragment_mut() {
             fragment.time_selection = None;

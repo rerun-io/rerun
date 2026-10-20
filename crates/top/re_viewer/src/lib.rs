@@ -48,7 +48,6 @@ mod latency_tracker;
 #[cfg(target_os = "macos")]
 mod native_menu;
 mod navigation;
-mod open_url_description;
 mod prefetch_chunks;
 mod registrations_in_flight;
 mod saving;
@@ -60,6 +59,7 @@ mod texture_readback;
 mod ui;
 mod version_check;
 mod viewer_log;
+mod viewer_url_description;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;

@@ -1,8 +1,8 @@
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 
-use crate::open_url_description::ViewerOpenUrlDescription;
+use crate::viewer_url_description::ViewerUrlDescription;
 
 #[derive(Default)]
 pub struct OpenUrlModal {
@@ -54,7 +54,7 @@ impl OpenUrlModal {
                     // ui.send_viewport_cmd(egui::ViewportCommand::RequestPaste);
                 }
 
-                let open_url = ViewerOpenUrl::parse_with_options(
+                let open_url = ViewerUrl::parse_with_options(
                     &self.url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: true,
@@ -62,7 +62,7 @@ impl OpenUrlModal {
                 );
                 let can_import = match &open_url {
                     Ok(url) => {
-                        let description = ViewerOpenUrlDescription::from_url(url);
+                        let description = ViewerUrlDescription::from_url(url);
                         if let Some(target_short) = description.target_short {
                             ui.horizontal(|ui| {
                                 ui.label(description.category);

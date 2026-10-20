@@ -16,8 +16,8 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
 use re_types_core::reflection::ComponentReflectionMap;
 use re_ui::{ContextExt as _, UiExt as _, notifications};
-use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
+use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
     AppBlueprintCtx, AppOptions, AuthContext, CommandReceiver, CommandSender, ComponentUiRegistry,
     EditRedapServerModalCommand, FallbackProviderRegistry, Item, NeedsRepaint, Route,
@@ -768,7 +768,7 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        match ViewerOpenUrl::parse_with_options(
+        match ViewerUrl::parse_with_options(
             url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
@@ -1023,7 +1023,7 @@ impl App {
 
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
+        let Ok(url) = ViewerUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
         else {
             return;
         };
@@ -1041,7 +1041,7 @@ impl App {
             .and_then(|id| self.state.time_control(id));
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
+        let Ok(url) = ViewerUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
             .map(|mut url| {
                 // We don't want to update the url while playing, so we use the last paused time.
                 if let Some(fragment) = url.fragment_mut() {
@@ -1786,7 +1786,7 @@ impl eframe::App for App {
                         });
                     }
                     CommandPaletteAction::OpenUrl(url) => {
-                        match ViewerOpenUrl::parse_with_options(
+                        match ViewerUrl::parse_with_options(
                             url.as_str(),
                             &re_data_source::FromUriOptions {
                                 accept_extensionless_http: true,

@@ -153,7 +153,7 @@ impl StartupOptions {
                 target_arch = "wasm32" => re_web::browser::current_page_url()
                     .ok()
                     .and_then(|url| url.parse().ok())
-                    .map(|url| re_viewer_context::open_url::base_url(&url)),
+                    .map(|url| re_viewer_context::viewer_url::base_url(&url)),
                 _ => None,
             }
         }

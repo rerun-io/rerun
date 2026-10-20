@@ -13,10 +13,10 @@ use re_ui::{
     BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
     SyntaxHighlighting as _,
 };
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 
 use crate::command_catalog::{CommandContext, catalog_commands};
-use crate::open_url_description::ViewerOpenUrlDescription;
+use crate::viewer_url_description::ViewerUrlDescription;
 
 /// Something the user can pick in the command palette.
 #[derive(Clone, Debug)]
@@ -247,14 +247,14 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         };
 
         let raw_url = query.raw_query().trim();
-        let url_group = if let Ok(open_url) = ViewerOpenUrl::parse_with_options(
+        let url_group = if let Ok(open_url) = ViewerUrl::parse_with_options(
             raw_url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
             },
         ) {
             // The user entered something openable (URL, file path, …). Offer to open it!
-            let command_text = format!("Open {}", ViewerOpenUrlDescription::from_url(&open_url));
+            let command_text = format!("Open {}", ViewerUrlDescription::from_url(&open_url));
             vec![MatchedCmd {
                 fuzzy_match: FuzzyMatch::highest(command_text),
                 command: CommandPaletteAction::OpenUrl(raw_url.to_owned()),
