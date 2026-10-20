@@ -345,20 +345,27 @@ impl ViewClass for SpatialView3D {
         // Start with all the entities which are both indicated and visualizable.
         let mut enabled_visualizers: Vec<_> = visualizers_with_reason
             .iter()
-            .filter_map(|(viz, _reason)| indicated.contains(viz).then_some(*viz))
+            .filter(|(viz, _reason)| indicated.contains(viz))
+            .map(|(viz, reason)| (*viz, *reason))
             .collect();
 
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&axes_viz)
-            && visualizers_with_reason.iter().any(|(v, _)| *v == axes_viz)
+        if !enabled_visualizers.iter().any(|(v, _)| *v == axes_viz)
+            && let Some((_, axes_reason)) =
+                visualizers_with_reason.iter().find(|(v, _)| *v == axes_viz)
         {
             // …if we already have the [`CamerasVisualizer`] active.
-            if enabled_visualizers.contains(&camera_viz) {
-                enabled_visualizers.push(axes_viz);
+            if enabled_visualizers.iter().any(|(v, _)| *v == camera_viz) {
+                enabled_visualizers.push((axes_viz, *axes_reason));
             }
         }
 
-        RecommendedVisualizers::default_many(enabled_visualizers)
+        RecommendedVisualizers::new(
+            enabled_visualizers
+                .into_iter()
+                .map(|(visualizer, reason)| (visualizer, reason.recommended_mappings()))
+                .collect(),
+        )
     }
 
     fn spawn_heuristics(
@@ -633,4 +640,62 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
             list_item::LabelContent::new(reflection.display_name),
             sub_prop_ui,
         );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use re_viewer_context::{
+        ComponentMatch, RecommendedMappings, SingleRequiredComponentMatch,
+        VisualizerComponentSource,
+    };
+
+    /// The spatial recommendation override must forward an indicated visualizer's heuristic
+    /// mapping instead of replacing it with identity mappings.
+    /// (This checks recommendation wiring, not source discovery or selector execution.)
+    #[test]
+    fn recommendations_preserve_heuristic_mapping() {
+        let entity = EntityPath::from("entity");
+        let visualizer = ViewSystemIdentifier::from_static_str("TestVisualizer");
+        let target = archetypes::Arrows3D::descriptor_vectors().component;
+        let source = "custom:message".into();
+        let mapping = RecommendedMappings::new(
+            target,
+            VisualizerComponentSource::SourceComponent {
+                source_component: source,
+                selector: ".vectors".into(),
+            },
+        );
+        let reason =
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
+                target_component: target,
+                matches: std::iter::once((
+                    source,
+                    ComponentMatch::HeuristicMapping {
+                        component_type: None,
+                        mappings: mapping.clone(),
+                    },
+                ))
+                .collect(),
+            });
+        let indicated = IndicatedEntities(std::iter::once(entity.clone()).collect());
+        let indicated_per_visualizer =
+            PerVisualizerType(std::iter::once((visualizer, &indicated)).collect());
+
+        let recommendations = SpatialView3D.recommended_visualizers_for_entity(
+            &entity,
+            &[(visualizer, &reason)],
+            &indicated_per_visualizer,
+        );
+
+        assert_eq!(recommendations.all_recommendations().len(), 1);
+        assert_eq!(
+            recommendations.all_recommendations()[&visualizer].as_slice(),
+            std::slice::from_ref(&mapping),
+        );
+        assert_eq!(
+            recommendations.into_auto_spawned()[&visualizer].as_slice(),
+            &[mapping],
+        );
+    }
 }

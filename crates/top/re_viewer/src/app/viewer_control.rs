@@ -962,7 +962,7 @@ impl AppCore {
         let mut json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
             &query,
-            &self.reflection,
+            &self.reflection.read(),
         );
         if let BlueprintTarget::Table(table) = target
             && json.as_object().is_some_and(serde_json::Map::is_empty)
@@ -1497,7 +1497,7 @@ impl AppCore {
             json,
             blueprint_db.storage_engine().store(),
             &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
-            &self.reflection,
+            &self.reflection.read(),
         )
         .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))
     }

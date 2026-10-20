@@ -58,6 +58,10 @@ mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
 
+/// Reflection shared by the viewer and its visualizers; clones observe the same runtime edits.
+pub type SharedReflection =
+    std::sync::Arc<parking_lot::RwLock<re_types_core::reflection::Reflection>>;
+
 /// Cursor shown when the pointer can move the time cursor.
 pub const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
 
@@ -132,7 +136,7 @@ pub use self::time_control::{
     TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
+    BufferAndFormatMatch, ComponentMatch, IndicatedEntities, PerVisualizerInstruction,
     PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
     VisualizableEntities, VisualizableReason,
 };

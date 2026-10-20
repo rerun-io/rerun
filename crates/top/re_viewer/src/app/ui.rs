@@ -149,7 +149,7 @@ impl AppCore {
                         active_store_context,
                         storage_context,
                         &self.table_blueprints,
-                        &self.reflection,
+                        &self.reflection.read(),
                         &self.component_ui_registry,
                         &self.component_fallback_registry,
                         &self.view_class_registry,

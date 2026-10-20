@@ -14,7 +14,7 @@ use re_types_core::{
     FromArrow as _, SerializationError, ViewClassIdentifier,
     reflection::{
         ArchetypeFieldFlags, ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap,
-        ComponentReflection, ComponentReflectionMap, ComponentTypeSet, EnumVariantReflection,
+        ComponentReflectionMap, ComponentTypeReflection, ComponentTypeSet, EnumVariantReflection,
         Reflection, ViewApplicability, ViewReflection, ViewReflectionMap,
         generate_component_identifier_reflection,
     },
@@ -75,7 +75,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
     let entries = vec![
         (
             <AbsoluteTimeRange as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A reference to a range of time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -88,7 +88,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ActiveTab as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The active tab in a tabbed container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ActiveTab::default().to_arrow()?),
@@ -101,7 +101,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AngularSpeed as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Angular speed, used for rotation speed for example.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AngularSpeed::default().to_arrow()?),
@@ -114,7 +114,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ApplyLatestAt as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
@@ -127,7 +127,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AutoLayout as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AutoLayout::default().to_arrow()?),
@@ -140,7 +140,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AutoScroll as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether the view should auto-scroll to follow the time cursor.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AutoScroll::default().to_arrow()?),
@@ -153,7 +153,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AutoViews as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether or not views should be created automatically.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AutoViews::default().to_arrow()?),
@@ -166,7 +166,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <BackgroundKind as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The type of the background in a view.",
                 deprecation_summary: None,
                 custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
@@ -192,7 +192,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ColumnDisplayMode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How table column names are displayed when no explicit display name is configured.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ColumnDisplayMode::default().to_arrow()?),
@@ -218,7 +218,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ColumnName as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The name of a column in a table.\n\nThis is the physical column name: it is what the column is looked up by, and it is also\nwhat the user reads whenever the column has no separate, human-facing label.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -231,7 +231,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ColumnOrder as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The order of component columns (which remain always grouped by entity path) in the dataframe view.\n\nEntities not in this list are appended at the end in their default order.\nEntities in this list that are not present in the view are ignored.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ColumnOrder::default().to_arrow()?),
@@ -244,7 +244,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ColumnShare as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The layout share of a column in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ColumnShare::default().to_arrow()?),
@@ -257,7 +257,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ComponentColumnSelector as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
@@ -270,7 +270,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ContainerKind as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
                 deprecation_summary: None,
                 custom_placeholder: Some(ContainerKind::default().to_arrow()?),
@@ -300,7 +300,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Corner2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Corner2D::default().to_arrow()?),
@@ -330,7 +330,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Editable as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether a table column's values can be edited.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -343,7 +343,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Enabled as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether a procedure is enabled.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(Enabled::default().to_arrow()?),
@@ -356,7 +356,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Eye3DKind as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The kind of the 3D eye to view a scene in a [`views.Spatial3DView`](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThis is used to specify how the controls of the view react to user input (such as mouse gestures).",
                 deprecation_summary: None,
                 custom_placeholder: Some(Eye3DKind::default().to_arrow()?),
@@ -378,7 +378,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <FilterByRange as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(FilterByRange::default().to_arrow()?),
@@ -391,7 +391,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <FilterIsNotNull as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
@@ -404,7 +404,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ForceDistance as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceDistance::default().to_arrow()?),
@@ -417,7 +417,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ForceIterations as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceIterations::default().to_arrow()?),
@@ -430,7 +430,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ForceStrength as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceStrength::default().to_arrow()?),
@@ -443,7 +443,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Fps as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Frames per second for a sequence timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -456,7 +456,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GridColumns as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How many columns a grid container should have.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(GridColumns::default().to_arrow()?),
@@ -469,7 +469,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GridSpacing as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Space between grid lines of one line to the next in scene units.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(GridSpacing::default().to_arrow()?),
@@ -482,7 +482,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <IncludedContent as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "All the contents in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(IncludedContent::default().to_arrow()?),
@@ -495,7 +495,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LinkAxis as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Controls how the horizontal time axis is linked across time series and state timeline views.",
                 deprecation_summary: None,
                 custom_placeholder: Some(LinkAxis::default().to_arrow()?),
@@ -517,7 +517,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LockRangeDuringZoom as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
@@ -530,7 +530,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LoopMode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "If playing, whether and how the playback time should loop.",
                 deprecation_summary: None,
                 custom_placeholder: Some(LoopMode::default().to_arrow()?),
@@ -556,7 +556,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MapProvider as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MapProvider::default().to_arrow()?),
@@ -590,7 +590,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <NearClipPlane as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Distance to the near clip plane used for `Spatial2DView`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(NearClipPlane::default().to_arrow()?),
@@ -603,7 +603,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PanelState as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Tri-state for panel controls.",
                 deprecation_summary: None,
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
@@ -629,7 +629,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PlayState as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The current play state.",
                 deprecation_summary: None,
                 custom_placeholder: Some(PlayState::default().to_arrow()?),
@@ -655,7 +655,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PlaybackSpeed as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A playback speed which determines how fast time progresses.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -668,7 +668,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PointsDisplay as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Controls when data point markers are displayed on line series.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(PointsDisplay::default().to_arrow()?),
@@ -690,7 +690,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <QueryExpression as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An individual query expression used to filter a set of [`encodings.EntityPath`](https://rerun.io/docs/reference/types/encodings/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
@@ -703,7 +703,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <RootContainer as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The container that sits at the root of a viewport.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(RootContainer::default().to_arrow()?),
@@ -716,7 +716,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <RowShare as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The layout share of a row in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(RowShare::default().to_arrow()?),
@@ -729,7 +729,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SelectedColumns as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
@@ -742,7 +742,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SortBy as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The column and direction a table's rows are sorted by.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -755,7 +755,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SqlFilterExpression as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A SQL expression that selects the rows of a table.\n\nThe expression evaluates to a boolean.\nIt is written in the generic SQL dialect of DataFusion, with lambdas such as `x -> x > 1` for list columns.\n\nColumn names are double-quoted, e.g. `\"task\" ILIKE '%pick%'`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -768,7 +768,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TableCellKind as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How a table column value is rendered.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TableCellKind::default().to_arrow()?),
@@ -806,7 +806,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TableLayoutKind as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How table records are presented.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TableLayoutKind::default().to_arrow()?),
@@ -828,7 +828,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TensorDimensionIndexSlider as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
@@ -841,7 +841,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TextLogColumn as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A text log column\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TextLogColumn::default().to_arrow()?),
@@ -854,7 +854,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TimeInt as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -867,7 +867,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TimeRange as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A time range on an unspecified timeline using either relative or absolute boundaries.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -880,7 +880,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TimelineColumn as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A timeline column in a text log table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineColumn::default().to_arrow()?),
@@ -893,7 +893,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TimelineFraction as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A position on a timeline, as a fraction of its time range.\n\n0.0 is the start and 1.0 the end.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineFraction::default().to_arrow()?),
@@ -906,7 +906,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TimelineName as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A timeline identified by its name.\n\nThe name is used both as an identifier and as a display label: it is what timelines are\nkeyed on, and also what the user reads.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
@@ -919,7 +919,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TooltipMode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Controls how the plot tooltip behaves when hovering over data.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TooltipMode::default().to_arrow()?),
@@ -941,7 +941,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewClass as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewClass::default().to_arrow()?),
@@ -954,7 +954,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewFit as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewFit::default().to_arrow()?),
@@ -980,7 +980,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewMaximized as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether a view is maximized.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewMaximized::default().to_arrow()?),
@@ -993,7 +993,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewOrigin as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The origin of a view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewOrigin::default().to_arrow()?),
@@ -1006,7 +1006,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewerRecommendationHash as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewerRecommendationHash::default().to_arrow()?),
@@ -1019,7 +1019,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VisibleTimeRange as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
@@ -1032,7 +1032,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VisualBounds2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
@@ -1045,7 +1045,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VisualizerComponentMapping as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Associates components of an entity to components of a visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1058,7 +1058,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VisualizerInstructionId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "ID for a visualizer instruction.\n\nIDs are only guaranteed to be unique in the scope of a view.\nFor details see archetypes.ActiveVisualizers.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualizerInstructionId::default().to_arrow()?),
@@ -1071,7 +1071,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VisualizerType as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The type of the visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualizerType::default().to_arrow()?),
@@ -1084,7 +1084,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Volume as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Playback volume, as a multiplier applied to the audio samples.\n\n0.0 is silent and 1.0 leaves the samples unchanged.\nThe scale is linear in amplitude, not in perceived loudness.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(Volume::default().to_arrow()?),
@@ -1097,7 +1097,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ZoomLevel as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
@@ -1110,7 +1110,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AggregationPolicy as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                 deprecation_summary: None,
                 custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
@@ -1148,7 +1148,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AlbedoFactor as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
                 deprecation_summary: None,
                 custom_placeholder: Some(AlbedoFactor::default().to_arrow()?),
@@ -1161,7 +1161,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AnnotationContext as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id)s and [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
@@ -1174,7 +1174,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <AxisLength as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The length of an axis in local units of the space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(AxisLength::default().to_arrow()?),
@@ -1187,7 +1187,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Blob as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A binary blob of data.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Blob::default().to_arrow()?),
@@ -1200,7 +1200,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <CellSize as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The metric size of one grid cell in local scene units.\n\nE.g. for 2D grid maps, this is the physical size represented by a single pixel or cell.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1213,7 +1213,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ChannelId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 16-bit ID representing an MCAP channel.\n\nUsed to identify specific channels within an MCAP file.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1226,7 +1226,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ChannelMessageCounts as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A mapping of channel IDs to their respective message counts.\n\nUsed in MCAP statistics to track how many messages were recorded per channel.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ChannelMessageCounts::default().to_arrow()?),
@@ -1239,7 +1239,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ClassId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
                 deprecation_summary: None,
                 custom_placeholder: Some(ClassId::default().to_arrow()?),
@@ -1252,7 +1252,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ClearIsRecursive as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Configures how a clear operation should behave - recursive or not.",
                 deprecation_summary: None,
                 custom_placeholder: Some(ClearIsRecursive::default().to_arrow()?),
@@ -1265,7 +1265,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Color as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Color::default().to_arrow()?),
@@ -1278,7 +1278,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Colormap as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Colormap::default().to_arrow()?),
@@ -1340,7 +1340,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Count as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A generic count value.\n\nUsed for counting various entities like messages, schemas, channels, etc.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1353,7 +1353,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <DepthMeter as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(DepthMeter::default().to_arrow()?),
@@ -1366,7 +1366,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <DrawOrder as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
                 deprecation_summary: None,
                 custom_placeholder: Some(DrawOrder::default().to_arrow()?),
@@ -1379,7 +1379,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <EntityPath as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
                 deprecation_summary: None,
                 custom_placeholder: Some(EntityPath::default().to_arrow()?),
@@ -1392,7 +1392,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <FillMode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
                 deprecation_summary: None,
                 custom_placeholder: Some(FillMode::default().to_arrow()?),
@@ -1422,7 +1422,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <FillRatio as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
                 deprecation_summary: None,
                 custom_placeholder: Some(FillRatio::default().to_arrow()?),
@@ -1435,7 +1435,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GammaCorrection as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nMust be a positive number.\nDefaults to 1.0 unless otherwise specified.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
@@ -1448,7 +1448,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GeoLineString as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 deprecation_summary: None,
                 custom_placeholder: Some(GeoLineString::default().to_arrow()?),
@@ -1461,7 +1461,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GraphEdge as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GraphEdge::default().to_arrow()?),
@@ -1474,7 +1474,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GraphNode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A string-based ID representing a node in a graph.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GraphNode::default().to_arrow()?),
@@ -1487,7 +1487,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <GraphType as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies if a graph has directed or undirected edges.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GraphType::default().to_arrow()?),
@@ -1509,7 +1509,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <HalfSize2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 deprecation_summary: None,
                 custom_placeholder: Some(HalfSize2D::default().to_arrow()?),
@@ -1522,7 +1522,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <HalfSize3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 deprecation_summary: None,
                 custom_placeholder: Some(HalfSize3D::default().to_arrow()?),
@@ -1535,7 +1535,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ImageBuffer as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1548,7 +1548,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ImageFormat as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
                 deprecation_summary: None,
                 custom_placeholder: Some(ImageFormat::default().to_arrow()?),
@@ -1561,7 +1561,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ImagePlaneDistance as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
                 deprecation_summary: None,
                 custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
@@ -1574,7 +1574,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Interactive as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Interactive::default().to_arrow()?),
@@ -1587,7 +1587,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <InterpolationMode as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies how values between data points are interpolated in time series.",
                 deprecation_summary: None,
                 custom_placeholder: Some(InterpolationMode::default().to_arrow()?),
@@ -1617,7 +1617,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <IsKeyframe as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether a [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample) contains a keyframe (also known as a sync sample or IDR).\n\nA keyframe in this sense must be _decoder re-entrant_: a decoder must be able to start\ndecoding the stream from this sample alone, with no prior decoder state.\nNot every intra-coded frame qualifies. Some codecs have intra-only frames that may\nstill reference existing decoder state and are therefore not valid sync points.\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for the codec-specific definition of a keyframe.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1630,7 +1630,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <KeyValuePairs as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A map of string keys to string values.\n\nThis component can be used to attach arbitrary metadata or annotations to entities.\nEach key-value pair is stored as a UTF-8 string mapping.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(KeyValuePairs::default().to_arrow()?),
@@ -1643,7 +1643,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <KeypointId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
                 deprecation_summary: None,
                 custom_placeholder: Some(KeypointId::default().to_arrow()?),
@@ -1656,7 +1656,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LatLon as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 deprecation_summary: None,
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
@@ -1669,7 +1669,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Length as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Length::default().to_arrow()?),
@@ -1682,7 +1682,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LineStrip2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
                 deprecation_summary: None,
                 custom_placeholder: Some(LineStrip2D::default().to_arrow()?),
@@ -1695,7 +1695,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LineStrip3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A line strip in 3D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
                 deprecation_summary: None,
                 custom_placeholder: Some(LineStrip3D::default().to_arrow()?),
@@ -1708,7 +1708,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <LinearSpeed as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Linear speed, used for translation speed for example.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1721,7 +1721,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MagnificationFilter as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Filter used when a single texel/pixel of an image is displayed larger than a single screen pixel.\n\nThis happens when zooming into an image, when displaying a low-resolution image in a large area,\nor when viewing an image up close in 3D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
@@ -1747,7 +1747,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MarkerShape as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MarkerShape::default().to_arrow()?),
@@ -1801,7 +1801,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MarkerSize as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MarkerSize::default().to_arrow()?),
@@ -1814,7 +1814,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MediaType as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MediaType::default().to_arrow()?),
@@ -1827,7 +1827,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <MeshFaceRendering as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Determines which faces of a mesh are rendered.\n\nFor this purpose, we assume that the winding order of vertices in a mesh is\nconsistent and that front faces are defined as those with vertices in counter clockwise order.",
                 deprecation_summary: None,
                 custom_placeholder: Some(MeshFaceRendering::default().to_arrow()?),
@@ -1853,7 +1853,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Name as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.\n\nThis name is only a display label, never an identifier: it is not used to look anything\nup, and two items may share the same name.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Name::default().to_arrow()?),
@@ -1866,7 +1866,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Opacity as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Opacity::default().to_arrow()?),
@@ -1879,7 +1879,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <OpticalDensity as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Dimensionless natural-log optical depth.\n\nHigh values lead to more opaque surfaces, lower to more transparent ones.\nMore accurately, a value of 1 attenuates light to `exp(-1)` over the reference distance.",
                 deprecation_summary: None,
                 custom_placeholder: Some(OpticalDensity::default().to_arrow()?),
@@ -1892,7 +1892,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PinholeProjection as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
                 deprecation_summary: None,
                 custom_placeholder: Some(PinholeProjection::default().to_arrow()?),
@@ -1905,7 +1905,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Plane3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`,\nwhere `xyz` is the plane's normal and `d` the distance of the plane from the origin.\nThis representation is also known as the Hesse normal form.\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -1918,7 +1918,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <PointShading as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Defines how points are shaded.",
                 deprecation_summary: None,
                 custom_placeholder: Some(PointShading::default().to_arrow()?),
@@ -1940,7 +1940,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Position2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A position in 2D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Position2D::default().to_arrow()?),
@@ -1953,7 +1953,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Position3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A position in 3D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Position3D::default().to_arrow()?),
@@ -1966,7 +1966,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Radius as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Radius::default().to_arrow()?),
@@ -1979,7 +1979,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Range1D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Range1D::default().to_arrow()?),
@@ -1992,7 +1992,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Resolution as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Resolution::default().to_arrow()?),
@@ -2005,7 +2005,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <RotationAxisAngle as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the\nangle is zero in which case it is treated as an identity.",
                 deprecation_summary: None,
                 custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
@@ -2018,7 +2018,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <RotationQuat as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is treated as an invalid transform.",
                 deprecation_summary: None,
                 custom_placeholder: Some(RotationQuat::default().to_arrow()?),
@@ -2031,7 +2031,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Scalar as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Scalar::default().to_arrow()?),
@@ -2044,7 +2044,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Scale3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Scale3D::default().to_arrow()?),
@@ -2057,7 +2057,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SchemaId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 16-bit unique identifier for a schema within the MCAP file.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2070,7 +2070,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ShowLabels as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2083,7 +2083,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SphericalHarmonics3Rgb as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2096,7 +2096,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <SphericalHarmonicsDegree as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\n`0` renders the view-independent base color only, and is the fastest.\nEach higher degree brings in more view-dependent detail, at the cost of fetching and\nevaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb)):\n3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.\n\nLowering this in the blueprint can make the rendering a lot faster.\n\nDefaults to 3, i.e. every coefficient the data has.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(SphericalHarmonicsDegree::default().to_arrow()?),
@@ -2109,7 +2109,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <StrokeWidth as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
                 deprecation_summary: None,
                 custom_placeholder: Some(StrokeWidth::default().to_arrow()?),
@@ -2122,7 +2122,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TensorData as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TensorData::default().to_arrow()?),
@@ -2135,7 +2135,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TensorDimensionIndexSelection as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies a concrete index on a tensor dimension.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TensorDimensionIndexSelection::default().to_arrow()?),
@@ -2148,7 +2148,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TensorHeightDimension as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies which dimension to use for height.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TensorHeightDimension::default().to_arrow()?),
@@ -2161,7 +2161,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TensorWidthDimension as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies which dimension to use for width.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TensorWidthDimension::default().to_arrow()?),
@@ -2174,7 +2174,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Texcoord2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 2D texture UV coordinate.\n\nTexture coordinates specify a position on a 2D texture.\nA range from 0-1 covers the entire texture in the respective dimension.\nUnless configured otherwise, the texture repeats outside of this range.\nRerun uses top-left as the origin for UV coordinates.\n\n  0     U     1\n0 + --------- →\n  |           .\nV |           .\n  |           .\n1 ↓ . . . . . .\n\nThis is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,\nwhich places the origin at the bottom-left.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Texcoord2D::default().to_arrow()?),
@@ -2187,7 +2187,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Text as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A string of text, e.g. for labels and text documents.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Text::default().to_arrow()?),
@@ -2200,7 +2200,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TextLogLevel as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The severity level of a text log message.\n\nRecommended to be one of:\n* `\"CRITICAL\"`\n* `\"ERROR\"`\n* `\"WARN\"`\n* `\"INFO\"`\n* `\"DEBUG\"`\n* `\"TRACE\"`",
                 deprecation_summary: None,
                 custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
@@ -2213,7 +2213,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Timestamp as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2226,7 +2226,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TransformFrameId as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A string identifier for a transform frame.\n\nTransform frames may be derived from entity paths to refer to Rerun's implicit\nentity path driven hierarchy which is defined via [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) etc..\nThese implicit transform frames look like `tf#path/to/entity`.\n\nNote that any [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)s logged with both `parent_frame` and `child_frame` set\ndescribes a relationship between these parent and child transform frames, **not** the transform frame\nthat the entity path may be using (defined by an [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)).",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2239,7 +2239,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TransformMat3x3 as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
                 deprecation_summary: None,
                 custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
@@ -2252,7 +2252,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TransformRelation as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TransformRelation::default().to_arrow()?),
@@ -2274,7 +2274,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Translation3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A translation vector in 3D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Translation3D::default().to_arrow()?),
@@ -2287,7 +2287,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <TriangleIndices as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
                 deprecation_summary: None,
                 custom_placeholder: Some(TriangleIndices::default().to_arrow()?),
@@ -2300,7 +2300,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Unit as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Unit of a measured value, e.g. `\"Pa\"`, `\"lux\"`, `\"°C\"`, `\"m\"`.\n\nUsed for display only. It does not convert or scale the value.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2313,7 +2313,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ValueRange as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ValueRange::default().to_arrow()?),
@@ -2326,7 +2326,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Variance as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Variance of a scalar measurement, i.e. σ², in the units of the value squared.\n\nA value of `0` is a perfectly known value and draws no error band.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2339,7 +2339,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Vector2D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A vector in 2D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Vector2D::default().to_arrow()?),
@@ -2352,7 +2352,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Vector3D as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "A vector in 3D space.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Vector3D::default().to_arrow()?),
@@ -2365,7 +2365,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VideoCodec as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2399,7 +2399,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VideoSample as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Video sample data (also known as \"video chunk\").\n\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nKeyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2412,7 +2412,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VideoTimestamp as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
                 deprecation_summary: None,
                 custom_placeholder: Some(VideoTimestamp::default().to_arrow()?),
@@ -2425,7 +2425,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <ViewCoordinates as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "An orientation convention for a camera or 3D view.\n\nOn [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), this component controls the camera orientation and projection direction.\nOn [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view), it controls the 3D view's eye orientation, navigation, and default grid plane.\nA logged [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThe three directions are always ordered as [x, y, z] and specify where each positive axis points.\nFor example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
@@ -2438,7 +2438,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <Visible as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Visible::default().to_arrow()?),
@@ -2451,7 +2451,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VoxelIndex as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Integer index of a voxel in a sparse 3D voxel grid.\n\nThe voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2464,7 +2464,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VoxelSize as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "The scene-unit dimensions of one voxel in a sparse 3D voxel grid.\n\nEach component is the size of a voxel along the corresponding local grid axis.\nAll components must be finite and positive.",
                 deprecation_summary: None,
                 custom_placeholder: None,
@@ -2477,7 +2477,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
         (
             <VoxelValue as Component>::name(),
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: "Optional scalar occupancy or value associated with a voxel.",
                 deprecation_summary: None,
                 custom_placeholder: None,

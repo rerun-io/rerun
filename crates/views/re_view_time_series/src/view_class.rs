@@ -22,7 +22,7 @@ use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, DragAndDropFeedback,
+    BlueprintContext as _, ComponentMatch, DataResultInteractionAddress, DragAndDropFeedback,
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
     RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
     SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
@@ -274,27 +274,19 @@ impl ViewClass for TimeSeriesView {
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        // Note that point series has the same visualizable conditions, it doesn't matter which one we look at here.
-        let Some(visualizable_entities) = ctx
-            .visualizable_entities_per_visualizer
-            .get(&SeriesLinesSystem::identifier())
-        else {
-            return ViewSpawnHeuristics::empty();
-        };
-
-        let entities_with_exact_match =
-            visualizable_entities
-                .iter()
-                .filter_map(|(entity_path, reason)| {
-                    if !include_entity(entity_path) {
-                        return None;
-                    }
-                    should_auto_spawn_time_series(reason).then_some(entity_path)
-                });
+        let entities = ctx
+            .iter_visualizable_entities_for_view_class(Self::identifier())
+            .flat_map(|(_, visualizable)| {
+                visualizable
+                    .iter()
+                    .filter(|(_, reason)| should_auto_spawn_time_series(reason))
+                    .map(|(entity_path, _)| entity_path)
+            });
 
         ViewSpawnHeuristics::new_with_order_preserved(
-            entities_with_exact_match
-                .into_iter()
+            entities
+                .filter(|entity_path| include_entity(entity_path))
+                .unique()
                 .map(|entity_path| RecommendedView::new_single_entity(entity_path.clone())),
         )
     }
@@ -312,28 +304,28 @@ impl ViewClass for TimeSeriesView {
                 .map(|(visualizer, reason)| (*visualizer, *reason))
                 .collect();
 
-        let mut recommended = RecommendedVisualizers::new(
-            available_visualizers
-                .iter()
-                .filter_map(|(visualizer, reason)| {
-                    // Filter out entities that weren't indicated.
-                    // We later fall back on to line visualizers for those.
-                    if indicated_entities_per_visualizer
-                        .get(visualizer)?
-                        .contains(entity_path)
-                    {
-                        let all_mappings: Vec<RecommendedMappings> = all_scalar_mappings(reason)
-                            .map(|(component, source)| RecommendedMappings::new(component, source))
-                            .collect();
-                        Vec1::try_from_vec(all_mappings)
-                            .ok()
-                            .map(|mappings| (*visualizer, mappings))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        );
+        let mut recommended = RecommendedVisualizers::empty();
+        for (visualizer, reason) in visualizers_with_reason {
+            // Non-indicated entities fall back to line visualizers below.
+            if indicated_entities_per_visualizer
+                .get(visualizer)
+                .is_some_and(|entities| entities.contains(entity_path))
+            {
+                let mappings = Vec1::try_from_vec(reason.heuristic_mappings().cloned().collect())
+                    .or_else(|_| {
+                        Vec1::try_from_vec(
+                            all_scalar_mappings(reason)
+                                .map(|(component, source)| {
+                                    RecommendedMappings::new(component, source)
+                                })
+                                .collect(),
+                        )
+                    });
+                if let Ok(mappings) = mappings {
+                    recommended.insert(*visualizer, mappings, true);
+                }
+            }
+        }
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
         if recommended.all_recommendations().is_empty()
@@ -368,8 +360,7 @@ impl ViewClass for TimeSeriesView {
         recommended
     }
 
-    /// Accept drops of scalar components onto the time series view. For each dropped component, a
-    /// new `SeriesLines` visualizer is added that remaps `Scalars.scalars` from it.
+    /// Prefer semantic and heuristic mappings for dropped components, falling back to scalar lines.
     fn handle_component_drop(
         &self,
         ctx: &ViewerContext<'_>,
@@ -382,8 +373,16 @@ impl ViewClass for TimeSeriesView {
             view_id,
             component_paths,
             released,
-            SeriesLinesSystem::identifier(),
-            Scalars::descriptor_scalars().component,
+            &[
+                (
+                    SeriesLinesSystem::identifier(),
+                    Scalars::descriptor_scalars().component,
+                ),
+                (
+                    MeasurementsSeriesSystem::identifier(),
+                    Measurements::descriptor_values().component,
+                ),
+            ],
         ) {
             re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
             re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
@@ -976,7 +975,7 @@ impl ViewClass for TimeSeriesView {
 }
 
 fn all_scalar_mappings_for(
-    matches: &IntMap<ComponentIdentifier, DatatypeMatch>,
+    matches: &IntMap<ComponentIdentifier, ComponentMatch>,
 ) -> Vec<RecommendedMappings> {
     let target = Scalars::descriptor_scalars().component;
 
@@ -984,21 +983,26 @@ fn all_scalar_mappings_for(
         .iter()
         .sorted_by_key(|(k, _)| **k)
         .flat_map(|(source_component, match_info)| match match_info {
-            DatatypeMatch::NativeSemantics { .. } => {
+            ComponentMatch::HeuristicMapping { mappings, .. } => {
+                Either::Left(std::iter::once(mappings.clone()))
+            }
+            ComponentMatch::NativeSemantics { .. } => {
                 Either::Left(std::iter::once(RecommendedMappings::new(
                     target,
                     VisualizerComponentSource::simple_map(*source_component),
                 )))
             }
 
-            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
-                if selectors.is_empty() {
+            ComponentMatch::PhysicalDatatypeOnly {
+                field_accessors, ..
+            } => {
+                if field_accessors.is_empty() {
                     Either::Left(std::iter::once(RecommendedMappings::new(
                         target,
                         VisualizerComponentSource::simple_map(*source_component),
                     )))
                 } else {
-                    Either::Right(selectors.iter().map(|(selector, _datatype)| {
+                    Either::Right(field_accessors.iter().map(|(selector, _datatype)| {
                         RecommendedMappings::new(
                             target,
                             VisualizerComponentSource::SourceComponent {
@@ -1070,7 +1074,8 @@ const RECOMMENDED_DATATYPES: &[DataType] =
     &[DataType::Float64, DataType::Float32, DataType::Float16];
 
 fn should_auto_spawn_time_series(reason: &VisualizableReason) -> bool {
-    has_native_scalar_semantics(reason) && all_scalar_mappings(reason).next().is_some()
+    (has_native_scalar_semantics(reason) && all_scalar_mappings(reason).next().is_some())
+        || reason.heuristic_mappings().next().is_some()
 }
 
 fn has_native_scalar_semantics(reason: &VisualizableReason) -> bool {
@@ -1086,8 +1091,8 @@ fn has_native_scalar_semantics(reason: &VisualizableReason) -> bool {
     m.matches.values().any(|match_info| {
         matches!(
             match_info,
-            DatatypeMatch::NativeSemantics { component_type, .. }
-            | DatatypeMatch::PhysicalDatatypeOnly { component_type, .. }
+            ComponentMatch::NativeSemantics { component_type, .. }
+            | ComponentMatch::PhysicalDatatypeOnly { component_type, .. }
                 if component_type.as_ref() == Some(&scalar_type)
         )
     })
@@ -1122,10 +1127,13 @@ fn all_scalar_mappings(
         }
 
         let primary_match_order = match match_info {
-            DatatypeMatch::NativeSemantics { .. } => {
+            ComponentMatch::HeuristicMapping { .. } => {
+                return Either::Left(Either::Right(std::iter::empty()));
+            }
+            ComponentMatch::NativeSemantics { .. } => {
                 i32::from(*source_component != target_component)
             }
-            DatatypeMatch::PhysicalDatatypeOnly { .. } => {
+            ComponentMatch::PhysicalDatatypeOnly { .. } => {
                 if *source_component == target_component {
                     0
                 } else {
@@ -1135,7 +1143,10 @@ fn all_scalar_mappings(
         };
 
         match match_info {
-            DatatypeMatch::NativeSemantics {
+            ComponentMatch::HeuristicMapping { .. } => {
+                Either::Left(Either::Right(std::iter::empty()))
+            }
+            ComponentMatch::NativeSemantics {
                 arrow_data_type, ..
             } => Either::Left(Either::Left(std::iter::once((
                 primary_match_order,
@@ -1145,15 +1156,13 @@ fn all_scalar_mappings(
                 0usize,
                 String::new(),
             )))),
-            DatatypeMatch::PhysicalDatatypeOnly {
+            ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type,
-                selectors,
+                field_accessors,
                 ..
             } => {
-                if selectors.is_empty() {
-                    if is_rerun_native_type
-                        || RECOMMENDED_DATATYPES.contains(match_info.arrow_data_type())
-                    {
+                if field_accessors.is_empty() {
+                    if is_rerun_native_type || RECOMMENDED_DATATYPES.contains(arrow_data_type) {
                         Either::Left(Either::Left(std::iter::once((
                             primary_match_order,
                             is_rerun_native_type,
@@ -1167,7 +1176,7 @@ fn all_scalar_mappings(
                     }
                 } else {
                     // Nested field access: selector_index preserves field definition order.
-                    Either::Right(selectors.iter().enumerate().filter_map(
+                    Either::Right(field_accessors.iter().enumerate().filter_map(
                         move |(selector_index, (selector, datatype))| {
                             (is_rerun_native_type || RECOMMENDED_DATATYPES.contains(datatype))
                                 .then_some((
@@ -2227,6 +2236,165 @@ mod tests {
         re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
     }
 
+    #[test]
+    fn test_scalar_recommendations_prefer_native_then_heuristic_matches() {
+        let entity = EntityPath::from("sensor");
+        let target = Scalars::descriptor_scalars().component;
+        let heuristic = RecommendedMappings::new(
+            target,
+            VisualizerComponentSource::SourceComponent {
+                source_component: "message".into(),
+                selector: ".data".into(),
+            },
+        );
+        let direct = RecommendedMappings::new(
+            target,
+            VisualizerComponentSource::simple_map("other".into()),
+        );
+        let visualizer = SeriesLinesSystem::identifier();
+        let indicated_entities = IndicatedEntities(std::iter::once(entity.clone()).collect());
+        let indicated =
+            PerVisualizerType(std::iter::once((visualizer, &indicated_entities)).collect());
+
+        // Keep the heuristic fixed while its competitor changes from a physical-only Float64
+        // match to a native scalar match: native semantics > heuristic > physical datatype.
+        for native in [false, true] {
+            let direct_match = if native {
+                ComponentMatch::NativeSemantics {
+                    arrow_data_type: DataType::Float64,
+                    component_type: Scalars::descriptor_scalars().component_type,
+                }
+            } else {
+                ComponentMatch::PhysicalDatatypeOnly {
+                    arrow_data_type: DataType::Float64,
+                    component_type: None,
+                    field_accessors: vec![],
+                }
+            };
+            let reason =
+                VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
+                    target_component: target,
+                    matches: [
+                        (
+                            "message".into(),
+                            ComponentMatch::HeuristicMapping {
+                                component_type: None,
+                                mappings: heuristic.clone(),
+                            },
+                        ),
+                        ("other".into(), direct_match),
+                    ]
+                    .into_iter()
+                    .collect(),
+                });
+            let result = TimeSeriesView.recommended_visualizers_for_entity(
+                &entity,
+                &[(visualizer, &reason)],
+                &indicated,
+            );
+            // The time-series override must select the same winner for recommendations and auto-spawning.
+            assert!(should_auto_spawn_time_series(&reason));
+            let expected = if native {
+                vec![direct.clone()]
+            } else {
+                vec![heuristic.clone()]
+            };
+            assert_eq!(
+                result.all_recommendations()[&visualizer].as_slice(),
+                expected
+            );
+            assert_eq!(result.into_auto_spawned()[&visualizer].as_slice(), expected);
+        }
+    }
+
+    #[test]
+    fn test_indicated_custom_scalar_recommendations() {
+        let entity = EntityPath::from("sensor");
+
+        // Styling metadata can indicate a visualizer while custom scalar data only matches physically;
+        // indication does not imply a native semantic match for the required input!
+        let indicated_entities = IndicatedEntities(std::iter::once(entity.clone()).collect());
+
+        // Explicit indication must support all three visualizers with their respective targets,
+        // not just the line-only fallback.
+        for (visualizer, target) in [
+            (
+                SeriesLinesSystem::identifier(),
+                Scalars::descriptor_scalars().component,
+            ),
+            (
+                SeriesPointsSystem::identifier(),
+                Scalars::descriptor_scalars().component,
+            ),
+            (
+                MeasurementsSeriesSystem::identifier(),
+                Measurements::descriptor_values().component,
+            ),
+        ] {
+            // With no native or heuristic matches, fall back to every physical scalar match.
+            // Nested field access is already resolved here; this tests recommendations, not schema matching.
+            let reason =
+                VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
+                    target_component: target,
+                    matches: [
+                        (
+                            "temperature".into(),
+                            ComponentMatch::PhysicalDatatypeOnly {
+                                arrow_data_type: DataType::Float64,
+                                component_type: None,
+                                field_accessors: vec![],
+                            },
+                        ),
+                        (
+                            "pressure".into(),
+                            ComponentMatch::PhysicalDatatypeOnly {
+                                arrow_data_type: DataType::Float64,
+                                component_type: None,
+                                field_accessors: vec![],
+                            },
+                        ),
+                        (
+                            "nested".into(),
+                            ComponentMatch::PhysicalDatatypeOnly {
+                                arrow_data_type: DataType::Struct(Default::default()),
+                                component_type: None,
+                                field_accessors: vec![(
+                                    ".value".parse().unwrap(),
+                                    DataType::Float64,
+                                )],
+                            },
+                        ),
+                    ]
+                    .into_iter()
+                    .collect(),
+                });
+            let indicated =
+                PerVisualizerType(std::iter::once((visualizer, &indicated_entities)).collect());
+            let result = TimeSeriesView.recommended_visualizers_for_entity(
+                &entity,
+                &[(visualizer, &reason)],
+                &indicated,
+            );
+            // Return one mapping per source in identifier order, retaining nested selectors.
+            let expected = [("nested", ".value"), ("pressure", ""), ("temperature", "")].map(
+                |(source, selector)| {
+                    RecommendedMappings::new(
+                        target,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: source.into(),
+                            selector: selector.into(),
+                        },
+                    )
+                },
+            );
+            assert_eq!(
+                result.all_recommendations()[&visualizer].as_slice(),
+                expected
+            );
+            assert_eq!(result.into_auto_spawned()[&visualizer].as_slice(), expected);
+        }
+    }
+
     /// Regression: non-recommended physical datatype (`Int32`) must not cause
     /// `SeriesLinesSystem` to be recommended with an empty mapping.
     #[test]
@@ -2237,10 +2405,10 @@ mod tests {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
-                    DatatypeMatch::PhysicalDatatypeOnly {
+                    ComponentMatch::PhysicalDatatypeOnly {
                         arrow_data_type: DataType::Int32,
                         component_type: None,
-                        selectors: vec![],
+                        field_accessors: vec![],
                     },
                 ))
                 .collect(),
@@ -2265,7 +2433,7 @@ mod tests {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
-                    DatatypeMatch::NativeSemantics {
+                    ComponentMatch::NativeSemantics {
                         arrow_data_type: DataType::Float64,
                         component_type: None,
                     },

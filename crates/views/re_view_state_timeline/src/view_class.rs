@@ -236,8 +236,10 @@ impl ViewClass for StateTimelineView {
             view_id,
             component_paths,
             released,
-            crate::StateVisualizer::identifier(),
-            re_sdk_types::archetypes::StateChange::descriptor_state().component,
+            &[(
+                crate::StateVisualizer::identifier(),
+                re_sdk_types::archetypes::StateChange::descriptor_state().component,
+            )],
         ) {
             re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
             re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {

@@ -1,9 +1,10 @@
 use re_viewer_context::{
-    AppOptions, FallbackProviderRegistry, ViewClassRegistry, ViewClassRegistryError,
+    AppOptions, FallbackProviderRegistry, SharedReflection, ViewClassRegistry,
+    ViewClassRegistryError,
 };
 
 pub fn create_view_class_registry(
-    reflection: &re_types_core::reflection::Reflection,
+    reflection: &SharedReflection,
     app_options: &AppOptions,
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<ViewClassRegistry, ViewClassRegistryError> {
@@ -20,7 +21,7 @@ pub fn create_view_class_registry(
 
 /// Add built-in views to the registry.
 fn populate_view_class_registry_with_builtin(
-    reflection: &re_types_core::reflection::Reflection,
+    reflection: &SharedReflection,
     app_options: &AppOptions,
     view_class_registry: &mut ViewClassRegistry,
     fallback_registry: &mut FallbackProviderRegistry,

@@ -16,7 +16,6 @@ use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind, TimeReal};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
-use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
@@ -96,7 +95,7 @@ pub struct TestContext {
     pub blueprint_query: LatestAtQuery,
     pub component_ui_registry: ComponentUiRegistry,
     pub component_fallback_registry: FallbackProviderRegistry,
-    pub reflection: Reflection,
+    pub reflection: re_viewer_context::SharedReflection,
 
     pub connection_registry: re_redap_client::ConnectionRegistryHandle,
 
@@ -331,7 +330,10 @@ impl TestContext {
         let component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        let reflection = re_sdk_types::reflection::reflection().clone();
+        let mut reflection = re_sdk_types::reflection::reflection().clone();
+        re_lenses::register_heuristic_mappings(&mut reflection.component_identifiers)
+            .expect("built-in lenses must build");
+        let reflection = Arc::new(RwLock::new(reflection));
 
         Self {
             app_options: AppOptions::test(),
@@ -721,7 +723,7 @@ impl TestContext {
                 is_test: true,
 
                 app_options: &self.app_options,
-                reflection: &self.reflection,
+                reflection: &self.reflection.read(),
 
                 egui_ctx,
                 command_sender: &self.command_sender,

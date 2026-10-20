@@ -51,7 +51,7 @@ use re_sdk_types::components::{
     FillRatio, GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode,
     IsKeyframe, Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name,
     Opacity, OpticalDensity, PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels,
-    SphericalHarmonicsDegree, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
+    SphericalHarmonicsDegree, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, Unit,
     ValueRange, Vector3D, VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
@@ -141,6 +141,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
+    registry.add_singleline_edit_or_view::<Unit>(edit_singleline_string);
     registry.add_singleline_edit_or_view(transform_frame_id::edit_or_view_transform_frame_id);
 
     // Enums:

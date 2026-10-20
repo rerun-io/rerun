@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
+use parking_lot::{RwLock, RwLockReadGuard};
 use re_async::AsyncRuntimeHandle;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
@@ -210,7 +211,7 @@ pub struct AppCore {
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
-    reflection: re_types_core::reflection::Reflection,
+    reflection: re_viewer_context::SharedReflection,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
@@ -403,12 +404,18 @@ impl App {
             }
         };
 
-        let reflection = re_sdk_types::reflection::reflection().clone();
+        let mut reflection = re_sdk_types::reflection::reflection().clone();
+        if let Err(err) =
+            re_lenses::register_heuristic_mappings(&mut reflection.component_identifiers)
+        {
+            re_log::error!("Failed to register heuristic mappings: {err}");
+        }
 
         // The blueprint validator needs to know the expected datatype of every component.
         // `Reflection::components` is never mutated after this point (unlike the archetype
         // reflection, which embedders can extend), so a snapshot is safe to share.
         let component_reflection = Arc::new(reflection.components.clone());
+        let reflection = Arc::new(RwLock::new(reflection));
 
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
@@ -704,8 +711,8 @@ impl AppCore {
         self.state.app_options()
     }
 
-    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
-        &self.reflection
+    pub fn reflection(&self) -> RwLockReadGuard<'_, re_types_core::reflection::Reflection> {
+        self.reflection.read()
     }
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
@@ -971,19 +978,28 @@ impl AppCore {
     }
 
     /// Registers runtime reflection metadata for a custom archetype.
+    ///
+    /// Make sure to make reflection edits before sending any data to the viewer:
+    /// Changes do not trigger reprocessing of existing data or invalidate cached visualizer matches.
+    #[expect(clippy::needless_pass_by_ref_mut)] // Require exclusive viewer access while editing reflection.
     pub fn add_archetype_reflection(
         &mut self,
         archetype_name: re_sdk_types::ArchetypeName,
         archetype_reflection: re_sdk_types::reflection::ArchetypeReflection,
     ) {
+        let mut reflection = self.reflection.write();
         for field in &archetype_reflection.fields {
             let descriptor = field.component_descriptor(archetype_name);
-            self.reflection
+            reflection
                 .component_identifiers
-                .insert(descriptor.component, descriptor);
+                .entry(descriptor.component)
+                .and_modify(|reflection| {
+                    reflection.update_descriptor(descriptor.component_type, descriptor.archetype);
+                })
+                .or_insert_with(|| descriptor.into());
         }
 
-        self.reflection
+        reflection
             .archetypes
             .insert(archetype_name, archetype_reflection);
     }
@@ -999,17 +1015,22 @@ impl AppCore {
             &mut self.component_fallback_registry,
         )?;
         self.reflection
+            .write()
             .views
             .insert(T::identifier(), view_reflection);
         Ok(())
     }
 
     /// Edits the viewer's runtime reflection metadata.
+    ///
+    /// Make sure to make reflection edits before sending any data to the viewer:
+    /// Changes do not trigger reprocessing of existing data or invalidate cached visualizer matches.
+    #[expect(clippy::needless_pass_by_ref_mut)] // Require exclusive viewer access while editing reflection.
     pub fn edit_reflection(
         &mut self,
         edit: impl FnOnce(&mut re_sdk_types::reflection::Reflection),
     ) {
-        edit(&mut self.reflection);
+        edit(&mut self.reflection.write());
     }
 
     /// Extends an already registered view class with additional systems (visualizers, context systems, fallbacks, etc.).
