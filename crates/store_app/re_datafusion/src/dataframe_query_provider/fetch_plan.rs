@@ -21,18 +21,17 @@
 //! * across segments, batches follow the caller-provided global segment order
 //!   (`SegmentId` ASC), which is what keeps the `[rerun_segment_id ASC, ..]`
 //!   output-ordering claim honest;
-//! * within a segment, rows are sorted by the `{timeline}:start` value
+//! * within a segment, rows are sorted by the `chunk_timeline_start` value
 //!   (chunk `time_min` on the query's filtered index), with static chunks and
-//!   null-`:start` rows first. The v2 pipeline's plan-cursor watermark derives
-//!   each segment's safe horizon from plan position, which is only sound if
-//!   plan order equals `time_min` order.
+//!   null-`chunk_timeline_start` rows first. The v2 pipeline's plan-cursor
+//!   watermark derives each segment's safe horizon from plan position, which
+//!   is only sound if plan order equals `time_min` order.
 
 use std::collections::HashSet;
 
-use arrow::array::RecordBatch;
-use re_dataframe::TimelineName;
-use re_dataframe::external::re_chunk::TimeColumn;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use arrow::array::{Array as _, Int64Array, RecordBatch};
+use re_arrow_util::RecordBatchExt as _;
+use re_protos::cloud::v1alpha1::ext::ChunkCandidatesDataframe;
 use re_redap_client::{ApiError, ApiResult};
 use re_types_core::SegmentId;
 
@@ -50,7 +49,7 @@ pub fn extract_segment_id(
     origin: &re_uri::Origin,
     chunk_info: &RecordBatch,
 ) -> ApiResult<SegmentId> {
-    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+    let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(chunk_info)
         .map_err(|err| ApiError::internal_quiver(origin, err))?;
 
@@ -60,7 +59,7 @@ pub fn extract_segment_id(
     re_log::debug_assert!(
         (&segment_ids).into_iter().all(|id| id == first),
         "`chunk_info` batch mixes segments; both the per-segment byte accounting and the \
-         within-segment `:start` sort assume one segment per batch"
+         within-segment `chunk_timeline_start` sort assume one segment per batch"
     );
 
     Ok(segment_ids.value_owned(0))
@@ -71,43 +70,48 @@ fn extract_chunk_sizes(
     origin: &re_uri::Origin,
     chunk_info: &RecordBatch,
 ) -> ApiResult<quiver::Column<u64>> {
-    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+    ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN
         .extract(chunk_info)
         .map_err(|err| ApiError::internal_quiver(origin, err))
 }
 
-/// Read a `{timeline}:start` column as raw `i64`s plus its null mask.
+/// Read the `chunk_timeline_start` column as raw `i64`s plus its null mask.
 ///
-/// `:start` carries the timeline's `time_min` for each chunk. The OSS server types the column
-/// `Int64` (see `QueryDatasetResponse::field_timeline_start`); other servers may emit
-/// `TimestampNanosecondArray` / `Time64NanosecondArray` / `DurationNanosecondArray` matching the
-/// timeline's native dtype. All four are i64 under the hood, so read through
-/// [`TimeColumn::read_nullable_array`] rather than downcasting to any one of them.
+/// `chunk_timeline_start` carries the selection timeline's `time_min` for each chunk. Every batch
+/// entering the pipeline carries it as `Int64` (`normalize_legacy_candidate_batches` converts
+/// `query_dataset` batches), so any other type is an internal error.
 ///
 /// Callers that must not fail on a malformed column read the array directly and discard the
 /// error instead of going through here.
 pub fn read_start_column(
     origin: &re_uri::Origin,
     start_col: &dyn arrow::array::Array,
-    col_name: &str,
 ) -> ApiResult<(
     arrow::buffer::ScalarBuffer<i64>,
     Option<arrow::buffer::NullBuffer>,
 )> {
-    TimeColumn::read_nullable_array(start_col).map_err(|err| {
-        ApiError::internal(
-            origin,
-            format!("`{col_name}` column has unsupported type: {err}"),
-        )
-    })
+    let array = start_col
+        .as_any()
+        .downcast_ref::<Int64Array>()
+        .ok_or_else(|| {
+            ApiError::internal(
+                origin,
+                format!(
+                    "`{}` column has unsupported type: expected Int64, got {:?}",
+                    ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME,
+                    start_col.data_type()
+                ),
+            )
+        })?;
+    Ok((array.values().clone(), array.nulls().cloned()))
 }
 
 /// Per-row sort key for within-segment plan order.
 ///
-/// Time-less rows (static chunk, or null `:start`) map to `i64::MIN` so they sort before every
-/// temporal value. That sentinel cannot collide with a real `time_min`: `i64::MIN` is reserved as
-/// `TimeInt`'s static marker, so its smallest temporal value is `i64::MIN + 1`, and `TimeInt`'s own
-/// `as_i64` maps static to `i64::MIN` in exactly the same way.
+/// Time-less rows (static chunk, or null `chunk_timeline_start`) map to `i64::MIN` so they sort
+/// before every temporal value. That sentinel cannot collide with a real `time_min`: `i64::MIN` is
+/// reserved as `TimeInt`'s static marker, so its smallest temporal value is `i64::MIN + 1`, and
+/// `TimeInt`'s own `as_i64` maps static to `i64::MIN` in exactly the same way.
 ///
 /// Placing time-less chunks first means a plan-position cursor gates all emission on them, closing
 /// the gap where a late-arriving static chunk misses rows that already emitted.
@@ -124,26 +128,28 @@ fn row_start_key(
     }
 }
 
-/// Stable-sort a single-segment `chunk_info` batch by `{timeline}:start`
-/// ascending, static and null-`:start` rows first.
+/// Stable-sort a single-segment `chunk_info` batch by `chunk_timeline_start`
+/// ascending, static and null-`chunk_timeline_start` rows first.
 ///
-/// No-ops (returning the batch unchanged) when the query has no temporal
-/// index or the server did not attach the `:start` column — those cases fall
-/// back to completion-only emission and have no time order to respect.
+/// Returns the batch unchanged when `starts_eligible` is `false`: the query has no temporal
+/// index, or `chunk_timeline_start` is not trustworthy for this request.
+/// That case falls back to completion-only emission, so there is no time order to respect.
 fn sort_chunk_info_rows_by_start(
     origin: &re_uri::Origin,
     chunk_info: RecordBatch,
-    start_col_name: Option<&str>,
+    starts_eligible: bool,
 ) -> ApiResult<RecordBatch> {
-    let Some(col_name) = start_col_name else {
+    if !starts_eligible {
         return Ok(chunk_info);
-    };
-    let Some(start_col) = chunk_info.column_by_name(col_name) else {
-        return Ok(chunk_info);
-    };
+    }
 
-    let (start_values, start_nulls) = read_start_column(origin, start_col.as_ref(), col_name)?;
-    let is_statics = QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC
+    let col_name = ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME;
+    let start_col = chunk_info
+        .try_get_column(col_name)
+        .map_err(|err| ApiError::internal(origin, err.to_string()))?;
+
+    let (start_values, start_nulls) = read_start_column(origin, start_col.as_ref())?;
+    let is_statics = ChunkCandidatesDataframe::COLUMN_CHUNK_IS_STATIC
         .extract(&chunk_info)
         .map_err(|err| ApiError::internal_quiver(origin, err))?;
 
@@ -176,7 +182,7 @@ fn sort_chunk_info_rows_by_start(
             origin,
             None,
             err,
-            "sorting chunk-info rows by :start",
+            "sorting chunk-info rows by chunk_timeline_start",
         )
     })
 }
@@ -185,9 +191,9 @@ fn sort_chunk_info_rows_by_start(
 /// for segments larger than the target size (which get split). Batches smaller than `target_size`
 /// are merged together to reduce the number of requests.
 ///
-/// Within each segment, rows are first sorted by `{filtered_index_timeline}:start`
-/// (static / null-`:start` rows first) — see the module docs for why plan
-/// order must equal time order.
+/// Within each segment, rows are first sorted by `chunk_timeline_start`
+/// (static / null-`chunk_timeline_start` rows first).
+/// The module docs explain why plan order must equal time order.
 ///
 /// Returns (batches, `segment_order`) where:
 /// - batches: list of merged `RecordBatch`es, each representing a `target_size` request
@@ -210,14 +216,12 @@ pub fn create_request_batches_with_segment_limit(
     chunk_infos: Vec<RecordBatch>,
     target_size_bytes: u64,
     segment_limit: usize,
-    filtered_index_timeline: Option<TimelineName>,
+    starts_eligible: bool,
 ) -> ApiResult<BatchingResult> {
     re_tracing::profile_function!();
     let merge_err = |err: arrow::error::ArrowError, ctx: &'static str| {
         ApiError::deserialization_with_source(origin, None, err, ctx)
     };
-
-    let start_col_name = filtered_index_timeline.map(|t| format!("{t}:start"));
 
     let mut request_batches = Vec::new();
     let mut current_batch = Vec::new();
@@ -232,8 +236,7 @@ pub fn create_request_batches_with_segment_limit(
     let mut end_of_input_batches = 0usize;
 
     for chunk_info in chunk_infos {
-        let chunk_info =
-            sort_chunk_info_rows_by_start(origin, chunk_info, start_col_name.as_deref())?;
+        let chunk_info = sort_chunk_info_rows_by_start(origin, chunk_info, starts_eligible)?;
         let segment_id = extract_segment_id(origin, &chunk_info)?;
         let chunk_sizes = extract_chunk_sizes(origin, &chunk_info)?;
         let segment_size: u64 = chunk_sizes.iter().sum();
@@ -349,7 +352,7 @@ pub fn create_request_batches_with_segment_limit(
 /// Split segment larger than target size into multiple smaller requests. Each request will contain
 /// a subset of the chunks from the original segment, targeting approximately the desired size.
 ///
-/// Consumes rows in order, so a batch that was sorted by `:start` produces
+/// Consumes rows in order, so a batch that was sorted by `chunk_timeline_start` produces
 /// sub-batches that respect the same time order.
 ///
 /// Each sub-batch is therefore a *contiguous* row range, which is why this slices rather than
@@ -413,52 +416,31 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::array::{
-        Array as _, ArrayRef, BooleanArray, DurationNanosecondArray, FixedSizeBinaryBuilder,
-        Float64Array, Int64Array, RecordBatchOptions, StringArray, Time64NanosecondArray,
-        TimestampNanosecondArray, UInt64Array,
+        BooleanArray, FixedSizeBinaryBuilder, RecordBatchOptions, StringArray, UInt64Array,
     };
     use arrow::datatypes::{Field, Schema};
 
     use super::*;
 
-    /// Chunk-info batch with `:start` and `chunk_is_static` columns.
-    /// `starts[i] = None` means a null `:start` value.
+    /// Chunk-info batch with `chunk_timeline_start` and `chunk_is_static` columns.
+    /// `starts[i] = None` means a null `chunk_timeline_start` value.
     fn chunk_info_with_starts(
         segment_id: &str,
-        timeline: &str,
         starts: &[Option<i64>],
         statics: &[bool],
     ) -> RecordBatch {
-        chunk_info_rows(&vec![segment_id; starts.len()], timeline, starts, statics)
+        chunk_info_rows(&vec![segment_id; starts.len()], starts, statics)
     }
 
     /// Same, but with a per-row `segment_id` — only the invariant-violation test needs this.
     fn chunk_info_rows(
         row_segment_ids: &[&str],
-        timeline: &str,
         starts: &[Option<i64>],
         statics: &[bool],
     ) -> RecordBatch {
-        chunk_info_with_start_array(
-            row_segment_ids,
-            timeline,
-            Arc::new(Int64Array::from(starts.to_vec())),
-            statics,
-        )
-    }
-
-    /// Same, but with a caller-supplied `:start` array, so the dtype tests can hand over the
-    /// non-`Int64` encodings a non-OSS server may use.
-    fn chunk_info_with_start_array(
-        row_segment_ids: &[&str],
-        timeline: &str,
-        start_col: ArrayRef,
-        statics: &[bool],
-    ) -> RecordBatch {
-        assert_eq!(start_col.len(), statics.len());
-        assert_eq!(start_col.len(), row_segment_ids.len());
+        assert_eq!(starts.len(), statics.len());
+        assert_eq!(starts.len(), row_segment_ids.len());
         let num_chunks = statics.len();
-        let start_type = start_col.data_type().clone();
 
         let segment_ids = StringArray::from(row_segment_ids.to_vec());
         let sizes = UInt64Array::from(vec![10u64; num_chunks]);
@@ -466,22 +448,25 @@ mod tests {
         for i in 0..num_chunks {
             let mut id_bytes = [0u8; 16];
             id_bytes[0..4].copy_from_slice(&(i as u32).to_le_bytes());
-            chunk_id_builder.append_value(id_bytes).unwrap();
+            chunk_id_builder
+                .append_value(id_bytes)
+                .expect("16-byte id fits a FixedSizeBinary(16) builder");
         }
         let chunk_ids = chunk_id_builder.finish();
         let static_col = BooleanArray::from(statics.to_vec());
+        let start_col = Int64Array::from(starts.to_vec());
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
                 Field::new(
-                    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+                    ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
                     arrow::datatypes::DataType::UInt64,
                     false,
                 ),
-                QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field(),
-                QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
-                Field::new(format!("{timeline}:start"), start_type, true),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_ID.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START.arrow_field(),
             ],
             HashMap::default(),
         ));
@@ -493,45 +478,32 @@ mod tests {
                 Arc::new(sizes),
                 Arc::new(chunk_ids),
                 Arc::new(static_col),
-                start_col,
+                Arc::new(start_col),
             ],
             &RecordBatchOptions::new().with_row_count(Some(num_chunks)),
         )
-        .unwrap()
+        .expect("well-formed test chunk-info batch")
     }
 
-    fn starts_of(batch: &RecordBatch, timeline: &str) -> Vec<Option<i64>> {
+    fn starts_of(batch: &RecordBatch) -> Vec<Option<i64>> {
         let col = batch
-            .column_by_name(&format!("{timeline}:start"))
-            .unwrap()
+            .column_by_name(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME)
+            .expect("chunk_timeline_start column")
             .as_any()
             .downcast_ref::<Int64Array>()
-            .unwrap();
+            .expect("chunk_timeline_start is Int64");
         (0..col.len())
             .map(|i| (!col.is_null(i)).then(|| col.value(i)))
             .collect()
     }
 
-    /// Reads `:start` back as raw `i64`s whatever the column's dtype, mirroring how production
-    /// reads it. `starts_of` can't be used for the non-`Int64` cases — it downcasts.
-    fn raw_starts_of(batch: &RecordBatch, timeline: &str) -> Vec<Option<i64>> {
-        let col = batch
-            .column_by_name(&format!("{timeline}:start"))
-            .expect("`:start` column");
-        let (values, nulls) =
-            TimeColumn::read_nullable_array(col.as_ref()).expect("supported `:start` dtype");
-        (0..values.len())
-            .map(|i| (!nulls.as_ref().is_some_and(|n| n.is_null(i))).then(|| values[i]))
-            .collect()
-    }
-
-    /// Per-row `(segment_id, :start)` pairs, for asserting the planner's full
+    /// Per-row `(segment_id, chunk_timeline_start)` pairs, for asserting the planner's full
     /// output order: segments in caller order, rows ascending within each.
-    fn segment_starts_of(batch: &RecordBatch, timeline: &str) -> Vec<(SegmentId, Option<i64>)> {
-        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+    fn segment_starts_of(batch: &RecordBatch) -> Vec<(SegmentId, Option<i64>)> {
+        let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(batch)
-            .unwrap();
-        starts_of(batch, timeline)
+            .expect("segment_id column");
+        starts_of(batch)
             .into_iter()
             .enumerate()
             .map(|(i, start)| (segment_ids.value_owned(i), start))
@@ -542,7 +514,6 @@ mod tests {
     fn within_segment_rows_sort_by_start() {
         let chunk_info = chunk_info_with_starts(
             "seg1",
-            "t",
             &[Some(30), Some(10), Some(20)],
             &[false, false, false],
         );
@@ -552,22 +523,18 @@ mod tests {
             vec![chunk_info],
             1_000_000,
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
         assert_eq!(batches.len(), 1);
-        assert_eq!(
-            starts_of(&batches[0], "t"),
-            vec![Some(10), Some(20), Some(30)]
-        );
+        assert_eq!(starts_of(&batches[0]), vec![Some(10), Some(20), Some(30)]);
     }
 
     #[test]
     fn static_and_null_start_rows_sort_first() {
         let chunk_info = chunk_info_with_starts(
             "seg1",
-            "t",
             &[Some(20), None, Some(10), Some(999)],
             &[false, false, false, true], // the `999` row is static
         );
@@ -577,15 +544,15 @@ mod tests {
             vec![chunk_info],
             1_000_000,
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
         assert_eq!(batches.len(), 1);
-        // Null-`:start` and static rows first (stable: input order among
-        // themselves), then temporal ascending.
+        // Null-`chunk_timeline_start` and static rows first (stable: input order
+        // among themselves), then temporal ascending.
         assert_eq!(
-            starts_of(&batches[0], "t"),
+            starts_of(&batches[0]),
             vec![None, Some(999), Some(10), Some(20)]
         );
     }
@@ -594,7 +561,6 @@ mod tests {
     fn sort_is_stable_for_equal_starts() {
         let chunk_info = chunk_info_with_starts(
             "seg1",
-            "t",
             &[Some(10), Some(5), Some(10)],
             &[false, false, false],
         );
@@ -604,14 +570,14 @@ mod tests {
             vec![chunk_info],
             1_000_000,
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
         // The two `10` rows keep their relative input order: chunk ids
         // row0 then row2.
         let ids = batches[0]
-            .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME)
+            .column_by_name(ChunkCandidatesDataframe::COLUMN_CHUNK_ID_NAME)
             .unwrap();
         let ids = ids
             .as_any()
@@ -624,11 +590,10 @@ mod tests {
 
     #[test]
     fn sort_spans_large_segment_split_batches() {
-        // Segment larger than target: split into sub-batches; `:start`
+        // Segment larger than target: split into sub-batches; `chunk_timeline_start`
         // must be monotone across the batch boundary.
         let chunk_info = chunk_info_with_starts(
             "seg1",
-            "t",
             &[Some(40), Some(10), Some(30), Some(20)],
             &[false; 4],
         );
@@ -638,32 +603,33 @@ mod tests {
             vec![chunk_info],
             20, // 10 bytes per chunk → 2 chunks per sub-batch
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
         assert!(batches.len() > 1, "expected a large-segment split");
-        let all_starts: Vec<Option<i64>> = batches.iter().flat_map(|b| starts_of(b, "t")).collect();
+        let all_starts: Vec<Option<i64>> = batches.iter().flat_map(starts_of).collect();
         assert_eq!(
             all_starts,
             vec![Some(10), Some(20), Some(30), Some(40)],
-            "`:start` must be monotone across sub-batch boundaries"
+            "`chunk_timeline_start` must be monotone across sub-batch boundaries"
         );
     }
 
     /// The two order guarantees are independent and must both survive packing:
-    /// segments stay in caller order (`SegmentId` ASC), rows sort by `:start`
-    /// *within* a segment only. `seg3`'s starts are all lower than `seg1`'s, so
-    /// a sort that leaked across the segment boundary would reorder segments.
+    /// segments stay in caller order (`SegmentId` ASC), rows sort by
+    /// `chunk_timeline_start` *within* a segment only. `seg3`'s starts are all
+    /// lower than `seg1`'s, so a sort that leaked across the segment boundary
+    /// would reorder segments.
     ///
     /// `segment_limit = 2` forces a segment-wave flush mid-input, exercising the
     /// merge path (`concat_polymorphic_batches`) rather than one batch per segment.
     #[test]
     fn sort_survives_multi_segment_packing() {
         let chunk_infos = vec![
-            chunk_info_with_starts("seg1", "t", &[Some(30), Some(10), Some(20)], &[false; 3]),
-            chunk_info_with_starts("seg2", "t", &[Some(100), Some(300), Some(200)], &[false; 3]),
-            chunk_info_with_starts("seg3", "t", &[Some(7), Some(5), Some(6)], &[false; 3]),
+            chunk_info_with_starts("seg1", &[Some(30), Some(10), Some(20)], &[false; 3]),
+            chunk_info_with_starts("seg2", &[Some(100), Some(300), Some(200)], &[false; 3]),
+            chunk_info_with_starts("seg3", &[Some(7), Some(5), Some(6)], &[false; 3]),
         ];
 
         let (batches, segment_order) = create_request_batches_with_segment_limit(
@@ -671,7 +637,7 @@ mod tests {
             chunk_infos,
             1_000_000, // byte target never binds; only the segment limit flushes
             2,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
@@ -686,10 +652,7 @@ mod tests {
         // seg1 + seg2 merged into the wave-boundary flush, seg3 into the final one.
         assert_eq!(batches.len(), 2);
 
-        let all: Vec<_> = batches
-            .iter()
-            .flat_map(|b| segment_starts_of(b, "t"))
-            .collect();
+        let all: Vec<_> = batches.iter().flat_map(segment_starts_of).collect();
         assert_eq!(
             all,
             vec![
@@ -713,15 +676,10 @@ mod tests {
     fn sort_survives_mixed_packing_with_large_segment() {
         let chunk_infos = vec![
             // 20 bytes: exactly the target, so it packs rather than splits.
-            chunk_info_with_starts("seg1", "t", &[Some(40), Some(20)], &[false; 2]),
+            chunk_info_with_starts("seg1", &[Some(40), Some(20)], &[false; 2]),
             // 40 bytes: over target → split into 2 sub-batches of 2 chunks.
-            chunk_info_with_starts(
-                "seg2",
-                "t",
-                &[Some(4), Some(2), Some(3), Some(1)],
-                &[false; 4],
-            ),
-            chunk_info_with_starts("seg3", "t", &[Some(900), Some(800)], &[false; 2]),
+            chunk_info_with_starts("seg2", &[Some(4), Some(2), Some(3), Some(1)], &[false; 4]),
+            chunk_info_with_starts("seg3", &[Some(900), Some(800)], &[false; 2]),
         ];
 
         let (batches, segment_order) = create_request_batches_with_segment_limit(
@@ -729,7 +687,7 @@ mod tests {
             chunk_infos,
             20, // 10 bytes per chunk → 2 chunks per request
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         )
         .unwrap();
 
@@ -743,10 +701,7 @@ mod tests {
         );
         assert_eq!(batches.len(), 4, "seg1, seg2 × 2 sub-batches, seg3");
 
-        let all: Vec<_> = batches
-            .iter()
-            .flat_map(|b| segment_starts_of(b, "t"))
-            .collect();
+        let all: Vec<_> = batches.iter().flat_map(segment_starts_of).collect();
         assert_eq!(
             all,
             vec![
@@ -762,126 +717,35 @@ mod tests {
         );
     }
 
-    /// The OSS server types `:start` as `Int64`, but another server may emit the timeline's
-    /// native dtype. All of these are `i64` underneath, which is why `read_start_column` goes
-    /// through `TimeColumn::read_nullable_array` instead of downcasting to one of them — sorting
-    /// has to work identically for each.
-    #[test]
-    fn start_column_sorts_for_every_supported_dtype() {
-        let starts = [Some(30), None, Some(10), Some(20)];
-        let statics = [false; 4];
-        let expected = vec![None, Some(10), Some(20), Some(30)];
-
-        let raw: Vec<Option<i64>> = starts.to_vec();
-        let columns: Vec<(&str, ArrayRef)> = vec![
-            ("Int64", Arc::new(Int64Array::from(raw.clone()))),
-            (
-                "Timestamp(ns)",
-                Arc::new(TimestampNanosecondArray::from(raw.clone())),
-            ),
-            (
-                "Time64(ns)",
-                Arc::new(Time64NanosecondArray::from(raw.clone())),
-            ),
-            (
-                "Duration(ns)",
-                Arc::new(DurationNanosecondArray::from(raw.clone())),
-            ),
-        ];
-
-        for (label, start_col) in columns {
-            let chunk_info =
-                chunk_info_with_start_array(&["seg1"; 4], "t", start_col, statics.as_slice());
-
-            let (batches, _order) = create_request_batches_with_segment_limit(
-                &re_uri::Origin::test(),
-                vec![chunk_info],
-                1_000_000,
-                usize::MAX,
-                Some(TimelineName::from("t")),
-            )
-            .unwrap_or_else(|err| panic!("{label} `:start` must be sortable: {err}"));
-
-            assert_eq!(batches.len(), 1, "{label}");
-            assert_eq!(raw_starts_of(&batches[0], "t"), expected, "{label}");
-        }
-    }
-
-    /// The deliberate hard error: a `:start` column that is not an `i64` under the hood fails the
-    /// whole query rather than silently skipping the sort. Reaching this needs a server that both
-    /// types `:start` exotically and disagrees with itself across batches — see the discussion on
-    /// the PR.
-    #[test]
-    fn unsupported_start_dtype_is_an_error() {
-        let chunk_info = chunk_info_with_start_array(
-            &["seg1"; 2],
-            "t",
-            Arc::new(Float64Array::from(vec![30.0, 10.0])),
-            &[false, false],
-        );
-
-        let err = create_request_batches_with_segment_limit(
-            &re_uri::Origin::test(),
-            vec![chunk_info],
-            1_000_000,
-            usize::MAX,
-            Some(TimelineName::from("t")),
-        )
-        .expect_err("unsupported `:start` dtype must not be silently ignored");
-
-        assert!(
-            err.to_string().contains("unsupported type"),
-            "unexpected error: {err}"
-        );
-    }
-
     /// A batch spanning two segments would leave the within-segment sort
     /// silently interleaving them; the caller's one-batch-per-segment collapse
     /// must keep that from happening.
     #[test]
     #[should_panic(expected = "batch mixes segments")]
     fn mixed_segment_batch_trips_the_debug_assert() {
-        let chunk_info = chunk_info_rows(
-            &["seg1", "seg2"],
-            "t",
-            &[Some(30), Some(10)],
-            &[false, false],
-        );
+        let chunk_info = chunk_info_rows(&["seg1", "seg2"], &[Some(30), Some(10)], &[false, false]);
 
         _ = create_request_batches_with_segment_limit(
             &re_uri::Origin::test(),
             vec![chunk_info],
             1_000_000,
             usize::MAX,
-            Some(TimelineName::from("t")),
+            true,
         );
     }
 
     #[test]
-    fn no_timeline_or_missing_column_is_a_noop() {
-        let chunk_info =
-            chunk_info_with_starts("seg1", "t", &[Some(30), Some(10)], &[false, false]);
+    fn not_eligible_is_a_noop() {
+        let chunk_info = chunk_info_with_starts("seg1", &[Some(30), Some(10)], &[false, false]);
 
-        // No timeline: untouched.
-        let (batches, _order) = create_request_batches_with_segment_limit(
-            &re_uri::Origin::test(),
-            vec![chunk_info.clone()],
-            1_000_000,
-            usize::MAX,
-            None,
-        )
-        .unwrap();
-        assert_eq!(starts_of(&batches[0], "t"), vec![Some(30), Some(10)]);
-
-        // Timeline set but no matching `:start` column: untouched.
         let (batches, _order) = create_request_batches_with_segment_limit(
             &re_uri::Origin::test(),
             vec![chunk_info],
             1_000_000,
             usize::MAX,
-            Some(TimelineName::from("other")),
+            false,
         )
         .unwrap();
-        assert_eq!(starts_of(&batches[0], "t"), vec![Some(30), Some(10)]);
+        assert_eq!(starts_of(&batches[0]), vec![Some(30), Some(10)]);
     }
 }

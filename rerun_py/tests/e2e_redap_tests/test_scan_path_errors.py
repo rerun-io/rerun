@@ -4,7 +4,7 @@ Test that scan-path gRPC errors surface to Python as typed messages with a trace
 Exercises the three gRPC endpoints reached during `ds.reader(...).collect()`:
 - `GetDatasetSchema` — intercepted by the catalog client inside `reader()`
   itself, before any scan plan is built; this path was already typed on `main`.
-- `QueryDataset` — called during scan-prelude (stream setup and first
+- `FindChunks` — called during scan-prelude (stream setup and first
   responses). Newly rewired to typed `ApiError` by PR #1666: previously
   flattened via `exec_datafusion_err!`, losing both the kind label and the
   trace-id.
@@ -40,7 +40,7 @@ DUMMY_TRACE_ID = "abba000000000000000000000000abba"
         # GetDatasetSchema call.
         ("GetDatasetSchema", "/GetDatasetSchema"),
         # Scan-path call in DataframeQueryTableProvider — newly typed by #1666.
-        ("QueryDataset", "query_dataset"),
+        ("FindChunks", "find_chunks"),
         # IO-loop call in chunk_fetcher — typed on main via #1540.
         ("FetchChunks", "FetchChunks"),
     ],

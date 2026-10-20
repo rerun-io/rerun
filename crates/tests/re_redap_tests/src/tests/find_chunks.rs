@@ -3,18 +3,23 @@
 //! Each test registers a small dataset, then checks the exact chunk ids `FindChunks` returns.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::Schema;
 use futures::StreamExt as _;
 use itertools::izip;
+use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::example_components::MyPoints;
 use re_log_types::{EntityPath, TimeInt, TimeType};
+use re_protos::capabilities::{DATASET_FIND_CHUNKS, ServerCapabilities};
 use re_protos::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DirectUrlMode,
     EntitySelection, FillMode, FindChunksRequest, RangeSelection, SegmentSelection,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_redap_client::{Connection, ConnectionRegistry};
 use re_types_core::{ChunkId, LayerName, SegmentId};
 
 use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches, entry_name};
@@ -34,7 +39,7 @@ fn static_request(segments: SegmentSelection) -> FindChunksRequest {
     }
 }
 
-fn range_request(
+pub fn range_request(
     timeline: &'static str,
     start_inclusive: Option<TimeInt>,
     end_inclusive: Option<TimeInt>,
@@ -133,7 +138,7 @@ fn chunk_ids(batches: &[RecordBatch]) -> BTreeSet<ChunkId> {
     ids
 }
 
-async fn find_chunks_ids<T: RerunCloudService>(
+pub async fn find_chunks_ids<T: RerunCloudService>(
     service: &T,
     dataset_name: &str,
     request: FindChunksRequest,
@@ -773,4 +778,59 @@ pub async fn find_chunks_invalid_requests(service: impl RerunCloudService) {
         let batches = find_chunks_batches(&service, empty_dataset_name, request).await;
         assert_one_empty_batch(&batches, &format!("{name} on an empty dataset"));
     }
+}
+
+// ---
+
+/// `DataframeQueryTableProvider::new` sends `find_chunks` only when the connection advertises
+/// `DATASET_FIND_CHUNKS`, and the legacy `query_dataset` otherwise.
+///
+/// OSS-only: the test sets the capabilities on the connection, so the server under test does not
+/// matter.
+pub async fn find_chunks_dispatch_follows_advertised_capabilities<T: RerunCloudService>(
+    service: T,
+) -> anyhow::Result<()> {
+    let dataset_entry = service
+        .create_dataset_entry_with_name("find_chunks_capability_dataset")
+        .await;
+    let service = Arc::new(service);
+    let tempdir = tempfile::tempdir().expect("create temp dir");
+
+    for (capabilities, expected) in [
+        (ServerCapabilities::unknown(), false),
+        (
+            ServerCapabilities::from_advertised([DATASET_FIND_CHUNKS.to_owned()]),
+            true,
+        ),
+    ] {
+        let connection = ConnectionRegistry::new_without_stored_credentials()
+            .with_internal(
+                Connection::from_service(
+                    re_uri::Origin::test(),
+                    Arc::clone(&service),
+                    capabilities,
+                ),
+                tempdir.path().to_path_buf(),
+            )
+            .internal_connection_handle()
+            .expect("internal connection registered");
+
+        let provider = DataframeQueryTableProvider::new(
+            connection,
+            dataset_entry.details.id,
+            &re_chunk_store::QueryExpression::default(),
+            &[] as &[&str],
+            None,
+            Some(Schema::empty()),
+            None,
+            Vec::new(),
+            Arc::new(re_datafusion::NoOpObjectStoreAuthenticator::default()),
+        )
+        .await
+        .expect("provider construction succeeds against the in-process server");
+
+        assert_eq!(provider.supports_find_chunks(), expected);
+    }
+
+    Ok(())
 }

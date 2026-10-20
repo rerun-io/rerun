@@ -5,8 +5,7 @@
 
 //! Per-segment tracker of which chunks have arrived and which have not.
 //!
-//! Built from the per-timeline `:start` columns the server attaches to each
-//! `QueryDatasetResponse` row (`#1720`). For each segment + entity the
+//! Built from the `chunk_timeline_start` column of each chunk-info row. For each segment + entity the
 //! manifest holds a multiset of the `time_min` values that the server has
 //! committed to delivering. As chunks arrive their `time_min` is decremented
 //! out of the multiset, and the [`SegmentChunkManifest::safe_horizon`]
@@ -115,7 +114,7 @@ impl SegmentChunkManifest {
     /// arrive.
     ///
     /// **Static chunks must not be passed to this method.** Static chunks
-    /// carry no temporal `:start` value, and [`TimeInt::STATIC`] sorts
+    /// carry no temporal `chunk_timeline_start` value, and [`TimeInt::STATIC`] sorts
     /// below every temporal value (it is `Self(None)` with a derived
     /// `Ord`). If one slipped into the multiset it would pin
     /// [`Self::safe_horizon`] to a nonsense value forever and the segment

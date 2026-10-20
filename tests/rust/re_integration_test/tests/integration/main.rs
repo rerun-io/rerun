@@ -14,6 +14,7 @@ mod check_focus_test;
 mod container_context_menu_test;
 mod context_menu_test;
 mod dataset_folders;
+mod default_blueprint;
 mod deselect_on_escape;
 mod drag_and_drop_selection;
 mod drop_component_to_state_timeline_view;

@@ -15,12 +15,12 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DatasetDetails, DatasetEntry,
     EntryDetails, EntryDetailsUpdate, GetWriteAccessGrantResponse, LanceTable, ObjectKey,
-    ProviderDetails, QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
-    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
-    TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
-    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
-    UpdateTableEntryResponse, VersionResponse,
+    ProviderDetails, QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+    ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
+    RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry, TableInsertMode,
+    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
+    VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
@@ -31,12 +31,11 @@ use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentRequest,
     GetAssetsForSegmentResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
     GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentPropertiesRequest,
-    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest, VersionRequest,
-    WriteTableRequest,
+    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryTasksOnCompletionResponse,
+    QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey,
+    ScanSegmentTableRequest, VersionRequest, WriteTableRequest,
 };
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -72,9 +71,6 @@ impl<T> TonicResponseExt<T> for tonic::Response<T> {
 
 pub type FetchChunksResponseStream =
     ApiResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
-
-pub type QueryDatasetResponseStream =
-    ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
 type RedapHttpRequest = tonic::codegen::http::Request<tonic::body::Body>;
 type RedapHttpResponse = tonic::codegen::http::Response<tonic::body::Body>;
@@ -320,17 +316,6 @@ async fn fetch_rrd_manifest_via_key(
     // convert back to raw manifest so it can be interpreted
     // with no changes by downstream users
     Ok(hub.into_raw())
-}
-
-#[derive(Clone)]
-pub struct SegmentQueryParams {
-    pub dataset_id: EntryId,
-    pub segment_id: SegmentId,
-    pub include_static_data: bool,
-    pub include_temporal_data: bool,
-    pub generate_direct_urls: bool,
-    pub unsigned_direct_urls: bool,
-    pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
 /// Low-level API over the gRPC client.
@@ -1000,8 +985,8 @@ where
 
         // Retry only the *open*: the server rejects `ScanSegmentTable` with `ResourceExhausted`
         // fail-fast at admission control, before the stream exists, so re-opening is idempotent.
-        // Consumption by the caller is intentionally outside the retry, matching
-        // `query_dataset_raw`. Once the stream is open it can't return `ResourceExhausted`.
+        // Consumption by the caller is intentionally outside the retry.
+        // Once the stream is open it can't return `ResourceExhausted`.
         let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
             let client = self.clone();
             let request = request.clone();
@@ -1508,131 +1493,7 @@ where
         })
     }
 
-    /// Fetches all chunks ids for a specified segment.
-    ///
-    /// You can include/exclude static/temporal chunks,
-    /// and limit the query to a time range.
-    #[expect(deprecated, reason = "older servers lack FindChunks")]
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn query_dataset_raw(
-        &self,
-        params: SegmentQueryParams,
-    ) -> ApiResult<QueryDatasetResponseStream>
-    where
-        T: Clone,
-    {
-        // The server rejects `QueryDataset` with `ResourceExhausted` (fail-fast, before any work)
-        // when its stream-concurrency limiter is saturated. Retry the *open* only; the returned
-        // stream is consumed by the caller. `params` is cloned per attempt so we rebuild the
-        // request fresh.
-        crate::with_retry_resource_exhausted("/QueryDataset", || {
-            let client = self.clone();
-            let SegmentQueryParams {
-                dataset_id,
-                segment_id,
-                include_static_data,
-                include_temporal_data,
-                query,
-                generate_direct_urls,
-                unsigned_direct_urls,
-            } = params.clone();
-
-            async move {
-                let query_request = QueryDatasetRequest {
-                    segment_ids: vec![segment_id],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: !include_static_data,
-                    exclude_temporal_data: !include_temporal_data,
-                    query: query.map(|q| q.try_into()).transpose().map_err(|err| {
-                        ApiError::tonic(&self.origin, err, "failed building /QueryDataset request")
-                    })?,
-                    scan_parameters: Some(ScanParameters {
-                        columns: FetchChunksRequest::required_column_names(),
-                        ..Default::default()
-                    }),
-                    generate_direct_urls,
-                    unsigned_direct_urls,
-                };
-
-                let response = crate::rpc_retry::retry(|| {
-                    let mut client = client.clone();
-                    let query_request = query_request.clone();
-                    async move {
-                        crate::rpc_retry::open_stream(
-                            client
-                                .inner()
-                                .query_dataset(
-                                    tonic::Request::new(query_request.clone().into())
-                                        .with_entry_id(dataset_id),
-                                )
-                                .await?,
-                        )
-                        .await
-                    }
-                })
-                .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryDataset"))?;
-
-                Ok(ApiResponseStream::from_tonic_response(
-                    self.origin.clone(),
-                    response,
-                    "/QueryDataset",
-                )
-                .inspect_first(|response| {
-                    crate::dataset_revisions().observe_meta(response.meta.as_ref());
-                }))
-            }
-        })
-        .await
-    }
-
-    /// Fetches all chunks ids for a specified segment.
-    ///
-    /// You can include/exclude static/temporal chunks,
-    /// and limit the query to a time range.
-    ///
-    /// You can pass on the results to [`Self::query_dataset_chunk_index`].
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn query_dataset_chunk_index(
-        &self,
-        params: SegmentQueryParams,
-    ) -> ApiResult<Vec<RecordBatch>>
-    where
-        T: Clone,
-    {
-        let stream = self.query_dataset_raw(params).await?;
-        let trace_id = stream.trace_id();
-        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
-        responses
-            .into_iter()
-            .map(|resp| {
-                resp.data.ok_or_else(|| {
-                    let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "missing field in item in /QueryDataset response stream",
-                    )
-                })
-            })
-            .map(|batch| {
-                arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "failed converting to RecordBatch",
-                    )
-                })
-            })
-            .collect()
-    }
-
-    /// Input should be same schema as what [`Self::query_dataset_chunk_index`] returns.
+    /// `record_batch` must carry the columns named in [`FetchChunksRequest::required_column_names`].
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn fetch_segment_chunks_by_id(
         &mut self,
@@ -1691,62 +1552,6 @@ where
             self.origin.clone(),
             cached_stream.merge(response),
             trace_id,
-        ))
-    }
-
-    /// Fetches chunks for a specified partition and query.
-    ///
-    /// Convenience for [`Self::query_dataset_chunk_index`] + [`Self::fetch_segment_chunks_by_id`].
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn fetch_segment_chunks_by_query(
-        &mut self,
-        params: SegmentQueryParams,
-    ) -> ApiResult<FetchChunksResponseStream>
-    where
-        T: Clone,
-    {
-        let stream = self.query_dataset_raw(params).await?;
-        let query_trace_id = stream.trace_id();
-        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
-        let chunk_info_batches: Vec<_> = responses
-            .into_iter()
-            .map(|resp| {
-                resp.data.ok_or_else(|| {
-                    let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        query_trace_id,
-                        err,
-                        "missing field in item in /QueryDataset response stream",
-                    )
-                })
-            })
-            .try_collect()?;
-
-        if chunk_info_batches.is_empty() {
-            return Ok(ApiResponseStream::new(
-                self.origin.clone(),
-                tokio_stream::empty::<ApiResult<re_protos::cloud::v1alpha1::FetchChunksResponse>>(),
-                None,
-            ));
-        }
-
-        let fetch_chunks_request = FetchChunksRequest {
-            chunk_infos: chunk_info_batches,
-        };
-
-        let mut req = tonic::Request::new(fetch_chunks_request);
-        req.set_timeout(crate::FETCH_CHUNKS_DEADLINE);
-        let response = self
-            .inner()
-            .fetch_chunks(req)
-            .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/FetchChunks"))?;
-
-        Ok(ApiResponseStream::from_tonic_response(
-            self.origin.clone(),
-            response,
-            "/FetchChunks",
         ))
     }
 

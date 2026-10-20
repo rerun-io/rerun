@@ -27,7 +27,8 @@ use crate::segment_chunk_manifest::SegmentChunkManifest;
 /// The IO side announces each segment's bookkeeping *before*
 /// dispatching its fetches: a [`Self::SegmentChunkCount`] always, and
 /// a [`Self::SegmentManifest`] whenever the query has a temporal
-/// `filtered_index` and the server returned `:start` columns. The CPU
+/// `filtered_index` and the IO loop trusts `chunk_timeline_start` for ordering
+/// (`starts_eligible`). The CPU
 /// worker uses the count for completion detection and the manifest
 /// for incremental safe-horizon emit + GC.
 ///
@@ -48,9 +49,9 @@ pub(super) enum CpuWorkerMsg {
     SegmentChunkCount { segment_id: SegmentId, count: usize },
 
     /// Per-segment temporal manifest built from the
-    /// `{filtered_timeline}:start` column on the `chunk_info` rows.
-    /// Sent only when the query has a temporal `filtered_index` *and*
-    /// the server returned `:start`. Drives incremental safe-horizon
+    /// `chunk_timeline_start` column on the `chunk_info` rows.
+    /// Sent only when `starts_eligible` holds: the query has a temporal
+    /// `filtered_index` and its `chunk_timeline_start` values are trustworthy. Drives incremental safe-horizon
     /// emit + GC. Absence means the worker falls back to
     /// "emit at completion" semantics for this segment.
     ///
@@ -95,9 +96,9 @@ struct CurrentStores {
     /// `expected_chunks` to detect segment completion.
     received_chunks: usize,
 
-    /// Per-segment safe-horizon tracker. `None` for static-only
-    /// queries or when the server returned no `:start` columns (old
-    /// server fallback). Drives the horizon-based emit + GC paths
+    /// Per-segment safe-horizon tracker. `None` when `starts_eligible`
+    /// is `false` (static-only queries, or untrustworthy
+    /// `chunk_timeline_start` values). Drives the horizon-based emit + GC paths
     /// inside [`Self::flush_incremental`].
     manifest: Option<SegmentChunkManifest>,
 

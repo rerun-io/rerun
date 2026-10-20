@@ -135,13 +135,19 @@ define_redap_tests! {
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    query_filter::query_dataset_entity_without_filtered_timeline_reads_null,
+    query_filter::query_dataset_foreign_selection_timeline_matches_oracle,
     query_filter::query_dataset_or_of_ranges_fans_out,
+    query_filter::query_dataset_or_of_ranges_fans_out_query_dataset_path,
     query_filter::query_dataset_or_with_empty_branch_and_projection,
+    query_filter::query_dataset_projection_narrows_components_without_view_contents,
     query_filter::query_dataset_range_filter_with_and_without_latest_at_fill,
     query_filter::query_dataset_simple_filter,
     query_filter::query_dataset_with_limit,
     query_index_values::query_dataset_emits_per_segment_pushdown,
+    query_index_values::query_dataset_emits_per_segment_pushdown_query_dataset_path,
     query_index_values::query_dataset_index_values,
+    query_index_values::query_dataset_index_values_query_dataset_path,
     query_index_values::query_dataset_per_segment_values_wire_level,
     query_index_values::query_dataset_per_segment_values_validation_rejected,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
@@ -207,6 +213,7 @@ define_redap_tests! {
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
     ; // OSS-only tests:
+    find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

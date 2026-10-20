@@ -20,12 +20,20 @@ use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
 };
-use crate::utils::client::TestClient;
+use crate::utils::client::{RecordedRequest, TestClient};
 use crate::utils::register_per_segment_dataset;
 
 pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
     service: Arc<T>,
     time_type: TimeType,
+) {
+    query_dataset_index_values_by_time_type_impl(service, time_type, true).await;
+}
+
+async fn query_dataset_index_values_by_time_type_impl<T: RerunCloudService>(
+    service: Arc<T>,
+    time_type: TimeType,
+    supports_find_chunks: bool,
 ) {
     let tuid_prefix = match time_type {
         TimeType::TimestampNs => 1,
@@ -97,7 +105,10 @@ pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
             index_values,
             &format!("query_index_values_{time_type}_{snapshot_name}"),
             time_type,
-            check_schema,
+            QueryDatasetSnapshotOptions {
+                check_schema,
+                supports_find_chunks,
+            },
         )
         .await;
     }
@@ -108,6 +119,23 @@ pub async fn query_dataset_index_values(service: impl RerunCloudService) {
     query_dataset_index_values_by_time_type(service.clone(), TimeType::Sequence).await;
     query_dataset_index_values_by_time_type(service.clone(), TimeType::DurationNs).await;
     query_dataset_index_values_by_time_type(service.clone(), TimeType::TimestampNs).await;
+}
+
+/// [`query_dataset_index_values`] on the SDK's `query_dataset` path: the same fixtures and
+/// snapshots, forced onto the `query_dataset` RPC via
+/// `DataframeQueryTableProvider::with_find_chunks_support(false)`.
+/// Both servers still implement the old RPC through their adapters, so the same fixtures serve;
+/// the snapshot names are reused verbatim, so a divergence between the two paths shows up as a
+/// snapshot mismatch.
+///
+/// TODO(RR-5817): remove with the SDK's `query_dataset` path.
+pub async fn query_dataset_index_values_query_dataset_path(service: impl RerunCloudService) {
+    let service = Arc::new(service);
+    query_dataset_index_values_by_time_type_impl(service.clone(), TimeType::Sequence, false).await;
+    query_dataset_index_values_by_time_type_impl(service.clone(), TimeType::DurationNs, false)
+        .await;
+    query_dataset_index_values_by_time_type_impl(service.clone(), TimeType::TimestampNs, false)
+        .await;
 }
 
 /// Collect the set of chunk IDs returned by a query.
@@ -269,8 +297,9 @@ async fn query_dataset_per_segment_values_wire_level_by_time_type<T: RerunCloudS
 ///
 /// Unlike the wire-level tests above, this drives the real
 /// `DataframeQueryTableProvider::scan` and inspects the request it emits via
-/// [`TestClient`]'s recorded `query_dataset_requests`, rather than hand-building
-/// the request.
+/// [`TestClient`]'s `recorded_requests`, rather than hand-building the request.
+///
+/// The reader has no fill, so the request must not ask for latest-at chunks.
 ///
 /// Runs for every [`TimeType`] (`Sequence`, `DurationNs`, `TimestampNs`) since
 /// the pushed-down index is timeline-typed.
@@ -281,16 +310,33 @@ pub async fn query_dataset_emits_per_segment_pushdown(service: impl RerunCloudSe
         TimeType::DurationNs,
         TimeType::TimestampNs,
     ] {
-        query_dataset_emits_per_segment_pushdown_by_time_type(&service, time_type).await;
+        query_dataset_emits_per_segment_pushdown_by_time_type(&service, time_type, true).await;
+    }
+}
+
+/// [`query_dataset_emits_per_segment_pushdown`] on the SDK's `query_dataset` path: the same
+/// fixture and pushdown assertions, forced onto the `query_dataset` RPC via
+/// `DataframeQueryTableProvider::with_find_chunks_support(false)`.
+///
+/// TODO(RR-5817): remove with the SDK's `query_dataset` path.
+pub async fn query_dataset_emits_per_segment_pushdown_query_dataset_path(
+    service: impl RerunCloudService,
+) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_emits_per_segment_pushdown_by_time_type(&service, time_type, false).await;
     }
 }
 
 async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudService>(
     service: &Arc<T>,
     time_type: TimeType,
+    supports_find_chunks: bool,
 ) {
-    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
-
     let dataset_name = format!("client_pushdown_{time_type}");
     let tuid_prefix = match time_type {
         TimeType::Sequence => 88,
@@ -348,18 +394,21 @@ async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudServ
     let query = re_chunk_store::QueryExpression {
         view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
         filtered_index: Some(index_name.into()),
+        sparse_fill_strategy: re_chunk_store::SparseFillStrategy::None,
         ..Default::default()
     };
 
-    // Run `scan` against a recording client and return every per-segment value
-    // list it emitted, keyed by the segment it was aligned to.
+    // Run `scan` against a recording client and return every per-segment value list it emitted
+    // (keyed by the segment it was aligned to), the requests it recorded, and the row count the
+    // resulting plan actually produced.
     async fn emitted_per_segment_values<T: RerunCloudService>(
         service: &Arc<T>,
         dataset_id: re_log_types::EntryId,
         query: &re_chunk_store::QueryExpression,
         segment_ids: &[&str],
         index_values: &BTreeMap<SegmentId, BTreeSet<IndexValue>>,
-    ) -> BTreeMap<SegmentId, Vec<i64>> {
+        supports_find_chunks: bool,
+    ) -> (BTreeMap<SegmentId, Vec<i64>>, Vec<RecordedRequest>, usize) {
         let client = TestClient::new(Arc::clone(service));
         let provider = DataframeQueryTableProvider::new_from_client(
             client.clone(),
@@ -373,45 +422,94 @@ async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudServ
             Arc::new(NoOpObjectStoreAuthenticator::default()),
         )
         .await
-        .unwrap();
+        .expect("build the table provider")
+        .with_find_chunks_support(supports_find_chunks);
 
         let ctx = SessionContext::default();
         // `scan` is where the pushdown runs and the request is sent.
-        let _plan = provider.scan(&ctx.state(), None, &[], None).await.unwrap();
+        let plan = provider
+            .scan(&ctx.state(), None, &[], None)
+            .await
+            .expect("plan the scan");
 
-        let captured = client.query_dataset_requests.lock().clone();
-        assert!(
-            !captured.is_empty(),
-            "scan must emit at least one query_dataset request"
-        );
+        let captured = client.recorded_requests.lock().clone();
+
+        let num_partitions = plan.output_partitioning().partition_count();
+        let results: Vec<_> = (0..num_partitions)
+            .map(|partition| plan.execute(partition, ctx.task_ctx()))
+            .try_collect()
+            .expect("start every partition");
+        let batches: Vec<RecordBatch> = futures::stream::iter(results)
+            .flat_map(|stream| stream)
+            .try_collect()
+            .await
+            .expect("collect the batches");
+        let num_rows: usize = batches.iter().map(RecordBatch::num_rows).sum();
 
         let mut emitted: BTreeMap<SegmentId, Vec<i64>> = BTreeMap::new();
-        for wire in &captured {
-            let request = QueryDatasetRequest::try_from(wire.clone())
-                .expect("emitted request must pass server wire validation");
-            let Some(latest_at) = request.query.as_ref().and_then(|q| q.latest_at.as_ref()) else {
-                continue;
-            };
-            for (segment_id, values) in
-                std::iter::zip(&request.segment_ids, &latest_at.per_segment_values)
-            {
-                if !values.is_empty() {
-                    emitted.insert(segment_id.clone(), values.clone());
+        for request in &captured {
+            match request {
+                RecordedRequest::FindChunks(request) => {
+                    let ext::ChunkMode::Samples {
+                        segments,
+                        fill_mode,
+                        ..
+                    } = &request.mode
+                    else {
+                        continue;
+                    };
+                    assert_eq!(
+                        *fill_mode,
+                        ext::FillMode::None,
+                        "a reader without fill must not ask for the latest-at chunks of its \
+                         sample times"
+                    );
+                    for (segment_id, values) in segments {
+                        if !values.is_empty() {
+                            emitted.insert(
+                                segment_id.clone(),
+                                values.iter().map(|value| value.as_i64()).collect(),
+                            );
+                        }
+                    }
+                }
+                RecordedRequest::QueryDataset(request) => {
+                    let Some(latest_at) = request
+                        .query
+                        .as_ref()
+                        .and_then(|query| query.latest_at.as_ref())
+                    else {
+                        continue;
+                    };
+                    assert_eq!(
+                        request.segment_ids.len(),
+                        latest_at.per_segment_values.len(),
+                        "per_segment_values must carry one list per requested segment"
+                    );
+                    for (segment_id, values) in
+                        std::iter::zip(&request.segment_ids, &latest_at.per_segment_values)
+                    {
+                        if !values.is_empty() {
+                            emitted.insert(segment_id.clone(), values.clone());
+                        }
+                    }
                 }
             }
         }
-        emitted
+        (emitted, captured, num_rows)
     }
 
     // Each segment's sampled value is pushed down, aligned to segment_ids.
-    let pushed = emitted_per_segment_values(
+    let (pushed, captured, num_rows) = emitted_per_segment_values(
         service,
         dataset_entry.details.id,
         &query,
         &segment_ids,
         &index_values,
+        supports_find_chunks,
     )
     .await;
+    assert!(!captured.is_empty(), "scan must emit at least one request");
     let expected: BTreeMap<SegmentId, Vec<i64>> = [
         (SegmentId::from("seg1"), vec![1010]),
         (SegmentId::from("seg2"), vec![2010]),
@@ -423,6 +521,60 @@ async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudServ
         pushed, expected,
         "pushdown must emit per_segment_values aligned to segment_ids"
     );
+    assert!(
+        num_rows > 0,
+        "a populated per-segment selection must return rows"
+    );
+
+    // Every segment has an empty value list: the selection selects nothing. The new path skips
+    // the RPC entirely, because an all-empty `Samples` map selects nothing; the legacy adapter
+    // has no such short-circuit and always issues one request, with `per_segment_values` all
+    // empty. Both paths must return no rows.
+    let empty_index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = segment_ids
+        .iter()
+        .map(|&segment_id| (SegmentId::from(segment_id), BTreeSet::new()))
+        .collect();
+    let (empty_pushed, empty_captured, empty_rows) = emitted_per_segment_values(
+        service,
+        dataset_entry.details.id,
+        &query,
+        &segment_ids,
+        &empty_index_values,
+        supports_find_chunks,
+    )
+    .await;
+    assert!(
+        empty_pushed.is_empty(),
+        "an all-empty per-segment selection must push no values"
+    );
+    assert_eq!(
+        empty_rows, 0,
+        "an all-empty per-segment selection must return no rows"
+    );
+    if supports_find_chunks {
+        assert!(
+            empty_captured.is_empty(),
+            "an all-empty Samples selection must skip the find_chunks RPC entirely"
+        );
+    } else {
+        assert_eq!(
+            empty_captured.len(),
+            1,
+            "the legacy adapter issues exactly one query_dataset request for an all-empty selection"
+        );
+        let RecordedRequest::QueryDataset(request) = &empty_captured[0] else {
+            panic!("expected a QueryDataset request, got a FindChunks request");
+        };
+        let latest_at = request
+            .query
+            .as_ref()
+            .and_then(|query| query.latest_at.as_ref())
+            .expect("the legacy per-segment request must carry latest_at");
+        assert!(
+            latest_at.per_segment_values.iter().all(Vec::is_empty),
+            "legacy per_segment_values must all be empty"
+        );
+    }
 }
 
 /// Wire-level test that the server rejects an invalid combination
@@ -582,14 +734,24 @@ async fn query_dataset_per_segment_values_empty_entity_paths_short_circuits_by_t
 
 // ---
 
+/// Options for [`query_dataset_snapshot`].
+struct QueryDatasetSnapshotOptions {
+    check_schema: bool,
+    supports_find_chunks: bool,
+}
+
 async fn query_dataset_snapshot<T: RerunCloudService>(
     client: TestClient<T>,
     dataset_entry: &DatasetEntry,
     index_values: Vec<(&str, Vec<i64>)>,
     snapshot_name: &str,
     time_type: TimeType,
-    check_schema: bool,
+    options: QueryDatasetSnapshotOptions,
 ) {
+    let QueryDatasetSnapshotOptions {
+        check_schema,
+        supports_find_chunks,
+    } = options;
     let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = index_values
         .into_iter()
         .map(|(idx, values)| {
@@ -612,6 +774,8 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
         ..Default::default()
     };
 
+    let recorded_requests = Arc::clone(&client.recorded_requests);
+
     let table_provider = DataframeQueryTableProvider::new_from_client(
         client,
         dataset_entry.details.id,
@@ -624,7 +788,8 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
         Arc::new(NoOpObjectStoreAuthenticator::default()),
     )
     .await
-    .unwrap();
+    .expect("build the table provider")
+    .with_find_chunks_support(supports_find_chunks);
 
     let ctx = SessionContext::default();
     let plan = table_provider
@@ -632,6 +797,20 @@ async fn query_dataset_snapshot<T: RerunCloudService>(
         .await
         .unwrap();
     let schema = plan.schema();
+
+    if !supports_find_chunks {
+        let captured = recorded_requests.lock();
+        assert!(
+            !captured.is_empty(),
+            "the query_dataset path must still issue at least one request"
+        );
+        assert!(
+            captured
+                .iter()
+                .all(|request| matches!(request, RecordedRequest::QueryDataset(_))),
+            "the query_dataset path must record only QueryDataset requests"
+        );
+    }
 
     let num_partitions = plan.output_partitioning().partition_count();
     let results: Vec<_> = (0..num_partitions)

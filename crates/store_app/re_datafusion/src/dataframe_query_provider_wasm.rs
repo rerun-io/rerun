@@ -299,6 +299,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         projection: Option<&Vec<usize>>,
         num_partitions: usize,
         chunk_info_batches: Option<RecordBatch>,
+        // The wasm provider has no IO loop and no time-ordered emission, so nothing reads this.
+        _starts_eligible: bool,
         query_expression: QueryExpression,
         _index_values: IndexValuesMap,
         client: T,

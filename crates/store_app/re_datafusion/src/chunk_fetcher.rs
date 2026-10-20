@@ -17,7 +17,7 @@ use tracing::Instrument as _;
 
 use re_dataframe::external::re_chunk::Chunk;
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::ChunkCandidatesDataframe;
 use re_protos::{
     cloud::v1alpha1::ext::{
         ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
@@ -235,7 +235,7 @@ impl std::error::Error for DirectFetchError {}
 /// Returns `true` if the batch contains at least one non-null direct URL.
 pub fn batch_has_any_direct_urls(batch: &RecordBatch) -> bool {
     batch
-        .column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
+        .column_by_name(ChunkCandidatesDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
         .is_some_and(|col| col.null_count() < col.len())
 }
 
@@ -249,7 +249,7 @@ pub fn split_batch_by_direct_url(
     use arrow::compute::{filter_record_batch, is_not_null, not};
 
     let Some(url_col) =
-        batch.column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
+        batch.column_by_name(ChunkCandidatesDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
     else {
         return (None, Some(batch.clone()));
     };
@@ -278,7 +278,7 @@ pub fn split_batch_by_direct_url(
 /// this only feeds byte accounting, and silently reporting 0 bytes would be worse than
 /// undercounting by a row.
 pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
-    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+    ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN
         .optional()
         .extract(batch)
         .map_or(0, |column| column.iter().flatten().sum())
@@ -289,7 +289,7 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// Returns `None` when the server did not supply uncompressed sizes (older server or
 /// the column was not projected).
 pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
-    let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+    let column = ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
         .optional()
         .extract(batch)
         .ok()?;
@@ -713,16 +713,16 @@ async fn fetch_batch_via_direct_urls(
     // populated by the server. `chunk_key` carries the canonical source URL
     // (e.g. `s3://`) plus per-source-object metadata (etag, registration_time)
     // used here purely for drift detection — never as the transport URL.
-    let chunk_keys = QueryDatasetDataframe::COLUMN_CHUNK_KEY
+    let chunk_keys = ChunkCandidatesDataframe::COLUMN_CHUNK_KEY
         .extract(batch)
         .map_err(column)?;
-    let direct_urls = QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL
+    let direct_urls = ChunkCandidatesDataframe::COLUMN_RERUN_LAYER_DIRECT_URL
         .extract(batch)
         .map_err(column)?;
     // Segment IDs are required on QueryDatasetResponse, but treat them as
     // optional here: we use them purely for diagnostic logging on the decode
     // failure path, and a missing column should never break the fetch path.
-    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+    let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(batch)
         .ok();
 
@@ -1104,8 +1104,8 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use re_protos::cloud::v1alpha1::{
-        FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
-        QueryDatasetRequest, QueryDatasetResponse,
+        FetchChunksResponse, FindChunksRequest, FindChunksResponse, GetDatasetSchemaRequest,
+        GetDatasetSchemaResponse, QueryDatasetRequest, QueryDatasetResponse,
     };
     use tonic::codec::DecodeBuf;
     use tonic::{Request, Response, Status};
@@ -1161,6 +1161,13 @@ mod tests {
             Err(Status::unimplemented("unused by test"))
         }
 
+        async fn find_chunks(
+            &mut self,
+            _request: Request<FindChunksRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<FindChunksResponse>>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
         async fn fetch_chunks(
             &mut self,
             _request: Request<FetchChunksRequest>,
@@ -1182,7 +1189,7 @@ mod tests {
 
     #[tokio::test]
     async fn grpc_request_metrics_count_calls_before_an_error() {
-        let batch = RecordBatch::new_empty(QueryDatasetDataframe::min_schema().into());
+        let batch = RecordBatch::new_empty(ChunkCandidatesDataframe::min_schema().into());
         let batches = [batch.clone(), batch];
         let client = TestFetchClient {
             fail_on_call: 1,
@@ -1202,7 +1209,7 @@ mod tests {
 
     #[tokio::test]
     async fn grpc_request_metrics_count_every_successful_call() {
-        let batch = RecordBatch::new_empty(QueryDatasetDataframe::min_schema().into());
+        let batch = RecordBatch::new_empty(ChunkCandidatesDataframe::min_schema().into());
         let batches = [batch.clone(), batch];
         let client = TestFetchClient::default();
         let calls = Arc::clone(&client.calls);
