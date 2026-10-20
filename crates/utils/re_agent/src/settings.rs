@@ -6,6 +6,16 @@ use agent_client_protocol::schema::v1::{SessionConfigValueId, SessionModeId};
 use crate::connection::{LaunchConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, find_executable};
 
+/// Fast models to select, best first, unless the user has picked a model for the profile.
+///
+/// The agent panel should feel fast, and flagship models are often too slow for that.
+const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
+    "sonnet", // Anthropic: Claude
+    "flash",  // Google: Gemini
+    "luna",   // OpenAI: Codex
+    "mini",   // OpenAI: older GPT models
+];
+
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct McpServerConfig {
@@ -184,7 +194,10 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
-            model_preferences: Vec::new(),
+            model_preferences: DEFAULT_MODEL_PREFERENCES
+                .iter()
+                .map(|&model| model.to_owned())
+                .collect(),
             preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
             preferred_mode: self.preferred_mode.clone(),
         })
