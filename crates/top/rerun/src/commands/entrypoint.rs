@@ -834,7 +834,7 @@ where
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "oss_server")]
-            Command::Server(server) => tokio_runtime.block_on(server.run_async()),
+            Command::Server(server) => tokio_runtime.block_on(server.run_async(build_info)),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -1255,7 +1255,8 @@ fn start_native_viewer(
     let (viewer_server_listener, internal_catalog, connection_registry, connect_hint) = {
         let listener = re_grpc_server::ServerListener::bind(server_addr)?;
         let connect_hint = url_or_paths.is_empty().then(|| listener.connect_hint());
-        let internal_catalog = re_viewer::internal_catalog::build(listener.local_addr());
+        let internal_catalog =
+            re_viewer::internal_catalog::build(listener.local_addr(), _build_info.clone());
         let connection_registry = connection_registry.with_internal(
             internal_catalog.connection.clone(),
             internal_catalog.storage_dir().to_owned(),

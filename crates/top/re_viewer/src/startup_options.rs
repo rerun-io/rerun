@@ -145,7 +145,7 @@ impl StartupOptions {
         } else if self.is_in_notebook || cfg!(not(target_arch = "wasm32")) {
             // Notebooks behave like native viewers here because just like on native,
             // there's no useful base url in the address bar to use.
-            let version = re_build_info::build_info!().version.latest_stable();
+            let version = re_build_info::CrateVersion::LOCAL.latest_stable();
 
             url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
         } else {

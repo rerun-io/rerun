@@ -2250,6 +2250,7 @@ dependencies = [
  "futures-util",
  "mimalloc",
  "parking_lot",
+ "re_build_tools",
  "re_workspace_hack",
  "rerun",
  "serde",
@@ -2283,6 +2284,7 @@ name = "custom_view"
 version = "0.40.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_build_tools",
  "re_workspace_hack",
  "rerun",
 ]
@@ -2293,6 +2295,7 @@ version = "0.40.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
  "mimalloc",
+ "re_build_tools",
  "re_workspace_hack",
  "rerun",
 ]
@@ -3997,6 +4000,7 @@ name = "extend_viewer_ui"
 version = "0.40.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_build_tools",
  "re_workspace_hack",
  "rerun",
 ]
@@ -11081,7 +11085,6 @@ dependencies = [
  "re_arrow_util",
  "re_async",
  "re_build_info",
- "re_build_tools",
  "re_byte_size",
  "re_catalog_client",
  "re_chunk",
@@ -12244,6 +12247,7 @@ dependencies = [
  "anyhow",
  "argh",
  "cargo_metadata",
+ "re_build_info",
  "re_server",
  "re_workspace_hack",
  "serde_json",
@@ -15489,6 +15493,7 @@ name = "viewer_callbacks"
 version = "0.40.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
+ "re_build_tools",
  "re_workspace_hack",
  "rerun",
 ]

@@ -5,7 +5,7 @@ use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 // The lint fires locally but not on CI, so we use `allow` instead of `expect`:
 #[allow(clippy::unused_async, clippy::allow_attributes)] // needed by the macro
 async fn build() -> RerunCloudHandler {
-    RerunCloudHandlerBuilder::new()
+    RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!())
         .build()
         .expect("failed to build handler")
 }
@@ -15,12 +15,13 @@ re_redap_tests::generate_oss_only_redap_tests!(build);
 
 #[tokio::test(flavor = "multi_thread")]
 async fn version() {
+    let build_info = re_build_info::cargo_build_info!();
     let handle = re_server::Args {
         host: "127.0.0.1".into(),
         port: 0,
         ..Default::default()
     }
-    .create_server_handle()
+    .create_server_handle(build_info.clone())
     .await
     .expect("failed to start server");
 
@@ -38,10 +39,7 @@ async fn version() {
         panic!();
     }
 
-    assert_eq!(
-        text,
-        Some(re_build_info::build_info!().to_string().as_str())
-    );
+    assert_eq!(text, Some(build_info.to_string().as_str()));
 
     handle.shutdown_and_wait().await;
 }

@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use rerun::external::parking_lot::Mutex;
 use rerun::external::re_viewer::{self, ViewerEvent, ViewerEventKind};
-use rerun::external::{eframe, egui, re_crash_handler, re_grpc_server, re_log, re_memory, tokio};
+use rerun::external::{
+    eframe, egui, re_build_info, re_crash_handler, re_grpc_server, re_log, re_memory, tokio,
+};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -23,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
-    re_crash_handler::install_crash_handlers(re_viewer::build_info());
+    re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
@@ -79,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let mut rerun_app = re_viewer::App::new(
                 main_thread_token,
-                re_viewer::build_info(),
+                re_build_info::build_info!(),
                 app_env,
                 startup_options,
                 cc,

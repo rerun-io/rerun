@@ -23,7 +23,8 @@ async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
 
     let listener = re_grpc_server::ServerListener::bind((std::net::Ipv4Addr::LOCALHOST, 0).into())?;
     let (handler, write_upload_route) =
-        RerunCloudHandlerBuilder::new().build_with_write_access()?;
+        RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!())
+            .build_with_write_access()?;
     let handle = ServerBuilder::default()
         .with_listener(listener)
         .with_service(RerunCloudServiceServer::new(handler))

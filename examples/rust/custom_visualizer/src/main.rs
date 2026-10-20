@@ -7,7 +7,8 @@
 
 use rerun::external::re_sdk_types::{self, View as _};
 use rerun::external::{
-    glam, re_crash_handler, re_grpc_server, re_log, re_log_channel, re_memory, re_viewer, tokio,
+    glam, re_build_info, re_crash_handler, re_grpc_server, re_log, re_log_channel, re_memory,
+    re_viewer, tokio,
 };
 
 mod height_field_archetype;
@@ -33,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
-    re_crash_handler::install_crash_handlers(re_viewer::build_info());
+    re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
@@ -61,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| {
             let mut app = re_viewer::App::new(
                 main_thread_token,
-                re_viewer::build_info(),
+                re_build_info::build_info!(),
                 app_env,
                 startup_options,
                 cc,

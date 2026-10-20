@@ -22,7 +22,7 @@ use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 /// loaded into memory, so the URI is also where the layer's chunks still live.
 #[tokio::test]
 async fn file_registration_reports_its_file_url() {
-    let service = RerunCloudHandlerBuilder::new()
+    let service = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!())
         .build()
         .expect("failed to build handler");
 
@@ -55,7 +55,7 @@ async fn file_registration_reports_its_file_url() {
 /// Registering a `memory://` URL that was never registered returns `NOT_FOUND`.
 #[tokio::test]
 async fn register_memory_url_not_found() {
-    let service = RerunCloudHandlerBuilder::new()
+    let service = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!())
         .build()
         .expect("failed to build handler");
 

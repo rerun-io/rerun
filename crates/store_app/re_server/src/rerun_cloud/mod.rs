@@ -126,14 +126,19 @@ fn apply_segment_id_filter(
 ///
 /// Touches the filesystem only in [`Self::build`] and [`Self::build_with_write_access`], which
 /// create the handler's storage directory.
-#[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
+    build_info: re_build_info::BuildInfo,
     store: InMemoryStore,
 }
 
 impl RerunCloudHandlerBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    /// `build_info` describes the binary hosting the handler, and is what the handler reports
+    /// from its version endpoint.
+    pub fn new(build_info: re_build_info::BuildInfo) -> Self {
+        Self {
+            build_info,
+            store: InMemoryStore::default(),
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -203,12 +208,21 @@ impl RerunCloudHandlerBuilder {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build(self) -> Result<RerunCloudHandler, crate::store::Error> {
         let settings = RerunCloudHandlerSettings::new()?;
-        Ok(RerunCloudHandler::new(settings, self.store, None))
+        Ok(RerunCloudHandler::new(
+            settings,
+            self.build_info,
+            self.store,
+            None,
+        ))
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(RerunCloudHandlerSettings::default(), self.store)
+        RerunCloudHandler::new(
+            RerunCloudHandlerSettings::default(),
+            self.build_info,
+            self.store,
+        )
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -219,7 +233,12 @@ impl RerunCloudHandlerBuilder {
         let write_access_grants =
             crate::routes::WriteAccessGrants::new(settings.storage_dir.path().to_owned())?;
         let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
-        let handler = RerunCloudHandler::new(settings, self.store, Some(write_access_grants));
+        let handler = RerunCloudHandler::new(
+            settings,
+            self.build_info,
+            self.store,
+            Some(write_access_grants),
+        );
         Ok((handler, write_upload_route))
     }
 }
@@ -231,6 +250,7 @@ pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
     #[cfg(not(target_arch = "wasm32"))]
     write_access_grants: Option<crate::routes::WriteAccessGrants>,
+    build_info: re_build_info::BuildInfo,
     store: tokio::sync::RwLock<InMemoryStore>,
     events_tx: tokio::sync::broadcast::Sender<WatchEventsResponse>,
 }
@@ -238,6 +258,7 @@ pub struct RerunCloudHandler {
 impl RerunCloudHandler {
     fn new(
         settings: RerunCloudHandlerSettings,
+        build_info: re_build_info::BuildInfo,
         store: InMemoryStore,
         #[cfg(not(target_arch = "wasm32"))] write_access_grants: Option<
             crate::routes::WriteAccessGrants,
@@ -251,6 +272,7 @@ impl RerunCloudHandler {
             settings,
             #[cfg(not(target_arch = "wasm32"))]
             write_access_grants,
+            build_info,
             store: tokio::sync::RwLock::new(store),
             events_tx,
         }
@@ -606,7 +628,7 @@ impl RerunCloudService for RerunCloudHandler {
         let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
 
         // NOTE: Reminder that this is only fully filled iff CI=1.
-        let build_info = re_build_info::build_info!();
+        let build_info = self.build_info.clone();
 
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::VersionResponse {
@@ -2442,9 +2464,10 @@ mod tests {
     use re_protos::headers::RerunHeadersInjectorExt as _;
 
     fn build_handler() -> RerunCloudHandler {
+        let builder = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!());
         cfg_select! {
-            target_arch = "wasm32" => RerunCloudHandlerBuilder::new().build(),
-            _ => RerunCloudHandlerBuilder::new()
+            target_arch = "wasm32" => builder.build(),
+            _ => builder
                 .build()
                 .expect("failed to build handler"),
         }

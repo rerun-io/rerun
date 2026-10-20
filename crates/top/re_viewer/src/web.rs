@@ -68,7 +68,7 @@ impl WebHandle {
         } else {
             re_redap_client::ConnectionRegistry::new_with_stored_credentials()
         };
-        let catalog = crate::internal_catalog::build();
+        let catalog = crate::internal_catalog::build(re_build_info::build_info!());
         let connection_registry = connection_registry
             .with_internal(catalog.connection.clone(), catalog.storage_dir().to_owned());
 

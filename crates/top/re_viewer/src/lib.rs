@@ -133,13 +133,6 @@ mod web_history;
 
 // ---------------------------------------------------------------------------
 
-/// Information about this version of the crate.
-pub fn build_info() -> re_build_info::BuildInfo {
-    re_build_info::build_info!()
-}
-
-// ---------------------------------------------------------------------------
-
 /// Where is this App running in?
 /// Used for analytics.
 #[derive(Clone, Debug, PartialEq, Eq)]

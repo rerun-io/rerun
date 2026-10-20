@@ -36,7 +36,7 @@ impl TestServer {
             ..Default::default()
         };
         let server_handle = args
-            .create_server_handle()
+            .create_server_handle(re_build_info::cargo_build_info!())
             .await
             .expect("Can't create server");
 
