@@ -3,9 +3,14 @@
 //! On Linux, ALSA is loaded at runtime with `dlopen`, so binaries start on machines
 //! without `libasound` and only audio playback is unavailable there.
 //! On macOS we drive an `AudioQueue` ourselves.
+//! On the web we drive an `AudioContext` ourselves.
 //! Everywhere else `tinyaudio` provides the device.
 
 cfg_select! {
+    target_arch = "wasm32" => {
+        mod web_audio;
+        use web_audio as backend;
+    }
     target_os = "linux" => {
         mod alsa;
         use alsa as backend;

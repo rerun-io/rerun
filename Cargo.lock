@@ -9185,10 +9185,13 @@ dependencies = [
  "re_log",
  "re_mutex",
  "re_tracing",
+ "re_web",
  "re_workspace_hack",
  "symphonia",
  "thiserror 2.0.19",
  "tinyaudio",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
