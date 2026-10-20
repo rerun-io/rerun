@@ -25,8 +25,8 @@ use re_types_core::{ChunkId, LayerName, SegmentId};
 use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches, entry_name};
 use crate::utils::rerun::next_chunk_id_generator;
 use crate::utils::{
-    register_layered_dataset, register_mixed_timelines_dataset, register_per_segment_dataset,
-    register_simple_dataset,
+    assert_one_empty_batch, chunk_ids, register_layered_dataset, register_mixed_timelines_dataset,
+    register_per_segment_dataset, register_simple_dataset,
 };
 
 // --- Request builders ---
@@ -127,38 +127,12 @@ async fn find_chunks_wire_error<T: RerunCloudService>(
     }
 }
 
-fn chunk_ids(batches: &[RecordBatch]) -> BTreeSet<ChunkId> {
-    let mut ids = BTreeSet::new();
-    for batch in batches {
-        let column = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
-            .extract(batch)
-            .expect("bad chunk_id column in FindChunks response");
-        ids.extend(column.iter_owned());
-    }
-    ids
-}
-
 pub async fn find_chunks_ids<T: RerunCloudService>(
     service: &T,
     dataset_name: &str,
     request: FindChunksRequest,
 ) -> BTreeSet<ChunkId> {
     chunk_ids(&find_chunks_batches(service, dataset_name, request).await)
-}
-
-/// Asserts that `batches` is exactly one batch with no rows. `FindChunks` answers every empty
-/// selection this way, so the client still receives the response schema.
-fn assert_one_empty_batch(batches: &[RecordBatch], context: &str) {
-    assert_eq!(
-        batches.len(),
-        1,
-        "{context}: an empty selection must return exactly one batch"
-    );
-    assert_eq!(
-        batches[0].num_rows(),
-        0,
-        "{context}: an empty selection's one batch must have zero rows"
-    );
 }
 
 // --- Expected chunk ids ---

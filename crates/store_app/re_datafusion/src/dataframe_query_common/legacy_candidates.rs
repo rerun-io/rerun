@@ -364,20 +364,31 @@ mod tests {
         use re_log_types::EntityPath;
         use re_types_core::LayerName;
 
-        let candidates = ChunkCandidatesDataframe::new(
-            (0..num_rows).map(|_| ChunkId::new()).collect(),
-            vec![SegmentId::from("seg1"); num_rows],
-            vec![LayerName::from("base"); num_rows],
-            vec![&[][..]; num_rows],
-            vec![EntityPath::from("/e"); num_rows],
-            vec![false; num_rows],
-            vec![10_u64; num_rows],
-            vec![Some(10_u64); num_rows],
-            vec![None; num_rows],
-            vec![None; num_rows],
-            vec![None; num_rows],
-        )
-        .expect("valid arrays")
+        let segment_id = SegmentId::from("seg1");
+        let entity_path = EntityPath::from("/e");
+        type Df = ChunkCandidatesDataframe;
+        let candidates = Df {
+            chunk_id: Df::COLUMN_CHUNK_ID.new_from_values((0..num_rows).map(|_| ChunkId::new())),
+            chunk_segment_id: Df::COLUMN_CHUNK_SEGMENT_ID
+                .new_from_values(vec![segment_id; num_rows]),
+            rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER
+                .new_from_values(vec![LayerName::from("base"); num_rows]),
+            chunk_key: Df::COLUMN_CHUNK_KEY.new_from_values(vec![&[] as &[u8]; num_rows]),
+            chunk_entity_path: Df::COLUMN_CHUNK_ENTITY_PATH
+                .new_from_values(vec![entity_path; num_rows]),
+            chunk_is_static: Df::COLUMN_CHUNK_IS_STATIC.new_from_values(vec![false; num_rows]),
+            chunk_byte_len: Df::COLUMN_CHUNK_BYTE_LEN.new_from_values(vec![10_u64; num_rows]),
+            chunk_byte_size_uncompressed: Df::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+                .new_from_values(vec![Some(10_u64); num_rows]),
+            chunk_timeline_start: Df::COLUMN_CHUNK_TIMELINE_START
+                .new_from_values(vec![None::<i64>; num_rows]),
+            rerun_layer_direct_url: Df::COLUMN_RERUN_LAYER_DIRECT_URL
+                .try_new_from_values(vec![None::<String>; num_rows])
+                .expect("valid direct-url column"),
+            rerun_layer_direct_url_expires_at: Df::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
+                .try_new_from_values(vec![None::<i64>; num_rows])
+                .expect("valid expiration column"),
+        }
         .into_record_batch()
         .expect("valid schema");
 

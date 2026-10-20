@@ -13,7 +13,7 @@ use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::ToTransport as _;
-use re_log_types::{EntryId, StoreKind};
+use re_log_types::{EntryId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
     AssetMode, ChunkCandidatesDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
     ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
@@ -373,7 +373,7 @@ impl RerunCloudHandler {
     }
 
     /// Answers a [`ext::LegacyPlan::FullScan`]: every chunk of the given segments and contents.
-    /// It names no timeline, so it cannot go through [`Self::find_candidates`].
+    /// The optional timeline supplies response starts without filtering the selection.
     ///
     /// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
     async fn full_scan_candidates(
@@ -381,6 +381,7 @@ impl RerunCloudHandler {
         entry_id: EntryId,
         segments: ext::SegmentSelection,
         contents: ext::ContentSelection,
+        timeline: Option<TimelineName>,
     ) -> tonic::Result<BoxStream<'static, tonic::Result<RecordBatch>>> {
         let segment_ids = match &segments {
             ext::SegmentSelection::All => None,
@@ -400,7 +401,7 @@ impl RerunCloudHandler {
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(move |store| {
             let selected_chunks = select_chunks(&store, &entities, None)?;
-            encode_candidates(&selected_chunks, None)
+            encode_candidates(&selected_chunks, timeline.as_ref())
         }));
 
         Ok(Box::pin(stream))
@@ -1667,14 +1668,15 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<Self::QueryDatasetStream>> {
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
-        let request: QueryDatasetRequest = request.into_inner().try_into()?;
-
-        if request.scan_parameters.is_some() {
-            // Logged at a low debug-level, because of https://github.com/rerun-io/rerun/pull/12578
-            re_log::debug_once!("   scan_parameters are not yet implemented and will be ignored");
-        }
+        let mut request: QueryDatasetRequest = request.into_inner().try_into()?;
 
         // TODO(RR-5817): this serves released SDKs, answering `QueryDataset` through `FindChunks`.
+        let columns = request
+            .scan_parameters
+            .as_mut()
+            .map(|parameters| std::mem::take(&mut parameters.columns))
+            .unwrap_or_default();
+        let mut dataset_schema = None;
         let request = if ext::selects_components_on_every_entity(&request) {
             let schema = self
                 .store
@@ -1685,11 +1687,30 @@ impl RerunCloudService for RerunCloudHandler {
                 .map_err(|err| {
                     tonic::Status::internal(format!("Unable to read dataset schema: {err:#}"))
                 })?;
-            ext::list_entities_for_component_selection(request, &schema)
+            let request = ext::list_entities_for_component_selection(request, &schema);
+            dataset_schema = Some(schema);
+            request
         } else {
             request
         };
         let plan = ext::adapt_legacy(request)?;
+        let response_timeline = if let Some(name) = ext::projected_start_name(&plan, &columns) {
+            let schema = match dataset_schema {
+                Some(schema) => schema,
+                None => self
+                    .store
+                    .read()
+                    .await
+                    .dataset(entry_id)?
+                    .schema()
+                    .map_err(|err| {
+                        tonic::Status::internal(format!("Unable to read dataset schema: {err:#}"))
+                    })?,
+            };
+            ext::resolve_projected_start_timeline(name, &schema)?
+        } else {
+            None
+        };
 
         let stream: BoxStream<'static, tonic::Result<RecordBatch>> = match plan {
             ext::LegacyPlan::Find(request) => {
@@ -1704,10 +1725,12 @@ impl RerunCloudService for RerunCloudHandler {
                 segments, contents, ..
             } => {
                 let candidates = self
-                    .full_scan_candidates(entry_id, segments, contents)
+                    .full_scan_candidates(entry_id, segments, contents, response_timeline)
                     .await?;
                 candidates
-                    .map(|batch| ext::encode_legacy_candidates(batch?, None))
+                    .map(move |batch| {
+                        ext::encode_legacy_candidates(batch?, response_timeline.as_ref())
+                    })
                     .boxed()
             }
         };

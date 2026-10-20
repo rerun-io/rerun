@@ -30,11 +30,8 @@ pub enum LegacyPlan {
 
     /// The legacy request has no time filter: neither a `latest_at` nor a `range`.
     ///
-    /// Released SDKs send this for a plain `reader(index=…)`.
-    /// They leave the reader's timeline out of the request (although they should have),
-    /// so no `FindChunks` mode fits.
-    /// The server answers with every chunk of the selected segments and contents,
-    /// static or temporal, as `QueryDataset` did.
+    /// Selects every chunk of the requested segments and contents, static or temporal.
+    /// A projected timeline start affects response metadata, not chunk selection.
     FullScan {
         segments: SegmentSelection,
         contents: ContentSelection,
@@ -287,6 +284,52 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
             contents,
             direct_url_mode,
         }),
+    }
+}
+
+/// Returns the sole distinct projected `:start` name for a full scan, without its final suffix.
+///
+/// The name is unvalidated. Call [`resolve_projected_start_timeline`] before using it as a timeline.
+/// Repeated copies of one start projection are allowed; multiple distinct starts are ignored.
+///
+/// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
+pub fn projected_start_name<'a>(plan: &LegacyPlan, columns: &'a [String]) -> Option<&'a str> {
+    if !matches!(plan, LegacyPlan::FullScan { .. }) {
+        return None;
+    }
+    let mut names = columns
+        .iter()
+        .filter_map(|column| column.strip_suffix(":start"));
+    let name = names.next()?;
+    names.all(|other| other == name).then_some(name)
+}
+
+/// Resolves an exact schema field name only when its kind is [`re_sorbet::ColumnKind::Index`].
+///
+/// Missing and non-index fields return `None`. Malformed matching-field metadata is an error.
+///
+/// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
+pub fn resolve_projected_start_timeline(
+    name: &str,
+    schema: &Schema,
+) -> tonic::Result<Option<TimelineName>> {
+    let mut has_index = false;
+    for field in schema.fields().iter().filter(|field| field.name() == name) {
+        let kind = re_sorbet::ColumnKind::try_from(field.as_ref()).map_err(|err| {
+            tonic::Status::internal(format!(
+                "invalid dataset schema column for projected timeline `{name}`: {err}"
+            ))
+        })?;
+        has_index |= kind == re_sorbet::ColumnKind::Index;
+    }
+    if has_index {
+        TimelineName::try_new(name).map(Some).map_err(|err| {
+            tonic::Status::internal(format!(
+                "invalid projected timeline name in dataset schema: {err}"
+            ))
+        })
+    } else {
+        Ok(None)
     }
 }
 
@@ -960,23 +1003,113 @@ mod tests {
         assert!(unchanged.entity_paths.is_empty());
     }
 
+    // TODO(RR-5817): remove with projected-start compatibility.
+    #[test]
+    fn projected_start_recognition_and_resolution() {
+        let field = |name: &str, kind: &str| {
+            Field::new(name, DataType::Int64, true).with_metadata(
+                [(re_sorbet::metadata::RERUN_KIND.to_owned(), kind.to_owned())].into(),
+            )
+        };
+        let schema = Schema::new(vec![
+            field("frame", "index"),
+            field("elapsed time", "index"),
+            field("sensor:clock:start", "index"),
+            field("entity:component:frame", "index"),
+            field("value", "component"),
+            field("broken", "invalid"),
+        ]);
+        let full_scan = adapt_legacy(QueryDatasetRequest::default()).expect("valid full scan");
+        let find = LegacyPlan::Find(FindChunksRequest {
+            contents: ContentSelection::All,
+            mode: ChunkMode::Static {
+                segments: SegmentSelection::All,
+            },
+            direct_url_mode: DirectUrlMode::Omit,
+        });
+        let cases: &[(&LegacyPlan, &[&str], Result<Option<&str>, tonic::Code>)] = &[
+            (
+                &full_scan,
+                &[QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME, "frame:start"],
+                Ok(Some("frame")),
+            ),
+            (
+                &full_scan,
+                &["frame:start", "frame:start"],
+                Ok(Some("frame")),
+            ),
+            (&full_scan, &["frame:start", "elapsed time:start"], Ok(None)),
+            (&full_scan, &["entity:frame:start"], Ok(None)),
+            (&full_scan, &["unknown:start"], Ok(None)),
+            (&full_scan, &["value:start"], Ok(None)),
+            (
+                &full_scan,
+                &["elapsed time:start"],
+                Ok(Some("elapsed time")),
+            ),
+            (
+                &full_scan,
+                &["sensor:clock:start:start"],
+                Ok(Some("sensor:clock:start")),
+            ),
+            (
+                &full_scan,
+                &["entity:component:frame:start"],
+                Ok(Some("entity:component:frame")),
+            ),
+            (&full_scan, &["elapsed_time:start"], Ok(None)),
+            (&full_scan, &[], Ok(None)),
+            (&find, &["frame:start"], Ok(None)),
+            (&full_scan, &["broken:start"], Err(tonic::Code::Internal)),
+        ];
+        for (plan, columns, expected) in cases {
+            let columns = columns
+                .iter()
+                .map(|name| (*name).to_owned())
+                .collect::<Vec<_>>();
+            let actual = projected_start_name(plan, &columns)
+                .map(|name| resolve_projected_start_timeline(name, &schema))
+                .transpose()
+                .map(Option::flatten)
+                .map_err(|err| err.code());
+            assert_eq!(
+                actual
+                    .as_ref()
+                    .map(|timeline| timeline.as_ref().map(TimelineName::as_str)),
+                expected.as_ref().copied(),
+                "projections {columns:?} on {plan:?}"
+            );
+        }
+    }
+
     #[test]
     fn encode_legacy_candidates_columns() {
         fn populated_batch() -> RecordBatch {
-            ChunkCandidatesDataframe::new(
-                vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()],
-                vec![SegmentId::from("seg1"), SegmentId::from("seg2")],
-                vec![LayerName::from("layer"), LayerName::from("layer")],
-                vec![b"key1".as_slice(), b"key2".as_slice()],
-                vec![EntityPath::root(), EntityPath::root()],
-                vec![true, false],
-                vec![1u64, 2u64],
-                vec![Some(10u64), None],
-                vec![Some(5i64), None],
-                vec![Some("https://x/1".to_owned()), None],
-                vec![Some(1_000i64), None],
-            )
-            .expect("valid candidate columns")
+            type Df = ChunkCandidatesDataframe;
+            Df {
+                chunk_id: Df::COLUMN_CHUNK_ID
+                    .new_from_values([re_chunk::ChunkId::new(), re_chunk::ChunkId::new()]),
+                chunk_segment_id: Df::COLUMN_CHUNK_SEGMENT_ID
+                    .new_from_values([SegmentId::from("seg1"), SegmentId::from("seg2")]),
+                rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER
+                    .new_from_values([LayerName::from("layer"), LayerName::from("layer")]),
+                chunk_key: Df::COLUMN_CHUNK_KEY
+                    .new_from_values([b"key1".as_slice(), b"key2".as_slice()]),
+                chunk_entity_path: Df::COLUMN_CHUNK_ENTITY_PATH
+                    .new_from_values([EntityPath::root(), EntityPath::root()]),
+                chunk_is_static: Df::COLUMN_CHUNK_IS_STATIC.new_from_values([true, false]),
+                chunk_byte_len: Df::COLUMN_CHUNK_BYTE_LEN.new_from_values([1u64, 2u64]),
+                chunk_byte_size_uncompressed: Df::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+                    .new_from_values([Some(10u64), None]),
+                chunk_timeline_start: Df::COLUMN_CHUNK_TIMELINE_START
+                    .new_from_values([Some(5i64), None]),
+                rerun_layer_direct_url: Df::COLUMN_RERUN_LAYER_DIRECT_URL
+                    .try_new_from_values([Some("https://x/1".to_owned()), None])
+                    .expect("valid direct-url column"),
+                rerun_layer_direct_url_expires_at: Df::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
+                    .try_new_from_values([Some(1_000i64), None])
+                    .expect("valid expiration column"),
+            }
             .into_record_batch()
             .expect("valid candidate record batch")
         }

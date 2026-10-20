@@ -118,43 +118,6 @@ pub struct ChunkCandidatesDataframe {
     pub rerun_layer_direct_url_expires_at: quiver::Column<Option<quiver::Dictionary<i32, i64>>>,
 }
 
-impl ChunkCandidatesDataframe {
-    /// One row per candidate chunk; all columns must have the same length.
-    #[expect(clippy::too_many_arguments)]
-    pub fn new(
-        chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_segment_ids: Vec<SegmentId>,
-        chunk_layer_names: Vec<LayerName>,
-        chunk_keys: Vec<&[u8]>,
-        chunk_entity_paths: Vec<EntityPath>,
-        chunk_is_static: Vec<bool>,
-        chunk_byte_lens: Vec<u64>,
-        chunk_byte_sizes_uncompressed: Vec<Option<u64>>,
-        chunk_timeline_starts: Vec<Option<i64>>,
-        chunk_direct_urls: Vec<Option<String>>,
-        chunk_direct_urls_expire_at: Vec<Option<i64>>,
-    ) -> arrow::error::Result<Self> {
-        Ok(Self {
-            chunk_id: Self::COLUMN_CHUNK_ID.new_from_values(chunk_ids),
-            chunk_segment_id: Self::COLUMN_CHUNK_SEGMENT_ID.new_from_values(chunk_segment_ids),
-            rerun_segment_layer: Self::COLUMN_RERUN_SEGMENT_LAYER
-                .new_from_values(chunk_layer_names),
-            chunk_key: Self::COLUMN_CHUNK_KEY.new_from_values(chunk_keys),
-            chunk_entity_path: Self::COLUMN_CHUNK_ENTITY_PATH.new_from_values(chunk_entity_paths),
-            chunk_is_static: Self::COLUMN_CHUNK_IS_STATIC.new_from_values(chunk_is_static),
-            chunk_byte_len: Self::COLUMN_CHUNK_BYTE_LEN.new_from_values(chunk_byte_lens),
-            chunk_byte_size_uncompressed: Self::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
-                .new_from_values(chunk_byte_sizes_uncompressed),
-            chunk_timeline_start: Self::COLUMN_CHUNK_TIMELINE_START
-                .new_from_values(chunk_timeline_starts),
-            rerun_layer_direct_url: Self::COLUMN_RERUN_LAYER_DIRECT_URL
-                .try_new_from_values(chunk_direct_urls)?,
-            rerun_layer_direct_url_expires_at: Self::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
-                .try_new_from_values(chunk_direct_urls_expire_at)?,
-        })
-    }
-}
-
 // --- QueryTasksResponse ---
 
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::QueryTasksResponse::data`].

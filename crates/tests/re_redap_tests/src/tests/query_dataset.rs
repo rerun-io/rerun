@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use arrow::array::{RecordBatch, RecordBatchOptions, UInt32Array};
+use arrow::array::{Int64Array, RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
@@ -127,6 +127,10 @@ pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunC
                 tonic::Request::new(
                     QueryDatasetRequest {
                         segment_ids,
+                        scan_parameters: Some(ScanParameters {
+                            columns: vec![format!("{TIMELINE}:start")],
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }
                     .into(),
@@ -148,6 +152,16 @@ pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunC
             .collect()
             .await;
 
+        assert!(
+            !chunk_info.is_empty(),
+            "expected at least one batch for {descr}"
+        );
+        for batch in &chunk_info {
+            assert!(
+                batch.column_by_name(&format!("{TIMELINE}:start")).is_some(),
+                "projected start field must exist even for {descr}"
+            );
+        }
         let merged = concat_record_batches(&chunk_info);
         let has_rows = merged.num_rows() > 0;
         assert_eq!(
@@ -400,6 +414,32 @@ pub async fn query_dataset_matches_find_chunks(service: impl RerunCloudService) 
             find_chunks_chunk_ids(&find_chunks_response),
             "case `{name}`: query_dataset and find_chunks must return the same chunk_id set"
         );
+        if let Some(timeline) = timeline {
+            let starts_by_chunk_id = |batches: &[RecordBatch], column_name: &str| {
+                let mut starts = BTreeMap::new();
+                for batch in batches {
+                    let ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+                        .extract(batch)
+                        .expect("chunk IDs must be present");
+                    let values = batch
+                        .column_by_name(column_name)
+                        .expect("start column must be present")
+                        .as_any()
+                        .downcast_ref::<Int64Array>()
+                        .expect("start column must be Int64");
+                    starts.extend(std::iter::zip(ids.iter_owned(), values.iter()));
+                }
+                starts
+            };
+            assert_eq!(
+                starts_by_chunk_id(&query_dataset_response, &format!("{timeline}:start")),
+                starts_by_chunk_id(
+                    &find_chunks_response,
+                    ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME,
+                ),
+                "case `{name}`: starts must match by chunk ID"
+            );
+        }
     }
 }
 
@@ -710,6 +750,32 @@ fn matches_find_chunks_cases() -> Vec<EquivalentRequests> {
                 full_scan_query(),
                 false,
             ),
+            find_chunks: find_range(
+                TIMELINE,
+                None,
+                None,
+                FillMode::None,
+                SegmentSelection::All,
+                content_explicit(ComponentSelection::All),
+                true,
+            ),
+        },
+        // TODO(RR-5817): SDKs using QueryDataset project starts for incremental reads.
+        EquivalentRequests {
+            name: "projected_start_full_scan",
+            dataset: MIXED_TIMELINES,
+            timeline: Some(TIMELINE),
+            query_dataset: {
+                let mut request =
+                    sdk_query_dataset_request(vec![], false, vec![], full_scan_query(), false);
+                request
+                    .scan_parameters
+                    .as_mut()
+                    .expect("SDK requests have scan parameters")
+                    .columns
+                    .push(format!("{TIMELINE}:start"));
+                request
+            },
             find_chunks: find_range(
                 TIMELINE,
                 None,

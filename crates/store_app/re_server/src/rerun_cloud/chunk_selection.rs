@@ -276,26 +276,35 @@ pub fn encode_candidates(
         chunk_timeline_starts.push(start);
     }
 
-    let chunk_key_refs = chunk_keys.iter().map(Vec::as_slice).collect();
+    let chunk_key_refs: Vec<&[u8]> = chunk_keys.iter().map(Vec::as_slice).collect();
 
-    ChunkCandidatesDataframe::new(
-        chunk_ids,
-        chunk_segment_ids,
-        chunk_layer_names,
-        chunk_key_refs,
-        chunk_entity_paths,
-        chunk_is_static,
-        chunk_byte_lens,
-        chunk_byte_sizes_uncompressed,
-        chunk_timeline_starts,
-        vec![None; num_chunks],
-        vec![None; num_chunks],
-    )
-    .map_err(|err| {
+    // Only the two dictionary-encoded direct-URL columns can fail to build.
+    let direct_url_column_err = |err| {
         tonic::Status::internal(format!(
             "Failed to build the FindChunks dataframe for {num_chunks} candidates: {err:#}"
         ))
-    })?
+    };
+
+    type Df = ChunkCandidatesDataframe;
+    Df {
+        chunk_id: Df::COLUMN_CHUNK_ID.new_from_values(chunk_ids),
+        chunk_segment_id: Df::COLUMN_CHUNK_SEGMENT_ID.new_from_values(chunk_segment_ids),
+        rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(chunk_layer_names),
+        chunk_key: Df::COLUMN_CHUNK_KEY.new_from_values(chunk_key_refs),
+        chunk_entity_path: Df::COLUMN_CHUNK_ENTITY_PATH.new_from_values(chunk_entity_paths),
+        chunk_is_static: Df::COLUMN_CHUNK_IS_STATIC.new_from_values(chunk_is_static),
+        chunk_byte_len: Df::COLUMN_CHUNK_BYTE_LEN.new_from_values(chunk_byte_lens),
+        chunk_byte_size_uncompressed: Df::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+            .new_from_values(chunk_byte_sizes_uncompressed),
+        chunk_timeline_start: Df::COLUMN_CHUNK_TIMELINE_START
+            .new_from_values(chunk_timeline_starts),
+        rerun_layer_direct_url: Df::COLUMN_RERUN_LAYER_DIRECT_URL
+            .try_new_from_values(vec![None::<String>; num_chunks])
+            .map_err(direct_url_column_err)?,
+        rerun_layer_direct_url_expires_at: Df::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
+            .try_new_from_values(vec![None::<i64>; num_chunks])
+            .map_err(direct_url_column_err)?,
+    }
     .into_record_batch()
     .map_err(|err| {
         tonic::Status::internal(format!(
