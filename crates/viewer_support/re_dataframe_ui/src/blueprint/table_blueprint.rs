@@ -5,7 +5,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::{
     ColumnDisplayMode, ColumnName, PlayState, PlaybackSpeed, SortBy as BlueprintSortBy,
-    SqlFilterExpression, TableLayoutKind, TimelineName as BlueprintTimelineName,
+    SqlFilterExpression, TableLayoutKind, TimelineFraction, TimelineName as BlueprintTimelineName,
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
@@ -24,6 +24,9 @@ pub struct PreviewsConfig {
 
     /// Playback speed of every preview, as a multiple of real time.
     pub playback_speed: f32,
+
+    /// Where every preview starts, from 0.0 at the start of the recording to 1.0 at the end.
+    pub start_point: f64,
 }
 
 impl Default for PreviewsConfig {
@@ -32,6 +35,7 @@ impl Default for PreviewsConfig {
             timeline: None,
             playing: false,
             playback_speed: 1.0,
+            start_point: *TimelineFraction::default().0,
         }
     }
 }
@@ -173,6 +177,16 @@ impl<'a> TableBlueprint<'a> {
                         PreviewsConfigArchetype::descriptor_playback_speed().component,
                     )
                     .map_or(1.0, |speed| **speed as f32),
+                start_point: results
+                    .component_mono::<TimelineFraction>(
+                        PreviewsConfigArchetype::descriptor_start_point().component,
+                    )
+                    .map(|fraction| **fraction)
+                    .filter(|fraction| fraction.is_finite())
+                    .map_or_else(
+                        || *TimelineFraction::default().0,
+                        |fraction| fraction.clamp(0.0, 1.0),
+                    ),
             },
             table_layout: TableLayout::load_and_resolve(
                 blueprint_ctx,

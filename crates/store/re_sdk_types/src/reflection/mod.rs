@@ -892,6 +892,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TimelineFraction as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A position on a timeline, as a fraction of its time range.\n\n0.0 is the start and 1.0 the end.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TimelineFraction::default().to_arrow()?),
+                datatype: TimelineFraction::arrow_data_type(),
+                encoding: Some("rerun.encodings.Float64"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: TimelineFraction::verify_arrow_array,
+            },
+        ),
+        (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\nThe name is used both as an identifier and as a display label: it is what timelines are\nkeyed on, and also what the user reads.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -5694,6 +5707,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Playback speed",
                         component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
                         docstring_md: "Playback speed of every preview cell.\n\nDefaults to 1.0.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "start_point",
+                        display_name: "Start point",
+                        component_type: "rerun.blueprint.components.TimelineFraction".into(),
+                        docstring_md: "Where every preview cell starts, as a fraction of the recording's time range.\n\n0.0 is the start and 1.0 the end.\nDefaults to 0.5.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

@@ -51,6 +51,7 @@
 #include "blueprint/components/time_int.hpp"
 #include "blueprint/components/time_range.hpp"
 #include "blueprint/components/timeline_column.hpp"
+#include "blueprint/components/timeline_fraction.hpp"
 #include "blueprint/components/timeline_name.hpp"
 #include "blueprint/components/tooltip_mode.hpp"
 #include "blueprint/components/view_class.hpp"

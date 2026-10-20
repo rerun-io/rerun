@@ -10,14 +10,14 @@ use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_log_types::{AbsoluteTimeRangeF, EntityPath, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::UiExt as _;
 
 use re_view::execute_systems_for_view;
 use re_viewer_context::{
-    ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, NeedsRepaint,
-    PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
+    ActivePreview, ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter,
+    NeedsRepaint, PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
     TimeControlCommand, ViewClass, ViewContextSystemOncePerFrameResult, ViewId, ViewStates,
     ViewSystemIdentifier, ViewerContext, blueprint_timeline,
 };
@@ -89,6 +89,9 @@ pub(crate) struct SegmentPreviewRenderer<'a> {
     /// Playback speed of every preview recording, as a multiple of real time.
     playback_speed: f32,
 
+    /// Where every preview starts, as a fraction of the recording's time range.
+    start_point: f64,
+
     /// Per-frame cache of once-per-frame context-system results, keyed by the recording's
     /// [`StoreId`]. Populated lazily on the first preview of each recording.
     once_per_frame_cache: RefCell<AHashMap<StoreId, OncePerFrameResults>>,
@@ -132,6 +135,7 @@ impl<'a> SegmentPreviewRenderer<'a> {
             view_ids,
             timeline: config.timeline,
             playback_speed: config.playback_speed,
+            start_point: config.start_point,
             once_per_frame_cache: RefCell::default(),
         })
     }
@@ -306,6 +310,7 @@ impl<'a> SegmentPreviewRenderer<'a> {
         let store_id = recording.store_id();
         let time_ctrl = if let Some(preview) = preview_state.active_preview_mut(store_id) {
             apply_configured_timeline(&mut preview.time_control, self.timeline, recording);
+            apply_start_point(preview, self.start_point, recording);
             preview.time_control.clone()
         } else {
             let mut time_control = TimeControl::preview_time_control();
@@ -678,6 +683,37 @@ fn apply_configured_timeline(
         recording,
         &[TimeControlCommand::SetActiveTimeline(configured_timeline)],
     );
+}
+
+/// Move the preview's time to the `start_point` fraction of its time range, once per timeline.
+///
+/// Waits until the recording's manifest is complete.
+fn apply_start_point(preview: &mut ActivePreview, start_point: f64, recording: &EntityDb) {
+    let timeline = *preview.time_control.timeline_name();
+    if preview.start_point_timeline == Some(timeline) {
+        return;
+    }
+
+    let manifest = recording.rrd_manifest_index();
+    if manifest.has_manifest() && !manifest.is_manifest_complete() {
+        return;
+    }
+
+    let Some(range) = std::iter::chain(
+        preview.time_control.time_range(recording),
+        manifest.timeline_range(&timeline),
+    )
+    .reduce(|a, b| a.union(b)) else {
+        return;
+    };
+
+    let time = AbsoluteTimeRangeF::from(range).lerp(start_point);
+    let _response = preview.time_control.handle_time_commands(
+        None::<&ViewerContext<'_>>,
+        recording,
+        &[TimeControlCommand::SetTime(time)],
+    );
+    preview.start_point_timeline = Some(timeline);
 }
 
 /// Shows a preview timeline when the grid card/row is hovered.

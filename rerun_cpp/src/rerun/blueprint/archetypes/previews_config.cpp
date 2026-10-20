@@ -19,12 +19,17 @@ namespace rerun::blueprint::archetypes {
                 Descriptor_playback_speed
             )
                 .value_or_throw();
+        archetype.start_point =
+            ComponentBatch::empty<rerun::blueprint::components::TimelineFraction>(
+                Descriptor_start_point
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> PreviewsConfig::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(4);
         if (timeline.has_value()) {
             columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
         }
@@ -33,6 +38,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (playback_speed.has_value()) {
             columns.push_back(playback_speed.value().partitioned(lengths_).value_or_throw());
+        }
+        if (start_point.has_value()) {
+            columns.push_back(start_point.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -47,6 +55,9 @@ namespace rerun::blueprint::archetypes {
         if (playback_speed.has_value()) {
             return columns(std::vector<uint32_t>(playback_speed.value().length(), 1));
         }
+        if (start_point.has_value()) {
+            return columns(std::vector<uint32_t>(start_point.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::blueprint::archetypes
@@ -59,7 +70,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
         if (archetype.timeline.has_value()) {
             cells.push_back(archetype.timeline.value());
@@ -69,6 +80,9 @@ namespace rerun {
         }
         if (archetype.playback_speed.has_value()) {
             cells.push_back(archetype.playback_speed.value());
+        }
+        if (archetype.start_point.has_value()) {
+            cells.push_back(archetype.start_point.value());
         }
 
         return rerun::take_ownership(std::move(cells));

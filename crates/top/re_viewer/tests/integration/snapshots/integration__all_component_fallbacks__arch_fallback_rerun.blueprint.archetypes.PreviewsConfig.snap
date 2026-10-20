@@ -5,3 +5,4 @@ expression: arch_display
 timeline: [log_time]
 play_state: [2]
 playback_speed: [0.0]
+start_point: [0.5]

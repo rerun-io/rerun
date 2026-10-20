@@ -40,6 +40,7 @@ class PreviewsConfig(Archetype):
         timeline: encodings.Utf8Like | None = None,
         play_state: blueprint_components.PlayStateLike | None = None,
         playback_speed: encodings.Float64Like | None = None,
+        start_point: encodings.Float64Like | None = None,
     ) -> None:
         """
         Create a new instance of the PreviewsConfig archetype.
@@ -59,12 +60,19 @@ class PreviewsConfig(Archetype):
             Playback speed of every preview cell.
 
             Defaults to 1.0.
+        start_point:
+            Where every preview cell starts, as a fraction of the recording's time range.
+
+            0.0 is the start and 1.0 the end.
+            Defaults to 0.5.
 
         """
 
         # You can define your own __init__ function as a member of PreviewsConfigExt in previews_config_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(timeline=timeline, play_state=play_state, playback_speed=playback_speed)
+            self.__attrs_init__(
+                timeline=timeline, play_state=play_state, playback_speed=playback_speed, start_point=start_point
+            )
             return
         self.__attrs_clear__()
 
@@ -74,6 +82,7 @@ class PreviewsConfig(Archetype):
             timeline=None,
             play_state=None,
             playback_speed=None,
+            start_point=None,
         )
 
     @classmethod
@@ -91,6 +100,7 @@ class PreviewsConfig(Archetype):
         timeline: encodings.Utf8Like | None = None,
         play_state: blueprint_components.PlayStateLike | None = None,
         playback_speed: encodings.Float64Like | None = None,
+        start_point: encodings.Float64Like | None = None,
     ) -> PreviewsConfig:
         """
         Update only some specific fields of a `PreviewsConfig`.
@@ -112,6 +122,11 @@ class PreviewsConfig(Archetype):
             Playback speed of every preview cell.
 
             Defaults to 1.0.
+        start_point:
+            Where every preview cell starts, as a fraction of the recording's time range.
+
+            0.0 is the start and 1.0 the end.
+            Defaults to 0.5.
 
         """
 
@@ -121,6 +136,7 @@ class PreviewsConfig(Archetype):
                 "timeline": timeline,
                 "play_state": play_state,
                 "playback_speed": playback_speed,
+                "start_point": start_point,
             }
 
             if clear_unset:
@@ -161,6 +177,14 @@ class PreviewsConfig(Archetype):
             component_type=blueprint_components.PlaybackSpeedBatch._COMPONENT_TYPE,
         )
 
+    @staticmethod
+    def descriptor_start_point() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "PreviewsConfig:start_point",
+            archetype=PreviewsConfig.NAME,
+            component_type=blueprint_components.TimelineFractionBatch._COMPONENT_TYPE,
+        )
+
     timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -192,6 +216,18 @@ class PreviewsConfig(Archetype):
     # Playback speed of every preview cell.
     #
     # Defaults to 1.0.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    start_point: blueprint_components.TimelineFractionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TimelineFractionBatch._converter,  # type: ignore[misc]
+    )
+    # Where every preview cell starts, as a fraction of the recording's time range.
+    #
+    # 0.0 is the start and 1.0 the end.
+    # Defaults to 0.5.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

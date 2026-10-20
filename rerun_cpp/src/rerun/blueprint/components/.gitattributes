@@ -64,6 +64,7 @@ text_log_column.hpp linguist-generated=true
 time_int.hpp linguist-generated=true
 time_range.hpp linguist-generated=true
 timeline_column.hpp linguist-generated=true
+timeline_fraction.hpp linguist-generated=true
 timeline_name.hpp linguist-generated=true
 tooltip_mode.cpp linguist-generated=true
 tooltip_mode.hpp linguist-generated=true

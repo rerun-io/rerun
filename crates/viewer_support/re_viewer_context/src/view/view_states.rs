@@ -30,6 +30,9 @@ pub struct ActivePreview {
     /// leaving it and by [`PreviewState::set_playing`].
     pub play_override: Option<bool>,
 
+    /// The timeline that already had its time moved to the start point.
+    pub start_point_timeline: Option<re_log_types::TimelineName>,
+
     /// Whether the preview was drawn since the last [`PreviewState::tick`].
     ///
     /// Only a preview that is being drawn advances its time.
@@ -41,6 +44,7 @@ impl Default for ActivePreview {
         Self {
             time_control: TimeControl::preview_time_control(),
             play_override: None,
+            start_point_timeline: None,
             rendered_last_frame: false,
         }
     }

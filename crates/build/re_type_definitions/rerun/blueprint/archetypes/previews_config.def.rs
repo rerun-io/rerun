@@ -26,5 +26,11 @@ pub struct PreviewsConfig {
     /// Defaults to 1.0.
     #[rerun(optional)]
     pub playback_speed: Option<rerun::blueprint::components::PlaybackSpeed>,
-    // TODO(RR-4810): Add related time settings.
+
+    /// Where every preview cell starts, as a fraction of the recording's time range.
+    ///
+    /// 0.0 is the start and 1.0 the end.
+    /// Defaults to 0.5.
+    #[rerun(optional)]
+    pub start_point: Option<rerun::blueprint::components::TimelineFraction>,
 }

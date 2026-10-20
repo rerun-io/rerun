@@ -142,9 +142,9 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult, IdentifiedViewSystem,
-    MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities, PreviewState,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
+    ActivePreview, BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult,
+    IdentifiedViewSystem, MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities,
+    PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
     SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass,
     ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
     ViewClassRegistryError, ViewClassUiOutput, ViewContext, ViewContextCollection,

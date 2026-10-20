@@ -79,10 +79,11 @@ snippet: howto/visualization/configure_table_blueprints[layouts]
 Column settings are independent between the two layouts: here, the Viewer automatically displays `recording_uri` as a link in the table, while `PreviewCell` turns it into a preview on cards.
 
 Setting `card_layout` enables cards and makes them the initial layout.
-`PreviewsConfig` sets the timeline, play state, and playback speed of the previews.
+`PreviewsConfig` sets the timeline, play state, playback speed, and start point of the previews.
 These settings are shared by all preview columns, whether they're in a table or on cards.
 Without a `timeline`, the Viewer picks one automatically.
 Pass `play_state="playing"` to start all previews playing, and `playback_speed` to change their speed, e.g. `playback_speed=0.5` for half speed.
+It defaults to `0.5`, the middle of the recording.
 The play and speed buttons in the table toolbar change the same settings, and a single preview can still be played or paused on its own.
 
 ### Saving and registering the blueprint

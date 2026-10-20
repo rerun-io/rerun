@@ -98,6 +98,8 @@ mod time_int;
 mod time_range;
 #[path = "components/timeline_column.def.rs"]
 mod timeline_column;
+#[path = "components/timeline_fraction.def.rs"]
+mod timeline_fraction;
 #[path = "components/timeline_name.def.rs"]
 mod timeline_name;
 #[path = "components/tooltip_mode.def.rs"]
@@ -176,6 +178,7 @@ pub use self::text_log_column::*;
 pub use self::time_int::*;
 pub use self::time_range::*;
 pub use self::timeline_column::*;
+pub use self::timeline_fraction::*;
 pub use self::timeline_name::*;
 pub use self::tooltip_mode::*;
 pub use self::view_class::*;

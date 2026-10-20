@@ -56,6 +56,7 @@ from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_column import TimelineColumn, TimelineColumnBatch
+from .timeline_fraction import TimelineFraction, TimelineFractionBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .tooltip_mode import TooltipMode, TooltipModeArrayLike, TooltipModeBatch, TooltipModeLike
 from .view_class import ViewClass, ViewClassBatch
@@ -198,6 +199,8 @@ __all__ = [
     "TimeRangeBatch",
     "TimelineColumn",
     "TimelineColumnBatch",
+    "TimelineFraction",
+    "TimelineFractionBatch",
     "TimelineName",
     "TimelineNameBatch",
     "TooltipMode",
