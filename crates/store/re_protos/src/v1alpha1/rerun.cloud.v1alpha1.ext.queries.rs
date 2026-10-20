@@ -11,12 +11,11 @@ use arrow::datatypes::{DataType, Field, FieldRef};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_chunk::TimelineName;
-use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, TimeInt};
 use re_types_core::LayerName;
 
 use crate::TypeConversionError;
-use crate::cloud::v1alpha1::ext::{Query, QueryDatasetDataframe, QueryLatestAt, QueryRange};
+use crate::cloud::v1alpha1::ext::{Query, QueryDatasetDataframe};
 use crate::cloud::v1alpha1::{
     FetchChunksRequest, QueryDatasetResponse, ScanDatasetManifestRequest, ScanSegmentTableRequest,
 };
@@ -248,10 +247,13 @@ pub enum FillMode {
 }
 
 impl FillMode {
-    /// Fails with `Unimplemented` naming `field` if no server implements this mode.
-    fn ensure_supported(self, field: &str) -> tonic::Result<()> {
+    /// Whether this mode also selects the chunks that resolve latest-at state.
+    ///
+    /// Fails with `Unimplemented` naming `field` for a mode no server implements.
+    pub fn includes_latest_at(self, field: &str) -> tonic::Result<bool> {
         match self {
-            Self::None | Self::LatestAt => Ok(()),
+            Self::None => Ok(false),
+            Self::LatestAt => Ok(true),
             Self::EarliestAt => Err(earliest_at_unimplemented(field)),
         }
     }
@@ -343,6 +345,19 @@ pub enum ChunkMode {
     },
 }
 
+impl ChunkMode {
+    /// Whether this mode selects chunks from `segment_id`.
+    pub fn selects_segment(&self, segment_id: &SegmentId) -> bool {
+        match self {
+            Self::Static { segments } | Self::Range { segments, .. } => match segments {
+                SegmentSelection::All => true,
+                SegmentSelection::Explicit(ids) => ids.contains(segment_id),
+            },
+            Self::Samples { segments, .. } => segments.contains_key(segment_id),
+        }
+    }
+}
+
 /// Which direct chunk URLs a `FindChunks` response carries, and how they are signed.
 ///
 /// The mode is an upper bound: a server may return fewer URLs than requested, or none.
@@ -392,16 +407,28 @@ impl FindChunksRequest {
     /// same way whatever it selects.
     pub fn ensure_supported(&self) -> tonic::Result<()> {
         match &self.mode {
-            ChunkMode::Static { .. } => Ok(()),
-            ChunkMode::Range { range, .. } => range.fill_mode.ensure_supported("range.fill_mode"),
-            ChunkMode::Samples { fill_mode, .. } => fill_mode.ensure_supported("samples.fill_mode"),
+            ChunkMode::Static { .. } => {}
+            ChunkMode::Range { range, .. } => {
+                range.fill_mode.includes_latest_at("range.fill_mode")?;
+            }
+            ChunkMode::Samples { fill_mode, .. } => {
+                fill_mode.includes_latest_at("samples.fill_mode")?;
+            }
         }
+        Ok(())
     }
 
     /// Whether this request selects no chunks at all.
+    ///
+    /// Explicit contents select nothing when every entity in them has an empty component set,
+    /// including when they list no entity.
     pub fn is_empty(&self) -> bool {
-        let contents_empty =
-            matches!(&self.contents, ContentSelection::Explicit(entities) if entities.is_empty());
+        let contents_empty = match &self.contents {
+            ContentSelection::All => false,
+            ContentSelection::Explicit(entities) => entities.iter().all(|entity| {
+                matches!(&entity.components, ComponentSelection::Explicit(ids) if ids.is_empty())
+            }),
+        };
         if contents_empty {
             return true;
         }
@@ -411,146 +438,6 @@ impl FindChunksRequest {
                 matches!(segments, SegmentSelection::Explicit(ids) if ids.is_empty())
             }
             ChunkMode::Samples { segments, .. } => segments.is_empty(),
-        }
-    }
-
-    /// Converts this request into a [`QueryDatasetRequest`], so the servers' existing
-    /// `QueryDataset` chunk selection can serve it.
-    ///
-    /// Fails with `Unimplemented` for a fill mode that `QueryDataset` cannot express.
-    // TODO(PR#3773): remove once both OSS and Hub select chunks from `FindChunksRequest` directly.
-    pub fn to_query_dataset_request(&self) -> tonic::Result<QueryDatasetRequest> {
-        let (select_all_entity_paths, entity_paths, fuzzy_descriptors) = match &self.contents {
-            ContentSelection::All => (true, vec![], vec![]),
-            ContentSelection::Explicit(entities) => {
-                let entity_paths = entities
-                    .iter()
-                    .map(|entity| entity.entity_path.clone())
-                    .collect();
-
-                let fuzzy_descriptors = if entities
-                    .iter()
-                    .any(|entity| matches!(entity.components, ComponentSelection::All))
-                {
-                    vec![]
-                } else {
-                    entities
-                        .iter()
-                        .filter_map(|entity| match &entity.components {
-                            ComponentSelection::Explicit(ids) => Some(ids.iter().cloned()),
-                            ComponentSelection::All => None,
-                        })
-                        .flatten()
-                        .collect::<BTreeSet<_>>()
-                        .into_iter()
-                        .collect()
-                };
-
-                (false, entity_paths, fuzzy_descriptors)
-            }
-        };
-
-        let (segment_ids, query) = match &self.mode {
-            ChunkMode::Static { segments } => (
-                Self::query_dataset_segment_ids(segments),
-                Query {
-                    latest_at: Some(QueryLatestAt::new_static()),
-                    ..Query::default()
-                },
-            ),
-
-            ChunkMode::Range { segments, range } => {
-                let include_latest_at = match range.fill_mode {
-                    FillMode::None => false,
-                    FillMode::LatestAt => true,
-                    FillMode::EarliestAt => {
-                        return Err(earliest_at_unimplemented("range.fill_mode"));
-                    }
-                };
-
-                let query = match (range.start_inclusive, range.end_inclusive) {
-                    (None, None) => Query::default(),
-                    (start, end) => {
-                        let index_range = AbsoluteTimeRange {
-                            min: start.unwrap_or(TimeInt::MIN),
-                            max: end.unwrap_or(TimeInt::MAX),
-                        };
-                        let latest_at = if include_latest_at {
-                            start.map(|start| QueryLatestAt::global(Some(range.timeline), start))
-                        } else {
-                            None
-                        };
-
-                        Query {
-                            range: Some(QueryRange {
-                                index: range.timeline,
-                                index_range,
-                            }),
-                            latest_at,
-                            ..Query::default()
-                        }
-                    }
-                };
-
-                (Self::query_dataset_segment_ids(segments), query)
-            }
-
-            // `QueryDatasetRequest` has no exact-time form for sample times, so both supported
-            // fill modes become latest-at.
-            ChunkMode::Samples {
-                timeline,
-                segments,
-                fill_mode,
-            } => {
-                match fill_mode {
-                    FillMode::None | FillMode::LatestAt => {}
-                    FillMode::EarliestAt => {
-                        return Err(earliest_at_unimplemented("samples.fill_mode"));
-                    }
-                }
-
-                let segment_ids: Vec<SegmentId> = segments.keys().cloned().collect();
-                let per_segment_values: Vec<Vec<i64>> = segments
-                    .values()
-                    .map(|values| values.iter().map(|time| time.as_i64()).collect())
-                    .collect();
-
-                (
-                    segment_ids,
-                    Query {
-                        latest_at: Some(QueryLatestAt {
-                            index: Some(*timeline),
-                            at: TimeInt::STATIC,
-                            per_segment_values,
-                        }),
-                        ..Query::default()
-                    },
-                )
-            }
-        };
-
-        let (generate_direct_urls, unsigned_direct_urls) = match self.direct_url_mode {
-            DirectUrlMode::Omit => (false, false),
-            DirectUrlMode::Unsigned => (true, true),
-            DirectUrlMode::Signed => (true, false),
-        };
-
-        Ok(QueryDatasetRequest {
-            segment_ids,
-            generate_direct_urls,
-            unsigned_direct_urls,
-            entity_paths,
-            select_all_entity_paths,
-            fuzzy_descriptors,
-            query: Some(query),
-            ..Default::default()
-        })
-    }
-
-    fn query_dataset_segment_ids(segments: &SegmentSelection) -> Vec<SegmentId> {
-        match segments {
-            SegmentSelection::All => vec![],
-            SegmentSelection::Explicit(ids) => ids.iter().cloned().collect(),
         }
     }
 }
@@ -1106,6 +993,7 @@ mod tests {
 
     use super::*;
     use crate::cloud::v1alpha1 as cloud_proto;
+    use crate::cloud::v1alpha1::ext::QueryLatestAt;
 
     #[test]
     fn test_query_dataset_response_create_dataframe() {
@@ -1918,6 +1806,32 @@ mod tests {
             SegmentSelection::Explicit(BTreeSet::new())
         );
         assert_ne!(all_ext, explicit_empty_ext);
+    }
+
+    /// Built directly as ext types, without the wire conversion that drops entities with an empty
+    /// component set.
+    #[test]
+    fn find_chunks_request_is_empty_when_every_entity_selects_no_component() {
+        let entity = |path: &str, ids: &[&str]| EntitySelection {
+            entity_path: EntityPath::from(path),
+            components: ComponentSelection::Explicit(ids.iter().map(|&id| id.to_owned()).collect()),
+        };
+        let request = |entities| FindChunksRequest {
+            contents: ContentSelection::Explicit(entities),
+            mode: ChunkMode::Static {
+                segments: SegmentSelection::All,
+            },
+            direct_url_mode: DirectUrlMode::default(),
+        };
+
+        assert!(
+            request(vec![entity("a", &[])]).is_empty(),
+            "an entity with an empty component set must select nothing"
+        );
+        assert!(
+            !request(vec![entity("a", &[]), entity("b", &["Points3D:positions"])]).is_empty(),
+            "an entity with a nonempty component set must keep the request nonempty"
+        );
     }
 
     #[test]

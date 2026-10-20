@@ -1,13 +1,13 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use arrow::record_batch::RecordBatch;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk_index::{ChunkProvider as _, RrdManifest};
-use re_chunk_store::{Chunk, ChunkId, ChunkTrackingMode, RangeQuery};
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimelineName};
-use re_protos::cloud::v1alpha1::ext::{self, ChunkCandidatesDataframe, QueryDatasetRequest};
+use re_chunk_store::{Chunk, ChunkId, ChunkTrackingMode, LatestAtQuery, RangeQuery};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimelineName};
+use re_protos::cloud::v1alpha1::ext::{self, ChunkCandidatesDataframe};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::LayerName;
 
@@ -75,16 +75,49 @@ pub struct SelectedChunk {
     pub meta: ChunkMetadata,
 }
 
+/// The entities a request selects chunks for.
+///
+/// Component filtering happens client-side; [`select_chunks`] only narrows candidates by entity
+/// path.
+pub enum EntityScope {
+    /// Every entity in the store.
+    All,
+
+    /// Only the listed entities.
+    Explicit(IntSet<EntityPath>),
+}
+
+impl EntityScope {
+    pub fn new(contents: &ext::ContentSelection) -> Self {
+        match contents {
+            ext::ContentSelection::All => Self::All,
+            ext::ContentSelection::Explicit(entities) => Self::Explicit(
+                entities
+                    .iter()
+                    .map(|entity| entity.entity_path.clone())
+                    .collect(),
+            ),
+        }
+    }
+
+    fn contains(&self, entity_path: &EntityPath) -> bool {
+        match self {
+            Self::All => true,
+            Self::Explicit(entity_paths) => entity_paths.contains(entity_path),
+        }
+    }
+}
+
 /// Selects the chunks one layer of one segment contributes to a response.
 ///
-/// Applies the request's entity-path, chunk-id, and static/temporal filters. When `samples` has
-/// index values for the store's segment, runs one latest-at query per value and deduplicates the
-/// result.
+/// `mode == None` scans every chunk on no timeline, for the `QueryDataset` full scan of released
+/// SDKs.
+// TODO(RR-5817): drop the `None` case with the `QueryDataset` compatibility code.
 pub fn select_chunks(
     store: &LayerStore,
-    request: &QueryDatasetRequest,
-    samples: Option<&BTreeMap<SegmentId, Vec<re_log_types::TimeInt>>>,
-) -> Vec<SelectedChunk> {
+    entities: &EntityScope,
+    mode: Option<&ext::ChunkMode>,
+) -> tonic::Result<Vec<SelectedChunk>> {
     let LayerStore {
         segment_id,
         layer,
@@ -92,165 +125,100 @@ pub fn select_chunks(
         resolved,
     } = store;
 
-    let entity_paths: IntSet<EntityPath> = request.entity_paths.iter().cloned().collect();
-
-    // Build metadata for all relevant chunks (physical + virtual).
-    let metadata_vec: Vec<ChunkMetadata> = if let Some(query) = &request.query {
-        // RR-4355: per-segment index values pushdown.
-        //
-        // When the request carries `per_segment_values`, fan out
-        // `get_chunks_for_query_results` once per value for this
-        // segment with a synthesized latest-at, then dedup. Per
-        // the proto contract (`cloud.proto`):
-        //   "An empty values list for a segment means no temporal
-        //    chunks are returned for that segment (only static
-        //    data)."
-        // For the empty case we run a single static-only query
-        // instead of returning nothing, so static chunks still
-        // surface.
-        let (chunks, missing_virtual) = if let Some(map) = samples {
-            if let Some(values) = map.get(segment_id) {
-                let synthesized: Vec<re_log_types::TimeInt> = if values.is_empty() {
-                    vec![re_log_types::TimeInt::STATIC]
-                } else {
-                    values.clone()
-                };
-                let mut all_chunks: Vec<Arc<Chunk>> = Vec::new();
-                let mut all_missing: BTreeSet<ChunkId> = BTreeSet::new();
-                let mut seen: BTreeSet<ChunkId> = BTreeSet::new();
-                for v in &synthesized {
-                    let mut q = query.clone();
-                    if let Some(la) = q.latest_at.as_mut() {
-                        la.at = *v;
-                        la.per_segment_values = Vec::new();
-                    }
-                    let (cs, missing) = get_chunks_for_query_results(
-                        resolved,
-                        &entity_paths,
-                        request.select_all_entity_paths,
-                        &q,
+    let (chunks, missing_virtual) = match mode {
+        None => full_scan_results(resolved),
+        Some(ext::ChunkMode::Static { .. }) => {
+            let paths = query_paths(resolved, entities);
+            let mut results = QueryResults::default();
+            add_latest_at_results(&mut results, resolved, &paths, &LatestAtQuery::new_static());
+            results.finish()
+        }
+        Some(ext::ChunkMode::Range { range, .. }) => {
+            let include_latest_at = range.fill_mode.includes_latest_at("range.fill_mode")?;
+            match (range.start_inclusive, range.end_inclusive) {
+                (None, None) => full_scan_results(resolved),
+                (start, end) => {
+                    let paths = query_paths(resolved, entities);
+                    let range_query = RangeQuery::new(
+                        range.timeline,
+                        AbsoluteTimeRange {
+                            min: start.unwrap_or(TimeInt::MIN),
+                            max: end.unwrap_or(TimeInt::MAX),
+                        },
                     );
-                    for c in cs {
-                        if seen.insert(c.id()) {
-                            all_chunks.push(c);
-                        }
+                    let mut results = QueryResults::default();
+                    if include_latest_at && let Some(start) = start {
+                        add_latest_at_results(
+                            &mut results,
+                            resolved,
+                            &paths,
+                            &LatestAtQuery::new(range.timeline, start),
+                        );
                     }
-                    all_missing.extend(missing);
-                }
-                for id in &seen {
-                    all_missing.remove(id);
-                }
-                (all_chunks, all_missing.into_iter().collect())
-            } else {
-                (Vec::new(), Vec::new())
-            }
-        } else {
-            get_chunks_for_query_results(
-                resolved,
-                &entity_paths,
-                request.select_all_entity_paths,
-                query,
-            )
-        };
-
-        let mut metas: Vec<_> = chunks
-            .iter()
-            .map(|c| ChunkMetadata::from_chunk(c))
-            .collect();
-        if let ResolvedStore::Lazy(lazy) = resolved {
-            for chunk_id in &missing_virtual {
-                if let Some(idx) = lazy.chunk_row_index(chunk_id) {
-                    metas.push(ChunkMetadata::from_manifest(
-                        lazy.manifest(),
-                        *chunk_id,
-                        idx,
-                        lazy.timeline_ranges().get(chunk_id),
-                    ));
+                    add_range_results(&mut results, resolved, &paths, &range_query);
+                    results.finish()
                 }
             }
         }
-        metas
-    } else {
-        match resolved {
-            ResolvedStore::Eager(h) => h
-                .read()
-                .iter_physical_chunks()
-                .map(|c| ChunkMetadata::from_chunk(c))
-                .collect(),
-            ResolvedStore::Lazy(lazy) => lazy
-                .manifest()
-                .col_chunk_ids()
-                .iter()
-                .enumerate()
-                .map(|(idx, &chunk_id)| {
-                    ChunkMetadata::from_manifest(
-                        lazy.manifest(),
-                        chunk_id,
-                        idx,
-                        lazy.timeline_ranges().get(&chunk_id),
-                    )
-                })
-                .collect(),
+        Some(ext::ChunkMode::Samples {
+            timeline,
+            segments,
+            fill_mode,
+        }) => {
+            let include_latest_at = fill_mode.includes_latest_at("samples.fill_mode")?;
+            let Some(values) = segments.get(segment_id) else {
+                return Ok(Vec::new());
+            };
+            let paths = query_paths(resolved, entities);
+            let mut results = QueryResults::default();
+            for &value in values {
+                if include_latest_at {
+                    add_latest_at_results(
+                        &mut results,
+                        resolved,
+                        &paths,
+                        &LatestAtQuery::new(*timeline, value),
+                    );
+                } else {
+                    add_range_results(
+                        &mut results,
+                        resolved,
+                        &paths,
+                        &RangeQuery::new(*timeline, AbsoluteTimeRange::new(value, value)),
+                    );
+                }
+            }
+            results.finish()
         }
     };
 
-    metadata_vec
+    let mut metadata_vec: Vec<_> = chunks
+        .iter()
+        .map(|c| ChunkMetadata::from_chunk(c))
+        .collect();
+    if let ResolvedStore::Lazy(lazy) = resolved {
+        for chunk_id in &missing_virtual {
+            if let Some(idx) = lazy.chunk_row_index(chunk_id) {
+                metadata_vec.push(ChunkMetadata::from_manifest(
+                    lazy.manifest(),
+                    *chunk_id,
+                    idx,
+                    lazy.timeline_ranges().get(chunk_id),
+                ));
+            }
+        }
+    }
+
+    Ok(metadata_vec
         .into_iter()
-        .filter(|meta| {
-            if !request.select_all_entity_paths && !entity_paths.contains(&meta.entity_path) {
-                return false;
-            }
-
-            if !request.chunk_ids.is_empty() && !request.chunk_ids.contains(&meta.chunk_id) {
-                return false;
-            }
-
-            // Filter by static/temporal data
-            if request.exclude_static_data && meta.is_static {
-                return false;
-            }
-            if request.exclude_temporal_data && !meta.is_static {
-                return false;
-            }
-
-            true
-        })
+        .filter(|meta| entities.contains(&meta.entity_path))
         .map(|meta| SelectedChunk {
             segment_id: segment_id.clone(),
             layer: layer.clone(),
             store_slot_id: *store_slot_id,
             meta,
         })
-        .collect()
-}
-
-/// A `FindChunks` mode's segment scope (`None` is every segment) and, for
-/// [`ext::ChunkMode::Samples`] (whose scope is its map's keys), its per-segment sample times.
-type ModeScope = (
-    Option<BTreeSet<SegmentId>>,
-    Option<BTreeMap<SegmentId, Vec<re_log_types::TimeInt>>>,
-);
-
-/// Splits a mode into its segment scope and, for Samples, its sample times.
-pub fn scope_from_mode(mode: &ext::ChunkMode) -> ModeScope {
-    match mode {
-        ext::ChunkMode::Static { segments } | ext::ChunkMode::Range { segments, .. } => (
-            match segments {
-                ext::SegmentSelection::All => None,
-                ext::SegmentSelection::Explicit(ids) => Some(ids.clone()),
-            },
-            None,
-        ),
-        ext::ChunkMode::Samples { segments, .. } => (
-            Some(segments.keys().cloned().collect()),
-            Some(
-                segments
-                    .iter()
-                    .map(|(id, values)| (id.clone(), values.iter().copied().collect()))
-                    .collect(),
-            ),
-        ),
-    }
+        .collect())
 }
 
 /// Encodes one store's `FindChunks` candidates as a [`ChunkCandidatesDataframe`] batch.
@@ -336,98 +304,97 @@ pub fn encode_candidates(
     })
 }
 
-/// Returns physical chunks and missing virtual chunk IDs for a query.
-fn get_chunks_for_query_results(
-    resolved: &ResolvedStore,
-    entity_paths: &IntSet<EntityPath>,
-    select_all_entity_paths: bool,
-    query: &ext::Query,
-) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
-    // Contract: a Query with neither `latest_at` nor `range` means "all chunks", regardless of
-    // entity filter. This is exercised by the shared `re_redap_tests::query_dataset` "default" test
-    // case.
-    if query.latest_at.is_none() && query.range.is_none() {
-        return match resolved {
-            ResolvedStore::Eager(h) => (h.read().iter_physical_chunks().cloned().collect(), vec![]),
-            ResolvedStore::Lazy(lazy) => (vec![], lazy.manifest().col_chunk_ids().to_vec()),
-        };
+fn full_scan_results(resolved: &ResolvedStore) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+    match resolved {
+        ResolvedStore::Eager(handle) => (
+            handle.read().iter_physical_chunks().cloned().collect(),
+            Vec::new(),
+        ),
+        ResolvedStore::Lazy(lazy) => (Vec::new(), lazy.manifest().col_chunk_ids().to_vec()),
+    }
+}
+
+fn query_paths(resolved: &ResolvedStore, entities: &EntityScope) -> IntSet<EntityPath> {
+    match entities {
+        EntityScope::All => resolved.all_entities(),
+        EntityScope::Explicit(entity_paths) => entity_paths.clone(),
+    }
+}
+
+#[derive(Default)]
+struct QueryResults {
+    chunks: Vec<Arc<Chunk>>,
+    seen_physical: BTreeSet<ChunkId>,
+    missing_virtual: BTreeSet<ChunkId>,
+}
+
+impl QueryResults {
+    fn extend(
+        &mut self,
+        chunks: impl IntoIterator<Item = Arc<Chunk>>,
+        missing_virtual: impl IntoIterator<Item = ChunkId>,
+    ) {
+        for chunk in chunks {
+            if self.seen_physical.insert(chunk.id()) {
+                self.chunks.push(chunk);
+            }
+        }
+        self.missing_virtual.extend(missing_virtual);
     }
 
-    let paths = if select_all_entity_paths {
-        resolved.all_entities()
-    } else if entity_paths.is_empty() {
-        // Per `cloud.proto`: `(select_all_entity_paths=false, entity_paths=[])`
-        // is a valid query that selects no entities and yields no results.
-        return (Vec::new(), Vec::new());
-    } else {
-        entity_paths.clone()
-    };
-
-    let mut all_chunks: Vec<Arc<Chunk>> = vec![];
-    let mut all_missing: BTreeSet<ChunkId> = BTreeSet::new();
-    let mut seen_physical: BTreeSet<ChunkId> = BTreeSet::new();
-
-    for entity_path in &paths {
-        if let Some(latest_at) = &query.latest_at {
-            let latest_at_q = super::latest_at_or_static(latest_at);
-            let results = resolved.latest_at_relevant_chunks_for_all_components(
-                ChunkTrackingMode::Report,
-                &latest_at_q,
-                entity_path,
-                true,
-            );
-            for chunk in results.chunks {
-                if seen_physical.insert(chunk.id()) {
-                    all_chunks.push(chunk);
-                }
-            }
-            all_missing.extend(results.missing_virtual);
+    fn finish(mut self) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+        for id in self.seen_physical {
+            self.missing_virtual.remove(&id);
         }
-        if let Some(range) = &query.range {
-            let range_q = RangeQuery::new(range.index, range.index_range);
-            let results = resolved.range_relevant_chunks_for_all_components(
-                ChunkTrackingMode::Report,
-                &range_q,
-                entity_path,
-                true,
-            );
-            for chunk in results.chunks {
-                if seen_physical.insert(chunk.id()) {
-                    all_chunks.push(chunk);
-                }
-            }
-            // Range tightening for virtual chunks. `range_relevant_chunks_for_all_components`
-            // post-filters physical chunks against the per-chunk timeline range, but the
-            // start-time-indexed scan that produces `missing_virtual` can pull in chunks
-            // whose actual time range falls outside the query (the index lookup widens by
-            // the longest chunk interval). Without this drop, lazy stores leak those
-            // chunks to the client and rows outside the requested range show up in the
-            // result set. Latest-at is unaffected because it doesn't fan out via
-            // `missing_virtual` here.
-            for chunk_id in results.missing_virtual {
-                let keep = match resolved {
-                    // Eager stores already went through the physical post-filter above.
+        (self.chunks, self.missing_virtual.into_iter().collect())
+    }
+}
+
+fn add_latest_at_results(
+    output: &mut QueryResults,
+    resolved: &ResolvedStore,
+    paths: &IntSet<EntityPath>,
+    query: &LatestAtQuery,
+) {
+    for entity_path in paths {
+        let results = resolved.latest_at_relevant_chunks_for_all_components(
+            ChunkTrackingMode::Report,
+            query,
+            entity_path,
+            true,
+        );
+        output.extend(results.chunks, results.missing_virtual);
+    }
+}
+
+fn add_range_results(
+    output: &mut QueryResults,
+    resolved: &ResolvedStore,
+    paths: &IntSet<EntityPath>,
+    query: &RangeQuery,
+) {
+    for entity_path in paths {
+        let results = resolved.range_relevant_chunks_for_all_components(
+            ChunkTrackingMode::Report,
+            query,
+            entity_path,
+            true,
+        );
+        // The lazy index widens its scan by the longest chunk interval. Tighten virtual results
+        // against their manifest ranges to match the physical post-filter.
+        let missing_virtual =
+            results
+                .missing_virtual
+                .into_iter()
+                .filter(|chunk_id| match resolved {
                     ResolvedStore::Eager(_) => true,
-                    ResolvedStore::Lazy(lazy) => match lazy.timeline_ranges().get(&chunk_id) {
-                        // No temporal entry => static chunk; let it through (matches the
-                        // `chunk.is_static() && include_static` branch of the physical filter).
+                    ResolvedStore::Lazy(lazy) => match lazy.timeline_ranges().get(chunk_id) {
                         None => true,
                         Some(per_timeline) => per_timeline
-                            .get(&range.index)
-                            .is_some_and(|time_range| time_range.intersects(range.index_range)),
+                            .get(query.timeline())
+                            .is_some_and(|time_range| time_range.intersects(query.range())),
                     },
-                };
-                if keep {
-                    all_missing.insert(chunk_id);
-                }
-            }
-        }
+                });
+        output.extend(results.chunks, missing_virtual);
     }
-
-    // Remove any virtual IDs that turned out to be physical in another entity's result.
-    for id in &seen_physical {
-        all_missing.remove(id);
-    }
-
-    (all_chunks, all_missing.into_iter().collect())
 }

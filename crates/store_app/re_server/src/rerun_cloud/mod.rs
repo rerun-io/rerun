@@ -12,7 +12,6 @@ use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::LatestAtQuery;
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntryId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{
@@ -53,7 +52,7 @@ use re_tuid::Tuid;
 use re_types_core::LayerName;
 
 mod chunk_selection;
-use self::chunk_selection::{LayerStore, encode_candidates, scope_from_mode, select_chunks};
+use self::chunk_selection::{EntityScope, LayerStore, encode_candidates, select_chunks};
 mod register_with_dataset;
 use self::register_with_dataset::{RegisterWithDatasetResult, do_register_with_dataset};
 
@@ -328,6 +327,8 @@ impl RerunCloudHandler {
         entry_id: EntryId,
         request: ext::FindChunksRequest,
     ) -> tonic::Result<BoxStream<'static, tonic::Result<RecordBatch>>> {
+        request.ensure_supported()?;
+
         let chunk_stores = self.get_chunk_stores(entry_id, None).await?;
 
         if let Some(timeline) = request.timeline()
@@ -343,8 +344,7 @@ impl RerunCloudHandler {
 
         let request_is_empty = request.is_empty();
         let timeline = request.timeline();
-        let (selected_segments, samples) = scope_from_mode(&request.mode);
-        let request = request.to_query_dataset_request()?;
+        let entities = EntityScope::new(&request.contents);
 
         // A dataset with no stores, an empty request, or a segment scope that matches none of
         // the dataset's stores must all answer with one empty batch rather than zero batches:
@@ -353,13 +353,10 @@ impl RerunCloudHandler {
         let selected_chunk_stores: Vec<_> = if request_is_empty {
             Vec::new()
         } else {
-            match selected_segments {
-                None => chunk_stores,
-                Some(ids) => chunk_stores
-                    .into_iter()
-                    .filter(|store| ids.contains(&store.segment_id))
-                    .collect(),
-            }
+            chunk_stores
+                .into_iter()
+                .filter(|store| request.mode.selects_segment(&store.segment_id))
+                .collect()
         };
 
         if selected_chunk_stores.is_empty() {
@@ -368,7 +365,7 @@ impl RerunCloudHandler {
         }
 
         let stream = futures::stream::iter(selected_chunk_stores.into_iter().map(move |store| {
-            let selected_chunks = select_chunks(&store, &request, samples.as_ref());
+            let selected_chunks = select_chunks(&store, &entities, Some(&request.mode))?;
             encode_candidates(&selected_chunks, timeline.as_ref())
         }));
 
@@ -384,7 +381,6 @@ impl RerunCloudHandler {
         entry_id: EntryId,
         segments: ext::SegmentSelection,
         contents: ext::ContentSelection,
-        direct_url_mode: ext::DirectUrlMode,
     ) -> tonic::Result<BoxStream<'static, tonic::Result<RecordBatch>>> {
         let segment_ids = match &segments {
             ext::SegmentSelection::All => None,
@@ -400,10 +396,10 @@ impl RerunCloudHandler {
             return Ok(Box::pin(futures::stream::iter([Ok(batch)])));
         }
 
-        let request = ext::full_scan_query_dataset_request(segments, contents, direct_url_mode);
+        let entities = EntityScope::new(&contents);
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(move |store| {
-            let selected_chunks = select_chunks(&store, &request, None);
+            let selected_chunks = select_chunks(&store, &entities, None)?;
             encode_candidates(&selected_chunks, None)
         }));
 
@@ -1705,12 +1701,10 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             ext::LegacyPlan::FullScan {
-                segments,
-                contents,
-                direct_url_mode,
+                segments, contents, ..
             } => {
                 let candidates = self
-                    .full_scan_candidates(entry_id, segments, contents, direct_url_mode)
+                    .full_scan_candidates(entry_id, segments, contents)
                     .await?;
                 candidates
                     .map(|batch| ext::encode_legacy_candidates(batch?, None))
@@ -2160,14 +2154,6 @@ fn get_entry_id_from_headers<T>(
         Err(tonic::Status::invalid_argument(format!(
             "missing mandatory {HEADERS:?} HTTP headers"
         )))
-    }
-}
-
-/// Return the equivalent latest at query
-fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
-    match &latest_at.index {
-        Some(index) => LatestAtQuery::new(*index, latest_at.at),
-        None => LatestAtQuery::new_static(),
     }
 }
 

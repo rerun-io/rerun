@@ -1164,10 +1164,8 @@ pub struct QueryDatasetRequest {
     ///
     /// If left unspecified, all existing components are considered of interest.
     ///
-    /// This will perform a basic fuzzy match on the available columns' descriptors.
-    /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
-    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    /// Each entry must equal a component identifier, for example `SeriesLines:width`.
+    /// A partial identifier, such as `Width` or `SeriesLines`, matches nothing.
     #[prost(string, repeated, tag = "10")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.

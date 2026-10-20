@@ -7,10 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::izip;
-use re_log_types::{TimeInt, TimeType};
+use re_log_types::example_components::MyPoints;
+use re_log_types::{EntityPath, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::ext::{
-    ChunkCandidatesDataframe, ChunkMode, ContentSelection, DirectUrlMode, FillMode,
-    FindChunksRequest, RangeSelection, SegmentSelection,
+    ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DirectUrlMode,
+    EntitySelection, FillMode, FindChunksRequest, RangeSelection, SegmentSelection,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -275,6 +276,54 @@ pub async fn find_chunks_simple_dataset(service: impl RerunCloudService) {
             "{name}: a range outside the temporal span must return only statics"
         );
     }
+
+    // Range with fill, at a populated time within the span.
+    let fill_ids = find_chunks_ids(
+        &service,
+        dataset_name,
+        range_request(
+            "frame_nr",
+            Some(TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(25)),
+            FillMode::LatestAt,
+            SegmentSelection::All,
+        ),
+    )
+    .await;
+    assert_eq!(
+        fill_ids, temporal_and_static,
+        "Range with fill at a populated time must resolve every entity's covering chunk, \
+         statics included"
+    );
+
+    // Range with fill selecting only `labels`, which every entity logs statically and never on a
+    // timeline, must return each segment's `my/entity` static chunk.
+    let labels_only = FindChunksRequest {
+        contents: ContentSelection::Explicit(vec![EntitySelection {
+            entity_path: EntityPath::from("my/entity"),
+            components: ComponentSelection::Explicit(BTreeSet::from([
+                MyPoints::descriptor_labels().component.to_string(),
+            ])),
+        }]),
+        ..range_request(
+            "frame_nr",
+            Some(TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(25)),
+            FillMode::LatestAt,
+            SegmentSelection::All,
+        )
+    };
+    let labels_ids = find_chunks_ids(&service, dataset_name, labels_only).await;
+    let [(t1, s1), (t2, s2), (t3, s3)] = [seg1[0], seg2[0], seg3[0]];
+    let my_entity_static = BTreeSet::from([s1, s2, s3]);
+    let my_entity_all = BTreeSet::from([t1, s1, t2, s2, t3, s3]);
+    // The check accepts a range on purpose: the OSS server narrows by entity only, so it may also
+    // return `my/entity`'s temporal chunks, while the Hub returns only the statics.
+    assert!(
+        labels_ids.is_superset(&my_entity_static) && labels_ids.is_subset(&my_entity_all),
+        "Range with fill selecting only a static-only component must return its static chunks, \
+         and nothing outside its entity, got {labels_ids:?}"
+    );
 }
 
 /// Range bounds: equal bounds, the smallest valid time, and a shared endpoint.
@@ -335,10 +384,44 @@ pub async fn find_chunks_range_bounds(service: impl RerunCloudService) {
         .await;
         assert_eq!(ids, expected, "case `{name}`");
     }
+
+    // Fill only on `seg1`: the Hub aligns latest-at once across all selected segments, so a fill
+    // over several segments would test that limit instead of the bounds.
+    // TODO(RR-5866): fill over every segment once the Hub resolves fill per segment.
+    let fill_cases: Vec<(&str, Option<TimeInt>, Option<TimeInt>, ChunkId)> = vec![
+        (
+            "equal_bound_populated_fill",
+            Some(TimeInt::new_temporal(1010)),
+            Some(TimeInt::new_temporal(1010)),
+            t[0],
+        ),
+        (
+            "equal_bound_unpopulated_fill",
+            Some(TimeInt::new_temporal(1015)),
+            Some(TimeInt::new_temporal(1015)),
+            t[0],
+        ),
+        ("max_max_fill", Some(TimeInt::MAX), Some(TimeInt::MAX), t[3]),
+    ];
+
+    for (name, start, end, expected_temporal) in fill_cases {
+        let ids = find_chunks_ids(
+            &service,
+            dataset_name,
+            range_request("frame_nr", start, end, FillMode::LatestAt, seg1.clone()),
+        )
+        .await;
+        assert_eq!(
+            ids,
+            BTreeSet::from([expected_temporal, s]),
+            "case `{name}`: filling must resolve exactly the one covering chunk plus the static \
+             chunk"
+        );
+    }
 }
 
-/// Samples with latest-at: per segment, the chunk that holds the latest value at each sample
-/// time, plus the static chunks.
+/// Samples: per segment, the chunk that holds the latest value at each sample time with latest-at,
+/// or only a chunk with data at that time without. Static chunks either way.
 ///
 /// The dataset is the one `find_chunks_range_bounds` describes.
 pub async fn find_chunks_samples(service: impl RerunCloudService) {
@@ -371,13 +454,27 @@ pub async fn find_chunks_samples(service: impl RerunCloudService) {
     let ids = find_chunks_ids(
         &service,
         dataset_name,
-        samples_request("frame_nr", samples, FillMode::LatestAt),
+        samples_request("frame_nr", samples.clone(), FillMode::LatestAt),
     )
     .await;
     assert_eq!(
         ids,
         BTreeSet::from([t1[0], t2[0], t3[0], s1, s2, s3]),
-        "Samples must select each segment's latest chunk at its sample time, plus statics"
+        "Samples with latest-at must select each segment's latest chunk at its sample time, plus \
+         statics"
+    );
+
+    let ids = find_chunks_ids(
+        &service,
+        dataset_name,
+        samples_request("frame_nr", samples, FillMode::None),
+    )
+    .await;
+    assert_eq!(
+        ids,
+        BTreeSet::from([t1[0], t3[0], s1, s2, s3]),
+        "Samples without latest-at must select only the chunks with data at the sample times, \
+         plus statics"
     );
 }
 

@@ -383,64 +383,6 @@ pub fn encode_legacy_candidates(
     })
 }
 
-/// Builds the `QueryDatasetRequest` that answers a [`LegacyPlan::FullScan`]: no time filter
-/// (`query: Some(Query::default())`), over the given segments and contents.
-///
-/// The Hub and the OSS server both use it, so they answer a full scan with the same chunks.
-///
-/// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
-pub fn full_scan_query_dataset_request(
-    segments: SegmentSelection,
-    contents: ContentSelection,
-    direct_url_mode: DirectUrlMode,
-) -> QueryDatasetRequest {
-    let segment_ids = match segments {
-        SegmentSelection::All => vec![],
-        SegmentSelection::Explicit(ids) => ids.into_iter().collect(),
-    };
-
-    let (select_all_entity_paths, entity_paths, fuzzy_descriptors) = match contents {
-        ContentSelection::All => (true, vec![], vec![]),
-        ContentSelection::Explicit(entities) => {
-            let entity_paths = entities
-                .iter()
-                .map(|entity| entity.entity_path.clone())
-                .collect();
-
-            let fuzzy_descriptors = if entities
-                .iter()
-                .any(|entity| matches!(entity.components, ComponentSelection::All))
-            {
-                vec![]
-            } else {
-                entities
-                    .iter()
-                    .filter_map(|entity| match &entity.components {
-                        ComponentSelection::Explicit(ids) => Some(ids.iter().cloned()),
-                        ComponentSelection::All => None,
-                    })
-                    .flatten()
-                    .collect::<BTreeSet<_>>()
-                    .into_iter()
-                    .collect()
-            };
-
-            (false, entity_paths, fuzzy_descriptors)
-        }
-    };
-
-    QueryDatasetRequest {
-        segment_ids,
-        generate_direct_urls: direct_url_mode != DirectUrlMode::Omit,
-        unsigned_direct_urls: direct_url_mode == DirectUrlMode::Unsigned,
-        entity_paths,
-        select_all_entity_paths,
-        fuzzy_descriptors,
-        query: Some(Query::default()),
-        ..Default::default()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use arrow::array::{Array as _, Int64Array};
