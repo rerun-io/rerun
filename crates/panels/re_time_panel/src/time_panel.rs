@@ -1835,7 +1835,9 @@ fn pan_and_zoom_interaction(
 
     // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
     // time area rectangle, including the timeline rect.
-    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| full_rect.contains(pointer_pos));
+    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| {
+        full_rect.contains(pointer_pos) && ui.ctx().layer_id_at(pointer_pos) == Some(ui.layer_id())
+    });
     if full_rect_hovered {
         ui.input(|input| {
             delta_x += input.smooth_scroll_delta.x;
