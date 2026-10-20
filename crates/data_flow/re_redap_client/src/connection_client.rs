@@ -1512,6 +1512,7 @@ where
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
+    #[expect(deprecated, reason = "older servers lack FindChunks")]
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_dataset_raw(
         &self,

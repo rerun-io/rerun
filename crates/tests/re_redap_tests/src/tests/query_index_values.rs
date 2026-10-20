@@ -21,6 +21,7 @@ use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
 };
 use crate::utils::client::TestClient;
+use crate::utils::register_per_segment_dataset;
 
 pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
     service: Arc<T>,
@@ -145,52 +146,6 @@ async fn per_segment_chunk_id_set<T: RerunCloudService>(
         }
     }
     ids
-}
-
-/// Set up the 3-segment dataset used by the `per_segment_values` wire-level
-/// tests. Each segment has one entity with **4 single-frame temporal chunks**
-/// at `start_time + {10, 20, 30, 40}` plus 1 static chunk.
-///
-/// Returns the [`DataSourcesDefinition`] so the caller can hold its temp
-/// files alive for the full duration of the test — some backends (the Rerun
-/// Rerun Hub manifest registry) re-read the RRD files lazily during
-/// `query_dataset`, so dropping the temp dir before that completes results
-/// in `NotFound` errors.
-async fn register_per_segment_dataset(
-    service: &impl RerunCloudService,
-    dataset_name: &str,
-    tuid_prefix: u64,
-    time_type: TimeType,
-) -> DataSourcesDefinition {
-    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        tuid_prefix,
-        [
-            LayerDefinition::simple_one_chunk_per_frame_with_time(
-                "seg1",
-                &["my/entity"],
-                1000,
-                time_type,
-            ),
-            LayerDefinition::simple_one_chunk_per_frame_with_time(
-                "seg2",
-                &["my/entity"],
-                2000,
-                time_type,
-            ),
-            LayerDefinition::simple_one_chunk_per_frame_with_time(
-                "seg3",
-                &["my/entity"],
-                3000,
-                time_type,
-            ),
-        ],
-    );
-
-    service.create_dataset_entry_with_name(dataset_name).await;
-    service
-        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
-        .await;
-    data_sources_def
 }
 
 fn per_segment_segment_ids() -> Vec<re_types_core::SegmentId> {

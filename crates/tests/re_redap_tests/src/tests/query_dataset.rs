@@ -1,6 +1,6 @@
 use arrow::array::{RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
-use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
+use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, Query, QueryDatasetDataframe, QueryDatasetRequest, QueryLatestAt, QueryRange,
 };
@@ -11,6 +11,9 @@ use re_types_core::ChunkId;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
     entry_name,
+};
+use crate::utils::{
+    register_layered_dataset, register_mixed_timelines_dataset, register_simple_dataset,
 };
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, TempPath};
 
@@ -29,23 +32,8 @@ pub async fn query_empty_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        1,
-        [
-            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
-            LayerDefinition::simple(
-                "my_segment_id3",
-                &["my/entity", "another/one", "yet/another/one"],
-            ),
-        ],
-    );
-
     let dataset_name = "dataset";
-    service.create_dataset_entry_with_name(dataset_name).await;
-    service
-        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
-        .await;
+    let _data_sources_def = register_simple_dataset(&service, dataset_name).await;
 
     let requests = vec![
         (QueryDatasetRequest::default(), "default"),
@@ -96,22 +84,8 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        1,
-        [
-            LayerDefinition::simple("partition1", &["my/entity"]),
-            LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
-            LayerDefinition::simple("partition2", &["another/one"]).layer_name("base"),
-            LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
-            LayerDefinition::simple("partition3", &["i/am/alone"]),
-        ],
-    );
-
     let dataset_name = "dataset_with_layers";
-    service.create_dataset_entry_with_name(dataset_name).await;
-    service
-        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
-        .await;
+    let _data_sources_def = register_layered_dataset(&service, dataset_name).await;
 
     query_dataset_snapshot(
         &service,
@@ -431,29 +405,8 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
 /// (segment, layer) response only emitted `:start` columns for timelines present in its own
 /// chunks, producing mismatched schemas that broke client-side concatenation.
 pub async fn query_dataset_consistent_schema_across_timelines(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
-        1,
-        [
-            LayerDefinition::simple_with_time(
-                "segment_sequence",
-                &["my/entity"],
-                0,
-                TimeType::Sequence,
-            ),
-            LayerDefinition::simple_with_time(
-                "segment_timestamp",
-                &["my/entity"],
-                0,
-                TimeType::TimestampNs,
-            ),
-        ],
-    );
-
     let dataset_name = "dataset_mixed_timelines";
-    service.create_dataset_entry_with_name(dataset_name).await;
-    service
-        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
-        .await;
+    let _data_sources_def = register_mixed_timelines_dataset(&service, dataset_name).await;
 
     let request = QueryDatasetRequest {
         query: Some(Query {

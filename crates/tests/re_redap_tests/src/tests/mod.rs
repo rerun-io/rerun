@@ -5,6 +5,7 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod find_chunks;
 mod find_entries_filters;
 mod query_dataset;
 mod query_filter;
@@ -110,6 +111,13 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    find_chunks::find_chunks_fixed_schema,
+    find_chunks::find_chunks_invalid_requests,
+    find_chunks::find_chunks_range_bounds,
+    find_chunks::find_chunks_samples,
+    find_chunks::find_chunks_segment_scope,
+    find_chunks::find_chunks_simple_dataset,
+    find_chunks::find_chunks_with_layers,
     find_entries_filters::find_entries_asset_by_id_requires_explicit_kind,
     find_entries_filters::find_entries_asset_by_name_requires_explicit_kind,
     find_entries_filters::find_entries_default_excludes_asset_datasets,

@@ -225,6 +225,7 @@ impl DataframeClientAPI for ConnectionClient {
         Ok(response)
     }
 
+    #[expect(deprecated, reason = "older servers lack FindChunks")]
     async fn query_dataset(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
