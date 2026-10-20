@@ -8,7 +8,7 @@ use re_ui::{
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ActiveStoreContext, CommandSender, StoreHub};
 
-use crate::App;
+use crate::AppCore;
 
 /// A top-level menu, shared by the web menu and the native macOS menu bar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -352,7 +352,7 @@ impl CommandContext {
     }
 }
 
-impl App {
+impl AppCore {
     /// Whether commands are shown in the native macOS menu bar instead of the in-app menu.
     pub fn uses_native_menu(&self) -> bool {
         cfg!(target_os = "macos")
@@ -595,7 +595,7 @@ mod tests {
         app.state
             .selection_state
             .set_selection(re_viewer_context::Item::RedapServer(origin));
-        let context = app.command_context(app.store_hub.as_ref().expect("store hub"), None);
+        let context = app.command_context(&app.store_hub, None);
         assert!(context.environment.redap_server.is_none());
         assert!(!context.environment.has_editable_redap_server);
     }

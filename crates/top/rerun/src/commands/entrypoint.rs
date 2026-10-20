@@ -1241,7 +1241,7 @@ fn start_native_viewer(
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
 
-    let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
+    let auth_error_handler = re_viewer::AppCore::auth_error_handler(command_tx.clone());
 
     // Start catching `re_log::info/warn/error` messages
     // so we can show them in the notification panel.

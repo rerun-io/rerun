@@ -36,7 +36,7 @@ use re_viewer_context::{
     viewer_url::{OpenUrlOptions, ViewerUrl},
 };
 
-use super::App;
+use super::AppCore;
 use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
@@ -181,7 +181,7 @@ impl BlueprintTarget {
     }
 }
 
-impl App {
+impl AppCore {
     /// Answer `on_done` with `result` once every command queued so far has run.
     fn reply_after_commands(
         &mut self,
@@ -709,7 +709,7 @@ fn close_recordings_target(
     })
 }
 
-impl App {
+impl AppCore {
     /// What the viewer is showing, as a URL that [`Self::route_if_open`] returns to.
     ///
     /// A recording is named by its store id, since it may not have been loaded from a URL.
@@ -1885,7 +1885,7 @@ mod tests {
 
         /// Send `close_recordings` for `store_ids`, and return where its answer lands.
         fn close_recordings(
-            app: &mut App,
+            app: &mut AppCore,
             store_hub: &StoreHub,
             egui_ctx: &egui::Context,
             store_ids: &[&StoreId],
@@ -1924,19 +1924,18 @@ mod tests {
 
             let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
-            let mut store_hub = app
-                .store_hub
-                .take()
-                .expect("the hub is only taken during a frame");
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let store_id = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&store_id);
 
-            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&store_id]);
+            let answer = close_recordings(app, store_hub, &egui_ctx, &[&store_id]);
             assert!(answer.lock().is_none(), "answered before closing");
 
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert!(store_hub.entity_db(&store_id).is_none());
         }
@@ -1948,20 +1947,19 @@ mod tests {
 
             let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
-            let mut store_hub = app
-                .store_hub
-                .take()
-                .expect("the hub is only taken during a frame");
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let open = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&open);
             let missing = StoreId::random(StoreKind::Recording, "test_app");
 
-            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&open, &missing]);
+            let answer = close_recordings(app, store_hub, &egui_ctx, &[&open, &missing]);
             assert!(answer.lock().take().is_some_and(|result| result.is_err()));
 
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(
                 store_hub.entity_db(&open).is_some(),
                 "closed despite the error"
@@ -1981,7 +1979,7 @@ mod tests {
 
         /// Serve `kind`, and return where its answer lands.
         fn serve(
-            app: &mut App,
+            app: &mut AppCore,
             store_hub: &StoreHub,
             egui_ctx: &egui::Context,
             kind: viewer_control_request::Kind,
@@ -2025,18 +2023,11 @@ mod tests {
                 .code
         }
 
-        /// A viewer with its store hub taken out, as during a frame.
-        fn viewer() -> (egui_kittest::Harness<'static, App>, StoreHub) {
-            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
-            let store_hub = harness
-                .state_mut()
-                .store_hub
-                .take()
-                .expect("the hub is only taken during a frame");
-            (harness, store_hub)
-        }
-
-        fn get_location(app: &mut App, store_hub: &StoreHub, egui_ctx: &egui::Context) -> String {
+        fn get_location(
+            app: &mut AppCore,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+        ) -> String {
             let answer = serve(
                 app,
                 store_hub,
@@ -2053,9 +2044,12 @@ mod tests {
 
         #[tokio::test]
         async fn set_location_shows_a_loaded_recording_and_get_location_reports_it() {
-            let (mut harness, mut store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let first = StoreId::random(StoreKind::Recording, "test_app");
             let second = StoreId::random(StoreKind::Recording, "test_app");
@@ -2065,28 +2059,31 @@ mod tests {
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 set_location(location_of(&second)),
             );
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert_eq!(app.active_recording_id(), Some(&second));
             assert_eq!(
-                get_location(app, &store_hub, &egui_ctx),
+                get_location(app, store_hub, &egui_ctx),
                 location_of(&second)
             );
             assert_eq!(
-                app.collect_viewer_state(&store_hub).location,
+                app.collect_viewer_state(store_hub).location,
                 location_of(&second)
             );
         }
 
         #[tokio::test]
         async fn open_url_of_an_open_location_navigates_only_if_asked() {
-            let (mut harness, mut store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let recording = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&recording);
@@ -2094,57 +2091,63 @@ mod tests {
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 open_url(location_of(&recording), false),
             );
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert_eq!(app.state.navigation.current(), &welcome);
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 open_url(location_of(&recording), true),
             );
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert_eq!(app.active_recording_id(), Some(&recording));
         }
 
         #[tokio::test]
         async fn the_welcome_page_location_round_trips() {
-            let (mut harness, mut store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
-            let welcome = get_location(app, &store_hub, &egui_ctx);
-            let answer = serve(app, &store_hub, &egui_ctx, set_location(welcome));
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            let welcome = get_location(app, store_hub, &egui_ctx);
+            let answer = serve(app, store_hub, &egui_ctx, set_location(welcome));
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert_eq!(app.state.navigation.current(), &Route::welcome_page());
         }
 
         #[tokio::test]
         async fn get_location_round_trips_through_set_location() {
-            let (mut harness, mut store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 set_location("about:settings".to_owned()),
             );
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
 
-            let location = get_location(app, &store_hub, &egui_ctx);
+            let location = get_location(app, store_hub, &egui_ctx);
             assert_eq!(location, "about:settings");
-            let answer = serve(app, &store_hub, &egui_ctx, set_location(location));
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            let answer = serve(app, store_hub, &egui_ctx, set_location(location));
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
 
             let Route::Settings { return_route } = app.state.navigation.current() else {
@@ -2158,30 +2161,36 @@ mod tests {
 
         #[tokio::test]
         async fn a_recording_location_that_is_not_loaded_is_not_found() {
-            let (mut harness, store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let missing = StoreId::random(StoreKind::Recording, "test_app");
             for kind in [
                 open_url(location_of(&missing), true),
                 set_location(location_of(&missing)),
             ] {
-                let answer = serve(app, &store_hub, &egui_ctx, kind);
+                let answer = serve(app, store_hub, &egui_ctx, kind);
                 assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
             }
         }
 
         #[tokio::test]
         async fn set_location_never_loads() {
-            let (mut harness, store_hub) = viewer();
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
             let sources_before = app.rx_log.sources().len();
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 set_location("https://example.com/recording.rrd".to_owned()),
             );
@@ -2190,7 +2199,7 @@ mod tests {
 
             let answer = serve(
                 app,
-                &store_hub,
+                store_hub,
                 &egui_ctx,
                 set_location("not a url".to_owned()),
             );

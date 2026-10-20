@@ -5,7 +5,7 @@
 use re_integration_test::HarnessExt as _;
 use re_sdk::Timeline;
 use re_viewer::external::re_sdk_types;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _};
+use re_viewer::viewer_test_utils;
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_no_blueprint_from_sdk() {
@@ -31,9 +31,9 @@ pub async fn test_no_blueprint_from_sdk() {
     // Without the fix, no blueprint gets registered in `active_blueprint_by_app_id`
     // even though the viewer creates one as a fallback via `blueprint_entry`.
     let app = harness.state_mut();
-    let route = app.testonly_get_route().clone();
+    let route = app.route().clone();
     let app_id = route.app_id().expect("route should have an app_id").clone();
-    let store_hub = app.testonly_get_store_hub();
+    let store_hub = app.store_hub();
     let has_active_blueprint = store_hub.active_blueprint_id_for_app(&app_id).is_some();
     assert!(
         has_active_blueprint,

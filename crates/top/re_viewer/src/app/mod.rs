@@ -85,7 +85,18 @@ enum WindowDecorationsRequest {
 }
 
 /// The Rerun Viewer as an [`eframe`] application.
+///
+/// The [`StoreHub`] lives beside [`AppCore`] rather than inside it,
+/// so that [`AppCore`] methods can take `&mut self` while borrowing from the hub.
 pub struct App {
+    /// Interface for all recordings and blueprints
+    pub(crate) store_hub: StoreHub,
+
+    core: AppCore,
+}
+
+/// Everything in [`App`] except the [`StoreHub`].
+pub struct AppCore {
     #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
@@ -146,9 +157,6 @@ pub struct App {
 
     /// Pending background tasks, e.g. files being saved.
     pub(crate) background_tasks: BackgroundTasks,
-
-    /// Interface for all recordings and blueprints
-    pub(crate) store_hub: Option<StoreHub>,
 
     pub(crate) table_blueprints: re_dataframe_ui::TableBlueprints,
 
@@ -531,7 +539,16 @@ impl App {
             );
         }
 
-        Self {
+        let store_hub = StoreHub::new(
+            if is_test {
+                noop_blueprint_loader(component_reflection)
+            } else {
+                blueprint_loader(component_reflection)
+            },
+            &crate::app_blueprint::setup_welcome_screen_blueprint,
+        );
+
+        let core = AppCore {
             main_thread_token,
             build_info,
             app_env,
@@ -568,14 +585,6 @@ impl App {
 
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new(
-                if is_test {
-                    noop_blueprint_loader(component_reflection)
-                } else {
-                    blueprint_loader(component_reflection)
-                },
-                &crate::app_blueprint::setup_welcome_screen_blueprint,
-            )),
             table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_log: Default::default(),
@@ -615,9 +624,45 @@ impl App {
 
             connections: ServerConnections::new(connection_registry),
             async_runtime,
-        }
+        };
+
+        Self { store_hub, core }
     }
 
+    /// Interface for all recordings and blueprints.
+    pub fn store_hub(&self) -> &StoreHub {
+        &self.store_hub
+    }
+
+    /// Interface for all recordings and blueprints.
+    pub fn store_hub_mut(&mut self) -> &mut StoreHub {
+        &mut self.store_hub
+    }
+
+    /// The active recording, if any.
+    pub fn recording_db(&self) -> Option<&EntityDb> {
+        let recording_id = self.active_recording_id()?;
+        self.store_hub.entity_db(recording_id)
+    }
+}
+
+impl std::ops::Deref for App {
+    type Target = AppCore;
+
+    #[inline]
+    fn deref(&self) -> &AppCore {
+        &self.core
+    }
+}
+
+impl std::ops::DerefMut for App {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut AppCore {
+        &mut self.core
+    }
+}
+
+impl AppCore {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
@@ -809,12 +854,8 @@ impl App {
 
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
     /// panel is open, also open that time control.
-    fn move_time(&mut self) {
+    fn move_time(&mut self, store_hub: &StoreHub) {
         let stable_dt = self.egui_ctx.input(|i| i.stable_dt);
-
-        let Some(store_hub) = &self.store_hub else {
-            return;
-        };
 
         if let Some(store_id) = self.active_recording_id()
             && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
@@ -1157,14 +1198,18 @@ impl App {
         }
     }
 
-    pub fn recording_db(&self) -> Option<&EntityDb> {
-        let store_hub = self.store_hub.as_ref()?;
-        let recording_id = self.active_recording_id()?;
-        store_hub.entity_db(recording_id)
+    /// The route currently shown in the viewer.
+    pub fn route(&self) -> &Route {
+        self.state.navigation.current()
+    }
+
+    /// The notification panel.
+    pub fn notifications(&self) -> &notifications::NotificationUi {
+        &self.notifications
     }
 
     /// Returns a [`re_chunk_store::LatestAtQuery`] for the active recording's current timeline
-    /// position, suitable for querying frame data from [`Self::recording_db`].
+    /// position, suitable for querying frame data from [`App::recording_db`].
     pub fn current_query(&self) -> Option<re_chunk_store::LatestAtQuery> {
         let store_id = self.active_recording_id()?;
         self.state
@@ -1173,8 +1218,6 @@ impl App {
             .map(|tc| tc.current_query())
     }
 
-    // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
-    // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
         command_sender: &CommandSender,
@@ -1418,28 +1461,49 @@ impl eframe::App for App {
 
         // Save the blueprints
         // TODO(#2579): implement web-storage for blueprints as well
-        if let Some(hub) = &mut self.store_hub {
-            if self.state.app_options.blueprint_gc {
-                hub.gc_blueprints(&self.state.blueprint_undo_state);
-            }
+        let Self { store_hub, core } = self;
+        if core.state.app_options.blueprint_gc {
+            store_hub.gc_blueprints(&core.state.blueprint_undo_state);
+        }
 
-            if let Err(err) = hub.save_app_blueprints() {
-                re_log::error!("Saving application blueprints failed: {err}");
-            }
-            if let Err(err) = self.table_blueprints.save_persisted_blueprints(hub) {
-                re_log::error!("Saving table blueprints failed: {err}");
-            }
-        } else {
-            re_log::error!("Could not save blueprints: the store hub is not available");
+        if let Err(err) = store_hub.save_app_blueprints() {
+            re_log::error!("Saving application blueprints failed: {err}");
+        }
+        if let Err(err) = core.table_blueprints.save_persisted_blueprints(store_hub) {
+            re_log::error!("Saving table blueprints failed: {err}");
         }
     }
 
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.logic_impl(ctx, frame);
+        let Self { store_hub, core } = self;
+        core.logic_impl(ctx, frame, store_hub);
     }
 
     /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        // NOTE: Memory stats can be very costly to compute, so only do so if the dev panel is opened.
+        let mem_usage_tree = self
+            .dev_panel_open
+            .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
+
+        let Self { store_hub, core } = self;
+        core.frame_ui(ui, frame, store_hub, mem_usage_tree);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(&mut *self)
+    }
+}
+
+impl AppCore {
+    fn frame_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        frame: &eframe::Frame,
+        store_hub: &mut StoreHub,
+        mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
+    ) {
         ui.name_panel("Viewer");
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
@@ -1453,11 +1517,6 @@ impl eframe::App for App {
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
         }
-
-        // NOTE: Memory stats can be very costly to compute, so only do so if the dev panel is opened.
-        let mem_usage_tree = self
-            .dev_panel_open
-            .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
 
         self.external_memory_users.update();
 
@@ -1481,13 +1540,7 @@ impl eframe::App for App {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        self.move_time();
-
-        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
-        let mut store_hub = self
-            .store_hub
-            .take()
-            .expect("Failed to take store hub from the Viewer");
+        self.move_time(store_hub);
 
         // Update data source order so it's based on opening order.
         store_hub.update_data_source_order(&self.rx_log.sources());
@@ -1503,7 +1556,6 @@ impl eframe::App for App {
         if self.screenshotter.update(ui).quit {
             ui.send_viewport_cmd(egui::ViewportCommand::Close);
             // More frames may run before the window actually closes.
-            self.store_hub = Some(store_hub);
             return;
         }
 
@@ -1567,7 +1619,7 @@ impl eframe::App for App {
             store_bundle_for_streaming,
         );
 
-        self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+        self.purge_memory_if_needed(store_hub); // Call BEFORE `begin_frame_caches`
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
@@ -1651,7 +1703,7 @@ impl eframe::App for App {
             if let Some(table_ref) = active_route.table_reference()
                 && let Err(err) = self
                     .table_blueprints
-                    .ensure_active_blueprint(&table_ref, &mut store_hub)
+                    .ensure_active_blueprint(&table_ref, store_hub)
             {
                 re_log::error_once!("Failed to ensure an active table blueprint: {err}");
             }
@@ -1848,23 +1900,15 @@ impl eframe::App for App {
                 store_context.as_ref(),
             );
         }
-        self.run_pending_system_commands(&mut store_hub, ui);
+        self.run_pending_system_commands(store_hub, ui);
 
-        self.update_history(&store_hub);
-
-        // Return the `StoreHub` to the Viewer so we have it on the next frame
-        self.store_hub = Some(store_hub);
+        self.update_history(store_hub);
 
         while let Ok((info, image)) = self.screenshot_rx.try_recv() {
             self.process_screenshot_result(&image, info);
         }
 
         self.state.audio_output.finish_ui_pass(ui.will_discard());
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
-        Some(&mut *self)
     }
 }
 

@@ -6,7 +6,7 @@ use re_log_types::{EntryId, StoreId};
 use re_uri::DatasetUri;
 use re_viewer_context::{Route, StoreHub, SystemCommand, SystemCommandSender as _};
 
-use super::App;
+use super::AppCore;
 
 use std::path::Path;
 use std::time::Duration;
@@ -22,7 +22,7 @@ use crate::registrations_in_flight::InFlightRegistration;
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
-impl App {
+impl AppCore {
     pub fn add_log_receiver(&mut self, rx: LogReceiver) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
         self.state

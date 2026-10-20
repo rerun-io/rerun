@@ -10,9 +10,9 @@ use re_protos::viewer_control::v1alpha1::{
 use re_ui::{BoundCommand, CommandEnvironment, CommandKind, CommandScope};
 use re_viewer_context::StoreHub;
 
-use super::super::App;
+use super::super::AppCore;
 
-impl App {
+impl AppCore {
     /// The environment the command palette sees, with the caller's `store_id` and
     /// `server_origin` (if any) in place of the active recording and the selected server.
     fn command_environment_for_request(

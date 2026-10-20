@@ -29,7 +29,7 @@ use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
 use re_viewer::external::re_entity_db::FetchStage;
 use re_viewer::external::re_viewer_context::viewer_url::ViewerUrl;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 const DATASET_NAME: &str = "my_dataset";
 const DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
@@ -1220,7 +1220,7 @@ async fn assets_of_a_dataset_do_not_share_a_blueprint() {
     let gripper_app_id = gripper_store_id.application_id().clone();
 
     let app = harness.state_mut();
-    let store_hub = app.testonly_get_store_hub();
+    let store_hub = app.store_hub();
     let robot_blueprint = store_hub
         .active_blueprint_id_for_app(&robot_app_id)
         .expect("the first asset should have an active blueprint")

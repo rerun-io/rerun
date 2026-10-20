@@ -12,9 +12,9 @@ use re_viewer_context::external::re_tf::transform_cache_snapshot::{
 use re_viewer_context::{StoreHub, TransformDatabaseStoreCache};
 use serde_json::{Value, json};
 
-use super::App;
+use super::super::AppCore;
 
-impl App {
+impl AppCore {
     /// Returns a filtered transform graph snapshot at the recording's current timeline and time cursor.
     ///
     /// If no time cursor is set, queries the latest values on the selected timeline.

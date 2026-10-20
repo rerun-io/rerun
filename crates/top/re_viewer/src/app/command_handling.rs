@@ -15,7 +15,7 @@ use re_viewer_context::{
 };
 use std::sync::Arc;
 
-use super::App;
+use super::AppCore;
 use crate::saving::RrdSnapshot;
 use crate::{app_blueprint::AppBlueprint, event::ViewerEventDispatcher};
 
@@ -24,7 +24,7 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
-/// How [`App::close_recording_or_table`] should treat a recording that's still rendered as a preview.
+/// How [`AppCore::close_recording_or_table`] should treat a recording that's still rendered as a preview.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CloseRecording {
     /// A recording still rendered as a preview stays loaded and streaming, just no longer in the
@@ -36,7 +36,7 @@ enum CloseRecording {
     Force,
 }
 
-impl App {
+impl AppCore {
     fn request_screenshot(&self, info: re_viewer_context::ScreenshotInfo) {
         let tx = self.screenshot_tx.clone();
         let ctx = self.egui_ctx.clone();
@@ -1920,7 +1920,7 @@ async fn async_open_rrd_dialog() -> Vec<web_sys::File> {
 }
 
 fn save_active_recording(
-    app: &mut App,
+    app: &mut AppCore,
     store_context: Option<&ActiveStoreContext<'_>>,
 ) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
@@ -1932,7 +1932,7 @@ fn save_active_recording(
 }
 
 fn save_recording(
-    app: &mut App,
+    app: &mut AppCore,
     entity_db: &EntityDb,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
@@ -1958,7 +1958,7 @@ fn save_recording(
 }
 
 fn save_blueprint(
-    app: &mut App,
+    app: &mut AppCore,
     store_context: Option<&ActiveStoreContext<'_>>,
 ) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
@@ -1983,7 +1983,7 @@ fn save_blueprint(
 #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
-    #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
+    #[allow(clippy::allow_attributes, unused_variables)] app: &mut AppCore, // only used on native
     snapshot: crate::saving::RrdSnapshot,
     file_name: String,
     title: String,

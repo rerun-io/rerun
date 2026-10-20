@@ -285,8 +285,7 @@ impl WebHandle {
             .ok_or_else(|| JsValue::from_str("No active recording to save"))?;
         let recording = app
             .store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.entity_db(&recording_id))
+            .entity_db(&recording_id)
             .ok_or_else(|| JsValue::from_str("Active recording is unavailable"))?;
 
         RrdSnapshot::recording(recording, None)
@@ -307,8 +306,7 @@ impl WebHandle {
             .ok_or_else(|| JsValue::from_str("No active recording for blueprint"))?;
         let blueprint = app
             .store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.active_blueprint_for_app(recording_id.application_id()))
+            .active_blueprint_for_app(recording_id.application_id())
             .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
         let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
 
@@ -366,9 +364,7 @@ impl WebHandle {
             return;
         };
         app.msg_receive_set().remove_by_uri(url);
-        if let Some(store_hub) = app.store_hub.as_mut() {
-            store_hub.remove_recording_by_uri(url);
-        }
+        app.store_hub.remove_recording_by_uri(url);
 
         app.egui_ctx
             .request_repaint_after(std::time::Duration::from_millis(10));
@@ -522,7 +518,7 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn get_active_recording_id(&self) -> Option<String> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
+        let hub = &app.store_hub;
         let recording_id = app.active_recording_id()?;
         let recording = hub.entity_db(recording_id)?;
 
@@ -532,13 +528,11 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_active_recording_id(&self, recording_id: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        let Some(hub) = app.store_hub.as_mut() else {
-            return;
-        };
+        let hub = &app.store_hub;
 
         let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
@@ -559,7 +553,7 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn get_active_timeline(&self, recording_id: &str) -> Option<String> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
+        let hub = &app.store_hub;
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = app.state.time_control(&store_id)?;
@@ -576,9 +570,7 @@ impl WebHandle {
             return;
         };
 
-        let Some(hub) = &app.store_hub else {
-            return;
-        };
+        let hub = &app.store_hub;
 
         let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
@@ -604,7 +596,7 @@ impl WebHandle {
     pub fn get_time_for_timeline(&self, recording_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
 
-        let hub = app.store_hub.as_ref()?;
+        let hub = &app.store_hub;
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = app.state.time_control(&store_id)?;
 
@@ -622,9 +614,7 @@ impl WebHandle {
             return;
         };
 
-        let Some(hub) = &app.store_hub else {
-            return;
-        };
+        let hub = &app.store_hub;
 
         let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
@@ -654,13 +644,7 @@ impl WebHandle {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return JsValue::null();
         };
-        let crate::App {
-            store_hub: Some(hub),
-            ..
-        } = &*app
-        else {
-            return JsValue::null();
-        };
+        let hub = &app.store_hub;
 
         let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
             return JsValue::null();
@@ -691,7 +675,7 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn get_playing(&self, recording_id: &str) -> Option<bool> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
+        let hub = &app.store_hub;
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         if !hub.store_bundle().contains(&store_id) {
@@ -705,20 +689,11 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
     #[wasm_bindgen]
     pub fn set_playing(&self, recording_id: &str, value: bool) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let crate::App {
-            store_hub,
-            egui_ctx,
-            command_sender,
-            ..
-        } = &mut *app;
 
-        let Some(hub) = store_hub.as_ref() else {
-            return;
-        };
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
+        let Some(store_id) = store_id_from_recording_id(&app.store_hub, recording_id) else {
             return;
         };
 
@@ -728,12 +703,13 @@ impl WebHandle {
             PlayState::Paused
         };
 
-        command_sender.send_system(SystemCommand::TimeControlCommands {
-            store_id: store_id.clone(),
-            time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
-        });
-        re_viewer_context::on_external_blueprint_edit(egui_ctx);
-        egui_ctx.request_repaint();
+        app.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: store_id.clone(),
+                time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
+            });
+        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
+        app.egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
@@ -741,11 +717,11 @@ impl WebHandle {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let crate::App {
+        let crate::AppCore {
             command_sender,
             egui_ctx,
             ..
-        } = &mut *app;
+        } = &mut **app;
 
         command_sender.send_system(SystemCommand::SetAuthCredentials {
             access_token: access_token.to_owned(),
