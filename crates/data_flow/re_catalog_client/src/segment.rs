@@ -152,7 +152,7 @@ impl CatalogClient {
         builder.finish(self.origin(), &dataset_schema)
     }
 
-    /// The dataset-wide schema, which may retain fields from removed layers.
+    /// The union of the schemas of every registered layer of every segment in the dataset.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<ArrowSchema> {
         self.client().await?.get_dataset_schema(dataset_id).await
