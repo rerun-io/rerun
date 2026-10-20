@@ -1115,7 +1115,9 @@ impl DesignTokens {
 
     pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
         match table_style {
-            TableStyle::Dense => Margin::symmetric(8, 2),
+            // No vertical margin, so that tiny buttons (`Size::Tiny`) fit in the row height.
+            // Cells center their content vertically.
+            TableStyle::Dense => Margin::symmetric(8, 0),
             TableStyle::Spacious => Margin::symmetric(8, 6),
         }
     }

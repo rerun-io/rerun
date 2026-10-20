@@ -207,6 +207,7 @@ egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
+rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 tokio.workspace = true
 

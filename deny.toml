@@ -127,10 +127,12 @@ skip = [
   { name = "prettyplease" }, # `prost-build`/`tonic-build` use 0.2; `re_types_builder` uses 0.3, which takes the `syn` 3 AST. Build-time only.
   { name = "quick-xml" }, # because of urdf-rs
   { name = "redox_syscall" }, # Plenty of versions in the wild
+  { name = "reqwest" }, # `walkers` uses 0.13, `lance` and we still use 0.12.
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
   { name = "rustix" }, # tantivy uses an old version.
   { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+  { name = "wasm-streams" }, # `walkers` uses 0.5 via reqwest 0.13, `ehttp` (via egui_extras) uses 0.4.
 
   # Duplicated by `headless_chrome`, pulled in only by the `browser` feature of the
   # `re_integration_test` browser integration-test harness.

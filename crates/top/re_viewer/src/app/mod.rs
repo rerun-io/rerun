@@ -255,6 +255,12 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
+        // Install ring as the default provider for reqwest 0.13.
+        #[cfg(not(target_arch = "wasm32"))]
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .ok();
+
         let is_test = app_env.is_test();
         let egui_renderer = creation_context
             .wgpu_render_state
