@@ -35,7 +35,11 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
         Box::new(move |cc| {
             let mut app = re_viewer::App::new(
                 main_thread_token,
-                re_build_info::build_info!(),
+                re_build_info::BuildInfo {
+                    rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                    llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+                    ..re_build_info::cargo_build_info!()
+                },
                 re_viewer::AppEnvironment::from_store_source(&store_source),
                 startup_options,
                 cc,

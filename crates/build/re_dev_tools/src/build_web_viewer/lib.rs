@@ -120,9 +120,10 @@ pub fn build(
 
         let mut cmd = std::process::Command::new("cargo");
         cmd.args([
-            "build",
+            "rustc",
             &format!("--package={crate_name}"),
             "--lib",
+            "--crate-type=cdylib",
             "--target=wasm32-unknown-unknown",
             &format!("--target-dir={}", target_wasm_dir.as_str()),
             // The native defaults include features that are useless on the web.

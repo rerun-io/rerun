@@ -798,7 +798,7 @@ where
             Command::Auth(cmd) => cmd.run(tokio_runtime.handle()).map_err(Into::into),
 
             #[cfg(feature = "analytics")]
-            Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+            Command::Analytics(analytics) => analytics.run(&build_info).map_err(Into::into),
 
             Command::Download(cmd) => cmd.run(tokio_runtime.handle()),
 
