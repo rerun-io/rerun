@@ -83,7 +83,8 @@ pub mod viewer_control_request {
         /// `INTERNAL` if the capture itself or the write to disk failed.
         #[prost(message, tag = "5")]
         SaveScreenshot(super::SaveScreenshotRequest),
-        /// Move the time cursor (timeline position) of a recording in the viewer.
+        /// Move the time cursor (timeline position) of a recording in the viewer, switch its active
+        /// timeline, or play, pause, or follow it.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorRequest),
         /// Report a recording's schema: its timelines, every entity, every component ever logged on
@@ -1428,6 +1429,9 @@ pub struct ViewerRecording {
     /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
     #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
+    /// Whether the time cursor is paused, playing, or following the latest data.
+    #[prost(enumeration = "PlayState", tag = "5")]
+    pub play_state: i32,
 }
 impl ::prost::Name for ViewerRecording {
     const NAME: &'static str = "ViewerRecording";
@@ -1451,6 +1455,10 @@ pub struct ViewerTimeline {
     /// The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
     #[prost(message, optional, tag = "3")]
     pub time_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
+    /// Where the time cursor sits on this timeline. Each timeline keeps its own position, so this is
+    /// also set for timelines other than the active one. Absent if the cursor has never been on it.
+    #[prost(message, optional, tag = "4")]
+    pub current_time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
 }
 impl ::prost::Name for ViewerTimeline {
     const NAME: &'static str = "ViewerTimeline";
@@ -1889,12 +1897,13 @@ pub struct SetTimeCursorRequest {
     pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
     /// Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
     /// temporal timelines (see `GetViewerState` for each timeline's type and range).
+    /// If omitted, the cursor stays at its current time on the timeline.
     #[prost(message, optional, tag = "3")]
     pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
-    /// If true, start playing the recording from the new position. Omit it, or pass false, to
-    /// pause the recording instead.
-    #[prost(bool, optional, tag = "4")]
-    pub play: ::core::option::Option<bool>,
+    /// Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.
+    /// Following moves the cursor to the latest data, so it cannot be combined with a `time`.
+    #[prost(enumeration = "PlayState", optional, tag = "5")]
+    pub play_state: ::core::option::Option<i32>,
 }
 impl ::prost::Name for SetTimeCursorRequest {
     const NAME: &'static str = "SetTimeCursorRequest";
@@ -1919,7 +1928,8 @@ pub struct SetTimeCursorResponse {
     /// Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
     #[prost(enumeration = "super::super::common::v1alpha1::TimeType", tag = "3")]
     pub time_type: i32,
-    /// The time the cursor was moved to.
+    /// Where the cursor is on the timeline: the requested time, or else its current time.
+    /// Absent if the cursor has never been on this timeline.
     #[prost(message, optional, tag = "4")]
     pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
 }
@@ -2018,6 +2028,43 @@ impl ::prost::Name for SetLocationResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.SetLocationResponse".into()
+    }
+}
+/// Whether a recording's time cursor moves.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum PlayState {
+    /// Not set: leaves the play state as it is.
+    Unspecified = 0,
+    /// The time cursor stays where it is.
+    Paused = 1,
+    /// The time cursor moves forward in time, at the playback speed.
+    Playing = 2,
+    /// The time cursor follows the latest data, as it arrives.
+    Following = 3,
+}
+impl PlayState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "PLAY_STATE_UNSPECIFIED",
+            Self::Paused => "PLAY_STATE_PAUSED",
+            Self::Playing => "PLAY_STATE_PLAYING",
+            Self::Following => "PLAY_STATE_FOLLOWING",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PLAY_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "PLAY_STATE_PAUSED" => Some(Self::Paused),
+            "PLAY_STATE_PLAYING" => Some(Self::Playing),
+            "PLAY_STATE_FOLLOWING" => Some(Self::Following),
+            _ => None,
+        }
     }
 }
 /// Generated client implementations.

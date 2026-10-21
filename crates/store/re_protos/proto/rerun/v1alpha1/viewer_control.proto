@@ -140,7 +140,8 @@ message ViewerControlRequest {
     // `INTERNAL` if the capture itself or the write to disk failed.
     SaveScreenshotRequest save_screenshot = 5;
 
-    // Move the time cursor (timeline position) of a recording in the viewer.
+    // Move the time cursor (timeline position) of a recording in the viewer, switch its active
+    // timeline, or play, pause, or follow it.
     SetTimeCursorRequest set_time_cursor = 6;
 
     // Report a recording's schema: its timelines, every entity, every component ever logged on
@@ -1012,6 +1013,9 @@ message ViewerRecording {
 
   // The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
   string location = 4;
+
+  // Whether the time cursor is paused, playing, or following the latest data.
+  PlayState play_state = 5;
 }
 
 // A timeline of a recording, with its time range.
@@ -1024,6 +1028,10 @@ message ViewerTimeline {
 
   // The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
   optional rerun.common.v1alpha1.TimeRange time_range = 3;
+
+  // Where the time cursor sits on this timeline. Each timeline keeps its own position, so this is
+  // also set for timelines other than the active one. Absent if the cursor has never been on it.
+  optional rerun.common.v1alpha1.TimelineTime current_time = 4;
 }
 
 // ----------------------------------------------------------------------------
@@ -1298,11 +1306,30 @@ message SetTimeCursorRequest {
 
   // Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
   // temporal timelines (see `GetViewerState` for each timeline's type and range).
-  rerun.common.v1alpha1.TimelineTime time = 3;
+  // If omitted, the cursor stays at its current time on the timeline.
+  optional rerun.common.v1alpha1.TimelineTime time = 3;
 
-  // If true, start playing the recording from the new position. Omit it, or pass false, to
-  // pause the recording instead.
-  optional bool play = 4;
+  reserved 4;
+  reserved "play";
+
+  // Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.
+  // Following moves the cursor to the latest data, so it cannot be combined with a `time`.
+  optional PlayState play_state = 5;
+}
+
+// Whether a recording's time cursor moves.
+enum PlayState {
+  // Not set: leaves the play state as it is.
+  PLAY_STATE_UNSPECIFIED = 0;
+
+  // The time cursor stays where it is.
+  PLAY_STATE_PAUSED = 1;
+
+  // The time cursor moves forward in time, at the playback speed.
+  PLAY_STATE_PLAYING = 2;
+
+  // The time cursor follows the latest data, as it arrives.
+  PLAY_STATE_FOLLOWING = 3;
 }
 
 // Response for `SetTimeCursor`, echoing back what the request resolved to.
@@ -1317,7 +1344,8 @@ message SetTimeCursorResponse {
   // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
   rerun.common.v1alpha1.TimeType time_type = 3;
 
-  // The time the cursor was moved to.
+  // Where the cursor is on the timeline: the requested time, or else its current time.
+  // Absent if the cursor has never been on this timeline.
   rerun.common.v1alpha1.TimelineTime time = 4;
 }
 

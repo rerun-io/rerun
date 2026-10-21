@@ -17,15 +17,22 @@ import rerun_bindings  # noqa: TID251
 
 def _capturing_viewer(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[ViewerClient, list[tuple[str | None, int, bool, str | None]]]:
-    calls: list[tuple[str | None, int, bool, str | None]] = []
+) -> tuple[ViewerClient, list[tuple[str | None, int | None, str | None, str | None]]]:
+    calls: list[tuple[str | None, int | None, str | None, str | None]] = []
 
     class CapturingViewerClientInternal:
         def __init__(self, _url: str) -> None:
             pass
 
-        def set_time_cursor(self, timeline: str | None, time: int, play: bool, store_id: str | None = None) -> None:
-            calls.append((timeline, time, play, store_id))
+        def set_time_cursor(
+            self,
+            *,
+            timeline: str | None,
+            time: int | None,
+            play_state: str | None,
+            store_id: str | None = None,
+        ) -> None:
+            calls.append((timeline, time, play_state, store_id))
 
     monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", CapturingViewerClientInternal)
     return ViewerClient.connect(), calls
@@ -117,15 +124,15 @@ def test_set_time_uses_active_timeline_when_omitted(monkeypatch: pytest.MonkeyPa
     viewer, calls = _capturing_viewer(monkeypatch)
     viewer.set_time(sequence=42)
 
-    assert calls == [(None, 42, False, None)]
+    assert calls == [(None, 42, None, None)]
 
 
 def test_set_time_converts_temporal_values(monkeypatch: pytest.MonkeyPatch) -> None:
     viewer, calls = _capturing_viewer(monkeypatch)
-    viewer.set_time("elapsed", duration=1.5, play=True)
+    viewer.set_time("elapsed", duration=1.5, play_state="playing")
     viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=UTC))
 
-    assert calls == [("elapsed", 1_500_000_000, True, None), ("capture_time", 0, False, None)]
+    assert calls == [("elapsed", 1_500_000_000, "playing", None), ("capture_time", 0, None, None)]
 
 
 def test_set_time_targets_a_named_recording(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -133,17 +140,34 @@ def test_set_time_targets_a_named_recording(monkeypatch: pytest.MonkeyPatch) -> 
     viewer, calls = _capturing_viewer(monkeypatch)
     viewer.set_time(sequence=7, recording="Recording:app:rec")
 
-    assert calls == [(None, 7, False, "Recording:app:rec")]
+    assert calls == [(None, 7, None, "Recording:app:rec")]
 
 
-def test_set_time_requires_exactly_one_time(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_time_can_follow_without_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer.set_time(play_state="following")
+
+    assert calls == [(None, None, "following", None)]
+
+
+def test_set_time_can_switch_timeline_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer.set_time("frame")
+
+    assert calls == [("frame", None, None, None)]
+
+
+def test_set_time_refuses_conflicting_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
     viewer, _calls = _capturing_viewer(monkeypatch)
 
-    with pytest.raises(ValueError, match="exactly one"):
+    with pytest.raises(ValueError, match="expects a timeline"):
         viewer.set_time()  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
 
-    with pytest.raises(ValueError, match="exactly one"):
+    with pytest.raises(ValueError, match="at most one"):
         viewer.set_time(sequence=1, duration=1.0)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
+
+    with pytest.raises(ValueError, match="cannot follow"):
+        viewer.set_time(sequence=1, play_state="following")  # type: ignore[call-overload]
 
 
 def _closing_viewer(

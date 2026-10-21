@@ -1324,7 +1324,7 @@ Conventions:
 
 {
   "name": "rerun_set_time_cursor",
-  "description": "Move the time cursor (timeline position) of a recording in the viewer.\n\nRequires `rerun_connect`.",
+  "description": "Move the time cursor (timeline position) of a recording in the viewer, switch its active\ntimeline, or play, pause, or follow it.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1356,16 +1356,19 @@ Conventions:
         "required": [
           "time"
         ],
-        "description": "Time value to seek to: a sequence index for sequence timelines, or nanoseconds for\ntemporal timelines (see `GetViewerState` for each timeline's type and range)."
+        "description": "Time value to seek to: a sequence index for sequence timelines, or nanoseconds for\ntemporal timelines (see `GetViewerState` for each timeline's type and range).\nIf omitted, the cursor stays at its current time on the timeline."
       },
-      "play": {
-        "type": "boolean",
-        "description": "If true, start playing the recording from the new position. Omit it, or pass false, to\npause the recording instead."
+      "play_state": {
+        "type": "string",
+        "enum": [
+          "PLAY_STATE_UNSPECIFIED",
+          "PLAY_STATE_PAUSED",
+          "PLAY_STATE_PLAYING",
+          "PLAY_STATE_FOLLOWING"
+        ],
+        "description": "Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.\nFollowing moves the cursor to the latest data, so it cannot be combined with a `time`."
       }
     },
-    "required": [
-      "time"
-    ],
     "description": "Request for `SetTimeCursor`."
   }
 }

@@ -16,6 +16,7 @@ use re_log_channel::{
 };
 use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
+use re_protos::viewer_control::v1alpha1::PlayState as ProtoPlayState;
 use re_protos::viewer_control::v1alpha1::{
     CloseRecordingsRequest, CloseRecordingsResponse, DatasetAssetSchema, GetBlueprintRequest,
     GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
@@ -31,10 +32,11 @@ use re_protos::viewer_control::v1alpha1::{
     ViewerTimeline, ViewerView, get_blueprint_request, set_blueprint_request,
     viewer_control_request,
 };
+use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
 use re_types_core::SegmentId;
 use re_viewer_context::{
-    Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand,
+    Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
     viewer_url::{OpenUrlOptions, ViewerUrl},
 };
 
@@ -548,29 +550,27 @@ impl AppCore {
                     store_id,
                     timeline,
                     time,
-                    play,
+                    play_state,
                 } = request;
-                // `time` is required. Defaulting it would seek to the start of the recording,
-                // which is a move the caller did not ask for, so every transport must be refused
-                // here rather than only in the clients that happen to validate.
-                let time = time.ok_or_else(|| {
-                    ViewerControlError::invalid_argument("`time` is required by `set_time_cursor`")
-                });
                 let store_id = store_id
                     .map(|store_id| store_id.parse::<StoreId>())
                     .transpose()
                     .map_err(|err| {
                         ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
                     });
-                let result = time
-                    .and_then(|time| Ok((time, store_id?)))
-                    .and_then(|(time, store_id)| {
+                let play_state = play_state
+                    .map(play_state_from_proto)
+                    .transpose()
+                    .map(Option::flatten);
+                let result = store_id
+                    .and_then(|store_id| Ok((store_id, play_state?)))
+                    .and_then(|(store_id, play_state)| {
                         self.apply_set_time_cursor(
                             store_hub,
                             store_id,
                             timeline.map(|timeline| timeline.name).as_deref(),
-                            time.time,
-                            play.unwrap_or(false),
+                            time.map(|time| time.time),
+                            play_state,
                             egui_ctx,
                         )
                         .map_err(ViewerControlError::invalid_argument)
@@ -855,16 +855,15 @@ impl AppCore {
             .recordings()
             .map(|db| {
                 let store_id = db.store_id();
-                let timelines = recording_timelines(db);
+                let time_ctrl = self.state.time_control(store_id);
+                let timelines = recording_timelines(db, time_ctrl);
 
-                let current_time = self
-                    .state
-                    .time_control(store_id)
-                    .map(|time_ctrl| TimeCursor {
-                        timeline: Some((*time_ctrl.timeline_name()).into()),
-                        time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
-                        time: time_ctrl.time_int().map(|t| t.as_i64().into()),
-                    });
+                let current_time = time_ctrl.map(|time_ctrl| TimeCursor {
+                    timeline: Some((*time_ctrl.timeline_name()).into()),
+                    time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
+                    time: time_ctrl.time_int().map(|t| t.as_i64().into()),
+                });
+                let play_state = time_ctrl.map_or(PlayState::Paused, TimeControl::play_state);
 
                 ViewerRecording {
                     store_id: store_id.to_string(),
@@ -873,6 +872,7 @@ impl AppCore {
                     location: ViewerUrl::LocalRecording(store_id.clone())
                         .sharable_url(None)
                         .unwrap_or_default(),
+                    play_state: play_state_to_proto(play_state) as i32,
                 }
             })
             .collect();
@@ -1620,7 +1620,7 @@ impl AppCore {
 
         Ok(GetRecordingSchemaResponse {
             store_id: store_id.to_string(),
-            timelines: recording_timelines(db),
+            timelines: recording_timelines(db, self.state.time_control(&store_id)),
             entities,
             omitted_entities,
         })
@@ -1723,12 +1723,10 @@ impl AppCore {
         store_hub: &StoreHub,
         store_id: Option<StoreId>,
         timeline: Option<&str>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<PlayState>,
         egui_ctx: &egui::Context,
     ) -> Result<SetTimeCursorResponse, String> {
-        use re_sdk_types::blueprint::components::PlayState;
-
         let store_id = store_id
             .or_else(|| self.state.active_recording_id().cloned())
             .ok_or_else(|| "no active recording to set the time for".to_owned())?;
@@ -1771,32 +1769,47 @@ impl AppCore {
             .get(&timeline_name)
             .map_or(TimeType::Sequence, |t| t.typ());
 
-        let play_state = if play {
-            PlayState::Playing
-        } else {
-            PlayState::Paused
-        };
+        if time.is_some() && play_state == Some(PlayState::Following) {
+            return Err(
+                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`"
+                    .to_owned(),
+            );
+        }
 
+        // Only what the request names is sent: a `SetTime` would leave follow mode, and an
+        // implied `SetActiveTimeline` would undo a switch still queued by an earlier request.
         // The order of these commands matters.
-        let time_commands = vec![
-            TimeControlCommand::SetActiveTimeline(timeline_name),
-            TimeControlCommand::SetPlayState(play_state),
-            TimeControlCommand::SetTime(TimeReal::from(time)),
-        ];
+        let mut time_commands = Vec::new();
+        if timeline.is_some() {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline_name));
+        }
+        if let Some(play_state) = play_state {
+            time_commands.push(TimeControlCommand::SetPlayState(play_state));
+        }
+        if let Some(time) = time {
+            time_commands.push(TimeControlCommand::SetTime(TimeReal::from(time)));
+        }
+        if !time_commands.is_empty() {
+            self.command_sender
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: store_id.clone(),
+                    time_commands,
+                });
+            re_viewer_context::on_external_blueprint_edit(egui_ctx);
+            egui_ctx.request_repaint();
+        }
 
-        self.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: store_id.clone(),
-                time_commands,
-            });
-        re_viewer_context::on_external_blueprint_edit(egui_ctx);
-        egui_ctx.request_repaint();
-
+        let time = time.or_else(|| {
+            self.state
+                .time_control(&store_id)
+                .and_then(|time_ctrl| time_ctrl.time_for_timeline(timeline_name))
+                .map(|time| time.floor().as_i64())
+        });
         Ok(SetTimeCursorResponse {
             store_id: store_id.to_string(),
             timeline: Some(timeline_name.into()),
             time_type: ProtoTimeType::from(time_type) as i32,
-            time: Some(time.into()),
+            time: time.map(Into::into),
         })
     }
 }
@@ -1805,7 +1818,10 @@ impl AppCore {
 /// `get_recording_schema` report them.
 ///
 /// A timeline with no data yet has no range, which is what tells "still arriving" from "empty".
-fn recording_timelines(db: &re_entity_db::EntityDb) -> Vec<ViewerTimeline> {
+fn recording_timelines(
+    db: &re_entity_db::EntityDb,
+    time_ctrl: Option<&TimeControl>,
+) -> Vec<ViewerTimeline> {
     db.timelines()
         .values()
         .map(|timeline| {
@@ -1814,9 +1830,34 @@ fn recording_timelines(db: &re_entity_db::EntityDb) -> Vec<ViewerTimeline> {
                 timeline: Some((*name).into()),
                 time_type: ProtoTimeType::from(timeline.typ()) as i32,
                 time_range: db.time_range_for(name).map(Into::into),
+                current_time: time_ctrl
+                    .and_then(|time_ctrl| time_ctrl.time_for_timeline(*name))
+                    .map(|time| time.floor().as_i64().into()),
             }
         })
         .collect()
+}
+
+/// The play state as `get_viewer_state` reports it.
+fn play_state_to_proto(play_state: PlayState) -> ProtoPlayState {
+    match play_state {
+        PlayState::Paused => ProtoPlayState::Paused,
+        PlayState::Playing => ProtoPlayState::Playing,
+        PlayState::Following => ProtoPlayState::Following,
+    }
+}
+
+/// The play state a `set_time_cursor` request asks for. `None` leaves it as it is.
+fn play_state_from_proto(play_state: i32) -> Result<Option<PlayState>, ViewerControlError> {
+    match ProtoPlayState::try_from(play_state) {
+        Ok(ProtoPlayState::Unspecified) => Ok(None),
+        Ok(ProtoPlayState::Paused) => Ok(Some(PlayState::Paused)),
+        Ok(ProtoPlayState::Playing) => Ok(Some(PlayState::Playing)),
+        Ok(ProtoPlayState::Following) => Ok(Some(PlayState::Following)),
+        Err(_) => Err(ViewerControlError::invalid_argument(format!(
+            "`play_state` must be paused, playing, or following, got {play_state}"
+        ))),
+    }
 }
 
 /// Group component schemas by entity for the `get_recording_schema` operation.
@@ -2130,12 +2171,12 @@ mod tests {
 
         use super::*;
 
-        type Answer = std::sync::Arc<
+        pub type Answer = std::sync::Arc<
             parking_lot::Mutex<Option<Result<ViewerControlResponse, ViewerControlError>>>,
         >;
 
         /// Serve `kind`, and return where its answer lands.
-        fn serve(
+        pub fn serve(
             app: &mut AppCore,
             store_hub: &StoreHub,
             egui_ctx: &egui::Context,
@@ -2171,7 +2212,7 @@ mod tests {
                 .expect("a store id always makes a URL")
         }
 
-        fn error_code(answer: &Answer) -> ViewerControlErrorCode {
+        pub fn error_code(answer: &Answer) -> ViewerControlErrorCode {
             answer
                 .lock()
                 .take()
@@ -2359,6 +2400,93 @@ mod tests {
                 store_hub,
                 &egui_ctx,
                 set_location("not a url".to_owned()),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    mod set_time_cursor {
+        use std::sync::Arc;
+
+        use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+        use re_log_types::StoreKind;
+
+        use super::locations::{error_code, serve};
+        use super::*;
+
+        /// A loaded recording with data at frames 0 and 10.
+        fn recording(store_hub: &mut StoreHub) -> StoreId {
+            let store_id = StoreId::random(StoreKind::Recording, "test_app");
+            let db = store_hub.entity_db_entry(&store_id);
+            for frame in [0, 10] {
+                let chunk = Chunk::builder("points")
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default().with(Timeline::new_sequence("frame"), frame),
+                        &re_sdk_types::archetypes::Points3D::new([(0.0, 0.0, 0.0)]),
+                    )
+                    .build()
+                    .expect("a valid chunk");
+                db.add_chunk(&Arc::new(chunk)).expect("a valid chunk");
+            }
+            store_id
+        }
+
+        fn set_time_cursor(
+            store_id: &StoreId,
+            time: Option<i64>,
+            play_state: Option<ProtoPlayState>,
+        ) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::SetTimeCursor(SetTimeCursorRequest {
+                store_id: Some(store_id.to_string()),
+                timeline: None,
+                time: time.map(Into::into),
+                play_state: play_state.map(|play_state| play_state as i32),
+            })
+        }
+
+        #[tokio::test]
+        async fn following_sticks_and_an_empty_request_changes_nothing() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let store_id = recording(store_hub);
+
+            for request in [
+                set_time_cursor(&store_id, None, Some(ProtoPlayState::Following)),
+                set_time_cursor(&store_id, None, None),
+            ] {
+                let answer = serve(app, store_hub, &egui_ctx, request);
+                app.run_pending_system_commands(store_hub, &egui_ctx);
+                assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+                assert_eq!(
+                    app.state
+                        .time_control(&store_id)
+                        .map(TimeControl::play_state),
+                    Some(PlayState::Following)
+                );
+            }
+        }
+
+        #[tokio::test]
+        async fn following_cannot_be_combined_with_a_time() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let store_id = recording(store_hub);
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_time_cursor(&store_id, Some(3), Some(ProtoPlayState::Following)),
             );
             assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
         }

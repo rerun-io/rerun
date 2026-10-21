@@ -12,7 +12,7 @@ import subprocess
 import time
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import psutil
 
@@ -599,7 +599,7 @@ class ViewerClient:
         timeline: str | None = None,
         *,
         sequence: int,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -609,7 +609,7 @@ class ViewerClient:
         timeline: str | None = None,
         *,
         duration: int | float | timedelta | np.timedelta64,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -619,7 +619,25 @@ class ViewerClient:
         timeline: str | None = None,
         *,
         timestamp: int | float | datetime | np.datetime64,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
+        recording: StoreId | None = None,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: str,
+        *,
+        play_state: Literal["paused", "playing", "following"] | None = None,
+        recording: StoreId | None = None,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: None = None,
+        *,
+        play_state: Literal["paused", "playing", "following"],
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -630,16 +648,16 @@ class ViewerClient:
         sequence: int | None = None,
         duration: int | float | timedelta | np.timedelta64 | None = None,
         timestamp: int | float | datetime | np.datetime64 | None = None,
-        play: bool = False,
+        play_state: Literal["paused", "playing", "following"] | None = None,
         recording: StoreId | None = None,
     ) -> None:
         """
-        Set the viewer's time cursor.
+        Set the viewer's time cursor, active timeline, play state, or several of these at once.
 
         Parameters
         ----------
         timeline:
-            The timeline to seek on.
+            The timeline to seek on, which becomes the active one.
             If omitted, the viewer uses its active timeline.
         sequence:
             A sequence index.
@@ -647,26 +665,34 @@ class ViewerClient:
             A duration in seconds, or a duration value with nanosecond precision.
         timestamp:
             Seconds since Unix epoch, or a timestamp value with nanosecond precision.
-        play:
-            Start playing from the new position.
-            The viewer pauses by default.
+        play_state:
+            `"paused"`, `"playing"`, or `"following"` the latest data.
+            If omitted, the play state is left as it is.
+            Following cannot be combined with a time.
         recording:
             The recording to seek, as reported by `viewer_state()`.
             If omitted, the viewer uses its active recording.
 
         """
-        if sum(value is not None for value in (sequence, duration, timestamp)) != 1:
-            raise ValueError("ViewerClient.set_time expects exactly one of sequence, duration, or timestamp")
+        times_given = sum(value is not None for value in (sequence, duration, timestamp))
+        if 1 < times_given:
+            raise ValueError("ViewerClient.set_time expects at most one of sequence, duration, or timestamp")
+        if timeline is None and times_given == 0 and play_state is None:
+            raise ValueError("ViewerClient.set_time expects a timeline, sequence, duration, timestamp, or play_state")
+        if times_given == 1 and play_state == "following":
+            raise ValueError("ViewerClient.set_time cannot follow the latest data and also set a time")
 
+        time: int | None
         if sequence is not None:
             time = sequence
         elif duration is not None:
             time = to_nanos(duration)
-        else:
-            assert timestamp is not None
+        elif timestamp is not None:
             time = to_nanos_since_epoch(timestamp)
+        else:
+            time = None
 
-        self._internal.set_time_cursor(timeline, time, play, recording)
+        self._internal.set_time_cursor(timeline=timeline, time=time, play_state=play_state, store_id=recording)
 
     def viewer_logs(self, after_sequence: int | None = None) -> list[LogEntry]:
         """

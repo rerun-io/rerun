@@ -575,19 +575,29 @@ mod tests {
     #[test]
     fn marks_only_the_fields_the_proto_leaves_unoptional_as_required() {
         let tools = tools();
-        let set_time = tools
-            .iter()
-            .find(|tool| tool.name == "set_time_cursor")
-            .expect("set_time_cursor is an operation");
+        let required = |name: &str| -> Vec<String> {
+            let tool = tools
+                .iter()
+                .find(|tool| tool.name == name)
+                .unwrap_or_else(|| panic!("{name} is an operation"));
+            tool.input_schema
+                .get("required")
+                .and_then(Value::as_array)
+                .map(|required| {
+                    required
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(ToOwned::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
 
-        let required: Vec<&str> = set_time.input_schema["required"]
-            .as_array()
-            .expect("set_time_cursor requires a time")
-            .iter()
-            .filter_map(Value::as_str)
-            .collect();
-
-        assert_eq!(required, ["time"]);
+        assert_eq!(required("open_url"), ["url"]);
+        assert!(
+            required("set_time_cursor").is_empty(),
+            "every `set_time_cursor` field is `optional`"
+        );
     }
 
     #[test]
@@ -655,17 +665,16 @@ mod tests {
 
     #[test]
     fn rejects_a_missing_required_field() {
-        let err = build("set_time_cursor", &json!({}))
-            .expect_err("`time` is required, and defaulting it would seek to the start");
-        assert!(err.contains("time"), "{err}");
+        let err = build("open_url", &json!({})).expect_err("`url` is required");
+        assert!(err.contains("url"), "{err}");
+
+        let err = build("open_url", &json!({ "url": null }))
+            .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
+        assert!(err.contains("url"), "{err}");
 
         let err = build("set_time_cursor", &json!({ "time": {} }))
-            .expect_err("an empty `time` is as wrong as an absent one");
+            .expect_err("`time` is optional, but a given `time` needs its own required fields");
         assert!(err.contains("time.time"), "{err}");
-
-        let err = build("set_time_cursor", &json!({ "time": null }))
-            .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
-        assert!(err.contains("time"), "{err}");
     }
 
     #[test]
@@ -726,7 +735,7 @@ mod tests {
                 ),
             ) => {
                 assert_eq!(set_time.time.map(|t| t.time), Some(7));
-                assert_eq!(set_time.play, None, "`play` is omittable");
+                assert_eq!(set_time.play_state, None, "`play_state` is omittable");
             }
             other => panic!("expected a set_time_cursor request, got {other:?}"),
         }

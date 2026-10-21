@@ -5,6 +5,7 @@ import {
   ViewerControlRequestSchema,
   ViewerControlResponseSchema,
   type GetViewerStateResponse,
+  PlayState as ProtoPlayState,
   type ViewerControlRequest,
   type ViewerControlResponse,
 } from "./proto/rerun/v1alpha1/viewer_control_pb.js";
@@ -51,6 +52,9 @@ export interface ViewerRecording {
 
   /** The recording's time cursor, if it has one. */
   current_time?: TimeCursor;
+
+  /** Whether the time cursor is paused, playing, or following the latest data. */
+  play_state?: PlayState;
 }
 
 /** A timeline of a recording. */
@@ -63,6 +67,14 @@ export interface ViewerTimeline {
 
   /** The first and last time on the timeline, if it has any data. */
   time_range?: TimeRange;
+
+  /**
+   * Where the time cursor is on this timeline, in its own unit.
+   *
+   * Each timeline keeps its own position, so this is also set for timelines other than the active one.
+   * Absent if the cursor has never been on it.
+   */
+  current_time?: bigint;
 }
 
 /** Where a recording's time cursor is. */
@@ -88,6 +100,9 @@ export interface TimeRange {
  * a sequence index, a duration in nanoseconds, or a timestamp in nanoseconds since the Unix epoch.
  */
 export type TimeType = "sequence" | "duration" | "timestamp";
+
+/** Whether a time cursor is paused, playing, or following the latest data as it arrives. */
+export type PlayState = "paused" | "playing" | "following";
 
 /** A view of the current blueprint. */
 export interface ViewerView {
@@ -169,7 +184,9 @@ function viewer_state_of(state: GetViewerStateResponse): ViewerState {
           start: timeline.timeRange.start,
           end: timeline.timeRange.end,
         },
+        current_time: timeline.currentTime?.time,
       })),
+      play_state: play_state_of(recording.playState),
       current_time: recording.currentTime && {
         timeline: recording.currentTime.timeline?.name ?? "",
         time_type: time_type_of(recording.currentTime.timeType),
@@ -197,6 +214,32 @@ function viewer_state_of(state: GetViewerStateResponse): ViewerState {
     catalog_url: state.catalogUrl,
     viewer_version: state.viewerVersion,
   };
+}
+
+function play_state_of(play_state: ProtoPlayState): PlayState | undefined {
+  switch (play_state) {
+    case ProtoPlayState.PAUSED:
+      return "paused";
+    case ProtoPlayState.PLAYING:
+      return "playing";
+    case ProtoPlayState.FOLLOWING:
+      return "following";
+    default:
+      return undefined;
+  }
+}
+
+function play_state_to_proto(play_state: PlayState | undefined): ProtoPlayState | undefined {
+  switch (play_state) {
+    case "paused":
+      return ProtoPlayState.PAUSED;
+    case "playing":
+      return ProtoPlayState.PLAYING;
+    case "following":
+      return ProtoPlayState.FOLLOWING;
+    default:
+      return undefined;
+  }
 }
 
 function time_type_of(time_type: ProtoTimeType | undefined): TimeType | undefined {
@@ -234,17 +277,24 @@ function entry_kind_of(kind: ProtoEntryKind): EntryKind | undefined {
 /**
  * Where to move the time cursor to, for {@link WebViewer.set_time}, and on which recording and timeline.
  *
- * Set exactly one of `sequence`, `duration_nanos`, and `timestamp_nanos`.
+ * Set at most one of `sequence`, `duration_nanos`, and `timestamp_nanos`.
+ * Without any of them, the cursor stays where it is on the timeline,
+ * so you can switch timelines, or play or pause, on their own.
  */
-export type SetTimeOptions = SetTimeTarget & TimeValue;
+export type SetTimeOptions = SetTimeTarget &
+  (TimeValue | { sequence?: never; duration_nanos?: never; timestamp_nanos?: never });
 
 /** The recording and timeline that {@link WebViewer.set_time} acts on. */
 export interface SetTimeTarget {
   /** The timeline to seek on. If omitted, the viewer uses its active timeline. */
   timeline?: string;
 
-  /** Start playing from the new position. The viewer pauses by default. */
-  play?: boolean;
+  /**
+   * Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.
+   *
+   * Following moves the cursor to the latest data, so it cannot be combined with a time.
+   */
+  play_state?: PlayState;
 
   /** The recording to seek, as a store id from {@link WebViewer.get_state}. If omitted, the active recording. */
   recording?: string;
@@ -322,18 +372,21 @@ type OperationResponse<K extends Operation> = Extract<
   { case: K }
 >["value"];
 
-/** The time that `options` seeks to, in the timeline's own unit. */
-function time_of(options: TimeValue): bigint {
+/** The time that `options` seeks to, in the timeline's own unit, if any. */
+function time_of(options: SetTimeOptions): bigint | undefined {
   // The type allows only one, but plain JavaScript callers are not type-checked.
   const values = [options.sequence, options.duration_nanos, options.timestamp_nanos].filter(
     (value) => value !== undefined,
   );
-  if (values.length !== 1) {
+  if (1 < values.length) {
     throw new Error(
-      "set_time expects exactly one of `sequence`, `duration_nanos`, and `timestamp_nanos`",
+      "set_time expects at most one of `sequence`, `duration_nanos`, and `timestamp_nanos`",
     );
   }
   const [value] = values;
+  if (value === undefined) {
+    return undefined;
+  }
   if (typeof value === "number" && !Number.isSafeInteger(value)) {
     throw new Error(`set_time expects an integer time, got ${value}`);
   }
@@ -1431,22 +1484,24 @@ export class WebViewer {
   }
 
   /**
-   * Move the time cursor.
+   * Move the time cursor, switch the active timeline, or play, pause, or follow the latest data.
    *
    * ```ts
-   * await viewer.set_time({ timeline: "frame", sequence: 42, play: true });
+   * await viewer.set_time({ timeline: "frame", sequence: 42, play_state: "playing" });
    * ```
    *
-   * Rejects with a {@link ViewerControlError} with the code `INVALID_ARGUMENT` if the recording or timeline doesn't exist.
+   * Rejects with a {@link ViewerControlError} with the code `INVALID_ARGUMENT` if the recording or
+   * timeline doesn't exist, or if `play_state` is following and a time is set.
    *
    * This API is experimental, and may change between releases.
    */
   async set_time(options: SetTimeOptions): Promise<void> {
+    const time = time_of(options);
     await this.#viewer_control("setTimeCursor", {
       storeId: options.recording,
       timeline: options.timeline === undefined ? undefined : { name: options.timeline },
-      time: { time: time_of(options) },
-      play: options.play ?? false,
+      time: time === undefined ? undefined : { time },
+      playState: play_state_to_proto(options.play_state),
     });
   }
 

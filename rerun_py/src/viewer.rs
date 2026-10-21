@@ -4,11 +4,12 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 use arrow::array::RecordBatch;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
 use re_grpc_client::write_table::channel;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::viewer_control::v1alpha1::PlayState;
 use re_protos::viewer_control::v1alpha1::ViewerControlOp as _;
 use re_protos::viewer_control::v1alpha1::viewer_control_service_client::ViewerControlServiceClient;
 
@@ -102,18 +103,29 @@ impl PyViewerClientInternal {
         conn.set_location(py, location)
     }
 
-    #[pyo3(signature = (timeline, time, play, store_id = None))]
+    #[pyo3(signature = (*, timeline, time, play_state, store_id = None))]
     fn set_time_cursor(
         self_: Py<Self>,
         timeline: Option<String>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<String>,
         store_id: Option<String>,
         py: Python<'_>,
     ) -> PyResult<()> {
+        let play_state = play_state
+            .map(|play_state| match play_state.as_str() {
+                "paused" => Ok(PlayState::Paused),
+                "playing" => Ok(PlayState::Playing),
+                "following" => Ok(PlayState::Following),
+                _ => Err(PyValueError::new_err(format!(
+                    "Unknown play state {play_state:?}, expected \"paused\", \"playing\", or \"following\""
+                ))),
+            })
+            .transpose()?;
+
         let mut conn = self_.borrow(py).conn.clone();
 
-        conn.set_time_cursor(py, timeline, time, play, store_id)
+        conn.set_time_cursor(py, timeline, time, play_state, store_id)
     }
 
     fn viewer_logs(
@@ -278,8 +290,8 @@ impl ViewerConnectionHandle {
         &mut self,
         py: Python<'_>,
         timeline: Option<String>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<PlayState>,
         store_id: Option<String>,
     ) -> PyResult<()> {
         let response = wait_for_future(
@@ -288,8 +300,8 @@ impl ViewerConnectionHandle {
                 re_protos::viewer_control::v1alpha1::SetTimeCursorRequest {
                     store_id,
                     timeline: timeline.map(|name| re_protos::common::v1alpha1::Timeline { name }),
-                    time: Some(time.into()),
-                    play: Some(play),
+                    time: time.map(Into::into),
+                    play_state: play_state.map(|play_state| play_state as i32),
                 }
                 .into_envelope(),
             ),
