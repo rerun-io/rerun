@@ -730,6 +730,7 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+                registering_files: &Default::default(),
                 last_loading_error: &Default::default(),
 
                 storage_context: &storage_context,

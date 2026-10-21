@@ -10659,6 +10659,7 @@ version = "0.40.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "egui_kittest",
  "insta",
  "itertools 0.15.0",
  "re_data_ui",

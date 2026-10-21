@@ -46,6 +46,7 @@ re_log_channel.workspace = true
 re_log_msg.workspace = true
 re_test_context.workspace = true
 
+egui_kittest.workspace = true
 insta = { workspace = true, features = ["redactions", "yaml"] }
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]

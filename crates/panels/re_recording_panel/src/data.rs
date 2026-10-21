@@ -308,6 +308,8 @@ pub struct ServerData<'a> {
     // `InternalCatalogData` struct that mirrors `ServerData`.
     pub is_internal: bool,
 
+    pub is_registering: bool,
+
     pub entries_data: ServerEntriesData<'a>,
 }
 
@@ -334,6 +336,7 @@ impl<'a> ServerData<'a> {
             is_active,
             is_selected,
             is_internal: server.is_internal(),
+            is_registering: ctx.registering_files.contains_key(origin),
             entries_data,
         }
     }
@@ -343,7 +346,7 @@ impl<'a> ServerData<'a> {
     }
 
     pub fn is_visible(&self) -> bool {
-        !self.is_internal || !self.entries_data.iter_datasets().is_empty()
+        !self.is_internal || self.is_registering || !self.entries_data.iter_datasets().is_empty()
     }
 }
 

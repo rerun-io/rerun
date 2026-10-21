@@ -339,6 +339,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         is_active,
         is_selected,
         is_internal,
+        is_registering,
         entries_data,
     } = server_data;
 
@@ -348,7 +349,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         return;
     }
 
-    let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
+    let mut content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
             for command in re_ui::RedapServerCommand::all_for_server(origin) {
                 if command.requires_editable_server() && *is_internal {
@@ -358,6 +359,23 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
             }
         });
 
+    if *is_registering {
+        content = content.with_icon_fn(|ui, rect, _| {
+            let reason = ctx.registering_files.get(origin).map_or_else(
+                || "Registering data".to_owned(),
+                |names| format!("Registering:\n{}", names.join("\n")),
+            );
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+                1.0,
+                None,
+                &reason,
+            );
+        });
+    }
+
     let item_response = ui
         .list_item()
         .header()
@@ -366,8 +384,9 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         .show_hierarchical_with_children(ui, server_item_id(origin), true, content, |ui| {
             server_entries_ui(ctx, ui, entries_data, origin);
         })
-        .item_response
-        .on_hover_text(origin.to_string());
+        .item_response;
+
+    let item_response = item_response.on_hover_text(origin.to_string());
 
     ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
     ctx.handle_select_focus_sync(&item_response, server_data.item());
@@ -940,7 +959,55 @@ fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
 
 #[cfg(test)]
 mod tests {
+    use egui_kittest::kittest::{NodeT as _, Queryable as _};
+
     use super::ancestor_folder_paths;
+
+    #[test]
+    fn ongoing_registration_snapshot() {
+        let test_context = re_test_context::TestContext::default();
+        let server = super::ServerData {
+            origin: re_uri::Origin::test(),
+            is_active: false,
+            is_selected: false,
+            is_internal: true,
+            is_registering: true,
+            entries_data: super::ServerEntriesData::Loaded {
+                entry_tree: Vec::new(),
+            },
+        };
+        let registering_files = std::iter::once((
+            server.origin.clone(),
+            vec![
+                "data/recording.rrd".to_owned(),
+                "data/points.rrd".to_owned(),
+            ],
+        ))
+        .collect();
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui(egui::vec2(280.0, 160.0))
+            .build_ui(|ui| {
+                test_context.run_ui(ui, |ctx, ui| {
+                    let app_ctx = super::AppContext {
+                        registering_files: &registering_files,
+                        ..ctx.app_ctx.clone()
+                    };
+                    re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
+                        super::server_section_ui(&app_ctx, ui, &server);
+                    });
+                });
+            });
+
+        harness.step();
+        harness.snapshot("ongoing_registration");
+        assert_eq!(
+            harness
+                .get_by_label("Registering:\ndata/recording.rrd\ndata/points.rrd")
+                .accesskit_node()
+                .role(),
+            egui::Role::ProgressIndicator
+        );
+    }
 
     #[test]
     fn ancestor_folder_paths_basic() {

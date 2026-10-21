@@ -7,6 +7,26 @@ use re_recording_panel::data::RecordingPanelData;
 use re_test_context::TestContext;
 
 #[test]
+fn pending_registration_reveals_empty_internal_catalog() {
+    let mut server = re_recording_panel::data::ServerData {
+        origin: re_uri::Origin::test(),
+        is_selected: false,
+        is_active: false,
+        is_internal: true,
+        is_registering: false,
+        entries_data: re_recording_panel::data::ServerEntriesData::Loading,
+    };
+
+    assert!(!server.is_visible());
+    server.is_registering = true;
+    assert!(server.is_visible());
+    server.is_registering = false;
+    assert!(!server.is_visible());
+    server.is_internal = false;
+    assert!(server.is_visible());
+}
+
+#[test]
 fn empty_context_test() {
     let test_context =
         TestContext::new_with_store_info(StoreInfo::testing_with_recording_id("test_recording"));

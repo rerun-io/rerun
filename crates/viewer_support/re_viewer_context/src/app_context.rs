@@ -48,6 +48,9 @@ pub struct AppContext<'a> {
     /// Registry of authenticated redap connections
     pub connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
 
+    /// Names of registrations in progress for this frame, grouped by catalog origin.
+    pub registering_files: &'a HashMap<re_uri::Origin, Vec<String>>,
+
     /// Latest terminal loading errors, keyed by data source.
     pub last_loading_error: &'a HashMap<re_log_channel::LogSource, String>,
 

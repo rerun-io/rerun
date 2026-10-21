@@ -319,6 +319,7 @@ impl AppState {
         welcome_screen_state: &WelcomeScreenState,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
+        registrations_in_flight: &crate::registrations_in_flight::RegistrationsInFlight,
         runtime: &AsyncRuntimeHandle,
         custom_window_frame: bool,
     ) {
@@ -374,6 +375,14 @@ impl AppState {
             );
         }
 
+        let mut registering_files: ahash::HashMap<_, Vec<_>> = Default::default();
+        for registration in registrations_in_flight.snapshot().into_values() {
+            registering_files
+                .entry(registration.origin)
+                .or_default()
+                .push(registration.name);
+        }
+
         // App-level context, available for all routes (also those without an active recording).
         let app_ctx = AppContext {
             is_test: app_env.is_test(),
@@ -386,6 +395,7 @@ impl AppState {
             command_sender,
 
             connection_registry,
+            registering_files: &registering_files,
             last_loading_error: &self.last_loading_error,
             storage_context,
             blueprint_undo_states: &self.blueprint_undo_state,

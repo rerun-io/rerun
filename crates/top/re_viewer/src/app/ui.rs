@@ -162,6 +162,7 @@ impl AppCore {
                         },
                         self.event_dispatcher.as_ref(),
                         &self.connections.registry,
+                        &self.connections.registrations_in_flight,
                         &self.async_runtime,
                         self.custom_window_frame(),
                     );
@@ -505,6 +506,9 @@ fn custom_windows_decorations_resize_ui(ui: &egui::Ui) {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn custom_windows_decorations_resize_ui(_ui: &egui::Ui) {}
+
 fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
@@ -520,9 +524,6 @@ fn paint_background_fill(ui: &egui::Ui) {
         tokens.panel_bg_color,
     );
 }
-
-#[cfg(target_arch = "wasm32")]
-fn custom_windows_decorations_resize_ui(_ui: &egui::Ui) {}
 
 pub(super) fn paint_custom_window_frame(egui_ctx: &egui::Context) {
     let tokens = egui_ctx.tokens();
