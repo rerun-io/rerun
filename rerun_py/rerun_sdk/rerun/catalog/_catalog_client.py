@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import timedelta
@@ -174,6 +175,12 @@ class CatalogClient:
                 _compatible_datafusion_version(expected_df_version),
                 optional_dep="catalog",
             )
+
+        if url.startswith(("http://", "https://")):
+            logging.warning(
+                f"Use `rerun+{url}` instead of `{url}`. The `rerun+` prefix marks a Rerun data protocol URL."
+            )
+            url = f"rerun+{url}"
 
         self._internal = CatalogClientInternal(url, token, object_store_auth)
 
