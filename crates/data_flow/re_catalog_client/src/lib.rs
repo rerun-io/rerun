@@ -2,6 +2,7 @@
 
 mod asset;
 mod dataset_info;
+mod dataset_selection;
 mod entry;
 mod registration;
 mod segment;
@@ -15,6 +16,7 @@ pub use self::asset::{
     RegisteredAssets, asset_data_source,
 };
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
+pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
 pub use self::registration::{RegistrationHandle, SegmentRegistrationResult};
 pub use self::staging::StagingError;
 

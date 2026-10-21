@@ -823,8 +823,9 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         segment_ids: Vec<String>,
     ) -> super::PyDatasetSelectionInternal {
-        let filter: std::collections::HashSet<String> = segment_ids.into_iter().collect();
-        super::PyDatasetSelectionInternal::new(Py::from(self_), Some(filter), None)
+        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id)
+            .filter_segments(segment_ids.into_iter().map(SegmentId::from));
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection, None)
     }
 
     /// Returns a new `DatasetSelection` filtered to the given entity paths.
@@ -842,7 +843,8 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         exprs: Vec<String>,
     ) -> super::PyDatasetSelectionInternal {
-        super::PyDatasetSelectionInternal::new(Py::from(self_), None, Some(exprs))
+        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id);
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection, Some(exprs))
     }
 
     pub fn __str__(self_: PyRef<'_, Self>) -> String {

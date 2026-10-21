@@ -1,15 +1,16 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-#[cfg(feature = "perf_telemetry")]
-use crate::trace_context::extract_trace_context_from_contextvar;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
+use datafusion::datasource::empty::EmptyTable;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+
+use re_catalog_client::DatasetSelection;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
@@ -20,6 +21,8 @@ use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
     to_py_err,
 };
+#[cfg(feature = "perf_telemetry")]
+use crate::trace_context::extract_trace_context_from_contextvar;
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
@@ -32,11 +35,11 @@ use crate::utils::wait_for_future;
 pub struct PyDatasetSelectionInternal {
     dataset: Py<PyDatasetEntryInternal>,
 
-    /// Segment filter: `None` means no filtering, `Some` means filter to these segment IDs
+    /// Invariant: `selection.dataset_id()` is the ID of `dataset`.
     // TODO(RR-3158): the API allows using a datafusion dataframe to specify segments. If actual
     // workflow/performance indicates that it would be useful, we should consider keeping the
     // logical plan and lazily execute it instead of materializing the segment IDs.
-    segment_filter: Option<HashSet<String>>,
+    selection: DatasetSelection,
 
     /// Content filters: entity path expressions like "/points/**", "-/text/**".
     /// - `None` means no filter was specified (-> keep everything from schema)
@@ -47,14 +50,16 @@ pub struct PyDatasetSelectionInternal {
 
 impl PyDatasetSelectionInternal {
     /// Create a new `DatasetSelection` from a dataset with optional initial filters.
+    ///
+    /// `selection` must select from `dataset`.
     pub fn new(
         dataset: Py<PyDatasetEntryInternal>,
-        segment_filter: Option<HashSet<String>>,
+        selection: DatasetSelection,
         content_filters: Option<Vec<String>>,
     ) -> Self {
         Self {
             dataset,
-            segment_filter,
+            selection,
             content_filters,
         }
     }
@@ -97,8 +102,10 @@ impl PyDatasetSelectionInternal {
     ///
     /// This is an internal only function.
     #[getter]
-    fn filtered_segment_ids(&self) -> Option<HashSet<String>> {
-        self.segment_filter.clone()
+    fn filtered_segment_ids(&self) -> Option<BTreeSet<String>> {
+        self.selection
+            .segment_filter()
+            .map(|ids| ids.iter().map(|id| id.to_string()).collect())
     }
 
     /// Return the content filter expressions.
@@ -138,17 +145,15 @@ impl PyDatasetSelectionInternal {
     fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.segment_ids").entered();
-        let dataset = self_.dataset.borrow(py);
+        let connection = self_
+            .dataset
+            .borrow(py)
+            .client()
+            .borrow(py)
+            .connection()
+            .clone();
 
-        let all_segment_ids = PyDatasetEntryInternal::segment_ids(dataset)?;
-
-        match &self_.segment_filter {
-            Some(filter) => Ok(all_segment_ids
-                .into_iter()
-                .filter(|id| filter.contains(id))
-                .collect()),
-            None => Ok(all_segment_ids),
-        }
+        connection.get_dataset_segment_ids(py, self_.selection.clone())
     }
 
     /// Returns a new DatasetSelection filtered to the given segment IDs.
@@ -162,19 +167,13 @@ impl PyDatasetSelectionInternal {
         let _span =
             read_trace_context_from_python(py, "DatasetSelection.filter_segments").entered();
 
-        // Extract segment IDs from input
-        let new_segments: HashSet<String> = segment_ids.into_iter().collect();
-
-        let combined_segments = match &self_.segment_filter {
-            Some(existing) => existing.intersection(&new_segments).cloned().collect(),
-            None => new_segments,
-        };
-
         Py::new(
             py,
             Self::new(
                 self_.dataset.clone_ref(py),
-                Some(combined_segments),
+                self_
+                    .selection
+                    .filter_segments(segment_ids.into_iter().map(SegmentId::from)),
                 self_.content_filters.clone(),
             ),
         )
@@ -205,7 +204,7 @@ impl PyDatasetSelectionInternal {
             py,
             Self::new(
                 self_.dataset.clone_ref(py),
-                self_.segment_filter.clone(),
+                self_.selection.clone(),
                 Some(combined_filters),
             ),
         )
@@ -261,7 +260,7 @@ impl PyDatasetSelectionInternal {
         let provider = build_dataframe_query_table_provider(
             py,
             &self_.dataset,
-            self_.segment_filter.clone(),
+            &self_.selection,
             self_.content_filters.as_ref(),
             index,
             include_semantically_empty_columns,
@@ -350,7 +349,7 @@ fn build_view_contents(
 fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
-    segment_filter: Option<HashSet<String>>,
+    selection: &DatasetSelection,
     content_filters: Option<&Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
@@ -385,10 +384,10 @@ fn build_dataframe_query_table_provider(
     drop(dataset_ref);
 
     let view_contents = build_view_contents(&schema, content_filters);
-    let segment_ids: Vec<String> = match &segment_filter {
-        Some(filter) => filter.iter().cloned().collect(),
-        None => vec![],
-    };
+    let segment_ids: Vec<&str> = selection
+        .segment_filter()
+        .map(|ids| ids.iter().map(SegmentId::as_str).collect())
+        .unwrap_or_default();
 
     let static_only = index.is_none();
 
@@ -461,6 +460,14 @@ fn build_dataframe_query_table_provider(
         )
         .await
     })
-    .map(|p| Arc::new(p) as Arc<dyn TableProvider + Send>)
+    .map(|provider| {
+        // The query request would read every segment for an empty selection; keep the
+        // provider's schema and validation, but return no rows.
+        if selection.selects_no_segments() {
+            Arc::new(EmptyTable::new(provider.schema())) as Arc<dyn TableProvider + Send>
+        } else {
+            Arc::new(provider) as Arc<dyn TableProvider + Send>
+        }
+    })
     .map_err(to_py_err)
 }

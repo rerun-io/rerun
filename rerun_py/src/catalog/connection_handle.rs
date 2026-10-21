@@ -4,7 +4,8 @@ use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
-use re_catalog_client::{CatalogClient, RegistrationHandle};
+
+use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::EntryFilter;
@@ -174,17 +175,18 @@ impl PyConnectionHandle {
     pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
-        entry_id: EntryId,
+        selection: impl Into<DatasetSelection>,
     ) -> PyResult<Vec<String>> {
+        let selection = selection.into();
         wait_for_future(py, async {
             Ok(self
                 .inner
-                .get_dataset_segment_ids(entry_id)
+                .get_dataset_segment_ids(selection)
                 .await
                 .map_err(to_py_err)?
-                .iter()
-                .map(|id| id.to_string())
-                .collect::<Vec<_>>())
+                .into_iter()
+                .map(String::from)
+                .collect())
         })
     }
 

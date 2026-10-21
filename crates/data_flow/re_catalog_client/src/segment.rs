@@ -1,8 +1,11 @@
 //! Catalog dataset, segment, and layer operations.
 
-use crate::CatalogClient;
+use std::collections::HashSet;
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
+use tokio_stream::StreamExt as _;
+
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
@@ -11,11 +14,11 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_redap_client::{ApiError, ApiResult, DatasetSchema, TraceId};
-
-use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
 use re_types_core::LayerName;
-use std::collections::HashSet;
-use tokio_stream::StreamExt as _;
+
+use crate::CatalogClient;
+use crate::DatasetSelection;
+use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
 
 impl CatalogClient {
     /// Read one segment's mutable properties, and the revision that gates writes to them.
@@ -69,19 +72,37 @@ impl CatalogClient {
             .await
     }
 
-    /// Get a list of segment IDs for the given dataset entry ID.
+    /// Get the IDs of the segments that `selection` keeps, in the server's order.
+    ///
+    /// Pass a dataset's [`EntryId`] to get all of its segments.
+    /// Selected IDs that the dataset does not hold are not returned.
     //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>> {
+    pub async fn get_dataset_segment_ids(
+        &self,
+        selection: impl Into<DatasetSelection>,
+    ) -> ApiResult<Vec<SegmentId>> {
+        let selection = selection.into();
+        if selection.selects_no_segments() {
+            return Ok(Vec::new());
+        }
+        let segment_filter = selection.segment_filter();
+
+        let mut request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        ]);
+        if let Some(ids) = segment_filter {
+            request.segment_id_filter = Some(SegmentIdFilter {
+                strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                    segment_ids: ids.iter().cloned().map(Into::into).collect(),
+                })),
+            });
+        }
+
         let mut stream = self
             .client()
             .await?
-            .scan_segment_table(
-                entry_id,
-                ScanSegmentTableRequest::with_columns([
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                ]),
-            )
+            .scan_segment_table(selection.dataset_id(), request)
             .await?;
         let trace_id = stream.trace_id();
 
@@ -101,7 +122,12 @@ impl CatalogClient {
                     )
                 })?;
 
-            segment_ids.extend(segment_id_column.into_iter_owned());
+            // Servers may ignore the filter hint, so filter locally too.
+            segment_ids.extend(
+                segment_id_column
+                    .into_iter_owned()
+                    .filter(|id| segment_filter.is_none_or(|ids| ids.contains(id))),
+            );
         }
 
         Ok(segment_ids)

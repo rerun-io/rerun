@@ -35,6 +35,29 @@ def test_dataset_selection_filter_segments(readonly_test_dataset: DatasetEntry) 
     assert sorted(selection.segment_ids()) == filter_segments
 
 
+def test_dataset_selection_filter_segments_unknown_and_empty(readonly_test_dataset: DatasetEntry) -> None:
+    """Unknown IDs match nothing, and an empty or disjoint segment selection has no segments."""
+
+    known = min(readonly_test_dataset.segment_ids())
+
+    selection = readonly_test_dataset.filter_segments([known, "does-not-exist"])
+    assert selection.segment_ids() == [known]
+
+    index = readonly_test_dataset.schema().index_columns()[0].name
+    full_reader = readonly_test_dataset.filter_segments([known]).reader(index=index)
+
+    for empty in [
+        readonly_test_dataset.filter_segments([]),
+        readonly_test_dataset.filter_segments([known]).filter_segments(["does-not-exist"]),
+    ]:
+        assert empty.segment_ids() == []
+        assert empty.segment_table().count() == 0
+
+        reader = empty.reader(index=index)
+        assert reader.count() == 0
+        assert reader.schema() == full_reader.schema()
+
+
 @pytest.mark.local_only
 def test_dataset_selection_filter_segments_with_dataframe(
     readonly_test_dataset: DatasetEntry, entry_factory: EntryFactory, tmp_path: Path
