@@ -559,16 +559,13 @@ class Viewer:
                 f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
-        if sequence is not None:
-            time = sequence
-        elif duration is not None:
-            time = to_nanos(duration)
-        elif timestamp is not None:
-            time = to_nanos_since_epoch(timestamp)
-        else:
-            time = None
-
-        self._viewer.set_time_ctrl(timeline, time, play)
+        self._viewer.set_time_ctrl(
+            timeline,
+            sequence=sequence,
+            duration_nanos=None if duration is None else to_nanos(duration),
+            timestamp_nanos=None if timestamp is None else to_nanos_since_epoch(timestamp),
+            play=play,
+        )
 
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
         """

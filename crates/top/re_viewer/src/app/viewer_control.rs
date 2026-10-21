@@ -40,7 +40,7 @@ use re_viewer_context::{
     viewer_url::{OpenUrlOptions, ViewerUrl},
 };
 
-use super::AppCore;
+use super::{App, AppCore};
 use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
@@ -712,6 +712,15 @@ fn close_recordings_target(
                 })?,
         ),
     })
+}
+
+impl App {
+    /// The `get_viewer_state` response.
+    #[cfg(target_arch = "wasm32")]
+    pub fn viewer_state(&mut self) -> GetViewerStateResponse {
+        let Self { store_hub, core } = self;
+        core.collect_viewer_state(store_hub)
+    }
 }
 
 impl AppCore {

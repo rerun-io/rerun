@@ -285,8 +285,27 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
                 new_panel_states[panel] = state
         self._panel_states = new_panel_states
 
-    def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
-        self.send({"type": "time_ctrl", "timeline": timeline, "time": time, "play": play})
+    def set_time_ctrl(
+        self,
+        timeline: str | None,
+        *,
+        sequence: int | None = None,
+        duration_nanos: int | None = None,
+        timestamp_nanos: int | None = None,
+        play: bool,
+    ) -> None:
+        # Integers go as strings, since a JSON number loses nanosecond precision in JavaScript.
+        def as_str(value: int | None) -> str | None:
+            return None if value is None else str(value)
+
+        self.send({
+            "type": "time_ctrl",
+            "timeline": timeline,
+            "sequence": as_str(sequence),
+            "duration_nanos": as_str(duration_nanos),
+            "timestamp_nanos": as_str(timestamp_nanos),
+            "play": play,
+        })
 
     def set_active_recording(self, recording_id: str) -> None:
         self.send({"type": "recording_id", "recording_id": recording_id})

@@ -2,6 +2,7 @@
 import type { WebHandle, wasm_bindgen } from "./re_viewer";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
+  GetViewerStateResponseSchema,
   ViewerControlRequestSchema,
   ViewerControlResponseSchema,
   type GetViewerStateResponse,
@@ -11,6 +12,9 @@ import {
 } from "./proto/rerun/v1alpha1/viewer_control_pb.js";
 import { EntryKind as ProtoEntryKind } from "./proto/rerun/v1alpha1/cloud_pb.js";
 import { TimeType as ProtoTimeType } from "./proto/rerun/v1alpha1/common_pb.js";
+import { parse_store_id } from "./store_id.js";
+
+export { parse_store_id, type StoreIdParts } from "./store_id.js";
 
 /** What the viewer shows, as {@link WebViewer.get_state} reports it. */
 export interface ViewerState {
@@ -273,6 +277,7 @@ function entry_kind_of(kind: ProtoEntryKind): EntryKind | undefined {
       return undefined;
   }
 }
+
 
 /**
  * Where to move the time cursor to, for {@link WebViewer.set_time}, and on which recording and timeline.
@@ -889,6 +894,7 @@ export class WebViewer {
   // NOTE: Using the handle requires wrapping all calls to its methods in try/catch.
   //       On failure, call `this.stop` to prevent a memory leak, then re-throw the error.
   #handle: WebHandle | null = null;
+  #cached_viewer_state: ViewerState | null = null;
   #canvas: HTMLCanvasElement | null = null;
   #loader: HTMLDivElement | null = null;
   #state: "ready" | "starting" | "stopped" = "stopped";
@@ -1445,6 +1451,8 @@ export class WebViewer {
 
   /**
    * Get the active recording id.
+   *
+   * @deprecated Use the `active_store_id` of {@link WebViewer.get_state} instead.
    */
   get_active_recording_id(): string | null {
     if (!this.#handle) {
@@ -1453,13 +1461,16 @@ export class WebViewer {
       );
     }
 
-    return this.#handle.get_active_recording_id() ?? null;
+    const store_id = this.#viewer_state()?.active_store_id;
+    return store_id === undefined ? null : parse_store_id(store_id).recording_id;
   }
 
   /**
    * Set the active recording id.
    *
    * This is the same as clicking on the recording in the Viewer's left panel.
+   *
+   * @deprecated Use {@link WebViewer.set_location} with the recording's `location` from {@link WebViewer.get_state} instead.
    */
   set_active_recording_id(value: string) {
     if (!this.#handle) {
@@ -1468,7 +1479,10 @@ export class WebViewer {
       );
     }
 
-    this.#handle.set_active_recording_id(value);
+    const recording = this.#recording(value);
+    if (recording) {
+      this.#log_failure("set_location", this.set_location(recording.location));
+    }
   }
 
   /**
@@ -1537,19 +1551,23 @@ export class WebViewer {
    * Get the play state.
    *
    * This always returns `false` if the recording can't be found.
+   *
+   * @deprecated Use the recording's `play_state` from {@link WebViewer.get_state} instead.
    */
   get_playing(recording_id: string): boolean {
     if (!this.#handle) {
       throw new Error(`attempted to get play state in a stopped web viewer`);
     }
 
-    return this.#handle.get_playing(recording_id) || false;
+    return this.#recording(recording_id)?.play_state === "playing";
   }
 
   /**
    * Set the play state.
    *
    * This does nothing if the recording can't be found.
+   *
+   * @deprecated Use {@link WebViewer.set_time} with `play_state` instead.
    */
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
@@ -1559,7 +1577,13 @@ export class WebViewer {
       );
     }
 
-    this.#handle.set_playing(recording_id, value);
+    const recording = this.#recording(recording_id);
+    if (recording) {
+      this.#log_failure(
+        "set_time",
+        this.set_time({ recording: recording.store_id, play_state: value ? "playing" : "paused" }),
+      );
+    }
   }
 
   /**
@@ -1571,13 +1595,16 @@ export class WebViewer {
    * - For sequence timelines, this is the sequence number.
    *
    * This always returns `0` if the recording or timeline can't be found.
+   * The time is a whole number.
+   *
+   * @deprecated Use the timeline's `current_time` from {@link WebViewer.get_state} instead.
    */
   get_current_time(recording_id: string, timeline: string): number {
     if (!this.#handle) {
       throw new Error(`attempted to get current time in a stopped web viewer`);
     }
 
-    return this.#handle.get_time_for_timeline(recording_id, timeline) || 0;
+    return Number(this.#timeline(recording_id, timeline)?.current_time ?? 0);
   }
 
   /**
@@ -1590,6 +1617,9 @@ export class WebViewer {
    * - For sequence timelines, this is the sequence number.
    *
    * This does nothing if the recording or timeline can't be found.
+   * A fractional time is rounded down.
+   *
+   * @deprecated Use {@link WebViewer.set_time} instead.
    */
   set_current_time(recording_id: string, timeline: string, time: number) {
     if (!this.#handle) {
@@ -1598,13 +1628,26 @@ export class WebViewer {
       );
     }
 
-    this.#handle.set_time_for_timeline(recording_id, timeline, time);
+    const recording = this.#recording(recording_id);
+    if (recording && Number.isFinite(time)) {
+      const value = BigInt(Math.floor(time));
+      const time_type = recording.timelines.find((t) => t.name === timeline)?.time_type;
+      const at: TimeValue =
+        time_type === "timestamp"
+          ? { timestamp_nanos: value }
+          : time_type === "duration"
+            ? { duration_nanos: value }
+            : { sequence: value };
+      this.#log_failure("set_time", this.set_time({ recording: recording.store_id, timeline, ...at }));
+    }
   }
 
   /**
    * Get the active timeline.
    *
    * This always returns `null` if the recording can't be found.
+   *
+   * @deprecated Use the recording's `current_time.timeline` from {@link WebViewer.get_state} instead.
    */
   get_active_timeline(recording_id: string): string | null {
     if (!this.#handle) {
@@ -1613,13 +1656,15 @@ export class WebViewer {
       );
     }
 
-    return this.#handle.get_active_timeline(recording_id) ?? null;
+    return this.#recording(recording_id)?.current_time?.timeline ?? null;
   }
 
   /**
    * Set the active timeline.
    *
    * This does nothing if the recording or timeline can't be found.
+   *
+   * @deprecated Use {@link WebViewer.set_time} with `timeline` instead.
    */
   set_active_timeline(recording_id: string, timeline: string) {
     if (!this.#handle) {
@@ -1628,13 +1673,18 @@ export class WebViewer {
       );
     }
 
-    this.#handle.set_active_timeline(recording_id, timeline);
+    const recording = this.#recording(recording_id);
+    if (recording) {
+      this.#log_failure("set_time", this.set_time({ recording: recording.store_id, timeline }));
+    }
   }
 
   /**
    * Get the time range for a timeline.
    *
    * This always returns `null` if the recording or timeline can't be found.
+   *
+   * @deprecated Use the timeline's `time_range` from {@link WebViewer.get_state} instead.
    */
   get_time_range(
     recording_id: string,
@@ -1644,7 +1694,54 @@ export class WebViewer {
       throw new Error(`attempted to get time range in a stopped web viewer`);
     }
 
-    return this.#handle.get_timeline_time_range(recording_id, timeline);
+    const range = this.#timeline(recording_id, timeline)?.time_range;
+    return range ? { min: Number(range.start), max: Number(range.end) } : null;
+  }
+
+  /**
+   * The viewer state, read right away, for the deprecated synchronous getters.
+   *
+   * Read at most once per task, since getters are called in bursts and a read is not cheap.
+   * `null` while the viewer is busy painting a frame, when the old getters found nothing either.
+   */
+  #viewer_state(): ViewerState | null {
+    if (!this.#handle) {
+      throw new Error(`attempted to get the viewer state of a stopped web viewer`);
+    }
+    if (this.#cached_viewer_state === null) {
+      try {
+        this.#cached_viewer_state = viewer_state_of(
+          fromBinary(GetViewerStateResponseSchema, this.#handle.viewer_state()),
+        );
+      } catch {
+        return null;
+      }
+      queueMicrotask(() => {
+        this.#cached_viewer_state = null;
+      });
+    }
+    return this.#cached_viewer_state;
+  }
+
+  /** The open recording with this recording id, if any. */
+  #recording(recording_id: string): ViewerRecording | undefined {
+    return this.#viewer_state()?.recordings.find(
+      (recording) => parse_store_id(recording.store_id).recording_id === recording_id,
+    );
+  }
+
+  /** The timeline of the open recording with this recording id, if any. */
+  #timeline(recording_id: string, timeline: string): ViewerTimeline | undefined {
+    return this.#recording(recording_id)?.timelines.find(
+      (candidate) => candidate.name === timeline,
+    );
+  }
+
+  /** Run what a deprecated setter started, which has no way to report a failure, and log one instead. */
+  #log_failure(method: string, call: Promise<void>) {
+    call.catch((err) => {
+      console.warn(`WebViewer.${method} failed:`, err);
+    });
   }
 
   /**

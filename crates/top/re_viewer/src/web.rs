@@ -13,16 +13,14 @@ use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_msg::TableMsg;
 use re_log_types::TableId;
-use re_log_types::TimelineName;
 use re_memory::AccountingAllocator;
-use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, viewer_url};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, viewer_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::saving::RrdSnapshot;
 use crate::web_history::install_popstate_listener;
-use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
+use crate::web_tools::{Callback, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -218,6 +216,23 @@ impl WebHandle {
 
             Ok(js_sys::Uint8Array::from(response.encode_to_vec().as_slice()).into())
         })
+    }
+
+    /// The encoded `GetViewerStateResponse` of the Viewer Control API, computed right away.
+    ///
+    /// Unlike [`Self::viewer_control`], this doesn't wait for the next frame,
+    /// so it can back synchronous JS APIs.
+    #[wasm_bindgen]
+    pub fn viewer_state(&self) -> Result<Vec<u8>, JsValue> {
+        use re_protos::external::prost::Message as _;
+
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return Err(viewer_control_error(
+                "FAILED_PRECONDITION",
+                "Viewer is not running, or is busy painting a frame",
+            ));
+        };
+        Ok(app.viewer_state().encode_to_vec())
     }
 
     #[wasm_bindgen]
@@ -516,203 +531,6 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn get_active_recording_id(&self) -> Option<String> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = &app.store_hub;
-        let recording_id = app.active_recording_id()?;
-        let recording = hub.entity_db(recording_id)?;
-
-        Some(recording.store_id().recording_id().to_string())
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_active_recording_id(&self, recording_id: &str) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let hub = &app.store_hub;
-
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        if store_id.is_recording() {
-            app.command_sender.send_system(SystemCommand::SetRoute(
-                re_viewer_context::Route::LocalRecording {
-                    recording_id: store_id,
-                },
-            ));
-        }
-
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_active_timeline(&self, recording_id: &str) -> Option<String> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = &app.store_hub;
-
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let time_ctrl = app.state.time_control(&store_id)?;
-        Some(time_ctrl.timeline_name().as_str().to_owned())
-    }
-
-    /// Set the active timeline.
-    ///
-    /// This does nothing if the timeline can't be found.
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let hub = &app.store_hub;
-
-        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return;
-        };
-
-        app.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: recording_id,
-                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name)],
-            });
-
-        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, recording_id: &str, timeline_name: &str) -> Option<f64> {
-        let app = self.runner.app_mut::<crate::App>()?;
-
-        let hub = &app.store_hub;
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let time_ctrl = app.state.time_control(&store_id)?;
-
-        let timeline_name = TimelineName::try_new(timeline_name).ok_or_log_error_once()?;
-
-        time_ctrl
-            .time_for_timeline(timeline_name)
-            .map(|v| v.as_f64())
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let hub = &app.store_hub;
-
-        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return;
-        };
-
-        app.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: recording_id,
-                time_commands: vec![
-                    TimeControlCommand::SetActiveTimeline(timeline_name),
-                    TimeControlCommand::SetTime(time.into()),
-                ],
-            });
-
-        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, recording_id: &str, timeline_name: &str) -> JsValue {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return JsValue::null();
-        };
-        let hub = &app.store_hub;
-
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return JsValue::null();
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return JsValue::null();
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return JsValue::null();
-        };
-        let Some(time_range) = recording.time_range_for(&timeline_name) else {
-            return JsValue::null();
-        };
-
-        let min = time_range.min().as_f64();
-        let max = time_range.max().as_f64();
-
-        let obj = js_sys::Object::new();
-        js_sys::Reflect::set(&obj, &"min".into(), &min.into()).ok_or_log_js_error();
-        js_sys::Reflect::set(&obj, &"max".into(), &max.into()).ok_or_log_js_error();
-
-        JsValue::from(obj)
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_playing(&self, recording_id: &str) -> Option<bool> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = &app.store_hub;
-
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        if !hub.store_bundle().contains(&store_id) {
-            return None;
-        }
-        let time_ctrl = app.state.time_control(&store_id)?;
-
-        Some(time_ctrl.play_state() == PlayState::Playing)
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_playing(&self, recording_id: &str, value: bool) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let Some(store_id) = store_id_from_recording_id(&app.store_hub, recording_id) else {
-            return;
-        };
-
-        let play_state = if value {
-            PlayState::Playing
-        } else {
-            PlayState::Paused
-        };
-
-        app.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: store_id.clone(),
-                time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
-            });
-        re_viewer_context::on_external_blueprint_edit(&app.egui_ctx);
-        app.egui_ctx.request_repaint();
-    }
-
-    #[wasm_bindgen]
     pub fn set_credentials(&self, access_token: &str, email: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
@@ -729,19 +547,6 @@ impl WebHandle {
         });
         egui_ctx.request_repaint();
     }
-}
-
-/// Best effort attempt at finding a store id based on the recording id.
-fn store_id_from_recording_id(
-    store_hub: &re_viewer_context::StoreHub,
-    recording_id: &str,
-) -> Option<re_log_types::StoreId> {
-    store_hub
-        .store_bundle()
-        .recordings()
-        .map(|entity_db| entity_db.store_id())
-        .find(|store_id| store_id.recording_id().as_str() == recording_id)
-        .cloned()
 }
 
 // TODO(jprochazk): figure out a way to auto-generate these types on JS side

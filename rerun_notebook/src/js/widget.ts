@@ -2,6 +2,7 @@ import {
   type LogChannel,
   type Panel,
   type PanelState,
+  parse_store_id,
   WebViewer,
   type AppOptions,
 } from "@rerun-io/web-viewer";
@@ -52,6 +53,13 @@ function _resize(el: HTMLElement, width: number | string, height: number | strin
 
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
+
+  /**
+   * The playback operations from Python, run one at a time in the order they arrived.
+   *
+   * A recording switch reads the viewer state first, so a seek sent right after it must wait for it.
+   */
+  playback: Promise<void> = Promise.resolve();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
   options: AppOptions = {
@@ -127,7 +135,7 @@ class ViewerWidget {
         break;
       }
       case "time_ctrl": {
-        this.set_time_ctrl(msg.timeline ?? null, msg.time ?? null, msg.play ?? false);
+        this.set_time_ctrl(msg);
         break;
       }
       case "recording_id": {
@@ -153,44 +161,58 @@ class ViewerWidget {
     }
   };
 
-  set_time_ctrl(
-    timeline: string | null,
-    time: number | null,
-    play: boolean,
-  ) {
-    let recording_id = this.viewer.get_active_recording_id();
-    if (recording_id === null) {
-      return;
-    }
-
-    let active_timeline = this.viewer.get_active_timeline(recording_id);
-
-    if (timeline === null) {
-      timeline = active_timeline;
-    }
-
-    if (timeline === null) {
-      return;
-    }
-
-    if (timeline !== active_timeline) {
-      this.viewer.set_active_timeline(recording_id, timeline);
-    }
-
-    this.viewer.set_playing(recording_id, play);
-
-    if (time !== null) {
-      this.viewer.set_current_time(recording_id, timeline, time);
-    }
+  /**
+   * Seek, switch timeline, and play or pause, on the active recording.
+   *
+   * Python sends integer times as strings, since a JSON number loses nanosecond precision.
+   */
+  set_time_ctrl(msg: {
+    timeline?: string | null;
+    sequence?: string | null;
+    duration_nanos?: string | null;
+    timestamp_nanos?: string | null;
+    play?: boolean;
+  }) {
+    const time =
+      msg.sequence != null
+        ? { sequence: BigInt(msg.sequence) }
+        : msg.duration_nanos != null
+          ? { duration_nanos: BigInt(msg.duration_nanos) }
+          : msg.timestamp_nanos != null
+            ? { timestamp_nanos: BigInt(msg.timestamp_nanos) }
+            : {};
+    this.queue_playback("Failed to set the time:", () =>
+      this.viewer.set_time({
+        timeline: msg.timeline ?? undefined,
+        ...time,
+        play_state: msg.play ? "playing" : "paused",
+      }),
+    );
   };
 
+  /** Show the open recording with this recording id. */
   set_recording_id(recording_id: string | null) {
     if (recording_id === null) {
       return;
     }
 
-    this.viewer.set_active_recording_id(recording_id);
+    this.queue_playback("Failed to switch recording:", async () => {
+      const state = await this.viewer.get_state();
+      const recording = state.recordings.find(
+        (recording) => parse_store_id(recording.store_id).recording_id === recording_id,
+      );
+      if (recording) {
+        await this.viewer.set_location(recording.location);
+      }
+    });
   };
+
+  /** Run `operation` once the earlier playback operations are done, and log if it fails. */
+  queue_playback(failure: string, operation: () => Promise<void>) {
+    this.playback = this.playback
+      .then(operation)
+      .catch((err) => console.warn(failure, err));
+  }
 }
 
 

@@ -17,7 +17,8 @@
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
     "pack": "npm pack && mv rerun-io-web-viewer-*.tgz web-viewer.tar.gz",
-    "docs": "typedoc"
+    "docs": "typedoc",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -58,6 +59,9 @@
     "re_viewer_bg.wasm.d.ts",
     "re_viewer.d.ts",
     "re_viewer.js",
+    "store_id.d.ts",
+    "store_id.d.ts.map",
+    "store_id.ts",
     "tsconfig.json"
   ],
   "devDependencies": {
