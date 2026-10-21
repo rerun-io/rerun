@@ -13,6 +13,7 @@ enum Rounding {
 pub struct DurationFormatOptions {
     spaces: bool,
     only_seconds: bool,
+    zero_padded_to: Option<i64>,
     always_sign: bool,
     min_decimals: usize,
     max_decimals: usize,
@@ -24,6 +25,7 @@ impl Default for DurationFormatOptions {
         Self {
             spaces: true,
             only_seconds: true,
+            zero_padded_to: None,
             always_sign: false,
             min_decimals: 1,
             max_decimals: 9,
@@ -42,6 +44,17 @@ impl DurationFormatOptions {
     /// If true, format 63 seconds as `63s`. If false, format it as `1m3s`
     pub fn with_only_seconds(mut self, only_seconds: bool) -> Self {
         self.only_seconds = only_seconds;
+        self
+    }
+
+    /// Zero pad the output to the same length as the formatted `max_ns`.
+    ///
+    /// The largest unit of `max_ns` and all smaller units are always shown.
+    /// With a `max_ns` of `1h 37m 54s`, `3s` becomes `0h 00m 03s`.
+    ///
+    /// Only has an effect together with `with_only_seconds(false)`.
+    pub fn with_zero_padded_to(mut self, max_ns: i64) -> Self {
+        self.zero_padded_to = Some(max_ns);
         self
     }
 
@@ -105,6 +118,7 @@ impl DurationFormatOptions {
         let Self {
             spaces,
             only_seconds,
+            zero_padded_to,
             always_sign,
             mut min_decimals,
             max_decimals,
@@ -182,47 +196,113 @@ impl DurationFormatOptions {
             back_rev.push(format_uint(s));
             back_rev.insert(0, 's'.to_string());
         } else {
+            // The largest unit of `zero_padded_to`, and its number of digits.
+            let leading_unit = zero_padded_to.map(|max_ns| {
+                let max_secs = max_ns.unsigned_abs() / 1_000_000_000;
+                let unit_secs = [SEC_PER_DAY, SEC_PER_HOUR, SEC_PER_MINUTE]
+                    .into_iter()
+                    .find(|&unit_secs| unit_secs <= max_secs)
+                    .unwrap_or(1);
+                let digits = (max_secs / unit_secs).max(1).ilog10() as usize + 1;
+                (unit_secs, digits)
+            });
+
+            // The number of digits to pad a unit to, if it is always shown.
+            let padded_width = |unit_secs: u64| {
+                let (leading_secs, leading_digits) = leading_unit?;
+                match unit_secs.cmp(&leading_secs) {
+                    std::cmp::Ordering::Equal => Some(leading_digits),
+                    std::cmp::Ordering::Less => Some(2),
+                    std::cmp::Ordering::Greater => None,
+                }
+            };
+
             let mut secs_remaining = s;
             let mut did_write = false;
 
             let days = secs_remaining / SEC_PER_DAY;
-            if days > 0 {
-                front.push(format!("{}d", format_uint(days)));
+            let width = padded_width(SEC_PER_DAY);
+            if days > 0 || width.is_some() {
+                if let Some(width) = width {
+                    front.push(format!("{days:0width$}d"));
+                } else {
+                    front.push(format!("{}d", format_uint(days)));
+                }
                 secs_remaining -= days * SEC_PER_DAY;
                 did_write = true;
             }
 
             let hours = secs_remaining / SEC_PER_HOUR;
-            if hours > 0 {
+            let width = padded_width(SEC_PER_HOUR);
+            if hours > 0 || width.is_some() {
                 if did_write {
                     front.push(' '.to_string());
                 }
-                front.push(format!("{hours}h"));
+                let width = width.unwrap_or(0);
+                front.push(format!("{hours:0width$}h"));
                 secs_remaining -= hours * SEC_PER_HOUR;
                 did_write = true;
             }
 
             let minutes = secs_remaining / SEC_PER_MINUTE;
-            if minutes > 0 {
+            let width = padded_width(SEC_PER_MINUTE);
+            if minutes > 0 || width.is_some() {
                 if spaces && did_write {
                     front.push(' '.to_string());
                 }
-                front.push(format!("{minutes}m"));
+                let width = width.unwrap_or(0);
+                front.push(format!("{minutes:0width$}m"));
                 secs_remaining -= minutes * SEC_PER_MINUTE;
                 did_write = true;
             }
 
-            if secs_remaining > 0 || !back_rev.is_empty() || !did_write {
+            let width = padded_width(1);
+            if secs_remaining > 0 || !back_rev.is_empty() || !did_write || width.is_some() {
                 if spaces && did_write {
                     front.push(' '.to_string());
                 }
-                back_rev.push(format_uint(secs_remaining));
+                if let Some(width) = width {
+                    back_rev.push(format!("{secs_remaining:0width$}"));
+                } else {
+                    back_rev.push(format_uint(secs_remaining));
+                }
                 back_rev.insert(0, 's'.to_string());
             }
         }
 
         itertools::chain!(front, back_rev.into_iter().rev()).join("")
     }
+}
+
+#[test]
+fn test_format_duration_zero_padded() {
+    let sec = 1_000_000_000;
+    let format = |ns, max_ns| {
+        DurationFormatOptions::default()
+            .with_only_seconds(false)
+            .with_zero_padded_to(max_ns)
+            .with_max_decimals(1)
+            .format_nanos(ns)
+    };
+
+    let max = (3600 + 37 * 60 + 54) * sec + 100_000_000;
+    assert_eq!(format(max, max), "1h 37m 54.1s");
+    assert_eq!(format((3600 + 3 * 60 + 4) * sec, max), "1h 03m 04.0s");
+    assert_eq!(format(3600 * sec, max), "1h 00m 00.0s");
+    assert_eq!(format(4 * sec, max), "0h 00m 04.0s");
+    assert_eq!(format(0, max), "0h 00m 00.0s");
+
+    let max = (12 * 3600) * sec;
+    assert_eq!(format(4 * sec, max), "00h 00m 04.0s");
+
+    let max = (2 * 86400 + 3600) * sec;
+    assert_eq!(format(4 * sec, max), "0d 00h 00m 04.0s");
+
+    let max = 54 * sec;
+    assert_eq!(format(4 * sec, max), "04.0s");
+
+    let max = 4 * sec;
+    assert_eq!(format(3 * sec, max), "3.0s");
 }
 
 #[test]

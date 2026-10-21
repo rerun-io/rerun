@@ -507,16 +507,27 @@ fn elapsed_label(time_control: &TimeControl, recording: &EntityDb) -> Option<Str
     let time = time_control.time()?;
     let range = recording.time_range_for(time_control.timeline_name())?;
 
-    let elapsed = (time.as_f64() - range.min.as_f64()).max(0.0);
-    let duration = range.abs_length() as f64;
+    let elapsed = (time.as_f64() - range.min.as_f64()).max(0.0).round() as i64;
+    let duration = i64::try_from(range.abs_length()).unwrap_or(i64::MAX);
 
     if time_control
         .timeline()
         .is_some_and(|timeline| timeline.typ() == re_log_types::TimeType::Sequence)
     {
-        Some(format!("{elapsed:.0} / {duration:.0}"))
+        Some(format!(
+            "{} / {}",
+            re_format::format_int(elapsed),
+            re_format::format_int(duration)
+        ))
     } else {
-        Some(format!("{:.1} / {:.1}s", elapsed / 1e9, duration / 1e9))
+        let format = |ns| {
+            re_format::DurationFormatOptions::default()
+                .with_only_seconds(false)
+                .with_zero_padded_to(duration)
+                .with_max_decimals(1)
+                .format_nanos(ns)
+        };
+        Some(format!("{} / {}", format(elapsed), format(duration)))
     }
 }
 
