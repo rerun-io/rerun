@@ -42,7 +42,7 @@ In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical 
 We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
 
 The version on our `main` branch is always an `-alpha.N+dev` version. We build artifacts from `main` every day, though these are not published on package registries.
-You can find the latest development version in our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease).
+Install the latest build of `main` with `uv pip install --index https://build.rerun.io/version/main/simple --reinstall-package rerun-sdk rerun-sdk`, and see [`BUILD.md`](BUILD.md) for more.
 
 ## Rust version policy
 

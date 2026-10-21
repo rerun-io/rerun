@@ -124,7 +124,10 @@ In debug builds, it will spawn `target/debug/rerun` if it exists, otherwise look
 
 Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`.
 
-Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
+Additionally, wheels are built for every commit on `main`:
+```sh
+uv pip install --index https://build.rerun.io/version/main/simple --reinstall-package rerun-sdk rerun-sdk
+```
 
 
 ### Building from source

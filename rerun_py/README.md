@@ -103,7 +103,12 @@ See [BUILD.md](../BUILD.md) for all Viewer and SDK build options.
 
 # Installing a pre-release
 
-Development wheels built from the latest `main` branch are available from the [prerelease](https://github.com/rerun-io/rerun/releases/tag/prerelease) release.
+Development wheels are built for every commit on the `main` branch:
+```sh
+uv pip install --index https://build.rerun.io/version/main/simple --reinstall-package rerun-sdk rerun-sdk  # latest commit on main
+uv pip install --index https://build.rerun.io/commit/<7-char-sha>/simple --reinstall-package rerun-sdk rerun-sdk
+```
+`--reinstall-package` replaces a `rerun-sdk` that is already installed, even when it has the same version.
 The `main` branch can be unstable, so use these wheels at your own risk.
 
 # Running Python unit tests
