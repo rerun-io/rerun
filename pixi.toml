@@ -143,15 +143,17 @@ crate-graph-check = "dot -c && python scripts/generate_crate_graph.py --check"
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo run --package re_types_builder -- "
 
-# Run the codegen for protobuf types.
-codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
+# Run the codegen for protobuf types, for both Rust and TypeScript.
+codegen-protos = { depends-on = ["rs-codegen-protos", "js-codegen-protos"] }
+# Generate the Rust types and the descriptor set into `crates/store/re_protos`.
+rs-codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
   # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
 ] }
 # Generate the TypeScript types for the Viewer Control API into `rerun_js/web-viewer/proto`.
 js-codegen-protos = { cmd = "rm -rf rerun_js/web-viewer/proto && mkdir -p rerun_js/web-viewer/proto && protoc -I crates/store/re_protos/proto --plugin=protoc-gen-es=rerun_js/node_modules/.bin/protoc-gen-es --es_out=rerun_js/web-viewer/proto --es_opt=target=ts,import_extension=js rerun/v1alpha1/viewer_control.proto rerun/v1alpha1/cloud.proto rerun/v1alpha1/common.proto rerun/v1alpha1/log_msg.proto", depends-on = [
   "js-install",
 ] }
-codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
+codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run rs-codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
 
 # Generate the Rerun CLI manual.
 
