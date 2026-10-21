@@ -310,7 +310,7 @@ datafusion-ffi = "54.0"
 directories = "6.0"
 document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
-ehttp = "0.7.1"
+ehttp = { version = "0.7.2", features = ["platform-verifier"] }
 enumset = "1.1"
 env_filter = { version = "2.0", default-features = false }
 ffmpeg-sidecar = { version = "2.5", default-features = false }

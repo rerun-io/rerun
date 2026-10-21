@@ -43,6 +43,7 @@ arrow-ipc = { version = "58", features = ["lz4", "zstd"] }
 arrow-schema = { version = "58", default-features = false, features = ["canonical_extension_types", "ffi"] }
 axum = { version = "0.8", features = ["ws"] }
 axum-core = { version = "0.5", default-features = false, features = ["tracing"] }
+base64 = { version = "0.23" }
 bit-vec = { version = "0.9" }
 bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
 bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc", "min_const_generics", "must_cast", "wasm_simd"] }
@@ -65,7 +66,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { version = "0.7", features = ["native-async", "streaming"] }
+ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -202,6 +203,7 @@ arrow-ipc = { version = "58", features = ["lz4", "zstd"] }
 arrow-schema = { version = "58", default-features = false, features = ["canonical_extension_types", "ffi"] }
 axum = { version = "0.8", features = ["ws"] }
 axum-core = { version = "0.5", default-features = false, features = ["tracing"] }
+base64 = { version = "0.23" }
 bit-vec = { version = "0.9" }
 bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
 bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc", "min_const_generics", "must_cast", "wasm_simd"] }
@@ -225,7 +227,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { version = "0.7", features = ["native-async", "streaming"] }
+ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -384,6 +386,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -429,6 +432,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -471,6 +475,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
@@ -514,6 +519,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
@@ -560,6 +566,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -605,6 +612,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -638,6 +646,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -682,6 +691,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
@@ -735,6 +745,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
@@ -778,6 +789,7 @@ tokio-stream = { version = "0.1", default-features = false, features = ["io-util
 tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
+ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
 vello_common = { version = "0.2", default-features = false, features = ["png"] }
 vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
