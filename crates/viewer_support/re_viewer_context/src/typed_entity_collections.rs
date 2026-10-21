@@ -8,11 +8,12 @@ use re_log_types::EntityPath;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_types_core::ViewClassIdentifier;
 
-use crate::ViewSystemIdentifier;
+use crate::{RecommendedMappings, ViewSystemIdentifier};
 
-/// Types of matches when matching [`crate::VisualizabilityConstraints::SingleRequiredComponent`].
+/// Ways a component can satisfy a visualizer input.
 ///
-/// Two components can be related on three different levels:
+/// Disregarding heuristic mappings (which can have more complex transformations),
+/// two components can be related on three different levels:
 /// * the *semantic* component type (e.g. `rerun.components.Position3D`),
 /// * the *encoding*, i.e. the Rerun datatype the component is built from (e.g. `rerun.encodings.Vec3D`),
 /// * the *physical* Arrow datatype (e.g. `FixedSizeList(3 x non-null Float32)`).
@@ -20,7 +21,17 @@ use crate::ViewSystemIdentifier;
 /// Only the semantic type and the Arrow datatype are known at runtime — the encoding isn't tracked
 /// by the store — but components that share an encoding always share their Arrow datatype.
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
-pub enum DatatypeMatch {
+pub enum ComponentMatch {
+    /// Registered transformations that produce the required component from this source.
+    HeuristicMapping {
+        /// The semantic component type if any.
+        ///
+        /// Note that `Some` doesn't necessarily mean that this is a Rerun type, it may still be a user supplied type.
+        component_type: Option<re_chunk::ComponentType>,
+
+        mappings: RecommendedMappings,
+    },
+
     /// Only the physical datatype was matched, but semantics aren't the native ones.
     PhysicalDatatypeOnly {
         arrow_data_type: arrow::datatypes::DataType,
@@ -33,7 +44,7 @@ pub enum DatatypeMatch {
         /// If this match was found via nested field access, contains the selectors to extract those fields
         /// along with their respective Arrow datatypes for ranking purposes.
         /// Empty for direct matches.
-        selectors: Vec<(Selector, arrow::datatypes::DataType)>,
+        field_accessors: Vec<(Selector, arrow::datatypes::DataType)>,
     },
 
     /// The Rerun native datatype was matched.
@@ -50,22 +61,13 @@ pub enum DatatypeMatch {
     },
 }
 
-impl DatatypeMatch {
+impl ComponentMatch {
+    /// The source's semantic component type, if known.
     pub fn component_type(&self) -> Option<&re_chunk::ComponentType> {
         match self {
             Self::PhysicalDatatypeOnly { component_type, .. }
-            | Self::NativeSemantics { component_type, .. } => component_type.as_ref(),
-        }
-    }
-
-    pub fn arrow_data_type(&self) -> &arrow::datatypes::DataType {
-        match self {
-            Self::PhysicalDatatypeOnly {
-                arrow_data_type, ..
-            }
-            | Self::NativeSemantics {
-                arrow_data_type, ..
-            } => arrow_data_type,
+            | Self::NativeSemantics { component_type, .. }
+            | Self::HeuristicMapping { component_type, .. } => component_type.as_ref(),
         }
     }
 }
@@ -79,7 +81,7 @@ pub struct SingleRequiredComponentMatch {
     /// Matches that the target component should map to.
     ///
     /// Guaranteed to have at least one entry.
-    pub matches: IntMap<ComponentIdentifier, DatatypeMatch>,
+    pub matches: IntMap<ComponentIdentifier, ComponentMatch>,
 }
 
 /// [`crate::VisualizabilityConstraints::BufferAndFormat`] matched for this entity.
@@ -97,7 +99,7 @@ pub struct BufferAndFormatMatch {
     /// All entity components whose arrow datatype matched the buffer's expected type.
     ///
     /// Guaranteed to have at least one entry.
-    pub buffer_matches: IntMap<ComponentIdentifier, DatatypeMatch>,
+    pub buffer_matches: IntMap<ComponentIdentifier, ComponentMatch>,
 
     /// The entity components that matched the format (by arrow datatype AND semantic type).
     ///
@@ -122,6 +124,75 @@ pub enum VisualizableReason {
 }
 
 impl VisualizableReason {
+    /// Recommends native sources, then heuristics, otherwise identity mapping.
+    pub fn recommended_mappings(&self) -> vec1::Vec1<RecommendedMappings> {
+        // Currently only single-required-component matches can have complex mappings,
+        // other mappings retain their default-identity mapping only.
+        let single_component_match = match self {
+            Self::SingleRequiredComponentMatch(m) => m,
+            Self::Always | Self::ExactMatchAny | Self::BufferAndFormatMatch(_) => {
+                return vec1::vec1![RecommendedMappings::default()];
+            }
+        };
+        if self.full_native_match(single_component_match.target_component) {
+            return vec1::vec1![RecommendedMappings::default()];
+        }
+
+        let mut native_sources: Vec<_> = single_component_match
+            .matches
+            .iter()
+            .filter_map(|(source, info)| {
+                matches!(info, ComponentMatch::NativeSemantics { .. }).then_some(*source)
+            })
+            .collect();
+        native_sources.sort();
+
+        let native_mappings = native_sources
+            .into_iter()
+            .map(|source| {
+                RecommendedMappings::new(
+                    single_component_match.target_component,
+                    crate::VisualizerComponentSource::simple_map(source),
+                )
+            })
+            .collect();
+        if let Ok(mappings) = vec1::Vec1::try_from_vec(native_mappings) {
+            // If there's any native mappings, we recommend those and drop everything else.
+            // (native mappings are extremely strong candidates and more complex heuristic look rather unreasonable next to them!)
+            return mappings;
+        }
+
+        vec1::Vec1::try_from_vec(self.heuristic_mappings().cloned().collect())
+            .unwrap_or_else(|_| vec1::vec1![RecommendedMappings::default()])
+    }
+
+    /// Heuristic recommendations in source order, omitted when a native source matches.
+    pub fn heuristic_mappings(&self) -> impl Iterator<Item = &RecommendedMappings> {
+        let mappings = match self {
+            Self::SingleRequiredComponentMatch(m)
+                if !m
+                    .matches
+                    .values()
+                    .any(|info| matches!(info, ComponentMatch::NativeSemantics { .. })) =>
+            {
+                Some(&m.matches)
+            }
+            _ => None,
+        };
+        mappings.into_iter().flat_map(|m| {
+            let mut sources: Vec<_> = m
+                .iter()
+                .filter_map(|(source, match_info)| match match_info {
+                    ComponentMatch::HeuristicMapping { mappings, .. } => Some((source, mappings)),
+                    _ => None,
+                })
+                .collect();
+            // Recommendation order must not depend on hash map iteration order.
+            sources.sort_by_key(|(source, _)| **source);
+            sources.into_iter().map(|(_, mappings)| mappings)
+        })
+    }
+
     /// Returns true if this match reason is a perfect match for the given component identifier.
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
@@ -130,7 +201,7 @@ impl VisualizableReason {
             Self::SingleRequiredComponentMatch(m) => m
                 .matches
                 .get(&component_identifier)
-                .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
+                .map(|info| matches!(info, ComponentMatch::NativeSemantics { .. }))
                 .unwrap_or(false),
 
             Self::BufferAndFormatMatch(m) => {
@@ -141,7 +212,7 @@ impl VisualizableReason {
                 // Check if the buffer has a native semantic match.
                 m.buffer_matches
                     .get(&component_identifier)
-                    .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
+                    .map(|info| matches!(info, ComponentMatch::NativeSemantics { .. }))
                     .unwrap_or(false)
             }
         }
@@ -163,13 +234,13 @@ impl VisualizableReason {
 
             Self::SingleRequiredComponentMatch(m) => matches!(
                 m.matches.get(&component_identifier),
-                Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+                Some(ComponentMatch::PhysicalDatatypeOnly { .. })
             ),
 
             // Format matches are always native by construction (semantic match required).
             Self::BufferAndFormatMatch(m) => matches!(
                 m.buffer_matches.get(&component_identifier),
-                Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+                Some(ComponentMatch::PhysicalDatatypeOnly { .. })
             ),
         }
     }
@@ -195,10 +266,16 @@ impl std::ops::Deref for VisualizableEntities {
     }
 }
 
-/// List of entities that contain archetypes that are relevant for a visualizer.
+/// Entities for which a visualizer is indicated to apply by default.
 ///
-/// In order to be a match the entity must have at some point in time on any timeline had any
-/// component that had an associated archetype as specified by the respective visualizer system.
+/// An entity is indicated if, at any point in time on any timeline, it has either:
+/// * A component associated with the visualizer's relevant archetype.
+/// * A source component with a registered heuristic mapping that produces the visualizer's
+///   required input under [`crate::VisualizabilityConstraints::SingleRequiredComponent`].
+///   No explicitly logged archetype indicator is required in this case.
+///
+/// If the visualizer has no relevant archetype, all entities in the store are indicated.
+/// Indication latches and does not imply membership in [`VisualizableEntities`].
 #[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct IndicatedEntities(pub IntSet<EntityPath>);
 

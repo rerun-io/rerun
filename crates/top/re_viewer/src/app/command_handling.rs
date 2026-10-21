@@ -5,17 +5,17 @@ use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::{RecordingCommand, UICommand};
-use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
+use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, Route, StorageContext, StoreHub,
-    SystemCommand, open_url::combine_with_base_url,
+    SystemCommand, viewer_url::combine_with_base_url,
 };
 use re_viewer_context::{
     RecordingOrLocalTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
 };
 use std::sync::Arc;
 
-use super::App;
+use super::AppCore;
 use crate::saving::RrdSnapshot;
 use crate::{app_blueprint::AppBlueprint, event::ViewerEventDispatcher};
 
@@ -24,7 +24,7 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
-/// How [`App::close_recording_or_table`] should treat a recording that's still rendered as a preview.
+/// How [`AppCore::close_recording_or_table`] should treat a recording that's still rendered as a preview.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CloseRecording {
     /// A recording still rendered as a preview stays loaded and streaming, just no longer in the
@@ -36,7 +36,7 @@ enum CloseRecording {
     Force,
 }
 
-impl App {
+impl AppCore {
     fn request_screenshot(&self, info: re_viewer_context::ScreenshotInfo) {
         let tx = self.screenshot_tx.clone();
         let ctx = self.egui_ctx.clone();
@@ -291,7 +291,7 @@ impl App {
                         .cloned();
 
                     back_target.or_else(|| {
-                        ViewerOpenUrl::from_route(
+                        ViewerUrl::from_route(
                             store_hub,
                             &Self::fallback_route_after_close(store_hub, closing),
                         )
@@ -368,9 +368,8 @@ impl App {
             }
 
             SystemCommand::OpenSettings => {
-                self.state.navigation.replace(Route::Settings {
-                    return_route: Box::new(self.state.navigation.current().clone()),
-                });
+                let settings = Route::settings(self.state.navigation.current());
+                self.state.navigation.replace(settings);
 
                 #[cfg(feature = "analytics")]
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
@@ -379,28 +378,14 @@ impl App {
             SystemCommand::OpenChunkStoreBrowser {
                 store_id,
                 selected_chunk,
-            } => match self.state.navigation.current() {
-                Route::ChunkStoreBrowser {
-                    store_id: current_store_id,
-                    return_route,
-                    ..
-                } => {
-                    self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        // History/share URLs may carry an explicit store; otherwise keep
-                        // using the current chunk browser store context.
-                        store_id: store_id.or_else(|| current_store_id.clone()),
-                        selected_chunk,
-                        return_route: return_route.clone(),
-                    });
-                }
-                current => {
-                    self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        store_id,
-                        selected_chunk,
-                        return_route: Box::new(current.clone()),
-                    });
-                }
-            },
+            } => {
+                let browser = Route::chunk_store_browser(
+                    self.state.navigation.current(),
+                    store_id,
+                    selected_chunk,
+                );
+                self.state.navigation.replace(browser);
+            }
 
             SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
@@ -1043,16 +1028,17 @@ impl App {
             }
 
             UICommand::NavigateBackInHistory => {
-                #[cfg(target_arch = "wasm32")]
-                let url = if self.startup_options().web_history_enabled() {
-                    let _ = crate::web_history::go_back();
-                    None
-                } else {
-                    self.state.history.go_back().cloned()
+                let url = cfg_select! {
+                    target_arch = "wasm32" => {
+                        if self.startup_options().web_history_enabled() {
+                            crate::web_history::go_back();
+                            None
+                        } else {
+                            self.state.history.go_back().cloned()
+                        }
+                    }
+                    _ => self.state.history.go_back().cloned(),
                 };
-
-                #[cfg(not(target_arch = "wasm32"))]
-                let url = self.state.history.go_back().cloned();
 
                 if let Some(url) = url {
                     url.open(
@@ -1066,16 +1052,17 @@ impl App {
                 }
             }
             UICommand::NavigateForwardInHistory => {
-                #[cfg(target_arch = "wasm32")]
-                let url = if self.startup_options().web_history_enabled() {
-                    let _ = crate::web_history::go_forward();
-                    None
-                } else {
-                    self.state.history.go_forward().cloned()
+                let url = cfg_select! {
+                    target_arch = "wasm32" => {
+                        if self.startup_options().web_history_enabled() {
+                            crate::web_history::go_forward();
+                            None
+                        } else {
+                            self.state.history.go_forward().cloned()
+                        }
+                    }
+                    _ => self.state.history.go_forward().cloned(),
                 };
-
-                #[cfg(not(target_arch = "wasm32"))]
-                let url = self.state.history.go_forward().cloned();
 
                 if let Some(url) = url {
                     url.open(
@@ -1244,14 +1231,14 @@ impl App {
                 }
             }
             UICommand::CopyDirectLinkToClipboard => {
-                match ViewerOpenUrl::from_route(storage_context.hub, route) {
+                match ViewerUrl::from_route(storage_context.hub, route) {
                     Ok(url) => self.run_copy_link_command(&url),
                     Err(err) => re_log::error!("{err}"),
                 }
             }
 
             UICommand::CopyTimeSelectionLinkToClipboard => {
-                match ViewerOpenUrl::from_route(storage_context.hub, route) {
+                match ViewerUrl::from_route(storage_context.hub, route) {
                     Ok(mut url) => {
                         if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = route
@@ -1587,7 +1574,7 @@ impl App {
         }
     }
 
-    fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
+    fn run_copy_link_command(&mut self, content_url: &ViewerUrl) {
         let base_url = self.startup_options.web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
@@ -1698,7 +1685,7 @@ impl App {
     }
 
     /// Opens `url` through the normal navigation flow.
-    fn navigate_to(&self, egui_ctx: &egui::Context, url: &ViewerOpenUrl) {
+    fn navigate_to(&self, egui_ctx: &egui::Context, url: &ViewerUrl) {
         url.clone().open(
             egui_ctx,
             &OpenUrlOptions {
@@ -1715,7 +1702,7 @@ impl App {
     fn is_back_destination_open(
         &self,
         store_hub: &StoreHub,
-        url: &ViewerOpenUrl,
+        url: &ViewerUrl,
         closing: Option<&StoreId>,
     ) -> bool {
         // A redap origin is reachable as long as its server is still registered.
@@ -1726,21 +1713,21 @@ impl App {
 
         // Whether some still-open recording, other than the one we're closing, was loaded from
         // `url`.
-        let recording_loaded_from = |url: &ViewerOpenUrl| {
+        let recording_loaded_from = |url: &ViewerUrl| {
             store_hub.store_bundle().recordings().any(|db| {
                 closing.is_none_or(|closing| db.store_id() != closing)
                     && store_hub.is_opened(db.store_id())
                     && db.data_source.as_ref().is_some_and(|source| {
-                        ViewerOpenUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
+                        ViewerUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
                     })
             })
         };
 
         match url {
             // Points into the recording we're closing, so there's nothing left to step back to.
-            ViewerOpenUrl::IntraRecordingSelection(_) => false,
+            ViewerUrl::IntraRecordingSelection(_) => false,
 
-            ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
+            ViewerUrl::WebViewer { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
                     self.is_back_destination_open(store_hub, url_parameters.first(), closing)
                 } else {
@@ -1749,19 +1736,17 @@ impl App {
             }
 
             // Not a place to land on after closing a recording.
-            ViewerOpenUrl::Settings => false,
+            ViewerUrl::Settings => false,
 
             // Resolve to a recording loaded from that source: only step back while it's still open.
-            ViewerOpenUrl::HttpUrl(_) | ViewerOpenUrl::WebEventListener => {
-                recording_loaded_from(url)
-            }
+            ViewerUrl::HttpUrl(_) | ViewerUrl::WebEventListener => recording_loaded_from(url),
             #[cfg(not(target_arch = "wasm32"))]
-            ViewerOpenUrl::FilePath(_) => recording_loaded_from(url),
+            ViewerUrl::FilePath(_) => recording_loaded_from(url),
 
             // Resolves to a recording: it must still be loaded, and not be the one we're closing.
             // We don't re-stream a closed recording, that would land us on a blank, unloaded one.
             // Without a segment it resolves to the dataset, which stays reachable with its server.
-            ViewerOpenUrl::RedapDataset(uri) => match uri.store_id() {
+            ViewerUrl::RedapDataset(uri) => match uri.store_id() {
                 Some(store_id) => {
                     closing.is_none_or(|closing| &store_id != closing)
                         && store_hub.is_opened(&store_id)
@@ -1770,19 +1755,25 @@ impl App {
             },
 
             // Redap destinations are reachable while their server is still registered.
-            ViewerOpenUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapCatalog(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapEntry(uri) => origin_reachable(&uri.origin),
-            ViewerOpenUrl::RedapFolder(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapCatalog(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapEntry(uri) => origin_reachable(&uri.origin),
+            ViewerUrl::RedapFolder(uri) => origin_reachable(&uri.origin),
 
             // Tied to a specific store: it must exist, still be opened, and not be the one we're
             // closing. Without an explicit store it falls back to the active recording, which is the
             // one we're closing, so there's nowhere to step back to.
-            ViewerOpenUrl::ChunkStoreBrowser { recording_id, .. } => {
+            ViewerUrl::ChunkStoreBrowser { recording_id, .. } => {
                 recording_id.as_ref().is_some_and(|id| {
                     closing.is_none_or(|closing| id != closing) && store_hub.is_opened(id)
                 })
             }
+
+            ViewerUrl::LocalRecording(store_id) => {
+                closing.is_none_or(|closing| store_id != closing) && store_hub.is_opened(store_id)
+            }
+
+            ViewerUrl::LocalTable(table_id) => store_hub.has_table(table_id),
         }
     }
 
@@ -1929,7 +1920,7 @@ async fn async_open_rrd_dialog() -> Vec<web_sys::File> {
 }
 
 fn save_active_recording(
-    app: &mut App,
+    app: &mut AppCore,
     store_context: Option<&ActiveStoreContext<'_>>,
 ) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
@@ -1941,7 +1932,7 @@ fn save_active_recording(
 }
 
 fn save_recording(
-    app: &mut App,
+    app: &mut AppCore,
     entity_db: &EntityDb,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
@@ -1967,7 +1958,7 @@ fn save_recording(
 }
 
 fn save_blueprint(
-    app: &mut App,
+    app: &mut AppCore,
     store_context: Option<&ActiveStoreContext<'_>>,
 ) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
@@ -1992,7 +1983,7 @@ fn save_blueprint(
 #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
-    #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
+    #[allow(clippy::allow_attributes, unused_variables)] app: &mut AppCore, // only used on native
     snapshot: crate::saving::RrdSnapshot,
     file_name: String,
     title: String,

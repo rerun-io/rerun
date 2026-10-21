@@ -63,7 +63,7 @@ default_web = ["audio", "map_view"]
 agent_context = []
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_dataframe_ui/analytics", "re_ui/analytics"]
+analytics = ["re_dataframe_ui/analytics", "re_ui/analytics"]
 
 ## Enable the audio view and audio playback.
 audio = ["re_audio/output", "dep:re_view_audio"]
@@ -86,6 +86,7 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_analytics.workspace = true
 re_arrow_json.workspace = true
 re_async.workspace = true
 re_audio = { workspace = true, default-features = false }
@@ -103,6 +104,7 @@ re_component_ui.workspace = true
 # The viewer needs to have all importers, so explicitly set that here
 # Rather than relying on an upper crate to do it.
 re_importer = { workspace = true, features = ["all"] }
+re_lenses = { workspace = true, features = ["semantic"] }
 re_data_source.workspace = true
 re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
@@ -151,7 +153,6 @@ re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
 
 # Internal (optional):
-re_analytics = { workspace = true, optional = true }
 re_view_audio = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
@@ -207,6 +208,7 @@ egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
+rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 tokio.workspace = true
 

@@ -251,11 +251,11 @@ mod tests {
                 Field::new("rerun_segment_id", DataType::Utf8, false),
                 Field::new("log_time", DataType::Int64, false).with_metadata(index_metadata),
                 Field::new("/points:Position3D:positions", DataType::Utf8, true)
-                    .with_metadata(component_metadata("/points", "positions")),
+                    .with_metadata(component_metadata("/points", "Points3D:positions")),
                 Field::new("/points:Color:colors", DataType::Utf8, true)
-                    .with_metadata(component_metadata("/points", "colors")),
+                    .with_metadata(component_metadata("/points", "Points3D:colors")),
                 Field::new("/cameras:Transform3D:transform", DataType::Utf8, true)
-                    .with_metadata(component_metadata("/cameras", "transform")),
+                    .with_metadata(component_metadata("/cameras", "Transform3D:transform")),
             ],
             HashMap::new(),
         ))
@@ -332,8 +332,9 @@ mod tests {
         let components = extract_projected_components(&schema, &projection, &[]);
         assert_eq!(
             components,
-            once("positions".to_owned()).collect::<BTreeSet<_>>(),
-            "only the projected component should be selected, not its sibling `colors`",
+            once("Points3D:positions".to_owned()).collect::<BTreeSet<_>>(),
+            "only the projected component should be selected, by the full identifier stored in \
+             Sorbet metadata, not its sibling `colors`",
         );
     }
 
@@ -360,9 +361,12 @@ mod tests {
         let components = extract_projected_components(&schema, &projection, &filters);
         assert_eq!(
             components,
-            ["positions".to_owned(), "colors".to_owned()]
-                .into_iter()
-                .collect::<BTreeSet<_>>(),
+            [
+                "Points3D:positions".to_owned(),
+                "Points3D:colors".to_owned()
+            ]
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
             "a component referenced only by a filter must still be fetched",
         );
     }
@@ -373,9 +377,9 @@ mod tests {
         assert_eq!(
             all_schema_components(&schema),
             [
-                "positions".to_owned(),
-                "colors".to_owned(),
-                "transform".to_owned()
+                "Points3D:positions".to_owned(),
+                "Points3D:colors".to_owned(),
+                "Transform3D:transform".to_owned()
             ]
             .into_iter()
             .collect::<BTreeSet<_>>(),

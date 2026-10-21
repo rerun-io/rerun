@@ -253,6 +253,8 @@ The UI supports horizontal and vertical tree layout and you can filter by transf
     <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />
 </video>
 
+Agents can also inspect the transform graph through the [Viewer's MCP server](../../reference/viewer/mcp.md#inspecting-transforms) using `rerun_get_transform_graph`.
+The tool provides a machine-readable JSON snapshot of the transform graph, including frame connections and optional transform values.
 
 <!--
 

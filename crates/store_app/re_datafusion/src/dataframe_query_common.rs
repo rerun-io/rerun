@@ -1,3 +1,4 @@
+mod legacy_candidates;
 mod projection;
 mod segment_stream_common;
 
@@ -10,6 +11,7 @@ pub(crate) use self::segment_stream_common::{
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use self::segment_stream_common::physical_column_by_name;
 
+use self::legacy_candidates::{normalize_legacy_candidate_batches, to_wire};
 use self::projection::{
     all_schema_components, compute_schema_for_query, extract_projected_components,
     extract_projected_entity_paths,
@@ -19,7 +21,10 @@ use crate::ObjectStoreAuthenticator;
 use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
-use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
+use crate::pushdown_expressions::{
+    SelectionContext, apply_filter_expr_to_queries, choose_selection_timeline,
+    filter_expr_is_supported,
+};
 use ahash::HashSet;
 use arrow::array::{RecordBatch, UInt32Array};
 use arrow::datatypes::{Schema, SchemaRef};
@@ -31,12 +36,11 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
-use itertools::Itertools as _;
 use parking_lot::Mutex;
 use re_async::AsyncRuntimeHandle;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::capabilities::DATASET_FIND_CHUNKS;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
@@ -44,7 +48,9 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
-    cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
+    cloud::v1alpha1::ext::{
+        ChunkCandidatesDataframe, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
+    },
     common::v1alpha1::ext::SegmentId,
 };
 use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionHandle};
@@ -128,6 +134,10 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     client: T,
     index_values: IndexValuesMap,
 
+    /// Whether the connected server advertised [`DATASET_FIND_CHUNKS`]: `scan` dispatches to
+    /// `find_chunks` when true, and to the legacy `query_dataset` otherwise.
+    supports_find_chunks: bool,
+
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
     #[cfg(not(target_arch = "wasm32"))]
@@ -196,10 +206,23 @@ pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 's
         request: tonic::Request<GetDatasetSchemaRequest>,
     ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>>;
 
+    /// TODO(RR-5817): temporary. It serves the deployed Hubs, which do not advertise
+    /// `dataset:find_chunks`.
     async fn query_dataset(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>>;
+
+    /// Find chunk candidates for `request`'s selection.
+    ///
+    /// Returns the raw proto response so its `meta` (set on the first message only) reaches the
+    /// caller.
+    async fn find_chunks(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
+    ) -> tonic::Result<
+        tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FindChunksResponse>>,
+    >;
 
     async fn fetch_chunks(
         &mut self,
@@ -225,11 +248,21 @@ impl DataframeClientAPI for ConnectionClient {
         Ok(response)
     }
 
+    #[expect(deprecated, reason = "older servers lack FindChunks")]
     async fn query_dataset(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
         self.inner().query_dataset(request).await
+    }
+
+    async fn find_chunks(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
+    ) -> tonic::Result<
+        tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FindChunksResponse>>,
+    > {
+        self.inner().find_chunks(request).await
     }
 
     async fn fetch_chunks(
@@ -263,6 +296,8 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     ) -> ApiResult<Self> {
         let origin = connection.origin().clone();
         let connection = connection.connection().await?;
+        // Read before `new_from_client` moves `connection.client`.
+        let supports_find_chunks = connection.capabilities().has(DATASET_FIND_CHUNKS);
 
         let mut provider = Self::new_from_client(
             connection.client,
@@ -278,6 +313,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             object_store_auth,
         )
         .await?;
+        provider.supports_find_chunks = supports_find_chunks;
 
         if let Some(exporter) = connection.analytics {
             let async_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
@@ -405,6 +441,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
                     // pick an emit mode, and `query` below cannot stand in for it — an unfiltered
                     // dataframe query leaves both `latest_at` and `range` unset, so the server has
                     // no index to infer. Omit it and every segment falls back to `BufferAll`.
+                    //
+                    // TODO(RR-5817): temporary. Only `QueryDataset` reads scan columns.
                     let mut columns = FetchChunksRequest::required_column_names();
                     if let Some(index) = query_expression.filtered_index {
                         columns.push(format!("{index}:start"));
@@ -436,6 +474,10 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             dataset_id,
             client,
             index_values,
+            // `Connection::from_service` callers and other non-gRPC constructions have no
+            // `/WhoAmI` capability to read; default to the new RPC and let
+            // `with_find_chunks_support` opt into the legacy path where a test needs it.
+            supports_find_chunks: true,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
             analytics: None,
@@ -446,6 +488,20 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             #[cfg(not(target_arch = "wasm32"))]
             io_handle,
         })
+    }
+
+    /// Overrides the dispatch the connection's advertised capabilities chose: `true` sends
+    /// `find_chunks`, `false` the legacy `query_dataset`.
+    #[must_use]
+    pub fn with_find_chunks_support(mut self, enabled: bool) -> Self {
+        self.supports_find_chunks = enabled;
+        self
+    }
+
+    /// Whether `scan` dispatches to `find_chunks` (`true`) or the legacy `query_dataset`
+    /// (`false`) for this provider.
+    pub fn supports_find_chunks(&self) -> bool {
+        self.supports_find_chunks
     }
 
     /// Whether pushdown should synthesize a `latest_at` alongside its
@@ -459,6 +515,16 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
     /// is requested.
     fn synthesize_latest_at(&self) -> bool {
         self.query_expression.sparse_fill_strategy != SparseFillStrategy::None
+    }
+
+    /// The reader-configuration facts the selection-timeline rule needs,
+    /// shared identically by `scan` and `supports_filters_pushdown`.
+    fn selection_context(&self) -> SelectionContext {
+        SelectionContext {
+            reader_index: self.query_expression.filtered_index,
+            fill: self.synthesize_latest_at(),
+            uses_samples: self.index_values.is_some(),
+        }
     }
 
     fn selector_from_column(column: &Column) -> Option<ComponentColumnSelector> {
@@ -511,6 +577,155 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
     }
 }
 
+/// One fan-out branch's request, in whichever protocol `scan` chose for this call.
+enum ChunkRequest {
+    FindChunks(re_protos::cloud::v1alpha1::FindChunksRequest),
+
+    /// TODO(RR-5817): temporary. It serves the deployed Hubs, which do not advertise
+    /// `dataset:find_chunks`.
+    QueryDataset(Box<re_protos::cloud::v1alpha1::QueryDatasetRequest>),
+}
+
+impl ChunkRequest {
+    /// The RPC this branch calls, used as the retry span name and `ApiError` context.
+    fn retry_label(&self) -> &'static str {
+        match self {
+            Self::FindChunks(_) => "find_chunks",
+            Self::QueryDataset(_) => "query_dataset",
+        }
+    }
+}
+
+/// Opens `request`'s RPC, drains its stream, and returns the decoded candidate batches.
+///
+/// Shared by both dispatch protocols: the permit, retry policy, trace-id capture, timing, and
+/// first-message `observe_meta` are identical either way. Only the RPC call and the per-message
+/// response shape differ, so a legacy `QueryDatasetResponse` is rebuilt as a `FindChunksResponse`
+/// before the shared drain loop below runs.
+async fn fetch_candidate_batches<T: DataframeClientAPI>(
+    client: T,
+    dataset_id: EntryId,
+    request: ChunkRequest,
+    queries_start: Instant,
+) -> Result<
+    (
+        Vec<RecordBatch>,
+        Option<Duration>,
+        Option<opentelemetry::TraceId>,
+    ),
+    DataFusionError,
+> {
+    let origin = client.origin().clone();
+    let retry_label = request.retry_label();
+
+    // Hold a process-wide permit for the whole open+drain so co-tenant queries share one
+    // ceiling on concurrent streams (the fan-out width alone only bounds a single scan).
+    // Dropped when this task ends.
+    #[cfg(not(target_arch = "wasm32"))]
+    let _permit = crate::pipeline_budget::query_dataset_semaphore()
+        .acquire()
+        .await
+        .expect("query_dataset semaphore is never closed");
+
+    // Build the proto request once, then clone it per retry attempt (`tonic::Request` isn't
+    // `Clone`). The server rejects a saturated stream-concurrency limiter with
+    // `ResourceExhausted` fail-fast (before any work), so retrying the open is idempotent. Map
+    // tonic → `ApiError` *inside* the retry so the predicate sees `ResourcesExhausted`, and to
+    // `DataFusionError` *outside*.
+    let (metadata, mut stream): (
+        tonic::metadata::MetadataMap,
+        futures::stream::BoxStream<
+            'static,
+            tonic::Result<re_protos::cloud::v1alpha1::FindChunksResponse>,
+        >,
+    ) = match request {
+        ChunkRequest::FindChunks(proto_request) => {
+            let response = re_redap_client::with_retry_resource_exhausted(retry_label, || {
+                let mut client = client.clone();
+                let origin = origin.clone();
+                let request = tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
+                async move {
+                    client.find_chunks(request).await.map_err(|err| {
+                        if err.code() == tonic::Code::Unimplemented {
+                            ApiError::tonic(
+                                &origin,
+                                err,
+                                "find_chunks: server advertised the dataset:find_chunks \
+                                 capability but rejected the RPC as unimplemented; check the \
+                                 server version",
+                            )
+                        } else {
+                            ApiError::tonic(&origin, err, "find_chunks")
+                        }
+                    })
+                }
+            })
+            .await
+            .map_err(|err| err.into_df_error())?;
+            let (metadata, stream, _extensions) = response.into_parts();
+            (metadata, Box::pin(stream))
+        }
+        ChunkRequest::QueryDataset(proto_request) => {
+            let response = re_redap_client::with_retry_resource_exhausted(retry_label, || {
+                let mut client = client.clone();
+                let origin = origin.clone();
+                let request =
+                    tonic::Request::new(proto_request.as_ref().clone()).with_entry_id(dataset_id);
+                async move {
+                    client
+                        .query_dataset(request)
+                        .await
+                        .map_err(|err| ApiError::tonic(&origin, err, "query_dataset"))
+                }
+            })
+            .await
+            .map_err(|err| err.into_df_error())?;
+            let (metadata, stream, _extensions) = response.into_parts();
+            let stream = stream.map(|item| {
+                item.map(|response| re_protos::cloud::v1alpha1::FindChunksResponse {
+                    data: response.data,
+                    meta: response.meta,
+                })
+            });
+            (metadata, Box::pin(stream))
+        }
+    };
+
+    // Capture the server-side trace-id from response metadata.
+    let trace_id = re_redap_client::extract_trace_id(&metadata);
+
+    let mut batches = Vec::new();
+    let mut time_to_first: Option<Duration> = None;
+
+    while let Some(response) = stream.next().await {
+        let response = response.map_err(|err| {
+            ApiError::tonic(&origin, err, format!("{retry_label} response stream"))
+                .with_trace_id(trace_id)
+                .into_df_error()
+        })?;
+        if time_to_first.is_none() {
+            time_to_first = Some(queries_start.elapsed());
+            re_redap_client::dataset_revisions().observe_meta(response.meta.as_ref());
+        }
+        let Some(dataframe_part) = response.data else {
+            continue;
+        };
+        let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                &origin,
+                trace_id,
+                err,
+                format!("decoding {retry_label} response batch"),
+            )
+            .into_df_error()
+        })?;
+
+        batches.push(batch);
+    }
+
+    Ok((batches, time_to_first, trace_id))
+}
+
 #[async_trait]
 impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
     fn schema(&self) -> SchemaRef {
@@ -551,6 +766,14 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 unsupported_signatures: filters_signatures_unsupported,
             } = self.filter_capture.lock().take().unwrap_or_default();
 
+            let filter_refs: Vec<&Expr> = filters.iter().collect();
+            let selection_timeline = choose_selection_timeline(
+                &self.selection_context(),
+                &filter_refs,
+                &self.query_dataset_request,
+                &self.schema,
+            )?;
+
             let mut dataset_queries = vec![self.query_dataset_request.clone()];
             let mut filters_pushed_down: usize = 0;
             let mut filters_applied_client_side: usize = 0;
@@ -560,6 +783,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                     filter,
                     &self.schema,
                     synthesize_latest_at,
+                    selection_timeline,
                 )? {
                     Some(updated_queries) => {
                         filters_pushed_down += 1;
@@ -588,6 +812,10 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // and filters. Skip when fill_latest_at is enabled, because timestamps
             // from excluded entities would produce rows with filled values that the
             // user expects.
+            //
+            // A request that selects all entities lists the projected ones instead:
+            // `FindChunks` cannot attach components to an all-entities selection, so
+            // the component narrowing below would otherwise not reach the server.
             let mut entity_path_narrowing_applied = false;
             if !synthesize_latest_at
                 && let Some(projected_paths) = projection.map(|projection| {
@@ -596,7 +824,11 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 && !projected_paths.is_empty()
             {
                 for query in &mut dataset_queries {
-                    if !query.select_all_entity_paths && !query.entity_paths.is_empty() {
+                    if query.select_all_entity_paths {
+                        query.select_all_entity_paths = false;
+                        query.entity_paths = projected_paths.iter().cloned().collect();
+                        entity_path_narrowing_applied = true;
+                    } else if !query.entity_paths.is_empty() {
                         let before = query.entity_paths.len();
                         query
                             .entity_paths
@@ -618,7 +850,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // were it not that the server treats a non-empty list as exhaustive and drops
             // static-only components (those with no temporal index). Leaving it empty is correct.
             //
-            // TODO(RR-3157): ideally `DatasetView` would let users select components explicitly,
+            // TODO(RR-3157): ideally `DatasetSelection` would let users select components explicitly,
             // so we wouldn't have to infer them from the query.
             if self.query_expression.sparse_fill_strategy == SparseFillStrategy::None
                 && let Some(projected_components) = projection.map(|projection| {
@@ -636,6 +868,8 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
 
             let mut query_expression = self.query_expression.clone();
 
+            let index = self.query_expression.filtered_index;
+
             let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
             let mut time_to_first_chunk_info: Option<Duration> = None;
 
@@ -646,89 +880,41 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             // matter: the batches are concatenated and deduplicated by chunk id
             // below.
             let queries_start = Instant::now();
-            let mut response_futures = futures::stream::iter(dataset_queries)
-                .map(|dataset_query| {
+
+            // Empty selections are dropped so an all-empty fan-out (e.g. every Samples segment had no values) makes
+            // no RPC at all.
+            //
+            // TODO(RR-5817): the `QueryDataset` branch is temporary. It serves the deployed Hubs,
+            // which do not advertise `dataset:find_chunks`.
+            let requests: Vec<ChunkRequest> = if self.supports_find_chunks {
+                dataset_queries
+                    .iter()
+                    .map(|query| to_wire(query, index, self.synthesize_latest_at()))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .filter(|request| !request.is_empty())
+                    .map(|request| ChunkRequest::FindChunks(request.into()))
+                    .collect()
+            } else {
+                dataset_queries
+                    .into_iter()
+                    .map(|query| ChunkRequest::QueryDataset(Box::new(query.into())))
+                    .collect()
+            };
+
+            let mut response_futures = futures::stream::iter(requests)
+                .map(|request| {
                     let client = self.client.clone();
-                    let origin = client.origin().clone();
                     let dataset_id = self.dataset_id;
                     #[cfg(not(target_arch = "wasm32"))]
                     let io_handle = self.io_handle.clone();
-                    let task = async move {
-                        // Hold a process-wide permit for the whole open+drain so
-                        // co-tenant queries share one ceiling on concurrent
-                        // `query_dataset` streams (the fan-out width alone only
-                        // bounds a single scan). Dropped when this task ends.
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let _permit = crate::pipeline_budget::query_dataset_semaphore()
-                            .acquire()
-                            .await
-                            .expect("query_dataset semaphore is never closed");
-
-                        // Build the proto request once, then clone it per retry attempt
-                        // (`tonic::Request` isn't `Clone`). The server rejects `QueryDataset`
-                        // with `ResourceExhausted` fail-fast (before any work) when its
-                        // stream-concurrency limiter is saturated, so retrying the open is
-                        // idempotent. Map tonic → `ApiError` *inside* the retry so the predicate
-                        // sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
-                        let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
-                            dataset_query.into();
-                        let response =
-                            re_redap_client::with_retry_resource_exhausted("query_dataset", || {
-                                let mut client = client.clone();
-                                let origin = origin.clone();
-                                let request = tonic::Request::new(proto_request.clone())
-                                    .with_entry_id(dataset_id);
-                                async move {
-                                    client.query_dataset(request).await.map_err(|err| {
-                                        ApiError::tonic(&origin, err, "query_dataset")
-                                    })
-                                }
-                            })
-                            .await
-                            .map_err(|err| err.into_df_error())?;
-
-                        // Capture the server-side trace-id from response metadata.
-                        let trace_id = re_redap_client::extract_trace_id(response.metadata());
-
-                        let mut response_stream = response.into_inner();
-                        let mut batches = Vec::new();
-                        let mut time_to_first: Option<Duration> = None;
-
-                        while let Some(response) = response_stream.next().await {
-                            let response = response.map_err(|err| {
-                                ApiError::tonic(&origin, err, "query_dataset response stream")
-                                    .with_trace_id(trace_id)
-                                    .into_df_error()
-                            })?;
-                            if time_to_first.is_none() {
-                                time_to_first = Some(queries_start.elapsed());
-                                re_redap_client::dataset_revisions()
-                                    .observe_meta(response.meta.as_ref());
-                            }
-                            let Some(dataframe_part) = response.data else {
-                                continue;
-                            };
-                            let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
-                                ApiError::deserialization_with_source(
-                                    &origin,
-                                    trace_id,
-                                    err,
-                                    "decoding query_dataset response batch",
-                                )
-                                .into_df_error()
-                            })?;
-
-                            batches.push(batch);
-                        }
-
-                        Ok::<_, DataFusionError>((batches, time_to_first, trace_id))
-                    };
+                    let task = fetch_candidate_batches(client, dataset_id, request, queries_start);
                     #[cfg(not(target_arch = "wasm32"))]
                     let task = async move {
                         AbortOnDropHandle::new(io_handle.spawn(task.in_current_span()))
                             .await
                             .map_err(|err| {
-                                exec_datafusion_err!("query_dataset task failed: {err}")
+                                exec_datafusion_err!("chunk candidates task failed: {err}")
                             })?
                     };
                     task
@@ -750,6 +936,24 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
 
                 chunk_info_batches.extend(batches);
             }
+
+            // Only the `QueryDataset` path needs converting to the candidate schema, and only it
+            // can lack `chunk_timeline_start` values. Normalize once across every fan-out branch:
+            // a branch that selected nothing would otherwise look complete on its own.
+            let (chunk_info_batches, starts_on_reader_index) = if self.supports_find_chunks {
+                // Native starts use the selection timeline, so a foreign timeline cannot bound
+                // emission on the reader index.
+                (
+                    chunk_info_batches,
+                    selection_timeline.is_none() || selection_timeline == index,
+                )
+            } else {
+                // Legacy normalization reads `{index}:start` regardless of the selection timeline.
+                // Missing starts in any populated batch disable emission ordering for all batches.
+                normalize_legacy_candidate_batches(chunk_info_batches, index)?
+            };
+            // A static reader has no index to order chunks by.
+            let starts_eligible = index.is_some() && starts_on_reader_index;
             let chunk_info_batches = compute_unique_chunk_info_ids(chunk_info_batches)?;
 
             // Build the planning-phase summary unconditionally — it feeds both the
@@ -828,6 +1032,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 projection,
                 target_partitions,
                 chunk_info_batches,
+                starts_eligible,
                 query_expression,
                 self.index_values.clone(),
                 self.client.clone(),
@@ -865,36 +1070,41 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
     ) -> datafusion::common::Result<Vec<TableProviderFilterPushDown>> {
         let filter_columns = Self::compute_column_is_neq_null_filter(filters);
         let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
-        let synthesize_latest_at = self.synthesize_latest_at();
+
+        let context = self.selection_context();
+        let selection_timeline = choose_selection_timeline(
+            &context,
+            filters,
+            &self.query_dataset_request,
+            &self.schema,
+        )?;
+        let pushdown: Vec<TableProviderFilterPushDown> = filters
+            .iter()
+            .map(|filter| {
+                filter_expr_is_supported(
+                    filter,
+                    &self.query_dataset_request,
+                    &self.schema,
+                    context.fill,
+                    selection_timeline,
+                )
+            })
+            .collect::<Result<_, _>>()?;
+
         let results: Vec<TableProviderFilterPushDown> = if let Some(col) = non_null_columns.first()
         {
             let col = *col;
-            std::iter::zip(&filter_columns, filters)
-                .map(|(column_selector, filter_expr)| {
+            std::iter::zip(&filter_columns, pushdown)
+                .map(|(column_selector, pushdown)| {
                     if Some(col) == column_selector.as_ref() {
-                        Ok(TableProviderFilterPushDown::Exact)
+                        TableProviderFilterPushDown::Exact
                     } else {
-                        filter_expr_is_supported(
-                            filter_expr,
-                            &self.query_dataset_request,
-                            &self.schema,
-                            synthesize_latest_at,
-                        )
+                        pushdown
                     }
                 })
-                .try_collect()?
+                .collect()
         } else {
-            filters
-                .iter()
-                .map(|filter_expr| {
-                    filter_expr_is_supported(
-                        filter_expr,
-                        &self.query_dataset_request,
-                        &self.schema,
-                        synthesize_latest_at,
-                    )
-                })
-                .try_collect()?
+            pushdown
         };
 
         let mut all_sigs: Vec<String> = Vec::with_capacity(filters.len());
@@ -1033,25 +1243,16 @@ pub fn query_from_query_expression(
 fn compute_unique_chunk_info_ids(
     chunk_info_batches: Vec<RecordBatch>,
 ) -> Result<Option<RecordBatch>, DataFusionError> {
-    if chunk_info_batches.is_empty() {
+    // Every batch reaching here has the `ChunkCandidatesDataframe` schema, so a positional
+    // concat is safe.
+    let Some(schema) = chunk_info_batches.first().map(RecordBatch::schema) else {
         return Ok(None);
-    }
-
-    // Merge by column *name*, not by position: a `query_dataset` response schema is only
-    // pinned by name (that is what `QueryDatasetDataframe::COLUMN_*` extraction relies on),
-    // and the batches we get here come from several independent responses — one per fan-out
-    // branch, each free to carry a different column order and a different set of optional
-    // columns (`chunk_byte_offset`, `{timeline}:start`, …). A branch that selected nothing
-    // typically answers with the server's fallback empty batch, whose columns are neither
-    // ordered nor shaped like the populated branches'. Concatenating those positionally
-    // either fails outright (`It is not possible to concatenate arrays of different data
-    // types (Utf8, Boolean)`) or, worse, silently pairs up same-typed but unrelated columns.
-    let combined = re_arrow_util::concat_polymorphic_batches(&chunk_info_batches)
+    };
+    let combined = arrow::compute::concat_batches(&schema, &chunk_info_batches)
         .map_err(|err| exec_datafusion_err!("merging chunk-info batches: {err}"))?;
-    let schema = combined.schema();
     drop(chunk_info_batches);
 
-    let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+    let chunk_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
         .extract(&combined)
         .map_err(|err| exec_datafusion_err!("{err}"))?;
 
@@ -1080,6 +1281,7 @@ mod tests {
     use std::{
         collections::HashMap,
         iter::once,
+        num::NonZeroU64,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
@@ -1179,7 +1381,7 @@ mod tests {
             ))
         };
         let expr = col("rerun_segment_id").eq(lit("b"));
-        let mut narrowed = apply_filter_expr_to_queries(vec![request], &expr, &schema, false)
+        let mut narrowed = apply_filter_expr_to_queries(vec![request], &expr, &schema, false, None)
             .unwrap()
             .expect("segment-id predicate is pushed down");
         assert_eq!(narrowed.len(), 1);
@@ -1365,17 +1567,261 @@ mod tests {
         assert!(query.range.is_none(), "static-only must have no range");
     }
 
+    // -------------------------------------------------------------------
+    // `fetch_candidate_batches`: first-response watermark advance on both
+    // protocols, including an empty first batch, and the `find_chunks`
+    // `Unimplemented` mapping (no fallback to `query_dataset`).
+    // -------------------------------------------------------------------
+
+    /// Decodes a fixed, in-memory list of messages as a `tonic::codec::Streaming` response.
+    ///
+    /// Local to these tests: `re_redap_tests`'s `TestClient` wraps a real `RerunCloudService`
+    /// instead, and this crate cannot depend on `re_redap_tests` (the dependency runs the other
+    /// way).
+    struct MockDecoder<T> {
+        items: std::collections::VecDeque<tonic::Result<T>>,
+    }
+
+    impl<T: std::fmt::Debug> tonic::codec::Decoder for MockDecoder<T> {
+        type Item = T;
+        type Error = tonic::Status;
+
+        fn decode(&mut self, _src: &mut tonic::codec::DecodeBuf<'_>) -> tonic::Result<Option<T>> {
+            self.items.pop_front().transpose()
+        }
+    }
+
+    fn mock_streaming<T: Send + 'static + std::fmt::Debug>(
+        items: Vec<tonic::Result<T>>,
+    ) -> tonic::codec::Streaming<T> {
+        // 1 byte compression flag + 4 byte length per message; the decoder above ignores the
+        // bytes and just pops the next canned item, so any body of the right length works.
+        let body_len = 5 * items.len();
+        let decoder = MockDecoder {
+            items: items.into(),
+        };
+        tonic::Request::new(tonic::codec::Streaming::new_request(
+            decoder,
+            String::from_utf8(vec![0u8; body_len]).expect("an all-zero body is valid UTF-8"),
+            None,
+            Some(1),
+        ))
+        .into_inner()
+    }
+
+    /// Minimal `DataframeClientAPI` mock: `fetch_candidate_batches` only ever calls
+    /// `find_chunks` or `query_dataset`, so the other two methods are never exercised.
+    #[derive(Clone, Debug)]
+    struct MockClient {
+        origin: re_uri::Origin,
+        query_dataset_calls: Arc<Mutex<usize>>,
+        find_chunks_result:
+            Arc<Mutex<Option<tonic::Result<Vec<re_protos::cloud::v1alpha1::FindChunksResponse>>>>>,
+        query_dataset_result: Arc<Mutex<Option<tonic::Result<Vec<QueryDatasetResponse>>>>>,
+    }
+
+    impl MockClient {
+        fn new() -> Self {
+            Self {
+                origin: re_uri::Origin::test(),
+                query_dataset_calls: Arc::new(Mutex::new(0)),
+                find_chunks_result: Arc::new(Mutex::new(None)),
+                query_dataset_result: Arc::new(Mutex::new(None)),
+            }
+        }
+
+        fn with_find_chunks(
+            self,
+            result: tonic::Result<Vec<re_protos::cloud::v1alpha1::FindChunksResponse>>,
+        ) -> Self {
+            *self.find_chunks_result.lock() = Some(result);
+            self
+        }
+
+        fn with_query_dataset(self, result: tonic::Result<Vec<QueryDatasetResponse>>) -> Self {
+            *self.query_dataset_result.lock() = Some(result);
+            self
+        }
+
+        fn query_dataset_calls(&self) -> usize {
+            *self.query_dataset_calls.lock()
+        }
+    }
+
+    #[async_trait]
+    impl DataframeClientAPI for MockClient {
+        fn origin(&self) -> &re_uri::Origin {
+            &self.origin
+        }
+
+        async fn get_dataset_schema(
+            &mut self,
+            _request: tonic::Request<GetDatasetSchemaRequest>,
+        ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>> {
+            unreachable!("fetch_candidate_batches never calls get_dataset_schema")
+        }
+
+        async fn query_dataset(
+            &mut self,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
+        ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
+            *self.query_dataset_calls.lock() += 1;
+            let result = self
+                .query_dataset_result
+                .lock()
+                .take()
+                .expect("query_dataset called more times than the test configured");
+            result.map(|items| {
+                tonic::Response::new(mock_streaming(items.into_iter().map(Ok).collect()))
+            })
+        }
+
+        async fn find_chunks(
+            &mut self,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
+        ) -> tonic::Result<
+            tonic::Response<
+                tonic::codec::Streaming<re_protos::cloud::v1alpha1::FindChunksResponse>,
+            >,
+        > {
+            let result = self
+                .find_chunks_result
+                .lock()
+                .take()
+                .expect("find_chunks called more times than the test configured");
+            result.map(|items| {
+                tonic::Response::new(mock_streaming(items.into_iter().map(Ok).collect()))
+            })
+        }
+
+        async fn fetch_chunks(
+            &mut self,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
+        ) -> tonic::Result<
+            tonic::Response<
+                tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
+            >,
+        > {
+            unreachable!("fetch_candidate_batches never calls fetch_chunks")
+        }
+    }
+
+    /// A `DatasetResponseMeta` naming `entry_id` at `revision`.
+    fn meta(entry_id: EntryId, revision: u64) -> re_protos::cloud::v1alpha1::DatasetResponseMeta {
+        re_protos::cloud::v1alpha1::DatasetResponseMeta {
+            entry_id: Some(entry_id.into()),
+            dataset_revision: revision,
+        }
+    }
+
+    #[tokio::test]
+    async fn empty_first_response_advances_watermark_on_both_rpcs() {
+        let find_chunks_entry_id = EntryId::new();
+        let query_dataset_entry_id = EntryId::new();
+        let cases = [
+            (
+                find_chunks_entry_id,
+                MockClient::new().with_find_chunks(Ok(vec![
+                    re_protos::cloud::v1alpha1::FindChunksResponse {
+                        data: None,
+                        meta: Some(meta(find_chunks_entry_id, 7)),
+                    },
+                ])),
+                ChunkRequest::FindChunks(re_protos::cloud::v1alpha1::FindChunksRequest::default()),
+            ),
+            (
+                query_dataset_entry_id,
+                MockClient::new().with_query_dataset(Ok(vec![QueryDatasetResponse {
+                    data: None,
+                    meta: Some(meta(query_dataset_entry_id, 7)),
+                }])),
+                ChunkRequest::QueryDataset(Box::default()),
+            ),
+        ];
+
+        for (entry_id, client, request) in cases {
+            let rpc = request.retry_label();
+            let (batches, _, _) =
+                fetch_candidate_batches(client, entry_id, request, Instant::now())
+                    .await
+                    .expect("mocked stream succeeds");
+
+            assert!(
+                batches.is_empty(),
+                "{rpc}: an empty first batch carries no rows"
+            );
+            assert_eq!(
+                re_redap_client::dataset_revisions().get(entry_id),
+                Some(NonZeroU64::new(7).unwrap()),
+                "{rpc}: a single empty first batch carrying `meta` must still advance the watermark"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn find_chunks_unimplemented_does_not_fall_back_to_query_dataset() {
+        let entry_id = EntryId::new();
+        let client = MockClient::new().with_find_chunks(Err(tonic::Status::unimplemented(
+            "find_chunks not implemented",
+        )));
+        let calls = client.clone();
+
+        let err = fetch_candidate_batches(
+            client,
+            entry_id,
+            ChunkRequest::FindChunks(re_protos::cloud::v1alpha1::FindChunksRequest::default()),
+            Instant::now(),
+        )
+        .await
+        .expect_err("an Unimplemented find_chunks must surface as an error");
+
+        let message = err.to_string();
+        assert!(
+            message.contains("find_chunks"),
+            "error must name the RPC: {message}"
+        );
+        assert!(
+            message.contains("capability") && message.contains("server version"),
+            "error must name the capability inconsistency: {message}"
+        );
+        assert_eq!(
+            calls.query_dataset_calls(),
+            0,
+            "an Unimplemented find_chunks must not fall back to query_dataset"
+        );
+    }
+
+    /// Fails the first `query_dataset`/`find_chunks` open with `ResourceExhausted`, then answers
+    /// every later one with an empty stream.
     #[derive(Clone, Debug)]
     struct ThrottledClient {
         origin: re_uri::Origin,
-        query_dataset_calls: Arc<AtomicUsize>,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl ThrottledClient {
+        fn open<T: Send + 'static>(
+            &self,
+        ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<T>>> {
+            if self.calls.fetch_add(1, Ordering::Relaxed) == 0 {
+                return Err(tonic::Status::resource_exhausted(
+                    "injected admission rejection",
+                ));
+            }
+            Ok(tonic::Response::new(tonic::codec::Streaming::new_request(
+                EmptyDecoder(std::marker::PhantomData),
+                String::new(),
+                None,
+                None,
+            )))
+        }
     }
 
     #[derive(Debug)]
-    struct EmptyDecoder;
+    struct EmptyDecoder<T>(std::marker::PhantomData<T>);
 
-    impl tonic::codec::Decoder for EmptyDecoder {
-        type Item = QueryDatasetResponse;
+    impl<T> tonic::codec::Decoder for EmptyDecoder<T> {
+        type Item = T;
         type Error = tonic::Status;
 
         fn decode(
@@ -1403,20 +1849,23 @@ mod tests {
             &mut self,
             _request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
         ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
-            let calls = self.query_dataset_calls.fetch_add(1, Ordering::Relaxed);
-            if calls == 0 {
-                return Err(tonic::Status::resource_exhausted(
-                    "injected admission rejection",
-                ));
-            }
-            let streaming =
-                tonic::codec::Streaming::new_request(EmptyDecoder, String::new(), None, None);
-            Ok(tonic::Response::new(streaming))
+            self.open()
+        }
+
+        async fn find_chunks(
+            &mut self,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
+        ) -> tonic::Result<
+            tonic::Response<
+                tonic::codec::Streaming<re_protos::cloud::v1alpha1::FindChunksResponse>,
+            >,
+        > {
+            self.open()
         }
 
         async fn fetch_chunks(
             &mut self,
-            _request: tonic::Request<FetchChunksRequest>,
+            _request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
         ) -> tonic::Result<
             tonic::Response<
                 tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
@@ -1428,34 +1877,41 @@ mod tests {
 
     #[test]
     fn scan_retries_resource_exhausted_outside_tokio_runtime() {
-        let query_dataset_calls = Arc::new(AtomicUsize::new(0));
-        let client = ThrottledClient {
-            origin: re_uri::Origin::test(),
-            query_dataset_calls: Arc::clone(&query_dataset_calls),
-        };
+        for supports_find_chunks in [true, false] {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let client = ThrottledClient {
+                origin: re_uri::Origin::test(),
+                calls: Arc::clone(&calls),
+            };
 
-        let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: test needs to create a runtime explicitly
-            .enable_all()
-            .build()
-            .unwrap();
-        let provider = rt
-            .block_on(DataframeQueryTableProvider::new_from_client(
-                client,
-                EntryId::new(),
-                &QueryExpression::default(),
-                &["segment"],
-                None,
-                Some(Schema::empty()),
-                None,
-                vec![],
-                Arc::new(crate::NoOpObjectStoreAuthenticator::default()),
-            ))
-            .expect("provider construction should not touch the network");
-        let state = datafusion::prelude::SessionContext::new().state();
+            let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: test needs to create a runtime explicitly
+                .enable_all()
+                .build()
+                .expect("test runtime builds");
+            let provider = rt
+                .block_on(DataframeQueryTableProvider::new_from_client(
+                    client,
+                    EntryId::new(),
+                    &QueryExpression::default(),
+                    &["segment"],
+                    None,
+                    Some(Schema::empty()),
+                    None,
+                    vec![],
+                    Arc::new(crate::NoOpObjectStoreAuthenticator::default()),
+                ))
+                .expect("provider construction should not touch the network")
+                .with_find_chunks_support(supports_find_chunks);
+            let state = datafusion::prelude::SessionContext::new().state();
 
-        // Simulates datafusion-python, which polls `scan` through the FFI on its own runtime, not our tokio.
-        futures::executor::block_on(provider.scan(&state, None, &[], None))
-            .expect("scan should succeed after retrying ResourceExhausted");
-        assert_eq!(query_dataset_calls.load(Ordering::Relaxed), 2);
+            // Simulates datafusion-python, which polls `scan` through the FFI on its own runtime, not our tokio.
+            futures::executor::block_on(provider.scan(&state, None, &[], None))
+                .expect("scan should succeed after retrying ResourceExhausted");
+            assert_eq!(
+                calls.load(Ordering::Relaxed),
+                2,
+                "supports_find_chunks={supports_find_chunks}"
+            );
+        }
     }
 }

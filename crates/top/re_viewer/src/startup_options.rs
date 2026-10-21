@@ -22,7 +22,7 @@ pub struct LoginOptions {
 pub struct StartupOptions {
     pub persist_state: bool,
 
-    /// Whether to collect anonymous usage analytics.
+    /// Whether to collect usage analytics.
     pub analytics_enabled: bool,
 
     /// Overrides the saved startup update-check preference when set.
@@ -148,7 +148,7 @@ impl StartupOptions {
         } else if self.is_in_notebook || cfg!(not(target_arch = "wasm32")) {
             // Notebooks behave like native viewers here because just like on native,
             // there's no useful base url in the address bar to use.
-            let version = re_build_info::build_info!().version.latest_stable();
+            let version = re_build_info::CrateVersion::LOCAL.latest_stable();
 
             url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
         } else {
@@ -156,7 +156,7 @@ impl StartupOptions {
                 target_arch = "wasm32" => re_web::browser::current_page_url()
                     .ok()
                     .and_then(|url| url.parse().ok())
-                    .map(|url| re_viewer_context::open_url::base_url(&url)),
+                    .map(|url| re_viewer_context::viewer_url::base_url(&url)),
                 _ => None,
             }
         }

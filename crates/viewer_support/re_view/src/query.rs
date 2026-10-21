@@ -107,7 +107,7 @@ fn recording_chunks_hash(chunks: &[re_chunk_store::Chunk]) -> Hash64 {
     Hash64::from_u64(hasher.finish())
 }
 
-/// Applies a selector (if present) and casts the component for known datatypes (if required).
+/// Applies the component mapping's selector, then casts to the target datatype.
 fn transform_chunk(
     target: ComponentIdentifier,
     mapping: &ActiveRemapping,
@@ -129,8 +129,8 @@ fn transform_chunk(
 
     chunk.with_shadowed_component(mapping.source, target, |arr| {
         let transformed = if let Some(selector) = &mapping.selector {
-            selector
-                .execute_per_row(&arr)
+            re_lenses::default_runtime()
+                .execute_per_row(selector, &arr)
                 .map_err(ComponentMappingError::SelectorExecutionFailed)?
                 .unwrap_or_else(|| {
                     arrow::array::ListArray::new_null(
@@ -925,6 +925,62 @@ mod tests {
             );
             assert!(checked_source.error().is_none());
         }
+    }
+
+    /// Invalid selectors and incompatible selector outputs must remain distinguishable to callers.
+    #[test]
+    fn mapped_component_with_incompatible_schema_reports_query_errors() {
+        use re_log_types::external::arrow::array::{ArrayRef, Float64Array, StructArray};
+
+        let mut test_context = TestContext::new();
+        let source = ComponentDescriptor::partial("custom:message");
+        let target = archetypes::Scalars::descriptor_scalars().component;
+        let number = Arc::new(Float64Array::from(vec![1.0])) as ArrayRef;
+        for (entity, input) in [
+            ("scalar", number.clone()),
+            (
+                "missing_field",
+                Arc::new(StructArray::try_from(vec![("other", number)]).unwrap()) as ArrayRef,
+            ),
+        ] {
+            test_context.log_entity(entity, |builder| {
+                builder.with_row(RowId::new(), TimePoint::STATIC, [(source.clone(), input)])
+            });
+        }
+        let instruction = test_instruction(VisualizerComponentMappings::from([(
+            target,
+            VisualizerComponentSource::SourceComponent {
+                source_component: source.component,
+                selector: ".data".into(),
+            },
+        )]));
+
+        run_with_test_view_context(&test_context, |ctx| {
+            for entity in ["scalar", "missing_field"] {
+                let data_result = test_data_result(entity);
+                let latest = latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &LatestAtQuery::new_static(),
+                    &data_result,
+                    [target],
+                    Some(&instruction),
+                );
+                let error = latest
+                    .get_unit_chunk_with_source(target, true)
+                    .unwrap()
+                    .1
+                    .unwrap_err();
+                assert!(
+                    matches!(
+                        (entity, &error),
+                        ("scalar", ComponentMappingError::SelectorExecutionFailed(_))
+                            | ("missing_field", ComponentMappingError::CastFailed { .. })
+                    ),
+                    "{entity}: {error:?}"
+                );
+            }
+        });
     }
 
     #[test]

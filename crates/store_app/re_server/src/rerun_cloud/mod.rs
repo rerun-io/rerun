@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::HashSet;
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -7,17 +7,15 @@ use arrow::array::BooleanArray;
 use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
-use nohash_hasher::{IntMap, IntSet};
-use re_chunk_index::{ChunkProvider as _, RrdManifest};
+use futures::stream::BoxStream;
 use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkId, ChunkTrackingMode, LatestAtQuery, RangeQuery};
 use re_log_encoding::ToTransport as _;
-use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreKind, TimelineName};
+use re_log_types::{EntryId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
-    AssetMode, QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
+    AssetMode, ChunkCandidatesDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
     ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
     read_asset_mode, read_asset_segments,
 };
@@ -53,6 +51,8 @@ use re_protos::{
 use re_tuid::Tuid;
 use re_types_core::LayerName;
 
+mod chunk_selection;
+use self::chunk_selection::{EntityScope, LayerStore, encode_candidates, select_chunks};
 mod register_with_dataset;
 use self::register_with_dataset::{RegisterWithDatasetResult, do_register_with_dataset};
 
@@ -61,10 +61,7 @@ use crate::NamedPath;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
 use crate::store::TASK_ID_SUCCESS;
-use crate::store::{
-    ChunkKey, Dataset, InMemoryStore, ResolvedStore, SegmentProperties, StoreSlotId, Table,
-    TaskResult,
-};
+use crate::store::{ChunkKey, Dataset, InMemoryStore, SegmentProperties, Table, TaskResult};
 
 #[derive(Debug)]
 #[cfg_attr(target_arch = "wasm32", derive(Clone, Copy, Default))]
@@ -126,14 +123,19 @@ fn apply_segment_id_filter(
 ///
 /// Touches the filesystem only in [`Self::build`] and [`Self::build_with_write_access`], which
 /// create the handler's storage directory.
-#[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
+    build_info: re_build_info::BuildInfo,
     store: InMemoryStore,
 }
 
 impl RerunCloudHandlerBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    /// `build_info` describes the binary hosting the handler, and is what the handler reports
+    /// from its version endpoint.
+    pub fn new(build_info: re_build_info::BuildInfo) -> Self {
+        Self {
+            build_info,
+            store: InMemoryStore::default(),
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -203,12 +205,21 @@ impl RerunCloudHandlerBuilder {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build(self) -> Result<RerunCloudHandler, crate::store::Error> {
         let settings = RerunCloudHandlerSettings::new()?;
-        Ok(RerunCloudHandler::new(settings, self.store, None))
+        Ok(RerunCloudHandler::new(
+            settings,
+            self.build_info,
+            self.store,
+            None,
+        ))
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(RerunCloudHandlerSettings::default(), self.store)
+        RerunCloudHandler::new(
+            RerunCloudHandlerSettings::default(),
+            self.build_info,
+            self.store,
+        )
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -219,7 +230,12 @@ impl RerunCloudHandlerBuilder {
         let write_access_grants =
             crate::routes::WriteAccessGrants::new(settings.storage_dir.path().to_owned())?;
         let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
-        let handler = RerunCloudHandler::new(settings, self.store, Some(write_access_grants));
+        let handler = RerunCloudHandler::new(
+            settings,
+            self.build_info,
+            self.store,
+            Some(write_access_grants),
+        );
         Ok((handler, write_upload_route))
     }
 }
@@ -231,6 +247,7 @@ pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
     #[cfg(not(target_arch = "wasm32"))]
     write_access_grants: Option<crate::routes::WriteAccessGrants>,
+    build_info: re_build_info::BuildInfo,
     store: tokio::sync::RwLock<InMemoryStore>,
     events_tx: tokio::sync::broadcast::Sender<WatchEventsResponse>,
 }
@@ -238,6 +255,7 @@ pub struct RerunCloudHandler {
 impl RerunCloudHandler {
     fn new(
         settings: RerunCloudHandlerSettings,
+        build_info: re_build_info::BuildInfo,
         store: InMemoryStore,
         #[cfg(not(target_arch = "wasm32"))] write_access_grants: Option<
             crate::routes::WriteAccessGrants,
@@ -251,6 +269,7 @@ impl RerunCloudHandler {
             settings,
             #[cfg(not(target_arch = "wasm32"))]
             write_access_grants,
+            build_info,
             store: tokio::sync::RwLock::new(store),
             events_tx,
         }
@@ -273,31 +292,119 @@ impl RerunCloudHandler {
             .ok();
     }
 
-    /// Returns all the chunk stores of the specified dataset and segment ids. If `segment_ids`
-    /// is `None`, return stores of all segments.
-    ///
-    /// Returns (segment id, layer name, store) tuples.
+    /// Returns the store of every layer of the given segments of a dataset, or of all its
+    /// segments if `segment_ids` is `None`.
     async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
         segment_ids: Option<&[SegmentId]>,
-    ) -> tonic::Result<Vec<(SegmentId, LayerName, StoreSlotId, ResolvedStore)>> {
+    ) -> tonic::Result<Vec<LayerStore>> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
             .segments_from_ids(segment_ids)
             .flat_map(|(segment_id, segment)| {
-                segment.iter_sources().map(|(layer_name, source)| {
-                    (
-                        segment_id.clone(),
-                        layer_name.clone(),
-                        source.store_slot_id(),
-                        source.resolved_store().clone(),
-                    )
-                })
+                segment
+                    .iter_sources()
+                    .map(|(layer_name, source)| LayerStore {
+                        segment_id: segment_id.clone(),
+                        layer: layer_name.clone(),
+                        store_slot_id: source.store_slot_id(),
+                        resolved: source.resolved_store().clone(),
+                    })
             })
             .collect())
+    }
+
+    /// Selects `FindChunks` candidates across every store of a dataset, in fixed-schema batches.
+    ///
+    /// Checks the timeline against every store of the dataset, not only the selected ones, so an
+    /// unknown timeline fails whatever the segment scope. A dataset with no stores skips the
+    /// check and answers one empty batch.
+    async fn find_candidates(
+        &self,
+        entry_id: EntryId,
+        request: ext::FindChunksRequest,
+    ) -> tonic::Result<BoxStream<'static, tonic::Result<RecordBatch>>> {
+        request.ensure_supported()?;
+
+        let chunk_stores = self.get_chunk_stores(entry_id, None).await?;
+
+        if let Some(timeline) = request.timeline()
+            && !chunk_stores.is_empty()
+            && !chunk_stores
+                .iter()
+                .any(|store| store.resolved.schema().timelines().contains_key(&timeline))
+        {
+            return Err(tonic::Status::invalid_argument(format!(
+                "unknown timeline `{timeline}`"
+            )));
+        }
+
+        let request_is_empty = request.is_empty();
+        let timeline = request.timeline();
+        let entities = EntityScope::new(&request.contents);
+
+        // A dataset with no stores, an empty request, or a segment scope that matches none of
+        // the dataset's stores must all answer with one empty batch rather than zero batches:
+        // clients concatenate a scan's responses, and a response with no batch carries no
+        // schema to concatenate against.
+        let selected_chunk_stores: Vec<_> = if request_is_empty {
+            Vec::new()
+        } else {
+            chunk_stores
+                .into_iter()
+                .filter(|store| request.mode.selects_segment(&store.segment_id))
+                .collect()
+        };
+
+        if selected_chunk_stores.is_empty() {
+            let batch = ChunkCandidatesDataframe::empty_record_batch();
+            return Ok(Box::pin(futures::stream::iter([Ok(batch)])));
+        }
+
+        let stream = futures::stream::iter(selected_chunk_stores.into_iter().map(move |store| {
+            let selected_chunks = select_chunks(&store, &entities, Some(&request.mode))?;
+            encode_candidates(&selected_chunks, timeline.as_ref())
+        }));
+
+        Ok(Box::pin(stream))
+    }
+
+    /// Answers a [`ext::LegacyPlan::FullScan`]: every chunk of the given segments and contents.
+    /// The optional timeline supplies response starts without filtering the selection.
+    ///
+    /// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
+    async fn full_scan_candidates(
+        &self,
+        entry_id: EntryId,
+        segments: ext::SegmentSelection,
+        contents: ext::ContentSelection,
+        timeline: Option<TimelineName>,
+    ) -> tonic::Result<BoxStream<'static, tonic::Result<RecordBatch>>> {
+        let segment_ids = match &segments {
+            ext::SegmentSelection::All => None,
+            ext::SegmentSelection::Explicit(ids) => Some(ids.iter().cloned().collect::<Vec<_>>()),
+        };
+
+        let chunk_stores = self
+            .get_chunk_stores(entry_id, segment_ids.as_deref())
+            .await?;
+
+        if chunk_stores.is_empty() {
+            let batch = ChunkCandidatesDataframe::empty_record_batch();
+            return Ok(Box::pin(futures::stream::iter([Ok(batch)])));
+        }
+
+        let entities = EntityScope::new(&contents);
+
+        let stream = futures::stream::iter(chunk_stores.into_iter().map(move |store| {
+            let selected_chunks = select_chunks(&store, &entities, None)?;
+            encode_candidates(&selected_chunks, timeline.as_ref())
+        }));
+
+        Ok(Box::pin(stream))
     }
 
     #[cfg_attr(target_arch = "wasm32", expect(clippy::unused_async))]
@@ -438,6 +545,7 @@ macro_rules! decl_stream {
 decl_stream!(DoBandwidthTestResponseStream<rerun_cloud:DoBandwidthTestResponse>);
 decl_stream!(WatchEventsResponseStream<rerun_cloud:WatchEventsResponse>);
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
+decl_stream!(FindChunksResponseStream<rerun_cloud:FindChunksResponse>);
 decl_stream!(GetAssetsForSegmentResponseStream<rerun_cloud:GetAssetsForSegmentResponse>);
 decl_stream!(GetSegmentPropertiesResponseStream<rerun_cloud:GetSegmentPropertiesResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
@@ -606,7 +714,7 @@ impl RerunCloudService for RerunCloudHandler {
         let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
 
         // NOTE: Reminder that this is only fully filled iff CI=1.
-        let build_info = re_build_info::build_info!();
+        let build_info = self.build_info.clone();
 
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::VersionResponse {
@@ -1558,315 +1666,81 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> tonic::Result<tonic::Response<Self::QueryDatasetStream>> {
-        if !request.get_ref().chunk_ids.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "query_dataset: querying specific chunk ids is not implemented",
-            ));
-        }
-
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
-        let QueryDatasetRequest {
-            segment_ids,
-            entity_paths,
-            select_all_entity_paths,
+        let mut request: QueryDatasetRequest = request.into_inner().try_into()?;
 
-            //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids: requested_chunk_ids,
-            fuzzy_descriptors: _,
-            exclude_static_data,
-            exclude_temporal_data,
-            scan_parameters,
-            query,
-            generate_direct_urls: _,
-            unsigned_direct_urls: _,
-        } = request.into_inner().try_into()?;
-
-        if scan_parameters.is_some() {
-            // Logged at a low debug-level, because of https://github.com/rerun-io/rerun/pull/12578
-            re_log::debug_once!("   scan_parameters are not yet implemented and will be ignored");
-        }
-
-        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
-        if select_all_entity_paths && !entity_paths.is_empty() {
-            return Err(tonic::Status::invalid_argument(
-                "cannot specify entity paths if `select_all_entity_paths` is true",
-            ));
-        }
-
-        // RR-4355: per-segment index value pushdown.
-        //
-        // If the request has `query.latest_at.per_segment_values`, build a
-        // map keyed by segment id so the per-segment chunk-fetch loop below
-        // can apply it. The ext `try_from` already validated that lengths
-        // match `segment_ids` and that there are no duplicates.
-        let per_segment_index_values: Option<BTreeMap<SegmentId, Vec<re_log_types::TimeInt>>> =
-            match query.as_ref().and_then(|q| q.latest_at.as_ref()) {
-                Some(la) if !la.per_segment_values.is_empty() => Some(
-                    std::iter::zip(&segment_ids, &la.per_segment_values)
-                        .map(|(sid, values)| {
-                            (
-                                sid.clone(),
-                                values
-                                    .iter()
-                                    .map(|v| re_log_types::TimeInt::new_temporal(*v))
-                                    .collect(),
-                            )
-                        })
-                        .collect(),
-                ),
-                _ => None,
-            };
-
-        // As per our proto conventions, an empty list means "all":
-        let segments_of_interest = (!segment_ids.is_empty()).then_some(segment_ids.as_slice());
-
-        let chunk_stores = self
-            .get_chunk_stores(entry_id, segments_of_interest)
-            .await?;
-
-        if chunk_stores.is_empty() {
-            let stream = futures::stream::iter([{
-                let batch = QueryDatasetDataframe::empty_record_batch();
-                let data = Some(batch.into());
-                Ok(QueryDatasetResponse { data, meta: None })
-            }]);
-
-            return Ok(tonic::Response::new(
-                Box::pin(stream) as Self::QueryDatasetStream
-            ));
-        }
-
-        // Compute the union of timelines across every (segment, layer) touched by this query, so
-        // every response we emit below carries the same `{timeline}:start` columns and the client
-        // can concatenate them. Individual responses fill in `None` for timelines their chunks
-        // don't contain.
-        let all_timelines: BTreeMap<String, arrow::datatypes::DataType> = chunk_stores
-            .iter()
-            .flat_map(|(_, _, _, resolved)| {
-                resolved
-                    .schema()
-                    .timelines()
-                    .into_values()
-                    .map(|tl| (tl.name().as_str().to_owned(), tl.datatype()))
-                    .collect::<Vec<_>>()
-            })
-            .collect();
-
-        let stream = futures::stream::iter(chunk_stores.into_iter().map(
-            move |(segment_id, layer_name, store_slot_id, resolved)| {
-                // Build metadata for all relevant chunks (physical + virtual).
-
-                let metadata_vec: Vec<ChunkMetadata> = if let Some(query) = &query {
-                    // RR-4355: per-segment index values pushdown.
-                    //
-                    // When the request carries `per_segment_values`, fan out
-                    // `get_chunks_for_query_results` once per value for this
-                    // segment with a synthesized latest-at, then dedup. Per
-                    // the proto contract (`cloud.proto`):
-                    //   "An empty values list for a segment means no temporal
-                    //    chunks are returned for that segment (only static
-                    //    data)."
-                    // For the empty case we run a single static-only query
-                    // instead of returning nothing, so static chunks still
-                    // surface.
-                    let (chunks, missing_virtual) = if let Some(map) = &per_segment_index_values {
-                        if let Some(values) = map.get(&segment_id) {
-                            let synthesized: Vec<re_log_types::TimeInt> = if values.is_empty() {
-                                vec![re_log_types::TimeInt::STATIC]
-                            } else {
-                                values.clone()
-                            };
-                            let mut all_chunks: Vec<Arc<Chunk>> = Vec::new();
-                            let mut all_missing: BTreeSet<ChunkId> = BTreeSet::new();
-                            let mut seen: BTreeSet<ChunkId> = BTreeSet::new();
-                            for v in &synthesized {
-                                let mut q = query.clone();
-                                if let Some(la) = q.latest_at.as_mut() {
-                                    la.at = *v;
-                                    la.per_segment_values = Vec::new();
-                                }
-                                let (cs, missing) = get_chunks_for_query_results(
-                                    &resolved,
-                                    &entity_paths,
-                                    select_all_entity_paths,
-                                    &q,
-                                );
-                                for c in cs {
-                                    if seen.insert(c.id()) {
-                                        all_chunks.push(c);
-                                    }
-                                }
-                                all_missing.extend(missing);
-                            }
-                            for id in &seen {
-                                all_missing.remove(id);
-                            }
-                            (all_chunks, all_missing.into_iter().collect())
-                        } else {
-                            (Vec::new(), Vec::new())
-                        }
-                    } else {
-                        get_chunks_for_query_results(
-                            &resolved,
-                            &entity_paths,
-                            select_all_entity_paths,
-                            query,
-                        )
-                    };
-
-                    let mut metas: Vec<_> = chunks
-                        .iter()
-                        .map(|c| ChunkMetadata::from_chunk(c))
-                        .collect();
-                    if let ResolvedStore::Lazy(lazy) = &resolved {
-                        for chunk_id in &missing_virtual {
-                            if let Some(idx) = lazy.chunk_row_index(chunk_id) {
-                                metas.push(ChunkMetadata::from_manifest(
-                                    lazy.manifest(),
-                                    *chunk_id,
-                                    idx,
-                                    lazy.timeline_ranges().get(chunk_id),
-                                ));
-                            }
-                        }
-                    }
-                    metas
-                } else {
-                    match &resolved {
-                        ResolvedStore::Eager(h) => h
-                            .read()
-                            .iter_physical_chunks()
-                            .map(|c| ChunkMetadata::from_chunk(c))
-                            .collect(),
-                        ResolvedStore::Lazy(lazy) => lazy
-                            .manifest()
-                            .col_chunk_ids()
-                            .iter()
-                            .enumerate()
-                            .map(|(idx, &chunk_id)| {
-                                ChunkMetadata::from_manifest(
-                                    lazy.manifest(),
-                                    chunk_id,
-                                    idx,
-                                    lazy.timeline_ranges().get(&chunk_id),
-                                )
-                            })
-                            .collect(),
-                    }
-                };
-
-                let num_chunks = metadata_vec.len();
-
-                let mut chunk_ids = Vec::with_capacity(num_chunks);
-                let mut chunk_segment_ids = Vec::with_capacity(num_chunks);
-                let mut chunk_keys = Vec::with_capacity(num_chunks);
-                let mut chunk_entity_path = Vec::with_capacity(num_chunks);
-                let mut chunk_is_static = Vec::with_capacity(num_chunks);
-                let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
-                let mut chunk_byte_sizes_uncompressed = Vec::with_capacity(num_chunks);
-                let mut chunk_direct_urls = Vec::with_capacity(num_chunks);
-                let mut chunk_direct_url_expiry = Vec::with_capacity(num_chunks);
-
-                // Seed with the full set of timelines the query can see so the response schema
-                // matches every other response in this stream, even for segments/layers whose
-                // chunks don't use all those timelines.
-                let mut timelines: BTreeMap<
-                    String,
-                    (arrow::datatypes::DataType, Vec<Option<i64>>),
-                > = all_timelines
-                    .iter()
-                    .map(|(name, dtype)| {
-                        (
-                            name.clone(),
-                            (dtype.clone(), Vec::with_capacity(num_chunks)),
-                        )
-                    })
-                    .collect();
-
-                for meta in &metadata_vec {
-                    if !select_all_entity_paths && !entity_paths.contains(&meta.entity_path) {
-                        continue;
-                    }
-
-                    if !requested_chunk_ids.is_empty()
-                        && !requested_chunk_ids.contains(&meta.chunk_id)
-                    {
-                        continue;
-                    }
-
-                    // Filter by static/temporal data
-                    if exclude_static_data && meta.is_static {
-                        continue;
-                    }
-                    if exclude_temporal_data && !meta.is_static {
-                        continue;
-                    }
-
-                    let mut missing_timelines: BTreeSet<String> =
-                        timelines.keys().cloned().collect();
-                    for (timeline_name, range) in &meta.timelines {
-                        let timeline_name = timeline_name.as_str();
-                        missing_timelines.remove(timeline_name);
-
-                        let timeline_data = timelines
-                            .get_mut(timeline_name)
-                            .expect("timeline was pre-seeded from chunk stores");
-
-                        timeline_data.1.push(Some(range.min().as_i64()));
-                    }
-                    for timeline_name in missing_timelines {
-                        let timeline_data = timelines
-                            .get_mut(&timeline_name)
-                            .expect("timeline_names already checked");
-
-                        timeline_data.1.push(None);
-                    }
-
-                    chunk_segment_ids.push(segment_id.clone());
-                    chunk_ids.push(meta.chunk_id);
-                    chunk_entity_path.push(meta.entity_path.clone());
-                    chunk_is_static.push(meta.is_static);
-                    chunk_byte_sizes.push(meta.byte_size);
-                    // OSS server stores decoded data, so compressed == uncompressed.
-                    chunk_byte_sizes_uncompressed.push(Some(meta.byte_size));
-
-                    chunk_keys.push(
-                        ChunkKey {
-                            chunk_id: meta.chunk_id,
-                            store_slot_id,
-                        }
-                        .encode()?,
-                    );
-
-                    chunk_direct_urls.push(None);
-                    chunk_direct_url_expiry.push(None);
-                }
-
-                let chunk_layer_names = vec![layer_name.clone(); chunk_ids.len()];
-                let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
-                let batch = QueryDatasetResponse::create_dataframe_with_timelines(
-                    chunk_ids,
-                    chunk_segment_ids,
-                    chunk_layer_names,
-                    chunk_key_refs,
-                    chunk_entity_path,
-                    chunk_is_static,
-                    chunk_byte_sizes,
-                    chunk_byte_sizes_uncompressed,
-                    chunk_direct_urls,
-                    chunk_direct_url_expiry,
-                    &timelines,
-                )
+        // TODO(RR-5817): this serves released SDKs, answering `QueryDataset` through `FindChunks`.
+        let columns = request
+            .scan_parameters
+            .as_mut()
+            .map(|parameters| std::mem::take(&mut parameters.columns))
+            .unwrap_or_default();
+        let mut dataset_schema = None;
+        let request = if ext::selects_components_on_every_entity(&request) {
+            let schema = self
+                .store
+                .read()
+                .await
+                .dataset(entry_id)?
+                .schema()
                 .map_err(|err| {
-                    tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
+                    tonic::Status::internal(format!("Unable to read dataset schema: {err:#}"))
                 })?;
+            let request = ext::list_entities_for_component_selection(request, &schema);
+            dataset_schema = Some(schema);
+            request
+        } else {
+            request
+        };
+        let plan = ext::adapt_legacy(request)?;
+        let response_timeline = if let Some(name) = ext::projected_start_name(&plan, &columns) {
+            let schema = match dataset_schema {
+                Some(schema) => schema,
+                None => self
+                    .store
+                    .read()
+                    .await
+                    .dataset(entry_id)?
+                    .schema()
+                    .map_err(|err| {
+                        tonic::Status::internal(format!("Unable to read dataset schema: {err:#}"))
+                    })?,
+            };
+            ext::resolve_projected_start_timeline(name, &schema)?
+        } else {
+            None
+        };
 
-                let data = Some(batch.into());
+        let stream: BoxStream<'static, tonic::Result<RecordBatch>> = match plan {
+            ext::LegacyPlan::Find(request) => {
+                let timeline = request.timeline();
+                let candidates = self.find_candidates(entry_id, request).await?;
+                candidates
+                    .map(move |batch| ext::encode_legacy_candidates(batch?, timeline.as_ref()))
+                    .boxed()
+            }
 
-                Ok(QueryDatasetResponse { data, meta: None })
-            },
-        ));
+            ext::LegacyPlan::FullScan {
+                segments, contents, ..
+            } => {
+                let candidates = self
+                    .full_scan_candidates(entry_id, segments, contents, response_timeline)
+                    .await?;
+                candidates
+                    .map(move |batch| {
+                        ext::encode_legacy_candidates(batch?, response_timeline.as_ref())
+                    })
+                    .boxed()
+            }
+        };
+
+        let stream = stream.map(|batch| {
+            batch.map(|batch| QueryDatasetResponse {
+                data: Some(batch.into()),
+                meta: None,
+            })
+        });
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::QueryDatasetStream
@@ -1931,6 +1805,32 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::FetchChunksStream
+        ))
+    }
+
+    type FindChunksStream = FindChunksResponseStream;
+
+    async fn find_chunks(
+        &self,
+        mut request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
+    ) -> tonic::Result<tonic::Response<Self::FindChunksStream>> {
+        // Validate the body before looking up the entry, keeping the headers for that lookup.
+        let find_request: ext::FindChunksRequest = std::mem::take(request.get_mut()).try_into()?;
+        find_request.ensure_supported()?;
+
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+
+        let stream = self.find_candidates(entry_id, find_request).await?;
+
+        let stream = stream.map(|result| {
+            result.map(|batch| re_protos::cloud::v1alpha1::FindChunksResponse {
+                data: Some(batch.into()),
+                meta: None,
+            })
+        });
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::FindChunksStream
         ))
     }
 
@@ -2280,151 +2180,6 @@ fn get_entry_id_from_headers<T>(
     }
 }
 
-/// Return the equivalent latest at query
-fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
-    match &latest_at.index {
-        Some(index) => LatestAtQuery::new(*index, latest_at.at),
-        None => LatestAtQuery::new_static(),
-    }
-}
-
-/// Metadata for a single chunk, extractable from either a physical `Chunk` or a manifest.
-struct ChunkMetadata {
-    chunk_id: ChunkId,
-    entity_path: EntityPath,
-    is_static: bool,
-    byte_size: u64,
-    timelines: IntMap<TimelineName, AbsoluteTimeRange>,
-}
-
-impl ChunkMetadata {
-    fn from_chunk(chunk: &Chunk) -> Self {
-        let timelines = chunk
-            .timelines()
-            .values()
-            .map(|col| (*col.timeline().name(), col.time_range()))
-            .collect();
-        Self {
-            chunk_id: chunk.id(),
-            entity_path: chunk.entity_path().clone(),
-            is_static: chunk.is_static(),
-            byte_size: re_byte_size::SizeBytes::total_size_bytes(chunk),
-            timelines,
-        }
-    }
-
-    fn from_manifest(
-        manifest: &RrdManifest,
-        chunk_id: ChunkId,
-        row_idx: usize,
-        chunk_timelines: Option<&IntMap<TimelineName, AbsoluteTimeRange>>,
-    ) -> Self {
-        Self {
-            chunk_id,
-            entity_path: EntityPath::from(manifest.col_chunk_entity_path().value(row_idx)),
-            is_static: manifest.col_chunk_is_static().value(row_idx),
-            byte_size: manifest.col_chunk_byte_size_uncompressed()[row_idx],
-            timelines: chunk_timelines.cloned().unwrap_or_default(),
-        }
-    }
-}
-
-/// Returns physical chunks and missing virtual chunk IDs for a query.
-fn get_chunks_for_query_results(
-    resolved: &ResolvedStore,
-    entity_paths: &IntSet<EntityPath>,
-    select_all_entity_paths: bool,
-    query: &ext::Query,
-) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
-    // Contract: a Query with neither `latest_at` nor `range` means "all chunks", regardless of
-    // entity filter. This is exercised by the shared `re_redap_tests::query_dataset` "default" test
-    // case.
-    if query.latest_at.is_none() && query.range.is_none() {
-        return match resolved {
-            ResolvedStore::Eager(h) => (h.read().iter_physical_chunks().cloned().collect(), vec![]),
-            ResolvedStore::Lazy(lazy) => (vec![], lazy.manifest().col_chunk_ids().to_vec()),
-        };
-    }
-
-    let paths = if select_all_entity_paths {
-        resolved.all_entities()
-    } else if entity_paths.is_empty() {
-        // Per `cloud.proto`: `(select_all_entity_paths=false, entity_paths=[])`
-        // is a valid query that selects no entities and yields no results.
-        return (Vec::new(), Vec::new());
-    } else {
-        entity_paths.clone()
-    };
-
-    let mut all_chunks: Vec<Arc<Chunk>> = vec![];
-    let mut all_missing: BTreeSet<ChunkId> = BTreeSet::new();
-    let mut seen_physical: BTreeSet<ChunkId> = BTreeSet::new();
-
-    for entity_path in &paths {
-        if let Some(latest_at) = &query.latest_at {
-            let latest_at_q = latest_at_or_static(latest_at);
-            let results = resolved.latest_at_relevant_chunks_for_all_components(
-                ChunkTrackingMode::Report,
-                &latest_at_q,
-                entity_path,
-                true,
-            );
-            for chunk in results.chunks {
-                if seen_physical.insert(chunk.id()) {
-                    all_chunks.push(chunk);
-                }
-            }
-            all_missing.extend(results.missing_virtual);
-        }
-        if let Some(range) = &query.range {
-            let range_q = RangeQuery::new(range.index, range.index_range);
-            let results = resolved.range_relevant_chunks_for_all_components(
-                ChunkTrackingMode::Report,
-                &range_q,
-                entity_path,
-                true,
-            );
-            for chunk in results.chunks {
-                if seen_physical.insert(chunk.id()) {
-                    all_chunks.push(chunk);
-                }
-            }
-            // Range tightening for virtual chunks. `range_relevant_chunks_for_all_components`
-            // post-filters physical chunks against the per-chunk timeline range, but the
-            // start-time-indexed scan that produces `missing_virtual` can pull in chunks
-            // whose actual time range falls outside the query (the index lookup widens by
-            // the longest chunk interval). Without this drop, lazy stores leak those
-            // chunks to the client and rows outside the requested range show up in the
-            // result set. Latest-at is unaffected because it doesn't fan out via
-            // `missing_virtual` here.
-            for chunk_id in results.missing_virtual {
-                let keep = match resolved {
-                    // Eager stores already went through the physical post-filter above.
-                    ResolvedStore::Eager(_) => true,
-                    ResolvedStore::Lazy(lazy) => match lazy.timeline_ranges().get(&chunk_id) {
-                        // No temporal entry => static chunk; let it through (matches the
-                        // `chunk.is_static() && include_static` branch of the physical filter).
-                        None => true,
-                        Some(per_timeline) => per_timeline
-                            .get(&range.index)
-                            .is_some_and(|time_range| time_range.intersects(range.index_range)),
-                    },
-                };
-                if keep {
-                    all_missing.insert(chunk_id);
-                }
-            }
-        }
-    }
-
-    // Remove any virtual IDs that turned out to be physical in another entity's result.
-    for id in &seen_physical {
-        all_missing.remove(id);
-    }
-
-    (all_chunks, all_missing.into_iter().collect())
-}
-
 /// Streams `num_bytes` of pseudo-random (incompressible) bytes back to the client,
 /// split into ~1 MiB chunks.
 fn bandwidth_test_stream(
@@ -2434,101 +2189,4 @@ fn bandwidth_test_stream(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    use futures::TryStreamExt as _;
-    use re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest;
-    use re_protos::headers::RerunHeadersInjectorExt as _;
-
-    fn build_handler() -> RerunCloudHandler {
-        cfg_select! {
-            target_arch = "wasm32" => RerunCloudHandlerBuilder::new().build(),
-            _ => RerunCloudHandlerBuilder::new()
-                .build()
-                .expect("failed to build handler"),
-        }
-    }
-
-    /// The storage directory is created by `build`, is unique to this process, and is removed
-    /// together with the handler.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn storage_dir_lives_as_long_as_the_handler() {
-        let handler = build_handler();
-        let storage_dir = handler.storage_dir().to_owned();
-        assert!(storage_dir.is_dir());
-
-        let dir_name = storage_dir.file_name().unwrap().to_string_lossy();
-        let expected_prefix = format!("rerun-data-{}-", std::process::id());
-        assert!(
-            dir_name.starts_with(&expected_prefix),
-            "{dir_name:?} should start with {expected_prefix:?}"
-        );
-
-        drop(handler);
-        assert!(!storage_dir.exists());
-    }
-
-    /// Datasets created before asset datasets were introduced don't have one. Querying assets on
-    /// such a dataset returns no assets, and updating its entry creates the missing asset dataset.
-    #[tokio::test]
-    async fn legacy_dataset_without_asset_dataset() {
-        let handler = build_handler();
-
-        let dataset_id = EntryId::new();
-        handler
-            .store
-            .write()
-            .await
-            .create_dataset_impl(
-                EntryName::new("legacy_dataset").unwrap(),
-                dataset_id,
-                DatasetKind::Recording,
-                None,
-            )
-            .unwrap();
-
-        let responses: Vec<_> = handler
-            .get_assets_for_segment(
-                tonic::Request::new(GetAssetsForSegmentRequest::default())
-                    .with_entry_id(dataset_id),
-            )
-            .await
-            .expect("querying assets should succeed without an asset dataset")
-            .into_inner()
-            .try_collect()
-            .await
-            .unwrap();
-        assert!(
-            responses.is_empty(),
-            "a dataset without an asset dataset should have no assets"
-        );
-
-        let updated: ext::DatasetEntry = handler
-            .update_dataset_entry(tonic::Request::new(
-                UpdateDatasetEntryRequest {
-                    id: dataset_id,
-                    dataset_details: Default::default(),
-                }
-                .into(),
-            ))
-            .await
-            .expect("updating the entry should succeed")
-            .into_inner()
-            .dataset
-            .unwrap()
-            .try_into()
-            .unwrap();
-
-        let asset_dataset_id = updated
-            .dataset_details
-            .asset_dataset
-            .expect("updating the entry should create the missing asset dataset");
-        let store = handler.store.read().await;
-        assert_eq!(
-            store.dataset(asset_dataset_id).unwrap().dataset_kind(),
-            DatasetKind::Asset,
-        );
-    }
-}
+mod tests;

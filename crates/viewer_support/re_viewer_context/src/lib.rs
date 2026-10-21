@@ -34,7 +34,6 @@ mod item_collection;
 mod item_counter;
 mod link_button;
 mod maybe_mut_ref;
-pub mod open_url;
 mod query_context;
 mod query_range;
 mod recording_or_table;
@@ -51,12 +50,17 @@ mod undo;
 mod utils;
 mod view;
 mod viewer_context;
+pub mod viewer_url;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
+
+/// Reflection shared by the viewer and its visualizers; clones observe the same runtime edits.
+pub type SharedReflection =
+    std::sync::Arc<parking_lot::RwLock<re_types_core::reflection::Reflection>>;
 
 /// Cursor shown when the pointer can move the time cursor.
 pub const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
@@ -132,19 +136,19 @@ pub use self::time_control::{
     TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
+    BufferAndFormatMatch, ComponentMatch, IndicatedEntities, PerVisualizerInstruction,
     PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
     VisualizableEntities, VisualizableReason,
 };
-pub use self::undo::BlueprintUndoState;
+pub use self::undo::{BlueprintUndoState, on_external_blueprint_edit};
 pub use self::utils::{
     auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_stream_time_from_query,
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult, IdentifiedViewSystem,
-    MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities, PreviewState,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
+    ActivePreview, BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult,
+    IdentifiedViewSystem, MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities,
+    PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
     SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass,
     ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
     ViewClassRegistryError, ViewClassUiOutput, ViewContext, ViewContextCollection,

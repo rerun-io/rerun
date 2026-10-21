@@ -58,7 +58,9 @@ With the viewer MCP, change the table on screen directly:
 `rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
 `{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
 `{"table": {}}` replaces it. `rerun_set_blueprint` returns an error for a filter
-that fails. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
+that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
+with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
+as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
 have a worked example of the JSON. For the whole Python API, including cards
 and segment previews, see
 [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
@@ -76,6 +78,14 @@ for c in dataset.schema().component_columns():
 For a local recording, stream it with `RrdReader` and read `entity_path` and
 the archetype off each chunk (see `rerun-chunk-processing`).
 
+The dataset schema alone doesn't list every entity a view can show. Assets are
+static data such as URDF robot meshes, which the viewer applies to every segment,
+but they don't appear in the segment entities. When `rerun_get_dataset_schema`
+lists `asset_ids` next to `entities`, call `rerun_get_dataset_assets_schema` to
+get the entities in each asset, and read it before choosing between a 2D and a
+3D view or preview. For example, `asset_ids: ["urdf-model-left", "urdf-model-right"]`
+means the robot models can go in a `Spatial3DView`.
+
 ## 2. Map archetype to view
 
 | Archetype family                                                                      | View                                                |
@@ -88,6 +98,8 @@ the archetype off each chunk (see `rerun-chunk-processing`).
 | `GeoPoints`, `GeoLineStrings`                                                         | `MapView`                                           |
 | `GraphNodes`, `GraphEdges`                                                            | `GraphView`                                         |
 | tabular / catalog data                                                                | `DataframeView`                                     |
+
+Asset entities, such as `Asset3D` and URDF meshes, go in a `Spatial3DView`.
 
 ## 3. Group entities into views
 

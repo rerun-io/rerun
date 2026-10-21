@@ -51,6 +51,7 @@ text_log_column.py linguist-generated=true
 time_int.py linguist-generated=true
 time_range.py linguist-generated=true
 timeline_column.py linguist-generated=true
+timeline_fraction.py linguist-generated=true
 timeline_name.py linguist-generated=true
 tooltip_mode.py linguist-generated=true
 view_class.py linguist-generated=true

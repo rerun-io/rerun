@@ -29,8 +29,7 @@ const FRAMES_PER_CALLBACK: usize = if cfg!(target_arch = "wasm32") {
 /// The player keeps its own cursor per stream, driven by the audio clock, and only
 /// jumps when the requested position drifts too far from it.
 ///
-/// The output device is opened lazily on the first request, because browsers only allow
-/// audio output after a user gesture.
+/// The output device is opened on the first request.
 ///
 /// Each player opens its own output device, so an application should create one
 /// and share it between everything that plays audio.

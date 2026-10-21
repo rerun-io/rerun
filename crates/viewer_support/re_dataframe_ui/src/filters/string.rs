@@ -2,8 +2,9 @@ use std::fmt::Formatter;
 
 use arrow::datatypes::DataType;
 use datafusion::sql::sqlparser::ast::{Expr as SqlExpr, Value};
-use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::ReTextEdit;
+use re_ui::{Size, SyntaxHighlighting};
 use strum::VariantArray as _;
 
 use super::{
@@ -189,10 +190,9 @@ impl Filter for StringFilter {
                 .accessible_name("Operator");
         });
 
-        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-            ui.text_edit_singleline(&mut self.query)
-                .accessible_name("Value")
-        });
+        let response = ui
+            .add(ReTextEdit::singleline(&mut self.query).size(Size::Tiny))
+            .accessible_name("Value");
 
         if popup_just_opened {
             response.request_focus();

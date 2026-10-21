@@ -10,14 +10,14 @@ use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_log_types::{AbsoluteTimeRangeF, EntityPath, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::UiExt as _;
 
 use re_view::execute_systems_for_view;
 use re_viewer_context::{
-    ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, NeedsRepaint,
-    PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
+    ActivePreview, ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter,
+    NeedsRepaint, PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
     TimeControlCommand, ViewClass, ViewContextSystemOncePerFrameResult, ViewId, ViewStates,
     ViewSystemIdentifier, ViewerContext, blueprint_timeline,
 };
@@ -86,6 +86,12 @@ pub(crate) struct SegmentPreviewRenderer<'a> {
     /// Timeline selected for every preview recording.
     timeline: Option<re_log_types::TimelineName>,
 
+    /// Playback speed of every preview recording, as a multiple of real time.
+    playback_speed: f32,
+
+    /// Where every preview starts, as a fraction of the recording's time range.
+    start_point: f64,
+
     /// Per-frame cache of once-per-frame context-system results, keyed by the recording's
     /// [`StoreId`]. Populated lazily on the first preview of each recording.
     once_per_frame_cache: RefCell<AHashMap<StoreId, OncePerFrameResults>>,
@@ -128,6 +134,8 @@ impl<'a> SegmentPreviewRenderer<'a> {
             data_column_index,
             view_ids,
             timeline: config.timeline,
+            playback_speed: config.playback_speed,
+            start_point: config.start_point,
             once_per_frame_cache: RefCell::default(),
         })
     }
@@ -302,6 +310,7 @@ impl<'a> SegmentPreviewRenderer<'a> {
         let store_id = recording.store_id();
         let time_ctrl = if let Some(preview) = preview_state.active_preview_mut(store_id) {
             apply_configured_timeline(&mut preview.time_control, self.timeline, recording);
+            apply_start_point(preview, self.start_point, recording);
             preview.time_control.clone()
         } else {
             let mut time_control = TimeControl::preview_time_control();
@@ -482,7 +491,14 @@ impl<'a> SegmentPreviewRenderer<'a> {
             views_rect,
         );
 
-        preview_playback_ui(ui, state, recording, row_hovered, views_rect);
+        preview_playback_ui(
+            ui,
+            state,
+            recording,
+            self.playback_speed,
+            row_hovered,
+            views_rect,
+        );
     }
 }
 
@@ -509,6 +525,7 @@ fn preview_playback_ui(
     ui: &mut egui::Ui,
     state: &mut PreviewState,
     recording: &EntityDb,
+    speed: f32,
     hovered: bool,
     rect: egui::Rect,
 ) {
@@ -517,9 +534,6 @@ fn preview_playback_ui(
     }
 
     let tokens = ui.tokens();
-
-    // TODO(RR-4810): Read the speed from `PreviewsConfig` and show the actual speed in the UI.
-    let speed = state.speed();
 
     let all_playing = state.playing();
 
@@ -669,6 +683,37 @@ fn apply_configured_timeline(
         recording,
         &[TimeControlCommand::SetActiveTimeline(configured_timeline)],
     );
+}
+
+/// Move the preview's time to the `start_point` fraction of its time range, once per timeline.
+///
+/// Waits until the recording's manifest is complete.
+fn apply_start_point(preview: &mut ActivePreview, start_point: f64, recording: &EntityDb) {
+    let timeline = *preview.time_control.timeline_name();
+    if preview.start_point_timeline == Some(timeline) {
+        return;
+    }
+
+    let manifest = recording.rrd_manifest_index();
+    if manifest.has_manifest() && !manifest.is_manifest_complete() {
+        return;
+    }
+
+    let Some(range) = std::iter::chain(
+        preview.time_control.time_range(recording),
+        manifest.timeline_range(&timeline),
+    )
+    .reduce(|a, b| a.union(b)) else {
+        return;
+    };
+
+    let time = AbsoluteTimeRangeF::from(range).lerp(start_point);
+    let _response = preview.time_control.handle_time_commands(
+        None::<&ViewerContext<'_>>,
+        recording,
+        &[TimeControlCommand::SetTime(time)],
+    );
+    preview.start_point_timeline = Some(timeline);
 }
 
 /// Shows a preview timeline when the grid card/row is hovered.
@@ -827,6 +872,9 @@ mod tests {
 
         /// Index of the preview the pointer is over, as the card layout passes it to the renderer.
         hovered_preview: Option<usize>,
+
+        /// Playback speed from the table blueprint.
+        speed: f32,
     }
 
     /// Shows the playback controls of each recording, side by side.
@@ -849,6 +897,7 @@ mod tests {
                     let PlaybackTestState {
                         view_states,
                         hovered_preview,
+                        speed,
                     } = state;
 
                     ui.columns(recordings.len(), |columns| {
@@ -878,6 +927,7 @@ mod tests {
                                 ui,
                                 preview_state,
                                 recording,
+                                *speed,
                                 *hovered_preview == Some(index),
                                 rect,
                             );
@@ -887,6 +937,7 @@ mod tests {
                 PlaybackTestState {
                     view_states,
                     hovered_preview,
+                    speed: 1.0,
                 },
             )
     }
@@ -957,15 +1008,15 @@ mod tests {
         harness.run();
         assert!(!is_playing(&harness, &store_id));
 
-        // Play-all takes over from the button, and sets the speed of every preview.
-        let preview_state = harness
-            .state_mut()
+        // Play-all takes over from the button, and the blueprint speed reaches every preview.
+        let state = harness.state_mut();
+        state.speed = 2.0;
+        state
             .view_states
             .preview_state
             .as_mut()
-            .expect("the preview is registered");
-        preview_state.set_playing(true);
-        preview_state.set_speed(2.0);
+            .expect("the preview is registered")
+            .set_playing(true);
         harness.run();
 
         assert!(is_playing(&harness, &store_id));

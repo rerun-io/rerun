@@ -514,10 +514,11 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
 
                     let label = ui.label("Path");
 
-                    re_ui::text_edit::text_edit_scope(ui, |ui| {
-                        ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path))
-                            .labelled_by(label.id)
-                    });
+                    ui.add(
+                        re_ui::text_edit::ReTextEdit::singleline(&mut options.ffmpeg_path)
+                            .size(re_ui::Size::Tiny),
+                    )
+                    .labelled_by(label.id);
                 });
             });
 

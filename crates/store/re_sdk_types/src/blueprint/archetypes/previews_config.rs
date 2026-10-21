@@ -35,6 +35,23 @@ pub struct PreviewsConfig {
     ///
     /// If left empty a timeline is automatically picked, preferring custom over built-in.
     pub timeline: Option<SerializedComponentBatch>,
+
+    /// Whether every preview cell plays.
+    ///
+    /// A single preview can still be played or paused on its own.
+    /// Defaults to paused, and following plays like playing.
+    pub play_state: Option<SerializedComponentBatch>,
+
+    /// Playback speed of every preview cell.
+    ///
+    /// Defaults to 1.0.
+    pub playback_speed: Option<SerializedComponentBatch>,
+
+    /// Where every preview cell starts, as a fraction of the recording's time range.
+    ///
+    /// 0.0 is the start and 1.0 the end.
+    /// Defaults to 0.5.
+    pub start_point: Option<SerializedComponentBatch>,
 }
 
 impl PreviewsConfig {
@@ -51,6 +68,48 @@ impl PreviewsConfig {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::play_state`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::PlayState`].
+    #[inline]
+    pub fn descriptor_play_state() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PreviewsConfig".into()),
+                component: "PreviewsConfig:play_state".into(),
+                component_type: Some("rerun.blueprint.components.PlayState".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::playback_speed`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::PlaybackSpeed`].
+    #[inline]
+    pub fn descriptor_playback_speed() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PreviewsConfig".into()),
+                component: "PreviewsConfig:playback_speed".into(),
+                component_type: Some("rerun.blueprint.components.PlaybackSpeed".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::start_point`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::TimelineFraction`].
+    #[inline]
+    pub fn descriptor_start_point() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PreviewsConfig".into()),
+                component: "PreviewsConfig:start_point".into(),
+                component_type: Some("rerun.blueprint.components.TimelineFraction".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -59,15 +118,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [PreviewsConfig::descriptor_timeline()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PreviewsConfig::descriptor_timeline(),
+            PreviewsConfig::descriptor_play_state(),
+            PreviewsConfig::descriptor_playback_speed(),
+            PreviewsConfig::descriptor_start_point(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [PreviewsConfig::descriptor_timeline()]);
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PreviewsConfig::descriptor_timeline(),
+            PreviewsConfig::descriptor_play_state(),
+            PreviewsConfig::descriptor_playback_speed(),
+            PreviewsConfig::descriptor_start_point(),
+        ]
+    });
 
 impl PreviewsConfig {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 1usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 impl ::re_types_core::Archetype for PreviewsConfig {
@@ -116,7 +189,27 @@ impl ::re_types_core::Archetype for PreviewsConfig {
         let timeline = arrays_by_descr
             .get(&Self::descriptor_timeline())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_timeline()));
-        Ok(Self { timeline })
+        let play_state = arrays_by_descr
+            .get(&Self::descriptor_play_state())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_play_state())
+            });
+        let playback_speed = arrays_by_descr
+            .get(&Self::descriptor_playback_speed())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_playback_speed())
+            });
+        let start_point = arrays_by_descr
+            .get(&Self::descriptor_start_point())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_start_point())
+            });
+        Ok(Self {
+            timeline,
+            play_state,
+            playback_speed,
+            start_point,
+        })
     }
 }
 
@@ -124,7 +217,15 @@ impl ::re_types_core::AsComponents for PreviewsConfig {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.timeline.clone()).flatten().collect()
+        [
+            self.timeline.clone(),
+            self.play_state.clone(),
+            self.playback_speed.clone(),
+            self.start_point.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -134,7 +235,12 @@ impl PreviewsConfig {
     /// Create a new `PreviewsConfig`.
     #[inline]
     pub fn new() -> Self {
-        Self { timeline: None }
+        Self {
+            timeline: None,
+            play_state: None,
+            playback_speed: None,
+            start_point: None,
+        }
     }
 
     /// Update only some specific fields of a `PreviewsConfig`.
@@ -152,6 +258,18 @@ impl PreviewsConfig {
                 crate::blueprint::components::TimelineName::arrow_empty(),
                 Self::descriptor_timeline(),
             )),
+            play_state: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::PlayState::arrow_empty(),
+                Self::descriptor_play_state(),
+            )),
+            playback_speed: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::PlaybackSpeed::arrow_empty(),
+                Self::descriptor_playback_speed(),
+            )),
+            start_point: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TimelineFraction::arrow_empty(),
+                Self::descriptor_start_point(),
+            )),
         }
     }
 
@@ -164,6 +282,45 @@ impl PreviewsConfig {
         timeline: impl Into<crate::blueprint::components::TimelineName>,
     ) -> Self {
         self.timeline = try_serialize_field(Self::descriptor_timeline(), [timeline]);
+        self
+    }
+
+    /// Whether every preview cell plays.
+    ///
+    /// A single preview can still be played or paused on its own.
+    /// Defaults to paused, and following plays like playing.
+    #[inline]
+    pub fn with_play_state(
+        mut self,
+        play_state: impl Into<crate::blueprint::components::PlayState>,
+    ) -> Self {
+        self.play_state = try_serialize_field(Self::descriptor_play_state(), [play_state]);
+        self
+    }
+
+    /// Playback speed of every preview cell.
+    ///
+    /// Defaults to 1.0.
+    #[inline]
+    pub fn with_playback_speed(
+        mut self,
+        playback_speed: impl Into<crate::blueprint::components::PlaybackSpeed>,
+    ) -> Self {
+        self.playback_speed =
+            try_serialize_field(Self::descriptor_playback_speed(), [playback_speed]);
+        self
+    }
+
+    /// Where every preview cell starts, as a fraction of the recording's time range.
+    ///
+    /// 0.0 is the start and 1.0 the end.
+    /// Defaults to 0.5.
+    #[inline]
+    pub fn with_start_point(
+        mut self,
+        start_point: impl Into<crate::blueprint::components::TimelineFraction>,
+    ) -> Self {
+        self.start_point = try_serialize_field(Self::descriptor_start_point(), [start_point]);
         self
     }
 }

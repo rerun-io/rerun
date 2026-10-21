@@ -8,6 +8,7 @@ expression: fields_without_placeholder
     "CardLayout:field_order (Utf8)",
     "EyeControls3D:speed (Float64)",
     "LineGrid3D:plane (FixedSizeList(4 x non-null Float32))",
+    "PreviewsConfig:playback_speed (Float64)",
     "SpatialInformation:target_frame (Utf8)",
     "TableBlueprint:filters (Utf8)",
     "TableBlueprint:sort_by (Struct(\"column\": non-null Utf8, \"direction\": UInt8))",

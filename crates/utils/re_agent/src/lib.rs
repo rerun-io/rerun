@@ -17,6 +17,8 @@
 //! [`SessionContext::preamble`] is sent as an extra text block with the first prompt, and
 //! [`McpServerConfig`]s are handed over as additional MCP servers when the session opens.
 //! Neither removes anything the agent would otherwise have.
+//! Unless the user has picked a model, the session also switches to a fast one if the agent
+//! offers it (see [`LaunchConfig::model_preferences`]).
 
 mod connection;
 mod elicitation;

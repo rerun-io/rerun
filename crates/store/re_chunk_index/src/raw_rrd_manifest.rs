@@ -1086,13 +1086,74 @@ impl RawRrdManifest {
 
     /// Cheap.
     fn check_index_columns_are_correct(&self) -> ChunkIndexResult<()> {
+        // Constant-time lookups for the `:start`/`:end` counterpart checks below.
+        let fields_by_name: ahash::HashMap<&str, &FieldRef> = self
+            .data
+            .schema_ref()
+            .fields()
+            .iter()
+            .map(|field| (field.name().as_str(), field))
+            .collect();
+
+        let mut counterpart_name = String::new();
+
         {
             // All columns either end in :has_static_data or :num_rows or :start or :end (or are global).
             for field in self.data.schema().fields() {
-                if let Some((_, suffix)) = field.name().rsplit_once(':') {
+                if let Some((prefix, suffix)) = field.name().rsplit_once(':') {
                     match suffix {
                         Self::INDEX_MARKER_START | Self::INDEX_MARKER_END => {
-                            // Checked in depth below
+                            // All `:start` columns should have a matching `:end`, and vice versa,
+                            // and both must share a supported index datatype.
+
+                            let counterpart = if suffix == Self::INDEX_MARKER_START {
+                                Self::INDEX_MARKER_END
+                            } else {
+                                Self::INDEX_MARKER_START
+                            };
+
+                            counterpart_name.clear();
+                            counterpart_name.push_str(prefix);
+                            counterpart_name.push(':');
+                            counterpart_name.push_str(counterpart);
+
+                            let Some(field_counterpart) =
+                                fields_by_name.get(counterpart_name.as_str())
+                            else {
+                                return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' does not have matching `:{counterpart}` field",
+                                        field.name()
+                                    ),
+                                }));
+                            };
+
+                            match field.data_type() {
+                                arrow::datatypes::DataType::Int64
+                                | arrow::datatypes::DataType::Timestamp(_, _)
+                                | arrow::datatypes::DataType::Duration(_) => {}
+
+                                datatype => {
+                                    return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                        reason: format!(
+                                            "field '{}' is {datatype} which is not a supported index datatype",
+                                            field.name(),
+                                        ),
+                                    }));
+                                }
+                            }
+
+                            if field.data_type() != field_counterpart.data_type() {
+                                return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' is {} but field '{}' is {}",
+                                        field.name(),
+                                        field.data_type(),
+                                        field_counterpart.name(),
+                                        field_counterpart.data_type()
+                                    ),
+                                }));
+                            }
                         }
 
                         Self::INDEX_MARKER_HAS_STATIC_DATA => {
@@ -1149,91 +1210,9 @@ impl RawRrdManifest {
             }
         }
 
-        {
-            // All `:start` columns should have a matching `:end`.
-            // All `:end` columns should have a matching `:start`.
-            for field in self.data.schema().fields() {
-                if let Some((prefix, suffix)) = field.name().rsplit_once(':') {
-                    let counterpart = match suffix {
-                        "start" => "end",
-                        "end" => "start",
-                        _ => continue,
-                    };
-
-                    let field_counterpart = self
-                        .data
-                        .schema_ref()
-                        .field_with_name(&format!("{prefix}:{counterpart}"))
-                        .map_err(|_err| {
-                            ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' does not have matching `:{counterpart}` field",
-                                    field.name()
-                                ),
-                            })
-                        })?;
-
-                    match field.data_type() {
-                        arrow::datatypes::DataType::Int64
-                        | arrow::datatypes::DataType::Timestamp(_, _)
-                        | arrow::datatypes::DataType::Duration(_) => {}
-
-                        datatype => {
-                            return Err(ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' is {datatype} which is not a supported index datatype",
-                                    field.name(),
-                                ),
-                            }));
-                        }
-                    }
-
-                    if field.data_type() != field_counterpart.data_type() {
-                        return Err(ChunkIndexError::from(ChunkError::Malformed {
-                            reason: format!(
-                                "field '{}' is {} but field '{}' is {}",
-                                field.name(),
-                                field.data_type(),
-                                field_counterpart.name(),
-                                field_counterpart.data_type()
-                            ),
-                        }));
-                    }
-                }
-            }
-        }
-
-        {
-            // All `:start` columns should have a matching `:num_rows`.
-            for field in self.data.schema().fields() {
-                if let Some((prefix, "num_rows")) = field.name().rsplit_once(':') {
-                    let field_num_rows = self
-                        .data
-                        .schema_ref()
-                        .field_with_name(&format!("{prefix}:num_rows"))
-                        .map_err(|_err| {
-                            ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' does not have matching `:num_rows` field",
-                                    field.name()
-                                ),
-                            })
-                        })?;
-
-                    match field_num_rows.data_type() {
-                        arrow::datatypes::DataType::UInt64 => {}
-                        datatype => {
-                            return Err(ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' is {datatype} while it should be UInt64Array",
-                                    field_num_rows.name(),
-                                ),
-                            }));
-                        }
-                    }
-                }
-            }
-        }
+        // NOTE: there is deliberately no `:num_rows` check here. Per-component `:start` columns
+        // always have a `:num_rows` sibling, and `calc_temporal_map` enforces that where it is
+        // relied upon. Global `{index}:start` columns have no `:num_rows` sibling at all.
 
         Ok(())
     }
@@ -1277,6 +1256,15 @@ impl RawRrdManifest {
 
         let mut column_name = String::new();
         if any_static_chunks {
+            // Constant-time lookups for the static-marker checks below.
+            let manifest_field_names: ahash::HashSet<&str> = self
+                .data
+                .schema_ref()
+                .fields()
+                .iter()
+                .map(|field| field.name().as_str())
+                .collect();
+
             // If there are any static chunks, then all components must have :has_static_data indexes.
             for (_column, descr, _is_static) in &sorbet_columns {
                 Self::write_column_name(
@@ -1288,14 +1276,11 @@ impl RawRrdManifest {
                     Some(Self::INDEX_MARKER_HAS_STATIC_DATA),
                 );
 
-                self.data
-                    .schema_ref()
-                    .field_with_name(&column_name)
-                    .map_err(|_err| {
-                        ChunkIndexError::from(ChunkError::Malformed {
-                            reason: format!("static index '{column_name}' is missing"),
-                        })
-                    })?;
+                if !manifest_field_names.contains(column_name.as_str()) {
+                    return Err(ChunkIndexError::from(ChunkError::Malformed {
+                        reason: format!("static index '{column_name}' is missing"),
+                    }));
+                }
             }
         }
 

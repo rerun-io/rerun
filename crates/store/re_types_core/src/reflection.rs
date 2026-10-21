@@ -62,7 +62,7 @@ impl Reflection {
     ) -> Option<&arrow::datatypes::DataType> {
         self.component_identifiers
             .get(&component)
-            .and_then(|descr| descr.component_type)
+            .and_then(|reflection| reflection.descriptor().component_type)
             .and_then(|ct| self.components.get(&ct))
             .map(|r| &r.datatype)
     }
@@ -88,7 +88,7 @@ impl Reflection {
 ///
 /// For unsupported types this yields an empty array instead.
 ///
-/// See also [`ComponentReflection::custom_placeholder`].
+/// See also [`ComponentTypeReflection::custom_placeholder`].
 pub fn generic_placeholder_for_datatype(
     datatype: &arrow::datatypes::DataType,
 ) -> arrow::array::ArrayRef {
@@ -293,14 +293,113 @@ pub fn generic_placeholder_for_datatype(
 }
 
 /// Runtime reflection about components.
-pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentType, ComponentReflection>;
+pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentType, ComponentTypeReflection>;
 
 /// A set of component types.
 pub type ComponentTypeSet = nohash_hasher::IntSet<ComponentType>;
 
 /// Runtime reflection about component identifiers.
 pub type ComponentIdentifierReflectionMap =
-    nohash_hasher::IntMap<ComponentIdentifier, ComponentDescriptor>;
+    nohash_hasher::IntMap<ComponentIdentifier, ComponentIdentifierReflection>;
+
+/// Metadata for an exact component identifier, plus recommended mappings originating from it.
+///
+/// The entry's descriptor describes the source component that we expect for the given identifier.
+/// Heuristic mappings operate independently of that and describe ways of mapping to
+/// other components using simple component mappings that can be expressed by the Viewer's blueprint.
+#[derive(Clone, Debug)]
+pub struct ComponentIdentifierReflection {
+    descriptor: ComponentDescriptor,
+
+    heuristic_mappings: Vec<HeuristicMapping>,
+}
+
+impl ComponentIdentifierReflection {
+    /// Describes this entry's source component.
+    ///
+    /// The component type and archetype may be unknown even when mappings are available.
+    pub fn descriptor(&self) -> &ComponentDescriptor {
+        &self.descriptor
+    }
+
+    /// Replaces descriptor metadata while preserving the component identifier and heuristic mappings.
+    pub fn update_descriptor(
+        &mut self,
+        component_type: Option<ComponentType>,
+        archetype: Option<ArchetypeName>,
+    ) {
+        self.descriptor.component_type = component_type;
+        self.descriptor.archetype = archetype;
+    }
+
+    /// Mappings from this entry's source component to targets recommended by the Viewer,
+    /// with at most one selector per target identifier.
+    pub fn heuristic_mappings(&self) -> &[HeuristicMapping] {
+        &self.heuristic_mappings
+    }
+
+    /// Registers a mapping, ignoring repeated registrations of the same target and selector.
+    ///
+    /// Returns an error for conflicting selectors on an existing target, leaving the mapping unchanged.
+    pub fn add_heuristic_mapping(
+        &mut self,
+        mapping: HeuristicMapping,
+    ) -> Result<(), HeuristicMappingConflict> {
+        if let Some(existing) = self
+            .heuristic_mappings
+            .iter()
+            .find(|existing| existing.descriptor.component == mapping.descriptor.component)
+        {
+            if existing.selector != mapping.selector {
+                return Err(HeuristicMappingConflict {
+                    source_component: self.descriptor.component,
+                    target_component: mapping.descriptor.component,
+                    existing_selector: existing.selector.clone(),
+                    conflicting_selector: mapping.selector,
+                });
+            }
+        } else {
+            self.heuristic_mappings.push(mapping);
+        }
+        Ok(())
+    }
+}
+
+/// A target already has a heuristic mapping with a different selector from the same source.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "Conflicting heuristic mapping selectors from {source_component} to {target_component}: keeping {existing_selector:?}, ignoring {conflicting_selector:?}"
+)]
+pub struct HeuristicMappingConflict {
+    source_component: ComponentIdentifier,
+    target_component: ComponentIdentifier,
+    existing_selector: String,
+    conflicting_selector: String,
+}
+
+impl From<ComponentDescriptor> for ComponentIdentifierReflection {
+    fn from(descriptor: ComponentDescriptor) -> Self {
+        Self {
+            descriptor,
+            heuristic_mappings: Vec::new(),
+        }
+    }
+}
+
+/// A target component derived from one source component, optionally using a lens selector string.
+///
+/// Consumers match the target identifier against their inputs.
+/// Schema compatibility and conversion errors are checked during query execution.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HeuristicMapping {
+    /// Descriptor of the derived target, distinct from the source descriptor held by
+    /// the containing [`ComponentIdentifierReflection`].
+    pub descriptor: ComponentDescriptor,
+
+    /// Lens selector string used to derive the target component from the source component.
+    /// May be empty if no lens selector was used.
+    pub selector: String,
+}
 
 pub fn generate_component_identifier_reflection(
     archetypes: &ArchetypeReflectionMap,
@@ -310,7 +409,7 @@ pub fn generate_component_identifier_reflection(
         .flat_map(|(archetype_name, archetype_reflection)| {
             archetype_reflection.fields.iter().map(|field| {
                 let descr = field.component_descriptor(*archetype_name);
-                (descr.component, descr)
+                (descr.component, descr.into())
             })
         })
         .collect()
@@ -318,7 +417,7 @@ pub fn generate_component_identifier_reflection(
 
 /// Information about a Rerun [`component`](crate::Component), generated by codegen.
 #[derive(Clone, Debug)]
-pub struct ComponentReflection {
+pub struct ComponentTypeReflection {
     /// Markdown docstring for the component.
     pub docstring_md: &'static str,
 
@@ -357,7 +456,7 @@ pub struct ComponentReflection {
     pub verify_arrow_array: fn(&dyn arrow::array::Array) -> crate::DeserializationResult<()>,
 }
 
-impl ComponentReflection {
+impl ComponentTypeReflection {
     /// Whether this component is an enum type (as opposed to a struct/union).
     #[inline]
     pub fn is_enum(&self) -> bool {
@@ -628,8 +727,48 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 
 #[cfg(test)]
 mod test {
-    use super::{ComponentDescriptor, ComponentDescriptorExt as _};
+    use super::{
+        ComponentDescriptor, ComponentDescriptorExt as _, ComponentIdentifierReflection,
+        HeuristicMapping,
+    };
     use crate::{ArchetypeName, ComponentIdentifier};
+
+    #[test]
+    fn heuristic_mappings_are_unique_per_target() {
+        let mut reflection: ComponentIdentifierReflection =
+            ComponentDescriptor::partial("custom:source").into();
+        let mapping = HeuristicMapping {
+            descriptor: ComponentDescriptor::partial("custom:target"),
+            selector: ".first".to_owned(),
+        };
+        reflection
+            .add_heuristic_mapping(mapping.clone())
+            .expect("a new target should be accepted");
+        reflection
+            .add_heuristic_mapping(mapping.clone())
+            .expect("an identical mapping should be accepted");
+        let error = reflection
+            .add_heuristic_mapping(HeuristicMapping {
+                descriptor: ComponentDescriptor::partial("custom:target")
+                    .with_component_type("custom.Target".into()),
+                selector: ".second".to_owned(),
+            })
+            .expect_err("a conflicting selector should be rejected");
+        assert_eq!(reflection.heuristic_mappings(), &[mapping]);
+        assert_eq!(
+            error,
+            super::HeuristicMappingConflict {
+                source_component: "custom:source".into(),
+                target_component: "custom:target".into(),
+                existing_selector: ".first".to_owned(),
+                conflicting_selector: ".second".to_owned(),
+            }
+        );
+        assert_eq!(
+            error.to_string(),
+            "Conflicting heuristic mapping selectors from custom:source to custom:target: keeping \".first\", ignoring \".second\""
+        );
+    }
 
     #[test]
     fn component_descriptor_manipulation() {

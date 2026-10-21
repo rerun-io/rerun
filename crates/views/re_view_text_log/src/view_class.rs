@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+use egui::NumExt as _;
 use re_data_ui::item_ui::{self, timeline_button};
 use re_dataframe_ui::{apply_table_style_fixes, cell_ui, header_ui};
 use re_log::ResultExt as _;
@@ -299,21 +300,29 @@ fn table_ui(
         }
         if let Some(timeline) = TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
         {
+            table_columns.push(
+                egui_table::Column::new(110.0)
+                    .resizable(true)
+                    .id(ui.make_persistent_id(("timeline", timeline))),
+            );
             column_kinds.push(ColumnKind::Timeline(timeline));
-            table_columns.push(text_log_column(110.0, 60.0));
         }
     }
     for col in columns {
         if !*col.visible {
             continue;
         }
-        let (width, min_width) = match col.kind {
-            bp_encodings::TextLogColumnKind::EntityPath => (120.0, 60.0),
-            bp_encodings::TextLogColumnKind::LogLevel => (50.0, 44.0),
-            bp_encodings::TextLogColumnKind::Body => (400.0, 100.0),
+        let width = match col.kind {
+            bp_encodings::TextLogColumnKind::EntityPath => 120.0,
+            bp_encodings::TextLogColumnKind::LogLevel => 50.0,
+            bp_encodings::TextLogColumnKind::Body => 400.0,
         };
+        table_columns.push(
+            egui_table::Column::new(width)
+                .resizable(true)
+                .id(ui.make_persistent_id(col.kind)),
+        );
         column_kinds.push(ColumnKind::Kind(col.kind));
-        table_columns.push(text_log_column(width, min_width));
     }
 
     // Only draw the current time indicator when the active timeline is shown as a column.
@@ -341,7 +350,6 @@ fn table_ui(
     let mut table = egui_table::Table::new()
         .id_salt(table_id_salt(view_id))
         .columns(table_columns)
-        .auto_size_mode(egui_table::AutoSizeMode::Always)
         .headers(vec![egui_table::HeaderRow::new(
             tokens.table_header_height(),
         )])
@@ -357,14 +365,6 @@ fn table_ui(
 enum ColumnKind {
     Timeline(TimelineName),
     Kind(bp_encodings::TextLogColumnKind),
-}
-
-/// A resizable column that starts out `width` wide but may be squeezed down to `min_width`
-/// when the view is too narrow to fit every column at its preferred width.
-fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
-    egui_table::Column::new(width)
-        .range(egui::Rangef::new(min_width, f32::INFINITY))
-        .resizable(true)
 }
 
 struct TextLogTableDelegate<'a> {
@@ -394,26 +394,6 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
                 }
             }
         });
-    }
-
-    fn row_ui(&mut self, ui: &mut egui::Ui, row_nr: u64) {
-        let num_rows = self.entries.len() as u64;
-        let paint_marker_at = if self.marker_row == Some(row_nr) {
-            Some(ui.max_rect().top())
-        } else if row_nr + 1 == num_rows && self.marker_row == Some(num_rows) {
-            // The time cursor is past all rows: draw the marker below the last one.
-            Some(ui.max_rect().bottom())
-        } else {
-            None
-        };
-
-        if let Some(y) = paint_marker_at {
-            ui.painter().hline(
-                ui.max_rect().x_range(),
-                y,
-                (1.0, ui.tokens().strong_fg_color),
-            );
-        }
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
@@ -475,6 +455,28 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
                 }
             }
         });
+
+        // Painted per cell rather than in `row_ui`, so that it ends up on top of the cell separators.
+        let num_rows = self.entries.len() as u64;
+        let paint_marker_at = if self.marker_row == Some(cell.row_nr) {
+            Some(ui.max_rect().top())
+        } else if cell.row_nr + 1 == num_rows && self.marker_row == Some(num_rows) {
+            // The time cursor is past all rows: draw the marker below the last one.
+            Some(ui.max_rect().bottom())
+        } else {
+            None
+        };
+
+        if let Some(y) = paint_marker_at {
+            let stroke = egui::Stroke::new(1.0, ui.tokens().strong_fg_color);
+
+            // The table clips cells to its content, so a marker on the outer edge
+            // of the first or last row would be clipped away.
+            let visible_y = ui.clip_rect().shrink(0.5 * stroke.width).y_range();
+            let y = y.at_least(visible_y.min).at_most(visible_y.max);
+
+            ui.painter().hline(ui.max_rect().x_range(), y, stroke);
+        }
     }
 
     fn default_row_height(&self) -> f32 {

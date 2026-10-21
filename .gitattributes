@@ -1,8 +1,9 @@
 * text=auto eol=lf
 *.zip -text diff
 Cargo.lock linguist-generated=false
-pixi.lock linguist-generated=true
 crates/utils/re_workspace_hack/Cargo.toml linguist-generated=true
+pixi.lock linguist-generated=true
+rerun_js/web-viewer/proto/** linguist-generated=true
 # git-lfs:
 **/*.aac filter=lfs diff=lfs merge=lfs -text
 **/*.dae filter=lfs diff=lfs merge=lfs -text

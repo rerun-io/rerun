@@ -1,12 +1,11 @@
-//! Shared component drag-and-drop handling for views that map a dropped component onto a single
-//! visualizer slot (e.g. the time series and state timeline views).
+//! Shared component drag-and-drop handling for time series and state timeline views.
 
 use re_log_types::{ComponentPath, ResolvedEntityPathRule, RuleEffect};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::archetypes::{ActiveVisualizers, ViewContents};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_viewer_context::DatatypeMatch;
+use re_viewer_context::ComponentMatch;
 use re_viewer_context::{
     BlueprintContext as _, RecommendedMappings, ViewId, ViewSystemIdentifier, ViewerContext,
     VisualizableReason, VisualizerComponentSource, VisualizerInstruction,
@@ -26,24 +25,18 @@ pub enum ComponentDropResult {
     Incompatible,
 }
 
-/// Drive `ViewClass::handle_component_drop` for a view that maps a dropped component onto a single
-/// visualizer slot: compute the drop outcome and, once `released`, perform the mutation.
-///
-/// For each dropped component a `visualizer` instruction is added whose `target_component` slot
-/// (e.g. `Scalars.scalars`) is remapped from it.
+/// Compute component drop feedback and, once `released`, persist the selected mappings.
 pub fn handle_component_drop(
     ctx: &ViewerContext<'_>,
     view_id: ViewId,
     component_paths: &[ComponentPath],
     released: bool,
-    visualizer: ViewSystemIdentifier,
-    target_component: ComponentIdentifier,
+    candidates: &[(ViewSystemIdentifier, ComponentIdentifier)],
 ) -> ComponentDropResult {
     ComponentDropHandler {
         ctx,
         view_id,
-        visualizer,
-        target_component,
+        candidates,
     }
     .on_component_drop(component_paths, released)
 }
@@ -57,11 +50,8 @@ struct ComponentDropHandler<'a> {
     /// View receiving the drop.
     view_id: ViewId,
 
-    /// Visualizer added for each dropped component.
-    visualizer: ViewSystemIdentifier,
-
-    /// The component slot that a dropped component is remapped into (e.g. `Scalars.scalars`).
-    target_component: ComponentIdentifier,
+    /// Visualizers and their required slots, in tie-breaking preference order.
+    candidates: &'a [(ViewSystemIdentifier, ComponentIdentifier)],
 }
 
 impl ComponentDropHandler<'_> {
@@ -83,58 +73,91 @@ impl ComponentDropHandler<'_> {
         ComponentDropResult::Accept
     }
 
-    /// If `component_path` is a compatible source for the configured visualizer, returns a component source for the visualizer instruction.
-    fn compatible_component_source(
+    fn compatible_mapping(
         &self,
         component_path: &ComponentPath,
-    ) -> Option<VisualizerComponentSource> {
-        let visualizable_entities = self
-            .ctx
-            .visualizable_entities_per_visualizer
-            .get(&self.visualizer)?;
-
-        match visualizable_entities.get(&component_path.entity_path) {
-            Some(VisualizableReason::Always | VisualizableReason::ExactMatchAny) => Some(
-                VisualizerComponentSource::identity(*component_path.component()),
-            ),
-
-            Some(VisualizableReason::SingleRequiredComponentMatch(m)) => {
-                let component_match = m.matches.get(&component_path.component)?;
-
-                let selector = match component_match {
-                    // TODO(andreas): Picking just the first here is a stop gap measure.
-                    // We should be asking the view for a good recommendation or just show all of them?
-                    DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => selectors
-                        .first()
-                        .map_or(String::new(), |(selector, _datatype)| selector.to_string()),
-
-                    DatatypeMatch::NativeSemantics { .. } => String::new(),
-                };
-
-                Some(VisualizerComponentSource::SourceComponent {
-                    source_component: *component_path.component(),
-                    selector,
-                })
-            }
-
-            // A single component can't satisfy a buffer + format match because that would require two.
-            Some(VisualizableReason::BufferAndFormatMatch(_)) | None => None,
+    ) -> Option<(ViewSystemIdentifier, RecommendedMappings)> {
+        /// Declaration order ranks identity mappings (including native semantic matches)
+        /// before heuristic mappings, then physical datatype matches.
+        /// `min_by_key` selects the lowest rank, with candidate order breaking ties.
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        enum MappingPriority {
+            Identity,
+            Heuristic,
+            PhysicalDatatype,
         }
+
+        self.candidates
+            .iter()
+            .filter_map(|&(visualizer, target_component)| {
+                let reason = self
+                    .ctx
+                    .visualizable_entities_per_visualizer
+                    .get(&visualizer)?
+                    .get(&component_path.entity_path)?;
+                let (priority, mappings) = match reason {
+                    VisualizableReason::Always | VisualizableReason::ExactMatchAny => (
+                        MappingPriority::Identity,
+                        RecommendedMappings::new(
+                            target_component,
+                            VisualizerComponentSource::identity(*component_path.component()),
+                        ),
+                    ),
+                    VisualizableReason::SingleRequiredComponentMatch(m) => {
+                        match m.matches.get(component_path.component())? {
+                            ComponentMatch::NativeSemantics { .. } => (
+                                MappingPriority::Identity,
+                                RecommendedMappings::new(
+                                    target_component,
+                                    VisualizerComponentSource::identity(
+                                        *component_path.component(),
+                                    ),
+                                ),
+                            ),
+                            ComponentMatch::HeuristicMapping { mappings, .. } => {
+                                (MappingPriority::Heuristic, mappings.clone())
+                            }
+                            ComponentMatch::PhysicalDatatypeOnly {
+                                field_accessors, ..
+                            } => (
+                                MappingPriority::PhysicalDatatype,
+                                RecommendedMappings::new(
+                                    target_component,
+                                    VisualizerComponentSource::SourceComponent {
+                                        source_component: *component_path.component(),
+                                        // TODO(andreas): Offer a choice when several fields match.
+                                        selector: field_accessors
+                                            .first()
+                                            .map_or(String::new(), |(selector, _datatype)| {
+                                                selector.to_string()
+                                            }),
+                                    },
+                                ),
+                            ),
+                        }
+                    }
+                    // A single dropped component cannot supply both buffer and format.
+                    VisualizableReason::BufferAndFormatMatch(_) => return None,
+                };
+                Some((priority, visualizer, mappings))
+            })
+            .min_by_key(|(priority, _, _)| *priority)
+            .map(|(_, visualizer, mappings)| (visualizer, mappings))
     }
 
     /// Drop outcome for a single `component_path`.
     fn can_drop_component(&self, component_path: &ComponentPath) -> ComponentDropResult {
-        let Some(component_source) = self.compatible_component_source(component_path) else {
+        let Some((visualizer, mappings)) = self.compatible_mapping(component_path) else {
             return ComponentDropResult::Incompatible;
         };
-        self.drop_result_for_source(component_path, &component_source)
+        self.drop_result_for_mapping(component_path, visualizer, &mappings)
     }
 
-    /// Drop outcome given the already-extracted compatible `source` for `component_path`.
-    fn drop_result_for_source(
+    fn drop_result_for_mapping(
         &self,
         component_path: &ComponentPath,
-        source: &VisualizerComponentSource,
+        visualizer: ViewSystemIdentifier,
+        mappings: &RecommendedMappings,
     ) -> ComponentDropResult {
         let existing_instructions = self
             .ctx
@@ -144,11 +167,8 @@ impl ComponentDropHandler<'_> {
             .map(|data_result| data_result.visualizer_instructions.clone())
             .unwrap_or_default();
 
-        let recommended_mappings = RecommendedMappings::new(self.target_component, source.clone());
-
         let already_visualized = existing_instructions.iter().any(|v| {
-            v.visualizer_type == self.visualizer
-                && recommended_mappings.is_covered_by(&v.component_mappings)
+            v.visualizer_type == visualizer && mappings.is_covered_by(&v.component_mappings)
         });
         if already_visualized {
             return ComponentDropResult::CompatibleButAlreadyVisualized;
@@ -196,10 +216,7 @@ impl ComponentDropHandler<'_> {
         // Only act on compatible components; others can't be visualized by this view.
         let compatible: Vec<(_, _)> = component_paths
             .iter()
-            .filter_map(|cp| {
-                self.compatible_component_source(cp)
-                    .map(|source| (source, cp))
-            })
+            .filter_map(|cp| self.compatible_mapping(cp).map(|mapping| (mapping, cp)))
             .collect();
 
         let current_filter = view_blueprint.contents.entity_path_filter();
@@ -222,18 +239,21 @@ impl ComponentDropHandler<'_> {
                 });
         }
 
-        for (source, component_path) in compatible {
-            self.add_visualizer_for_component_source(source, component_path);
+        for ((visualizer, mappings), component_path) in compatible {
+            self.add_visualizer_for_mapping(visualizer, mappings, component_path);
         }
     }
 
-    fn add_visualizer_for_component_source(
+    fn add_visualizer_for_mapping(
         &self,
-        source: VisualizerComponentSource,
+        visualizer: ViewSystemIdentifier,
+        mappings: RecommendedMappings,
         component_path: &ComponentPath,
     ) {
         // Skip if an equivalent visualizer already exists.
-        if self.drop_result_for_source(component_path, &source) != ComponentDropResult::Accept {
+        if self.drop_result_for_mapping(component_path, visualizer, &mappings)
+            != ComponentDropResult::Accept
+        {
             return;
         }
 
@@ -250,11 +270,9 @@ impl ComponentDropHandler<'_> {
             .map(|data_result| data_result.visualizer_instructions.clone())
             .unwrap_or_default();
 
-        let recommended_mappings = RecommendedMappings::new(self.target_component, source);
-
-        let new_instruction = recommended_mappings.into_visualizer_instruction(
+        let new_instruction = mappings.into_visualizer_instruction(
             VisualizerInstructionId::new_random(),
-            self.visualizer,
+            visualizer,
             &override_base_path,
         );
 

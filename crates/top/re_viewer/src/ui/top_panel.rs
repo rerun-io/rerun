@@ -7,7 +7,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
-use crate::App;
+use crate::AppCore;
 use crate::app_blueprint::AppBlueprint;
 use crate::dev_panel::{DevPanelTab, MAX_PLAUSIBLE_LATENCY_SEC, latency_text};
 use crate::latency_tracker::{LatencyResult, ServerLatencyTrackers};
@@ -36,7 +36,7 @@ impl NavigationButtonsState {
 
 pub fn top_panel(
     frame: &eframe::Frame,
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
@@ -117,7 +117,7 @@ pub fn top_panel(
 
 fn top_bar_ui(
     frame: &eframe::Frame,
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
@@ -276,7 +276,7 @@ fn command_palette_trigger_ui(
     top_bar_rect: Rect,
     left_content_right: f32,
     right_content_left: f32,
-    app: &App,
+    app: &AppCore,
 ) {
     const MAX_WIDTH: f32 = 420.0;
     const MIN_WIDTH: f32 = 180.0;
@@ -370,7 +370,21 @@ fn command_palette_trigger_ui(
     }
 }
 
-fn navigation_buttons_state(app: &App) -> NavigationButtonsState {
+impl AppCore {
+    /// Whether navigating back and forward in history would do anything.
+    pub fn navigation_availability(&self) -> (bool, bool) {
+        match navigation_buttons_state(self) {
+            #[cfg(target_arch = "wasm32")]
+            NavigationButtonsState::Hidden => (false, false),
+            NavigationButtonsState::Visible {
+                can_go_back,
+                can_go_forward,
+            } => (can_go_back, can_go_forward),
+        }
+    }
+}
+
+fn navigation_buttons_state(app: &AppCore) -> NavigationButtonsState {
     #[cfg(target_arch = "wasm32")]
     if app.startup_options().web_history_enabled() {
         return crate::web_history::navigation_availability().map_or(
@@ -392,7 +406,7 @@ fn navigation_buttons_at(
     ui: &mut egui::Ui,
     top_bar_rect: Rect,
     forward_center_x: f32,
-    app: &App,
+    app: &AppCore,
     state: NavigationButtonsState,
 ) {
     let (can_go_back, can_go_forward) = match state {
@@ -437,7 +451,7 @@ fn navigation_buttons_at(
 
 fn navigation_button(
     ui: &mut egui::Ui,
-    app: &App,
+    app: &AppCore,
     enabled: bool,
     icon: &'static icons::Icon,
     alt_text: &'static str,
@@ -636,7 +650,7 @@ fn connection_status_ui(
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
@@ -805,7 +819,7 @@ fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u
     );
 }
 
-fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &AppCore) {
     if let Some(frame_time) = app.frame_time_history.average() {
         let ms = frame_time * 1e3;
 
@@ -822,7 +836,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
     }
 }
 
-fn fps_ui(ui: &mut egui::Ui, app: &App) {
+fn fps_ui(ui: &mut egui::Ui, app: &AppCore) {
     if let Some(fps) = app.frame_time_history.rate() {
         let visuals = ui.visuals();
 

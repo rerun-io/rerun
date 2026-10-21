@@ -472,7 +472,7 @@ impl Query {
             // Component columns (with drag-and-drop entity group reordering)
             //
 
-            let response = egui_dnd::dnd(ui, "entity_group_dnd").show(
+            let response = egui_dnd::dnd(ui, ui.make_persistent_id("entity_group_dnd")).show(
                 entity_groups.iter_mut(),
                 |ui, group, handle, _state| {
                     ui.add_space(4.0);

@@ -180,19 +180,11 @@ pub struct CommandPalette {
     expanded_groups: BTreeSet<usize>,
 
     animation_started_at: Option<f64>,
-    transformed_layer: Option<egui::LayerId>,
 }
 
 impl CommandPalette {
-    fn reset(&mut self, ctx: &egui::Context) {
-        self.clear_transform(ctx);
+    fn reset(&mut self) {
         *self = Default::default();
-    }
-
-    fn clear_transform(&mut self, ctx: &egui::Context) {
-        if let Some(layer_id) = self.transformed_layer.take() {
-            ctx.set_transform_layer(layer_id, egui::emath::TSTransform::IDENTITY);
-        }
     }
 
     pub fn toggle(&mut self) {
@@ -209,7 +201,7 @@ impl CommandPalette {
         self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
             // Reset everything (query, selection, expanded groups) so reopening starts fresh:
-            self.reset(egui_ctx);
+            self.reset();
             return None;
         }
 
@@ -242,14 +234,16 @@ impl CommandPalette {
             .title_bar(false)
             .show(egui_ctx, |ui| self.window_content_ui(ui, provider))?;
 
+        if scale < 1.0 {
+            egui_ctx.transform_layer_shapes_after_rounding(
+                response.response.layer_id,
+                crate::motion::scale_transform(response.response.rect.center(), scale),
+            );
+        }
+
         if !self.visible {
             return response.inner?;
         }
-
-        let transform = crate::motion::scale_transform(response.response.rect.center(), scale);
-        egui_ctx.set_transform_layer(response.response.layer_id, transform);
-        self.transformed_layer = Some(response.response.layer_id);
-        let transformed_rect = transform * response.response.rect;
 
         // Clicking or dragging anywhere outside the palette closes it.
         // We check the press (not the click) so that starting a drag outside also closes it:
@@ -258,11 +252,10 @@ impl CommandPalette {
                 && input
                     .pointer
                     .interact_pos()
-                    .is_some_and(|pos| !transformed_rect.contains(pos))
+                    .is_some_and(|pos| !response.response.rect.contains(pos))
         });
         if pressed_outside {
             self.visible = false; // The `reset` happens on the next frame.
-            self.clear_transform(egui_ctx);
             return None;
         }
 
@@ -316,7 +309,7 @@ impl CommandPalette {
             .inner;
 
         if selected_command.is_some() {
-            self.reset(ui.ctx());
+            self.reset();
         }
 
         selected_command
@@ -513,7 +506,8 @@ mod tests {
         }
     }
 
-    fn render_palette(ctx: &egui::Context, palette: &mut CommandPalette, time: f64) {
+    /// Returns whether any painted shape is scaled by the opening animation.
+    fn render_palette(ctx: &egui::Context, palette: &mut CommandPalette, time: f64) -> bool {
         let mut output = ctx.run_ui(
             egui::RawInput {
                 time: Some(time),
@@ -528,6 +522,11 @@ mod tests {
             },
         );
         output.textures_delta.clear();
+
+        output
+            .shapes
+            .iter()
+            .any(|clipped| clipped.transform_after_tessellation.scaling < 1.0)
     }
 
     #[test]
@@ -538,11 +537,10 @@ mod tests {
 
         palette.toggle();
         render_palette(&ctx, &mut palette, 0.0);
-        render_palette(&ctx, &mut palette, 0.016);
-
-        let layer_id = palette
-            .transformed_layer
-            .expect("the visible command palette should register its transformed layer");
+        assert!(
+            render_palette(&ctx, &mut palette, 0.016),
+            "the opening command palette should be scaled"
+        );
         assert_eq!(
             ctx.memory(|memory| memory.top_modal_layer()),
             Some(egui::LayerId::new(
@@ -551,21 +549,17 @@ mod tests {
             )),
             "the command palette should block interaction with lower layers"
         );
-        let opening_transform = ctx
-            .layer_transform_to_global(layer_id)
-            .expect("the opening command palette should have an input-aware transform");
-        assert!(opening_transform.scaling < 1.0);
 
         palette.toggle();
-        render_palette(&ctx, &mut palette, 0.032);
-        assert_eq!(ctx.layer_transform_to_global(layer_id), None);
+        assert!(!render_palette(&ctx, &mut palette, 0.032));
 
         palette.toggle();
         render_palette(&ctx, &mut palette, 0.048);
-        render_palette(&ctx, &mut palette, 0.064);
-        let reopened_transform = ctx
-            .layer_transform_to_global(layer_id)
-            .expect("the reopened command palette should restart its animation");
-        assert!(reopened_transform.scaling < 1.0);
+        assert!(
+            render_palette(&ctx, &mut palette, 0.064),
+            "the reopened command palette should restart its animation"
+        );
+
+        assert!(!render_palette(&ctx, &mut palette, 1.0));
     }
 }

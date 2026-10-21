@@ -23,7 +23,7 @@ wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 async fn version() {
-    let service = RerunCloudHandlerBuilder::new().build();
+    let service = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!()).build();
 
     let response = service
         .version(tonic::Request::new(VersionRequest {}))
@@ -65,7 +65,8 @@ fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogCl
 }
 
 async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
-    let service = Arc::new(RerunCloudHandlerBuilder::new().build());
+    let service =
+        Arc::new(RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!()).build());
     let catalog_client = in_process_catalog_client(service);
     let mut client = catalog_client.client().await.expect("failed to get client");
     let footer_suffix = if with_footer {
@@ -103,7 +104,8 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let schema = client
         .get_dataset_schema(dataset.details.id)
         .await
-        .expect("failed to get dataset schema");
+        .expect("failed to get dataset schema")
+        .schema;
 
     assert!(schema.fields().iter().any(|field| {
         let metadata = field.metadata();

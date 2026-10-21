@@ -118,6 +118,12 @@ impl Environment {
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.
+///
+/// Only call this for binaries and other top-level artifacts, not for libraries.
+/// On CI, the exported build time and git hash change with every commit, so any crate that
+/// reads them misses the compiler cache (sccache) on every build, along with everything that
+/// depends on it.
+/// Libraries should instead take a `re_build_info::BuildInfo` from the binary that uses them.
 pub fn export_build_info_vars_for_crate(crate_name: &str) {
     let environment = Environment::detect();
 
@@ -193,9 +199,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
 
         // rust version
-        let (rustc, llvm) = rust_llvm_versions().unwrap_or_default();
-        set_env("RE_BUILD_RUSTC_VERSION", &rustc);
-        set_env("RE_BUILD_LLVM_VERSION", &llvm);
+        export_rustc_version_vars();
 
         // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
         // because otherwise it won't show up when compiling through maturin.
@@ -230,6 +234,18 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
 
         set_env("RE_BUILD_FEATURES", &features);
     }
+}
+
+/// Call from the `build.rs` file of a crate that reads `RE_BUILD_RUSTC_VERSION` and
+/// `RE_BUILD_LLVM_VERSION`, but nothing else from [`export_build_info_vars_for_crate`].
+///
+/// These only change together with the toolchain, so crates that read them stay cacheable
+/// across commits, unlike crates that embed the build time or git hash.
+/// This makes it safe to call for libraries.
+pub fn export_rustc_version_vars() {
+    let (rustc, llvm) = rust_llvm_versions().unwrap_or_default();
+    set_env("RE_BUILD_RUSTC_VERSION", &rustc);
+    set_env("RE_BUILD_LLVM_VERSION", &llvm);
 }
 
 /// Jiff directly gives IOS 8601 / RFC 3339 format

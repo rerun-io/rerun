@@ -1,11 +1,11 @@
 use re_log_types::TimelineName;
 use re_sdk_types::blueprint::archetypes::{
-    CardLayout as CardLayoutArchetype, TableBlueprint as TableBlueprintArchetype,
-    TableLayout as TableLayoutArchetype,
+    CardLayout as CardLayoutArchetype, PreviewsConfig as PreviewsConfigArchetype,
+    TableBlueprint as TableBlueprintArchetype, TableLayout as TableLayoutArchetype,
 };
 use re_sdk_types::blueprint::components::{
-    ColumnDisplayMode, ColumnName, SortBy as BlueprintSortBy, SqlFilterExpression, TableLayoutKind,
-    TimelineName as BlueprintTimelineName,
+    ColumnDisplayMode, ColumnName, PlayState, PlaybackSpeed, SortBy as BlueprintSortBy,
+    SqlFilterExpression, TableLayoutKind, TimelineFraction, TimelineName as BlueprintTimelineName,
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
@@ -15,9 +15,52 @@ use crate::blueprint::{CardLayout, TableColumn, TableLayout};
 use crate::datafusion_table_widget::{DataColumns, TableColumnHeuristic};
 
 /// Shared configuration for preview columns in every layout.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PreviewsConfig {
     pub timeline: Option<TimelineName>,
+
+    /// Whether every preview plays, as set by the play-all button.
+    pub playing: bool,
+
+    /// Playback speed of every preview, as a multiple of real time.
+    pub playback_speed: f32,
+
+    /// Where every preview starts, from 0.0 at the start of the recording to 1.0 at the end.
+    pub start_point: f64,
+}
+
+impl Default for PreviewsConfig {
+    fn default() -> Self {
+        Self {
+            timeline: None,
+            playing: false,
+            playback_speed: 1.0,
+            start_point: *TimelineFraction::default().0,
+        }
+    }
+}
+
+impl PreviewsConfig {
+    /// Write whether every preview plays, taking effect next frame.
+    pub fn save_playing(blueprint_ctx: &AppBlueprintCtx<'_>, playing: bool) {
+        let play_state = if playing {
+            PlayState::Playing
+        } else {
+            PlayState::Paused
+        };
+        blueprint_ctx.save_blueprint_archetype(
+            "/table".into(),
+            &PreviewsConfigArchetype::update_fields().with_play_state(play_state),
+        );
+    }
+
+    /// Write the playback speed of every preview, taking effect next frame.
+    pub fn save_playback_speed(blueprint_ctx: &AppBlueprintCtx<'_>, speed: f32) {
+        blueprint_ctx.save_blueprint_archetype(
+            "/table".into(),
+            &PreviewsConfigArchetype::update_fields().with_playback_speed(speed as f64),
+        );
+    }
 }
 
 /// The sort of a table and where it comes from.
@@ -42,7 +85,7 @@ impl ResolvedSortBy {
 ///
 /// Initial values are loaded from registered blueprint archetypes and completed from the table's
 /// schema and runtime heuristics.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TableBlueprint<'a> {
     /// The currently selected layout.
     ///
@@ -86,7 +129,7 @@ impl<'a> TableBlueprint<'a> {
             &"/table".into(),
             std::iter::chain(
                 TableBlueprintArchetype::all_component_identifiers(),
-                re_sdk_types::blueprint::archetypes::PreviewsConfig::all_component_identifiers(),
+                PreviewsConfigArchetype::all_component_identifiers(),
             ),
         );
 
@@ -121,10 +164,29 @@ impl<'a> TableBlueprint<'a> {
             previews_config: PreviewsConfig {
                 timeline: results
                     .component_mono::<BlueprintTimelineName>(
-                        re_sdk_types::blueprint::archetypes::PreviewsConfig::descriptor_timeline()
-                            .component,
+                        PreviewsConfigArchetype::descriptor_timeline().component,
                     )
                     .and_then(|timeline| TimelineName::try_new(timeline.as_str()).ok()),
+                playing: results
+                    .component_mono::<PlayState>(
+                        PreviewsConfigArchetype::descriptor_play_state().component,
+                    )
+                    .is_some_and(|play_state| play_state != PlayState::Paused),
+                playback_speed: results
+                    .component_mono::<PlaybackSpeed>(
+                        PreviewsConfigArchetype::descriptor_playback_speed().component,
+                    )
+                    .map_or(1.0, |speed| **speed as f32),
+                start_point: results
+                    .component_mono::<TimelineFraction>(
+                        PreviewsConfigArchetype::descriptor_start_point().component,
+                    )
+                    .map(|fraction| **fraction)
+                    .filter(|fraction| fraction.is_finite())
+                    .map_or_else(
+                        || *TimelineFraction::default().0,
+                        |fraction| fraction.clamp(0.0, 1.0),
+                    ),
             },
             table_layout: TableLayout::load_and_resolve(
                 blueprint_ctx,

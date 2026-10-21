@@ -8,9 +8,9 @@ use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
 };
 
-use super::{App, WindowDecorationsRequest};
+use super::{AppCore, WindowDecorationsRequest};
 
-impl App {
+impl AppCore {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
@@ -149,7 +149,7 @@ impl App {
                         active_store_context,
                         storage_context,
                         &self.table_blueprints,
-                        &self.reflection,
+                        &self.reflection.read(),
                         &self.component_ui_registry,
                         &self.component_fallback_registry,
                         &self.view_class_registry,

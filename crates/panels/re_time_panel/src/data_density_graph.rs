@@ -831,7 +831,9 @@ pub struct DensityGraphBuilder<'a> {
 
 impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
-        let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+        let pointer_pos = ui
+            .input(|i| i.pointer.hover_pos())
+            .filter(|&pos| ui.ctx().layer_id_at(pos) == Some(ui.layer_id()));
         let interact_radius = ui.style().interaction.interact_radius;
 
         Self {

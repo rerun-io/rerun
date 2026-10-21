@@ -1143,10 +1143,10 @@ pub fn create_minimal_binary_recording_in(
 
 /// Creates a recording that can be split into multiple chunks.
 ///
-/// This function creates an intentionally unsorted RRD. Each entity will have 9
-/// rows of unsorted data. When combined with the environment variable
-/// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED=3` it will produce 3 chunks of 3 rows each.
-/// The middle chunk will have nulls in some of the data.
+/// Each entity gets three temporal chunks of three rows each, at frames `base + {10, 20, 30}`
+/// for `base` in `{0, 30, 60}`, plus one static chunk. The rows of a chunk are out of frame
+/// order. The middle chunk has no `colors`. The chunks are sent prebuilt, so the batcher does
+/// not split or merge them.
 pub fn multi_chunked_entities_recording(
     tuid_prefix: TuidPrefix,
     segment_id: &str,
@@ -1228,6 +1228,109 @@ pub fn multi_chunked_entities_recording(
             }
         }
     }
+
+    rec.flush_blocking()?;
+
+    Ok(TempPath::new(tmp_dir, tmp_path))
+}
+
+/// The single entity [`create_two_timeline_recording`] logs.
+pub const TWO_TIMELINE_ENTITY_PATH: &str = "my/entity";
+
+/// Creates a recording whose every temporal row carries two index values: a frame sequence
+/// `frame_nr` and a nanosecond timestamp `timestamp`.
+///
+/// The two timelines disagree on ordering and on unit: `timestamp` neither rises nor falls with
+/// `frame_nr`, inside a chunk or across chunks, so the bounds of one say nothing about the
+/// bounds of the other.
+///
+/// Exactly one entity logs, so every `frame_nr` row carries exactly one `timestamp` value. Were
+/// two entities to log different timestamps at the same frame, a merged row and a per-entity
+/// pruned candidate set would legitimately disagree.
+///
+/// `colors` is logged on the first row only. Under a latest-at fill that pulls every later
+/// row's `timestamp` forward to the first row's value, across chunk bounds, so a filter on
+/// `timestamp` keeps rows whose own chunk bounds exclude it.
+///
+/// `start_frame` shifts the frame sequence and `timestamp_offset_ms` the timestamps, so two
+/// segments built from this fixture interleave on both timelines.
+///
+/// Chunk ids come from `next_chunk_id_generator(tuid_prefix)`: the three temporal chunks
+/// first, in `ROWS` order, then the static chunk. The chunks are sent prebuilt, so the
+/// batcher does not split or merge them.
+pub fn create_two_timeline_recording(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    start_frame: i64,
+    timestamp_offset_ms: i64,
+) -> anyhow::Result<TempPath> {
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+
+    /// `(frame_nr, timestamp in milliseconds)` per row, one line per chunk.
+    ///
+    /// Rows within a chunk are out of frame order.
+    const ROWS: [[(i64, i64); 3]; 3] = [
+        [(10, 80), (30, 90), (20, 70)],
+        [(40, 60), (60, 50), (50, 40)],
+        [(70, 20), (90, 10), (80, 30)],
+    ];
+
+    const MILLISECOND_NS: i64 = 1_000_000;
+
+    let tmp_dir = tempfile::tempdir()?;
+    let tmp_path = tmp_dir.path().join(format!("{segment_id}.rrd"));
+
+    let rec = RecordingStreamBuilder::new(re_log_types::ApplicationId::try_new(format!(
+        "rerun_example_{segment_id}"
+    ))?)
+    .recording_id(segment_id)
+    .send_properties(false)
+    .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let entity_path = EntityPath::from(TWO_TIMELINE_ENTITY_PATH);
+    let points = MyPoint::from_iter(0..1);
+    let colors = MyColor::from_iter(0..1);
+
+    for (chunk_index, rows) in ROWS.iter().enumerate() {
+        let mut builder = Chunk::builder_with_id(next_chunk_id(), entity_path.clone());
+
+        for (row_index, (frame, timestamp_ms)) in rows.iter().enumerate() {
+            let frame = TimeInt::new_temporal(start_frame + frame);
+            let timestamp =
+                TimeInt::new_temporal((timestamp_offset_ms + timestamp_ms) * MILLISECOND_NS);
+            let time_point = [
+                build_index_value(frame, TimeType::Sequence),
+                build_index_value(timestamp, TimeType::TimestampNs),
+            ];
+
+            // Only the very first row carries colors, so every later row's color under
+            // `SparseFillStrategy::LatestAtGlobal` is filled from this one chunk.
+            let is_first_row = chunk_index == 0 && row_index == 0;
+            let mut components = vec![(MyPoints::descriptor_points(), Some(&points as _))];
+            if is_first_row {
+                components.push((MyPoints::descriptor_colors(), Some(&colors as _)));
+            }
+
+            builder = builder.with_sparse_component_batches(next_row_id(), time_point, components);
+        }
+
+        rec.send_chunk(builder.build()?);
+    }
+
+    let labels = vec![MyLabel("two timelines".to_owned())];
+    let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path)
+        .with_sparse_component_batches(
+            next_row_id(),
+            TimePoint::default(),
+            [(MyPoints::descriptor_labels(), Some(&labels as _))],
+        )
+        .build()?;
+    rec.send_chunk(static_chunk);
 
     rec.flush_blocking()?;
 

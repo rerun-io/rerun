@@ -26,7 +26,7 @@ use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
 use re_sdk_types::blueprint::components::AutoLayout;
 use re_sdk_types::components::{Color, Radius};
 use re_sdk_types::encodings::Bool;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _};
+use re_viewer::viewer_test_utils;
 use re_viewer_context::Route;
 
 // TODO(RR-4929): We should properly show the application id,
@@ -232,15 +232,12 @@ async fn internal_catalog_load_rbl() {
         .open_url_or_file(&rbl_path.display().to_string());
 
     viewer_test_utils::step_until("blueprint catalog entry opened", &mut harness, |harness| {
-        matches!(
-            harness.state().testonly_get_route(),
-            Route::RedapEntry { .. }
-        )
+        matches!(harness.state().route(), Route::RedapEntry { .. })
     });
 
     let Route::RedapEntry {
         origin, entry_id, ..
-    } = harness.state().testonly_get_route()
+    } = harness.state().route()
     else {
         panic!("expected a catalog entry route");
     };
@@ -466,6 +463,7 @@ async fn open_url_answers_once_the_recording_has_arrived() {
         let request = ViewerControlRequest {
             kind: Some(viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
                 url: rrd_path.display().to_string(),
+                navigate: None,
             })),
         };
         let on_done = UiCallback::new({

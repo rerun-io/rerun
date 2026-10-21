@@ -11,7 +11,8 @@ use re_viewer_context::{TimeControl, TimeControlCommand};
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;
 
-const TIME_CONTROL_ROW_SIZE: Size = Size::custom(22.0);
+/// Height of the buttons and fields in the time panel's toolbar row.
+pub const TIME_CONTROL_ROW_SIZE: Size = Size::custom(22.0);
 
 impl TimeControlUi {
     #[expect(clippy::unused_self)]

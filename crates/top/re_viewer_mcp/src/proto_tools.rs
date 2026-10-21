@@ -37,6 +37,11 @@ const OPERATION_ONEOF: &str = "kind";
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
+/// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
+///
+/// A `.proto` cannot mark a `oneof` as omittable, so this list does.
+const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
+
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
 
@@ -158,15 +163,24 @@ fn real_oneofs(message: &MessageDescriptor) -> impl Iterator<Item = OneofDescrip
     message.oneofs().filter(|oneof| !oneof.is_synthetic())
 }
 
+/// Whether a caller may leave this `oneof` unset.
+fn is_omittable(oneof: &OneofDescriptor) -> bool {
+    OMITTABLE_ONEOFS.contains(&oneof.full_name())
+}
+
 /// One JSON Schema branch per arm of a `oneof`.
 ///
 /// `oneOf` demands that exactly one branch match, so listing each arm as its own `required` is
-/// enough: no arm set matches nothing, and two arms set match two branches.
+/// enough: no arm set matches nothing, and two arms set match two branches. An omittable `oneof`
+/// gets one more branch that matches when no arm is set.
 fn oneof_branches(oneof: &OneofDescriptor) -> Value {
-    let branches: Vec<Value> = oneof
+    let mut branches: Vec<Value> = oneof
         .fields()
         .map(|field| json!({ "required": [field.name()] }))
         .collect();
+    if is_omittable(oneof) {
+        branches.push(json!({ "not": { "anyOf": branches.clone() } }));
+    }
     json!(branches)
 }
 
@@ -269,7 +283,11 @@ fn message_schema(
                 .fields()
                 .map(|field| field.name().to_owned())
                 .collect();
-            format!("Exactly one of `{}` must be set.", arms.join("`, `"))
+            if is_omittable(oneof) {
+                format!("At most one of `{}` may be set.", arms.join("`, `"))
+            } else {
+                format!("Exactly one of `{}` must be set.", arms.join("`, `"))
+            }
         })
         .collect();
 
@@ -441,10 +459,18 @@ fn validate(
             .fields()
             .map(|field| field.name().to_owned())
             .collect();
+        if set.is_empty() && is_omittable(&oneof) {
+            continue;
+        }
         if set.len() != 1 {
             return Err(format!(
-                "`{path}{}` takes exactly one of `{}`, but {}",
+                "`{path}{}` takes {} of `{}`, but {}",
                 oneof.name(),
+                if is_omittable(&oneof) {
+                    "at most one"
+                } else {
+                    "exactly one"
+                },
                 arms.join("`, `"),
                 if set.is_empty() {
                     "none were set".to_owned()
@@ -744,6 +770,16 @@ mod tests {
                 { "required": ["store_ids"] },
             ])
         );
+    }
+
+    /// `get_blueprint` reads what is on screen when it names no target, but still refuses two.
+    #[test]
+    fn an_omittable_oneof_takes_no_arm_but_not_several() {
+        build("get_blueprint", &json!({})).expect("the target is omittable");
+
+        let err = build("get_blueprint", &json!({ "recording": {}, "table": {} }))
+            .expect_err("two targets contradict each other");
+        assert!(err.contains("at most one"), "{err}");
     }
 
     #[test]

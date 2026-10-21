@@ -14,7 +14,7 @@ mod redap_server_command;
 mod table_command;
 mod ui_command;
 
-pub use self::command_kind::{CommandKind, CommandScope, ListedCommand, palette_commands};
+pub use self::command_kind::{CommandKind, CommandScope};
 pub use self::environment::CommandEnvironment;
 pub use self::recording_command::{
     RecordingCommand, RecordingCommandKind, RecordingCommandSender, SetPlaybackSpeed,

@@ -473,6 +473,13 @@ pub fn set_enabled(enabled: bool) {
     ANALYTICS_ENABLED.store(enabled, Ordering::Relaxed);
 }
 
+/// Whether the host application permits analytics.
+///
+/// This checks only the host policy without initializing analytics or reading its configuration.
+pub fn is_enabled_by_host() -> bool {
+    ANALYTICS_ENABLED.load(Ordering::Relaxed)
+}
+
 pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     if let Some(analytics) = Analytics::global_or_init() {
         analytics.record(cb());

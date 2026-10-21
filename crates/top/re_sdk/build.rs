@@ -1,3 +1,3 @@
 fn main() {
-    re_build_tools::export_build_info_vars_for_crate("re_sdk");
+    re_build_tools::export_rustc_version_vars();
 }

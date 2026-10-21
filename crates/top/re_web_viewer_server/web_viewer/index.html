@@ -161,11 +161,10 @@
     <script src="re_viewer.js"></script>
 
     <script>
-      const analytics_query = new URLSearchParams(window.location.search).get(
-        "analytics",
-      );
-      const analytics_enabled =
-        analytics_query !== "0" && analytics_query !== "false";
+      const query = new URLSearchParams(window.location.search);
+      const analytics_enabled = !query
+        .getAll("analytics")
+        .some((value) => value === "0" || value === "false");
 
       if (window.location.hostname == "app.rerun.io" && analytics_enabled) {
         const script = document.createElement("script");
@@ -373,8 +372,6 @@
 
         console.debug("Wasm loaded. Starting app…");
 
-        const query = new URLSearchParams(window.location.search);
-
         /*
           url: Option<StringOrStringArray>,
           manifest_url: Option<String>,
@@ -398,7 +395,7 @@
           // panel_state_overrides: undefined,
           // fullscreen: undefined,
           enable_history: true,
-          analytics: get_query_bool(query, "analytics", true),
+          analytics: analytics_enabled,
           notebook: get_query_bool(query, "notebook", false),
           persist: get_query_bool(query, "persist", true),
           fallback_token: query.get("token"),

@@ -79,8 +79,12 @@ snippet: howto/visualization/configure_table_blueprints[layouts]
 Column settings are independent between the two layouts: here, the Viewer automatically displays `recording_uri` as a link in the table, while `PreviewCell` turns it into a preview on cards.
 
 Setting `card_layout` enables cards and makes them the initial layout.
-`PreviewsConfig` selects a timeline for the previews (omit it to let the Viewer choose automatically).
-This setting is shared by all preview columns, whether they're in a table or on cards.
+`PreviewsConfig` sets the timeline, play state, playback speed, and start point of the previews.
+These settings are shared by all preview columns, whether they're in a table or on cards.
+Without a `timeline`, the Viewer picks one automatically.
+Pass `play_state="playing"` to start all previews playing, and `playback_speed` to change their speed, e.g. `playback_speed=0.5` for half speed.
+It defaults to `0.5`, the middle of the recording.
+The play and speed buttons in the table toolbar change the same settings, and a single preview can still be played or paused on its own.
 
 ### Saving and registering the blueprint
 
@@ -171,6 +175,8 @@ Each Python class maps to these entity paths and archetypes:
 
 In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
 `TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
+A column only shows as a preview when its `TableColumn.cell_kind` is `Preview`.
+`PreviewCell` sets this for you, but a blueprint written as entities, such as through the Viewer MCP server, sets it next to `TableColumnPreview`.
 
 ## Further examples
 

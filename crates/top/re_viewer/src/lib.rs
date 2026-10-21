@@ -48,7 +48,6 @@ mod latency_tracker;
 #[cfg(target_os = "macos")]
 mod native_menu;
 mod navigation;
-mod open_url_description;
 mod prefetch_chunks;
 mod registrations_in_flight;
 mod saving;
@@ -60,6 +59,7 @@ mod texture_readback;
 mod ui;
 mod version_check;
 mod viewer_log;
+mod viewer_url_description;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;
@@ -80,7 +80,7 @@ mod loading;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub use app::App;
+pub use app::{App, AppCore};
 pub(crate) use app_state::AppState;
 pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use external_memory::ExternalMemoryUser;
@@ -130,13 +130,6 @@ mod web_tools;
 
 #[cfg(target_arch = "wasm32")]
 mod web_history;
-
-// ---------------------------------------------------------------------------
-
-/// Information about this version of the crate.
-pub fn build_info() -> re_build_info::BuildInfo {
-    re_build_info::build_info!()
-}
 
 // ---------------------------------------------------------------------------
 

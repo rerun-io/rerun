@@ -50,7 +50,7 @@ logger = logging.getLogger("rerun")
 
 # Stack of currently-active `_MetricsCollectorHandle`s, scoped to the current
 # `contextvars.Context`. The Rust side reads this in
-# `rerun_py/src/catalog/dataset_view.rs::reader()` to bind metrics capture to
+# `rerun_py/src/catalog/dataset_selection.rs::reader()` to bind metrics capture to
 # the queries built inside an active scope — and nothing else.
 #
 # Stored as a tuple (immutable, cheap to copy on push) so each

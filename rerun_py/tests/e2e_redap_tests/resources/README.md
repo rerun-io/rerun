@@ -32,6 +32,18 @@ pixi run uvpy rerun_py/tests/e2e_redap_tests/resources/blueprints/generate_bluep
 Keep the filenames stable and make sure remote test resource mirrors are updated as well.
 
 
+### `schema_change/`
+Recordings that change the dataset schema when registered or unregistered, used by the schema-cache tests in `test_registration.py`:
+`boxes.rrd` logs a `/boxes` entity that appears in none of the `dataset/` files, and `new_index.rrd` logs on a timeline none of them use.
+Regenerate them from the repository root with:
+
+```bash
+cd rerun
+pixi run uvpy rerun_py/tests/e2e_redap_tests/resources/schema_change/generate_schema_change.py
+```
+
+Keep the filenames and recording ids stable and make sure remote test resource mirrors are updated as well.
+
 ## Remote resources
 
 When running tests against remote deployments, use `--resource-prefix` to point to S3/GCS copies of these resources:
@@ -40,4 +52,4 @@ When running tests against remote deployments, use `--resource-prefix` to point 
 pytest … --resource-prefix=s3://bucket/path/to/resources/
 ```
 
-The prefix should point to a directory containing the resource subdirectories used by the selected tests, such as `dataset/`, `simple_datatypes/`, and `blueprints/`.
+The prefix should point to a directory containing the resource subdirectories used by the selected tests, such as `dataset/`, `simple_datatypes/`, `blueprints/`, and `schema_change/`.

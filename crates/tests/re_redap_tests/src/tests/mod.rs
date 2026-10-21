@@ -5,6 +5,7 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod find_chunks;
 mod find_entries_filters;
 mod query_dataset;
 mod query_filter;
@@ -110,6 +111,13 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    find_chunks::find_chunks_fixed_schema,
+    find_chunks::find_chunks_invalid_requests,
+    find_chunks::find_chunks_range_bounds,
+    find_chunks::find_chunks_samples,
+    find_chunks::find_chunks_segment_scope,
+    find_chunks::find_chunks_simple_dataset,
+    find_chunks::find_chunks_with_layers,
     find_entries_filters::find_entries_asset_by_id_requires_explicit_kind,
     find_entries_filters::find_entries_asset_by_name_requires_explicit_kind,
     find_entries_filters::find_entries_default_excludes_asset_datasets,
@@ -120,25 +128,28 @@ define_redap_tests! {
     find_entries_filters::find_entries_legacy_entry_kind_miss_returns_empty,
     find_entries_filters::find_entries_legacy_entry_kind_still_works,
     find_entries_filters::find_entries_rejects_legacy_unspecified,
-    query_dataset::query_dataset_should_fail,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
-    query_dataset::query_dataset_consistent_schema_across_timelines,
     query_dataset::query_dataset_has_uncompressed_sizes,
+    query_dataset::query_dataset_matches_find_chunks,
     query_dataset::query_dataset_with_various_queries,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    query_filter::query_dataset_entity_without_filtered_timeline_reads_null,
+    query_filter::query_dataset_foreign_selection_timeline_matches_oracle,
     query_filter::query_dataset_or_of_ranges_fans_out,
+    query_filter::query_dataset_or_of_ranges_fans_out_query_dataset_path,
     query_filter::query_dataset_or_with_empty_branch_and_projection,
+    query_filter::query_dataset_projection_narrows_components_without_view_contents,
     query_filter::query_dataset_range_filter_with_and_without_latest_at_fill,
     query_filter::query_dataset_simple_filter,
     query_filter::query_dataset_with_limit,
     query_index_values::query_dataset_emits_per_segment_pushdown,
+    query_index_values::query_dataset_emits_per_segment_pushdown_query_dataset_path,
     query_index_values::query_dataset_index_values,
+    query_index_values::query_dataset_index_values_query_dataset_path,
     query_index_values::query_dataset_per_segment_values_wire_level,
-    query_index_values::query_dataset_per_segment_values_multi_value_wire_level,
     query_index_values::query_dataset_per_segment_values_validation_rejected,
-    query_index_values::query_dataset_per_segment_values_with_chunk_ids_intersects,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
     register_asset::asset_dataset_enforces_segment_limit,
     register_asset::asset_dataset_enforces_segment_size_limit,
@@ -202,6 +213,7 @@ define_redap_tests! {
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
     ; // OSS-only tests:
+    find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

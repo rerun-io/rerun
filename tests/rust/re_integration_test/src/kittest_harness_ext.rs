@@ -287,7 +287,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .clone();
         let builder = build_chunk(Chunk::builder(entity_path));
         let chunk = Arc::new(builder.build().expect("chunk should be successfully built"));
-        let store_hub = app.testonly_get_store_hub();
+        let store_hub = app.store_hub_mut();
         store_hub
             .add_chunk_for_tests(&recording_id, &chunk)
             .expect("chunk should be successfully added");
@@ -295,7 +295,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn init_recording(&mut self) {
         let app = self.state_mut();
-        let store_hub = app.testonly_get_store_hub();
+        let store_hub = app.store_hub_mut();
 
         let store_info = StoreInfo::testing_with_recording_id("test_recording"); // Fixed id shouldn't cause any problems with store subscribers here since we tear down the entire application for every test.
         let application_id = store_info.application_id().clone();
@@ -370,7 +370,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn init_recording_without_blueprint(&mut self) {
         let app = self.state_mut();
-        let store_hub = app.testonly_get_store_hub();
+        let store_hub = app.store_hub_mut();
 
         let recording_store_id = StoreId::new(
             StoreKind::Recording,
@@ -470,8 +470,8 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn debug_viewer_state(&mut self) {
         let app = self.state_mut();
-        let route = app.testonly_get_route().clone();
-        let store_hub = app.testonly_get_store_hub();
+        let route = app.route().clone();
+        let store_hub = app.store_hub();
         let active_recording = route.recording_id().and_then(|id| store_hub.entity_db(id));
         let active_blueprint = store_hub.active_blueprint_for_route(&route);
         println!("Active recording: {active_recording:#?}");
@@ -558,7 +558,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .active_recording_id()
             .expect("No active recording")
             .clone();
-        let store_hub = app.testonly_get_store_hub();
+        let store_hub = app.store_hub();
         let recording_entity_db = store_hub
             .entity_db(&recording_id)
             .expect("No active recording");
@@ -579,8 +579,8 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
         let app = self.state_mut();
-        let route = app.testonly_get_route().clone();
-        let store_hub = app.testonly_get_store_hub();
+        let route = app.route().clone();
+        let store_hub = app.store_hub();
         let blueprint_entity_db = store_hub
             .active_blueprint_for_route(&route)
             .expect("No active blueprint");

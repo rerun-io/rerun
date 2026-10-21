@@ -4,7 +4,7 @@ Test that scan-path gRPC errors surface to Python as typed messages with a trace
 Exercises the three gRPC endpoints reached during `ds.reader(...).collect()`:
 - `GetDatasetSchema` — intercepted by the catalog client inside `reader()`
   itself, before any scan plan is built; this path was already typed on `main`.
-- `QueryDataset` — called during scan-prelude (stream setup and first
+- `FindChunks` — called during scan-prelude (stream setup and first
   responses). Newly rewired to typed `ApiError` by PR #1666: previously
   flattened via `exec_datafusion_err!`, losing both the kind label and the
   trace-id.
@@ -40,7 +40,7 @@ DUMMY_TRACE_ID = "abba000000000000000000000000abba"
         # GetDatasetSchema call.
         ("GetDatasetSchema", "/GetDatasetSchema"),
         # Scan-path call in DataframeQueryTableProvider — newly typed by #1666.
-        ("QueryDataset", "query_dataset"),
+        ("FindChunks", "find_chunks"),
         # IO-loop call in chunk_fetcher — typed on main via #1540.
         ("FetchChunks", "FetchChunks"),
     ],
@@ -68,13 +68,15 @@ def test_datafusion_error_surfaces_to_python_with_trace_id(grpc_method: str, exp
             batches = ds.reader(index="my_index").collect()
             assert len(batches) > 0, "Expected data from normal query"
 
+            # A new handle has an empty schema cache, so its reader() issues GetDatasetSchema.
+            fresh_ds = client.get_dataset(id=ds.id)
             server._inject_error(grpc_method)
 
             # GetDatasetSchema fails during reader construction; the other two
             # fail inside collect(). Wrap both so the test doesn't care which
             # call site raises.
             try:
-                ds.reader(index="my_index").collect()
+                fresh_ds.reader(index="my_index").collect()
                 pytest.fail(f"Expected an exception from {grpc_method} failure, but query succeeded silently")
             except Exception as exc:
                 msg = str(exc)

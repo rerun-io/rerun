@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     ComponentColumnDescriptor as ComponentColumnDescriptor,
@@ -23,7 +25,7 @@ from ._dataset_info import (
 )
 from ._entry import (
     DatasetEntry as DatasetEntry,
-    DatasetView as DatasetView,
+    DatasetSelection as DatasetSelection,
     Entry as Entry,
     OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,
     TableEntry as TableEntry,
@@ -39,3 +41,19 @@ from ._segment import Segment as Segment
 from ._unregistration_handle import (
     UnregistrationHandle as UnregistrationHandle,
 )
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
+    # TODO(RR-6017): remove the `DatasetView` alias.
+    if name == "DatasetView":
+        import warnings
+
+        warnings.warn(
+            "`rerun.catalog.DatasetView` was renamed to `rerun.catalog.DatasetSelection`. "
+            "The `DatasetView` alias is deprecated and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return DatasetSelection
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

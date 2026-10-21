@@ -2,7 +2,10 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
 use nohash_hasher::IntSet;
-use re_chunk::{ArchetypeName, ComponentIdentifier, ComponentType};
+#[cfg(test)]
+use parking_lot::RwLock;
+
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::ChunkStoreEvent;
 use re_log::debug_panic;
 use re_log_types::{EntityPath, StoreId};
@@ -10,10 +13,12 @@ use re_log_types::{EntityPath, StoreId};
 use nohash_hasher::IntMap;
 
 use crate::typed_entity_collections::{
-    BufferAndFormatMatch, DatatypeMatch, SingleRequiredComponentMatch, VisualizableReason,
+    BufferAndFormatMatch, ComponentMatch, SingleRequiredComponentMatch, VisualizableReason,
 };
 use crate::{
-    IndicatedEntities, ViewSystemIdentifier, VisualizabilityConstraints, VisualizableEntities,
+    IndicatedEntities, RecommendedMappings, SharedReflection, ViewSystemIdentifier,
+    VisualizabilityConstraints, VisualizableEntities, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerQueryInfo,
 };
 
 /// Configuration data needed to build a [`VisualizerEntitySubscriber`].
@@ -22,22 +27,13 @@ pub struct VisualizerEntityConfig {
     /// Visualizer type this config is associated with.
     pub visualizer: ViewSystemIdentifier,
 
-    /// See [`crate::VisualizerQueryInfo::relevant_archetype`]
-    pub relevant_archetype: Option<ArchetypeName>,
-
-    /// The mode for checking component requirements.
-    ///
-    /// See [`crate::VisualizerQueryInfo::constraints`]
     #[size_bytes(ignore)]
-    pub constraints: Arc<VisualizabilityConstraints>,
+    pub query_info: Arc<VisualizerQueryInfo>,
 
-    /// Lists all known builtin enums components.
-    ///
-    /// Used by [`VisualizabilityConstraints::SingleRequiredComponent`] to skip physical-only matches
-    /// for enum types (which should only match via native semantics).
-    // TODO(andreas): It would be great if we could just always access the latest reflection data, but this is really hard to pipe through to a store subscriber.
+    /// Shared with the viewer and all visualizers, including those registered before reflection edits.
+    /// Reflection must be finalized before processing store data. Existing matches are not invalidated on edits!
     #[size_bytes(ignore)]
-    pub known_builtin_enum_components: Arc<IntSet<ComponentType>>,
+    pub reflection: SharedReflection,
 }
 
 impl VisualizerEntityConfig {
@@ -72,7 +68,7 @@ pub struct VisualizerEntitySubscriber {
 /// Buffer and format components may arrive in separate chunk store events, so we keep accumulating them here.
 #[derive(Default, re_byte_size::SizeBytes)]
 struct BufferAndFormatEntityState {
-    all_buffer_matches: IntMap<ComponentIdentifier, DatatypeMatch>,
+    all_buffer_matches: IntMap<ComponentIdentifier, ComponentMatch>,
     all_formats_matches: IntSet<ComponentIdentifier>,
 }
 
@@ -81,10 +77,7 @@ struct VisualizerEntityMapping {
     /// Which entities the visualizer can be applied to.
     visualizable_entities: VisualizableEntities,
 
-    /// List of all entities in this store that at some point in time had any of the relevant archetypes.
-    ///
-    /// Special case:
-    /// If the visualizer has no relevant archetypes, this list will contain all entities in the store.
+    /// Entities for which this visualizer should apply by default; see [`IndicatedEntities`].
     indicated_entities: IndicatedEntities,
 
     /// Per-entity state for [`VisualizabilityConstraints::BufferAndFormat`] constraints.
@@ -175,12 +168,10 @@ impl VisualizerEntitySubscriber {
         &self.mapping.visualizable_entities
     }
 
-    /// List of entities that at some point in time had a component of an archetypes matching the visualizer's query.
+    /// Entities for which this visualizer should apply by default.
     ///
-    /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
-    /// Does *not* imply that any of the given entities is also in the visualizable-set!
-    ///
-    /// If the visualizer has no archetypes, this list will contain all entities in the store.
+    /// See [`IndicatedEntities`] for the indication rules.
+    /// Indication does not imply that an entity is also in [`Self::visualizable_entities`].
     pub fn indicated_entities(&self) -> &IndicatedEntities {
         &self.mapping.indicated_entities
     }
@@ -199,14 +190,13 @@ fn process_entity_components(
     }: &re_chunk_store::ChunkMeta,
 ) {
     let VisualizerEntityConfig {
-        relevant_archetype,
-        constraints,
+        query_info,
         visualizer,
-        known_builtin_enum_components,
+        reflection,
     } = config;
 
     // Update indicated_entities.
-    if relevant_archetype.is_none_or(|archetype| {
+    if query_info.relevant_archetype.is_none_or(|archetype| {
         components
             .iter()
             .any(|c| c.descriptor.archetype == Some(archetype))
@@ -218,7 +208,7 @@ fn process_entity_components(
     }
 
     // Check component requirements.
-    match constraints.as_ref() {
+    match &query_info.constraints {
         VisualizabilityConstraints::None => {
             re_log::trace!(
                 "Entity {entity_path:?} in store {store_id:?} may now be visualizable by {visualizer:?} (no requirements)",
@@ -248,6 +238,7 @@ fn process_entity_components(
         }
 
         VisualizabilityConstraints::SingleRequiredComponent(constraint) => {
+            let reflection = reflection.read_recursive();
             let mut has_any_datatype = false;
 
             for c in components {
@@ -259,8 +250,61 @@ fn process_entity_components(
                     continue;
                 };
 
+                let candidates = reflection
+                    .component_identifiers
+                    .get(&c.descriptor.component)
+                    .map_or(&[][..], |r| r.heuristic_mappings());
+                let target = constraint.target_component();
+                if candidates
+                    .iter()
+                    .any(|mapping| mapping.descriptor.component == target)
+                {
+                    let mut mappings = VisualizerComponentMappings::default();
+                    for mapping in candidates {
+                        let component = mapping.descriptor.component;
+                        if component == target
+                            || query_info
+                                .queried_components()
+                                .any(|queried| queried == component)
+                        {
+                            mappings.insert(
+                                component,
+                                VisualizerComponentSource::SourceComponent {
+                                    source_component: c.descriptor.component,
+                                    selector: mapping.selector.clone(),
+                                },
+                            );
+                        }
+                    }
+                    let mappings = RecommendedMappings::from_mappings(mappings);
+                    store_mapping
+                        .indicated_entities
+                        .0
+                        .insert(entity_path.clone());
+                    store_mapping.add_visualizability_reason(
+                        entity_path,
+                        visualizer,
+                        VisualizableReason::SingleRequiredComponentMatch(
+                            SingleRequiredComponentMatch {
+                                target_component: target,
+                                matches: std::iter::once((
+                                    c.descriptor.component,
+                                    ComponentMatch::HeuristicMapping {
+                                        component_type: c.descriptor.component_type,
+                                        mappings,
+                                    },
+                                ))
+                                .collect(),
+                            },
+                        ),
+                    );
+
+                    // Registered heuristic mappings take precedence over datatype matching.
+                    continue;
+                }
+
                 if let Some(match_info) = constraint.check_datatype_match(
-                    known_builtin_enum_components,
+                    &reflection.components,
                     arrow_data_type,
                     c.descriptor.component_type,
                     c.descriptor.component,
@@ -392,12 +436,12 @@ impl VisualizerEntitySubscriber {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BufferAndFormatConstraint, SingleRequiredComponentConstraint};
+    use crate::BufferAndFormatConstraint;
     use re_chunk_store::{
         ChunkStoreDiff, ChunkStoreDiffSchemaAddition, ChunkStoreEvent, ChunkStoreGeneration,
     };
     use re_log_types::{example_components::MyPoint, example_components::MyPoints};
-    use re_sdk_types::ComponentDescriptor;
+    use re_sdk_types::{ComponentDescriptor, ComponentType};
     use re_types_core::ArrowDataType as _;
     use std::assert_matches;
 
@@ -414,6 +458,158 @@ mod tests {
         )
     }
 
+    #[test]
+    fn reflected_heuristic_mapping_matches_required_input() {
+        use arrow::datatypes::DataType;
+        use re_sdk_types::{archetypes::TextDocument, components::Text};
+        use re_types_core::reflection::HeuristicMapping;
+
+        let source = descriptor("custom:message", Some("custom.Message"));
+        let target = TextDocument::descriptor_text();
+        let mut reflection = re_sdk_types::reflection::reflection().clone();
+        reflection
+            .component_identifiers
+            .entry(source.component)
+            .or_insert_with(|| source.clone().into())
+            .add_heuristic_mapping(HeuristicMapping {
+                descriptor: target.clone(),
+                selector: ".data".to_owned(),
+            })
+            .expect("a new target should be accepted");
+        let reflection = Arc::new(RwLock::new(reflection));
+        let entity = EntityPath::from("raw");
+        let event = schema_addition_event(
+            &test_store_id(),
+            &entity,
+            &[(source.clone(), DataType::UInt32)],
+        );
+        for (visualizer, required, expected) in [
+            ("TextDocument", target.clone(), true),
+            (
+                "TextLog",
+                re_sdk_types::archetypes::TextLog::descriptor_text(),
+                false,
+            ),
+        ] {
+            let mut subscriber = VisualizerEntityConfig {
+                visualizer: visualizer.into(),
+                query_info: Arc::new(VisualizerQueryInfo {
+                    relevant_archetype: target.archetype,
+                    ..VisualizerQueryInfo::single_required_component::<Text>(
+                        &required,
+                        std::slice::from_ref(&required),
+                    )
+                }),
+                reflection: reflection.clone(),
+            }
+            .create_subscriber();
+            subscriber.on_events(std::slice::from_ref(&event));
+            subscriber.on_events(std::slice::from_ref(&event));
+            assert_eq!(
+                subscriber.visualizable_entities().contains_key(&entity),
+                expected,
+                "{visualizer}"
+            );
+            assert_eq!(
+                subscriber.indicated_entities().contains(&entity),
+                expected,
+                "{visualizer}"
+            );
+            if expected {
+                let entities = subscriber.visualizable_entities();
+                let VisualizableReason::SingleRequiredComponentMatch(m) = &entities[&entity] else {
+                    panic!("Expected a single required component match");
+                };
+                assert_eq!(m.matches.len(), 1);
+                assert_matches!(
+                    m.matches.get(&source.component),
+                    Some(ComponentMatch::HeuristicMapping { .. })
+                );
+                assert_eq!(
+                    m.matches[&source.component].component_type(),
+                    source.component_type.as_ref()
+                );
+                let mappings: Vec<_> = entities[&entity].heuristic_mappings().collect();
+                assert_eq!(mappings.len(), 1);
+                assert_eq!(
+                    mappings[0].mappings()[&target.component],
+                    crate::VisualizerComponentSource::SourceComponent {
+                        source_component: source.component,
+                        selector: ".data".to_owned(),
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn flat_mappings_assemble_only_queried_companions() {
+        use re_sdk_types::archetypes::{CoordinateFrame, Measurements};
+        use re_types_core::reflection::HeuristicMapping;
+
+        let source = ComponentDescriptor::partial("custom:measurements");
+        let values = Measurements::descriptor_values();
+        let variances = Measurements::descriptor_variances();
+        let units = Measurements::descriptor_units();
+        let frame = CoordinateFrame::descriptor_frame();
+        let mut reflection = re_sdk_types::reflection::reflection().clone();
+        let mut entry: re_types_core::reflection::ComponentIdentifierReflection =
+            source.clone().into();
+        for (descriptor, selector) in [
+            (values.clone(), ".value"),
+            (variances.clone(), ".variance"),
+            (units.clone(), ".unit"),
+            (frame.clone(), ".frame"),
+        ] {
+            entry
+                .add_heuristic_mapping(HeuristicMapping {
+                    descriptor,
+                    selector: selector.to_owned(),
+                })
+                .expect("each target should be unique");
+        }
+        reflection
+            .component_identifiers
+            .insert(source.component, entry);
+        let config = VisualizerEntityConfig {
+            visualizer: "Measurements".into(),
+            query_info: Arc::new(VisualizerQueryInfo::single_required_component::<
+                re_sdk_types::components::Scalar,
+            >(
+                &values,
+                &[values.clone(), variances.clone(), units.clone()],
+            )),
+            reflection: Arc::new(RwLock::new(reflection)),
+        };
+        let entity = EntityPath::from("raw");
+        let mut subscriber = config.create_subscriber();
+        subscriber.on_events(&[schema_addition_event(
+            &test_store_id(),
+            &entity,
+            &[(source.clone(), arrow::datatypes::DataType::UInt32)],
+        )]);
+        let entities = subscriber.visualizable_entities();
+        let recommendations: Vec<_> = entities[&entity].heuristic_mappings().collect();
+        assert_eq!(recommendations.len(), 1);
+        assert_eq!(
+            *recommendations[0].mappings(),
+            [
+                (values, ".value"),
+                (variances, ".variance"),
+                (units, ".unit")
+            ]
+            .into_iter()
+            .map(|(target, selector)| (
+                target.component,
+                VisualizerComponentSource::SourceComponent {
+                    source_component: source.component,
+                    selector: selector.to_owned(),
+                },
+            ))
+            .collect()
+        );
+    }
+
     fn test_store_id() -> StoreId {
         StoreId::random(re_log_types::StoreKind::Recording, "test_app")
     }
@@ -423,11 +619,11 @@ mod tests {
         VisualizerEntitySubscriber {
             config: VisualizerEntityConfig {
                 visualizer: "TestVisualizer".into(),
-                relevant_archetype: None,
-                constraints: Arc::new(VisualizabilityConstraints::BufferAndFormat(
-                    test_constraint(),
-                )),
-                known_builtin_enum_components: Arc::new(IntSet::default()),
+                query_info: Arc::new(VisualizerQueryInfo {
+                    constraints: VisualizabilityConstraints::BufferAndFormat(test_constraint()),
+                    ..VisualizerQueryInfo::empty()
+                }),
+                reflection: Default::default(),
             },
             mapping: Default::default(),
         }
@@ -437,13 +633,11 @@ mod tests {
         VisualizerEntitySubscriber {
             config: VisualizerEntityConfig {
                 visualizer: "TestVisualizer".into(),
-                relevant_archetype: MyPoints::descriptor_points().archetype,
-                constraints: Arc::new(VisualizabilityConstraints::SingleRequiredComponent(
-                    SingleRequiredComponentConstraint::new::<MyPoint>(
-                        &MyPoints::descriptor_points(),
-                    ),
+                query_info: Arc::new(VisualizerQueryInfo::single_required_component::<MyPoint>(
+                    &MyPoints::descriptor_points(),
+                    &[MyPoints::descriptor_points()],
                 )),
-                known_builtin_enum_components: Arc::new(IntSet::default()),
+                reflection: Default::default(),
             },
             mapping: Default::default(),
         }
@@ -570,7 +764,7 @@ mod tests {
         assert_eq!(m.buffer_matches.len(), 1);
         assert_matches!(
             m.buffer_matches.get(&"buf".into()),
-            Some(DatatypeMatch::NativeSemantics { .. })
+            Some(ComponentMatch::NativeSemantics { .. })
         );
         assert!(m.format_matches.contains(&ComponentIdentifier::from("fmt")));
     }
@@ -625,7 +819,7 @@ mod tests {
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_matches!(
             m.buffer_matches.get(&"buf".into()),
-            Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+            Some(ComponentMatch::PhysicalDatatypeOnly { .. })
         );
     }
 
@@ -703,11 +897,11 @@ mod tests {
         assert_eq!(m.buffer_matches.len(), 2);
         assert_matches!(
             m.buffer_matches.get(&"buf1".into()),
-            Some(DatatypeMatch::NativeSemantics { .. })
+            Some(ComponentMatch::NativeSemantics { .. })
         );
         assert_matches!(
             m.buffer_matches.get(&"buf2".into()),
-            Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+            Some(ComponentMatch::PhysicalDatatypeOnly { .. })
         );
     }
 
@@ -752,11 +946,11 @@ mod tests {
         assert_eq!(m.buffer_matches.len(), 2);
         assert_matches!(
             m.buffer_matches.get(&"buf1".into()),
-            Some(DatatypeMatch::NativeSemantics { .. })
+            Some(ComponentMatch::NativeSemantics { .. })
         );
         assert_matches!(
             m.buffer_matches.get(&"buf2".into()),
-            Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+            Some(ComponentMatch::PhysicalDatatypeOnly { .. })
         );
         assert!(
             m.format_matches
@@ -806,14 +1000,17 @@ mod tests {
             .get(&ComponentIdentifier::from("data"))
             .expect("should have buffer match for 'data'");
         match data_match {
-            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
+            ComponentMatch::PhysicalDatatypeOnly {
+                field_accessors, ..
+            } => {
                 assert_eq!(
-                    selectors.len(),
+                    field_accessors.len(),
                     2,
-                    "should have selectors for both blob_a and blob_b, got {selectors:?}"
+                    "should have field accessors for both blob_a and blob_b, got {field_accessors:?}"
                 );
             }
-            other @ DatatypeMatch::NativeSemantics { .. } => {
+            other @ (ComponentMatch::NativeSemantics { .. }
+            | ComponentMatch::HeuristicMapping { .. }) => {
                 panic!("expected PhysicalDatatypeOnly with selectors, got {other:?}")
             }
         }

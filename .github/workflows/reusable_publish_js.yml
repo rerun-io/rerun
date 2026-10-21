@@ -56,9 +56,6 @@ jobs:
           node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install Yarn
-        run: npm install -g yarn
-
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:

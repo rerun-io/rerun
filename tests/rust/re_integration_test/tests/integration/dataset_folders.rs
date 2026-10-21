@@ -13,10 +13,10 @@ use re_sdk::external::re_log_types::EntryId;
 use re_uri::DatasetResource;
 use re_viewer::App;
 use re_viewer::external::re_viewer_context::{EntryKind, Route};
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_route: &Route) {
-    let actual_route = harness.state_mut().testonly_get_route().clone();
+    let actual_route = harness.state_mut().route().clone();
     assert_eq!(&actual_route, expected_route, "unexpected route");
 
     let actual_selection =

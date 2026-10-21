@@ -23,6 +23,14 @@ use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
 /// Height a pasted image is previewed at in the composer, in points.
 const PREVIEW_HEIGHT: f32 = 48.0;
 
+const EMPTY_STATE_WIDTH: f32 = 240.0;
+
+const EXAMPLE_PROMPTS: [&str; 3] = [
+    "Set up a blueprint for this recording",
+    "Help me fix the errors in this recording",
+    "Help me open a dataset in Rerun",
+];
+
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
 pub struct ChatInput {
@@ -147,6 +155,13 @@ pub fn chat_ui(
             bottom: 4,
         }))
         .show(ui, |ui| {
+            if session.transcript().items.is_empty()
+                && !matches!(session.phase(), Phase::Connecting { .. })
+            {
+                empty_state_ui(ui, input);
+                return;
+            }
+
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .stick_to_bottom(true)
@@ -159,6 +174,50 @@ pub fn chat_ui(
                     }
                 });
         });
+}
+
+fn empty_state_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
+    let content_height = ui
+        .new_child(egui::UiBuilder::new().sizing_pass().invisible())
+        .vertical_centered(|ui| empty_state_content_ui(ui, input))
+        .response
+        .rect
+        .height();
+    ui.add_space(((ui.available_height() - content_height) / 2.0).max(0.0));
+    ui.vertical_centered(|ui| empty_state_content_ui(ui, input));
+}
+
+fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
+    ui.set_max_width(EMPTY_STATE_WIDTH);
+    ui.add(
+        egui::Label::new(
+            RichText::new(
+                "The Rerun agent helps you solve complex physical AI problems right within the viewer.",
+            )
+            .weak(),
+        )
+        .halign(egui::Align::Center)
+        .wrap(),
+    );
+
+    let tokens = ui.tokens();
+    egui::WidgetAtom::new(RichText::new("Experimental").small())
+        .frame(
+            egui::Frame::new()
+                .fill(tokens.example_tag_bg_fill)
+                .stroke(tokens.example_tag_stroke)
+                .corner_radius(tokens.normal_corner_radius())
+                .inner_margin(egui::Margin::symmetric(8, 2)),
+        )
+        .show(ui);
+
+    ui.add_space(ui.spacing().item_spacing.y);
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+    for prompt in EXAMPLE_PROMPTS {
+        if ui.add(ReButton::new(prompt).outlined().small()).clicked() {
+            move_into_input(ui, input, prompt.into());
+        }
+    }
 }
 
 fn mode_picker_ui(

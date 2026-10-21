@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context as _;
+use re_catalog_client::AssetCoverage;
 use re_log_types::EntryId;
 use re_redap_client::ConnectionRegistryHandle;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
@@ -44,6 +45,7 @@ pub async fn register_assets(
             .register_asset(
                 dataset_id(target),
                 source_uri.as_str(),
+                Some(&AssetCoverage::default()),
                 re_catalog_client::DEFAULT_ASSET_TASK_TIMEOUT,
             )
             .await

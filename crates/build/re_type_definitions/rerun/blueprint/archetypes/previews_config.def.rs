@@ -13,5 +13,24 @@ pub struct PreviewsConfig {
     /// If left empty a timeline is automatically picked, preferring custom over built-in.
     #[rerun(optional)]
     pub timeline: Option<rerun::blueprint::components::TimelineName>,
-    // TODO(RR-4810): Add shared playback state, speed, and related time settings.
+
+    /// Whether every preview cell plays.
+    ///
+    /// A single preview can still be played or paused on its own.
+    /// Defaults to paused, and following plays like playing.
+    #[rerun(optional)]
+    pub play_state: Option<rerun::blueprint::components::PlayState>,
+
+    /// Playback speed of every preview cell.
+    ///
+    /// Defaults to 1.0.
+    #[rerun(optional)]
+    pub playback_speed: Option<rerun::blueprint::components::PlaybackSpeed>,
+
+    /// Where every preview cell starts, as a fraction of the recording's time range.
+    ///
+    /// 0.0 is the start and 1.0 the end.
+    /// Defaults to 0.5.
+    #[rerun(optional)]
+    pub start_point: Option<rerun::blueprint::components::TimelineFraction>,
 }

@@ -216,17 +216,184 @@ fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
     }
 }
 
+/// The reader-configuration facts the selection-timeline rule
+/// ([`choose_selection_timeline`]) depends on, beyond the filters and the request.
+#[derive(Default)]
+pub struct SelectionContext {
+    /// The reader's own timeline (`T`). `None` for a static reader.
+    pub reader_index: Option<TimelineName>,
+
+    /// `fill_latest_at`.
+    pub fill: bool,
+
+    /// Whether the reader selects specific index values
+    /// (`using_index_values`) rather than a plain range.
+    pub uses_samples: bool,
+}
+
+/// Chooses the timeline Hub or the OSS server uses to select chunks for the SDK to fetch.
+///
+/// The reader index aligns values into output rows. The selection timeline controls which
+/// chunks are fetched before those rows are built. Choosing a different selection timeline
+/// does not change the reader index.
+///
+/// A static reader has no selection timeline. For a temporal reader, use its index when the
+/// request has a range or the reader uses fill or sample times. Otherwise, use the first timeline
+/// on which a filter can push a server-side range, checking the reader index first and then the
+/// other index timelines in expression order. Use the reader index if none qualifies. Fill and
+/// sample times require chunks that contribute to rows on the reader index.
+///
+/// Selecting chunks on a timeline different from the reader index can omit values from entities
+/// that did not log that timeline. This pre-existing `QueryDataset` defect also affects
+/// `FindChunks` (RR-5885).
+///
+/// The SDK first chooses a selection timeline in `supports_filters_pushdown` and tells
+/// DataFusion which filters it can push down. DataFusion then calls the SDK's `scan` method
+/// to build the server requests. It passes only those filters to `scan` and applies the others
+/// to the returned rows. Both SDK methods call this function to choose the selection timeline.
+///
+/// A filter selects a timeline only if it can push a server-side range on it. This ensures
+/// DataFusion passes the filter to `scan`, so the request uses the same selection timeline as
+/// the earlier pushdown decision. This holds for the reader index too: `scan` never sees a
+/// filter that compares the reader index but cannot be pushed as a whole.
+pub fn choose_selection_timeline(
+    context: &SelectionContext,
+    filters: &[&Expr],
+    query_dataset_request: &QueryDatasetRequest,
+    schema: &SchemaRef,
+) -> Result<Option<TimelineName>, DataFusionError> {
+    let Some(reader_index) = context.reader_index else {
+        return Ok(None);
+    };
+
+    let request_restricts_reader = query_dataset_request
+        .query
+        .as_ref()
+        .is_some_and(|query| query.range.is_some());
+    if request_restricts_reader || context.fill || context.uses_samples {
+        return Ok(Some(reader_index));
+    }
+
+    // The reader index comes first, so a pushable restriction on it wins.
+    let mut candidate_timelines = vec![reader_index];
+    for filter in filters {
+        collect_index_timelines(filter, schema, &mut candidate_timelines);
+    }
+
+    for timeline in candidate_timelines {
+        for filter in filters {
+            if pushes_range_on(
+                filter,
+                timeline,
+                query_dataset_request,
+                schema,
+                context.fill,
+            )? {
+                return Ok(Some(timeline));
+            }
+        }
+    }
+
+    Ok(Some(reader_index))
+}
+
+/// Whether pushing `filter` with `timeline` as the selection timeline puts a range on `timeline`
+/// into the request.
+fn pushes_range_on(
+    filter: &Expr,
+    timeline: TimelineName,
+    query_dataset_request: &QueryDatasetRequest,
+    schema: &SchemaRef,
+    fill: bool,
+) -> Result<bool, DataFusionError> {
+    let queries = apply_filter_expr_to_queries(
+        vec![query_dataset_request.clone()],
+        filter,
+        schema,
+        fill,
+        Some(timeline),
+    )?;
+    Ok(queries.is_some_and(|queries| {
+        queries.iter().any(|query| {
+            query
+                .query
+                .as_ref()
+                .and_then(|query| query.range.as_ref())
+                .is_some_and(|range| range.index == timeline)
+        })
+    }))
+}
+
+/// Append the index timelines a filter's leaves compare against, in expression order.
+///
+/// Structural only, unlike [`known_filter_column`]: it never gates on a
+/// selection timeline, because it exists solely to pick one (via
+/// [`choose_selection_timeline`]) before any filter is classified. Segment-id
+/// and unrecognized comparisons contribute nothing.
+fn collect_index_timelines(expr: &Expr, schema: &SchemaRef, timelines: &mut Vec<TimelineName>) {
+    match expr {
+        Expr::Alias(alias_expr) => collect_index_timelines(&alias_expr.expr, schema, timelines),
+        Expr::Not(inner) => collect_index_timelines(inner, schema, timelines),
+        Expr::BinaryExpr(binary) if matches!(binary.op, Operator::And | Operator::Or) => {
+            collect_index_timelines(&binary.left, schema, timelines);
+            collect_index_timelines(&binary.right, schema, timelines);
+        }
+        Expr::BinaryExpr(binary)
+            if matches!(
+                binary.op,
+                Operator::Eq | Operator::Gt | Operator::GtEq | Operator::Lt | Operator::LtEq
+            ) =>
+        {
+            for timeline in std::iter::chain(
+                column_index_timeline(&binary.left, schema),
+                column_index_timeline(&binary.right, schema),
+            ) {
+                if !timelines.contains(&timeline) {
+                    timelines.push(timeline);
+                }
+            }
+        }
+        Expr::Between(between_expr) => {
+            if let Some(timeline) = column_index_timeline(&between_expr.expr, schema)
+                && !timelines.contains(&timeline)
+            {
+                timelines.push(timeline);
+            }
+        }
+        Expr::InList(in_list) => {
+            if let Some(timeline) = column_index_timeline(&in_list.expr, schema)
+                && !timelines.contains(&timeline)
+            {
+                timelines.push(timeline);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The index timeline `expr` names, if it is a column with `rerun:kind = "index"`.
+fn column_index_timeline(expr: &Expr, schema: &SchemaRef) -> Option<TimelineName> {
+    let Expr::Column(col) = expr else {
+        return None;
+    };
+    is_time_index(col.name(), schema)
+        .then(|| TimelineName::try_new(col.name()).ok())
+        .flatten()
+}
+
 pub(crate) fn filter_expr_is_supported(
     filter_expr: &Expr,
     query_dataset_request: &QueryDatasetRequest,
     schema: &SchemaRef,
     synthesize_latest_at: bool,
+    selection_timeline: Option<TimelineName>,
 ) -> Result<TableProviderFilterPushDown, DataFusionError> {
     let returned_queries = apply_filter_expr_to_queries(
         vec![query_dataset_request.clone()],
         filter_expr,
         schema,
         synthesize_latest_at,
+        selection_timeline,
     )?;
 
     if returned_queries.is_some() {
@@ -249,6 +416,12 @@ pub(crate) fn filter_expr_is_supported(
 /// synthesis — it would otherwise force the server into an expensive
 /// latest-at fan-out for no observable result.
 ///
+/// `selection_timeline` is the request's single selection timeline, chosen by
+/// [`choose_selection_timeline`] before applying filters. Comparisons on other
+/// index timelines stay in DataFusion for row-wise evaluation, just like
+/// comparisons on unrecognized columns. This keeps [`merge_queries_and`] from
+/// having to reconcile ranges on different timelines.
+///
 /// This function will return Ok(None) if we cannot push down this filter into our request.
 /// It will return an error if the expression pushes down to return no results. This can
 /// occur if you have two mutually exclusive expressions that cannot overlap, such as
@@ -258,6 +431,7 @@ pub(crate) fn apply_filter_expr_to_queries(
     expr: &Expr,
     schema: &SchemaRef,
     synthesize_latest_at: bool,
+    selection_timeline: Option<TimelineName>,
 ) -> Result<Option<Vec<QueryDatasetRequest>>, DataFusionError> {
     Ok(match expr {
         Expr::Alias(alias_expr) => apply_filter_expr_to_queries(
@@ -265,6 +439,7 @@ pub(crate) fn apply_filter_expr_to_queries(
             alias_expr.expr.as_ref(),
             schema,
             synthesize_latest_at,
+            selection_timeline,
         )?,
         Expr::BinaryExpr(expr) => {
             let BinaryExpr { left, op, right } = arrange_binary_expr_as_col_on_left(expr);
@@ -282,12 +457,14 @@ pub(crate) fn apply_filter_expr_to_queries(
                             &left,
                             schema,
                             synthesize_latest_at,
+                            selection_timeline,
                         )?,
                         apply_filter_expr_to_queries(
                             queries,
                             &right,
                             schema,
                             synthesize_latest_at,
+                            selection_timeline,
                         )?,
                     ) {
                         (None, None) => None,
@@ -307,30 +484,42 @@ pub(crate) fn apply_filter_expr_to_queries(
                     }
                 }
                 Operator::Or => {
-                    let Some(mut left_queries) = apply_filter_expr_to_queries(
-                        queries.clone(),
-                        &left,
-                        schema,
-                        synthesize_latest_at,
-                    )?
-                    else {
-                        return Ok(Some(queries));
-                    };
-                    let Some(right_queries) = apply_filter_expr_to_queries(
-                        queries.clone(),
-                        &right,
-                        schema,
-                        synthesize_latest_at,
-                    )?
-                    else {
-                        return Ok(Some(queries));
-                    };
-
-                    left_queries.extend(right_queries);
-                    Some(left_queries)
+                    // Fan out only when *every* branch is a safe candidate
+                    // superset (a segment predicate, or a restriction on
+                    // `selection_timeline`). A branch that cannot be pushed leaves the
+                    // whole `OR` residual rather than silently widening to an
+                    // unfiltered superset, so a mixed-timeline `OR` never intersects
+                    // candidate sets from different timelines.
+                    match (
+                        apply_filter_expr_to_queries(
+                            queries.clone(),
+                            &left,
+                            schema,
+                            synthesize_latest_at,
+                            selection_timeline,
+                        )?,
+                        apply_filter_expr_to_queries(
+                            queries,
+                            &right,
+                            schema,
+                            synthesize_latest_at,
+                            selection_timeline,
+                        )?,
+                    ) {
+                        (Some(mut left_queries), Some(right_queries)) => {
+                            left_queries.extend(right_queries);
+                            Some(left_queries)
+                        }
+                        _ => None,
+                    }
                 }
                 Operator::Eq | Operator::Gt | Operator::GtEq | Operator::Lt | Operator::LtEq => {
-                    match known_filter_column(left.as_ref(), right.as_ref(), schema) {
+                    match known_filter_column(
+                        left.as_ref(),
+                        right.as_ref(),
+                        schema,
+                        selection_timeline,
+                    ) {
                         KnownFilterColumn::Index(index_name, time) => Some(
                             queries
                                 .into_iter()
@@ -387,7 +576,13 @@ pub(crate) fn apply_filter_expr_to_queries(
                 expr = expr.not();
             }
 
-            apply_filter_expr_to_queries(queries, &expr, schema, synthesize_latest_at)?
+            apply_filter_expr_to_queries(
+                queries,
+                &expr,
+                schema,
+                synthesize_latest_at,
+                selection_timeline,
+            )?
         }
         Expr::InList(list_expr) => {
             let mut iter = list_expr.list.iter();
@@ -396,7 +591,13 @@ pub(crate) fn apply_filter_expr_to_queries(
                     list_expr.expr.as_ref().clone().eq(first.clone()),
                     |acc, item| acc.or(list_expr.expr.as_ref().clone().eq(item.clone())),
                 );
-                apply_filter_expr_to_queries(queries, &expr, schema, synthesize_latest_at)?
+                apply_filter_expr_to_queries(
+                    queries,
+                    &expr,
+                    schema,
+                    synthesize_latest_at,
+                    selection_timeline,
+                )?
             } else {
                 return exec_err!(
                     "Attempting to perform InList statement that would return no results due to empty list"
@@ -441,6 +642,7 @@ fn known_filter_column(
     column_expr: &Expr,
     value_expr: &Expr,
     schema: &SchemaRef,
+    selection_timeline: Option<TimelineName>,
 ) -> KnownFilterColumn {
     if let Expr::Column(col_expr) = column_expr
         && let Some(value) = expr_to_literal_scalar(value_expr)
@@ -455,6 +657,13 @@ fn known_filter_column(
             let segment_id: SegmentId = value.into();
             KnownFilterColumn::SegmentId(segment_id)
         } else if is_time_index(col_expr.name(), schema) {
+            // Only a restriction on the request's one selection
+            // timeline is safe to push. A restriction on any other index
+            // (including every index when the reader is static) is treated
+            // like an unrecognized column and stays residual.
+            if selection_timeline.map(|timeline| timeline.as_str()) != Some(col_expr.name()) {
+                return KnownFilterColumn::Unknown;
+            }
             let value = match value {
                 ScalarValue::UInt8(Some(v)) => *v as i64,
                 ScalarValue::UInt16(Some(v)) => *v as i64,
@@ -651,6 +860,13 @@ fn compute_range_overlap(
     left: &QueryRange,
     right: &QueryRange,
 ) -> Result<QueryRange, DataFusionError> {
+    // Pushdown keeps only ranges on the selection timeline. The error return keeps a release
+    // build from merging two timelines.
+    re_log::debug_assert_eq!(
+        left.index,
+        right.index,
+        "pushed ranges must all be on the selection timeline"
+    );
     if left.index != right.index {
         return exec_err!("Attempting to compute range overlaps with different indexes");
     }
@@ -802,7 +1018,8 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("rerun_segment_id").eq(lit("segment_a"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -818,7 +1035,8 @@ mod tests {
 
         // Greater than on segment_id is not supported
         let expr = col("rerun_segment_id").gt(lit("segment_a"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         assert!(result.is_none());
     }
@@ -831,7 +1049,8 @@ mod tests {
         let expr = col("rerun_segment_id")
             .eq(lit("segment_a"))
             .or(col("rerun_segment_id").eq(lit("segment_b")));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -874,7 +1093,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -894,7 +1120,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").gt(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -912,7 +1145,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").lt(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -933,7 +1173,14 @@ mod tests {
         let expr = col("frame_nr")
             .gt_eq(lit(50i64))
             .and(col("frame_nr").lt_eq(lit(150i64)));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -952,7 +1199,14 @@ mod tests {
 
         // 100 < frame_nr should be rearranged to frame_nr > 100
         let expr = lit(100i64).lt(col("frame_nr"));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -974,7 +1228,14 @@ mod tests {
         let expr = col("rerun_segment_id")
             .eq(lit("segment_a"))
             .and(col("frame_nr").gt(lit(100i64)));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -998,7 +1259,14 @@ mod tests {
                 .eq(lit("segment_b"))
                 .and(col("frame_nr").lt(lit(50i64))));
 
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1066,7 +1334,14 @@ mod tests {
             low: Box::new(lit(50i64)),
             high: Box::new(lit(150i64)),
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1090,7 +1365,8 @@ mod tests {
             list: vec![lit("segment_a"), lit("segment_b"), lit("segment_c")],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         // InList is converted to OR of equality checks
         assert!(result.is_some());
@@ -1126,7 +1402,14 @@ mod tests {
             list: vec![lit(100i64), lit(200i64)],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         // InList on time values produces OR of equality checks
         assert!(result.is_some());
@@ -1165,7 +1448,7 @@ mod tests {
             list: vec![],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true);
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None);
 
         // Empty list produces zero results
         assert!(result.is_err());
@@ -1181,7 +1464,8 @@ mod tests {
             list: vec![lit("only_segment")],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1198,7 +1482,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("unknown_column").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_none());
     }
@@ -1217,7 +1508,8 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("some_column").eq(lit(100i64));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         assert!(result.is_none());
     }
@@ -1231,8 +1523,8 @@ mod tests {
 
         // Try to AND with a different segment
         let expr = col("rerun_segment_id").eq(lit("segment_b"));
-        let result =
-            apply_filter_expr_to_queries(vec![query.clone()], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query.clone()], &expr, &schema, true, None)
+            .expect("pushdown succeeds");
 
         // First apply creates query with segment_b
         assert!(result.is_some());
@@ -1264,27 +1556,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_different_index_names_error() {
-        let left = QueryRange {
-            index: "frame_nr".into(),
-            index_range: AbsoluteTimeRange {
-                min: TimeInt::new_temporal(0),
-                max: TimeInt::new_temporal(100),
-            },
-        };
-        let right = QueryRange {
-            index: "log_time".into(),
-            index_range: AbsoluteTimeRange {
-                min: TimeInt::new_temporal(50),
-                max: TimeInt::new_temporal(150),
-            },
-        };
-
-        let result = compute_range_overlap(&left, &right);
-        assert!(result.is_err());
-    }
-
     // ==================== Scalar type conversion tests ====================
 
     #[test]
@@ -1296,7 +1567,14 @@ mod tests {
             ScalarValue::TimestampNanosecond(Some(1_000_000_000), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("log_time")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1313,7 +1591,14 @@ mod tests {
             ScalarValue::TimestampMillisecond(Some(1000), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("log_time")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1331,7 +1616,14 @@ mod tests {
             ScalarValue::TimestampSecond(Some(1), None),
             None,
         ));
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("log_time")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1348,7 +1640,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64));
-        let result = filter_expr_is_supported(&expr, &query, &schema, true).unwrap();
+        let result = filter_expr_is_supported(
+            &expr,
+            &query,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("support check succeeds");
 
         assert_eq!(result, TableProviderFilterPushDown::Inexact);
     }
@@ -1359,7 +1658,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("unknown_column").eq(lit(100i64));
-        let result = filter_expr_is_supported(&expr, &query, &schema, true).unwrap();
+        let result = filter_expr_is_supported(
+            &expr,
+            &query,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("support check succeeds");
 
         assert_eq!(result, TableProviderFilterPushDown::Unsupported);
     }
@@ -1372,7 +1678,14 @@ mod tests {
         let query = make_empty_query();
 
         let expr = col("frame_nr").eq(lit(100i64)).alias("my_filter");
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema, true).unwrap();
+        let result = apply_filter_expr_to_queries(
+            vec![query],
+            &expr,
+            &schema,
+            true,
+            Some(TimelineName::from("frame_nr")),
+        )
+        .expect("pushdown succeeds");
 
         assert!(result.is_some());
         let queries = result.unwrap();
@@ -1426,5 +1739,369 @@ mod tests {
         let result = compute_range_overlap(&left, &right).unwrap();
         assert_eq!(result.index_range.min.as_i64(), 100);
         assert_eq!(result.index_range.max.as_i64(), 100);
+    }
+
+    // ==================== selection-timeline tests ====================
+
+    /// The reader context of every selection test: reader index `frame_nr`, no fill, no samples.
+    fn reader_on_frame_nr() -> SelectionContext {
+        SelectionContext {
+            reader_index: Some(TimelineName::from("frame_nr")),
+            ..Default::default()
+        }
+    }
+
+    /// The selection timeline and each filter's pushdown, as `supports_filters_pushdown` computes
+    /// them.
+    fn classify(
+        context: &SelectionContext,
+        filters: &[&Expr],
+        request: &QueryDatasetRequest,
+        schema: &SchemaRef,
+    ) -> (Option<TimelineName>, Vec<TableProviderFilterPushDown>) {
+        let selection_timeline = choose_selection_timeline(context, filters, request, schema)
+            .expect("selection succeeds");
+        let pushdown = filters
+            .iter()
+            .map(|filter| {
+                filter_expr_is_supported(filter, request, schema, context.fill, selection_timeline)
+                    .expect("classification succeeds")
+            })
+            .collect();
+        (selection_timeline, pushdown)
+    }
+
+    fn make_schema_with_indexes(index_names: &[&str]) -> SchemaRef {
+        let mut metadata = HashMap::new();
+        metadata.insert(RERUN_KIND.to_owned(), "index".to_owned());
+
+        let mut fields: Vec<Field> = index_names
+            .iter()
+            .map(|name| {
+                Field::new(*name, arrow::datatypes::DataType::Int64, false)
+                    .with_metadata(metadata.clone())
+            })
+            .collect();
+        fields.push(Field::new(
+            "rerun_segment_id",
+            arrow::datatypes::DataType::Utf8,
+            false,
+        ));
+
+        Arc::new(Schema::new_with_metadata(fields, HashMap::default()))
+    }
+
+    #[test]
+    fn u_only_predicate_without_fill_selects_u() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let u_only = col("log_time").gt(lit(100i64));
+        let filters = [&u_only];
+
+        let (selection_timeline, pushdown) = classify(
+            &reader_on_frame_nr(),
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(
+            selection_timeline,
+            Some(TimelineName::from("log_time")),
+            "with no filter or configured bound on T, the first safe foreign timeline wins"
+        );
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Inexact]);
+    }
+
+    #[test]
+    fn u_only_predicate_with_fill_forces_t_and_stays_residual() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let u_only = col("log_time").gt(lit(100i64));
+        let filters = [&u_only];
+
+        let (selection_timeline, pushdown) = classify(
+            &SelectionContext {
+                fill: true,
+                ..reader_on_frame_nr()
+            },
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(
+            selection_timeline,
+            Some(TimelineName::from("frame_nr")),
+            "latest-at filling requires discovery on the reader index itself"
+        );
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Unsupported]);
+    }
+
+    #[test]
+    fn t_and_u_conjunction_pushes_t_and_leaves_u_residual() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let expr = col("frame_nr")
+            .gt(lit(100i64))
+            .and(col("log_time").gt(lit(200i64)));
+        let filters = [&expr];
+
+        let (selection_timeline, pushdown) = classify(
+            &reader_on_frame_nr(),
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(selection_timeline, Some(TimelineName::from("frame_nr")));
+        // The whole conjunction is `Inexact`: `T` is pushed, so DataFusion still
+        // re-evaluates the full predicate (including the residual `U` half) row-wise.
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Inexact]);
+
+        let built = apply_filter_expr_to_queries(
+            vec![make_empty_query()],
+            &expr,
+            &schema,
+            false,
+            selection_timeline,
+        )
+        .expect("pushdown succeeds")
+        .expect("the T half is representable");
+        assert_eq!(built.len(), 1);
+        let range = built[0]
+            .query
+            .as_ref()
+            .expect("query is set")
+            .range
+            .as_ref()
+            .expect("range is set");
+        assert_eq!(
+            range.index, "frame_nr",
+            "only T's restriction is built into the query"
+        );
+        assert_eq!(range.index_range.min.as_i64(), 100);
+    }
+
+    #[test]
+    fn nested_foreign_conjunction_selects_first_usable_timeline() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time", "tick"]);
+        let expr = col("log_time")
+            .gt(lit(100i64))
+            .and(col("tick").lt(lit(200i64)));
+        let filters = [&expr];
+        let context = reader_on_frame_nr();
+
+        let (selection_timeline, pushdown) =
+            classify(&context, &filters, &make_empty_query(), &schema);
+
+        assert_eq!(selection_timeline, Some(TimelineName::from("log_time")));
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Inexact]);
+
+        let reversed = col("tick")
+            .lt(lit(200i64))
+            .and(col("log_time").gt(lit(100i64)));
+        let reversed_filters = [&reversed];
+        let (reversed_selection_timeline, _) =
+            classify(&context, &reversed_filters, &make_empty_query(), &schema);
+        assert_eq!(
+            reversed_selection_timeline,
+            Some(TimelineName::from("tick")),
+            "expression traversal order decides between safe foreign timelines"
+        );
+    }
+
+    #[test]
+    fn reader_timeline_wins_nested_conjunction_regardless_of_order() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time", "tick"]);
+        let context = reader_on_frame_nr();
+
+        for expr in [
+            col("log_time")
+                .gt(lit(100i64))
+                .and(col("frame_nr").lt(lit(200i64))),
+            col("frame_nr")
+                .lt(lit(200i64))
+                .and(col("log_time").gt(lit(100i64))),
+        ] {
+            let filters = [&expr];
+            let (selection_timeline, _) =
+                classify(&context, &filters, &make_empty_query(), &schema);
+            assert_eq!(selection_timeline, Some(TimelineName::from("frame_nr")));
+        }
+    }
+
+    #[test]
+    fn usable_foreign_selection_survives_unsupported_filter_omission() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time", "tick", "other_time"]);
+        let unsafe_or = col("log_time")
+            .gt(lit(100i64))
+            .or(col("tick").lt(lit(200i64)));
+        let segment = col("rerun_segment_id").eq(lit("segment_a"));
+        let safe_w = col("other_time").lt(lit(300i64));
+        let planning_filters = [&unsafe_or, &segment, &safe_w];
+        let context = reader_on_frame_nr();
+
+        let (planned_selection_timeline, planned_pushdown) =
+            classify(&context, &planning_filters, &make_empty_query(), &schema);
+        assert_eq!(
+            planned_selection_timeline,
+            Some(TimelineName::from("other_time")),
+            "a segment predicate cannot witness either unsafe OR timeline"
+        );
+        assert_eq!(
+            planned_pushdown,
+            vec![
+                TableProviderFilterPushDown::Unsupported,
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Inexact,
+            ]
+        );
+
+        let scan_filters = [&segment, &safe_w];
+        let (scan_selection_timeline, scan_pushdown) =
+            classify(&context, &scan_filters, &make_empty_query(), &schema);
+        assert_eq!(scan_selection_timeline, planned_selection_timeline);
+        assert_eq!(
+            scan_pushdown,
+            vec![
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Inexact,
+            ]
+        );
+    }
+
+    /// A filter that compares the reader index but cannot be pushed as a whole does not restrict
+    /// the reader: DataFusion removes it before `scan`.
+    #[test]
+    fn unpushable_reader_index_filter_does_not_restrict_reader() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        // The `frame_nr` branch is pushable, but `foo` is not an index, so the OR is not.
+        let unpushable_t = col("frame_nr").gt(lit(5i64)).or(col("foo").gt(lit(3i64)));
+        let u_and_segment = col("log_time")
+            .gt(lit(100i64))
+            .and(col("rerun_segment_id").eq(lit("x")));
+        let context = reader_on_frame_nr();
+
+        let planning_filters = [&unpushable_t, &u_and_segment];
+        let (planned_selection_timeline, planned_pushdown) =
+            classify(&context, &planning_filters, &make_empty_query(), &schema);
+        assert_eq!(
+            planned_selection_timeline,
+            Some(TimelineName::from("log_time")),
+            "an unpushable comparison on the reader index must not pin selection to it"
+        );
+        assert_eq!(
+            planned_pushdown,
+            vec![
+                TableProviderFilterPushDown::Unsupported,
+                TableProviderFilterPushDown::Inexact,
+            ]
+        );
+
+        let scan_filters = [&u_and_segment];
+        let (scan_selection_timeline, scan_pushdown) =
+            classify(&context, &scan_filters, &make_empty_query(), &schema);
+        assert_eq!(
+            scan_selection_timeline, planned_selection_timeline,
+            "planning and scanning must choose the same selection timeline"
+        );
+        assert_eq!(scan_pushdown, vec![TableProviderFilterPushDown::Inexact]);
+    }
+
+    #[test]
+    fn configured_reader_range_counts_as_t_restriction() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let u_only = col("log_time").gt(lit(100i64));
+        let filters = [&u_only];
+
+        // No filter names `frame_nr`, but the base request already carries a
+        // `T` range (e.g. from a configured `filtered_index_range`).
+        let request = QueryDatasetRequest {
+            query: Some(Query {
+                range: Some(QueryRange {
+                    index: TimelineName::from("frame_nr"),
+                    index_range: AbsoluteTimeRange {
+                        min: TimeInt::new_temporal(0),
+                        max: TimeInt::new_temporal(10),
+                    },
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (selection_timeline, pushdown) =
+            classify(&reader_on_frame_nr(), &filters, &request, &schema);
+
+        assert_eq!(selection_timeline, Some(TimelineName::from("frame_nr")));
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Unsupported]);
+    }
+
+    #[test]
+    fn mixed_timeline_or_is_residual() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let expr = col("frame_nr")
+            .gt(lit(100i64))
+            .or(col("log_time").gt(lit(200i64)));
+        let filters = [&expr];
+
+        let (selection_timeline, pushdown) = classify(
+            &reader_on_frame_nr(),
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(selection_timeline, Some(TimelineName::from("frame_nr")));
+        assert_eq!(
+            pushdown,
+            vec![TableProviderFilterPushDown::Unsupported],
+            "an OR whose branches span two timelines must never intersect their \
+             candidate sets; it stays residual and the scan uses the broader request"
+        );
+    }
+
+    #[test]
+    fn same_timeline_or_still_fans_out() {
+        let schema = make_schema_with_indexes(&["frame_nr", "log_time"]);
+        let expr = col("frame_nr")
+            .gt(lit(100i64))
+            .or(col("frame_nr").lt(lit(10i64)));
+        let filters = [&expr];
+
+        let (selection_timeline, pushdown) = classify(
+            &reader_on_frame_nr(),
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(selection_timeline, Some(TimelineName::from("frame_nr")));
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Inexact]);
+
+        let built = apply_filter_expr_to_queries(
+            vec![make_empty_query()],
+            &expr,
+            &schema,
+            false,
+            selection_timeline,
+        )
+        .expect("pushdown succeeds")
+        .expect("a same-timeline OR still fans out into one query per branch");
+        assert_eq!(built.len(), 2);
+    }
+
+    #[test]
+    fn static_reader_keeps_every_index_predicate_residual() {
+        let schema = make_schema_with_indexes(&["frame_nr"]);
+        let expr = col("frame_nr").gt(lit(100i64));
+        let filters = [&expr];
+
+        let (selection_timeline, pushdown) = classify(
+            &SelectionContext::default(),
+            &filters,
+            &make_empty_query(),
+            &schema,
+        );
+
+        assert_eq!(selection_timeline, None);
+        assert_eq!(pushdown, vec![TableProviderFilterPushDown::Unsupported]);
     }
 }

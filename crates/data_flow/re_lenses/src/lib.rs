@@ -7,6 +7,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod heuristic_mappings;
+pub use heuristic_mappings::register_heuristic_mappings;
 pub mod op;
 mod runtime;
 #[cfg(feature = "semantic")]

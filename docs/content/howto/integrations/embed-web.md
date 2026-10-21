@@ -37,7 +37,7 @@ This is useful for sites whose theme can differ from the OS preference — witho
 
 ### Disabling analytics
 
-Web Viewer analytics are enabled by default. Add `analytics=0` to an iframe URL to disable them:
+To disable usage analytics for an embedded Web Viewer, add `analytics=0` to its iframe URL:
 
 ```html
 <iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&analytics=0"></iframe>
@@ -48,6 +48,9 @@ When using the JavaScript package, pass `analytics: false` to `viewer.start` ins
 ```js
 await viewer.start(rrdUrl, parentElement, { analytics: false });
 ```
+
+The host opt-out also disables identity-linking analytics and Hub query usage statistics.
+It does not change saved native analytics preferences.
 
 ## Using the JavaScript package
 
@@ -140,6 +143,8 @@ viewer.stop();
 This action also removes the canvas from the page.
 
 You can `start` and `stop` the same `WebViewer` instance multiple times.
+
+For a runnable TypeScript example that controls playback (`set_playing`, `set_current_time`) and listens to Viewer events, see [`examples/js/viewer_control`](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control).
 
 ### Callbacks
 

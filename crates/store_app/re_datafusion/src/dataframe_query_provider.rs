@@ -34,8 +34,8 @@ use futures::FutureExt as _;
 use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
-use re_dataframe::{Index, QueryExpression, TimelineName};
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_dataframe::{Index, QueryExpression};
+use re_protos::cloud::v1alpha1::ext::ChunkCandidatesDataframe;
 use re_types_core::SegmentId;
 
 use re_redap_client::{ApiError, ApiResult};
@@ -76,6 +76,13 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// user asks for a different target partition. These are generally not
     /// too large.
     chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
+
+    /// Whether the reader has a temporal index and `chunk_info`'s `chunk_timeline_start` values
+    /// are trustworthy for emission ordering on it. Plumbed through to the IO loop, which builds no per-segment manifest and falls
+    /// back to non-temporal fetch ordering/priorities when this is `false`, relying instead on
+    /// the completion-based [`CpuWorkerMsg::SegmentChunkCount`] path.
+    starts_eligible: bool,
+
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -147,15 +154,8 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     client: T,
     chunk_infos: Vec<RecordBatch>,
 
-    /// Name of the timeline named by `query_expression.filtered_index`,
-    /// if any. Plumbed through to the IO loop so it can extract the
-    /// per-chunk `{timeline}:start` values from the `chunk_info`
-    /// columns and build per-segment manifests for the CPU worker's
-    /// horizon-driven emit + GC. `TimelineName` is `Copy` (interned
-    /// `Arc<str>`), so propagating it end-to-end avoids the
-    /// String→&str→TimelineName conversion dance an owned `String`
-    /// would force at each hop.
-    filtered_index_timeline: Option<TimelineName>,
+    /// See [`SegmentStreamExec::starts_eligible`].
+    starts_eligible: bool,
 
     chunk_tx: Option<Sender<ApiResult<CpuWorkerMsg>>>,
     store_output_channel: Receiver<RecordBatch>,
@@ -287,7 +287,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
-            let filtered_index_timeline = this.filtered_index_timeline;
+            let starts_eligible = this.starts_eligible;
             let pending_analytics = this.pending_analytics.clone();
             let pipeline_budget = Arc::clone(&this.pipeline_budget);
             let object_store_auth = Arc::clone(&this.object_store_auth);
@@ -303,7 +303,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                         chunk_stream_io_loop(
                             client,
                             chunk_infos,
-                            filtered_index_timeline,
+                            starts_eligible,
                             chunk_tx,
                             pending_analytics,
                             pipeline_budget,
@@ -498,7 +498,7 @@ impl<T: DataframeClientAPI> Drop for DataframeSegmentStreamInner<T> {
 fn queried_uncompressed_segment_size(batches: &[RecordBatch]) -> Option<u64> {
     // The column is declared nullable, but a null is exactly as unusable here as a missing
     // column, so read it as required and let quiver's error say which of the two happened.
-    let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.required();
+    let column = ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.required();
     let column_name = column.name;
 
     let mut segment_size = 0u64;
@@ -561,6 +561,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         projection: Option<&Vec<usize>>,
         num_partitions: usize,
         chunk_info_batches: Option<RecordBatch>,
+        starts_eligible: bool,
         mut query_expression: QueryExpression,
         index_values: IndexValuesMap,
         client: T,
@@ -633,6 +634,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         Ok(Self {
             props,
             chunk_info,
+            starts_eligible,
             query_expression,
             index_values,
             projected_schema,
@@ -730,7 +732,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
                 // The one-batch-per-segment collapse is also load-bearing for the fetch planner,
-                // whose within-segment `:start` sort is per-batch — see `fetch_plan`'s module docs.
+                // whose within-segment start-column sort is per-batch (see `fetch_plan`'s module docs).
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
                 .try_collect()
                 .map_err(|err| {
@@ -808,7 +810,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 ),
         );
 
-        let filtered_index_timeline = self.query_expression.filtered_index;
         let object_store_auth = self.object_store_auth.clone();
 
         let stream = DataframeSegmentStreamInner {
@@ -816,7 +817,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             store_output_channel: batches_rx,
             client,
             chunk_infos,
-            filtered_index_timeline,
+            starts_eligible: self.starts_eligible,
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
@@ -861,6 +862,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let mut plan = Self {
             props: self.props.clone(),
             chunk_info: self.chunk_info.clone(),
+            starts_eligible: self.starts_eligible,
             query_expression: self.query_expression.clone(),
             index_values: self.index_values.clone(),
             projected_schema: self.projected_schema.clone(),
@@ -1031,7 +1033,7 @@ mod segment_admission_profile_tests {
 
     #[test]
     fn queried_uncompressed_segment_size_requires_complete_positive_metadata() {
-        let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+        let column = ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
         assert_eq!(
             queried_uncompressed_segment_size(&[
                 batch(vec![Some(10), Some(20)], column),
@@ -1055,7 +1057,7 @@ mod segment_admission_profile_tests {
 
     #[test]
     fn segment_admission_profile_uses_only_index_selected_segments() {
-        let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+        let column = ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
         let selected_id: SegmentId = "selected".into();
         let excluded_id: SegmentId = "excluded".into();
         let chunk_info = BTreeMap::from([
@@ -1081,8 +1083,9 @@ mod plan_properties_tests {
     use arrow::datatypes::{DataType, Field};
     use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
     use re_protos::cloud::v1alpha1::{
-        FetchChunksRequest, FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
-        QueryDatasetRequest, QueryDatasetResponse,
+        FetchChunksRequest, FetchChunksResponse, FindChunksRequest, FindChunksResponse,
+        GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetRequest,
+        QueryDatasetResponse,
     };
     use tonic::{Request, Response, Status};
 
@@ -1121,6 +1124,13 @@ mod plan_properties_tests {
             &mut self,
             _request: Request<QueryDatasetRequest>,
         ) -> tonic::Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
+        async fn find_chunks(
+            &mut self,
+            _request: Request<FindChunksRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<FindChunksResponse>>> {
             Err(Status::unimplemented("unused by test"))
         }
 
@@ -1191,6 +1201,7 @@ mod plan_properties_tests {
             None, // no projection: the case that used to lose the Hash claim
             TEST_PARTITIONS,
             None,
+            false,
             QueryExpression::default(),
             None,
             UnusedClient::default(),

@@ -17,7 +17,7 @@ use js_sys::wasm_bindgen;
 use re_log::ResultExt as _;
 use re_log_channel::RecordingOpenBehavior;
 use re_mutex::Mutex;
-use re_viewer_context::{CommandSender, open_url};
+use re_viewer_context::{CommandSender, viewer_url};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
@@ -168,11 +168,11 @@ fn handle_popstate(
         unreachable!();
     };
 
-    match entry.url.parse::<open_url::ViewerOpenUrl>() {
+    match entry.url.parse::<viewer_url::ViewerUrl>() {
         Ok(url) => {
             url.open(
                 egui_ctx,
-                &open_url::OpenUrlOptions {
+                &viewer_url::OpenUrlOptions {
                     recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                     show_loader: true,
                 },

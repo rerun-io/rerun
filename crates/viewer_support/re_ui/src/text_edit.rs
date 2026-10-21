@@ -113,6 +113,7 @@ impl ReTextEdit<'_> {
         self
     }
 
+    /// How wide the field is, instead of egui's fixed default width.
     pub fn desired_width(mut self, desired_width: f32) -> Self {
         self.text_edit = self.text_edit.desired_width(desired_width);
         self

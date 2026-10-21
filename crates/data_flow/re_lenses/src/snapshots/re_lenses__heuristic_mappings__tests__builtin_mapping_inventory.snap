@@ -1,0 +1,65 @@
+---
+source: crates/data_flow/re_lenses/src/heuristic_mappings.rs
+expression: mappings
+---
+{
+    "geometry_msgs.msg.PoseStamped:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "InstancePoses3D:quaternions": ".pose.orientation | pack(.x!, .y!, .z!, .w!)",
+        "InstancePoses3D:translations": ".pose.position | pack(.x!, .y!, .z!)",
+    },
+    "nav2_msgs.msg.VoxelGrid:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "VoxelGridMap:translation": ".origin | pack(.x!, .y!, .z!)",
+        "VoxelGridMap:voxel_size": ".resolutions | pack(.x!, .y!, .z!)",
+    },
+    "nav_msgs.msg.OccupancyGrid:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "GridMap:cell_size": ".info.resolution",
+        "GridMap:quaternion": ".info.origin.orientation | pack(.x!, .y!, .z!, .w!)",
+        "GridMap:translation": ".info.origin.position | pack(.x!, .y!, .z!)",
+    },
+    "rcl_interfaces.msg.Log:message": {
+        "file": ".file",
+        "function": ".function",
+        "line": ".line",
+    },
+    "sensor_msgs.msg.CameraInfo:message": {
+        "Pinhole:parent_frame": ".header.frame_id",
+        "Pinhole:resolution": "pack(.width!, .height!)",
+    },
+    "sensor_msgs.msg.FluidPressure:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "Measurements:units": "\"Pa\"",
+        "Measurements:values": ".fluid_pressure",
+        "Measurements:variances": ".variance",
+    },
+    "sensor_msgs.msg.Illuminance:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "Measurements:units": "\"lux\"",
+        "Measurements:values": ".illuminance",
+        "Measurements:variances": ".variance",
+    },
+    "sensor_msgs.msg.MagneticField:message": {
+        "Arrows3D:vectors": ".magnetic_field | pack(.x!, .y!, .z!)",
+        "CoordinateFrame:frame": ".header.frame_id",
+    },
+    "sensor_msgs.msg.NavSatFix:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "altitude": ".altitude",
+    },
+    "sensor_msgs.msg.RelativeHumidity:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "Measurements:values": ".relative_humidity",
+        "Measurements:variances": ".variance",
+    },
+    "sensor_msgs.msg.Temperature:message": {
+        "CoordinateFrame:frame": ".header.frame_id",
+        "Measurements:units": "\"°C\"",
+        "Measurements:values": ".temperature",
+        "Measurements:variances": ".variance",
+    },
+    "std_msgs.msg.String:message": {
+        "TextDocument:text": ".data",
+    },
+}

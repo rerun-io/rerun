@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -50,6 +50,14 @@ pub mod viewer_control_request {
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
         /// server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
         /// segment, becomes the active recording and is shown.
+        ///
+        /// Roughly the inverse of `get_location`: opening the location it reports goes back there.
+        ///
+        /// A location the viewer already has open is not loaded again: the viewer only navigates there,
+        /// like `set_location` does, but also refreshes a server, folder, or entry. Unlike
+        /// `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+        /// yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
+        /// nothing can load it.
         ///
         /// Returns once the initial load is done, or after about ten seconds, whichever comes first.
         /// What the initial load covers depends on the URL:
@@ -126,18 +134,21 @@ pub mod viewer_control_request {
         /// archetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.
         ///
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
-        /// blueprint only has what it sets, such as row filters, the layout, and column settings, so a
-        /// table that was never configured gives `{}`. `GetTableSchema` names all columns of a table.
+        /// blueprint only has what it sets, such as row filters, the layout, and column settings.
+        /// `GetTableSchema` names all columns of a table.
         ///
-        /// Set exactly one of `recording` and `table`, such as `{"recording": {}}` or
-        /// `{"table": {"table_url": "…"}}`. Without a `store_id` it reads the active recording's
-        /// blueprint, and without a `table_url` the blueprint of the table on screen. The response
-        /// names the recording or table it read. A recording or table without a blueprint yet gets
-        /// the one showing it would give it.
+        /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
+        /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
+        /// the table if one is shown, else the active recording. Without a `store_id` it reads the
+        /// active recording's blueprint, and without a `table_url` the blueprint of the table on
+        /// screen. The response names the recording or table it read.
         ///
-        /// `INVALID_ARGUMENT` if neither `recording` nor `table` is set. `FAILED_PRECONDITION` if the
-        /// default recording or table is not there. `NOT_FOUND` if the recording is not open or the
-        /// viewer does not know the table.
+        /// A recording or table without a blueprint gets a default one. For a recording on screen,
+        /// this is the heuristic blueprint unless the user did manual changes to it. A table shows
+        /// a set of columns by default, with potential sorting and filtering done by the user.
+        ///
+        /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
+        /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintRequest),
         /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
@@ -202,11 +213,94 @@ pub mod viewer_control_request {
         /// This is the schema, not the data: a component listed here has been logged in some segment,
         /// not necessarily in all of them.
         ///
+        /// The dataset's assets are only named by id. `GetDatasetAssetsSchema` names the entities in
+        /// them.
+        ///
         /// `FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.
         /// `INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not
-        /// know the dataset, or nothing in it is at or below `entity_path`.
+        /// know the dataset, or nothing in its segments is at or below `entity_path`.
         #[prost(message, tag = "18")]
         GetDatasetSchema(super::GetDatasetSchemaRequest),
+        /// Report the URL of what the viewer is showing: a recording, a table, a catalog entry,
+        /// the settings, … Pass it to `set_location` to come back to it later.
+        ///
+        /// A recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether
+        /// or not the recording was loaded from a URL, and a table that only exists in the viewer as
+        /// `about:table?id=…`. While the viewer is loading, this is the URL of what it loads.
+        ///
+        /// `FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationRequest),
+        /// Show a location the viewer already has open, as `get_location` reports it.
+        /// Each recording in `get_viewer_state` carries its location too.
+        /// This only navigates, and never loads anything: use `open_url` for that.
+        ///
+        /// Like a user navigating, it leaves the page shown before in the viewer's history, so the
+        /// back button of the native viewer, or of the browser for the web viewer, returns to it.
+        ///
+        /// `INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it
+        /// open.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationRequest),
+        /// Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.
+        /// Read the full guidance below before calling this tool or interpreting its results:
+        /// it explains which frames to query and what this graph can and cannot tell you.
+        ///
+        /// Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
+        /// This is a latest-at snapshot, not transform history. To inspect another time, call
+        /// `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+        /// If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
+        /// If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
+        ///
+        /// Entity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships
+        /// unless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with
+        /// a frame, and Transform3D connects child and parent frames independently of entity paths.
+        /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
+        /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
+        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        ///
+        /// Choose the representation before diagnosing connectivity:
+        /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
+        /// 2. If named frames exist, assume they are the user's intended representation and keep
+        ///     inspecting and reporting on named frames only, unless the user indicates otherwise.
+        /// 3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.
+        /// Implicit tf# frames always exist, even for entities assigned to named frames. Their separate
+        /// tree is normal: do not report it as "two disconnected trees", a problem, or something to connect.
+        /// Named and entity-path frames are usually not mixed; mixing is supported but discouraged.
+        /// Use FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.
+        /// If intent remains unclear, use your structured question tool.
+        ///
+        /// For transform trees with named frames, Transform3D connects frames; CoordinateFrame values
+        /// assign entities to frames. For named-frame topologies, this API shows frame connections,
+        /// not entity assignments.
+        /// Do not flag uninspected frame assignments as potential problems.
+        /// In named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame
+        /// value matches the pinhole's child_frame.
+        /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
+        /// necessary for debugging.
+        ///
+        /// Use also rerun_get_viewer_state to check spatial-view topology errors.
+        /// For missing content, check if the blueprint's target frame is set to a meaningful value.
+        /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
+        /// there are multiple disconnected trees with named frames.
+        /// Inspect potential roots to use as target frames and use your structured question tool to
+        /// clarify with the user if there are ambiguities.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphRequest),
+        /// Describe the assets of a dataset on a server: the entities of each asset and the components
+        /// logged on each, in the form `GetDatasetSchema` describes the segments.
+        ///
+        /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
+        /// viewer shows it as part of every segment it applies to, so an entity missing from
+        /// `GetDatasetSchema` may be in an asset. See
+        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        ///
+        /// Only assets the server is done registering are described.
+        ///
+        /// `FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where
+        /// `NOT_FOUND` means no asset has anything at or below `entity_path`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -225,7 +319,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -282,6 +376,18 @@ pub mod viewer_control_response {
         /// Result of `get_dataset_schema`.
         #[prost(message, tag = "18")]
         GetDatasetSchema(super::GetDatasetSchemaResponse),
+        /// Result of `get_location`.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationResponse),
+        /// Result of `set_location`.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationResponse),
+        /// Result of `get_transform_graph`.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphResponse),
+        /// Result of `get_dataset_assets_schema`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -292,6 +398,143 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphRequest {
+    /// Recording store id from GetViewerState. Defaults to the active recording.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
+    #[prost(
+        enumeration = "get_transform_graph_request::FrameFilter",
+        optional,
+        tag = "2"
+    )]
+    pub frame_filter: ::core::option::Option<i32>,
+    /// Defaults to ALL. Implicit hierarchy identity edges count as static.
+    #[prost(
+        enumeration = "get_transform_graph_request::EdgeFilter",
+        optional,
+        tag = "3"
+    )]
+    pub edge_filter: ::core::option::Option<i32>,
+    /// Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.
+    /// Connectivity, source entity paths and sample times are always included.
+    #[prost(bool, optional, tag = "4")]
+    pub include_transforms: ::core::option::Option<bool>,
+}
+/// Nested message and enum types in `GetTransformGraphRequest`.
+pub mod get_transform_graph_request {
+    /// Which kinds of transform frames to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum FrameFilter {
+        /// Use the default: include all frames.
+        Unspecified = 0,
+        /// Include only frames derived from entity paths.
+        EntityPath = 1,
+        /// Include only explicitly named frames.
+        Named = 2,
+        /// Include both entity-path-derived and named frames.
+        All = 3,
+    }
+    impl FrameFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "FRAME_FILTER_UNSPECIFIED",
+                Self::EntityPath => "FRAME_FILTER_ENTITY_PATH",
+                Self::Named => "FRAME_FILTER_NAMED",
+                Self::All => "FRAME_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FRAME_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "FRAME_FILTER_ENTITY_PATH" => Some(Self::EntityPath),
+                "FRAME_FILTER_NAMED" => Some(Self::Named),
+                "FRAME_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+    /// Which kinds of transform edges to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum EdgeFilter {
+        /// Use the default: include all edges.
+        Unspecified = 0,
+        /// Include static edges, including implicit hierarchy identities.
+        Static = 1,
+        /// Include only temporal edges.
+        Temporal = 2,
+        /// Include both static and temporal edges.
+        All = 3,
+    }
+    impl EdgeFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "EDGE_FILTER_UNSPECIFIED",
+                Self::Static => "EDGE_FILTER_STATIC",
+                Self::Temporal => "EDGE_FILTER_TEMPORAL",
+                Self::All => "EDGE_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "EDGE_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "EDGE_FILTER_STATIC" => Some(Self::Static),
+                "EDGE_FILTER_TEMPORAL" => Some(Self::Temporal),
+                "EDGE_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+}
+impl ::prost::Name for GetTransformGraphRequest {
+    const NAME: &'static str = "GetTransformGraphRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+}
+/// Response for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphResponse {
+    /// Recording that was queried.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+    /// JSON object with query, options, missing_chunks, frames and edges.
+    /// Frame ids are canonical frame names. has_transform refers to the unfiltered latest-at graph;
+    /// registered frames may have no active edges. Edge sample times use kind=static or
+    /// kind=temporal with an integer string value, on the query timeline.
+    /// Matrices are arrays of rows acting on column vectors. parent_from_child maps child coordinates
+    /// into parent coordinates; image_from_camera is a pinhole's intrinsic matrix, not an affine transform.
+    #[prost(string, tag = "2")]
+    pub json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetTransformGraphResponse {
+    const NAME: &'static str = "GetTransformGraphResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
     }
 }
 /// Request for `CloseRecordings`.
@@ -485,13 +728,13 @@ impl ::prost::Name for EguiInspectResponse {
 /// Request for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintRequest {
-    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
     #[prost(oneof = "get_blueprint_request::Target", tags = "2, 3")]
     pub target: ::core::option::Option<get_blueprint_request::Target>,
 }
 /// Nested message and enum types in `GetBlueprintRequest`.
 pub mod get_blueprint_request {
-    /// Whose blueprint to read. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
         /// Read the blueprint of a recording.
@@ -684,6 +927,9 @@ pub struct GetDatasetSchemaResponse {
     /// `entity_path`, or raise `max_entities`.
     #[prost(uint32, tag = "3")]
     pub omitted_entities: u32,
+    /// The ids of the dataset's registered assets. `GetDatasetAssetsSchema` describes them.
+    #[prost(string, repeated, tag = "4")]
+    pub asset_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetDatasetSchemaResponse {
     const NAME: &'static str = "GetDatasetSchemaResponse";
@@ -693,6 +939,77 @@ impl ::prost::Name for GetDatasetSchemaResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+}
+/// Request for `GetDatasetAssetsSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaRequest {
+    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// the dataset of the segment on screen.
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Assets with nothing
+    /// there are left out. Omit for every entity.
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most, per asset.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them. Defaults to false.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaRequest {
+    const NAME: &'static str = "GetDatasetAssetsSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+}
+/// Response for `GetDatasetAssetsSchema`: the dataset's assets and the entities in each.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaResponse {
+    /// The matching assets, by asset id.
+    #[prost(message, repeated, tag = "1")]
+    pub assets: ::prost::alloc::vec::Vec<DatasetAssetSchema>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaResponse {
+    const NAME: &'static str = "GetDatasetAssetsSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+}
+/// One asset of a dataset, and the entities logged in it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetAssetSchema {
+    /// The asset's id, which is its segment id in the dataset's asset dataset.
+    #[prost(string, tag = "1")]
+    pub asset_id: ::prost::alloc::string::String,
+    /// The matching entities in path order, each with the components logged on it. All of an
+    /// asset's data is static.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out of this asset.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+}
+impl ::prost::Name for DatasetAssetSchema {
+    const NAME: &'static str = "DatasetAssetSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
     }
 }
 /// Request for `GetRecordingSchema`.
@@ -914,9 +1231,10 @@ impl ::prost::Name for GetViewerStateRequest {
 /// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetViewerStateResponse {
-    /// The current viewer page/route (e.g. which recording or hub page is shown).
+    /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
+    /// See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
     #[prost(string, tag = "1")]
-    pub url: ::prost::alloc::string::String,
+    pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
     #[prost(string, optional, tag = "2")]
     pub active_store_id: ::core::option::Option<::prost::alloc::string::String>,
@@ -1107,6 +1425,9 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "4")]
+    pub location: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ViewerRecording {
     const NAME: &'static str = "ViewerRecording";
@@ -1277,6 +1598,12 @@ pub struct OpenUrlRequest {
     /// dataset URI, a redap server/catalog URL, or an intra-recording link.
     #[prost(string, tag = "1")]
     pub url: ::prost::alloc::string::String,
+    /// Whether to also show what it opens, making a recording the active one. Defaults to true.
+    ///
+    /// Without it, a recording loads in the background, a server is connected to without being
+    /// shown, and a location the viewer already has open is left as it is.
+    #[prost(bool, optional, tag = "2")]
+    pub navigate: ::core::option::Option<bool>,
 }
 impl ::prost::Name for OpenUrlRequest {
     const NAME: &'static str = "OpenUrlRequest";
@@ -1631,6 +1958,66 @@ impl ::prost::Name for TimeCursor {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.TimeCursor".into()
+    }
+}
+/// Request for `GetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationRequest {}
+impl ::prost::Name for GetLocationRequest {
+    const NAME: &'static str = "GetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+}
+/// Response for `GetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationResponse {
+    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetLocationResponse {
+    const NAME: &'static str = "GetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+}
+/// Request for `SetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationRequest {
+    /// A location, as `GetLocation` reports it.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetLocationRequest {
+    const NAME: &'static str = "SetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+}
+/// Response for `SetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationResponse {}
+impl ::prost::Name for SetLocationResponse {
+    const NAME: &'static str = "SetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationResponse".into()
     }
 }
 /// Generated client implementations.

@@ -112,6 +112,8 @@ fn observe_task_meta(blob: &[u8]) {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU64;
+
     use super::*;
 
     #[test]
@@ -129,11 +131,11 @@ mod tests {
         let mut writer = arrow::ipc::writer::StreamWriter::try_new(&mut blob, &schema).unwrap();
         writer.finish().unwrap();
         observe_task_meta(&blob);
-        assert_eq!(revisions.get(id), Some(42));
+        assert_eq!(revisions.get(id), NonZeroU64::new(42));
         observe_task_meta(b"opaque task output");
         revisions.observe(id, 50);
         observe_task_meta(&blob);
-        assert_eq!(revisions.get(id), Some(50));
+        assert_eq!(revisions.get(id), NonZeroU64::new(50));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -181,7 +183,10 @@ mod tests {
             let completion = completions.next().await.unwrap().unwrap();
             assert!(completion.is_success());
             assert_eq!(completion.task_id, "task");
-            assert_eq!(revisions.get(id), include_blob.then_some(17));
+            assert_eq!(
+                revisions.get(id),
+                include_blob.then_some(NonZeroU64::new(17).unwrap())
+            );
             assert!(completions.next().await.is_none());
         }
     }

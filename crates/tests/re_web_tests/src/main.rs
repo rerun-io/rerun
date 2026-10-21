@@ -108,7 +108,7 @@ async fn run_package(args: &Args, package: &WebTestPackage) -> anyhow::Result<()
                 cors_allow_origin: vec!["http://127.0.0.2:*".to_owned()],
                 ..Default::default()
             }
-            .create_server_handle()
+            .create_server_handle(re_build_info::cargo_build_info!())
             .await?,
         )
     } else {

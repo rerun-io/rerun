@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_redap_client::{ApiError, ApiResult, TraceId};
+use re_redap_client::{ApiError, ApiResult, DatasetSchema, TraceId};
 
 use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
 use re_types_core::LayerName;
@@ -138,7 +138,7 @@ impl CatalogClient {
     pub async fn get_dataset_info(&self, dataset_id: EntryId) -> ApiResult<DatasetInfo> {
         let mut client = self.client().await?;
         let segment_table_schema = client.get_segment_table_schema(dataset_id).await?;
-        let dataset_schema = client.get_dataset_schema(dataset_id).await?;
+        let dataset_schema = client.get_dataset_schema(dataset_id).await?.schema;
 
         let mut builder = DatasetInfoBuilder::new(&segment_table_schema);
         let request = ScanSegmentTableRequest::with_columns(builder.columns());
@@ -152,9 +152,9 @@ impl CatalogClient {
         builder.finish(self.origin(), &dataset_schema)
     }
 
-    /// The dataset-wide schema, which may retain fields from removed layers.
+    /// The union of the schemas of every registered layer of every segment in the dataset.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<ArrowSchema> {
+    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<DatasetSchema> {
         self.client().await?.get_dataset_schema(dataset_id).await
     }
 

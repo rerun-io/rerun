@@ -71,6 +71,10 @@ class Recording:
     """One recording open in the viewer."""
 
     store_id: StoreId
+
+    location: str
+    """The location that shows this recording, for [`set_location`][rerun.experimental.ViewerClient.set_location]."""
+
     timelines: list[Timeline]
 
     current_timeline: str | None
@@ -120,8 +124,12 @@ class LoadingSource:
 class ViewerState:
     """A snapshot of what the viewer is currently showing."""
 
-    url: str
-    """The current page, as a sharable URL. Empty for a page that has none."""
+    location: str
+    """
+    What the viewer is showing, as a Viewer URL. Empty if that has no location.
+
+    Pass it to [`set_location`][rerun.experimental.ViewerClient.set_location] to come back to it later.
+    """
 
     active_recording: StoreId | None
     recordings: list[Recording]
@@ -201,6 +209,7 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
         recordings.append(
             Recording(
                 store_id=recording.get("store_id", ""),
+                location=recording.get("location", ""),
                 timelines=[
                     Timeline(
                         name=timeline.get("timeline", {}).get("name", ""),
@@ -239,7 +248,7 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
     ]
 
     return ViewerState(
-        url=raw.get("url", ""),
+        location=raw.get("location", ""),
         active_recording=raw.get("active_store_id"),
         recordings=recordings,
         views=views,
@@ -491,7 +500,7 @@ class ViewerClient:
             raw = json.loads(self._internal.close_recordings(store_ids=store_ids))
         return list(raw.get("closed", []))
 
-    def open_url(self, url: str) -> bool:
+    def open_url(self, url: str, *, navigate: bool = True) -> bool:
         """
         Open a URL in the viewer, and wait about ten seconds at most for its initial load.
 
@@ -506,6 +515,10 @@ class ViewerClient:
         url:
             A recording or blueprint file, a `rerun://` dataset URI, a redap server or catalog
             URL, or an intra-recording link.
+        navigate:
+            Also show what it opens, making a recording the active one.
+            If `False`, a recording loads in the background, and a server is connected to
+            without being shown.
 
         Returns
         -------
@@ -515,7 +528,7 @@ class ViewerClient:
             its `loading` list is empty before reading the recording.
 
         """
-        return self._internal.open_url(url)
+        return self._internal.open_url(url, navigate=navigate)
 
     def save_screenshot(self, file_path: str, view_id: str | UUID | None = None) -> None:
         """
@@ -540,6 +553,45 @@ class ViewerClient:
         """
         view_id_str = str(view_id) if view_id is not None else None
         self._internal.save_screenshot(file_path, view_id_str)
+
+    def get_location(self) -> str:
+        """
+        Report where the viewer is, such as a recording, a catalog entry, or the settings.
+
+        Pass it to [`set_location`][rerun.experimental.ViewerClient.set_location] to come back to it later.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Raises
+        ------
+        RuntimeError
+            If what the viewer shows has no location.
+
+        """
+        return self._internal.get_location()
+
+    def set_location(self, location: str) -> None:
+        """
+        Show a location the viewer already has open, like `ViewerState.location`.
+
+        This only navigates, and never loads anything: use [`open_url`][rerun.experimental.ViewerClient.open_url] for that.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        location:
+            A location, as [`viewer_state`][rerun.experimental.ViewerClient.viewer_state] reports it.
+
+        Raises
+        ------
+        RuntimeError
+            If the viewer does not have it open.
+
+        """
+        self._internal.set_location(location)
 
     @overload
     def set_time(

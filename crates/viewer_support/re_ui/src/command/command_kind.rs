@@ -3,8 +3,8 @@ use egui::os::OperatingSystem;
 use smallvec::SmallVec;
 
 use super::{
-    BoundCommand, CommandEnvironment, RecordingCommand, RecordingCommandKind, RedapServerCommand,
-    RedapServerCommandKind, TableCommandKind, UICommand,
+    BoundCommand, CommandEnvironment, RecordingCommandKind, RedapServerCommandKind,
+    TableCommandKind, UICommand,
 };
 
 /// What a command acts on, which decides where its target comes from.
@@ -386,101 +386,11 @@ impl BoundCommand {
     }
 }
 
-/// A command as the command palette shows it.
-#[derive(Clone, Debug)]
-pub struct ListedCommand {
-    /// The command, paired with the target it acts on.
-    pub command: BoundCommand,
-
-    /// Can it run? Unavailable commands are shown grayed out.
-    pub enabled: bool,
-}
-
-/// The commands the command palette offers in `env`, in palette order.
-///
-/// Global commands are always listed, grayed out where unsupported.
-/// Recording, server, and table commands are only listed when `env` has a target for them;
-/// server commands that need an editable server are grayed out for the built-in catalog.
-///
-/// Every enabled entry is exactly what [`CommandKind::bind`] returns for its kind.
-pub fn palette_commands(env: &CommandEnvironment) -> Vec<ListedCommand> {
-    use strum::IntoEnumIterator as _;
-
-    let mut commands: Vec<ListedCommand> = UICommand::iter()
-        .map(|cmd| ListedCommand {
-            command: BoundCommand::Ui(cmd),
-            enabled: cmd.is_supported(),
-        })
-        .collect();
-
-    if let Some(recording_id) = &env.recording {
-        commands.extend(
-            RecordingCommand::all_for_recording(recording_id)
-                .filter(|cmd| !matches!(cmd.kind, RecordingCommandKind::PlaybackSpeed(_)))
-                .map(|cmd| ListedCommand {
-                    command: BoundCommand::Recording(cmd),
-                    enabled: true,
-                }),
-        );
-    }
-
-    if let Some(origin) = &env.redap_server {
-        commands.extend(
-            RedapServerCommand::all_for_server(origin).map(|cmd| ListedCommand {
-                enabled: !cmd.requires_editable_server() || env.has_editable_redap_server,
-                command: BoundCommand::RedapServer(cmd),
-            }),
-        );
-    }
-
-    commands.extend(
-        TableCommandKind::iter()
-            .filter_map(|kind| kind.for_environment(env))
-            .map(|cmd| ListedCommand {
-                command: BoundCommand::Table(cmd),
-                enabled: true,
-            }),
-    );
-
-    commands
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
     use super::*;
-
-    fn test_environments() -> Vec<CommandEnvironment> {
-        let recording =
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
-        let origin: re_uri::Origin = "rerun+http://example.com:51234".parse().unwrap();
-        let empty = CommandEnvironment {
-            recording: None,
-            redap_server: None,
-            has_editable_redap_server: false,
-            table: None,
-            has_table_blueprint: false,
-        };
-        vec![
-            empty.clone(),
-            CommandEnvironment {
-                recording: Some(recording.clone()),
-                ..empty.clone()
-            },
-            CommandEnvironment {
-                recording: Some(recording),
-                redap_server: Some(origin.clone()),
-                has_editable_redap_server: true,
-                ..empty.clone()
-            },
-            CommandEnvironment {
-                redap_server: Some(origin),
-                has_editable_redap_server: false,
-                ..empty
-            },
-        ]
-    }
 
     #[test]
     fn ids_are_unique_and_round_trip() {
@@ -489,37 +399,6 @@ mod tests {
             let id = kind.id();
             assert!(seen.insert(id.clone()), "duplicate command id {id:?}");
             assert_eq!(CommandKind::from_id(&id), Some(kind), "{id:?}");
-        }
-    }
-
-    #[test]
-    fn palette_agrees_with_bind() {
-        for env in test_environments() {
-            let listed = palette_commands(&env);
-
-            for entry in &listed {
-                let kind = entry.command.kind();
-                assert_eq!(
-                    entry.enabled,
-                    kind.bind(&env).is_some(),
-                    "{} in {env:?}",
-                    kind.id()
-                );
-                assert!(CommandKind::all().any(|k| k == kind), "{}", kind.id());
-            }
-
-            // Every command that can run is in the palette.
-            for kind in CommandKind::all() {
-                if kind.bind(&env).is_some() {
-                    assert!(
-                        listed
-                            .iter()
-                            .any(|entry| entry.enabled && entry.command.kind() == kind),
-                        "{} runs in {env:?} but is not in the palette",
-                        kind.id()
-                    );
-                }
-            }
         }
     }
 

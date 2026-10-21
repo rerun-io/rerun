@@ -37,9 +37,6 @@ jobs:
         with:
           node-version: "24.x"
 
-      - name: Install Yarn
-        run: npm install -g yarn
-
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -53,15 +50,15 @@ jobs:
         with:
           pixi-version: v0.78.0
 
-      - name: Install yarn dependencies
-        run: pixi run yarn --cwd rerun_js install
+      - name: Install npm dependencies
+        run: pixi run npm --prefix rerun_js ci
 
       - name: Build rerun_js package
-        run: pixi run yarn --cwd rerun_js workspaces run build
+        run: pixi run npm --prefix rerun_js run build --workspaces
 
       - name: Package rerun_js
         run: |
-          pixi run yarn --cwd rerun_js workspaces run pack
+          pixi run npm --prefix rerun_js run pack --workspaces
           mkdir rerun_js_package
           cp rerun_js/*/*.tar.gz rerun_js_package/
 

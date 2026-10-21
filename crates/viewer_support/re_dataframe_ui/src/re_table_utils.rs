@@ -248,7 +248,7 @@ impl UiTableConfig<'_> {
                     set_all_visible = Some(false);
                 }
 
-                egui_dnd::dnd(ui, "columns").show_custom(|ui, iter| {
+                egui_dnd::dnd(ui, ui.make_persistent_id("columns")).show_custom(|ui, iter| {
                     // 1 extra entry for the "hidden" header
                     let entry_count = self.columns.len() + 1;
 

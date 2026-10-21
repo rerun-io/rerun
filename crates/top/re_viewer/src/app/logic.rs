@@ -16,24 +16,23 @@ use crate::app_blueprint::AppBlueprint;
 
 use super::viewer_control::serve_egui_inspect_request;
 
-use super::{App, WindowDecorationsRequest};
+use super::{AppCore, WindowDecorationsRequest};
 
-impl App {
+impl AppCore {
     /// Called before each call to `ui`, but ALSO when the app is
     /// hidden (occluded, minimized, …) if something has called `request_repaint`.
     ///
     /// We put things here that are unrelated to the UI,
     /// and that we still want to happen if the application is hidden.
-    pub(super) fn logic_impl(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
-        let mut store_hub = self
-            .store_hub
-            .take()
-            .expect("Failed to take store hub from the Viewer");
-
+    pub(super) fn logic_impl(
+        &mut self,
+        egui_ctx: &egui::Context,
+        _frame: &mut eframe::Frame,
+        store_hub: &mut StoreHub,
+    ) {
         {
             // Respect memory budget:
-            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+            self.purge_memory_if_needed(store_hub); // Call BEFORE `begin_frame_caches`
 
             if self.app_options().blueprint_gc {
                 store_hub.gc_blueprints(&self.state.blueprint_undo_state);
@@ -42,12 +41,12 @@ impl App {
 
         {
             // Download/ingest data:
-            self.receive_messages(&mut store_hub, egui_ctx);
-            self.receive_fetched_chunks(&mut store_hub);
-            self.prefetch_chunks(&mut store_hub);
+            self.receive_messages(store_hub, egui_ctx);
+            self.receive_fetched_chunks(store_hub);
+            self.prefetch_chunks(store_hub);
         }
 
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(store_hub, egui_ctx);
 
         {
             // We also need to check for UI commands, especially `UICommand::Quit`.
@@ -111,14 +110,11 @@ impl App {
 
         // The commands above may queue system commands, and answer viewer-control requests that
         // wait on them.
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(store_hub, egui_ctx);
 
-        self.state.cleanup(&store_hub);
+        self.state.cleanup(store_hub);
 
         self.sync_native_window_decorations(egui_ctx);
-
-        // Return the `StoreHub` to the Viewer so we have it on the next frame
-        self.store_hub = Some(store_hub);
     }
 
     /// Hand the window decorations over to the OS, or take them over ourselves.
@@ -737,6 +733,7 @@ impl App {
     /// After loading some data; check if the loaded data makes sense.
     fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
         re_tracing::profile_function!();
+        let reflection = self.reflection.read();
 
         for event in store_events {
             let Some(chunk) = event.delta_chunk() else {
@@ -746,12 +743,12 @@ impl App {
             // For speed, we don't care about the order of the following log statements, so we silence this warning
             for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
-                    if !self.reflection.archetypes.contains_key(&archetype_name) {
+                    if !reflection.archetypes.contains_key(&archetype_name) {
                         re_log::trace_once!("Unknown archetype: {archetype_name}");
                         continue;
                     }
 
-                    for view_class in self.reflection.views_for_archetype(archetype_name) {
+                    for view_class in reflection.views_for_archetype(archetype_name) {
                         if self.view_class_registry.class_entry(view_class).is_none() {
                             re_log::warn_once!(
                                 "Found data associated with unavailable view class {view_class}. This viewer was compiled without support for that view class."

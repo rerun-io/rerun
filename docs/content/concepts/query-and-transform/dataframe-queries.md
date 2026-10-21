@@ -124,7 +124,7 @@ When querying a dataset with multiple [segments](catalog-object-model.md#dataset
 
 - Latest-at semantics do not cross segment boundaries. Each segment is queried independently.
 - The output includes a `rerun_segment_id` column identifying which segment each row comes from.
-- Use `filter_segments()` on a dataset or dataset view to restrict the query to specific segment IDs.
+- Use `filter_segments()` on a dataset or dataset selection to restrict the query to specific segment IDs.
 
 ### How is static data queried?
 
@@ -174,8 +174,8 @@ For a complete example, see the [Time-align data](../../howto/query-and-transfor
 
 - [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/)
   - [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry)
-  - [`DatasetView`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetView)
-  - [`reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetView.reader)
+  - [`DatasetSelection`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection)
+  - [`reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection.reader)
   - [`filter_contents()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_contents)
   - [`filter_segments()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_segments)
 - [Dataframe view](../../reference/types/views/dataframe_view.md) for visualizing query results in the Viewer
