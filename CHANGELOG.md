@@ -63,6 +63,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - Answer `open_url` once its initial load is done [6c2c3be](https://github.com/rerun-io/rerun/commit/6c2c3bebde5be39582ad966ff49f3cea0fa2d76d)
 
 #### 🪳 Bug fixes
+- Reject TLS certificates from the compromised eMudhra intermediate CAs ([RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381), [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382), [RUSTSEC-2026-0383](https://rustsec.org/advisories/RUSTSEC-2026-0383)) [4b14970](https://github.com/rerun-io/rerun/commit/4b14970b3661d1acbba48f1864ee16d226f9304f)
 - Fix anamorphic pinhole projection for 3D in 2D projections [55b565d](https://github.com/rerun-io/rerun/commit/55b565d009815c30cb34e8b9801b32a42021aa3d) (thanks [@mikamikasuki](https://github.com/mikamikasuki)!)
 - Don't react to clicks on popups covering the timeline [925dbad](https://github.com/rerun-io/rerun/commit/925dbad0b94e64f519341e9522c9d6784813aa26)
 - Stop masking connection errors when credentials are present [0be32f6](https://github.com/rerun-io/rerun/commit/0be32f6141d37812ae6a44c1e3f136c8f3f77f38)
