@@ -7,11 +7,11 @@
 - Viewer design refresh: a new home screen, a command palette in the top bar, and consistent typography and colors
 
   <picture>
-    <img src="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/full.png" alt="The refreshed Viewer showing the DNA example, with the command palette in the top bar">
-    <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/480w.png">
-    <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/768w.png">
-    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/1024w.png">
-    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer-design-refresh/14267604f68279ee3fecbd85a18372ed4e77f62d/1200w.png">
+    <img src="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/full.png" alt="The refreshed Viewer showing a robot manipulation episode, with the command palette in the top bar">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/1200w.png">
   </picture>
 
 - Agents can [inspect transform graphs via MCP](https://rerun.io/docs/reference/viewer/mcp#inspecting-transforms) with `rerun_get_transform_graph`
