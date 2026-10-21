@@ -694,7 +694,7 @@ urllib3 = ">=2.8" # Pinned only to hold a security floor.
 gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
-packaging = ">=24.0,<25" # For `publish_wheels.py`
+packaging = ">=26.3,<27" # For `publish_wheels.py`
 pip = ">=26.2.2"
 wheel = ">=0.38,<0.39"
 
