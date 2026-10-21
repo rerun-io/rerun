@@ -770,6 +770,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 index_values: self.index_values.clone(),
                 projected_schema: self.projected_schema.clone(),
                 limit_rows: self.limit_rows,
+                starts_eligible: self.starts_eligible,
                 client: self.client.clone(),
                 object_store_auth: Arc::clone(&self.object_store_auth),
                 io_handle: self.io_handle.clone(),

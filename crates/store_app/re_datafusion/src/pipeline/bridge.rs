@@ -52,6 +52,9 @@ pub struct V2PartitionCtx<T> {
     pub index_values: IndexValuesMap,
     pub projected_schema: Arc<Schema>,
     pub limit_rows: Option<usize>,
+
+    /// See `SegmentStreamExec::starts_eligible`.
+    pub starts_eligible: bool,
     pub client: T,
     pub object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
 
@@ -79,6 +82,7 @@ pub fn execute_partition<T: DataframeClientAPI>(
         index_values,
         projected_schema,
         limit_rows,
+        starts_eligible,
         client,
         object_store_auth,
         io_handle,
@@ -98,6 +102,7 @@ pub fn execute_partition<T: DataframeClientAPI>(
             &origin,
             chunk_infos,
             query_expression.filtered_index,
+            starts_eligible,
             &index_values,
             TARGET_BATCH_SIZE_BYTES as u64,
         )

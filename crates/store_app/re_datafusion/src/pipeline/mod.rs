@@ -14,7 +14,7 @@
 //! * [`segment`] — per-segment state, whose plan cursor yields the safe
 //!   horizon that gates emission.
 //!
-//! Selected per query via `RERUN_DATAFRAME_PIPELINE=v2` (see
+//! Runs every dataset scan unless `RERUN_DATAFRAME_PIPELINE=v1` (see
 //! [`DataframePipeline`]); the branch point is `SegmentStreamExec::execute`.
 
 mod bridge;

@@ -200,17 +200,21 @@ impl FetchPlan {
 /// `group_chunk_infos_by_segment_id` invariant). Segments absent from a
 /// present `index_values` map are dropped here: they cannot produce output,
 /// so fetching them is pure waste.
+///
+/// `starts_eligible` is the scan's verdict on whether `chunk_timeline_start`
+/// is on the reader's index; when `false` no segment is ordered or emitted by
+/// it, even where the column is present.
 pub(crate) fn build_fetch_plan(
     origin: &re_uri::Origin,
     chunk_infos: Vec<RecordBatch>,
     filtered_index: Option<TimelineName>,
+    starts_eligible: bool,
     index_values: &IndexValuesMap,
     target_size_bytes: u64,
 ) -> ApiResult<FetchPlan> {
     re_tracing::profile_function!();
 
-    let start_col_name = filtered_index
-        .is_some()
+    let start_col_name = (filtered_index.is_some() && starts_eligible)
         .then_some(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME);
 
     // Pre-pass over the per-segment inputs: apply the index_values filter
@@ -221,7 +225,7 @@ pub(crate) fn build_fetch_plan(
     // All-or-nothing across the batches the packer sees: if one segment lacks
     // `chunk_timeline_start`, the packer must not sort any batch by it.
     // `normalize_legacy_candidate_batches` applies the same rule on the `scan` path.
-    let mut starts_eligible = filtered_index.is_some();
+    let mut starts_eligible = start_col_name.is_some();
     for chunk_info in chunk_infos {
         if chunk_info.num_rows() == 0 {
             continue;
@@ -563,6 +567,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -662,6 +667,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000, // big target: both segments pack into one request batch
         )
@@ -712,6 +718,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -758,6 +765,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -773,6 +781,28 @@ mod tests {
     }
 
     #[test]
+    fn untrusted_starts_yield_buffer_all() {
+        let infos = vec![chunk_info_batch(
+            "seg-a",
+            Some("frame"),
+            &[Some(10)],
+            &[false],
+            &[Some(1)],
+        )];
+
+        let plan = build_fetch_plan(
+            &re_uri::Origin::test(),
+            infos,
+            Some(TimelineName::from("frame")),
+            false,
+            &None,
+            1_000_000,
+        )
+        .unwrap();
+        assert_eq!(plan.segments[0].mode, SegmentEmitMode::BufferAll);
+    }
+
+    #[test]
     fn static_only_query_yields_buffer_all() {
         let infos = vec![chunk_info_batch(
             "seg-a",
@@ -783,7 +813,7 @@ mod tests {
         )];
 
         let plan =
-            build_fetch_plan(&re_uri::Origin::test(), infos, None, &None, 1_000_000).unwrap();
+            build_fetch_plan(&re_uri::Origin::test(), infos, None, true, &None, 1_000_000).unwrap();
         assert_eq!(plan.segments[0].mode, SegmentEmitMode::BufferAll);
     }
 
@@ -808,6 +838,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &index_values,
             1_000_000,
         )
@@ -829,6 +860,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -866,6 +898,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         ) else {
@@ -893,6 +926,7 @@ mod tests {
             &re_uri::Origin::test(),
             vec![doubled],
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -923,6 +957,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )

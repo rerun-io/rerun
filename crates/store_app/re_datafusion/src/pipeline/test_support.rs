@@ -487,6 +487,7 @@ pub async fn run_driver_projected(
         &origin,
         chunk_infos,
         query_expression.filtered_index,
+        true,
         &None,
         crate::dataframe_query_provider::fetch_plan::TARGET_BATCH_SIZE_BYTES as u64,
     )
@@ -581,6 +582,7 @@ pub async fn run_bridge(
         index_values: None,
         projected_schema: segment_id_only_schema(),
         limit_rows: None,
+        starts_eligible: true,
         client: MockFetchClient::new(responses),
         object_store_auth: Arc::new(crate::chunk_fetcher::NoOpObjectStoreAuthenticator {}),
         io_handle: tokio::runtime::Handle::current(),
