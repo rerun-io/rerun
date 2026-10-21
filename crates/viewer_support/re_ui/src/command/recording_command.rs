@@ -286,10 +286,6 @@ impl RecordingCommandKind {
             KeyboardShortcut::new(Modifiers::NONE, key)
         }
 
-        fn ctrl(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::CTRL, key)
-        }
-
         fn cmd(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
@@ -316,14 +312,8 @@ impl RecordingCommandKind {
             Self::SaveBlueprint => smallvec![],
             Self::Close => smallvec![],
 
-            Self::UndoBlueprintEdit => smallvec![cmd(Key::Z)],
-            Self::RedoBlueprintEdit => {
-                if os == OperatingSystem::Mac {
-                    smallvec![cmd_shift(Key::Z), cmd(Key::Y)]
-                } else {
-                    smallvec![ctrl(Key::Y), ctrl_shift(Key::Z)]
-                }
-            }
+            Self::UndoBlueprintEdit => super::undo_shortcuts(),
+            Self::RedoBlueprintEdit => super::redo_shortcuts(os),
 
             Self::OpenAddViewOrContainerDialog => smallvec![],
             Self::ResetBlueprintToDefault => smallvec![],

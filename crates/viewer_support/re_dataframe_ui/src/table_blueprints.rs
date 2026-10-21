@@ -4,7 +4,7 @@ use ahash::HashMap;
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{StoreId, StoreKind};
 use re_viewer_context::store_hub::{BlueprintPersistenceKey, StoreHub};
-use re_viewer_context::{AppBlueprintCtx, AppContext, TableReference};
+use re_viewer_context::{AppBlueprintCtx, AppContext, BlueprintUndoState, TableReference};
 
 #[derive(Debug, thiserror::Error)]
 pub enum TableBlueprintError {
@@ -149,17 +149,21 @@ impl TableBlueprints {
                 &EMPTY_BLUEPRINT
             });
 
+        let blueprint_query = ctx
+            .blueprint_undo_states
+            .get(current_blueprint.store_id())
+            .map_or_else(
+                BlueprintUndoState::default_query,
+                BlueprintUndoState::blueprint_query,
+            );
+
         AppBlueprintCtx {
             command_sender: ctx.command_sender,
             current_blueprint,
             default_blueprint: self
                 .default_id(table_ref)
                 .and_then(|store_id| ctx.storage_context.bundle.get(store_id)),
-
-            // TODO(andreas): We should establish undo/redo for table blueprint edits.
-            blueprint_query: re_chunk_store::LatestAtQuery::latest(
-                re_viewer_context::blueprint_timeline(),
-            ),
+            blueprint_query,
         }
     }
 

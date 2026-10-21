@@ -1,5 +1,397 @@
 // @ts-ignore
 import type { WebHandle, wasm_bindgen } from "./re_viewer";
+import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
+import {
+  ViewerControlRequestSchema,
+  ViewerControlResponseSchema,
+  type GetViewerStateResponse,
+  PlayState as ProtoPlayState,
+  type ViewerControlRequest,
+  type ViewerControlResponse,
+} from "./proto/rerun/v1alpha1/viewer_control_pb.js";
+import { EntryKind as ProtoEntryKind } from "./proto/rerun/v1alpha1/cloud_pb.js";
+import { TimeType as ProtoTimeType } from "./proto/rerun/v1alpha1/common_pb.js";
+
+/** What the viewer shows, as {@link WebViewer.get_state} reports it. */
+export interface ViewerState {
+  /** Where the viewer is, for {@link WebViewer.set_location}. Empty if that has no location. */
+  location: string;
+
+  /** The active recording, as a store id. */
+  active_store_id?: string;
+
+  /** Every recording open in the viewer. */
+  recordings: ViewerRecording[];
+
+  /** The views of the active recording's blueprint. */
+  views: ViewerView[];
+
+  /** What the viewer is still loading, empty once everything has arrived. */
+  loading: ViewerLoadingSource[];
+
+  /** The servers in the viewer's left panel. */
+  servers: ViewerServer[];
+
+  /** The origin of the catalog server the viewer hosts, if any. */
+  catalog_url?: string;
+
+  /** The version of the viewer. */
+  viewer_version?: string;
+}
+
+/** A recording open in the viewer. */
+export interface ViewerRecording {
+  /** The recording's store id, `{kind}:{application_id}:{recording_id}`. */
+  store_id: string;
+
+  /** The location that shows this recording, for {@link WebViewer.set_location}. */
+  location: string;
+
+  /** The recording's timelines. */
+  timelines: ViewerTimeline[];
+
+  /** The recording's time cursor, if it has one. */
+  current_time?: TimeCursor;
+
+  /** Whether the time cursor is paused, playing, or following the latest data. */
+  play_state?: PlayState;
+}
+
+/** A timeline of a recording. */
+export interface ViewerTimeline {
+  /** The timeline's name. */
+  name: string;
+
+  /** What kind of time the timeline holds. */
+  time_type?: TimeType;
+
+  /** The first and last time on the timeline, if it has any data. */
+  time_range?: TimeRange;
+
+  /**
+   * Where the time cursor is on this timeline, in its own unit.
+   *
+   * Each timeline keeps its own position, so this is also set for timelines other than the active one.
+   * Absent if the cursor has never been on it.
+   */
+  current_time?: bigint;
+}
+
+/** Where a recording's time cursor is. */
+export interface TimeCursor {
+  /** The timeline the cursor is on. */
+  timeline: string;
+
+  /** What kind of time the timeline holds. */
+  time_type?: TimeType;
+
+  /** The cursor's time, in the timeline's own unit, if it is set. */
+  time?: bigint;
+}
+
+/** A range of time, in the timeline's own unit, both ends inclusive. */
+export interface TimeRange {
+  start: bigint;
+  end: bigint;
+}
+
+/**
+ * What kind of time a timeline holds, and so the unit of its times:
+ * a sequence index, a duration in nanoseconds, or a timestamp in nanoseconds since the Unix epoch.
+ */
+export type TimeType = "sequence" | "duration" | "timestamp";
+
+/** Whether a time cursor is paused, playing, or following the latest data as it arrives. */
+export type PlayState = "paused" | "playing" | "following";
+
+/** A view of the current blueprint. */
+export interface ViewerView {
+  view_id: string;
+
+  /** The view's class, e.g. `Spatial3D`. */
+  class: string;
+
+  name: string;
+
+  /** The view's origin entity path. */
+  origin: string;
+
+  visible: boolean;
+
+  /** The warnings and errors the view reported the last time it was shown. */
+  reports: ViewerReport[];
+}
+
+/** A warning or an error a view reported. */
+export interface ViewerReport {
+  /** `warning` or `error`. */
+  severity: string;
+
+  summary: string;
+  details?: string;
+}
+
+/** A server in the viewer's left panel. */
+export interface ViewerServer {
+  origin: string;
+
+  /** The server's datasets and tables. */
+  entries: ViewerServerEntry[];
+
+  /** Why the viewer could not list the server's entries, if it could not. */
+  error?: string;
+}
+
+/** A dataset or table on a server. */
+export interface ViewerServerEntry {
+  name: string;
+  kind?: EntryKind;
+
+  /** The entry's URL, for {@link WebViewer.open} or {@link WebViewer.set_location}. */
+  url: string;
+}
+
+/** What kind of entry a server holds. */
+export type EntryKind =
+  | "dataset"
+  | "dataset_view"
+  | "table"
+  | "table_view"
+  | "blueprint_dataset"
+  | "asset_dataset";
+
+/** Something the viewer is still loading. */
+export interface ViewerLoadingSource {
+  /** What is being loaded: a file path, a URL's display name, or a segment id. */
+  name: string;
+
+  /** The same thing the viewer's own loading screen says. */
+  status: string;
+}
+
+/** The public {@link ViewerState} of a `GetViewerState` response. */
+function viewer_state_of(state: GetViewerStateResponse): ViewerState {
+  return {
+    location: state.location,
+    active_store_id: state.activeStoreId,
+    recordings: state.recordings.map((recording) => ({
+      store_id: recording.storeId,
+      location: recording.location,
+      timelines: recording.timelines.map((timeline) => ({
+        name: timeline.timeline?.name ?? "",
+        time_type: time_type_of(timeline.timeType),
+        time_range: timeline.timeRange && {
+          start: timeline.timeRange.start,
+          end: timeline.timeRange.end,
+        },
+        current_time: timeline.currentTime?.time,
+      })),
+      play_state: play_state_of(recording.playState),
+      current_time: recording.currentTime && {
+        timeline: recording.currentTime.timeline?.name ?? "",
+        time_type: time_type_of(recording.currentTime.timeType),
+        time: recording.currentTime.time?.time,
+      },
+    })),
+    views: state.views.map((view) => ({
+      view_id: view.viewId,
+      class: view.class,
+      name: view.name,
+      origin: view.origin,
+      visible: view.visible,
+      reports: view.reports.map(({ severity, summary, details }) => ({ severity, summary, details })),
+    })),
+    loading: state.loading.map(({ name, status }) => ({ name, status })),
+    servers: state.servers.map((server) => ({
+      origin: server.origin,
+      entries: server.entries.map((entry) => ({
+        name: entry.name,
+        kind: entry_kind_of(entry.kind),
+        url: entry.url,
+      })),
+      error: server.error,
+    })),
+    catalog_url: state.catalogUrl,
+    viewer_version: state.viewerVersion,
+  };
+}
+
+function play_state_of(play_state: ProtoPlayState): PlayState | undefined {
+  switch (play_state) {
+    case ProtoPlayState.PAUSED:
+      return "paused";
+    case ProtoPlayState.PLAYING:
+      return "playing";
+    case ProtoPlayState.FOLLOWING:
+      return "following";
+    default:
+      return undefined;
+  }
+}
+
+function play_state_to_proto(play_state: PlayState | undefined): ProtoPlayState | undefined {
+  switch (play_state) {
+    case "paused":
+      return ProtoPlayState.PAUSED;
+    case "playing":
+      return ProtoPlayState.PLAYING;
+    case "following":
+      return ProtoPlayState.FOLLOWING;
+    default:
+      return undefined;
+  }
+}
+
+function time_type_of(time_type: ProtoTimeType | undefined): TimeType | undefined {
+  switch (time_type) {
+    case ProtoTimeType.SEQUENCE:
+      return "sequence";
+    case ProtoTimeType.DURATION_NS:
+      return "duration";
+    case ProtoTimeType.TIMESTAMP_NS:
+      return "timestamp";
+    default:
+      return undefined;
+  }
+}
+
+function entry_kind_of(kind: ProtoEntryKind): EntryKind | undefined {
+  switch (kind) {
+    case ProtoEntryKind.DATASET:
+      return "dataset";
+    case ProtoEntryKind.DATASET_VIEW:
+      return "dataset_view";
+    case ProtoEntryKind.TABLE:
+      return "table";
+    case ProtoEntryKind.TABLE_VIEW:
+      return "table_view";
+    case ProtoEntryKind.BLUEPRINT_DATASET:
+      return "blueprint_dataset";
+    case ProtoEntryKind.ASSET_DATASET:
+      return "asset_dataset";
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Where to move the time cursor to, for {@link WebViewer.set_time}, and on which recording and timeline.
+ *
+ * Set at most one of `sequence`, `duration_nanos`, and `timestamp_nanos`.
+ * Without any of them, the cursor stays where it is on the timeline,
+ * so you can switch timelines, or play or pause, on their own.
+ */
+export type SetTimeOptions = SetTimeTarget &
+  (TimeValue | { sequence?: never; duration_nanos?: never; timestamp_nanos?: never });
+
+/** The recording and timeline that {@link WebViewer.set_time} acts on. */
+export interface SetTimeTarget {
+  /** The timeline to seek on. If omitted, the viewer uses its active timeline. */
+  timeline?: string;
+
+  /**
+   * Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.
+   *
+   * Following moves the cursor to the latest data, so it cannot be combined with a time.
+   */
+  play_state?: PlayState;
+
+  /** The recording to seek, as a store id from {@link WebViewer.get_state}. If omitted, the active recording. */
+  recording?: string;
+}
+
+/**
+ * A time on a timeline, as exactly one of a sequence index, a duration, or a timestamp.
+ *
+ * Integer values only: a fractional `number` is rejected.
+ */
+export type TimeValue =
+  | {
+      /** A sequence index. */
+      sequence: number | bigint;
+      duration_nanos?: never;
+      timestamp_nanos?: never;
+    }
+  | {
+      sequence?: never;
+      /** A duration, in nanoseconds. */
+      duration_nanos: number | bigint;
+      timestamp_nanos?: never;
+    }
+  | {
+      sequence?: never;
+      duration_nanos?: never;
+      /**
+       * A timestamp, in nanoseconds since the Unix epoch.
+       *
+       * A `number` is only exact up to 2^53, which today's timestamps exceed, so prefer a `bigint`.
+       */
+      timestamp_nanos: number | bigint;
+    };
+
+/** Why an operation of the viewer's control API failed, as a gRPC status code. */
+export type ViewerControlErrorCode =
+  | "INVALID_ARGUMENT"
+  | "NOT_FOUND"
+  | "FAILED_PRECONDITION"
+  | "INTERNAL";
+
+/** A failed operation of the viewer's control API, such as {@link WebViewer.set_time}. */
+export class ViewerControlError extends Error {
+  override name = "ViewerControlError";
+
+  /** Why the operation failed. */
+  readonly code: ViewerControlErrorCode;
+
+  constructor(code: ViewerControlErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/** A {@link ViewerControlError} for an error that the wasm viewer rejected with. */
+function as_viewer_control_error(err: unknown): unknown {
+  if (err instanceof Error && err.name === "ViewerControlError" && "code" in err) {
+    return new ViewerControlError(err.code as ViewerControlErrorCode, err.message);
+  }
+  return err;
+}
+
+/** An operation of the viewer's control protocol, e.g. `"getViewerState"`. */
+type Operation = NonNullable<ViewerControlRequest["kind"]["case"]>;
+
+/** The request of the operation `K`. */
+type OperationRequest<K extends Operation> = Extract<
+  NonNullable<MessageInitShape<typeof ViewerControlRequestSchema>["kind"]>,
+  { case: K }
+>["value"];
+
+/** The response of the operation `K`. */
+type OperationResponse<K extends Operation> = Extract<
+  ViewerControlResponse["kind"],
+  { case: K }
+>["value"];
+
+/** The time that `options` seeks to, in the timeline's own unit, if any. */
+function time_of(options: SetTimeOptions): bigint | undefined {
+  // The type allows only one, but plain JavaScript callers are not type-checked.
+  const values = [options.sequence, options.duration_nanos, options.timestamp_nanos].filter(
+    (value) => value !== undefined,
+  );
+  if (1 < values.length) {
+    throw new Error(
+      "set_time expects at most one of `sequence`, `duration_nanos`, and `timestamp_nanos`",
+    );
+  }
+  const [value] = values;
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value === "number" && !Number.isSafeInteger(value)) {
+    throw new Error(`set_time expects an integer time, got ${value}`);
+  }
+  return BigInt(value);
+}
 
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
@@ -1080,6 +1472,68 @@ export class WebViewer {
   }
 
   /**
+   * What the viewer currently shows.
+   *
+   * Covers the active recording, every open recording with its timelines, their time ranges and
+   * its time cursor, and every view of the current blueprint with the warnings and errors it reports.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async get_state(): Promise<ViewerState> {
+    return viewer_state_of(await this.#viewer_control("getViewerState", {}));
+  }
+
+  /**
+   * Move the time cursor, switch the active timeline, or play, pause, or follow the latest data.
+   *
+   * ```ts
+   * await viewer.set_time({ timeline: "frame", sequence: 42, play_state: "playing" });
+   * ```
+   *
+   * Rejects with a {@link ViewerControlError} with the code `INVALID_ARGUMENT` if the recording or
+   * timeline doesn't exist, or if `play_state` is following and a time is set.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async set_time(options: SetTimeOptions): Promise<void> {
+    const time = time_of(options);
+    await this.#viewer_control("setTimeCursor", {
+      storeId: options.recording,
+      timeline: options.timeline === undefined ? undefined : { name: options.timeline },
+      time: time === undefined ? undefined : { time },
+      playState: play_state_to_proto(options.play_state),
+    });
+  }
+
+  /**
+   * Where the viewer is: a recording, a catalog entry, the settings, …
+   *
+   * Pass it to {@link WebViewer.set_location} to come back to it later.
+   * This is a Viewer URL, not the address of the web page.
+   * A recording is reported as `about:recording?app_id=…&recording_id=…`.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async get_location(): Promise<string> {
+    return (await this.#viewer_control("getLocation", {})).location;
+  }
+
+  /**
+   * Show a location the viewer already has open.
+   *
+   * Takes a location from {@link WebViewer.get_location}, or the `location` of a recording from {@link WebViewer.get_state}.
+   * This only navigates, and never loads anything: use {@link WebViewer.open} for that.
+   *
+   * Rejects with a {@link ViewerControlError} with the code `NOT_FOUND` if the viewer does not have it open,
+   * and `INVALID_ARGUMENT` if it is not a location.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async set_location(location: string): Promise<void> {
+    await this.#viewer_control("setLocation", { location });
+  }
+
+  /**
    * Get the play state.
    *
    * This always returns `false` if the recording can't be found.
@@ -1293,6 +1747,40 @@ export class WebViewer {
     _minimize_current_fullscreen_viewer = () => this.#minimize();
     this.#fullscreen = true;
   };
+
+  /**
+   * Perform one operation of the viewer's control protocol, defined by `viewer_control.proto`.
+   *
+   * A failed operation rejects with a {@link ViewerControlError}.
+   */
+  async #viewer_control<K extends Operation>(
+    operation: K,
+    request: OperationRequest<K>,
+  ): Promise<OperationResponse<K>> {
+    if (!this.#handle) {
+      throw new ViewerControlError("FAILED_PRECONDITION", "attempted to control a stopped web viewer");
+    }
+
+    const kind = { case: operation, value: request } as MessageInitShape<
+      typeof ViewerControlRequestSchema
+    >["kind"];
+    const request_bytes = toBinary(
+      ViewerControlRequestSchema,
+      create(ViewerControlRequestSchema, { kind }),
+    );
+    let response_bytes;
+    try {
+      response_bytes = await this.#handle.viewer_control(request_bytes);
+    } catch (err) {
+      throw as_viewer_control_error(err);
+    }
+    const response = fromBinary(ViewerControlResponseSchema, response_bytes);
+
+    if (response.kind.case !== operation) {
+      throw new Error(`Expected a ${operation} response, got ${response.kind.case}`);
+    }
+    return response.kind.value as OperationResponse<K>;
+  }
 }
 
 export class LogChannel {

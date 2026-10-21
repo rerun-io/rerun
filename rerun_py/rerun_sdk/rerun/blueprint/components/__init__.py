@@ -47,6 +47,7 @@ from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
+from .sort_by import SortBy, SortByBatch
 from .sql_filter_expression import SqlFilterExpression, SqlFilterExpressionBatch
 from .table_cell_kind import TableCellKind, TableCellKindArrayLike, TableCellKindBatch, TableCellKindLike
 from .table_layout_kind import TableLayoutKind, TableLayoutKindArrayLike, TableLayoutKindBatch, TableLayoutKindLike
@@ -55,6 +56,7 @@ from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_column import TimelineColumn, TimelineColumnBatch
+from .timeline_fraction import TimelineFraction, TimelineFractionBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .tooltip_mode import TooltipMode, TooltipModeArrayLike, TooltipModeBatch, TooltipModeLike
 from .view_class import ViewClass, ViewClassBatch
@@ -175,6 +177,8 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
+    "SortBy",
+    "SortByBatch",
     "SqlFilterExpression",
     "SqlFilterExpressionBatch",
     "TableCellKind",
@@ -195,6 +199,8 @@ __all__ = [
     "TimeRangeBatch",
     "TimelineColumn",
     "TimelineColumnBatch",
+    "TimelineFraction",
+    "TimelineFractionBatch",
     "TimelineName",
     "TimelineNameBatch",
     "TooltipMode",

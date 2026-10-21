@@ -7,7 +7,7 @@ use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::loading_indicator::paint_loading_indicator_inside;
 use re_ui::{ReButton, Size, UiExt as _, Variant, icons};
 use re_uri::RedapUri;
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     AppContext, RecordingOrLocalTable, SystemCommand, SystemCommandSender as _,
 };
@@ -172,7 +172,7 @@ pub fn redap_uri_button(
 
     if let Some((copy_clicked, close_clicked)) = icon_responses {
         if copy_clicked {
-            if let Ok(url) = ViewerOpenUrl::from(uri_clone.clone()).sharable_url(None) {
+            if let Ok(url) = ViewerUrl::from(uri_clone.clone()).sharable_url(None) {
                 ctx.command_sender
                     .send_system(SystemCommand::CopyViewerUrl(url));
             } else {

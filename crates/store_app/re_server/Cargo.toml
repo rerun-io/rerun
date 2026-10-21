@@ -110,6 +110,7 @@ percent-encoding.workspace = true
 re_web.workspace = true
 
 [dev-dependencies]
+re_catalog_client.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_redap_client.workspace = true
@@ -129,9 +130,6 @@ tempfile.workspace = true
 tokio-stream = { workspace = true, features = ["net"] }
 tonic = { workspace = true, features = ["channel"] }
 tonic-reflection.workspace = true
-
-[build-dependencies]
-re_build_tools.workspace = true
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
 re_workspace_hack.workspace = true

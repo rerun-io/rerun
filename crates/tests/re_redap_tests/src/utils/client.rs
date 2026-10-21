@@ -2,8 +2,8 @@ use futures::Stream;
 use re_datafusion::DataframeClientAPI;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    FetchChunksRequest, FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
-    QueryDatasetRequest, QueryDatasetResponse,
+    FetchChunksRequest, FetchChunksResponse, FindChunksRequest, FindChunksResponse,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetRequest, QueryDatasetResponse,
 };
 use std::collections::VecDeque;
 use std::fmt::Formatter;
@@ -11,16 +11,24 @@ use std::sync::Arc;
 use tonic::codec::DecodeBuf;
 use tonic::{Request, Response, Status};
 
+/// One request this [`TestClient`] recorded, in whichever protocol the provider under test used.
+#[derive(Clone, Debug)]
+pub(crate) enum RecordedRequest {
+    QueryDataset(re_protos::cloud::v1alpha1::ext::QueryDatasetRequest),
+    FindChunks(re_protos::cloud::v1alpha1::ext::FindChunksRequest),
+}
+
 pub(crate) struct TestClient<T: RerunCloudService> {
     pub(crate) origin: re_uri::Origin,
 
     pub(crate) service: Arc<T>,
 
-    /// Every `query_dataset` request seen by this client, in order. Lets a test
-    /// assert what request the provider emitted (e.g. that per-segment-value
-    /// pushdown fired). Shared across clones so a clone handed to a provider
+    /// Every `query_dataset` or `find_chunks` request seen by this client, in order,
+    /// converted with the same `TryFrom` the servers validate against. Lets a test assert
+    /// what request the provider emitted (e.g. that per-segment-value pushdown fired) without
+    /// caring which protocol carried it. Shared across clones so a clone handed to a provider
     /// records into the same log the test reads back.
-    pub(crate) query_dataset_requests: Arc<parking_lot::Mutex<Vec<QueryDatasetRequest>>>,
+    pub(crate) recorded_requests: Arc<parking_lot::Mutex<Vec<RecordedRequest>>>,
 }
 
 impl<T: RerunCloudService> TestClient<T> {
@@ -28,7 +36,7 @@ impl<T: RerunCloudService> TestClient<T> {
         Self {
             origin: re_uri::Origin::test(),
             service,
-            query_dataset_requests: Arc::new(parking_lot::Mutex::new(Vec::new())),
+            recorded_requests: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
     }
 }
@@ -39,7 +47,7 @@ impl<T: RerunCloudService> Clone for TestClient<T> {
         Self {
             origin: self.origin.clone(),
             service: Arc::clone(&self.service),
-            query_dataset_requests: Arc::clone(&self.query_dataset_requests),
+            recorded_requests: Arc::clone(&self.recorded_requests),
         }
     }
 }
@@ -106,11 +114,35 @@ impl<T: RerunCloudService> DataframeClientAPI for TestClient<T> {
         &mut self,
         request: Request<QueryDatasetRequest>,
     ) -> tonic::Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
-        self.query_dataset_requests
+        let recorded = re_protos::cloud::v1alpha1::ext::QueryDatasetRequest::try_from(
+            request.get_ref().clone(),
+        )?;
+        self.recorded_requests
             .lock()
-            .push(request.get_ref().clone());
+            .push(RecordedRequest::QueryDataset(recorded));
 
         let response = self.service.query_dataset(request).await?;
+        let (metadata, stream, _extensions) = response.into_parts();
+
+        let streaming = stream_to_streaming(stream).await;
+
+        let mut new_response = Response::new(streaming);
+        *new_response.metadata_mut() = metadata;
+        Ok(new_response)
+    }
+
+    async fn find_chunks(
+        &mut self,
+        request: Request<FindChunksRequest>,
+    ) -> tonic::Result<Response<tonic::codec::Streaming<FindChunksResponse>>> {
+        let recorded = re_protos::cloud::v1alpha1::ext::FindChunksRequest::try_from(
+            request.get_ref().clone(),
+        )?;
+        self.recorded_requests
+            .lock()
+            .push(RecordedRequest::FindChunks(recorded));
+
+        let response = self.service.find_chunks(request).await?;
         let (metadata, stream, _extensions) = response.into_parts();
 
         let streaming = stream_to_streaming(stream).await;

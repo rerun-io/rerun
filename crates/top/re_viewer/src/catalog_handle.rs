@@ -1,12 +1,13 @@
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
+use re_catalog_client::CatalogClient;
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
-use re_redap_client::{ConnectionHandle, ConnectionRegistryHandle};
+use re_redap_client::ConnectionRegistryHandle;
 
 /// The Viewer-owned catalog that runs in this process.
 #[derive(Clone, Debug)]
 pub struct InternalCatalog {
-    connection: ConnectionHandle,
+    catalog_client: CatalogClient,
 
     /// Where it keeps the files it owns.
     storage_dir: std::path::PathBuf,
@@ -16,21 +17,21 @@ impl InternalCatalog {
     /// The internal catalog, if it is running.
     fn new(registry: &ConnectionRegistryHandle) -> Option<Self> {
         Some(Self {
-            connection: registry.internal_connection_handle()?,
+            catalog_client: CatalogClient::new(registry.internal_connection_handle()?),
             storage_dir: registry.internal_storage_dir()?.to_owned(),
         })
     }
 }
 
-/// A [`ConnectionHandle`] tagged with whether its origin is the internal catalog.
+/// A [`CatalogClient`] tagged with whether its origin is the internal catalog.
 #[derive(Clone, Debug)]
 pub enum CatalogHandle {
     Internal(InternalCatalog),
-    Remote(ConnectionHandle),
+    Remote(CatalogClient),
 }
 
 impl CatalogHandle {
-    /// The connection to `origin`, tagged with whether it is the internal catalog.
+    /// The catalog client for `origin`, tagged with whether it is the internal catalog.
     #[expect(dead_code, reason = "remote catalog registration is not wired up yet")]
     pub fn for_origin(registry: &ConnectionRegistryHandle, origin: &re_uri::Origin) -> Self {
         if registry.is_internal_origin(origin)
@@ -38,7 +39,9 @@ impl CatalogHandle {
         {
             Self::Internal(internal)
         } else {
-            Self::Remote(registry.connection_handle(origin.clone()))
+            Self::Remote(CatalogClient::new(
+                registry.connection_handle(origin.clone()),
+            ))
         }
     }
 
@@ -47,11 +50,10 @@ impl CatalogHandle {
         InternalCatalog::new(registry).map(Self::Internal)
     }
 
-    pub fn connection(&self) -> &ConnectionHandle {
+    pub fn client(&self) -> &CatalogClient {
         match self {
-            Self::Internal(InternalCatalog { connection, .. }) | Self::Remote(connection) => {
-                connection
-            }
+            Self::Internal(InternalCatalog { catalog_client, .. })
+            | Self::Remote(catalog_client) => catalog_client,
         }
     }
 
@@ -79,11 +81,11 @@ impl CatalogHandle {
                     Self::Internal(InternalCatalog { storage_dir, .. }) => {
                         write_to_opfs(storage_dir, key, file).await
                     }
-                    Self::Remote(connection) => {
-                        connection.stage(key, source).await.map_err(|err| {
+                    Self::Remote(catalog_client) => {
+                        catalog_client.stage(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
                                 "failed to stage file: {err}\nCatalog: {}",
-                                connection.origin()
+                                catalog_client.origin()
                             )
                         })
                     }
@@ -106,7 +108,7 @@ impl CatalogHandle {
                             )
                         })
                     }
-                    Self::Remote(connection) => {
+                    Self::Remote(catalog_client) => {
                         let source = std::fs::File::open(&file).map_err(|err| {
                             anyhow::anyhow!(
                                 "failed to open file for upload: {err}\nFile path: {}",
@@ -114,10 +116,10 @@ impl CatalogHandle {
                             )
                         })?;
                         let key = object_key(fingerprint)?;
-                        connection.stage(key, source).await.map_err(|err| {
+                        catalog_client.stage(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
                                 "failed to stage file: {err}\nCatalog: {}",
-                                connection.origin()
+                                catalog_client.origin()
                             )
                         })
                     }
@@ -139,9 +141,9 @@ impl CatalogHandle {
             Self::Internal(InternalCatalog { storage_dir, .. }) => {
                 write_internal_bytes(storage_dir, &key, bytes).await
             }
-            Self::Remote(connection) => anyhow::bail!(
+            Self::Remote(catalog_client) => anyhow::bail!(
                 "writing bytes to remote catalog {} is not implemented",
-                connection.origin()
+                catalog_client.origin()
             ),
         }
     }

@@ -1,5 +1,6 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus};
+use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
 use re_ui::{ReButton, UiExt as _, icons};
 
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
@@ -17,7 +18,7 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
     ui.spacing_mut().item_spacing.y = 10.0;
 
     let mut turn_top = None;
-    let mut last_answer: Option<String> = None;
+    let mut last_answer: Option<(String, std::time::SystemTime)> = None;
     for (index, entry) in transcript.items.iter().enumerate() {
         match &entry.item {
             TranscriptItem::User(_) => {
@@ -27,7 +28,7 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             TranscriptItem::Agent { content, .. } => {
                 let text = message_text(content);
                 if !text.trim().is_empty() {
-                    last_answer = Some(text);
+                    last_answer = Some((text, entry.created_at));
                 }
             }
             TranscriptItem::McpStartupFailure(_)
@@ -70,19 +71,26 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             Some(next) => matches!(next.item, TranscriptItem::User(_)),
             None => !session.turn_in_progress(),
         };
-        if turn_ends_here && let (Some(turn_top), Some(answer)) = (turn_top, &last_answer) {
+        if turn_ends_here
+            && let (Some(turn_top), Some((answer, answered_at))) = (turn_top, &last_answer)
+        {
             ui.push_id(("turn_footer", index), |ui| {
-                turn_footer_ui(ui, turn_top, answer);
+                turn_footer_ui(ui, turn_top, answer, *answered_at);
             });
         }
     }
 }
 
-/// The copy button shows only while the pointer is over the turn, from `turn_top` down to the footer itself.
+/// The copy button and the answer time show only while the pointer is over the turn, from `turn_top` down to the footer itself.
 ///
 /// `turn_top` is a y position in the same space as `ui.cursor()`.
 /// The footer takes its space even when the button is hidden, so the transcript does not shift on hover.
-fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str) {
+fn turn_footer_ui(
+    ui: &mut egui::Ui,
+    turn_top: f32,
+    answer: &str,
+    answered_at: std::time::SystemTime,
+) {
     let turn_bottom = ui.cursor().top() + re_ui::Size::Small.height();
     let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
     let hovered = ui.rect_contains_pointer(turn_rect);
@@ -96,6 +104,16 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str) {
             .clicked()
         {
             ui.copy_text(answer.to_owned());
+        }
+        if hovered && let Ok(answered_at) = Timestamp::try_from(answered_at) {
+            re_ui::time::short_duration_ui(
+                ui,
+                answered_at,
+                TimestampFormat::local_timezone()
+                    .with_short(true)
+                    .with_date_visibility(DateVisibility::ShowDate),
+                egui::Ui::weak,
+            );
         }
     });
 }

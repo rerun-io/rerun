@@ -147,6 +147,10 @@ codegen = "cargo run --package re_types_builder -- "
 codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
   # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
 ] }
+# Generate the TypeScript types for the Viewer Control API into `rerun_js/web-viewer/proto`.
+js-codegen-protos = { cmd = "rm -rf rerun_js/web-viewer/proto && mkdir -p rerun_js/web-viewer/proto && protoc -I crates/store/re_protos/proto --plugin=protoc-gen-es=rerun_js/node_modules/.bin/protoc-gen-es --es_out=rerun_js/web-viewer/proto --es_opt=target=ts,import_extension=js rerun/v1alpha1/viewer_control.proto rerun/v1alpha1/cloud.proto rerun/v1alpha1/common.proto rerun/v1alpha1/log_msg.proto", depends-on = [
+  "js-install",
+] }
 codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
 
 # Generate the Rerun CLI manual.
@@ -426,30 +430,38 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
 
-# Setup JS tools
-js-setup = "npm i -g yarn"
-
 # Install JS package dependencies
-js-install = { cmd = "yarn install --cwd rerun_js", depends-on = ["js-setup"] }
+js-install = { cmd = "npm install", cwd = "rerun_js" }
 
 # Build JS packages
-js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on = ["js-install"] }
-js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = ["js-install"] }
+js-build-base = { cmd = "npm run build", cwd = "rerun_js/web-viewer", depends-on = ["js-install"] }
+js-build-base-debug = { cmd = "npm run build:debug", cwd = "rerun_js/web-viewer", depends-on = [
+  "js-install",
+] }
+js-build-all = { cmd = "npm run build --workspaces", cwd = "rerun_js", depends-on = ["js-install"] }
 
 # Build web-viewer and web-viewer-react without rebuilding re_viewer Wasm
-js-build-no-wasm = { cmd = "yarn --cwd rerun_js workspaces run build:js", depends-on = [
+js-build-no-wasm = { cmd = "npm run build:js --workspaces", cwd = "rerun_js", depends-on = [
   "js-install",
 ] }
 
 # Build individual package JS docs in their own directories
-js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depends-on = [
+js-build-package-docs = { cmd = "npm run docs --workspaces", cwd = "rerun_js", depends-on = [
   "js-install",
 ] }
 
 # Combine the output of individual package docs into a single directory
-js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-package-docs"] }
+js-docs = { cmd = "npm run docs", cwd = "rerun_js", depends-on = ["js-build-package-docs"] }
 
-js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
+js-docs-serve = { cmd = "npm run docs:serve", cwd = "rerun_js", depends-on = ["js-docs"] }
+
+# Run the `examples/js/viewer_control` example against a local debug build of the web-viewer
+js-example-viewer-control = { cmd = "npm install && npm run dev", cwd = "examples/js/viewer_control", depends-on = [
+  "js-build-base-debug",
+] }
+
+# Smoke test `examples/js/viewer_control` with Playwright. Needs a built web-viewer and `$CHROME` (or `npx playwright install chromium`).
+js-example-viewer-control-test = { cmd = "npm ci && npm test", cwd = "examples/js/viewer_control" }
 
 
 # Build and install a development version of the rerun-sdk Python package.
@@ -678,19 +690,19 @@ gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
 packaging = ">=24.0,<25" # For `publish_wheels.py`
-pip = ">=23"
+pip = ">=26.2.2"
 wheel = ">=0.38,<0.39"
 
 [feature.base.pypi-dependencies]
 cryptography = ">=49" # Transitive need of `google-auth` (via `google-cloud-storage`) for `upload_image.py`.
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
-pillow = ">=12.2.0,<13" # For `upload_image.py`
+pillow = ">=13.0.0,<14" # For `upload_image.py`
 py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
-uv = "==0.11.32"
+uv = "==0.13.4"
 
 # Test coverage tooling, isolated in the `coverage` environment (see [environments]).
 # Available on all supported platforms. Used only by the `rs-coverage` task.

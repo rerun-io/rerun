@@ -20,7 +20,7 @@ use re_view::{
     visualizers_for_entity,
 };
 use re_viewer_context::{
-    DataResult, DatatypeMatch, RecommendedMappings, TryShowEditUiResult, UiLayout, ViewContext,
+    ComponentMatch, DataResult, RecommendedMappings, TryShowEditUiResult, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
     VisualizerComponentSource, VisualizerInstruction, VisualizerSystem, VisualizerViewReport,
 };
@@ -692,20 +692,34 @@ fn component_mappings_for_required_components_from_visualizability(
             .matches
             .iter()
             .flat_map(|(source_component, match_info)| match match_info {
-                DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } if !selectors.is_empty() => {
-                    Either::Left(selectors.iter().map(|(selector, _)| {
-                        VisualizerComponentSource::SourceComponent {
-                            source_component: *source_component,
-                            selector: selector.to_string(),
-                        }
+                ComponentMatch::HeuristicMapping { mappings, .. } => {
+                    Either::Left(std::iter::once(mappings.mappings().clone()))
+                }
+
+                ComponentMatch::PhysicalDatatypeOnly {
+                    field_accessors, ..
+                } if !field_accessors.is_empty() => {
+                    Either::Right(field_accessors.iter().map(|(selector, _)| {
+                        std::iter::once((
+                            matches.target_component,
+                            VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            },
+                        ))
+                        .collect()
                     }))
                 }
 
-                _ => Either::Right(std::iter::once(VisualizerComponentSource::simple_map(
-                    *source_component,
-                ))),
+                ComponentMatch::NativeSemantics { .. }
+                | ComponentMatch::PhysicalDatatypeOnly { .. } => Either::Left(std::iter::once(
+                    std::iter::once((
+                        matches.target_component,
+                        VisualizerComponentSource::simple_map(*source_component),
+                    ))
+                    .collect(),
+                )),
             })
-            .map(|mapping| std::iter::once((matches.target_component, mapping)).collect())
             .collect(),
 
         Some(VisualizableReason::BufferAndFormatMatch(matches)) => {
@@ -722,18 +736,20 @@ fn component_mappings_for_required_components_from_visualizability(
                 .iter()
                 .flat_map(|(source_component, match_info)| {
                     let buffer_sources: Vec<_> = match match_info {
-                        DatatypeMatch::PhysicalDatatypeOnly { selectors, .. }
-                            if !selectors.is_empty() =>
-                        {
-                            selectors
-                                .iter()
-                                .map(|(selector, _)| VisualizerComponentSource::SourceComponent {
-                                    source_component: *source_component,
-                                    selector: selector.to_string(),
-                                })
-                                .collect()
+                        ComponentMatch::PhysicalDatatypeOnly {
+                            field_accessors, ..
+                        } if !field_accessors.is_empty() => field_accessors
+                            .iter()
+                            .map(|(selector, _)| VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            })
+                            .collect(),
+                        ComponentMatch::HeuristicMapping { .. } => Vec::new(),
+                        ComponentMatch::NativeSemantics { .. }
+                        | ComponentMatch::PhysicalDatatypeOnly { .. } => {
+                            vec![VisualizerComponentSource::simple_map(*source_component)]
                         }
-                        _ => vec![VisualizerComponentSource::simple_map(*source_component)],
                     };
                     buffer_sources.into_iter().flat_map(|buffer_mapping| {
                         format_mappings.iter().map(move |format_mapping| {
@@ -788,7 +804,7 @@ mod tests {
 
     use arrow::datatypes::DataType;
     use re_sdk_types::archetypes::{GaussianSplats3D, Points3D};
-    use re_viewer_context::{DatatypeMatch, SingleRequiredComponentMatch};
+    use re_viewer_context::{ComponentMatch, SingleRequiredComponentMatch};
 
     fn positions() -> ComponentIdentifier {
         Points3D::descriptor_positions().component
@@ -806,23 +822,23 @@ mod tests {
         <re_sdk_types::encodings::Vec3D as re_types_core::ArrowDataType>::arrow_data_type()
     }
 
-    fn native(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {
+    fn native(component: ComponentIdentifier) -> (ComponentIdentifier, ComponentMatch) {
         (
             component,
-            DatatypeMatch::NativeSemantics {
+            ComponentMatch::NativeSemantics {
                 arrow_data_type: vec3d(),
                 component_type: Points3D::descriptor_positions().component_type,
             },
         )
     }
 
-    fn physical_only(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {
+    fn physical_only(component: ComponentIdentifier) -> (ComponentIdentifier, ComponentMatch) {
         (
             component,
-            DatatypeMatch::PhysicalDatatypeOnly {
+            ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type: vec3d(),
                 component_type: GaussianSplats3D::descriptor_scales().component_type,
-                selectors: Vec::new(),
+                field_accessors: Vec::new(),
             },
         )
     }
@@ -830,19 +846,19 @@ mod tests {
     /// A `Vec3D` column without any semantic type, as logged via `AnyValues`.
     fn untyped_physical_only(
         component: ComponentIdentifier,
-    ) -> (ComponentIdentifier, DatatypeMatch) {
+    ) -> (ComponentIdentifier, ComponentMatch) {
         (
             component,
-            DatatypeMatch::PhysicalDatatypeOnly {
+            ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type: vec3d(),
                 component_type: None,
-                selectors: Vec::new(),
+                field_accessors: Vec::new(),
             },
         )
     }
 
     fn positions_match(
-        matches: impl IntoIterator<Item = (ComponentIdentifier, DatatypeMatch)>,
+        matches: impl IntoIterator<Item = (ComponentIdentifier, ComponentMatch)>,
     ) -> VisualizableReason {
         VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
             target_component: positions(),
@@ -882,6 +898,42 @@ mod tests {
             &EntityPath::from("blueprint/visualizers"),
             mappings,
         )
+    }
+
+    /// A heuristic match for the required `positions` component must retain the entire mapping
+    /// set when deriving and picking a candidate, including optional targets such as `colors`.
+    /// Both targets must keep their field selectors into the same structured `message` source.
+    ///
+    /// In other words: picking a recommended visualizer may add several mappings!
+    #[test]
+    fn heuristic_match_preserves_all_target_mappings() {
+        let source_component = "message".into();
+        let mappings: VisualizerComponentMappings = [
+            (
+                positions(),
+                VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: ".positions".into(),
+                },
+            ),
+            (
+                Points3D::descriptor_colors().component,
+                VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: ".colors".into(),
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+        let reason = positions_match(std::iter::once((
+            source_component,
+            ComponentMatch::HeuristicMapping {
+                component_type: None,
+                mappings: RecommendedMappings::from_mappings(mappings.clone()),
+            },
+        )));
+        assert_eq!(pick(&reason, &[]), mappings);
     }
 
     /// Regression test for RR-5303: `Points3D:positions` must map from the `Position3D`-typed

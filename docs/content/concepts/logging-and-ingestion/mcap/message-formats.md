@@ -10,7 +10,7 @@ Rerun provides automatic visualization for common message types in MCAP files:
 
 ## Overview
 
-This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes.
+This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes on import.
 
 We are continually adding support for more standard message types.
 
@@ -32,6 +32,17 @@ We are continually adding support for more standard message types.
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
 | 2D grid map | `nav_msgs/OccupancyGrid` | - | [GridMap](../../../reference/types/archetypes/grid_map.md) |
 | 3D voxel grid map | `nav2_msgs/VoxelGrid` | `VoxelGrid` | [VoxelGridMap](../../../reference/types/archetypes/voxel_grid_map.md) |
+
+### Visualizing ROS 2 messages without conversion
+
+The Viewer can also visualize some ROS 2 messages without converting them to Rerun archetypes, for example after `rerun mcap convert input.mcap -d ros2_reflection -o output.rrd`.
+For these messages, the heuristic blueprint sets up [component mappings](../../../howto/visualization/component-mappings.md) automatically:
+
+* `std_msgs/String`
+* `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`
+* `sensor_msgs/MagneticField`
+
+All other ROS 2 messages, and all Foxglove messages, currently still need conversion.
 
 ### Timelines
 

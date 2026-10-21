@@ -15,7 +15,7 @@ pub const ASSET_MODE_COMPONENT: &str = "mode";
 pub const ASSET_SEGMENTS_COMPONENT: &str = "segments";
 
 /// How an asset's segment list is interpreted.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash)]
 pub enum AssetMode {
     /// The asset applies only to the segments in its list.
     OptIn,

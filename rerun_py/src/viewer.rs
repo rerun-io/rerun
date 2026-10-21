@@ -4,11 +4,12 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 use arrow::array::RecordBatch;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
 use re_grpc_client::write_table::channel;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::viewer_control::v1alpha1::PlayState;
 use re_protos::viewer_control::v1alpha1::ViewerControlOp as _;
 use re_protos::viewer_control::v1alpha1::viewer_control_service_client::ViewerControlServiceClient;
 
@@ -65,10 +66,17 @@ impl PyViewerClientInternal {
         conn.close_recordings(py, target, store_ids)
     }
 
-    fn open_url(self_: Py<Self>, url: String, py: Python<'_>) -> PyResult<bool> {
+    fn get_location(self_: Py<Self>, py: Python<'_>) -> PyResult<String> {
         let mut conn = self_.borrow(py).conn.clone();
 
-        conn.open_url(py, url)
+        conn.get_location(py)
+    }
+
+    #[pyo3(signature = (url, *, navigate = true))]
+    fn open_url(self_: Py<Self>, url: String, navigate: bool, py: Python<'_>) -> PyResult<bool> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.open_url(py, url, navigate)
     }
 
     fn save_screenshot(
@@ -89,18 +97,35 @@ impl PyViewerClientInternal {
         conn.save_screenshot(py, file_path, view_id_str)
     }
 
-    #[pyo3(signature = (timeline, time, play, store_id = None))]
+    fn set_location(self_: Py<Self>, location: String, py: Python<'_>) -> PyResult<()> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.set_location(py, location)
+    }
+
+    #[pyo3(signature = (*, timeline, time, play_state, store_id = None))]
     fn set_time_cursor(
         self_: Py<Self>,
         timeline: Option<String>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<String>,
         store_id: Option<String>,
         py: Python<'_>,
     ) -> PyResult<()> {
+        let play_state = play_state
+            .map(|play_state| match play_state.as_str() {
+                "paused" => Ok(PlayState::Paused),
+                "playing" => Ok(PlayState::Playing),
+                "following" => Ok(PlayState::Following),
+                _ => Err(PyValueError::new_err(format!(
+                    "Unknown play state {play_state:?}, expected \"paused\", \"playing\", or \"following\""
+                ))),
+            })
+            .transpose()?;
+
         let mut conn = self_.borrow(py).conn.clone();
 
-        conn.set_time_cursor(py, timeline, time, play, store_id)
+        conn.set_time_cursor(py, timeline, time, play_state, store_id)
     }
 
     fn viewer_logs(
@@ -203,11 +228,23 @@ impl ViewerConnectionHandle {
         to_json(&response)
     }
 
-    fn open_url(&mut self, py: Python<'_>, url: String) -> PyResult<bool> {
+    fn get_location(&mut self, py: Python<'_>) -> PyResult<String> {
+        let re_protos::viewer_control::v1alpha1::GetLocationResponse { location } = self.execute(
+            py,
+            re_protos::viewer_control::v1alpha1::GetLocationRequest {},
+        )?;
+
+        Ok(location)
+    }
+
+    fn open_url(&mut self, py: Python<'_>, url: String, navigate: bool) -> PyResult<bool> {
         let re_protos::viewer_control::v1alpha1::OpenUrlResponse { still_loading } =
             self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
                 py,
-                re_protos::viewer_control::v1alpha1::OpenUrlRequest { url },
+                re_protos::viewer_control::v1alpha1::OpenUrlRequest {
+                    url,
+                    navigate: Some(navigate),
+                },
             )?;
 
         Ok(!still_loading)
@@ -240,12 +277,21 @@ impl ViewerConnectionHandle {
         Ok(())
     }
 
+    fn set_location(&mut self, py: Python<'_>, location: String) -> PyResult<()> {
+        let re_protos::viewer_control::v1alpha1::SetLocationResponse {} = self.execute(
+            py,
+            re_protos::viewer_control::v1alpha1::SetLocationRequest { location },
+        )?;
+
+        Ok(())
+    }
+
     fn set_time_cursor(
         &mut self,
         py: Python<'_>,
         timeline: Option<String>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<PlayState>,
         store_id: Option<String>,
     ) -> PyResult<()> {
         let response = wait_for_future(
@@ -254,8 +300,8 @@ impl ViewerConnectionHandle {
                 re_protos::viewer_control::v1alpha1::SetTimeCursorRequest {
                     store_id,
                     timeline: timeline.map(|name| re_protos::common::v1alpha1::Timeline { name }),
-                    time: Some(time.into()),
-                    play: Some(play),
+                    time: time.map(Into::into),
+                    play_state: play_state.map(|play_state| play_state as i32),
                 }
                 .into_envelope(),
             ),

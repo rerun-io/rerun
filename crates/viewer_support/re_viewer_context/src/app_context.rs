@@ -13,9 +13,9 @@ use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppCaches, AppOptions, ApplicationSelectionState, AudioOutput,
-    CommandSender, ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget,
-    Item, ItemCollection, Route, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _,
-    TableStores, TimeControl, ViewClassRegistry,
+    BlueprintUndoState, CommandSender, ComponentUiRegistry, DragAndDropManager,
+    FallbackProviderRegistry, FocusTarget, Item, ItemCollection, Route, StorageContext, StoreHub,
+    SystemCommand, SystemCommandSender as _, TableStores, TimeControl, ViewClassRegistry,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -53,6 +53,9 @@ pub struct AppContext<'a> {
 
     /// All loaded recordings, blueprints, tables, etc.
     pub storage_context: &'a StorageContext<'a>,
+
+    /// Undo state of each blueprint store, keyed by blueprint id.
+    pub blueprint_undo_states: &'a HashMap<StoreId, BlueprintUndoState>,
 
     /// The currently active store and blueprint, if any.
     ///

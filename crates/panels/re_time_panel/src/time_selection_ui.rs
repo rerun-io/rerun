@@ -2,7 +2,7 @@ use egui::{Color32, CursorIcon, Id, Rangef, Rect};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType, TimestampFormat};
 use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UiExt as _};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     StoreViewContext, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
 };
@@ -385,7 +385,7 @@ fn selection_context_menu(
             });
     }
 
-    let mut url = ViewerOpenUrl::from_context(&ctx.app_ctx);
+    let mut url = ViewerUrl::from_context(&ctx.app_ctx);
     let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
     let copy_command = url.and_then(|url| url.copy_url_command());
     if ui

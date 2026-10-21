@@ -67,6 +67,7 @@ re_lenses.workspace = true
 re_chunk_store.workspace = true
 re_format.workspace = true
 re_importer = { workspace = true, features = ["all"] }
+re_catalog_client.workspace = true
 re_datafusion.workspace = true
 re_error.workspace = true
 re_log_msg.workspace = true

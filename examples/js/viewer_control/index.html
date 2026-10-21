@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rerun viewer control</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #0d1011;
+        color: #cad8de;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+      }
+
+      #time {
+        flex: 1;
+      }
+
+      #viewer {
+        flex: 1;
+        min-height: 0;
+      }
+
+      #log {
+        height: 120px;
+        margin: 0;
+        padding: 8px;
+        overflow-y: auto;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button id="play" disabled>Play</button>
+      <span id="timeline">No recording</span>
+      <input id="time" type="range" aria-label="Time" disabled />
+      <code id="time-label"></code>
+    </div>
+    <div id="viewer"></div>
+    <pre id="log"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

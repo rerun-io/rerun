@@ -159,7 +159,7 @@ See `rerun_cpp/docs/writing_docs.md` for comment conventions.
 
 ### JS (`ref.rerun.io/docs/js/`)
 
-Built with TypeDoc via Yarn workspaces.
+Built with TypeDoc via npm workspaces.
 
 Build locally: `pixi run js-docs` / `pixi run js-docs-serve`
 

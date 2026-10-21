@@ -4,17 +4,18 @@
 
 [files]
 extend-exclude = [
-  ".typos.toml",
+  "*.mp4",
+  "*.ply",
+  "*.png",
+  "*.rrd",
   "*.snap",
+  ".typos.toml",
   "crates/viewer_support/re_ui/src/design_tokens.rs",
   "examples/assets",
   "rerun_cpp/src/rerun/archetypes/image.hpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
-  "*.png",
-  "*.mp4",
-  "*.ply",
-  "*.rrd",
+  "rerun_js/web-viewer/proto", # Generated, with base64-encoded descriptors
 ]
 
 [default.extend-words]

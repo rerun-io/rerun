@@ -4,13 +4,16 @@
 use crate::viewer_control::v1alpha1::{
     CaptureProfileTraceRequest, CaptureProfileTraceResponse, CloseRecordingsRequest,
     CloseRecordingsResponse, DescribeCommandsRequest, DescribeCommandsResponse,
-    GetBlueprintRequest, GetBlueprintResponse, GetRecordingSchemaRequest,
-    GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
+    GetBlueprintRequest, GetBlueprintResponse, GetDatasetAssetsSchemaRequest,
+    GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
+    GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
+    GetTableSchemaRequest, GetTableSchemaResponse, GetTransformGraphRequest,
+    GetTransformGraphResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
     GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
     ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
     SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest, SetBlueprintResponse,
-    SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse,
-    viewer_control_request, viewer_control_response,
+    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -109,7 +112,12 @@ viewer_control_ops! {
     "close_recordings" => CloseRecordings(CloseRecordingsRequest, CloseRecordingsResponse),
     "describe_commands" => DescribeCommands(DescribeCommandsRequest, DescribeCommandsResponse),
     "get_blueprint" => GetBlueprint(GetBlueprintRequest, GetBlueprintResponse),
+    "get_dataset_assets_schema" => GetDatasetAssetsSchema(GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse),
+    "get_dataset_schema" => GetDatasetSchema(GetDatasetSchemaRequest, GetDatasetSchemaResponse),
+    "get_location" => GetLocation(GetLocationRequest, GetLocationResponse),
+    "get_transform_graph" => GetTransformGraph(GetTransformGraphRequest, GetTransformGraphResponse),
     "get_recording_schema" => GetRecordingSchema(GetRecordingSchemaRequest, GetRecordingSchemaResponse),
+    "get_table_schema" => GetTableSchema(GetTableSchemaRequest, GetTableSchemaResponse),
     "get_viewer_logs" => GetViewerLogs(GetViewerLogsRequest, GetViewerLogsResponse),
     "get_viewer_state" => GetViewerState(GetViewerStateRequest, GetViewerStateResponse),
     "highlight_rect" => HighlightRect(HighlightRectRequest, HighlightRectResponse),
@@ -118,6 +126,7 @@ viewer_control_ops! {
     "run_command" => RunCommand(RunCommandRequest, RunCommandResponse),
     "save_screenshot" => SaveScreenshot(SaveScreenshotRequest, SaveScreenshotResponse),
     "set_blueprint" => SetBlueprint(SetBlueprintRequest, SetBlueprintResponse),
+    "set_location" => SetLocation(SetLocationRequest, SetLocationResponse),
     "set_time_cursor" => SetTimeCursor(SetTimeCursorRequest, SetTimeCursorResponse),
 }
 
@@ -129,6 +138,7 @@ mod tests {
     fn round_trips_through_the_envelope() {
         let request = OpenUrlRequest {
             url: "rerun://example".to_owned(),
+            navigate: None,
         };
         assert!(matches!(
             request.into_envelope().kind,

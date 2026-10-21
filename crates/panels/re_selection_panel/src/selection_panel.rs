@@ -1,6 +1,7 @@
 use egui::Role;
 use egui::{NumExt as _, TextBuffer, WidgetInfo};
 use egui_tiles::ContainerKind;
+use itertools::Itertools as _;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
 use re_data_ui::item_ui::{self, cursor_interact_with_selectable};
@@ -221,6 +222,8 @@ impl SelectionPanel {
                         "Temporal"
                     }),
                 );
+
+                component_layers_ui(ui, store_view_ctx.db, entity_path, *component);
 
                 let ComponentDescriptor {
                     archetype: archetype_name,
@@ -1109,11 +1112,126 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 ///
 /// When the label is too long it truncates to make room, so the buttons stay
 /// at the end of the row.
+/// Where the chunks of a component come from.
+enum ComponentSource<'a> {
+    /// A layer of the segment itself.
+    Layer(&'a re_types_core::LayerName),
+
+    /// An asset, with its layers that hold the component.
+    Asset {
+        asset_id: &'a re_types_core::SegmentId,
+        layers: Vec<&'a re_types_core::LayerName>,
+    },
+}
+
+impl ComponentSource<'_> {
+    fn name(&self) -> &str {
+        match self {
+            Self::Layer(layer) => layer.as_str(),
+            Self::Asset { asset_id, .. } => asset_id.as_str(),
+        }
+    }
+}
+
+/// The layers a component comes from, with the layers of each asset grouped under the asset.
+///
+/// Shows nothing for a recording without layers.
+fn component_layers_ui(
+    ui: &mut egui::Ui,
+    db: &re_entity_db::EntityDb,
+    entity_path: &EntityPath,
+    component: re_types_core::ComponentIdentifier,
+) {
+    let Some(manifest) = db.rrd_manifest_index().manifest() else {
+        return;
+    };
+
+    // The recording id of a dataset segment is its segment id.
+    let own_segment_id = db.store_id().recording_id().as_str();
+
+    // Sorted by segment id, so the layers of one asset come one after another.
+    let mut sources: Vec<ComponentSource<'_>> = manifest
+        .layers_of_component(entity_path, component)
+        .iter()
+        .chunk_by(|segment_layer| &segment_layer.segment_id)
+        .into_iter()
+        .flat_map(|(segment_id, segment_layers)| {
+            let layers = segment_layers.map(|segment_layer| &segment_layer.layer);
+            if segment_id.as_str() == own_segment_id {
+                layers.map(ComponentSource::Layer).collect_vec()
+            } else {
+                vec![ComponentSource::Asset {
+                    asset_id: segment_id,
+                    layers: layers.collect(),
+                }]
+            }
+        })
+        .collect();
+    if sources.is_empty() {
+        return;
+    }
+    sources.sort_by_key(|source| matches!(source, ComponentSource::Layer(_)));
+
+    property_with_hover_buttons(
+        ui,
+        "Layer",
+        &sources.iter().map(ComponentSource::name).join(", "),
+        Some("https://rerun.io/docs/howto/logging-and-ingestion/layers".to_owned()),
+        |ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                for (i, source) in sources.iter().enumerate() {
+                    if 0 < i {
+                        ui.label(", ");
+                    }
+                    match source {
+                        ComponentSource::Layer(layer) => {
+                            ui.label(layer.as_str());
+                        }
+                        ComponentSource::Asset { asset_id, layers } => {
+                            let response = ui
+                                .horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x =
+                                        ui.tokens().text_to_icon_padding();
+                                    ui.small_icon(&icons::ASSET, None);
+                                    ui.label(asset_id.as_str());
+                                })
+                                .response;
+                            response.on_hover_text(format!(
+                                "{}: {}",
+                                re_format::format_plural_s(layers.len(), "layer"),
+                                layers.iter().map(|layer| layer.as_str()).join(", ")
+                            ));
+                        }
+                    }
+                }
+            });
+        },
+    );
+}
+
 fn name_property_with_hover_buttons(
     ui: &mut egui::Ui,
     property_label: &str,
     full_name: &str,
     doc_url: Option<String>,
+) {
+    property_with_hover_buttons(ui, property_label, full_name, doc_url, |ui| {
+        // Same as `PropertyContent::value_text`.
+        ui.add(egui::Label::new(full_name).truncate());
+    });
+}
+
+/// A property row whose value shows a copy button, and a documentation button for a `doc_url`,
+/// while the row is hovered.
+///
+/// The copy button copies `copy_text`.
+fn property_with_hover_buttons(
+    ui: &mut egui::Ui,
+    property_label: &str,
+    copy_text: &str,
+    doc_url: Option<String>,
+    value_ui: impl Fn(&mut egui::Ui),
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new(property_label).value_fn(
         move |ui, _| {
@@ -1125,8 +1243,7 @@ fn name_property_with_hover_buttons(
                 && ui.ctx().dragged_id().is_none();
 
             if !row_hovered {
-                // Same as `PropertyContent::value_text`.
-                ui.add(egui::Label::new(full_name).truncate());
+                value_ui(ui);
                 return;
             }
 
@@ -1139,7 +1256,7 @@ fn name_property_with_hover_buttons(
 
             ui.scope(|ui| {
                 ui.set_max_width(label_budget);
-                ui.add(egui::Label::new(full_name).truncate());
+                value_ui(ui);
             });
 
             if ui
@@ -1147,9 +1264,9 @@ fn name_property_with_hover_buttons(
                 .on_hover_text("Copy")
                 .clicked()
             {
-                ui.copy_text(full_name.to_owned());
+                ui.copy_text(copy_text.to_owned());
                 // Shows up as a notification toast, so the user knows the click landed.
-                re_log::info!("Copied {full_name:?} to clipboard");
+                re_log::info!("Copied {copy_text:?} to clipboard");
             }
 
             if let Some(doc_url) = &doc_url
@@ -2117,5 +2234,123 @@ mod tests {
 
         harness.run();
         harness.snapshot("selection_panel_entity_static_latest_all");
+    }
+
+    /// Snapshot of a selected component in a recording with a manifest. Each of `layers` logs
+    /// the component in its own chunk at its own frame, from the layer of an asset or of the
+    /// recording itself for `None`. With no layers, the manifest has no layer column, like one
+    /// read from an RRD file. The snapshot is taken while the pointer is over `hovered_label`.
+    fn component_layers_snapshot(
+        layers: &[(Option<&str>, &str)],
+        hovered_label: Option<&str>,
+        snapshot_name: &str,
+    ) {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("points");
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+        let chunks = (0_i64..)
+            .take(layers.len().max(1))
+            .map(|frame| {
+                re_chunk::Chunk::builder(entity_path.clone())
+                    .with_archetype(
+                        RowId::new(),
+                        [(timeline, frame)],
+                        &archetypes::Points2D::new([(frame as f32, 0.0)]),
+                    )
+                    .build()
+                    .unwrap()
+            })
+            .collect_vec();
+
+        let store_id = test_context.active_store_id();
+        let mut raw = re_chunk_index::RawRrdManifest::build_in_memory_from_chunks(
+            store_id.clone(),
+            chunks.iter(),
+        )
+        .unwrap();
+        if !layers.is_empty() {
+            raw = raw
+                .with_segment_layers(
+                    layers.iter().map(|(asset_id, _)| {
+                        asset_id.unwrap_or_else(|| store_id.recording_id().as_str())
+                    }),
+                    layers.iter().map(|(_, layer)| layer),
+                )
+                .unwrap();
+        }
+
+        test_context.add_rrd_manifest(std::sync::Arc::new(
+            re_chunk_index::RrdManifest::try_new(&raw).unwrap(),
+        ));
+        test_context.add_chunks(chunks.into_iter());
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Points2D::descriptor_positions().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        if let Some(hovered_label) = hovered_label {
+            harness.get_by_label(hovered_label).hover();
+            harness.run_steps(5);
+        }
+        harness.snapshot(snapshot_name);
+    }
+
+    /// A component in a recording without layers has no layer row.
+    #[test]
+    fn selection_panel_component_no_layers_snapshot() {
+        component_layers_snapshot(&[], None, "selection_panel_component_no_layers");
+    }
+
+    /// A component from a single layer names that layer.
+    #[test]
+    fn selection_panel_component_one_layer_snapshot() {
+        component_layers_snapshot(
+            &[(None, "base")],
+            None,
+            "selection_panel_component_one_layer",
+        );
+    }
+
+    /// A component from two layers lists both.
+    #[test]
+    fn selection_panel_component_two_layers_snapshot() {
+        component_layers_snapshot(
+            &[(None, "base"), (None, "annotations")],
+            None,
+            "selection_panel_component_two_layers",
+        );
+    }
+
+    /// A component from a layer of the recording and two layers of an asset lists the layer,
+    /// then the asset once. Hovering the asset shows its layers.
+    #[test]
+    fn selection_panel_component_asset_layers_snapshot() {
+        component_layers_snapshot(
+            &[
+                (None, "base"),
+                (Some("robot"), "mesh"),
+                (Some("robot"), "collision"),
+            ],
+            Some("robot"),
+            "selection_panel_component_asset_layers",
+        );
     }
 }

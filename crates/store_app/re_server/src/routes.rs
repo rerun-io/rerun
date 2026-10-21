@@ -15,10 +15,6 @@ use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use sha2::Sha256;
 use tokio::io::AsyncWriteExt as _;
 
-pub async fn get_version() -> String {
-    re_build_info::build_info!().to_string()
-}
-
 /// Grants have the form `{encoded_claims}.{signature}`.
 type Grant = String;
 

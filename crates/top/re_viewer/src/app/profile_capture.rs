@@ -7,7 +7,7 @@ use re_protos::viewer_control::v1alpha1::{
 };
 use re_tracing::reexports::puffin::FrameView;
 
-use super::App;
+use super::AppCore;
 
 /// How many frames a profile capture records by default.
 const DEFAULT_PROFILE_CAPTURE_FRAMES: u32 = 5;
@@ -18,7 +18,7 @@ const DEFAULT_PROFILE_CAPTURE_FRAMES: u32 = 5;
 /// viewer-control request.
 const MAX_PROFILE_CAPTURE_FRAMES: u32 = 300;
 
-impl App {
+impl AppCore {
     /// Start recording a profile of the next frames, and answer `on_done` once it has been written.
     pub(super) fn begin_profile_capture(
         &mut self,

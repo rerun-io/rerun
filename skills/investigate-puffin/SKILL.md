@@ -226,7 +226,7 @@ Once a slow scope is identified, go look at the actual code:
 - If only `data` / `name` is available, grep the repo for the literal string.
 The macros are `puffin::profile_function!()`, `puffin::profile_scope!("name")`, `puffin::profile_scope!("name", data_expr)`, plus the `re_tracing::profile_*!` wrappers.
 `data_expr` is whatever was passed at the call site, so the literal is usually findable.
-- If the user points at a specific function ("is `apply_many` actually the bottleneck?"), filter the JSON to that scope's subtree, report its self-time vs children-time, then read the implementation.
+- If the user points at a specific function ("is `write_segment_manifest` actually the bottleneck?"), filter the JSON to that scope's subtree, report its self-time vs children-time, then read the implementation.
 
 ## Notes
 

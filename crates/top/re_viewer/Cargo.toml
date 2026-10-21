@@ -103,6 +103,7 @@ re_component_ui.workspace = true
 # The viewer needs to have all importers, so explicitly set that here
 # Rather than relying on an upper crate to do it.
 re_importer = { workspace = true, features = ["all"] }
+re_lenses = { workspace = true, features = ["semantic"] }
 re_data_source.workspace = true
 re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
@@ -121,6 +122,7 @@ re_protos.workspace = true
 re_query.workspace = true
 re_recording_panel.workspace = true
 re_redap_browser.workspace = true
+re_catalog_client.workspace = true
 re_redap_client.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_sdk_types.workspace = true
@@ -206,6 +208,7 @@ egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
+rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 tokio.workspace = true
 

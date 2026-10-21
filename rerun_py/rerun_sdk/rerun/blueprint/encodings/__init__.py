@@ -17,6 +17,8 @@ from .component_source_kind import (
 from .filter_by_range import FilterByRange, FilterByRangeArrayLike, FilterByRangeBatch, FilterByRangeLike
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullArrayLike, FilterIsNotNullBatch, FilterIsNotNullLike
 from .selected_columns import SelectedColumns, SelectedColumnsArrayLike, SelectedColumnsBatch, SelectedColumnsLike
+from .sort_by import SortBy, SortByArrayLike, SortByBatch, SortByLike
+from .sort_direction import SortDirection, SortDirectionArrayLike, SortDirectionBatch, SortDirectionLike
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
     TensorDimensionIndexSliderArrayLike,
@@ -59,6 +61,14 @@ __all__ = [
     "SelectedColumnsArrayLike",
     "SelectedColumnsBatch",
     "SelectedColumnsLike",
+    "SortBy",
+    "SortByArrayLike",
+    "SortByBatch",
+    "SortByLike",
+    "SortDirection",
+    "SortDirectionArrayLike",
+    "SortDirectionBatch",
+    "SortDirectionLike",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",

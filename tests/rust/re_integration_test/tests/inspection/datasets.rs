@@ -7,7 +7,7 @@ use re_sdk::{
     TimeCell, Timeline,
     external::{re_log_types::AbsoluteTimeRange, re_tuid},
 };
-use re_viewer::external::{re_chunk::TimelineName, re_viewer_context::open_url::ViewerOpenUrl};
+use re_viewer::external::{re_chunk::TimelineName, re_viewer_context::viewer_url::ViewerUrl};
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
@@ -124,7 +124,7 @@ pub async fn start_with_segment_fragment_url() {
             }),
         },
     };
-    let url = ViewerOpenUrl::RedapDataset(segment_uri);
+    let url = ViewerUrl::RedapDataset(segment_uri);
 
     let mut harness = InspectionHarness::spawn(HarnessConfig {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),

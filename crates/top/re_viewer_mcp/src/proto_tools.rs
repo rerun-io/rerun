@@ -37,6 +37,11 @@ const OPERATION_ONEOF: &str = "kind";
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
+/// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
+///
+/// A `.proto` cannot mark a `oneof` as omittable, so this list does.
+const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
+
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
 
@@ -158,15 +163,24 @@ fn real_oneofs(message: &MessageDescriptor) -> impl Iterator<Item = OneofDescrip
     message.oneofs().filter(|oneof| !oneof.is_synthetic())
 }
 
+/// Whether a caller may leave this `oneof` unset.
+fn is_omittable(oneof: &OneofDescriptor) -> bool {
+    OMITTABLE_ONEOFS.contains(&oneof.full_name())
+}
+
 /// One JSON Schema branch per arm of a `oneof`.
 ///
 /// `oneOf` demands that exactly one branch match, so listing each arm as its own `required` is
-/// enough: no arm set matches nothing, and two arms set match two branches.
+/// enough: no arm set matches nothing, and two arms set match two branches. An omittable `oneof`
+/// gets one more branch that matches when no arm is set.
 fn oneof_branches(oneof: &OneofDescriptor) -> Value {
-    let branches: Vec<Value> = oneof
+    let mut branches: Vec<Value> = oneof
         .fields()
         .map(|field| json!({ "required": [field.name()] }))
         .collect();
+    if is_omittable(oneof) {
+        branches.push(json!({ "not": { "anyOf": branches.clone() } }));
+    }
     json!(branches)
 }
 
@@ -269,7 +283,11 @@ fn message_schema(
                 .fields()
                 .map(|field| field.name().to_owned())
                 .collect();
-            format!("Exactly one of `{}` must be set.", arms.join("`, `"))
+            if is_omittable(oneof) {
+                format!("At most one of `{}` may be set.", arms.join("`, `"))
+            } else {
+                format!("Exactly one of `{}` must be set.", arms.join("`, `"))
+            }
         })
         .collect();
 
@@ -441,10 +459,18 @@ fn validate(
             .fields()
             .map(|field| field.name().to_owned())
             .collect();
+        if set.is_empty() && is_omittable(&oneof) {
+            continue;
+        }
         if set.len() != 1 {
             return Err(format!(
-                "`{path}{}` takes exactly one of `{}`, but {}",
+                "`{path}{}` takes {} of `{}`, but {}",
                 oneof.name(),
+                if is_omittable(&oneof) {
+                    "at most one"
+                } else {
+                    "exactly one"
+                },
                 arms.join("`, `"),
                 if set.is_empty() {
                     "none were set".to_owned()
@@ -549,19 +575,29 @@ mod tests {
     #[test]
     fn marks_only_the_fields_the_proto_leaves_unoptional_as_required() {
         let tools = tools();
-        let set_time = tools
-            .iter()
-            .find(|tool| tool.name == "set_time_cursor")
-            .expect("set_time_cursor is an operation");
+        let required = |name: &str| -> Vec<String> {
+            let tool = tools
+                .iter()
+                .find(|tool| tool.name == name)
+                .unwrap_or_else(|| panic!("{name} is an operation"));
+            tool.input_schema
+                .get("required")
+                .and_then(Value::as_array)
+                .map(|required| {
+                    required
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(ToOwned::to_owned)
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
 
-        let required: Vec<&str> = set_time.input_schema["required"]
-            .as_array()
-            .expect("set_time_cursor requires a time")
-            .iter()
-            .filter_map(Value::as_str)
-            .collect();
-
-        assert_eq!(required, ["time"]);
+        assert_eq!(required("open_url"), ["url"]);
+        assert!(
+            required("set_time_cursor").is_empty(),
+            "every `set_time_cursor` field is `optional`"
+        );
     }
 
     #[test]
@@ -629,17 +665,16 @@ mod tests {
 
     #[test]
     fn rejects_a_missing_required_field() {
-        let err = build("set_time_cursor", &json!({}))
-            .expect_err("`time` is required, and defaulting it would seek to the start");
-        assert!(err.contains("time"), "{err}");
+        let err = build("open_url", &json!({})).expect_err("`url` is required");
+        assert!(err.contains("url"), "{err}");
+
+        let err = build("open_url", &json!({ "url": null }))
+            .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
+        assert!(err.contains("url"), "{err}");
 
         let err = build("set_time_cursor", &json!({ "time": {} }))
-            .expect_err("an empty `time` is as wrong as an absent one");
+            .expect_err("`time` is optional, but a given `time` needs its own required fields");
         assert!(err.contains("time.time"), "{err}");
-
-        let err = build("set_time_cursor", &json!({ "time": null }))
-            .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
-        assert!(err.contains("time"), "{err}");
     }
 
     #[test]
@@ -700,7 +735,7 @@ mod tests {
                 ),
             ) => {
                 assert_eq!(set_time.time.map(|t| t.time), Some(7));
-                assert_eq!(set_time.play, None, "`play` is omittable");
+                assert_eq!(set_time.play_state, None, "`play_state` is omittable");
             }
             other => panic!("expected a set_time_cursor request, got {other:?}"),
         }
@@ -744,6 +779,16 @@ mod tests {
                 { "required": ["store_ids"] },
             ])
         );
+    }
+
+    /// `get_blueprint` reads what is on screen when it names no target, but still refuses two.
+    #[test]
+    fn an_omittable_oneof_takes_no_arm_but_not_several() {
+        build("get_blueprint", &json!({})).expect("the target is omittable");
+
+        let err = build("get_blueprint", &json!({ "recording": {}, "table": {} }))
+            .expect_err("two targets contradict each other");
+        assert!(err.contains("at most one"), "{err}");
     }
 
     #[test]

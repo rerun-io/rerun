@@ -1,12 +1,15 @@
 ---
-title: "Table filters can be defined in the table blueprint and run faster"
+title: "Table filters and sorting can be defined in the table blueprint and filters run faster"
 hidden: true
 type: feature
 ---
 
-### Table filters can be defined in the table blueprint and run faster
+### Table filters and sorting can be defined in the table blueprint and filters run faster
 
 Table filters can now be defined in the table blueprint. Either using `rrb.table.col` to get filters that the viewer UI can edit, or by passing an SQL expression.
+
+The column a table is sorted by can also be defined in the table blueprint.
+Sorting a column in the viewer saves it to the table blueprint, so the sort still applies after you navigate back to the table.
 
 ```python
 import rerun.blueprint as rrb
@@ -22,6 +25,7 @@ rrb.TableBlueprint(
         col("tags").list.str.does_not_contain("broken"),
         'length("notes") > 0',  # Can also pass SQL expressions.
     ],
+    sort_by=rrb.table.SortBy("score", "descending"),
 )
 ```
 

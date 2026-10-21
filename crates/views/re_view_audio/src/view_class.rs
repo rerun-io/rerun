@@ -400,9 +400,14 @@ fn audio_entry_ui(
                 }]);
             }
 
-            // Keyed by view and entity only, so a new blob on the same entity replaces the
-            // running stream instead of overlapping with it.
-            let stream_id = StreamId(Hash64::hash((view_id, &entry.entity_path)).hash64());
+            // Keyed by recording, view and entity only, so a new blob on the same entity replaces
+            // the running stream instead of overlapping with it.
+            //
+            // We also need to include the store-id since audio streams aren't scoped to just this
+            // recording.
+            let stream_id = StreamId(
+                Hash64::hash((ctx.recording().store_id(), view_id, &entry.entity_path)).hash64(),
+            );
             let audible = playhead.is_some_and(|playhead| {
                 playhead.playing
                     && 0.0 <= playhead.offset_secs

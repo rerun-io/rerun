@@ -1,7 +1,7 @@
 //! Where an asset was registered from, opened from its card.
 
+use re_catalog_client::AssetLayer;
 use re_log_types::external::re_types_core::SegmentId;
-use re_redap_client::AssetLayer;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 

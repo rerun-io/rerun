@@ -1,7 +1,7 @@
 //! SQL form of table filters, as stored in the table blueprint.
 //!
 //! Each filter type writes one fixed shape of SQL per filter and parses that same shape back. Any
-//! other SQL is kept as a [`TableFilter::Custom`] filter.
+//! other SQL is kept as a [`TableFilter::Custom`](super::TableFilter::Custom) filter.
 
 use std::ops::ControlFlow;
 

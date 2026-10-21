@@ -136,8 +136,13 @@ pub async fn open_stream<T: Send + 'static>(
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+    use arrow::array::RecordBatch;
+    use arrow::datatypes::Schema;
     use http_body::{Body as _, Frame};
     use re_log_types::EntryId;
+    use re_protos::cloud::v1alpha1::ScanDatasetManifestResponse;
+    use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
+    use re_protos::common::v1alpha1::DataframePart;
     use re_protos::external::prost::{Message as _, bytes::Bytes};
     use re_protos::external::tonic_types::ErrorDetails;
     use std::collections::{HashMap, VecDeque};
@@ -167,6 +172,17 @@ mod tests {
             re_protos::error::ERROR_DOMAIN,
             re_protos::error::DATASET_REVISION_BEHIND,
         )
+    }
+
+    /// The one column the tests request from `scan_dataset_manifest`.
+    const COLUMNS: [&str; 1] = [ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME];
+
+    /// A batch with the requested column and no rows: the smallest item the scan accepts.
+    fn manifest_batch() -> RecordBatch {
+        RecordBatch::new_empty(Arc::new(Schema::new_with_metadata(
+            vec![ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID.arrow_field()],
+            Default::default(),
+        )))
     }
 
     #[tokio::test]
@@ -314,23 +330,12 @@ mod tests {
                     );
                     tonic::Result::Ok(response)
                 });
-            let client = crate::RedapClient::new(
+            let mut client = crate::RedapClient::new(
                 re_uri::Origin::test(),
                 crate::grpc::boxed_redap_grpc_client(service),
                 None,
             );
-            let Err(err) = client
-                .query_dataset_raw(crate::SegmentQueryParams {
-                    dataset_id: EntryId::new(),
-                    segment_id: "segment".into(),
-                    include_static_data: true,
-                    include_temporal_data: true,
-                    generate_direct_urls: false,
-                    unsigned_direct_urls: false,
-                    query: None,
-                })
-                .await
-            else {
+            let Err(err) = client.scan_dataset_manifest(EntryId::new(), COLUMNS).await else {
                 panic!("expected an early stream error");
             };
             assert_eq!(err.kind, crate::ApiErrorKind::NotFound);
@@ -343,7 +348,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn query_retries_early_errors_and_restamps_but_never_restarts_after_data() {
+    async fn scan_retries_early_errors_and_restamps_but_never_restarts_after_data() {
         for (trailers, committed, floored) in [
             (false, false, true),
             (true, false, true),
@@ -378,7 +383,7 @@ mod tests {
                         );
                         assert_eq!(
                             request.uri().path(),
-                            "/rerun.cloud.v1alpha1.RerunCloudService/QueryDataset"
+                            "/rerun.cloud.v1alpha1.RerunCloudService/ScanDatasetManifest"
                         );
                         let mut bytes = Vec::new();
                         while let Some(frame) = futures::future::poll_fn(|cx| {
@@ -412,9 +417,11 @@ mod tests {
                         }
                         let mut frames = VecDeque::new();
                         if !reject || committed {
-                            let message =
-                                re_protos::cloud::v1alpha1::QueryDatasetResponse::default()
-                                    .encode_to_vec();
+                            let message = ScanDatasetManifestResponse {
+                                data: Some(DataframePart::from(&manifest_batch())),
+                                ..Default::default()
+                            }
+                            .encode_to_vec();
                             let mut data = vec![0];
                             data.extend_from_slice(&(message.len() as u32).to_be_bytes());
                             data.extend_from_slice(&message);
@@ -433,28 +440,24 @@ mod tests {
                     }
                 }
             });
-            let client = crate::RedapClient::new(
+            let mut client = crate::RedapClient::new(
                 re_uri::Origin::test(),
                 crate::grpc::boxed_redap_grpc_client(service),
                 None,
             );
-            let mut stream = client
-                .query_dataset_raw(crate::SegmentQueryParams {
-                    dataset_id: id,
-                    segment_id: "segment".into(),
-                    include_static_data: true,
-                    include_temporal_data: true,
-                    generate_direct_urls: false,
-                    unsigned_direct_urls: false,
-                    query: None,
-                })
-                .await
-                .unwrap();
-            assert!(stream.next().await.unwrap().is_ok());
+            let result = client.scan_dataset_manifest(id, COLUMNS).await;
             if committed {
-                assert!(stream.next().await.unwrap().is_err());
+                let err = result.expect_err(
+                    "an error after data arrived must surface instead of restarting the stream",
+                );
+                assert_eq!(err.kind, crate::ApiErrorKind::FailedPrecondition, "{err}");
             } else {
-                assert!(stream.next().await.is_none());
+                let batches = result.expect("the scan succeeds");
+                let [batch] = batches.as_slice() else {
+                    panic!("expected the one data item, got {} batches", batches.len());
+                };
+                assert_eq!(batch.schema(), manifest_batch().schema());
+                assert_eq!(batch.num_rows(), 0);
             }
             assert_eq!(
                 attempts.load(Ordering::SeqCst),

@@ -77,6 +77,13 @@ pub enum SystemCommand {
     /// e.g. from the command palette or a keyboard shortcut.
     Table(re_ui::TableCommand),
 
+    /// Give a table an active blueprint if it has none yet, the way showing the table does.
+    EnsureTableBlueprint(re_uri::TableReference),
+
+    /// Give the application of a recording an active blueprint if it has none yet, the way
+    /// showing the recording does.
+    EnsureRecordingBlueprint(StoreId),
+
     /// Activates the setting route.
     OpenSettings,
 

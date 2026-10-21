@@ -30,6 +30,9 @@ pub struct ActivePreview {
     /// leaving it and by [`PreviewState::set_playing`].
     pub play_override: Option<bool>,
 
+    /// The timeline that already had its time moved to the start point.
+    pub start_point_timeline: Option<re_log_types::TimelineName>,
+
     /// Whether the preview was drawn since the last [`PreviewState::tick`].
     ///
     /// Only a preview that is being drawn advances its time.
@@ -41,6 +44,7 @@ impl Default for ActivePreview {
         Self {
             time_control: TimeControl::preview_time_control(),
             play_override: None,
+            start_point_timeline: None,
             rendered_last_frame: false,
         }
     }
@@ -49,16 +53,13 @@ impl Default for ActivePreview {
 /// Shared playback state for all preview recordings shown in grid or table cards.
 ///
 /// All active previews have their own [`TimeControl`].
-#[derive(re_byte_size::SizeBytes)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct PreviewState {
     /// Whether every preview plays, as set by the play-all button.
     ///
     /// A single preview can be different from this if its button is pressed or
     /// it started being hovered.
     playing: bool,
-
-    /// Playback speed of every preview, as a multiple of real time.
-    speed: f32,
 
     /// The previews that are currently active.
     active_previews: ahash::HashMap<StoreId, ActivePreview>,
@@ -67,30 +68,10 @@ pub struct PreviewState {
     pub requested_uris: ahash::HashSet<re_uri::DatasetUri>,
 }
 
-impl Default for PreviewState {
-    fn default() -> Self {
-        Self {
-            playing: false,
-            speed: 1.0,
-            active_previews: Default::default(),
-            requested_uris: Default::default(),
-        }
-    }
-}
-
 impl PreviewState {
     /// Whether every preview plays, as set by the play-all button.
     pub fn playing(&self) -> bool {
         self.playing
-    }
-
-    /// Playback speed of every preview, as a multiple of real time.
-    pub fn speed(&self) -> f32 {
-        self.speed
-    }
-
-    pub fn set_speed(&mut self, speed: f32) {
-        self.speed = speed;
     }
 
     /// Play or pause every preview, including the ones that are not on screen.

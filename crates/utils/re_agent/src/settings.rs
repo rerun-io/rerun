@@ -6,6 +6,16 @@ use agent_client_protocol::schema::v1::{SessionConfigValueId, SessionModeId};
 use crate::connection::{LaunchConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, find_executable};
 
+/// Fast models to select, best first, unless the user has picked a model for the profile.
+///
+/// The agent panel should feel fast, and flagship models are often too slow for that.
+const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
+    "sonnet", // Anthropic: Claude
+    "flash",  // Google: Gemini
+    "luna",   // OpenAI: Codex
+    "mini",   // OpenAI: older GPT models
+];
+
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct McpServerConfig {
@@ -184,7 +194,10 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
-            model_preferences: Vec::new(),
+            model_preferences: DEFAULT_MODEL_PREFERENCES
+                .iter()
+                .map(|&model| model.to_owned())
+                .collect(),
             preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
             preferred_mode: self.preferred_mode.clone(),
         })
@@ -203,7 +216,7 @@ impl Default for AgentSettings {
             log_protocol: false,
             preferred_mode: None,
             preferred_models: BTreeMap::new(),
-            share_redacted_prompts: true,
+            share_redacted_prompts: false,
             setup_done: false,
         }
     }
@@ -304,7 +317,7 @@ mod tests {
         let Ok(settings) = serde_json::from_str::<AgentSettings>("{}") else {
             panic!("empty settings should deserialize");
         };
-        assert!(settings.share_redacted_prompts);
+        assert!(!settings.share_redacted_prompts);
         assert_eq!(settings.preferred_mode, None);
         assert!(settings.preferred_models.is_empty());
     }

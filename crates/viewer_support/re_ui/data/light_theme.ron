@@ -213,6 +213,28 @@
     "card_marked_fill": {
       "color": "{Gray.950}"
     },
+    // How a card marks that it is the selected one of a set, e.g. a coverage mode.
+    "card_selected_fill": {
+      "color": "{Blue.500}",
+      "alpha": 10
+    },
+    "card_selected_stroke": {
+      "color": "{Blue.500}",
+      "alpha": 100,
+      "width": 1
+    },
+    // The unfilled part of a bar on a card, e.g. the segments an asset doesn't cover.
+    "card_bar_track_color": {
+      "color": "{Gray.900}"
+    },
+    // A text field on a card, e.g. the segment search of a coverage mode.
+    "card_text_edit_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    // A link on a card, e.g. expanding the segment list of a coverage mode.
+    "card_link_color": {
+      "color": "{Blue.500}"
+    },
 
     "drag_pill_droppable_fill": {
       "color": "{Blue.725}"

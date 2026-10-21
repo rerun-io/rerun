@@ -235,8 +235,8 @@ async fn preview_table_fixture(preview_columns: &[PreviewColumnSpec]) -> Preview
     );
     let schema = Arc::new(Schema::new_with_metadata(fields, Default::default()));
 
-    let connection = server.connection_handle();
-    let mut client = connection
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
         .client()
         .await
         .expect("Failed to connect to server");
@@ -283,7 +283,7 @@ async fn preview_table_fixture(preview_columns: &[PreviewColumnSpec]) -> Preview
         .expect("Failed to write table data");
 
     let blueprint_rbl = blueprint_rbl_file(preview_columns, TITLE_COLUMN);
-    re_integration_test::register_table_blueprint(&connection, &table, blueprint_rbl.path())
+    re_integration_test::register_table_blueprint(&catalog_client, &table, blueprint_rbl.path())
         .await
         .expect("Failed to register table blueprint");
 

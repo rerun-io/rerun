@@ -21,7 +21,8 @@ use tonic::async_trait;
 use url::Url;
 
 use crate::utils::rerun::{
-    create_recording_with_static_components, multi_chunked_entities_recording,
+    create_recording_with_static_components, create_two_timeline_recording,
+    multi_chunked_entities_recording,
 };
 use crate::{
     RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
@@ -373,6 +374,12 @@ pub enum LayerType {
 
     /// See [`crate::multi_chunked_entities_recording`]
     MultiChunkedEntities { entities: &'static [&'static str] },
+
+    /// See [`crate::create_two_timeline_recording`]
+    TwoTimelines {
+        start_frame: i64,
+        timestamp_offset_ms: i64,
+    },
 }
 
 impl LayerType {
@@ -507,11 +514,28 @@ impl LayerType {
             Self::MultiChunkedEntities { entities } => {
                 multi_chunked_entities_recording(tuid_prefix, segment_id, entities)
             }
+
+            Self::TwoTimelines {
+                start_frame,
+                timestamp_offset_ms,
+            } => create_two_timeline_recording(
+                tuid_prefix,
+                segment_id,
+                start_frame,
+                timestamp_offset_ms,
+            ),
         }
     }
 
     pub fn multi_chunked_entities(entities: &'static [&'static str]) -> Self {
         Self::MultiChunkedEntities { entities }
+    }
+
+    pub fn two_timelines(start_frame: i64, timestamp_offset_ms: i64) -> Self {
+        Self::TwoTimelines {
+            start_frame,
+            timestamp_offset_ms,
+        }
     }
 }
 
@@ -643,6 +667,21 @@ impl LayerDefinition {
             segment_id,
             layer_name: None,
             layer_type: LayerType::multi_chunked_entities(entities),
+        }
+    }
+
+    /// A layer whose every row carries both a `frame_nr` and a `timestamp` index value.
+    ///
+    /// See [`crate::create_two_timeline_recording`].
+    pub fn two_timelines(
+        segment_id: &'static str,
+        start_frame: i64,
+        timestamp_offset_ms: i64,
+    ) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::two_timelines(start_frame, timestamp_offset_ms),
         }
     }
 }

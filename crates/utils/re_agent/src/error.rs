@@ -37,6 +37,24 @@ impl McpStartupFailure {
         )))
     }
 
+    /// A notice to show instead of this failure, if codex-acp did not start our server because
+    /// the user's Codex config defines one with the same name, which Codex runs instead.
+    ///
+    /// For `rerun` that is usually `rerun viewer-mcp` from PATH, which still works
+    /// but might be using a different version of `rerun`.
+    pub fn replaced_by_agent_config_note(&self) -> Option<String> {
+        let Self {
+            server_name, error, ..
+        } = self;
+        error
+            .contains("the Codex config already defines an MCP server with this name")
+            .then(|| {
+                format!(
+                    "Codex uses the `{server_name}` MCP server from `[mcp_servers.{server_name}]` in your Codex config instead of the one Rerun provides."
+                )
+            })
+    }
+
     /// Decodes codex-acp's synthetic failed tool call for an MCP server that never started:
     /// tool call id `mcp_startup.<name>`, title `mcp__<name>__startup`.
     ///

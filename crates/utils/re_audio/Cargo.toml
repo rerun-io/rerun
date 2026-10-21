@@ -30,7 +30,10 @@ output = [
   "dep:libloading",
   "dep:objc2-audio-toolbox",
   "dep:objc2-core-audio-types",
+  "dep:re_web",
   "dep:tinyaudio",
+  "dep:wasm-bindgen",
+  "dep:web-sys",
 ]
 
 [dependencies]
@@ -59,7 +62,24 @@ objc2-core-audio-types = { workspace = true, optional = true, features = [
   "CoreAudioBaseTypes",
 ] }
 
-[target.'cfg(not(any(target_os = "linux", target_os = "macos")))'.dependencies]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+re_web = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true, features = [
+  "AudioBuffer",
+  "AudioBufferSourceNode",
+  "AudioContext",
+  "AudioContextOptions",
+  "AudioContextState",
+  "AudioDestinationNode",
+  "AudioNode",
+  "AudioScheduledSourceNode",
+  "BaseAudioContext",
+  "EventTarget",
+  "Window",
+] }
+
+[target.'cfg(not(any(target_os = "linux", target_os = "macos", target_arch = "wasm32")))'.dependencies]
 tinyaudio = { workspace = true, optional = true }
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]

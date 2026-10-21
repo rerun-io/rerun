@@ -80,6 +80,8 @@ mod root_container;
 mod row_share;
 #[path = "components/selected_columns.def.rs"]
 mod selected_columns;
+#[path = "components/sort_by.def.rs"]
+mod sort_by;
 #[path = "components/sql_filter_expression.def.rs"]
 mod sql_filter_expression;
 #[path = "components/table_cell_kind.def.rs"]
@@ -96,6 +98,8 @@ mod time_int;
 mod time_range;
 #[path = "components/timeline_column.def.rs"]
 mod timeline_column;
+#[path = "components/timeline_fraction.def.rs"]
+mod timeline_fraction;
 #[path = "components/timeline_name.def.rs"]
 mod timeline_name;
 #[path = "components/tooltip_mode.def.rs"]
@@ -165,6 +169,7 @@ pub use self::query_expression::*;
 pub use self::root_container::*;
 pub use self::row_share::*;
 pub use self::selected_columns::*;
+pub use self::sort_by::*;
 pub use self::sql_filter_expression::*;
 pub use self::table_cell_kind::*;
 pub use self::table_layout_kind::*;
@@ -173,6 +178,7 @@ pub use self::text_log_column::*;
 pub use self::time_int::*;
 pub use self::time_range::*;
 pub use self::timeline_column::*;
+pub use self::timeline_fraction::*;
 pub use self::timeline_name::*;
 pub use self::tooltip_mode::*;
 pub use self::view_class::*;

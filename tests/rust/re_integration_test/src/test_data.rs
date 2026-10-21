@@ -2,11 +2,11 @@ use std::error::Error;
 use std::str::FromStr as _;
 use std::time::Duration;
 
+use re_catalog_client::CatalogClient;
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{DataSource, TableDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::ConnectionHandle;
 use re_sdk::external::re_log_types::EntryId;
 use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
@@ -14,9 +14,9 @@ use re_sdk::{RecordingStreamBuilder, TimeCell};
 use re_sdk_types::SegmentId;
 use re_viewer::external::re_sdk_types::{archetypes, components::Color};
 
-pub async fn load_test_data(connection: &ConnectionHandle) -> Result<SegmentId, Box<dyn Error>> {
+pub async fn load_test_data(catalog_client: &CatalogClient) -> Result<SegmentId, Box<dyn Error>> {
     load_test_data_with_name(
-        connection,
+        catalog_client,
         "my_dataset",
         "187b552b95a5c2f73f37894708825ba5",
         "new_recording_id",
@@ -25,12 +25,12 @@ pub async fn load_test_data(connection: &ConnectionHandle) -> Result<SegmentId, 
 }
 
 pub async fn load_test_data_with_name(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     dataset_name: &str,
     dataset_id_str: &str,
     recording_id: &str,
 ) -> Result<SegmentId, Box<dyn Error>> {
-    let mut client = connection.client().await?;
+    let mut client = catalog_client.client().await?;
     let path = recording_rrd(recording_id, |stream| {
         for x in 0..20 {
             stream.set_time("test_time", TimeCell::new(TimeType::Sequence, x));
@@ -52,7 +52,7 @@ pub async fn load_test_data_with_name(
     assert_eq!(entries_table[0].kind, EntryKind::Table);
 
     let segment_ids =
-        register_rrds(connection, dataset_name, dataset_id_str, &[path.path()]).await?;
+        register_rrds(catalog_client, dataset_name, dataset_id_str, &[path.path()]).await?;
     Ok(segment_ids
         .into_iter()
         .next()
@@ -66,7 +66,7 @@ pub async fn load_test_data_with_name(
 /// is time-invariant, so a preview renders identically at every point on its looping preview
 /// timeline. That keeps preview snapshots stable.
 pub async fn load_static_preview_data(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     dataset_name: &str,
     dataset_id_str: &str,
     recording_id_prefix: &str,
@@ -94,7 +94,7 @@ pub async fn load_static_preview_data(
     }
 
     let path_refs: Vec<&std::path::Path> = paths.iter().map(|p| p.path()).collect();
-    register_rrds(connection, dataset_name, dataset_id_str, &path_refs).await
+    register_rrds(catalog_client, dataset_name, dataset_id_str, &path_refs).await
 }
 
 /// A distinct color for the segment at `index`, cycling through a small fixed palette.
@@ -135,14 +135,14 @@ fn recording_rrd(
 ///
 /// Returns the segment ids in the same order as `paths`.
 async fn register_rrds(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     dataset_name: &str,
     dataset_id_str: &str,
     paths: &[&std::path::Path],
 ) -> Result<Vec<SegmentId>, Box<dyn Error>> {
     let dataset_id = re_tuid::Tuid::from_str(dataset_id_str).expect("Failed to parse TUID");
 
-    let entry = connection
+    let entry = catalog_client
         .client()
         .await?
         .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
@@ -153,7 +153,7 @@ async fn register_rrds(
         data_sources.push(DataSource::new_rrd(file_url(path)?, None)?);
     }
 
-    let registration = connection
+    let registration = catalog_client
         .register_with_dataset(entry.details.id, data_sources, IfDuplicateBehavior::Error)
         .await?;
     Ok(registration.wait(Duration::from_secs(10)).await?)
@@ -183,7 +183,7 @@ pub fn file_url(path: &std::path::Path) -> Result<String, Box<dyn Error>> {
 
 /// Log a static-only recording and register it with `asset_dataset`, returning its segment id.
 pub async fn register_asset(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     asset_dataset: EntryId,
     recording_id: &str,
 ) -> Result<SegmentId, Box<dyn Error>> {
@@ -191,7 +191,7 @@ pub async fn register_asset(
 
     let data_source = DataSource::new_rrd(file_url(path.path())?, None)?;
 
-    let registration = connection
+    let registration = catalog_client
         .register_with_dataset(asset_dataset, vec![data_source], IfDuplicateBehavior::Error)
         .await?;
     registration
@@ -208,7 +208,7 @@ pub async fn register_asset(
 /// The viewer fetches this registered blueprint when the table entry is opened, which is what
 /// turns the preview column into inline 3D previews.
 pub async fn register_table_blueprint(
-    connection: &ConnectionHandle,
+    catalog_client: &CatalogClient,
     table: &TableEntry,
     blueprint_rbl: &std::path::Path,
 ) -> Result<SegmentId, Box<dyn Error>> {
@@ -219,7 +219,7 @@ pub async fn register_table_blueprint(
 
     let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?, None)?;
 
-    let registration = connection
+    let registration = catalog_client
         .register_with_dataset(
             blueprint_dataset,
             vec![data_source],
@@ -233,7 +233,7 @@ pub async fn register_table_blueprint(
         .next()
         .ok_or("Blueprint registration returned no segment")?;
 
-    connection
+    catalog_client
         .client()
         .await?
         .update_table_entry(

@@ -67,6 +67,57 @@ pub struct QueryDatasetDataframe {
     pub extra_columns: Vec<quiver::DynColumn>,
 }
 
+// --- FindChunksResponse ---
+
+/// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::FindChunksResponse`].
+///
+/// One row per candidate chunk; see [`crate::cloud::v1alpha1::FindChunksResponse`] for the row
+/// semantics. The field names are the column names.
+#[derive(quiver::Quiver)]
+pub struct ChunkCandidatesDataframe {
+    /// The id of the chunk ([`re_chunk::ChunkId`]).
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_id: quiver::Column<re_chunk::ChunkId>,
+
+    /// The segment this chunk belongs to.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_segment_id: quiver::Column<SegmentId>,
+
+    /// The layer this chunk belongs to.
+    pub rerun_segment_layer: quiver::Column<LayerName>,
+
+    /// Opaque key encoding where to fetch the chunk
+    /// (see [`RrdChunkLocation`](crate::cloud::v1alpha1::ext::RrdChunkLocation)).
+    pub chunk_key: quiver::Column<quiver::Binary>,
+
+    /// The entity path of the chunk.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_entity_path: quiver::Column<EntityPath>,
+
+    /// Does this chunk hold static data?
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_is_static: quiver::Column<bool>,
+
+    /// Byte length of the chunk within the source object.
+    pub chunk_byte_len: quiver::Column<u64>,
+
+    /// Uncompressed size of the chunk, if known.
+    pub chunk_byte_size_uncompressed: quiver::Column<Option<u64>>,
+
+    /// The chunk's minimum on the request's selection timeline, in that timeline's unit.
+    ///
+    /// Null in `Static` mode, for static chunks, and for chunks without that timeline.
+    #[quiver(metadata("rerun:kind" = "index"))]
+    pub chunk_timeline_start: quiver::Column<Option<i64>>,
+
+    /// Direct URL for fetching the source object, if the server wants
+    /// the client to fetch this row via direct HTTP Range.
+    pub rerun_layer_direct_url: quiver::Column<Option<quiver::Dictionary<i32, quiver::Utf8>>>,
+
+    /// When the direct URL expires, if any.
+    pub rerun_layer_direct_url_expires_at: quiver::Column<Option<quiver::Dictionary<i32, i64>>>,
+}
+
 // --- QueryTasksResponse ---
 
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::QueryTasksResponse::data`].

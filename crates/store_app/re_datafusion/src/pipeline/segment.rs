@@ -77,7 +77,7 @@ impl PlanCursor {
     /// The safe horizon: rows at `T <= horizon` may emit.
     ///
     /// * `None` — nothing is emittable yet, for either of two reasons. A
-    ///   `PreTime` chunk (static / null-`:start`) is outstanding, so any row
+    ///   `PreTime` chunk (static / null-`chunk_timeline_start`) is outstanding, so any row
     ///   could still be affected by data with no position on the timeline.
     ///   Or the earliest outstanding chunk sits at [`TimeInt::MIN`], below
     ///   which there is no representable tick to emit up to.
@@ -298,7 +298,7 @@ mod tests {
         assert_eq!(c.safe_horizon(), Some(TimeInt::MAX));
     }
 
-    /// While a `PreTime` chunk (static / null-`:start`) is outstanding,
+    /// While a `PreTime` chunk (static / null-`chunk_timeline_start`) is outstanding,
     /// nothing may emit: it could carry values affecting any row.
     #[test]
     fn pretime_outstanding_gates_all_emission() {

@@ -63,7 +63,7 @@ pub async fn cards_view_flagging() {
 
     let blueprint_rbl = flag_blueprint_rbl_file();
     re_integration_test::register_table_blueprint(
-        &server.connection_handle(),
+        &server.catalog_client(),
         &table,
         blueprint_rbl.path(),
     )

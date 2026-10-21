@@ -14,29 +14,37 @@ use re_entity_db::LogSource;
 use re_log_channel::{
     CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
 };
-use re_log_types::{EntityPath, StoreId, TimeReal, TimeType};
+use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
+use re_protos::viewer_control::v1alpha1::PlayState as ProtoPlayState;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, GetBlueprintRequest, GetBlueprintResponse,
-    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetViewerLogsRequest,
-    GetViewerLogsResponse, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
-    OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema,
-    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetBlueprintRequest,
-    SetBlueprintResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
-    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerServer, ViewerServerEntry, ViewerTimeline, ViewerView,
+    CloseRecordingsRequest, CloseRecordingsResponse, DatasetAssetSchema, GetBlueprintRequest,
+    GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
+    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
+    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
+    OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest,
+    SaveScreenshotResponse, ScreenRect, SetBlueprintRequest, SetBlueprintResponse,
+    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
+    TableColumnSchema, TimeCursor, ViewerControlRequest, ViewerControlResponse,
+    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerServer, ViewerServerEntry,
+    ViewerTimeline, ViewerView, get_blueprint_request, set_blueprint_request,
     viewer_control_request,
 };
+use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
+use re_types_core::SegmentId;
 use re_viewer_context::{
-    Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand,
-    open_url::{OpenUrlOptions, ViewerOpenUrl},
+    Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
+    viewer_url::{OpenUrlOptions, ViewerUrl},
 };
 
-use super::App;
+use super::AppCore;
 use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod commands;
+mod transform_graph;
 
 /// How many entities `get_recording_schema` describes when the request does not say.
 ///
@@ -60,6 +68,20 @@ const OPEN_URL_MAX_WAIT: Duration = Duration::from_secs(10);
 const _: () = assert!(
     OPEN_URL_MAX_WAIT.as_millis() + 5_000 <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
     "`open_url` must answer well before the transport gives up"
+);
+
+/// How long `get_blueprint` waits for the recording or table on screen to get the blueprint the
+/// viewer shows for it by default.
+///
+/// A recording or table that is not on screen answers right away. A table gets its default
+/// blueprint once its query returns. A recording gets its default views a frame after its data
+/// arrives, so a recording with no data waits the full time.
+const DEFAULT_BLUEPRINT_MAX_WAIT: Duration = Duration::from_secs(2);
+
+const _: () = assert!(
+    DEFAULT_BLUEPRINT_MAX_WAIT.as_millis() + 5_000
+        <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
+    "`get_blueprint` must answer well before the transport gives up"
 );
 
 /// How often a waiting `open_url` checks whether its catalog registration is done.
@@ -90,9 +112,80 @@ enum PendingAnswer {
         registrations_before: Vec<RegistrationId>,
         deadline: web_time::Instant,
     },
+
+    /// `get_blueprint`, read once the target has an active blueprint, and once a target on screen
+    /// has the blueprint the viewer shows for it by default, or `deadline` has passed.
+    GetBlueprint {
+        target: BlueprintTarget,
+        deadline: web_time::Instant,
+    },
+
+    /// `set_blueprint`, written once the target has an active blueprint.
+    SetBlueprint {
+        target: BlueprintTarget,
+        json: serde_json::Value,
+    },
 }
 
-impl App {
+/// The `target` of a `get_blueprint` or `set_blueprint` request, before a missing id is filled in.
+enum RequestedBlueprint {
+    /// The blueprint of the recording with this store id, or of the active recording.
+    Recording(Option<String>),
+
+    /// The blueprint of the table with this URL, or of the table on screen.
+    Table(Option<String>),
+}
+
+impl From<get_blueprint_request::Target> for RequestedBlueprint {
+    fn from(target: get_blueprint_request::Target) -> Self {
+        match target {
+            get_blueprint_request::Target::Recording(recording) => {
+                Self::Recording(recording.store_id)
+            }
+            get_blueprint_request::Target::Table(table) => Self::Table(table.table_url),
+        }
+    }
+}
+
+impl From<set_blueprint_request::Target> for RequestedBlueprint {
+    fn from(target: set_blueprint_request::Target) -> Self {
+        match target {
+            set_blueprint_request::Target::Recording(recording) => {
+                Self::Recording(recording.store_id)
+            }
+            set_blueprint_request::Target::Table(table) => Self::Table(table.table_url),
+        }
+    }
+}
+
+/// The blueprint a `get_blueprint` or `set_blueprint` request reads or writes.
+enum BlueprintTarget {
+    /// The blueprint of the application of this open recording.
+    Recording(StoreId),
+
+    /// The blueprint of a table.
+    Table(re_uri::TableReference),
+}
+
+impl BlueprintTarget {
+    /// The command that gives the target an active blueprint if it has none yet.
+    fn ensure_blueprint_command(&self) -> SystemCommand {
+        match self {
+            Self::Recording(store_id) => SystemCommand::EnsureRecordingBlueprint(store_id.clone()),
+            Self::Table(table) => SystemCommand::EnsureTableBlueprint(table.clone()),
+        }
+    }
+
+    /// The target as the `store_id` and `table_url` fields of a response.
+    fn response_fields(&self) -> (Option<String>, Option<String>) {
+        match self {
+            Self::Recording(store_id) => (Some(store_id.to_string()), None),
+            Self::Table(table) => (None, table.url().map(|url| url.to_string())),
+        }
+    }
+}
+
+impl AppCore {
     /// Answer `on_done` with `result` once every command queued so far has run.
     fn reply_after_commands(
         &mut self,
@@ -118,7 +211,7 @@ impl App {
     ///
     /// Must be called right after draining the system commands, so that an empty queue means
     /// the commands a reply waits for have run rather than not yet been sent.
-    pub(super) fn answer_pending_viewer_control_replies(&mut self) {
+    pub(super) fn answer_pending_viewer_control_replies(&mut self, store_hub: &StoreHub) {
         if self.pending_viewer_control_replies.is_empty() {
             return;
         }
@@ -159,6 +252,34 @@ impl App {
                         self.egui_ctx.request_repaint_after(OPEN_URL_POLL_INTERVAL);
                     } else {
                         on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
+                    }
+                }
+                PendingAnswer::GetBlueprint { target, deadline } => {
+                    if now < deadline && self.waits_for_default_blueprint(store_hub, &target) {
+                        self.pending_viewer_control_replies.push(PendingReply {
+                            on_done,
+                            answer: PendingAnswer::GetBlueprint { target, deadline },
+                        });
+                        // The default views and table columns are only made while the UI paints.
+                        self.egui_ctx.request_repaint();
+                    } else {
+                        on_done.call(
+                            self.collect_blueprint_json(store_hub, &target)
+                                .map(ViewerControlResponse::from),
+                        );
+                    }
+                }
+                PendingAnswer::SetBlueprint { target, json } => {
+                    match self.apply_set_blueprint(store_hub, &target, &json) {
+                        // The write is queued, so the answer waits for it to run.
+                        Ok(response) => {
+                            self.pending_viewer_control_replies.push(PendingReply {
+                                on_done,
+                                answer: PendingAnswer::Ready(Ok(response.into())),
+                            });
+                            self.egui_ctx.request_repaint();
+                        }
+                        Err(err) => on_done.call(Err(err)),
                     }
                 }
             }
@@ -217,9 +338,31 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetBlueprint(request) => {
+            Kind::GetBlueprint(GetBlueprintRequest { target }) => {
+                let requested =
+                    target.map_or_else(|| self.blueprint_on_screen(), RequestedBlueprint::from);
+                match self.requested_blueprint_target(store_hub, Some(requested)) {
+                    Ok(target) => self.answer_after_blueprint(
+                        on_done,
+                        target.ensure_blueprint_command(),
+                        PendingAnswer::GetBlueprint {
+                            target,
+                            deadline: web_time::Instant::now() + DEFAULT_BLUEPRINT_MAX_WAIT,
+                        },
+                        egui_ctx,
+                    ),
+                    Err(err) => on_done.call(Err(err)),
+                }
+            }
+            Kind::GetTableSchema(GetTableSchemaRequest { table_url }) => {
                 on_done.call(
-                    self.collect_blueprint_json(store_hub, request)
+                    self.collect_table_schema(table_url, egui_ctx)
+                        .map(ViewerControlResponse::from),
+                );
+            }
+            Kind::GetTransformGraph(request) => {
+                on_done.call(
+                    self.collect_transform_graph(store_hub, request)
                         .map(ViewerControlResponse::from),
                 );
             }
@@ -229,13 +372,54 @@ impl App {
                 }
                 .into()));
             }
+            Kind::GetDatasetSchema(request) => {
+                self.answer_dataset_schema(store_hub, on_done, request);
+            }
+            Kind::GetDatasetAssetsSchema(request) => {
+                self.answer_dataset_assets_schema(store_hub, on_done, request);
+            }
             Kind::GetRecordingSchema(request) => {
                 on_done.call(
                     self.collect_recording_schema(store_hub, request)
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetViewerState(_) => {
+            Kind::GetLocation(GetLocationRequest {}) => {
+                let location = self.current_viewer_url(store_hub).and_then(|url| {
+                    url.sharable_url(None).map_err(|err| {
+                        ViewerControlError::internal(format!(
+                            "Failed to format the location as a URL: {err}"
+                        ))
+                    })
+                });
+                on_done.call(location.map(|location| GetLocationResponse { location }.into()));
+            }
+            Kind::SetLocation(SetLocationRequest { location }) => {
+                let navigated = location
+                    .parse::<ViewerUrl>()
+                    .map_err(|err| {
+                        ViewerControlError::invalid_argument(format!(
+                            "Not a location: {err}\nLocation: {location:?}"
+                        ))
+                    })
+                    .and_then(|url| self.route_if_open(store_hub, &url));
+                match navigated {
+                    Err(err) => on_done.call(Err(err)),
+                    Ok(None) => on_done.call(Err(ViewerControlError::not_found(format!(
+                        "The viewer does not have this location open: {location:?}"
+                    )))),
+                    Ok(Some(route)) => {
+                        self.command_sender
+                            .send_system(SystemCommand::SetRoute(route));
+                        self.reply_after_commands(
+                            on_done,
+                            Ok(SetLocationResponse {}.into()),
+                            egui_ctx,
+                        );
+                    }
+                }
+            }
+            Kind::GetViewerState(GetViewerStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
             }
             Kind::HighlightRect(request) => {
@@ -248,38 +432,82 @@ impl App {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::OpenUrl(OpenUrlRequest { url }) => {
-                let parsed = ViewerOpenUrl::parse_with_options(
+            Kind::OpenUrl(OpenUrlRequest { url, navigate }) => {
+                let navigate = navigate.unwrap_or(true);
+                let parsed = ViewerUrl::parse_with_options(
                     &url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: true,
                     },
                 );
                 match parsed {
-                    Ok(open_url) => {
-                        let sources_before = self.rx_log.sources();
-                        let registrations_before = self
-                            .connections
-                            .registrations_in_flight
-                            .snapshot()
-                            .into_keys()
-                            .collect();
-                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
-                        self.pending_viewer_control_replies.push(PendingReply {
-                            on_done,
-                            answer: PendingAnswer::OpenUrl {
-                                sources_before,
-                                registrations_before,
-                                deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
-                            },
-                        });
-                        egui_ctx.request_repaint();
-                    }
                     Err(err) => {
                         on_done.call(Err(ViewerControlError::invalid_argument(format!(
-                            "Failed to open URL {url:?}: {err}"
+                            "Failed to parse the URL: {err}\nURL: {url:?}"
                         ))));
                     }
+                    Ok(open_url) => match self.route_if_open(store_hub, &open_url) {
+                        Err(err) => on_done.call(Err(err)),
+                        // Opening a server, folder, or entry again also refreshes it, unlike
+                        // `set_location`.
+                        Ok(Some(route))
+                            if !matches!(
+                                route,
+                                Route::RedapServer(_)
+                                    | Route::RedapFolder { .. }
+                                    | Route::RedapEntry { .. }
+                            ) =>
+                        {
+                            if navigate {
+                                self.command_sender
+                                    .send_system(SystemCommand::SetRoute(route));
+                            }
+                            let response = OpenUrlResponse {
+                                still_loading: false,
+                            };
+                            self.reply_after_commands(on_done, Ok(response.into()), egui_ctx);
+                        }
+                        Ok(_) => {
+                            let sources_before = self.rx_log.sources();
+                            let registrations_before = self
+                                .connections
+                                .registrations_in_flight
+                                .snapshot()
+                                .into_keys()
+                                .collect();
+                            if navigate {
+                                // Opens like a URL the user pastes: a recording becomes the active one.
+                                open_url.open(
+                                    egui_ctx,
+                                    &OpenUrlOptions {
+                                        recording_open_behavior:
+                                            re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+                                        show_loader: true,
+                                    },
+                                    &self.command_sender,
+                                );
+                            } else if !self.connect_without_navigating(&open_url) {
+                                open_url.open(
+                                    egui_ctx,
+                                    &OpenUrlOptions {
+                                        recording_open_behavior:
+                                            re_log_channel::RecordingOpenBehavior::Open,
+                                        show_loader: false,
+                                    },
+                                    &self.command_sender,
+                                );
+                            }
+                            self.pending_viewer_control_replies.push(PendingReply {
+                                on_done,
+                                answer: PendingAnswer::OpenUrl {
+                                    sources_before,
+                                    registrations_before,
+                                    deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
+                                },
+                            });
+                            egui_ctx.request_repaint();
+                        }
+                    },
                 }
             }
 
@@ -292,11 +520,29 @@ impl App {
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
 
-            Kind::SetBlueprint(request) => {
-                let result = self
-                    .apply_set_blueprint(store_hub, request)
-                    .map(ViewerControlResponse::from);
-                self.reply_after_commands(on_done, result, egui_ctx);
+            Kind::SetBlueprint(SetBlueprintRequest { json, target }) => {
+                let parsed = serde_json::from_str(&json)
+                    .map_err(|err| {
+                        ViewerControlError::invalid_argument(format!(
+                            "`json` is not valid JSON: {err}"
+                        ))
+                    })
+                    .and_then(|json| {
+                        let target = self.requested_blueprint_target(
+                            store_hub,
+                            target.map(RequestedBlueprint::from),
+                        )?;
+                        Ok((target, json))
+                    });
+                match parsed {
+                    Ok((target, json)) => self.answer_after_blueprint(
+                        on_done,
+                        target.ensure_blueprint_command(),
+                        PendingAnswer::SetBlueprint { target, json },
+                        egui_ctx,
+                    ),
+                    Err(err) => on_done.call(Err(err)),
+                }
             }
 
             Kind::SetTimeCursor(request) => {
@@ -304,29 +550,27 @@ impl App {
                     store_id,
                     timeline,
                     time,
-                    play,
+                    play_state,
                 } = request;
-                // `time` is required. Defaulting it would seek to the start of the recording,
-                // which is a move the caller did not ask for, so every transport must be refused
-                // here rather than only in the clients that happen to validate.
-                let time = time.ok_or_else(|| {
-                    ViewerControlError::invalid_argument("`time` is required by `set_time_cursor`")
-                });
                 let store_id = store_id
                     .map(|store_id| store_id.parse::<StoreId>())
                     .transpose()
                     .map_err(|err| {
                         ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
                     });
-                let result = time
-                    .and_then(|time| Ok((time, store_id?)))
-                    .and_then(|(time, store_id)| {
+                let play_state = play_state
+                    .map(play_state_from_proto)
+                    .transpose()
+                    .map(Option::flatten);
+                let result = store_id
+                    .and_then(|store_id| Ok((store_id, play_state?)))
+                    .and_then(|(store_id, play_state)| {
                         self.apply_set_time_cursor(
                             store_hub,
                             store_id,
                             timeline.map(|timeline| timeline.name).as_deref(),
-                            time.time,
-                            play.unwrap_or(false),
+                            time.map(|time| time.time),
+                            play_state,
                             egui_ctx,
                         )
                         .map_err(ViewerControlError::invalid_argument)
@@ -470,20 +714,140 @@ fn close_recordings_target(
     })
 }
 
-impl App {
+impl AppCore {
+    /// What the viewer is showing, as a URL that [`Self::route_if_open`] returns to.
+    ///
+    /// A recording is named by its store id, since it may not have been loaded from a URL.
+    fn current_viewer_url(&self, store_hub: &StoreHub) -> Result<ViewerUrl, ViewerControlError> {
+        Ok(match self.state.navigation.current() {
+            Route::LocalRecording { recording_id } => {
+                ViewerUrl::LocalRecording(recording_id.clone())
+            }
+            // Nothing but this API names a local table, so it gets no sharable URL.
+            Route::LocalTable(table_id) => ViewerUrl::LocalTable(table_id.clone()),
+            Route::ChunkStoreBrowser {
+                store_id: Some(store_id),
+                ..
+            } if store_id.kind() != StoreKind::Recording => {
+                // A chunk store browser URL can only name a recording.
+                return Err(ViewerControlError::failed_precondition(
+                    "The chunk store browser shows a blueprint, which has no URL",
+                ));
+            }
+            route => ViewerUrl::from_route(store_hub, route).map_err(|err| {
+                ViewerControlError::failed_precondition(format!(
+                    "What the viewer shows has no URL: {err}"
+                ))
+            })?,
+        })
+    }
+
+    /// The route to what `url` names, if the viewer already has it open.
+    ///
+    /// Showing it takes a plain route change, which navigates like the user does, so the back
+    /// button returns to the page shown before. `ViewerUrl::open` would also add servers,
+    /// refresh their entries, and load data again.
+    fn route_if_open(
+        &self,
+        store_hub: &StoreHub,
+        url: &ViewerUrl,
+    ) -> Result<Option<Route>, ViewerControlError> {
+        let not_loaded = |store_id: &StoreId| {
+            // Nothing can load an `about:recording` URL, so it must name a loaded recording.
+            ViewerControlError::not_found(format!("Recording {store_id} is not loaded"))
+        };
+        let has_server = |origin: &re_uri::Origin| {
+            // The welcome page is a built-in server that the viewer never connects to.
+            *origin == *re_redap_browser::EXAMPLES_ORIGIN
+                || self.state.redap_servers.has_server(origin)
+        };
+
+        let Some(mut route) = url.to_route(self.state.navigation.current()) else {
+            return Ok(None);
+        };
+        match &mut route {
+            Route::LocalRecording { recording_id }
+            | Route::ChunkStoreBrowser {
+                store_id: Some(recording_id),
+                ..
+            } => {
+                if store_hub.entity_db(recording_id).is_none() {
+                    return Err(not_loaded(recording_id));
+                }
+            }
+            Route::RedapServer(origin) | Route::RedapFolder { origin, .. } => {
+                if !has_server(origin) {
+                    return Ok(None);
+                }
+            }
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                let Some(known_kind) = self.state.redap_servers.entry_kind(origin, *entry_id)
+                else {
+                    return Ok(None);
+                };
+                if matches!(kind, Some(re_viewer_context::EntryKind::Dataset(_)))
+                    && known_kind == re_viewer_context::EntryKind::Table
+                {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "The URL names a table, not a dataset\nURL: {url:?}"
+                    )));
+                }
+                kind.get_or_insert(known_kind);
+            }
+            Route::LocalTable(table_id) => {
+                if !store_hub.has_table(table_id) {
+                    // Nothing can load an `about:table` URL either.
+                    return Err(ViewerControlError::not_found(format!(
+                        "Table {table_id} is not in the viewer"
+                    )));
+                }
+            }
+            Route::Settings { .. } | Route::ChunkStoreBrowser { store_id: None, .. } => {}
+            Route::Loading(_) => return Ok(None),
+        }
+
+        Ok(Some(route))
+    }
+
+    /// Connect to the server that `url` names, without showing it.
+    ///
+    /// Returns `false` for a URL that names no server.
+    fn connect_without_navigating(&self, url: &ViewerUrl) -> bool {
+        let (ViewerUrl::RedapCatalog(re_uri::CatalogUri { origin })
+        | ViewerUrl::RedapFolder(re_uri::FolderUri { origin, .. })
+        | ViewerUrl::RedapEntry(re_uri::EntryUri { origin, .. })
+        | ViewerUrl::RedapDataset(re_uri::DatasetUri {
+            origin,
+            segment_id: None,
+            ..
+        })) = url
+        else {
+            return false;
+        };
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer(origin.clone()));
+        self.command_sender
+            .send_system(SystemCommand::RefreshRedapServer(origin.clone()));
+        true
+    }
+
     /// Snapshot the current viewer state for the `get_viewer_state` operation:
-    /// the active recording, the current page as a sharable URL, the catalog the viewer hosts,
+    /// the active recording, the current page as a Viewer URL, the catalog the viewer hosts,
     /// and every open recording's timelines with their time ranges and current time cursor.
     pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetViewerStateResponse {
         let active_id = self.state.active_recording_id().cloned();
         let route = self.state.navigation.current().clone();
         let views = self.collect_views(store_hub, &route, active_id.as_ref());
-        let route = &route;
 
-        // Best-effort sharable URL for the current page; some routes (e.g. local tables) can't be
-        // turned into a URL, in which case we leave it empty.
-        let url = ViewerOpenUrl::from_route(store_hub, route)
-            .and_then(|open_url| open_url.sharable_url(None))
+        // Empty when what is shown has no URL, like a local table.
+        let location = self
+            .current_viewer_url(store_hub)
+            .ok()
+            .and_then(|url| url.sharable_url(None).ok())
             .unwrap_or_default();
 
         let recordings = store_hub
@@ -491,21 +855,24 @@ impl App {
             .recordings()
             .map(|db| {
                 let store_id = db.store_id();
-                let timelines = recording_timelines(db);
+                let time_ctrl = self.state.time_control(store_id);
+                let timelines = recording_timelines(db, time_ctrl);
 
-                let current_time = self
-                    .state
-                    .time_control(store_id)
-                    .map(|time_ctrl| TimeCursor {
-                        timeline: Some((*time_ctrl.timeline_name()).into()),
-                        time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
-                        time: time_ctrl.time_int().map(|t| t.as_i64().into()),
-                    });
+                let current_time = time_ctrl.map(|time_ctrl| TimeCursor {
+                    timeline: Some((*time_ctrl.timeline_name()).into()),
+                    time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
+                    time: time_ctrl.time_int().map(|t| t.as_i64().into()),
+                });
+                let play_state = time_ctrl.map_or(PlayState::Paused, TimeControl::play_state);
 
                 ViewerRecording {
                     store_id: store_id.to_string(),
                     timelines,
                     current_time,
+                    location: ViewerUrl::LocalRecording(store_id.clone())
+                        .sharable_url(None)
+                        .unwrap_or_default(),
+                    play_state: play_state_to_proto(play_state) as i32,
                 }
             })
             .collect();
@@ -534,7 +901,7 @@ impl App {
         let loading = std::iter::chain(loading_registrations, loading_sources).collect();
 
         GetViewerStateResponse {
-            url,
+            location,
             active_store_id: active_id.map(|store_id| store_id.to_string()),
             recordings,
             loading,
@@ -581,96 +948,597 @@ impl App {
             .collect()
     }
 
-    /// The active blueprint of a recording's application, as JSON, for the `get_blueprint`
+    /// The active blueprint of a recording or a table, as JSON, for the `get_blueprint`
     /// operation.
     fn collect_blueprint_json(
         &mut self,
         store_hub: &StoreHub,
-        request: GetBlueprintRequest,
+        target: &BlueprintTarget,
     ) -> Result<GetBlueprintResponse, ViewerControlError> {
         re_tracing::profile_function!();
 
-        let GetBlueprintRequest { store_id } = request;
-        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
-
+        let blueprint_db = self.active_blueprint(store_hub, target)?;
         let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
-        let json = re_arrow_json::json_from_store(
+        let mut json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
             &query,
-            &self.reflection,
+            &self.reflection.read(),
         );
+        if let BlueprintTarget::Table(table) = target
+            && json.as_object().is_some_and(serde_json::Map::is_empty)
+            && let Some(default_json) = self.default_table_blueprint_json(table)
+        {
+            json = default_json;
+        }
 
+        let (store_id, table_url) = target.response_fields();
         Ok(GetBlueprintResponse {
             blueprint_id: blueprint_db.store_id().to_string(),
             json: json.to_string(),
+            store_id,
+            table_url,
         })
     }
 
-    /// Replace the active blueprint of a recording's application with JSON, for the
+    /// Replace the active blueprint of a recording or a table with JSON, for the
     /// `set_blueprint` operation.
     ///
     /// Only queues the write, so the caller must hold the answer back until it has run.
     fn apply_set_blueprint(
         &self,
         store_hub: &StoreHub,
-        request: SetBlueprintRequest,
+        target: &BlueprintTarget,
+        json: &serde_json::Value,
     ) -> Result<SetBlueprintResponse, ViewerControlError> {
         re_tracing::profile_function!();
 
-        let SetBlueprintRequest { store_id, json } = request;
+        let blueprint_db = self.active_blueprint(store_hub, target)?;
+        let chunks = self.blueprint_chunks_from_json(blueprint_db, json)?;
+        if let BlueprintTarget::Table(table) = target {
+            self.check_table_filters(table, &chunks)?;
+        }
+        self.queue_blueprint_write(blueprint_db, chunks);
 
-        let json: serde_json::Value = serde_json::from_str(&json).map_err(|err| {
-            ViewerControlError::invalid_argument(format!("`json` is not valid JSON: {err}"))
-        })?;
-
-        let blueprint_db = self.active_blueprint(store_hub, store_id)?;
-        let chunks = re_arrow_json::chunks_from_json(
-            &json,
-            blueprint_db.storage_engine().store(),
-            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
-            &self.reflection,
-        )
-        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
-
-        let blueprint_id = blueprint_db.store_id().clone();
-        self.command_sender
-            .send_system(SystemCommand::AppendToStore(blueprint_id.clone(), chunks));
-
+        let (store_id, table_url) = target.response_fields();
         Ok(SetBlueprintResponse {
-            blueprint_id: blueprint_id.to_string(),
+            blueprint_id: blueprint_db.store_id().to_string(),
+            store_id,
+            table_url,
         })
     }
 
-    /// The active blueprint of the application of `store_id`, or of the active recording.
-    fn active_blueprint<'hub>(
+    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with the active
+    /// recording or the table on screen filled in for a missing id.
+    fn requested_blueprint_target(
         &self,
-        store_hub: &'hub StoreHub,
-        store_id: Option<String>,
-    ) -> Result<&'hub re_entity_db::EntityDb, ViewerControlError> {
-        let store_id = store_id
-            .map(|store_id| store_id.parse::<StoreId>())
-            .transpose()
-            .map_err(|err| {
-                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
-            })?
-            .or_else(|| self.state.active_recording_id().cloned())
-            .ok_or_else(|| {
-                ViewerControlError::failed_precondition("no active recording, and no `store_id`")
-            })?;
+        store_hub: &StoreHub,
+        requested: Option<RequestedBlueprint>,
+    ) -> Result<BlueprintTarget, ViewerControlError> {
+        let store_id = match requested {
+            // A `oneof` is an enum: an unset target names neither a recording nor a table.
+            None => {
+                return Err(ViewerControlError::invalid_argument(
+                    "set exactly one of `recording` and `table`: `{\"recording\": {}}` for the \
+                     active recording, or `{\"table\": {}}` for the table on screen",
+                ));
+            }
+            Some(RequestedBlueprint::Table(table_url)) => {
+                return Ok(BlueprintTarget::Table(self.requested_table(table_url)?));
+            }
+            Some(RequestedBlueprint::Recording(Some(store_id))) => {
+                store_id.parse::<StoreId>().map_err(|err| {
+                    ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+                })?
+            }
+            Some(RequestedBlueprint::Recording(None)) => {
+                self.state.active_recording_id().cloned().ok_or_else(|| {
+                    ViewerControlError::failed_precondition(
+                        "no active recording, and no `store_id`",
+                    )
+                })?
+            }
+        };
 
         if store_hub.entity_db(&store_id).is_none() {
             return Err(ViewerControlError::not_found(format!(
                 "recording {store_id} is not open"
             )));
         }
+        Ok(BlueprintTarget::Recording(store_id))
+    }
 
-        store_hub
-            .active_blueprint_for_app(store_id.application_id())
+    /// The blueprint of what is on screen: the table if one is shown, else the active recording.
+    fn blueprint_on_screen(&self) -> RequestedBlueprint {
+        if self.state.navigation.current().table_reference().is_some() {
+            RequestedBlueprint::Table(None)
+        } else {
+            RequestedBlueprint::Recording(None)
+        }
+    }
+
+    /// Whether `target` is on screen and does not have the blueprint the viewer shows for it by
+    /// default yet.
+    ///
+    /// If the recording or table doesn't have an assigned blueprint and isn't the active route,
+    /// the returned blueprint is empty.
+    fn waits_for_default_blueprint(
+        &mut self,
+        store_hub: &StoreHub,
+        target: &BlueprintTarget,
+    ) -> bool {
+        let route = self.state.navigation.current().clone();
+        match target {
+            BlueprintTarget::Recording(store_id) => {
+                let on_screen = route
+                    .recording_id()
+                    .is_some_and(|shown| shown.application_id() == store_id.application_id());
+                if !on_screen {
+                    return false;
+                }
+                let Some(blueprint_db) =
+                    store_hub.active_blueprint_for_app(store_id.application_id())
+                else {
+                    return false;
+                };
+                let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+                let viewport =
+                    re_viewport_blueprint::ViewportBlueprint::from_db(blueprint_db, &query);
+                viewport.auto_views() && viewport.views.is_empty()
+            }
+            BlueprintTarget::Table(table) => {
+                route.table_reference().as_ref() == Some(table)
+                    && re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)
+                        .is_none()
+            }
+        }
+    }
+
+    /// The blueprint a table that was never configured shows: its column order, and the columns
+    /// it hides, as it was last shown.
+    ///
+    /// `None` if the table has not been shown yet.
+    fn default_table_blueprint_json(
+        &self,
+        table: &re_uri::TableReference,
+    ) -> Option<serde_json::Value> {
+        use re_dataframe_ui::{TableColumn, TableLayoutKind};
+
+        let columns = re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)?;
+
+        let mut json = serde_json::Map::new();
+        json.insert(
+            "/table/layouts/table".to_owned(),
+            serde_json::json!({
+                "TableLayout": {
+                    "column_order": columns
+                        .iter()
+                        .map(|column| column.physical_name.as_str())
+                        .collect::<Vec<_>>(),
+                }
+            }),
+        );
+        for column in columns.iter().filter(|column| !column.visible) {
+            json.insert(
+                TableColumn::blueprint_path(TableLayoutKind::Table, &column.physical_name)
+                    .to_string(),
+                serde_json::json!({ "TableColumn": { "visible": false } }),
+            );
+        }
+        Some(json.into())
+    }
+
+    /// The table a request names, or else the table on screen.
+    fn requested_table(
+        &self,
+        table_url: Option<String>,
+    ) -> Result<re_uri::TableReference, ViewerControlError> {
+        let Some(url) = table_url else {
+            return self
+                .state
+                .navigation
+                .current()
+                .table_reference()
+                .ok_or_else(|| {
+                    ViewerControlError::failed_precondition(
+                        "no table is on screen, and no `table_url`",
+                    )
+                });
+        };
+
+        let uri = url.parse::<re_uri::RedapUri>().map_err(|err| {
+            ViewerControlError::invalid_argument(format!("invalid `table_url` {url:?}: {err}"))
+        })?;
+
+        let redap_servers = &self.state.redap_servers;
+        match uri {
+            re_uri::RedapUri::Catalog(catalog) if redap_servers.has_server(&catalog.origin) => {
+                Ok(re_uri::TableReference::RedapServerEntries {
+                    origin: catalog.origin,
+                })
+            }
+            re_uri::RedapUri::Entry(entry)
+                if redap_servers
+                    .entry_kind(&entry.origin, entry.entry_id)
+                    .is_some() =>
+            {
+                Ok(entry.into())
+            }
+            re_uri::RedapUri::Catalog(_) | re_uri::RedapUri::Entry(_) => {
+                Err(ViewerControlError::not_found(format!(
+                    "the viewer has no table at {url:?}. `GetViewerState` lists the tables it has"
+                )))
+            }
+            re_uri::RedapUri::Dataset(_)
+            | re_uri::RedapUri::Proxy(_)
+            | re_uri::RedapUri::Folder(_) => Err(ViewerControlError::invalid_argument(format!(
+                "{url:?} is not a table URL"
+            ))),
+        }
+    }
+
+    /// The dataset a `get_dataset_schema` request names, or else the dataset on screen.
+    fn requested_dataset(
+        &self,
+        store_hub: &StoreHub,
+        dataset_url: Option<String>,
+    ) -> Result<re_uri::EntryUri, ViewerControlError> {
+        let Some(url) = dataset_url else {
+            return self.dataset_on_screen(store_hub, self.state.navigation.current());
+        };
+
+        let uri = url.parse::<re_uri::RedapUri>().map_err(|err| {
+            ViewerControlError::invalid_argument(format!("invalid `dataset_url` {url:?}: {err}"))
+        })?;
+        let re_uri::RedapUri::Entry(entry) = uri else {
+            return Err(ViewerControlError::invalid_argument(format!(
+                "{url:?} is not a dataset URL"
+            )));
+        };
+
+        match self
+            .state
+            .redap_servers
+            .entry_kind(&entry.origin, entry.entry_id)
+        {
+            Some(re_viewer_context::EntryKind::Dataset(_)) => Ok(entry),
+            Some(re_viewer_context::EntryKind::Table) => Err(ViewerControlError::invalid_argument(
+                format!("{url:?} is a table, not a dataset"),
+            )),
+            None => Err(ViewerControlError::not_found(format!(
+                "the viewer has no dataset at {url:?}. `GetViewerState` lists the datasets it has"
+            ))),
+        }
+    }
+
+    /// The dataset entry `route` shows, or the dataset of the segment it shows.
+    ///
+    /// An entry of unknown kind counts as a dataset, and the server answers for it.
+    fn dataset_on_screen(
+        &self,
+        store_hub: &StoreHub,
+        route: &Route,
+    ) -> Result<re_uri::EntryUri, ViewerControlError> {
+        let no_dataset = || {
+            ViewerControlError::failed_precondition("no dataset is on screen, and no `dataset_url`")
+        };
+
+        match route {
+            Route::Settings { return_route } => self.dataset_on_screen(store_hub, return_route),
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                let kind = self
+                    .state
+                    .redap_servers
+                    .entry_kind(origin, *entry_id)
+                    .or(*kind);
+                if matches!(kind, Some(re_viewer_context::EntryKind::Table)) {
+                    return Err(ViewerControlError::invalid_argument(
+                        "the table on screen is not a dataset. `GetTableSchema` names its columns",
+                    ));
+                }
+                Ok(re_uri::EntryUri {
+                    origin: origin.clone(),
+                    entry_id: *entry_id,
+                })
+            }
+            Route::LocalRecording { recording_id } => {
+                let uri = store_hub
+                    .entity_db(recording_id)
+                    .and_then(|db| db.data_source.as_ref())
+                    .and_then(|source| source.redap_uri());
+                let Some(re_uri::RedapUri::Dataset(uri)) = uri else {
+                    return Err(no_dataset());
+                };
+                Ok(re_uri::EntryUri {
+                    origin: uri.origin,
+                    entry_id: uri.dataset_id.into(),
+                })
+            }
+            _ => Err(no_dataset()),
+        }
+    }
+
+    /// Fetch the schema of a dataset from its server, for the `get_dataset_schema` operation.
+    ///
+    /// Answers once the server has replied.
+    fn answer_dataset_schema(
+        &self,
+        store_hub: &StoreHub,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        request: GetDatasetSchemaRequest,
+    ) {
+        let GetDatasetSchemaRequest {
+            dataset_url,
+            entity_path,
+            max_entities,
+            paths_only,
+        } = request;
+        // A whole dataset describes many components on each entity, so without an `entity_path`
+        // it only names the entities.
+        let paths_only = paths_only.unwrap_or_else(|| entity_path.is_none());
+        let max_entities = max_entities.unwrap_or(if paths_only {
+            DEFAULT_MAX_SCHEMA_PATHS
+        } else {
+            DEFAULT_MAX_SCHEMA_ENTITIES
+        }) as usize;
+
+        let (entry, root, catalog) =
+            match self.schema_request_target(store_hub, dataset_url, entity_path) {
+                Ok(target) => target,
+                Err(err) => {
+                    on_done.call(Err(err));
+                    return;
+                }
+            };
+
+        self.async_runtime.spawn_future(async move {
+            let (schema, assets) = futures::join!(
+                catalog.get_dataset_schema(entry.entry_id),
+                catalog.registered_assets(entry.entry_id)
+            );
+
+            let response = schema
+                .map_err(|err| {
+                    ViewerControlError::internal(format!(
+                        "failed to fetch the schema of {entry}: {err}"
+                    ))
+                })
+                .and_then(|schema| {
+                    let asset_ids = assets
+                        .map_err(|err| {
+                            ViewerControlError::internal(format!(
+                                "failed to fetch the assets of {entry}: {err}"
+                            ))
+                        })?
+                        .map(|registered| {
+                            registered
+                                .assets
+                                .iter()
+                                .map(|asset| asset.id.to_string())
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    describe_dataset_schema(
+                        &schema.schema,
+                        asset_ids,
+                        root.as_ref(),
+                        max_entities,
+                        paths_only,
+                    )
+                })
+                .map(ViewerControlResponse::from);
+            on_done.call(response);
+        });
+    }
+
+    /// Fetch the schema of each asset of a dataset from its server, for the
+    /// `get_dataset_assets_schema` operation.
+    ///
+    /// Answers once the server has replied.
+    fn answer_dataset_assets_schema(
+        &self,
+        store_hub: &StoreHub,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        request: GetDatasetAssetsSchemaRequest,
+    ) {
+        let GetDatasetAssetsSchemaRequest {
+            dataset_url,
+            entity_path,
+            max_entities,
+            paths_only,
+        } = request;
+        let paths_only = paths_only.unwrap_or(false);
+        let max_entities = max_entities.unwrap_or(if paths_only {
+            DEFAULT_MAX_SCHEMA_PATHS
+        } else {
+            DEFAULT_MAX_SCHEMA_ENTITIES
+        }) as usize;
+
+        let (entry, root, catalog) =
+            match self.schema_request_target(store_hub, dataset_url, entity_path) {
+                Ok(target) => target,
+                Err(err) => {
+                    on_done.call(Err(err));
+                    return;
+                }
+            };
+
+        self.async_runtime.spawn_future(async move {
+            let response = catalog
+                .get_asset_schemas(entry.entry_id)
+                .await
+                .map_err(|err| {
+                    ViewerControlError::internal(format!(
+                        "failed to fetch the assets of {entry}: {err}"
+                    ))
+                })
+                .and_then(|asset_schemas| {
+                    describe_dataset_assets_schema(
+                        &asset_schemas,
+                        root.as_ref(),
+                        max_entities,
+                        paths_only,
+                    )
+                })
+                .map(ViewerControlResponse::from);
+            on_done.call(response);
+        });
+    }
+
+    /// The dataset a dataset schema request names, the entity it limits the answer to, and a
+    /// client for the dataset's server.
+    fn schema_request_target(
+        &self,
+        store_hub: &StoreHub,
+        dataset_url: Option<String>,
+        entity_path: Option<String>,
+    ) -> Result<
+        (
+            re_uri::EntryUri,
+            Option<EntityPath>,
+            re_catalog_client::CatalogClient,
+        ),
+        ViewerControlError,
+    > {
+        let entry = self.requested_dataset(store_hub, dataset_url)?;
+        let root = parse_schema_root(entity_path)?;
+        let catalog = re_catalog_client::CatalogClient::new(
+            self.connections
+                .registry
+                .connection_handle(entry.origin.clone()),
+        );
+        Ok((entry, root, catalog))
+    }
+
+    /// Hold `answer` back until `ensure_blueprint` has run, which gives the blueprint target an
+    /// active blueprint if it has none yet.
+    fn answer_after_blueprint(
+        &mut self,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        ensure_blueprint: SystemCommand,
+        answer: PendingAnswer,
+        egui_ctx: &egui::Context,
+    ) {
+        self.command_sender.send_system(ensure_blueprint);
+        self.pending_viewer_control_replies
+            .push(PendingReply { on_done, answer });
+        egui_ctx.request_repaint();
+    }
+
+    /// The columns of a table as it was last shown, for the `get_table_schema` operation.
+    fn collect_table_schema(
+        &self,
+        table_url: Option<String>,
+        egui_ctx: &egui::Context,
+    ) -> Result<GetTableSchemaResponse, ViewerControlError> {
+        let table = self.requested_table(table_url)?;
+        let columns = re_dataframe_ui::DataFusionTableWidget::table_schema(egui_ctx, &table)
             .ok_or_else(|| {
                 ViewerControlError::not_found(format!(
-                    "recording {store_id} has no active blueprint"
+                    "table {table:?} has not been shown yet. Open it with `OpenUrl` first"
                 ))
-            })
+            })?;
+
+        Ok(GetTableSchemaResponse {
+            columns: columns
+                .iter()
+                .map(|column| TableColumnSchema {
+                    name: column.physical_name.to_string(),
+                    display_name: column.display_name.clone(),
+                    datatype: column.datatype.to_string(),
+                })
+                .collect(),
+        })
+    }
+
+    /// Check the filters of a table blueprint against the columns the table last showed.
+    ///
+    /// Nothing is checked if the table has not been shown yet.
+    fn check_table_filters(
+        &self,
+        table: &re_uri::TableReference,
+        chunks: &[re_chunk::Chunk],
+    ) -> Result<(), ViewerControlError> {
+        use re_sdk_types::blueprint::archetypes::TableBlueprint;
+        use re_sdk_types::blueprint::components::SqlFilterExpression;
+
+        let table_entity = EntityPath::from("/table");
+        let component = TableBlueprint::descriptor_filters().component;
+        let filters = chunks
+            .iter()
+            .filter(|chunk| chunk.entity_path() == &table_entity)
+            .filter_map(|chunk| chunk.component_batch::<SqlFilterExpression>(component, 0))
+            .flatten()
+            .flatten();
+
+        for filter in filters {
+            let sql = filter.as_str();
+            if let Some(Err(err)) =
+                re_dataframe_ui::DataFusionTableWidget::check_filter(&self.egui_ctx, table, sql)
+            {
+                return Err(ViewerControlError::invalid_argument(format!(
+                    "/table → TableBlueprint → filters: the filter {sql:?} fails: {err}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// The chunks that replace the whole of `blueprint_db` with the blueprint in `json`.
+    fn blueprint_chunks_from_json(
+        &self,
+        blueprint_db: &re_entity_db::EntityDb,
+        json: &serde_json::Value,
+    ) -> Result<Vec<re_chunk::Chunk>, ViewerControlError> {
+        re_arrow_json::chunks_from_json(
+            json,
+            blueprint_db.storage_engine().store(),
+            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
+            &self.reflection.read(),
+        )
+        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))
+    }
+
+    /// Queue a write of `chunks` to `blueprint_db`.
+    fn queue_blueprint_write(
+        &self,
+        blueprint_db: &re_entity_db::EntityDb,
+        chunks: Vec<re_chunk::Chunk>,
+    ) {
+        self.command_sender
+            .send_system(SystemCommand::AppendToStore(
+                blueprint_db.store_id().clone(),
+                chunks,
+            ));
+    }
+
+    /// The active blueprint of `target`.
+    fn active_blueprint<'hub>(
+        &self,
+        store_hub: &'hub StoreHub,
+        target: &BlueprintTarget,
+    ) -> Result<&'hub re_entity_db::EntityDb, ViewerControlError> {
+        match target {
+            BlueprintTarget::Recording(store_id) => store_hub
+                .active_blueprint_for_app(store_id.application_id())
+                .ok_or_else(|| {
+                    ViewerControlError::not_found(format!(
+                        "recording {store_id} has no active blueprint"
+                    ))
+                }),
+            BlueprintTarget::Table(table) => self
+                .table_blueprints
+                .active_id(table)
+                .and_then(|blueprint_id| store_hub.store_bundle().get(blueprint_id))
+                .ok_or_else(|| {
+                    ViewerControlError::not_found(format!(
+                        "table {table:?} has no active blueprint"
+                    ))
+                }),
+        }
     }
 
     /// Snapshot a recording's schema for the `get_recording_schema` operation: every entity
@@ -706,12 +1574,7 @@ impl App {
             ViewerControlError::not_found(format!("recording {store_id} is not open"))
         })?;
 
-        let root = entity_path
-            .map(|entity_path| EntityPath::parse_strict(&entity_path))
-            .transpose()
-            .map_err(|err| {
-                ViewerControlError::invalid_argument(format!("invalid entity_path: {err}"))
-            })?;
+        let root = parse_schema_root(entity_path)?;
 
         let engine = db.storage_engine();
         let columns = engine
@@ -757,7 +1620,7 @@ impl App {
 
         Ok(GetRecordingSchemaResponse {
             store_id: store_id.to_string(),
-            timelines: recording_timelines(db),
+            timelines: recording_timelines(db, self.state.time_control(&store_id)),
             entities,
             omitted_entities,
         })
@@ -860,12 +1723,10 @@ impl App {
         store_hub: &StoreHub,
         store_id: Option<StoreId>,
         timeline: Option<&str>,
-        time: i64,
-        play: bool,
+        time: Option<i64>,
+        play_state: Option<PlayState>,
         egui_ctx: &egui::Context,
     ) -> Result<SetTimeCursorResponse, String> {
-        use re_sdk_types::blueprint::components::PlayState;
-
         let store_id = store_id
             .or_else(|| self.state.active_recording_id().cloned())
             .ok_or_else(|| "no active recording to set the time for".to_owned())?;
@@ -908,31 +1769,47 @@ impl App {
             .get(&timeline_name)
             .map_or(TimeType::Sequence, |t| t.typ());
 
-        let play_state = if play {
-            PlayState::Playing
-        } else {
-            PlayState::Paused
-        };
+        if time.is_some() && play_state == Some(PlayState::Following) {
+            return Err(
+                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`"
+                    .to_owned(),
+            );
+        }
 
+        // Only what the request names is sent: a `SetTime` would leave follow mode, and an
+        // implied `SetActiveTimeline` would undo a switch still queued by an earlier request.
         // The order of these commands matters.
-        let time_commands = vec![
-            TimeControlCommand::SetActiveTimeline(timeline_name),
-            TimeControlCommand::SetPlayState(play_state),
-            TimeControlCommand::SetTime(TimeReal::from(time)),
-        ];
+        let mut time_commands = Vec::new();
+        if timeline.is_some() {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline_name));
+        }
+        if let Some(play_state) = play_state {
+            time_commands.push(TimeControlCommand::SetPlayState(play_state));
+        }
+        if let Some(time) = time {
+            time_commands.push(TimeControlCommand::SetTime(TimeReal::from(time)));
+        }
+        if !time_commands.is_empty() {
+            self.command_sender
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: store_id.clone(),
+                    time_commands,
+                });
+            re_viewer_context::on_external_blueprint_edit(egui_ctx);
+            egui_ctx.request_repaint();
+        }
 
-        self.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: store_id.clone(),
-                time_commands,
-            });
-        egui_ctx.request_repaint();
-
+        let time = time.or_else(|| {
+            self.state
+                .time_control(&store_id)
+                .and_then(|time_ctrl| time_ctrl.time_for_timeline(timeline_name))
+                .map(|time| time.floor().as_i64())
+        });
         Ok(SetTimeCursorResponse {
             store_id: store_id.to_string(),
             timeline: Some(timeline_name.into()),
             time_type: ProtoTimeType::from(time_type) as i32,
-            time: Some(time.into()),
+            time: time.map(Into::into),
         })
     }
 }
@@ -941,7 +1818,10 @@ impl App {
 /// `get_recording_schema` report them.
 ///
 /// A timeline with no data yet has no range, which is what tells "still arriving" from "empty".
-fn recording_timelines(db: &re_entity_db::EntityDb) -> Vec<ViewerTimeline> {
+fn recording_timelines(
+    db: &re_entity_db::EntityDb,
+    time_ctrl: Option<&TimeControl>,
+) -> Vec<ViewerTimeline> {
     db.timelines()
         .values()
         .map(|timeline| {
@@ -950,9 +1830,34 @@ fn recording_timelines(db: &re_entity_db::EntityDb) -> Vec<ViewerTimeline> {
                 timeline: Some((*name).into()),
                 time_type: ProtoTimeType::from(timeline.typ()) as i32,
                 time_range: db.time_range_for(name).map(Into::into),
+                current_time: time_ctrl
+                    .and_then(|time_ctrl| time_ctrl.time_for_timeline(*name))
+                    .map(|time| time.floor().as_i64().into()),
             }
         })
         .collect()
+}
+
+/// The play state as `get_viewer_state` reports it.
+fn play_state_to_proto(play_state: PlayState) -> ProtoPlayState {
+    match play_state {
+        PlayState::Paused => ProtoPlayState::Paused,
+        PlayState::Playing => ProtoPlayState::Playing,
+        PlayState::Following => ProtoPlayState::Following,
+    }
+}
+
+/// The play state a `set_time_cursor` request asks for. `None` leaves it as it is.
+fn play_state_from_proto(play_state: i32) -> Result<Option<PlayState>, ViewerControlError> {
+    match ProtoPlayState::try_from(play_state) {
+        Ok(ProtoPlayState::Unspecified) => Ok(None),
+        Ok(ProtoPlayState::Paused) => Ok(Some(PlayState::Paused)),
+        Ok(ProtoPlayState::Playing) => Ok(Some(PlayState::Playing)),
+        Ok(ProtoPlayState::Following) => Ok(Some(PlayState::Following)),
+        Err(_) => Err(ViewerControlError::invalid_argument(format!(
+            "`play_state` must be paused, playing, or following, got {play_state}"
+        ))),
+    }
 }
 
 /// Group component schemas by entity for the `get_recording_schema` operation.
@@ -996,6 +1901,124 @@ fn group_schema_by_entity<'a>(
         .collect();
 
     (entities, omitted_entities)
+}
+
+/// The `entity_path` of a schema request, which limits the answer to that entity and below it.
+fn parse_schema_root(
+    entity_path: Option<String>,
+) -> Result<Option<EntityPath>, ViewerControlError> {
+    entity_path
+        .map(|entity_path| EntityPath::parse_strict(&entity_path))
+        .transpose()
+        .map_err(|err| ViewerControlError::invalid_argument(format!("invalid entity_path: {err}")))
+}
+
+/// Describe a dataset's schema, as the server sends it, for the `get_dataset_schema` operation.
+fn describe_dataset_schema(
+    schema: &arrow::datatypes::Schema,
+    asset_ids: Vec<String>,
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> Result<GetDatasetSchemaResponse, ViewerControlError> {
+    let columns = sorbet_columns(schema).map_err(|err| {
+        ViewerControlError::internal(format!("the dataset schema cannot be read: {err}"))
+    })?;
+    let (entities, omitted_entities) =
+        describe_schema_entities(&columns, root, max_entities, paths_only);
+
+    if let Some(root) = root
+        && entities.is_empty()
+        && omitted_entities == 0
+    {
+        let message = if asset_ids.is_empty() {
+            format!("the dataset has nothing at or below {root}")
+        } else {
+            format!(
+                "the segments of the dataset have nothing at or below {root}. It has {}, which `GetDatasetAssetsSchema` describes",
+                re_format::format_plural_s(asset_ids.len(), "asset")
+            )
+        };
+        return Err(ViewerControlError::not_found(message));
+    }
+
+    Ok(GetDatasetSchemaResponse {
+        timelines: columns
+            .index_columns()
+            .map(|column| column.timeline_name().to_string())
+            .collect(),
+        entities,
+        omitted_entities,
+        asset_ids,
+    })
+}
+
+/// Describe the schemas of a dataset's assets, as the server sends them, for the
+/// `get_dataset_assets_schema` operation.
+///
+/// An asset with nothing at or below `root` is left out.
+fn describe_dataset_assets_schema(
+    asset_schemas: &[(SegmentId, arrow::datatypes::Schema)],
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> Result<GetDatasetAssetsSchemaResponse, ViewerControlError> {
+    let mut assets = Vec::new();
+    for (asset_id, schema) in asset_schemas {
+        let columns = sorbet_columns(schema).map_err(|err| {
+            ViewerControlError::internal(format!(
+                "the schema of asset {asset_id} cannot be read: {err}"
+            ))
+        })?;
+        let (entities, omitted_entities) =
+            describe_schema_entities(&columns, root, max_entities, paths_only);
+        if root.is_none() || !entities.is_empty() || omitted_entities != 0 {
+            assets.push(DatasetAssetSchema {
+                asset_id: asset_id.to_string(),
+                entities,
+                omitted_entities,
+            });
+        }
+    }
+
+    if let Some(root) = root
+        && assets.is_empty()
+    {
+        return Err(ViewerControlError::not_found(format!(
+            "no asset of the dataset has anything at or below {root}"
+        )));
+    }
+
+    Ok(GetDatasetAssetsSchemaResponse { assets })
+}
+
+fn sorbet_columns(
+    schema: &arrow::datatypes::Schema,
+) -> Result<re_sorbet::SorbetColumnDescriptors, re_sorbet::SorbetError> {
+    re_sorbet::SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
+}
+
+/// The entities of a schema at or below `root`, and how many of them `max_entities` left out.
+fn describe_schema_entities(
+    columns: &re_sorbet::SorbetColumnDescriptors,
+    root: Option<&EntityPath>,
+    max_entities: usize,
+    paths_only: bool,
+) -> (Vec<RecordingEntitySchema>, u32) {
+    let components = columns.component_columns().map(|column| {
+        let component = (!paths_only).then(|| RecordingComponentSchema {
+            component: column.component.to_string(),
+            archetype: column.archetype.as_ref().map(|name| name.to_string()),
+            component_type: column
+                .component_type
+                .as_ref()
+                .map(|component_type| component_type.to_string()),
+            datatype: column.inner_datatype().to_string(),
+            has_static: Some(column.is_static),
+        });
+        (&column.entity_path, component)
+    });
+    group_schema_by_entity(components, root, max_entities)
 }
 
 /// Handle one `egui_inspection` request against the running viewer UI.
@@ -1060,7 +2083,7 @@ mod tests {
 
         /// Send `close_recordings` for `store_ids`, and return where its answer lands.
         fn close_recordings(
-            app: &mut App,
+            app: &mut AppCore,
             store_hub: &StoreHub,
             egui_ctx: &egui::Context,
             store_ids: &[&StoreId],
@@ -1099,19 +2122,18 @@ mod tests {
 
             let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
-            let mut store_hub = app
-                .store_hub
-                .take()
-                .expect("the hub is only taken during a frame");
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let store_id = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&store_id);
 
-            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&store_id]);
+            let answer = close_recordings(app, store_hub, &egui_ctx, &[&store_id]);
             assert!(answer.lock().is_none(), "answered before closing");
 
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert!(store_hub.entity_db(&store_id).is_none());
         }
@@ -1123,24 +2145,350 @@ mod tests {
 
             let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
             let egui_ctx = harness.ctx.clone();
-            let app = harness.state_mut();
-            let mut store_hub = app
-                .store_hub
-                .take()
-                .expect("the hub is only taken during a frame");
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
 
             let open = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&open);
             let missing = StoreId::random(StoreKind::Recording, "test_app");
 
-            let answer = close_recordings(app, &store_hub, &egui_ctx, &[&open, &missing]);
+            let answer = close_recordings(app, store_hub, &egui_ctx, &[&open, &missing]);
             assert!(answer.lock().take().is_some_and(|result| result.is_err()));
 
-            app.run_pending_system_commands(&mut store_hub, &egui_ctx);
+            app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(
                 store_hub.entity_db(&open).is_some(),
                 "closed despite the error"
             );
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    mod locations {
+        use re_protos::viewer_control::v1alpha1::viewer_control_response::Kind as ResponseKind;
+
+        use super::*;
+
+        pub type Answer = std::sync::Arc<
+            parking_lot::Mutex<Option<Result<ViewerControlResponse, ViewerControlError>>>,
+        >;
+
+        /// Serve `kind`, and return where its answer lands.
+        pub fn serve(
+            app: &mut AppCore,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+            kind: viewer_control_request::Kind,
+        ) -> Answer {
+            let answer = Answer::default();
+            app.serve_viewer_control(
+                ViewerControlRequest { kind: Some(kind) },
+                UiCallback::new({
+                    let answer = answer.clone();
+                    move |result| *answer.lock() = Some(result)
+                }),
+                store_hub,
+                egui_ctx,
+            );
+            answer
+        }
+
+        fn open_url(url: String, navigate: bool) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+                url,
+                navigate: Some(navigate),
+            })
+        }
+
+        fn set_location(location: String) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::SetLocation(SetLocationRequest { location })
+        }
+
+        fn location_of(store_id: &StoreId) -> String {
+            ViewerUrl::LocalRecording(store_id.clone())
+                .sharable_url(None)
+                .expect("a store id always makes a URL")
+        }
+
+        pub fn error_code(answer: &Answer) -> ViewerControlErrorCode {
+            answer
+                .lock()
+                .take()
+                .and_then(Result::err)
+                .expect("answered with an error")
+                .code
+        }
+
+        fn get_location(
+            app: &mut AppCore,
+            store_hub: &StoreHub,
+            egui_ctx: &egui::Context,
+        ) -> String {
+            let answer = serve(
+                app,
+                store_hub,
+                egui_ctx,
+                viewer_control_request::Kind::GetLocation(GetLocationRequest {}),
+            );
+            match answer.lock().take() {
+                Some(Ok(ViewerControlResponse {
+                    kind: Some(ResponseKind::GetLocation(GetLocationResponse { location })),
+                })) => location,
+                other => panic!("expected a get_location response, got {other:?}"),
+            }
+        }
+
+        #[tokio::test]
+        async fn set_location_shows_a_loaded_recording_and_get_location_reports_it() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let first = StoreId::random(StoreKind::Recording, "test_app");
+            let second = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&first);
+            store_hub.entity_db_entry(&second);
+            assert_ne!(app.active_recording_id(), Some(&second));
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_location(location_of(&second)),
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.active_recording_id(), Some(&second));
+            assert_eq!(
+                get_location(app, store_hub, &egui_ctx),
+                location_of(&second)
+            );
+            assert_eq!(
+                app.collect_viewer_state(store_hub).location,
+                location_of(&second)
+            );
+        }
+
+        #[tokio::test]
+        async fn open_url_of_an_open_location_navigates_only_if_asked() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let recording = StoreId::random(StoreKind::Recording, "test_app");
+            store_hub.entity_db_entry(&recording);
+            let welcome = app.state.navigation.current().clone();
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                open_url(location_of(&recording), false),
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.state.navigation.current(), &welcome);
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                open_url(location_of(&recording), true),
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.active_recording_id(), Some(&recording));
+        }
+
+        #[tokio::test]
+        async fn the_welcome_page_location_round_trips() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let welcome = get_location(app, store_hub, &egui_ctx);
+            let answer = serve(app, store_hub, &egui_ctx, set_location(welcome));
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert_eq!(app.state.navigation.current(), &Route::welcome_page());
+        }
+
+        #[tokio::test]
+        async fn get_location_round_trips_through_set_location() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_location("about:settings".to_owned()),
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+
+            let location = get_location(app, store_hub, &egui_ctx);
+            assert_eq!(location, "about:settings");
+            let answer = serve(app, store_hub, &egui_ctx, set_location(location));
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+
+            let Route::Settings { return_route } = app.state.navigation.current() else {
+                panic!("expected the settings");
+            };
+            assert!(
+                !matches!(**return_route, Route::Settings { .. }),
+                "closing the settings must leave them"
+            );
+        }
+
+        #[tokio::test]
+        async fn a_recording_location_that_is_not_loaded_is_not_found() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let missing = StoreId::random(StoreKind::Recording, "test_app");
+            for kind in [
+                open_url(location_of(&missing), true),
+                set_location(location_of(&missing)),
+            ] {
+                let answer = serve(app, store_hub, &egui_ctx, kind);
+                assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
+            }
+        }
+
+        #[tokio::test]
+        async fn set_location_never_loads() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let sources_before = app.rx_log.sources().len();
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_location("https://example.com/recording.rrd".to_owned()),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
+            assert_eq!(app.rx_log.sources().len(), sources_before);
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_location("not a url".to_owned()),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    mod set_time_cursor {
+        use std::sync::Arc;
+
+        use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+        use re_log_types::StoreKind;
+
+        use super::locations::{error_code, serve};
+        use super::*;
+
+        /// A loaded recording with data at frames 0 and 10.
+        fn recording(store_hub: &mut StoreHub) -> StoreId {
+            let store_id = StoreId::random(StoreKind::Recording, "test_app");
+            let db = store_hub.entity_db_entry(&store_id);
+            for frame in [0, 10] {
+                let chunk = Chunk::builder("points")
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default().with(Timeline::new_sequence("frame"), frame),
+                        &re_sdk_types::archetypes::Points3D::new([(0.0, 0.0, 0.0)]),
+                    )
+                    .build()
+                    .expect("a valid chunk");
+                db.add_chunk(&Arc::new(chunk)).expect("a valid chunk");
+            }
+            store_id
+        }
+
+        fn set_time_cursor(
+            store_id: &StoreId,
+            time: Option<i64>,
+            play_state: Option<ProtoPlayState>,
+        ) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::SetTimeCursor(SetTimeCursorRequest {
+                store_id: Some(store_id.to_string()),
+                timeline: None,
+                time: time.map(Into::into),
+                play_state: play_state.map(|play_state| play_state as i32),
+            })
+        }
+
+        #[tokio::test]
+        async fn following_sticks_and_an_empty_request_changes_nothing() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let store_id = recording(store_hub);
+
+            for request in [
+                set_time_cursor(&store_id, None, Some(ProtoPlayState::Following)),
+                set_time_cursor(&store_id, None, None),
+            ] {
+                let answer = serve(app, store_hub, &egui_ctx, request);
+                app.run_pending_system_commands(store_hub, &egui_ctx);
+                assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+                assert_eq!(
+                    app.state
+                        .time_control(&store_id)
+                        .map(TimeControl::play_state),
+                    Some(PlayState::Following)
+                );
+            }
+        }
+
+        #[tokio::test]
+        async fn following_cannot_be_combined_with_a_time() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let store_id = recording(store_hub);
+
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                set_time_cursor(&store_id, Some(3), Some(ProtoPlayState::Following)),
+            );
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
         }
     }
 
@@ -1253,6 +2601,103 @@ mod tests {
         );
         assert!(entities.is_empty());
         assert_eq!(omitted, 5);
+    }
+
+    /// A dataset schema with one static component on each of `entity_paths`.
+    fn sorbet_schema(entity_paths: &[&str]) -> arrow::datatypes::Schema {
+        let fields: Vec<_> = entity_paths
+            .iter()
+            .map(|entity_path| {
+                re_sorbet::ComponentColumnDescriptor {
+                    store_datatype: arrow::datatypes::DataType::new_list(
+                        arrow::datatypes::DataType::Float32,
+                        true,
+                    ),
+                    component_type: None,
+                    entity_path: EntityPath::from(*entity_path),
+                    archetype: None,
+                    component: "a".into(),
+                    is_static: true,
+                    is_tombstone: false,
+                    is_semantically_empty: false,
+                }
+                .to_arrow_field(re_sorbet::BatchType::Dataframe)
+            })
+            .collect();
+        arrow::datatypes::Schema::new_with_metadata(fields, Default::default())
+    }
+
+    /// An entity path below which only one asset has entities describes that asset alone. A path
+    /// no asset has is not found.
+    #[test]
+    fn an_assets_schema_subtree_leaves_out_other_assets() {
+        let assets = [
+            (
+                SegmentId::from("robot"),
+                sorbet_schema(&["/world/robot/mesh"]),
+            ),
+            (SegmentId::from("table"), sorbet_schema(&["/world/table"])),
+        ];
+        let robot = EntityPath::from("/world/robot");
+
+        let response = describe_dataset_assets_schema(&assets, Some(&robot), 10, false)
+            .expect("the asset has the path");
+
+        let asset_ids: Vec<&str> = response
+            .assets
+            .iter()
+            .map(|a| a.asset_id.as_str())
+            .collect();
+        assert_eq!(asset_ids, ["robot"]);
+        assert_eq!(
+            response.assets[0].entities[0].entity_path,
+            "/world/robot/mesh"
+        );
+
+        let err =
+            describe_dataset_assets_schema(&assets, Some(&EntityPath::from("/nowhere")), 10, false)
+                .expect_err("no asset has the path");
+        assert_eq!(err.code, ViewerControlErrorCode::NotFound);
+    }
+
+    /// Without an entity path, every asset is described, even one without entities.
+    #[test]
+    fn an_assets_schema_describes_every_asset() {
+        let assets = [
+            (
+                SegmentId::from("robot"),
+                sorbet_schema(&["/world/robot/mesh"]),
+            ),
+            (SegmentId::from("empty"), sorbet_schema(&[])),
+        ];
+
+        let response =
+            describe_dataset_assets_schema(&assets, None, 10, true).expect("no path to miss");
+
+        let asset_ids: Vec<&str> = response
+            .assets
+            .iter()
+            .map(|a| a.asset_id.as_str())
+            .collect();
+        assert_eq!(asset_ids, ["robot", "empty"]);
+    }
+
+    /// A path the segments do not have is not found, and the error names the assets tool when
+    /// the dataset has assets.
+    #[test]
+    fn a_dataset_schema_miss_points_at_the_assets() {
+        let dataset = sorbet_schema(&["/world/camera"]);
+        let robot = EntityPath::from("/world/robot");
+
+        let err =
+            describe_dataset_schema(&dataset, vec!["robot".to_owned()], Some(&robot), 10, false)
+                .expect_err("the segments do not have the path");
+        assert_eq!(err.code, ViewerControlErrorCode::NotFound);
+        assert!(err.message.contains("GetDatasetAssetsSchema"));
+
+        let err = describe_dataset_schema(&dataset, Vec::new(), Some(&robot), 10, false)
+            .expect_err("the segments do not have the path");
+        assert!(!err.message.contains("GetDatasetAssetsSchema"));
     }
 
     #[test]

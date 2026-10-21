@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// [`VisualizerComponentMapping`] but without the target.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {
@@ -128,7 +128,7 @@ pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerC
 ///
 /// The invariant is that the identity mapping is always a valid state (i.e. `Default` produces
 /// an empty/identity mapping that any visualizer satisfies).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct RecommendedMappings {
     mandatory_mappings: VisualizerComponentMappings,
 }

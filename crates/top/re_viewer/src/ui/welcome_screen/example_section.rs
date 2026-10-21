@@ -243,15 +243,12 @@ fn default_manifest_url() -> String {
         return url.into();
     }
 
-    let build_info = re_build_info::build_info!();
+    let version = re_build_info::CrateVersion::LOCAL;
 
-    if build_info.version.is_rc() || build_info.version.is_release() {
+    if version.is_rc() || version.is_release() {
         // If this is versioned as a release or rc, always point to the versioned
         // example manifest. This applies even if doing a local source build.
-        format!(
-            "https://app.rerun.io/version/{version}/examples_manifest.json",
-            version = build_info.version,
-        )
+        format!("https://app.rerun.io/version/{version}/examples_manifest.json")
     } else {
         // We don't build examples on each PR, so we don't have much to point to except for the nightly examples
         // We could point to the main branch, but it's not always finished building, and so doesn't always work.
@@ -608,7 +605,7 @@ impl ExampleDescLayout {
                 .max_rect(content_rect)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
-        main_ui.set_clip_rect(content_rect);
+        main_ui.set_clip_rect(ui.clip_rect().intersect(content_rect));
         main_ui.set_width(content_rect.width());
         main_ui.spacing_mut().item_spacing.y = TITLE_TO_METADATA_VSPACE;
         main_ui.add(

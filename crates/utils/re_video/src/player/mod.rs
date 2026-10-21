@@ -471,6 +471,11 @@ impl<T: Default> VideoPlayer<T> {
         }
     }
 
+    pub fn with_config(mut self, config: PlayerConfiguration) -> Self {
+        self.config = config;
+        self
+    }
+
     pub fn debug_name(&self) -> &str {
         self.sample_decoder.debug_name()
     }
@@ -546,17 +551,29 @@ impl<T: Default> VideoPlayer<T> {
                 &decoded_frame.info,
             );
 
-            // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
+            // On a live stream, a decoder that is slower than the incoming samples is always `Behind`.
+            // It still shows every frame that is newer than the current output, and each of them
+            // counts as catching up for the loading indicator.
             let current_frame_info = self.frame_info.as_ref();
+            let is_newer_live_frame = treat_video_as_live_stream(&self.config, video_description)
+                && current_frame_info.is_none_or(|current| {
+                    current.presentation_timestamp < decoded_frame.info.presentation_timestamp
+                });
+
+            // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
             if !is_frame_of_sample(
                 current_frame_info,
                 requested_sample_pts,
                 requested_sample_source,
-            ) && self.decoder_delay_state != DecoderDelayState::Behind
+            ) && (self.decoder_delay_state != DecoderDelayState::Behind || is_newer_live_frame)
             {
                 let output = self.output.get_or_insert_with(T::default);
                 update_output(output, decoded_frame)?; // Update errors are very unusual, error out on those immediately.
                 self.frame_info = Some(decoded_frame.info.clone());
+
+                if is_newer_live_frame {
+                    self.last_time_caught_up = Some(Instant::now());
+                }
             }
 
             // We apparently recovered from any errors we had previously!
@@ -983,7 +1000,13 @@ impl<T: Default> VideoPlayer<T> {
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
-        self.last_time_caught_up = None;
+
+        // A live stream resets on each new keyframe, so the grace period for the loading
+        // indicator keeps running across resets.
+        if !treat_video_as_live_stream(&self.config, video_descr) {
+            self.last_time_caught_up = None;
+        }
+
         // Do *not* reset the error state or last output.
         //
         // We want to keep track of the last error, and also be able to display

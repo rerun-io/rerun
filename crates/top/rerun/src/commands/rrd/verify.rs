@@ -178,13 +178,13 @@ impl Verifier {
         }
 
         // Verify data
-        let component_reflection = self
+        let component_type_reflection = self
             .reflection
             .components
             .get(&component_type)
             .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
-        if let Some(deprecation_summary) = component_reflection.deprecation_summary {
+        if let Some(deprecation_summary) = component_type_reflection.deprecation_summary {
             anyhow::bail!(
                 "Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}"
             );
@@ -198,7 +198,7 @@ impl Verifier {
 
         for i in 0..column.len() {
             let cell = list_array.value(i);
-            (component_reflection.verify_arrow_array)(cell.as_ref())?;
+            (component_type_reflection.verify_arrow_array)(cell.as_ref())?;
         }
 
         if let Some(archetype_name) = archetype_name {

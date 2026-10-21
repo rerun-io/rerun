@@ -532,6 +532,11 @@ impl StoreHub {
         Ok(events)
     }
 
+    /// Whether the viewer has the table with this id.
+    pub fn has_table(&self, id: &TableId) -> bool {
+        self.table_stores.contains_key(id)
+    }
+
     /// Inserts a new table into the store (potentially overwriting an existing entry).
     pub fn insert_table_store(&mut self, id: TableId, store: TableStore) -> Option<TableStore> {
         self.table_stores.insert(id, store)

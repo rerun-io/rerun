@@ -451,7 +451,7 @@ mod tests {
             let mut view_class_registry = ViewClassRegistry::default();
             view_class_registry
                 .add_class::<TestViewClass>(
-                    &Reflection::default(),
+                    &Arc::new(Reflection::default().into()),
                     &AppOptions::test(),
                     &mut FallbackProviderRegistry::default(),
                 )

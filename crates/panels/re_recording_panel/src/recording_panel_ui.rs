@@ -10,7 +10,7 @@ use re_redap_browser::{EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_uri::dataset_hierarchy_leaf_name;
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     AppContext, Item, RecordingOrLocalTable, RedapEntryKind, Route, SystemCommand,
     SystemCommandSender as _,
@@ -560,7 +560,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
     };
 
     item_response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
+        let url = ViewerUrl::from_route(ctx.store_hub(), &new_route)
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
@@ -797,7 +797,7 @@ fn receiver_ui(
     };
 
     response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
+        let url = ViewerUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {

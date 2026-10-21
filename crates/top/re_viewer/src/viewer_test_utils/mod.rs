@@ -7,7 +7,6 @@ use crate::{
 #[cfg(feature = "testing")]
 pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
-use re_build_info::build_info;
 use re_viewer_context::AppOptions;
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
@@ -66,13 +65,14 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         // origin's port is just a label here.
         let addr =
             std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, re_uri::DEFAULT_PROXY_PORT));
-        let catalog = crate::internal_catalog::build(addr);
+        let build_info = re_build_info::cargo_build_info!();
+        let catalog = crate::internal_catalog::build(addr, build_info.clone());
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_without_stored_credentials()
                 .with_internal(catalog.connection.clone(), catalog.storage_dir().to_owned());
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
-            build_info!(),
+            build_info,
             AppEnvironment::Test,
             StartupOptions {
                 // Don't show the welcome / example screen in tests.

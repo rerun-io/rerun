@@ -31,6 +31,36 @@ macro_rules! build_info {
     };
 }
 
+/// Create a [`BuildInfo`] from only the environment variables Cargo itself sets.
+///
+/// Unlike [`build_info!`], this needs no build script, and only fills in:
+/// * [`BuildInfo::crate_name`]
+/// * [`BuildInfo::version`]
+/// * [`BuildInfo::is_debug_build`]
+///
+/// All other fields are empty, and [`BuildInfo::is_in_rerun_workspace`] is `false`.
+///
+/// Use [`build_info!`] in binaries, which should report their git hash, build time, enabled
+/// features, and toolchain versions. Use this in tests and tools that only need a version.
+#[macro_export]
+macro_rules! cargo_build_info {
+    () => {
+        $crate::BuildInfo {
+            crate_name: env!("CARGO_PKG_NAME").into(),
+            features: "".into(),
+            version: $crate::CrateVersion::parse(env!("CARGO_PKG_VERSION")),
+            rustc_version: "".into(),
+            llvm_version: "".into(),
+            git_hash: "".into(),
+            git_branch: "".into(),
+            is_in_rerun_workspace: false,
+            target_triple: "".into(),
+            datetime: "".into(),
+            is_debug_build: cfg!(debug_assertions),
+        }
+    };
+}
+
 /// The value [`exposed_version`] returns when the `EXPOSED_VERSION` environment variable is
 /// not set (or empty).
 ///

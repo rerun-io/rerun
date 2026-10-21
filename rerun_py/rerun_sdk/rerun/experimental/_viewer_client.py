@@ -12,7 +12,7 @@ import subprocess
 import time
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import psutil
 
@@ -71,6 +71,10 @@ class Recording:
     """One recording open in the viewer."""
 
     store_id: StoreId
+
+    location: str
+    """The location that shows this recording, for [`set_location`][rerun.experimental.ViewerClient.set_location]."""
+
     timelines: list[Timeline]
 
     current_timeline: str | None
@@ -120,8 +124,12 @@ class LoadingSource:
 class ViewerState:
     """A snapshot of what the viewer is currently showing."""
 
-    url: str
-    """The current page, as a sharable URL. Empty for a page that has none."""
+    location: str
+    """
+    What the viewer is showing, as a Viewer URL. Empty if that has no location.
+
+    Pass it to [`set_location`][rerun.experimental.ViewerClient.set_location] to come back to it later.
+    """
 
     active_recording: StoreId | None
     recordings: list[Recording]
@@ -201,6 +209,7 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
         recordings.append(
             Recording(
                 store_id=recording.get("store_id", ""),
+                location=recording.get("location", ""),
                 timelines=[
                     Timeline(
                         name=timeline.get("timeline", {}).get("name", ""),
@@ -239,7 +248,7 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
     ]
 
     return ViewerState(
-        url=raw.get("url", ""),
+        location=raw.get("location", ""),
         active_recording=raw.get("active_store_id"),
         recordings=recordings,
         views=views,
@@ -491,7 +500,7 @@ class ViewerClient:
             raw = json.loads(self._internal.close_recordings(store_ids=store_ids))
         return list(raw.get("closed", []))
 
-    def open_url(self, url: str) -> bool:
+    def open_url(self, url: str, *, navigate: bool = True) -> bool:
         """
         Open a URL in the viewer, and wait about ten seconds at most for its initial load.
 
@@ -506,6 +515,10 @@ class ViewerClient:
         url:
             A recording or blueprint file, a `rerun://` dataset URI, a redap server or catalog
             URL, or an intra-recording link.
+        navigate:
+            Also show what it opens, making a recording the active one.
+            If `False`, a recording loads in the background, and a server is connected to
+            without being shown.
 
         Returns
         -------
@@ -515,7 +528,7 @@ class ViewerClient:
             its `loading` list is empty before reading the recording.
 
         """
-        return self._internal.open_url(url)
+        return self._internal.open_url(url, navigate=navigate)
 
     def save_screenshot(self, file_path: str, view_id: str | UUID | None = None) -> None:
         """
@@ -541,13 +554,52 @@ class ViewerClient:
         view_id_str = str(view_id) if view_id is not None else None
         self._internal.save_screenshot(file_path, view_id_str)
 
+    def get_location(self) -> str:
+        """
+        Report where the viewer is, such as a recording, a catalog entry, or the settings.
+
+        Pass it to [`set_location`][rerun.experimental.ViewerClient.set_location] to come back to it later.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Raises
+        ------
+        RuntimeError
+            If what the viewer shows has no location.
+
+        """
+        return self._internal.get_location()
+
+    def set_location(self, location: str) -> None:
+        """
+        Show a location the viewer already has open, like `ViewerState.location`.
+
+        This only navigates, and never loads anything: use [`open_url`][rerun.experimental.ViewerClient.open_url] for that.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        location:
+            A location, as [`viewer_state`][rerun.experimental.ViewerClient.viewer_state] reports it.
+
+        Raises
+        ------
+        RuntimeError
+            If the viewer does not have it open.
+
+        """
+        self._internal.set_location(location)
+
     @overload
     def set_time(
         self,
         timeline: str | None = None,
         *,
         sequence: int,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -557,7 +609,7 @@ class ViewerClient:
         timeline: str | None = None,
         *,
         duration: int | float | timedelta | np.timedelta64,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -567,7 +619,25 @@ class ViewerClient:
         timeline: str | None = None,
         *,
         timestamp: int | float | datetime | np.datetime64,
-        play: bool = False,
+        play_state: Literal["paused", "playing"] | None = None,
+        recording: StoreId | None = None,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: str,
+        *,
+        play_state: Literal["paused", "playing", "following"] | None = None,
+        recording: StoreId | None = None,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: None = None,
+        *,
+        play_state: Literal["paused", "playing", "following"],
         recording: StoreId | None = None,
     ) -> None: ...
 
@@ -578,16 +648,16 @@ class ViewerClient:
         sequence: int | None = None,
         duration: int | float | timedelta | np.timedelta64 | None = None,
         timestamp: int | float | datetime | np.datetime64 | None = None,
-        play: bool = False,
+        play_state: Literal["paused", "playing", "following"] | None = None,
         recording: StoreId | None = None,
     ) -> None:
         """
-        Set the viewer's time cursor.
+        Set the viewer's time cursor, active timeline, play state, or several of these at once.
 
         Parameters
         ----------
         timeline:
-            The timeline to seek on.
+            The timeline to seek on, which becomes the active one.
             If omitted, the viewer uses its active timeline.
         sequence:
             A sequence index.
@@ -595,26 +665,34 @@ class ViewerClient:
             A duration in seconds, or a duration value with nanosecond precision.
         timestamp:
             Seconds since Unix epoch, or a timestamp value with nanosecond precision.
-        play:
-            Start playing from the new position.
-            The viewer pauses by default.
+        play_state:
+            `"paused"`, `"playing"`, or `"following"` the latest data.
+            If omitted, the play state is left as it is.
+            Following cannot be combined with a time.
         recording:
             The recording to seek, as reported by `viewer_state()`.
             If omitted, the viewer uses its active recording.
 
         """
-        if sum(value is not None for value in (sequence, duration, timestamp)) != 1:
-            raise ValueError("ViewerClient.set_time expects exactly one of sequence, duration, or timestamp")
+        times_given = sum(value is not None for value in (sequence, duration, timestamp))
+        if 1 < times_given:
+            raise ValueError("ViewerClient.set_time expects at most one of sequence, duration, or timestamp")
+        if timeline is None and times_given == 0 and play_state is None:
+            raise ValueError("ViewerClient.set_time expects a timeline, sequence, duration, timestamp, or play_state")
+        if times_given == 1 and play_state == "following":
+            raise ValueError("ViewerClient.set_time cannot follow the latest data and also set a time")
 
+        time: int | None
         if sequence is not None:
             time = sequence
         elif duration is not None:
             time = to_nanos(duration)
-        else:
-            assert timestamp is not None
+        elif timestamp is not None:
             time = to_nanos_since_epoch(timestamp)
+        else:
+            time = None
 
-        self._internal.set_time_cursor(timeline, time, play, recording)
+        self._internal.set_time_cursor(timeline=timeline, time=time, play_state=play_state, store_id=recording)
 
     def viewer_logs(self, after_sequence: int | None = None) -> list[LogEntry]:
         """

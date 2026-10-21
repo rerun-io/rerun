@@ -27,6 +27,9 @@ pub const CATALOG_WRITE_REGISTER: &str = "catalog:write:register";
 /// The capability to write objects to catalog-managed staging storage.
 pub const CATALOG_WRITE_STAGING: &str = "catalog:write:staging";
 
+/// The server implements `FindChunks` with Static, Range, and Samples selection.
+pub const DATASET_FIND_CHUNKS: &str = "dataset:find_chunks";
+
 /// The capability a server advertises to register data sources with this URL scheme.
 ///
 /// A server builds one name per scheme it reads, so its config decides which names it advertises.

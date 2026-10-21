@@ -228,19 +228,20 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/data_flow`](./crates/data_flow) — getting data in and out: clients, servers, and file importers.
 
-| Crate           | Description                                                                       |
-| --------------- | --------------------------------------------------------------------------------- |
-| re_data_source  | Handles loading of Rerun data                                                     |
-| re_grpc_client  | Client for the legacy StoreHub API (`re_grpc_server`).                            |
-| re_grpc_server  | Server for the legacy StoreHub API                                                |
-| re_hdf5         | Core HDF5-to-chunk loading logic for Rerun                                        |
-| re_importer     | Handles importing of Rerun data from file using importer plugins                  |
-| re_lenses       | Lenses are an API for extracting, transforming, and restructuring component data. |
-| re_lerobot      | Core LeRobot-dataset-to-chunk loading logic for Rerun                             |
-| re_mcap         | Convert MCAP into Rerun-compatible data                                           |
-| re_mp4_reader   | Core mp4-to-chunk loading logic for Rerun                                         |
-| re_parquet      | Core parquet-to-chunk loading logic for Rerun                                     |
-| re_redap_client | Official gRPC client for the Rerun Data Protocol                                  |
+| Crate             | Description                                                                       |
+| ----------------- | --------------------------------------------------------------------------------- |
+| re_catalog_client | High-level client for Rerun catalogs                                              |
+| re_data_source    | Handles loading of Rerun data                                                     |
+| re_grpc_client    | Client for the legacy StoreHub API (`re_grpc_server`).                            |
+| re_grpc_server    | Server for the legacy StoreHub API                                                |
+| re_hdf5           | Core HDF5-to-chunk loading logic for Rerun                                        |
+| re_importer       | Handles importing of Rerun data from file using importer plugins                  |
+| re_lenses         | Lenses are an API for extracting, transforming, and restructuring component data. |
+| re_lerobot        | Core LeRobot-dataset-to-chunk loading logic for Rerun                             |
+| re_mcap           | Convert MCAP into Rerun-compatible data                                           |
+| re_mp4_reader     | Core mp4-to-chunk loading logic for Rerun                                         |
+| re_parquet        | Core parquet-to-chunk loading logic for Rerun                                     |
+| re_redap_client   | Official gRPC client for the Rerun Data Protocol                                  |
 
 ### Data model & chunk store
 

@@ -2,7 +2,7 @@
 //!
 //! Handles retain the Python catalog client or Python connection handle so that connection
 //! state and credentials stay shared. Delegate high-level operations to
-//! [`re_redap_client::ConnectionHandle`], with explicit dataset and segment IDs.
+//! [`re_catalog_client::CatalogClient`], with explicit dataset and segment IDs.
 //! [`re_redap_client::ConnectionClient`] is the low-level protocol API.
 //!
 //! NOTE: Existing bindings still call the low-level client directly in some paths.
@@ -16,7 +16,7 @@ mod dataframe_rendering;
 mod datafusion_catalog;
 mod dataset_entry;
 mod dataset_info;
-mod dataset_view;
+mod dataset_selection;
 mod entry;
 mod errors;
 mod index_columns;
@@ -44,7 +44,7 @@ pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
 pub use self::dataset_info::PyDatasetInfoInternal;
-pub use self::dataset_view::PyDatasetViewInternal;
+pub use self::dataset_selection::PyDatasetSelectionInternal;
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
@@ -78,7 +78,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
     m.add_class::<PySegmentUrlUdfInternal>()?;
-    m.add_class::<PyDatasetViewInternal>()?;
+    m.add_class::<PyDatasetSelectionInternal>()?;
     m.add_class::<PyRerunHtmlTable>()?;
 
     // schema

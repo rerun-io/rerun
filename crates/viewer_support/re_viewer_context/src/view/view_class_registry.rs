@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
-use re_chunk::{ComponentIdentifier, ComponentType};
+use nohash_hasher::IntMap;
+use re_chunk::ComponentIdentifier;
 use re_sdk_types::ViewClassIdentifier;
 
 use super::view_class_placeholder::ViewClassPlaceholder;
 use super::visualizer_entity_subscriber::{VisualizerEntityConfig, VisualizerEntitySubscriber};
 use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
-    IdentifiedViewSystem, QueryContext, ViewClass, ViewContextCollection, ViewContextSystem,
-    ViewSystemIdentifier, ViewerContext, VisualizerCollection, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, SharedReflection, ViewClass, ViewContextCollection,
+    ViewContextSystem, ViewSystemIdentifier, ViewerContext, VisualizerCollection, VisualizerSystem,
 };
 use crate::{
     component_fallbacks::FallbackProviderRegistry, view::view_context_system::ViewSystemState,
@@ -40,7 +40,7 @@ pub struct ViewSystemRegistrator<'a> {
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
     app_options: &'a crate::AppOptions,
-    known_builtin_enum_components: Arc<IntSet<ComponentType>>,
+    reflection: SharedReflection,
 }
 
 impl ViewSystemRegistrator<'_> {
@@ -100,7 +100,7 @@ impl ViewSystemRegistrator<'_> {
 
         if self.visualizers.insert(T::identifier()) {
             let app_options = self.app_options;
-            let known_builtin_enum_components = Arc::clone(&self.known_builtin_enum_components);
+            let reflection = Arc::clone(&self.reflection);
             self.registry
                 .visualizers
                 .entry(T::identifier())
@@ -113,7 +113,7 @@ impl ViewSystemRegistrator<'_> {
                         factory_method: Box::new(|| Box::<T>::default()),
                         used_by: Default::default(),
                         query_info: Arc::new(visualizer_query_info),
-                        known_builtin_enum_components,
+                        reflection,
                     }
                 })
                 .used_by
@@ -189,7 +189,7 @@ struct VisualizerTypeRegistryEntry {
 
     /// Query metadata shared by querying and per-store entity subscribers.
     query_info: Arc<crate::VisualizerQueryInfo>,
-    known_builtin_enum_components: Arc<IntSet<ComponentType>>,
+    reflection: SharedReflection,
 }
 
 /// Registry of all known view types.
@@ -231,7 +231,7 @@ impl ViewClassRegistry {
     /// registered views & visualizers.
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
-        reflection: &re_types_core::reflection::Reflection,
+        reflection: &SharedReflection,
         app_options: &crate::AppOptions,
         fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
@@ -271,7 +271,7 @@ impl ViewClassRegistry {
     pub fn extend_class(
         &mut self,
         view_class: ViewClassIdentifier,
-        reflection: &re_sdk_types::reflection::Reflection,
+        reflection: &SharedReflection,
         app_options: &crate::AppOptions,
         fallback_registry: &mut FallbackProviderRegistry,
         register_fn: impl FnOnce(&mut ViewSystemRegistrator<'_>) -> Result<(), ViewClassRegistryError>,
@@ -281,15 +281,6 @@ impl ViewClassRegistry {
             return Err(ViewClassRegistryError::UnknownClassIdentifier(view_class));
         };
 
-        let known_builtin_enum_components: Arc<IntSet<ComponentType>> = Arc::new(
-            reflection
-                .components
-                .iter()
-                .filter(|(_, r)| r.is_enum())
-                .map(|(ct, _)| *ct)
-                .collect(),
-        );
-
         let mut registrator = ViewSystemRegistrator {
             registry: self,
             identifier: view_class,
@@ -297,7 +288,7 @@ impl ViewClassRegistry {
             visualizers: class_entry.visualizer_system_ids,
             fallback_registry,
             app_options,
-            known_builtin_enum_components,
+            reflection: Arc::clone(reflection),
         };
 
         register_fn(&mut registrator)?;
@@ -310,7 +301,7 @@ impl ViewClassRegistry {
             visualizers,
             fallback_registry: _,
             app_options: _,
-            known_builtin_enum_components: _,
+            reflection: _,
         } = registrator;
 
         class_entry.context_system_ids = context_systems;
@@ -422,11 +413,8 @@ impl ViewClassRegistry {
                     *id,
                     VisualizerEntityConfig {
                         visualizer: *id,
-                        relevant_archetype: entry.query_info.relevant_archetype,
-                        constraints: Arc::new(entry.query_info.constraints.clone()),
-                        known_builtin_enum_components: Arc::clone(
-                            &entry.known_builtin_enum_components,
-                        ),
+                        query_info: Arc::clone(&entry.query_info),
+                        reflection: Arc::clone(&entry.reflection),
                     }
                     .create_subscriber(),
                 )

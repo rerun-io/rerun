@@ -458,7 +458,7 @@ pub struct CError {
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: std::sync::LazyLock<CString> = std::sync::LazyLock::new(|| {
-        CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
+        CString::new(re_build_info::build_info!().version.to_string()).expect("CString::new failed")
     }); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()

@@ -12,7 +12,7 @@ async fn lists_services_through_reflection() {
         port: 0,
         ..Default::default()
     }
-    .create_server_handle()
+    .create_server_handle(re_build_info::cargo_build_info!())
     .await
     .expect("failed to start server");
 

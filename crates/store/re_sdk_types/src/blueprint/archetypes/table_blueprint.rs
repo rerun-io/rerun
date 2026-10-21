@@ -53,16 +53,31 @@ pub struct TableBlueprint {
     ///
     /// A row in the table is only shown when *all* filters evaluate to true for it.
     /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    /// Write one condition per filter instead of joining them with `AND`.
     ///
-    /// The viewer shows an editable filter for a single column compared to a literal value, for example:
-    /// * `"score" >= 3`
-    /// * `"success" = true`
-    /// * `"task" ILIKE '%pick%'`
-    /// * `"created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
+    /// Users cannot write SQL in the viewer.
+    /// They add filters with "Filter" in a column header's menu, which only writes the forms below.
+    /// The viewer shows these forms on a single column `"c"` as filters the user can edit.
+    /// Any other expression shows as a `Custom "c" filter` chip, which the user can only remove and whose SQL only shows on hover:
+    /// * Numbers: `"c" = 7`, `"c" < 7`, `"c" <= 7`, `"c" > 7`, `"c" >= 7`.
+    ///   For a 32-bit float column, write the value as `CAST(0.1 AS REAL)`.
+    /// * Strings: `"c" ILIKE '%text%'` for contains, `'text%'` for starts with, `'%text'` for ends with.
+    ///   Put a backslash before a literal `%`, `_` or backslash, and follow the pattern with an ESCAPE clause that names a quoted backslash.
+    /// * Booleans: `"c" = true`, `"c" = false`, and `"c" IS NULL` for a nullable column.
+    /// * Timestamps: `"c" < TIMESTAMPTZ '2026-01-01T00:00:00Z'` for before, `>=` for after, and both joined with `AND` for between.
+    ///   Relative ranges have the same shape, such as `"c" >= now() - INTERVAL '24 hours' AND "c" < now()` for the last 24 hours,
+    ///   or `"c" >= date_trunc('day', now()) AND "c" < date_trunc('day', now()) + INTERVAL '1 day'` for today.
+    ///   Use `'week'` with `INTERVAL '7 days'` for this week, and shift both bounds back for yesterday or last week.
+    ///   For an `Int64` column of nanoseconds, use `to_timestamp_nanos("c")`.
+    /// * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
     ///
-    /// For a list column, the comparison goes in `any_match("column", x -> …)`.
-    /// Other expressions still filter the table, and the viewer shows them as SQL text.
+    /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
     pub filters: Option<SerializedComponentBatch>,
+
+    /// The column and direction the table's rows are sorted by.
+    ///
+    /// Rows keep the order of the data when unset.
+    pub sort_by: Option<SerializedComponentBatch>,
 }
 
 impl TableBlueprint {
@@ -107,6 +122,20 @@ impl TableBlueprint {
             });
         (*DESCRIPTOR).clone()
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::sort_by`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::SortBy`].
+    #[inline]
+    pub fn descriptor_sort_by() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
+                component: "TableBlueprint:sort_by".into(),
+                component_type: Some("rerun.blueprint.components.SortBy".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -115,27 +144,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
             TableBlueprint::descriptor_filters(),
+            TableBlueprint::descriptor_sort_by(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             TableBlueprint::descriptor_layout(),
             TableBlueprint::descriptor_column_display_mode(),
             TableBlueprint::descriptor_filters(),
+            TableBlueprint::descriptor_sort_by(),
         ]
     });
 
 impl TableBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 impl ::re_types_core::Archetype for TableBlueprint {
@@ -192,10 +223,14 @@ impl ::re_types_core::Archetype for TableBlueprint {
         let filters = arrays_by_descr
             .get(&Self::descriptor_filters())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_filters()));
+        let sort_by = arrays_by_descr
+            .get(&Self::descriptor_sort_by())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_sort_by()));
         Ok(Self {
             layout,
             column_display_mode,
             filters,
+            sort_by,
         })
     }
 }
@@ -208,6 +243,7 @@ impl ::re_types_core::AsComponents for TableBlueprint {
             self.layout.clone(),
             self.column_display_mode.clone(),
             self.filters.clone(),
+            self.sort_by.clone(),
         ]
         .into_iter()
         .flatten()
@@ -225,6 +261,7 @@ impl TableBlueprint {
             layout: None,
             column_display_mode: None,
             filters: None,
+            sort_by: None,
         }
     }
 
@@ -250,6 +287,10 @@ impl TableBlueprint {
             filters: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::SqlFilterExpression::arrow_empty(),
                 Self::descriptor_filters(),
+            )),
+            sort_by: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::SortBy::arrow_empty(),
+                Self::descriptor_sort_by(),
             )),
         }
     }
@@ -287,21 +328,43 @@ impl TableBlueprint {
     ///
     /// A row in the table is only shown when *all* filters evaluate to true for it.
     /// Each filter only sees the values of a single row, so functions that combine rows, such as `sum` or `count`, are not allowed.
+    /// Write one condition per filter instead of joining them with `AND`.
     ///
-    /// The viewer shows an editable filter for a single column compared to a literal value, for example:
-    /// * `"score" >= 3`
-    /// * `"success" = true`
-    /// * `"task" ILIKE '%pick%'`
-    /// * `"created" >= TIMESTAMPTZ '2026-01-01T00:00:00Z'`
+    /// Users cannot write SQL in the viewer.
+    /// They add filters with "Filter" in a column header's menu, which only writes the forms below.
+    /// The viewer shows these forms on a single column `"c"` as filters the user can edit.
+    /// Any other expression shows as a `Custom "c" filter` chip, which the user can only remove and whose SQL only shows on hover:
+    /// * Numbers: `"c" = 7`, `"c" < 7`, `"c" <= 7`, `"c" > 7`, `"c" >= 7`.
+    ///   For a 32-bit float column, write the value as `CAST(0.1 AS REAL)`.
+    /// * Strings: `"c" ILIKE '%text%'` for contains, `'text%'` for starts with, `'%text'` for ends with.
+    ///   Put a backslash before a literal `%`, `_` or backslash, and follow the pattern with an ESCAPE clause that names a quoted backslash.
+    /// * Booleans: `"c" = true`, `"c" = false`, and `"c" IS NULL` for a nullable column.
+    /// * Timestamps: `"c" < TIMESTAMPTZ '2026-01-01T00:00:00Z'` for before, `>=` for after, and both joined with `AND` for between.
+    ///   Relative ranges have the same shape, such as `"c" >= now() - INTERVAL '24 hours' AND "c" < now()` for the last 24 hours,
+    ///   or `"c" >= date_trunc('day', now()) AND "c" < date_trunc('day', now()) + INTERVAL '1 day'` for today.
+    ///   Use `'week'` with `INTERVAL '7 days'` for this week, and shift both bounds back for yesterday or last week.
+    ///   For an `Int64` column of nanoseconds, use `to_timestamp_nanos("c")`.
+    /// * Lists: any form above on `x` inside `any_match("c", x -> …)`, true when any element is.
     ///
-    /// For a list column, the comparison goes in `any_match("column", x -> …)`.
-    /// Other expressions still filter the table, and the viewer shows them as SQL text.
+    /// Wrapping a form in `(…) IS NOT TRUE` gives its opposite, such as not equal or does not contain.
     #[inline]
     pub fn with_filters(
         mut self,
         filters: impl IntoIterator<Item = impl Into<crate::blueprint::components::SqlFilterExpression>>,
     ) -> Self {
         self.filters = try_serialize_field(Self::descriptor_filters(), filters);
+        self
+    }
+
+    /// The column and direction the table's rows are sorted by.
+    ///
+    /// Rows keep the order of the data when unset.
+    #[inline]
+    pub fn with_sort_by(
+        mut self,
+        sort_by: impl Into<crate::blueprint::components::SortBy>,
+    ) -> Self {
+        self.sort_by = try_serialize_field(Self::descriptor_sort_by(), [sort_by]);
         self
     }
 }

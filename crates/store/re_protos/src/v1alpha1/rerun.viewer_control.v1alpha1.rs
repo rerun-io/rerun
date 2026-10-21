@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -48,7 +48,16 @@ pub mod viewer_control_request {
         #[prost(message, tag = "3")]
         GetViewerState(super::GetViewerStateRequest),
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
-        /// server/catalog URL, or an intra-recording link).
+        /// server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
+        /// segment, becomes the active recording and is shown.
+        ///
+        /// Roughly the inverse of `get_location`: opening the location it reports goes back there.
+        ///
+        /// A location the viewer already has open is not loaded again: the viewer only navigates there,
+        /// like `set_location` does, but also refreshes a server, folder, or entry. Unlike
+        /// `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+        /// yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
+        /// nothing can load it.
         ///
         /// Returns once the initial load is done, or after about ten seconds, whichever comes first.
         /// What the initial load covers depends on the URL:
@@ -74,7 +83,8 @@ pub mod viewer_control_request {
         /// `INTERNAL` if the capture itself or the write to disk failed.
         #[prost(message, tag = "5")]
         SaveScreenshot(super::SaveScreenshotRequest),
-        /// Move the time cursor (timeline position) of a recording in the viewer.
+        /// Move the time cursor (timeline position) of a recording in the viewer, switch its active
+        /// timeline, or play, pause, or follow it.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorRequest),
         /// Report a recording's schema: its timelines, every entity, every component ever logged on
@@ -120,10 +130,26 @@ pub mod viewer_control_request {
         /// Ask the user before running a `destructive` command.
         #[prost(message, tag = "11")]
         RunCommand(super::RunCommandRequest),
-        /// Read a recording's active blueprint (layout, views, their properties and overrides) as
-        /// JSON, keyed by blueprint entity path, then archetype, then field.
+        /// Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then
+        /// archetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.
         ///
-        /// `NOT_FOUND` if the recording is not open or has no active blueprint.
+        /// A recording's blueprint has the layout, views, their properties and overrides. A table's
+        /// blueprint only has what it sets, such as row filters, the layout, and column settings.
+        /// `GetTableSchema` names all columns of a table.
+        ///
+        /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
+        /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
+        /// the table if one is shown, else the active recording. Without a `store_id` it reads the
+        /// active recording's blueprint, and without a `table_url` the blueprint of the table on
+        /// screen. The response names the recording or table it read.
+        ///
+        /// A recording or table without a blueprint gets a default one. For a recording on screen,
+        /// this is the heuristic blueprint unless the user did manual changes to it. A table shows
+        /// a set of columns by default, with potential sorting and filtering done by the user.
+        ///
+        /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
+        /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "12")]
         GetBlueprint(super::GetBlueprintRequest),
         /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
@@ -138,13 +164,144 @@ pub mod viewer_control_request {
         /// to disk failed.
         #[prost(message, tag = "13")]
         CaptureProfileTrace(super::CaptureProfileTraceRequest),
-        /// Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.
+        /// Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints
+        /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
+        /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
+        /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
         ///
         /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
-        /// single value may be written as that value or as an array of one.
-        /// `INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.
+        /// single value may be written as that value or as an array of one. Exactly one of
+        /// `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
+        /// response names which one it wrote.
+        ///
+        /// ## Tables
+        ///
+        /// To change how a table looks, write its blueprint with this rather than clicking through the
+        /// viewer's Columns menu. Read the column names with `GetTableSchema` and the blueprint with
+        /// `GetBlueprint` first, and keep what it returned. `column_order` in `TableLayout` sets the
+        /// order, and a column's `TableColumn` sets its `name` and `visible`. Row filters go in
+        /// `filters` of `TableBlueprint` at `/table`.
+        ///
+        /// Rows show either as a table or as cards with segment previews. A request about columns or
+        /// rows only changes the table layout, so write it without asking. For any other request, such
+        /// as to make a table look nice, ask the user before the first write which layout they want and
+        /// what it shows, unless they already said.
+        /// The docs of `table` describe how to write a table blueprint, with examples of both layouts.
+        ///
+        /// ## Errors
+        ///
+        /// `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
+        /// against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
+        /// `table` is set.
+        /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
+        /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "14")]
         SetBlueprint(super::SetBlueprintRequest),
+        /// Name a table's columns in display order, as last shown: the name a table blueprint uses,
+        /// the header name, and the Arrow datatype. Read it before writing a table blueprint.
+        ///
+        /// `FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if
+        /// the viewer does not know the table or has not shown it yet, so open it with `OpenUrl`.
+        #[prost(message, tag = "17")]
+        GetTableSchema(super::GetTableSchemaRequest),
+        /// Describe a dataset on a server: the entities of all its segments and the components logged
+        /// on each, in the form `GetRecordingSchema` describes one recording. Nothing is opened or
+        /// loaded, so read it to learn what a dataset holds before opening any of it.
+        ///
+        /// It names the entities in the segments, not a table's columns. For the columns of a table,
+        /// such as to change how a table looks, call `GetTableSchema` instead.
+        ///
+        /// This is the schema, not the data: a component listed here has been logged in some segment,
+        /// not necessarily in all of them.
+        ///
+        /// The dataset's assets are only named by id. `GetDatasetAssetsSchema` names the entities in
+        /// them.
+        ///
+        /// `FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.
+        /// `INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not
+        /// know the dataset, or nothing in its segments is at or below `entity_path`.
+        #[prost(message, tag = "18")]
+        GetDatasetSchema(super::GetDatasetSchemaRequest),
+        /// Report the URL of what the viewer is showing: a recording, a table, a catalog entry,
+        /// the settings, … Pass it to `set_location` to come back to it later.
+        ///
+        /// A recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether
+        /// or not the recording was loaded from a URL, and a table that only exists in the viewer as
+        /// `about:table?id=…`. While the viewer is loading, this is the URL of what it loads.
+        ///
+        /// `FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationRequest),
+        /// Show a location the viewer already has open, as `get_location` reports it.
+        /// Each recording in `get_viewer_state` carries its location too.
+        /// This only navigates, and never loads anything: use `open_url` for that.
+        ///
+        /// Like a user navigating, it leaves the page shown before in the viewer's history, so the
+        /// back button of the native viewer, or of the browser for the web viewer, returns to it.
+        ///
+        /// `INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it
+        /// open.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationRequest),
+        /// Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.
+        /// Read the full guidance below before calling this tool or interpreting its results:
+        /// it explains which frames to query and what this graph can and cannot tell you.
+        ///
+        /// Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
+        /// This is a latest-at snapshot, not transform history. To inspect another time, call
+        /// `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+        /// If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
+        /// If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
+        ///
+        /// Entity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships
+        /// unless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with
+        /// a frame, and Transform3D connects child and parent frames independently of entity paths.
+        /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
+        /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
+        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        ///
+        /// Choose the representation before diagnosing connectivity:
+        /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
+        /// 2. If named frames exist, assume they are the user's intended representation and keep
+        ///     inspecting and reporting on named frames only, unless the user indicates otherwise.
+        /// 3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.
+        /// Implicit tf# frames always exist, even for entities assigned to named frames. Their separate
+        /// tree is normal: do not report it as "two disconnected trees", a problem, or something to connect.
+        /// Named and entity-path frames are usually not mixed; mixing is supported but discouraged.
+        /// Use FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.
+        /// If intent remains unclear, use your structured question tool.
+        ///
+        /// For transform trees with named frames, Transform3D connects frames; CoordinateFrame values
+        /// assign entities to frames. For named-frame topologies, this API shows frame connections,
+        /// not entity assignments.
+        /// Do not flag uninspected frame assignments as potential problems.
+        /// In named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame
+        /// value matches the pinhole's child_frame.
+        /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
+        /// necessary for debugging.
+        ///
+        /// Use also rerun_get_viewer_state to check spatial-view topology errors.
+        /// For missing content, check if the blueprint's target frame is set to a meaningful value.
+        /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
+        /// there are multiple disconnected trees with named frames.
+        /// Inspect potential roots to use as target frames and use your structured question tool to
+        /// clarify with the user if there are ambiguities.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphRequest),
+        /// Describe the assets of a dataset on a server: the entities of each asset and the components
+        /// logged on each, in the form `GetDatasetSchema` describes the segments.
+        ///
+        /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
+        /// viewer shows it as part of every segment it applies to, so an entity missing from
+        /// `GetDatasetSchema` may be in an asset. See
+        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        ///
+        /// Only assets the server is done registering are described.
+        ///
+        /// `FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where
+        /// `NOT_FOUND` means no asset has anything at or below `entity_path`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -163,7 +320,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -214,6 +371,24 @@ pub mod viewer_control_response {
         /// Result of `set_blueprint`.
         #[prost(message, tag = "14")]
         SetBlueprint(super::SetBlueprintResponse),
+        /// Result of `get_table_schema`.
+        #[prost(message, tag = "17")]
+        GetTableSchema(super::GetTableSchemaResponse),
+        /// Result of `get_dataset_schema`.
+        #[prost(message, tag = "18")]
+        GetDatasetSchema(super::GetDatasetSchemaResponse),
+        /// Result of `get_location`.
+        #[prost(message, tag = "19")]
+        GetLocation(super::GetLocationResponse),
+        /// Result of `set_location`.
+        #[prost(message, tag = "20")]
+        SetLocation(super::SetLocationResponse),
+        /// Result of `get_transform_graph`.
+        #[prost(message, tag = "15")]
+        GetTransformGraph(super::GetTransformGraphResponse),
+        /// Result of `get_dataset_assets_schema`.
+        #[prost(message, tag = "21")]
+        GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -224,6 +399,143 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphRequest {
+    /// Recording store id from GetViewerState. Defaults to the active recording.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
+    #[prost(
+        enumeration = "get_transform_graph_request::FrameFilter",
+        optional,
+        tag = "2"
+    )]
+    pub frame_filter: ::core::option::Option<i32>,
+    /// Defaults to ALL. Implicit hierarchy identity edges count as static.
+    #[prost(
+        enumeration = "get_transform_graph_request::EdgeFilter",
+        optional,
+        tag = "3"
+    )]
+    pub edge_filter: ::core::option::Option<i32>,
+    /// Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.
+    /// Connectivity, source entity paths and sample times are always included.
+    #[prost(bool, optional, tag = "4")]
+    pub include_transforms: ::core::option::Option<bool>,
+}
+/// Nested message and enum types in `GetTransformGraphRequest`.
+pub mod get_transform_graph_request {
+    /// Which kinds of transform frames to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum FrameFilter {
+        /// Use the default: include all frames.
+        Unspecified = 0,
+        /// Include only frames derived from entity paths.
+        EntityPath = 1,
+        /// Include only explicitly named frames.
+        Named = 2,
+        /// Include both entity-path-derived and named frames.
+        All = 3,
+    }
+    impl FrameFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "FRAME_FILTER_UNSPECIFIED",
+                Self::EntityPath => "FRAME_FILTER_ENTITY_PATH",
+                Self::Named => "FRAME_FILTER_NAMED",
+                Self::All => "FRAME_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FRAME_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "FRAME_FILTER_ENTITY_PATH" => Some(Self::EntityPath),
+                "FRAME_FILTER_NAMED" => Some(Self::Named),
+                "FRAME_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+    /// Which kinds of transform edges to include.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum EdgeFilter {
+        /// Use the default: include all edges.
+        Unspecified = 0,
+        /// Include static edges, including implicit hierarchy identities.
+        Static = 1,
+        /// Include only temporal edges.
+        Temporal = 2,
+        /// Include both static and temporal edges.
+        All = 3,
+    }
+    impl EdgeFilter {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "EDGE_FILTER_UNSPECIFIED",
+                Self::Static => "EDGE_FILTER_STATIC",
+                Self::Temporal => "EDGE_FILTER_TEMPORAL",
+                Self::All => "EDGE_FILTER_ALL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "EDGE_FILTER_UNSPECIFIED" => Some(Self::Unspecified),
+                "EDGE_FILTER_STATIC" => Some(Self::Static),
+                "EDGE_FILTER_TEMPORAL" => Some(Self::Temporal),
+                "EDGE_FILTER_ALL" => Some(Self::All),
+                _ => None,
+            }
+        }
+    }
+}
+impl ::prost::Name for GetTransformGraphRequest {
+    const NAME: &'static str = "GetTransformGraphRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphRequest".into()
+    }
+}
+/// Response for `GetTransformGraph`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTransformGraphResponse {
+    /// Recording that was queried.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+    /// JSON object with query, options, missing_chunks, frames and edges.
+    /// Frame ids are canonical frame names. has_transform refers to the unfiltered latest-at graph;
+    /// registered frames may have no active edges. Edge sample times use kind=static or
+    /// kind=temporal with an integer string value, on the query timeline.
+    /// Matrices are arrays of rows acting on column vectors. parent_from_child maps child coordinates
+    /// into parent coordinates; image_from_camera is a pinhole's intrinsic matrix, not an affine transform.
+    #[prost(string, tag = "2")]
+    pub json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetTransformGraphResponse {
+    const NAME: &'static str = "GetTransformGraphResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
     }
 }
 /// Request for `CloseRecordings`.
@@ -417,12 +729,22 @@ impl ::prost::Name for EguiInspectResponse {
 /// Request for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintRequest {
-    /// Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.
-    /// If omitted, the active recording is used.
-    ///
-    /// Blueprints belong to an application, so every recording of the same application shares one.
-    #[prost(string, optional, tag = "1")]
-    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
+    #[prost(oneof = "get_blueprint_request::Target", tags = "2, 3")]
+    pub target: ::core::option::Option<get_blueprint_request::Target>,
+}
+/// Nested message and enum types in `GetBlueprintRequest`.
+pub mod get_blueprint_request {
+    /// Whose blueprint to read. Unset reads the blueprint of what is on screen.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Target {
+        /// Read the blueprint of a recording.
+        #[prost(message, tag = "2")]
+        Recording(super::RecordingBlueprintTarget),
+        /// Read the blueprint of a table.
+        #[prost(message, tag = "3")]
+        Table(super::TableBlueprintTarget),
+    }
 }
 impl ::prost::Name for GetBlueprintRequest {
     const NAME: &'static str = "GetBlueprintRequest";
@@ -434,15 +756,59 @@ impl ::prost::Name for GetBlueprintRequest {
         "/rerun.viewer_control.v1alpha1.GetBlueprintRequest".into()
     }
 }
+/// The recording a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
+///
+/// Blueprints belong to an application, so every recording of the same application shares one.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RecordingBlueprintTarget {
+    /// The recording, as `{kind}:{application_id}:{recording_id}`. Defaults to the active recording.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for RecordingBlueprintTarget {
+    const NAME: &'static str = "RecordingBlueprintTarget";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RecordingBlueprintTarget".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RecordingBlueprintTarget".into()
+    }
+}
+/// The table a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableBlueprintTarget {
+    /// The table: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// `origin` for its list of entries. Defaults to the table on screen.
+    #[prost(string, optional, tag = "1")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for TableBlueprintTarget {
+    const NAME: &'static str = "TableBlueprintTarget";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.TableBlueprintTarget".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.TableBlueprintTarget".into()
+    }
+}
 /// Response for `GetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetBlueprintResponse {
-    /// The blueprint that was read, as `{kind}:{application_id}:{recording_id}`.
+    /// The blueprint that was read.
     #[prost(string, tag = "1")]
     pub blueprint_id: ::prost::alloc::string::String,
     /// The whole blueprint as a JSON object, as `GetBlueprint` returns it.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
+    /// The recording whose blueprint was read, set when the blueprint is a recording's.
+    #[prost(string, optional, tag = "3")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The table whose blueprint was read, set when the blueprint is a table's. A table that only
+    /// exists in the viewer has no URL, so neither this nor `store_id` is set for it.
+    #[prost(string, optional, tag = "4")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetBlueprintResponse {
     const NAME: &'static str = "GetBlueprintResponse";
@@ -452,6 +818,199 @@ impl ::prost::Name for GetBlueprintResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetBlueprintResponse".into()
+    }
+}
+/// Request for `GetTableSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetTableSchemaRequest {
+    /// The table's URL: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// `origin` for its list of entries. Defaults to the table on screen.
+    #[prost(string, optional, tag = "1")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for GetTableSchemaRequest {
+    const NAME: &'static str = "GetTableSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTableSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTableSchemaRequest".into()
+    }
+}
+/// Response for `GetTableSchema`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTableSchemaResponse {
+    /// Every column of the table, in display order, hidden ones included.
+    #[prost(message, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<TableColumnSchema>,
+}
+impl ::prost::Name for GetTableSchemaResponse {
+    const NAME: &'static str = "GetTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetTableSchemaResponse".into()
+    }
+}
+/// One column of a table.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TableColumnSchema {
+    /// The Arrow field name, e.g. `rerun_segment_id`. Table blueprints use it in `column_order` at
+    /// `/table/layouts/table` and in `/table/layouts/table/columns/<name>`.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The header name: the blueprint's `TableColumn` `name`, or else derived from `name`.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Arrow datatype of the column, e.g. `Utf8`.
+    #[prost(string, tag = "3")]
+    pub datatype: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TableColumnSchema {
+    const NAME: &'static str = "TableColumnSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.TableColumnSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.TableColumnSchema".into()
+    }
+}
+/// Request for `GetDatasetSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetDatasetSchemaRequest {
+    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// the dataset of the segment on screen.
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Omit for the whole
+    /// dataset.
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them.
+    ///
+    /// Defaults to true without an `entity_path` and to false with one. So a first call shows the
+    /// shape of the dataset, and a call with `entity_path` gives the components of the entities
+    /// that turned out to matter.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetDatasetSchemaRequest {
+    const NAME: &'static str = "GetDatasetSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetSchemaRequest".into()
+    }
+}
+/// Response for `GetDatasetSchema`: the dataset's entities and the components on them.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetSchemaResponse {
+    /// The names of the dataset's timelines.
+    #[prost(string, repeated, tag = "1")]
+    pub timelines: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// The matching entities in path order, each with the components logged on it.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out.
+    ///
+    /// Anything above zero means this answer describes only part of the dataset: narrow with
+    /// `entity_path`, or raise `max_entities`.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+    /// The ids of the dataset's registered assets. `GetDatasetAssetsSchema` describes them.
+    #[prost(string, repeated, tag = "4")]
+    pub asset_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for GetDatasetSchemaResponse {
+    const NAME: &'static str = "GetDatasetSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+}
+/// Request for `GetDatasetAssetsSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaRequest {
+    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// the dataset of the segment on screen.
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Assets with nothing
+    /// there are left out. Omit for every entity.
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most, per asset.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them. Defaults to false.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaRequest {
+    const NAME: &'static str = "GetDatasetAssetsSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaRequest".into()
+    }
+}
+/// Response for `GetDatasetAssetsSchema`: the dataset's assets and the entities in each.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetAssetsSchemaResponse {
+    /// The matching assets, by asset id.
+    #[prost(message, repeated, tag = "1")]
+    pub assets: ::prost::alloc::vec::Vec<DatasetAssetSchema>,
+}
+impl ::prost::Name for GetDatasetAssetsSchemaResponse {
+    const NAME: &'static str = "GetDatasetAssetsSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetDatasetAssetsSchemaResponse".into()
+    }
+}
+/// One asset of a dataset, and the entities logged in it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetAssetSchema {
+    /// The asset's id, which is its segment id in the dataset's asset dataset.
+    #[prost(string, tag = "1")]
+    pub asset_id: ::prost::alloc::string::String,
+    /// The matching entities in path order, each with the components logged on it. All of an
+    /// asset's data is static.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out of this asset.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+}
+impl ::prost::Name for DatasetAssetSchema {
+    const NAME: &'static str = "DatasetAssetSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.DatasetAssetSchema".into()
     }
 }
 /// Request for `GetRecordingSchema`.
@@ -673,9 +1232,10 @@ impl ::prost::Name for GetViewerStateRequest {
 /// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetViewerStateResponse {
-    /// The current viewer page/route (e.g. which recording or hub page is shown).
+    /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
+    /// See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
     #[prost(string, tag = "1")]
-    pub url: ::prost::alloc::string::String,
+    pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
     #[prost(string, optional, tag = "2")]
     pub active_store_id: ::core::option::Option<::prost::alloc::string::String>,
@@ -866,6 +1426,12 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "4")]
+    pub location: ::prost::alloc::string::String,
+    /// Whether the time cursor is paused, playing, or following the latest data.
+    #[prost(enumeration = "PlayState", tag = "5")]
+    pub play_state: i32,
 }
 impl ::prost::Name for ViewerRecording {
     const NAME: &'static str = "ViewerRecording";
@@ -889,6 +1455,10 @@ pub struct ViewerTimeline {
     /// The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
     #[prost(message, optional, tag = "3")]
     pub time_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
+    /// Where the time cursor sits on this timeline. Each timeline keeps its own position, so this is
+    /// also set for timelines other than the active one. Absent if the cursor has never been on it.
+    #[prost(message, optional, tag = "4")]
+    pub current_time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
 }
 impl ::prost::Name for ViewerTimeline {
     const NAME: &'static str = "ViewerTimeline";
@@ -1036,6 +1606,12 @@ pub struct OpenUrlRequest {
     /// dataset URI, a redap server/catalog URL, or an intra-recording link.
     #[prost(string, tag = "1")]
     pub url: ::prost::alloc::string::String,
+    /// Whether to also show what it opens, making a recording the active one. Defaults to true.
+    ///
+    /// Without it, a recording loads in the background, a server is connected to without being
+    /// shown, and a location the viewer already has open is left as it is.
+    #[prost(bool, optional, tag = "2")]
+    pub navigate: ::core::option::Option<bool>,
 }
 impl ::prost::Name for OpenUrlRequest {
     const NAME: &'static str = "OpenUrlRequest";
@@ -1196,14 +1772,84 @@ impl ::prost::Name for CaptureProfileTraceResponse {
 /// Request for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintRequest {
-    /// Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.
-    /// If omitted, the active recording is used.
-    #[prost(string, optional, tag = "1")]
-    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
     /// The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
     /// returns it.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
+    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    #[prost(oneof = "set_blueprint_request::Target", tags = "3, 4")]
+    pub target: ::core::option::Option<set_blueprint_request::Target>,
+}
+/// Nested message and enum types in `SetBlueprintRequest`.
+pub mod set_blueprint_request {
+    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Target {
+        /// Write the blueprint of a recording.
+        #[prost(message, tag = "3")]
+        Recording(super::RecordingBlueprintTarget),
+        /// Write the blueprint of a table.
+        /// Use this to customize tables, enable card layouts, and add preview cells.
+        ///
+        /// The entity paths and archetypes of a table blueprint are described by
+        /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
+        /// <<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.>
+        ///
+        /// `TableBlueprint` at `/table` has these fields:
+        /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
+        ///    `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table.
+        /// * `column_display_mode`: how column names show, `Compact`, `Component` or `Full`.
+        ///    Defaults to `Compact`.
+        /// * `filters`: SQL row filters, described below.
+        ///
+        /// Enum values in the JSON are the variant names, such as `"Cards"`. The Python SDK takes
+        /// lowercase strings instead, such as `default_layout="cards"`.
+        ///
+        /// This blueprint shows three columns first, renames one and hides another:
+        ///
+        /// ```json
+        /// {
+        ///    "/table/layouts/table": {"TableLayout": {"column_order": \["recording link", "property:my_props:my_score", "rerun_segment_id"\]}},
+        ///    "/table/layouts/table/columns/property\\:my_props\\:my_score": {"TableColumn": {"name": "Score"}},
+        ///    "/table/layouts/table/columns/rerun_segment_id": {"TableColumn": {"visible": false}}
+        /// }
+        /// ```
+        ///
+        /// `column_order` takes plain column names. In a column's entity path, `:` and spaces are
+        /// escaped as `\:` and `\ `, so `recording link` becomes `columns/recording\ link`.
+        ///
+        /// This blueprint shows rows as cards, with a 3D view of `/my_scene` on each card, titled by
+        /// `my_title`:
+        ///
+        /// ```json
+        /// {
+        ///    "/table": {"TableBlueprint": {"layout": "Cards"}},
+        ///    "/table/layouts/cards": {"CardLayout": {"title": "my_title", "link": "recording link", "field_order": \["recording link", "my_title"\]}},
+        ///    "/table/layouts/cards/fields/recording\\ link": {"TableColumn": {"cell_kind": "Preview"}, "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
+        ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {"ViewBlueprint": {"class_identifier": "3D", "space_origin": "/my_scene"}},
+        ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {"ViewContents": {"query": "+ /my_scene/**"}}
+        /// }
+        /// ```
+        ///
+        /// Card fields live under `fields/`, not `columns/`, and only the fields in `field_order`
+        /// show. Each preview view has its own UUID, in the form a recording blueprint writes views.
+        ///
+        /// Learn what the dataset holds with `GetDatasetSchema` before choosing a preview. Then ask the
+        /// user what the preview shows, and suggest what tells the segments apart at a glance, such as
+        /// a moving robot model, a trajectory, or a video. To refine a preview, inspect the recordings
+        /// it loads rather than opening a segment.
+        /// Each card's recording shows in `recordings` of `GetViewerState`, with the dataset id as its
+        /// application id and the segment id as its recording id, and works with `GetRecordingSchema`.
+        /// Every visible card renders its own recording, which is costly, so keep previews small: few
+        /// views, and only the entities that matter.
+        ///
+        /// Row filters are SQL expressions in `filters` of `TableBlueprint` at `/table`, such as
+        /// `"my_column" ILIKE '%text%'`. Its docs list the forms the filter bar shows as editable widgets.
+        /// Users cannot write SQL in the viewer. They only add those forms from a column header's menu,
+        /// and can only remove any other filter.
+        #[prost(message, tag = "4")]
+        Table(super::TableBlueprintTarget),
+    }
 }
 impl ::prost::Name for SetBlueprintRequest {
     const NAME: &'static str = "SetBlueprintRequest";
@@ -1218,9 +1864,16 @@ impl ::prost::Name for SetBlueprintRequest {
 /// Response for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintResponse {
-    /// The blueprint that was written, as `{kind}:{application_id}:{recording_id}`.
+    /// The blueprint that was written.
     #[prost(string, tag = "1")]
     pub blueprint_id: ::prost::alloc::string::String,
+    /// The recording whose blueprint was written, set when the blueprint is a recording's.
+    #[prost(string, optional, tag = "2")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The table whose blueprint was written, set when the blueprint is a table's. A table that
+    /// only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
+    #[prost(string, optional, tag = "3")]
+    pub table_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for SetBlueprintResponse {
     const NAME: &'static str = "SetBlueprintResponse";
@@ -1244,12 +1897,13 @@ pub struct SetTimeCursorRequest {
     pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
     /// Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
     /// temporal timelines (see `GetViewerState` for each timeline's type and range).
+    /// If omitted, the cursor stays at its current time on the timeline.
     #[prost(message, optional, tag = "3")]
     pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
-    /// If true, start playing the recording from the new position. Omit it, or pass false, to
-    /// pause the recording instead.
-    #[prost(bool, optional, tag = "4")]
-    pub play: ::core::option::Option<bool>,
+    /// Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.
+    /// Following moves the cursor to the latest data, so it cannot be combined with a `time`.
+    #[prost(enumeration = "PlayState", optional, tag = "5")]
+    pub play_state: ::core::option::Option<i32>,
 }
 impl ::prost::Name for SetTimeCursorRequest {
     const NAME: &'static str = "SetTimeCursorRequest";
@@ -1274,7 +1928,8 @@ pub struct SetTimeCursorResponse {
     /// Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
     #[prost(enumeration = "super::super::common::v1alpha1::TimeType", tag = "3")]
     pub time_type: i32,
-    /// The time the cursor was moved to.
+    /// Where the cursor is on the timeline: the requested time, or else its current time.
+    /// Absent if the cursor has never been on this timeline.
     #[prost(message, optional, tag = "4")]
     pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
 }
@@ -1313,6 +1968,103 @@ impl ::prost::Name for TimeCursor {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.TimeCursor".into()
+    }
+}
+/// Request for `GetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationRequest {}
+impl ::prost::Name for GetLocationRequest {
+    const NAME: &'static str = "GetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationRequest".into()
+    }
+}
+/// Response for `GetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetLocationResponse {
+    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls?speculative-link>> for the syntax.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetLocationResponse {
+    const NAME: &'static str = "GetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetLocationResponse".into()
+    }
+}
+/// Request for `SetLocation`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationRequest {
+    /// A location, as `GetLocation` reports it.
+    #[prost(string, tag = "1")]
+    pub location: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetLocationRequest {
+    const NAME: &'static str = "SetLocationRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationRequest".into()
+    }
+}
+/// Response for `SetLocation`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetLocationResponse {}
+impl ::prost::Name for SetLocationResponse {
+    const NAME: &'static str = "SetLocationResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetLocationResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetLocationResponse".into()
+    }
+}
+/// Whether a recording's time cursor moves.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum PlayState {
+    /// Not set: leaves the play state as it is.
+    Unspecified = 0,
+    /// The time cursor stays where it is.
+    Paused = 1,
+    /// The time cursor moves forward in time, at the playback speed.
+    Playing = 2,
+    /// The time cursor follows the latest data, as it arrives.
+    Following = 3,
+}
+impl PlayState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "PLAY_STATE_UNSPECIFIED",
+            Self::Paused => "PLAY_STATE_PAUSED",
+            Self::Playing => "PLAY_STATE_PLAYING",
+            Self::Following => "PLAY_STATE_FOLLOWING",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PLAY_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "PLAY_STATE_PAUSED" => Some(Self::Paused),
+            "PLAY_STATE_PLAYING" => Some(Self::Playing),
+            "PLAY_STATE_FOLLOWING" => Some(Self::Following),
+            _ => None,
+        }
     }
 }
 /// Generated client implementations.

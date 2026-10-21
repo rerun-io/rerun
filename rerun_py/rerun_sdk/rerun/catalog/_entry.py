@@ -17,7 +17,7 @@ from rerun_bindings import (
     ASSET_PROPERTY,
     ASSET_SEGMENTS_COMPONENT,
     DatasetEntryInternal,
-    DatasetViewInternal,
+    DatasetSelectionInternal,
     TableEntryInternal,
     TableInsertModeInternal,
     _IndexValuesLikeInternal,
@@ -995,9 +995,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return LazyStore(self._internal.segment_store(segment_id, include_assets=include_assets))
 
     @with_tracing("DatasetEntry.filter_segments")
-    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given segment IDs.
+        Return a new DatasetSelection filtered to the given segment IDs.
 
         Parameters
         ----------
@@ -1008,24 +1008,24 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the given segments.
+        DatasetSelection
+            A new selection filtered to the given segments.
 
         Examples
         --------
         ```python
         # Filter to a single segment
-        view = dataset.filter_segments("recording_0")
+        selection = dataset.filter_segments("recording_0")
 
         # Filter to specific segments
-        view = dataset.filter_segments(["recording_0", "recording_1"])
+        selection = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
         good_segments = segment_table.filter(col("property:episode:success")[0])
-        view = dataset.filter_segments(good_segments)
+        selection = dataset.filter_segments(good_segments)
 
-        # Read data from the filtered view
-        df = view.reader(index="timeline")
+        # Read data from the filtered selection
+        df = selection.reader(index="timeline")
         ```
 
         """
@@ -1037,12 +1037,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
-        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+        return DatasetSelection(self._internal.filter_segments(list(segment_ids)))
 
     @with_tracing("DatasetEntry.filter_contents")
-    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetSelection filtered to the given entity paths.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
@@ -1058,32 +1058,32 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the matching entity paths.
+        DatasetSelection
+            A new selection filtered to the matching entity paths.
 
         Examples
         --------
         ```python
         # Filter to a single entity path
-        view = dataset.filter_contents("/points/**")
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents("/points/**")
+        selection = dataset.filter_contents(
             ContentFilter.nothing()
             .include("/points/**")
         )
 
         # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**"])
+        selection = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
-        view = dataset.filter_contents(["/points/**", "-/text/**"])
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents(["/points/**", "-/text/**"])
+        selection = dataset.filter_contents(
             ContentFilter.nothing()
             .include("/points", subtree=True)
             .exclude("/text/**")
         )
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        selection = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
@@ -1092,7 +1092,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         elif isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        return DatasetSelection(self._internal.filter_contents(list(exprs)))
 
     def reader(
         self,
@@ -1126,7 +1126,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         index
-            The index (timeline) to use for the view.
+            The index (timeline) to use for the query.
             Pass `None` to read only static data.
             The reader leaves out properties for every index unless the contents include `/__properties/**`,
             for example with `ContentFilter.include_properties()`.
@@ -1229,46 +1229,46 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     @with_tracing("DatasetEntry.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
-        view = self.filter_contents(["/**"])
-        return view.get_index_ranges()
+        selection = self.filter_contents(["/**"])
+        return selection.get_index_ranges()
 
 
-class DatasetView:
+class DatasetSelection:
     """
-    A filtered view over a dataset in the catalog.
+    A selection of a dataset in the catalog: the dataset plus segment and content filters.
 
-    A `DatasetView` provides lazy filtering over a dataset's segments and entity paths.
+    A `DatasetSelection` provides lazy filtering over a dataset's segments and entity paths.
     Filters are composed lazily and only applied when data is actually read.
 
-    Create a `DatasetView` by calling `filter_segments()` or `filter_contents()` on a
+    Create a `DatasetSelection` by calling `filter_segments()` or `filter_contents()` on a
     `DatasetEntry`.
 
     Examples
     --------
     ```python
     # Filter to specific segments
-    view = dataset.filter_segments(["recording_0", "recording_1"])
+    selection = dataset.filter_segments(["recording_0", "recording_1"])
 
     # Filter to specific entity paths
-    view = dataset.filter_contents(["/points/**"])
+    selection = dataset.filter_contents(["/points/**"])
 
     # Chain filters
-    view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+    selection = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
 
     # Read data
-    df = view.reader(index="timeline")
+    df = selection.reader(index="timeline")
     ```
 
     """
 
-    def __init__(self, internal: DatasetViewInternal) -> None:
+    def __init__(self, internal: DatasetSelectionInternal) -> None:
         """
-        Create a new DatasetView wrapper.
+        Create a new DatasetSelection wrapper.
 
         Parameters
         ----------
         internal:
-            The internal Rust-side DatasetView object.
+            The internal Rust-side DatasetSelection object.
 
         """
         self._internal = internal
@@ -1279,9 +1279,9 @@ class DatasetView:
 
     def schema(self) -> Schema:
         """
-        Return the filtered schema for this view.
+        Return the filtered schema for this selection.
 
-        The schema reflects any content filters applied to the view.
+        The schema reflects any content filters applied to the selection.
 
         Returns
         -------
@@ -1295,7 +1295,7 @@ class DatasetView:
 
     def arrow_schema(self) -> pa.Schema:
         """
-        Return the filtered Arrow schema for this view.
+        Return the filtered Arrow schema for this selection.
 
         Returns
         -------
@@ -1305,10 +1305,10 @@ class DatasetView:
         """
         return self._internal.arrow_schema()
 
-    @with_tracing("DatasetView.segment_ids")
+    @with_tracing("DatasetSelection.segment_ids")
     def segment_ids(self) -> list[str]:
         """
-        Return the segment IDs for this view.
+        Return the segment IDs for this selection.
 
         If segment filters have been applied, only matching segments are returned.
 
@@ -1331,7 +1331,7 @@ class DatasetView:
         The segment table contains metadata about each segment in the dataset,
         including segment IDs, layer names, storage URLs, and size information.
 
-        Only segments matching this view's filters are included.
+        Only segments matching this selection's filters are included.
 
         Parameters
         ----------
@@ -1371,7 +1371,7 @@ class DatasetView:
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
-        Create a reader over this DatasetView.
+        Create a reader over this DatasetSelection.
 
         Returns a DataFusion DataFrame.
 
@@ -1393,7 +1393,7 @@ class DatasetView:
         Parameters
         ----------
         index
-            The index (timeline) to use for the view.
+            The index (timeline) to use for the query.
             Pass `None` to read only static data.
             The reader leaves out properties for every index unless the contents include `/__properties/**`,
             for example with `ContentFilter.include_properties()`.
@@ -1477,11 +1477,11 @@ class DatasetView:
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
-            view = self._internal.filter_segments(list(index_values_dict.keys()))
+            selection = self._internal.filter_segments(list(index_values_dict.keys()))
         else:
-            view = self._internal
+            selection = self._internal
 
-        return view.reader(
+        return selection.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
@@ -1489,10 +1489,10 @@ class DatasetView:
             using_index_values=index_values_dict,
         )
 
-    @with_tracing("DatasetView.filter_segments")
-    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    @with_tracing("DatasetSelection.filter_segments")
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given segment IDs.
+        Return a new DatasetSelection filtered to the given segment IDs.
 
         Parameters
         ----------
@@ -1503,24 +1503,24 @@ class DatasetView:
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the given segments.
+        DatasetSelection
+            A new selection filtered to the given segments.
 
         Examples
         --------
         ```python
         # Filter to a single segment
-        view = dataset.filter_segments("recording_0")
+        selection = dataset.filter_segments("recording_0")
 
         # Filter to specific segments
-        view = dataset.filter_segments(["recording_0", "recording_1"])
+        selection = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
         good_segments = segment_table.filter(col("property:episode:success")[0])
-        view = dataset.filter_segments(good_segments)
+        selection = dataset.filter_segments(good_segments)
 
-        # Read data from the filtered view
-        df = view.reader(index="timeline")
+        # Read data from the filtered selection
+        df = selection.reader(index="timeline")
         ```
 
         """
@@ -1532,12 +1532,12 @@ class DatasetView:
         elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
-        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+        return DatasetSelection(self._internal.filter_segments(list(segment_ids)))
 
-    @with_tracing("DatasetView.filter_contents")
-    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
+    @with_tracing("DatasetSelection.filter_contents")
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetSelection filtered to the given entity paths.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
@@ -1553,30 +1553,30 @@ class DatasetView:
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the matching entity paths.
+        DatasetSelection
+            A new selection filtered to the matching entity paths.
 
         Examples
         --------
         ```python
         # Filter to a single entity path
-        view = dataset.filter_contents("/points/**")
+        selection = dataset.filter_contents("/points/**")
 
         # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**"])
+        selection = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
-        view = dataset.filter_contents(["/points/**", "-/text/**"])
+        selection = dataset.filter_contents(["/points/**", "-/text/**"])
 
         # Using ContentFilter builder
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents(
             ContentFilter.everything()
             .exclude("/robot/raw/**")
             .include("/robot/raw/i_need_this")
         )
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        selection = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
@@ -1585,10 +1585,10 @@ class DatasetView:
         elif isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        return DatasetSelection(self._internal.filter_contents(list(exprs)))
 
     def __repr__(self) -> str:
-        """Return a string representation of the DatasetView."""
+        """Return a string representation of the DatasetSelection."""
 
         dataset_str = str(self.dataset)
 
@@ -1604,9 +1604,9 @@ class DatasetView:
         else:
             content_str = "no content filter"
 
-        return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
+        return f"DatasetSelection({dataset_str}, {segment_str}, {content_str})"
 
-    @with_tracing("DatasetView.get_index_ranges")
+    @with_tracing("DatasetSelection.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]

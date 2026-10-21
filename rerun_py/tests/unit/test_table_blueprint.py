@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 import rerun as rr
 import rerun.blueprint as rrb
+from rerun.blueprint.encodings import SortDirection
 from rerun.chunk import RrdReader
 
 if TYPE_CHECKING:
@@ -130,6 +131,26 @@ def test_table_blueprint_logs_root_settings(
         assert "/table" not in data
 
 
+@pytest.mark.parametrize(
+    ("sort_by", "direction"),
+    [
+        ("score", None),
+        (rrb.table.SortBy("score"), None),
+        (rrb.table.SortBy("score", direction="descending"), SortDirection.Descending),
+    ],
+)
+def test_table_blueprint_logs_sort(
+    sort_by: str | rrb.table.SortBy,
+    direction: SortDirection | None,
+    tmp_path: Path,
+) -> None:
+    blueprint = rrb.table.TableBlueprint(sort_by=sort_by)
+    data = _save_and_read(blueprint, tmp_path / "table.rbl")
+
+    expected_direction = None if direction is None else direction.value
+    assert data["/table"] == {"TableBlueprint:sort_by": [[{"column": "score", "direction": expected_direction}]]}
+
+
 @pytest.mark.parametrize("table_layout", [None, rrb.table.TableLayout()])
 def test_table_blueprint_logs_empty_table_layout(table_layout: rrb.table.TableLayout | None, tmp_path: Path) -> None:
     blueprint = rrb.table.TableBlueprint(table_layout=table_layout)
@@ -166,6 +187,8 @@ def test_table_blueprint_validates_inputs() -> None:
         )
     with pytest.raises(ValueError, match="requires card_layout"):
         rrb.table.TableBlueprint(default_layout="cards")
+    with pytest.raises(ValueError, match="sort_by must not be empty"):
+        rrb.table.TableBlueprint(sort_by="")
     with pytest.raises(ValueError, match="require FlagCell"):
         rrb.table.Column("a", editable=True)
 

@@ -435,7 +435,7 @@ fn collect_source_component_options(
         } else {
             // Get arrow datatype of the target component.
             let reflection = mapping_ctx.viewer_ctx().reflection();
-            let Some(target_component_reflection) =
+            let Some(target_component_type_reflection) =
                 reflection.components.get(target_component_type)
             else {
                 // No reflection for target component type, that should never happen.
@@ -445,7 +445,7 @@ fn collect_source_component_options(
                 );
                 return Vec::new();
             };
-            std::iter::once(target_component_reflection.datatype.clone()).collect()
+            std::iter::once(target_component_type_reflection.datatype.clone()).collect()
         };
 
     // Components queried by this visualizer (other than the target) should not appear as

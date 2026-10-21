@@ -31,6 +31,28 @@ impl TableCommand {
     pub fn tooltip(&self) -> &'static str {
         self.kind.tooltip()
     }
+
+    /// Show this command as a menu button.
+    ///
+    /// If clicked, enqueue the command.
+    pub fn menu_button_ui(
+        self,
+        ui: &mut egui::Ui,
+        command_sender: &impl TableCommandSender,
+    ) -> egui::Response {
+        let mut button = egui::Button::new(self.text());
+        if let Some(shortcut_text) = self.kind.formatted_kb_shortcut(ui.ctx()) {
+            button = button.shortcut_text(shortcut_text);
+        }
+        let response = ui.add(button).on_hover_text(self.tooltip());
+
+        if response.clicked() {
+            command_sender.send_table_command(self);
+            ui.close();
+        }
+
+        response
+    }
 }
 
 /// What a [`TableCommand`] does to its table.
@@ -44,6 +66,12 @@ pub enum TableCommandKind {
 
     /// Reset the active blueprint of the table to the default one.
     ResetBlueprintToDefault,
+
+    /// Undo the last edit to the active blueprint of the table.
+    UndoBlueprintEdit,
+
+    /// Redo the last undone edit to the active blueprint of the table.
+    RedoBlueprintEdit,
 }
 
 impl TableCommandKind {
@@ -66,6 +94,11 @@ impl TableCommandKind {
                 "Reset to default blueprint",
                 "Clear the active blueprint of the current table and use the default blueprint instead",
             ),
+
+            Self::UndoBlueprintEdit => {
+                ("Undo", "Undo the last blueprint edit for the current table")
+            }
+            Self::RedoBlueprintEdit => ("Redo", "Redo the last undone thing"),
         }
     }
 
@@ -77,6 +110,12 @@ impl TableCommandKind {
 
         // Only a Redap entry can be re-queried from its server.
         if self == Self::Refresh && !matches!(table, re_uri::TableReference::RedapEntry { .. }) {
+            return None;
+        }
+
+        if matches!(self, Self::UndoBlueprintEdit | Self::RedoBlueprintEdit)
+            && !env.has_table_blueprint
+        {
             return None;
         }
 
@@ -94,6 +133,11 @@ impl TableCommandKind {
             Self::Refresh => super::refresh_shortcuts(os),
 
             Self::ResetBlueprintToDefault => SmallVec::new(),
+
+            // These match `RecordingCommandKind::UndoBlueprintEdit` and `RedoBlueprintEdit`.
+            // A route shows either a recording or a table, never both.
+            Self::UndoBlueprintEdit => super::undo_shortcuts(),
+            Self::RedoBlueprintEdit => super::redo_shortcuts(os),
         }
     }
 

@@ -14,6 +14,7 @@ package rerun.cloud.v1alpha1;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
@@ -275,37 +276,35 @@ service RerunCloudService {
 
   /* Queries */
 
-  // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-  // as information that can be sent back to the catalog server to fetch the actual chunks as part
-  // of `FetchChunks` request. In this 2-step query process, 1st step is getting information
-  // from the server about the chunks that contain relevant information. 2nd step is fetching
-  // those chunks (the actual data).
+  // Deprecated: use `FindChunks`. Kept for older clients.
   //
-  // These Rerun-native queries include:
-  // * Filtering by specific segment and chunk IDs.
-  // * Latest-at, range and dataframe queries.
-  // * Arbitrary Lance filters.
+  // Returns candidate chunk IDs and metadata for fetching them with `FetchChunks`.
   //
-  // To fetch the actual chunks themselves, see `FetchChunks`.
+  // Supports segment filtering, latest-at queries, and range queries.
+  // See `QueryDatasetRequest` for field restrictions.
   //
-  // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-  //
-  // For latest-at queries, the returned chunks are a **correctness-preserving
-  // superset** of the minimum set needed to answer the query: the server may
-  // include additional candidate chunks (e.g., overlap siblings within the
-  // global max chunk length, or chunks that pass segment-level bounds without
-  // per-value narrowing). Clients are expected to run their own latest-at
-  // resolution on the returned chunks.
+  // The server may return more chunks than needed to answer a latest-at query.
+  // Clients must resolve latest-at values from the fetched chunks.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
+  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {
+    option deprecated = true;
+  }
 
   // Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
-  // that is, the result of `QueryDataset` should include all the necessary information to send
+  // that is, the result of `FindChunks` should include all the necessary information to send
   // the actual chunk requests, which is the 2nd step of the query process.
   //
   // See `FetchChunksRequest` for details on the fields that describe each individual chunk.
   rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {}
+
+  // Find the candidate chunks for a selection of content and segments.
+  //
+  // The server may return more chunks than the selection needs. The client resolves the final
+  // rows from the chunks it fetches.
+  //
+  // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+  rpc FindChunks(FindChunksRequest) returns (stream FindChunksResponse) {}
 
   // --- Tables ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
@@ -991,8 +990,7 @@ message QueryDatasetRequest {
   // to the client. Ignored if `generate_direct_urls` is not `true`.
   bool unsigned_direct_urls = 13;
 
-  // Client can specify specific chunk ids to include. If left unspecified (empty list),
-  // all chunks that match other query parameters will be included.
+  // Must be empty. A nonempty list returns `INVALID_ARGUMENT`.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
   // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
@@ -1018,19 +1016,20 @@ message QueryDatasetRequest {
   //
   // If left unspecified, all existing components are considered of interest.
   //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:width` index, all of the following
-  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  // Each entry must equal a component identifier, for example `SeriesLines:width`.
+  // A partial identifier, such as `Width` or `SeriesLines`, matches nothing.
   repeated string fuzzy_descriptors = 10;
 
-  // If set, static data will be excluded from the results.
+  // Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
   bool exclude_static_data = 8;
 
-  // If set, temporal data will be excluded from the results.
+  // Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
   bool exclude_temporal_data = 9;
 
-  // Generic parameters that will influence the behavior of the Lance scanner.
+  // Optional scan parameters.
+  //
+  // Leave `filter`, `limit_offset`, and `limit_len` unset, and `order_by` empty.
+  // The server returns `INVALID_ARGUMENT` otherwise.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   // The Rerun-native query to run. Leave unset to match on the other filters alone: an unset
@@ -1105,16 +1104,13 @@ message Query {
   reserved "columns_always_include_chunk_ids";
 }
 
-// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
-//
-// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+// A query for candidate chunks containing the latest values at or before the requested index values.
 //
 // Two modes of use (mutually exclusive):
 //   1. Global: set `at`. Applied to all segments.
 //   2. Per-segment: set `per_segment_values`. Each entry is positionally
-//      matched to `QueryDatasetRequest.segment_ids`. `at` and `Query.range`
-//      must be unset — the server reconstructs global bounds internally
-//      from the per-segment values.
+//      matched to `QueryDatasetRequest.segment_ids`.
+//      `at` and `Query.range` must be unset.
 message QueryLatestAt {
   // Which index column should we perform the query on? E.g. `log_time`.
   //
@@ -1130,18 +1126,16 @@ message QueryLatestAt {
   // Per-segment index values, positionally matched to
   // `QueryDatasetRequest.segment_ids`.
   //
-  // When non-empty, `at` and `Query.range` must be unset — the server
-  // reconstructs global bounds from the values for Lance pre-filtering,
-  // then applies a per-segment post-filter for precision.
+  // When non-empty, `at` and `Query.range` must be unset.
   //
-  // Constraints (server returns `invalid_argument` on violation):
+  // Constraints (server returns `INVALID_ARGUMENT` on violation):
   //   - `segment_ids` must be non-empty.
   //   - `per_segment_values.len()` must equal `segment_ids.len()`.
   //   - `segment_ids` must contain no duplicates.
   //
   // Each entry's values list corresponds to the segment at the same
-  // position in `segment_ids`. An empty values list for a segment means
-  // no temporal chunks are returned for that segment (only static data).
+  // position in `segment_ids`. An empty values list selects nothing from
+  // that segment.
   repeated IndexValueList per_segment_values = 4;
 
   reserved 3;
@@ -1196,6 +1190,176 @@ message FetchChunksResponse {
   // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
   // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
   repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
+}
+
+// Which direct chunk URLs `FindChunks` returns, and how they are signed.
+//
+// The mode is an upper bound: a server may return fewer URLs than requested, or none.
+enum DirectUrlMode {
+  // Same as `DIRECT_URL_MODE_SIGNED`.
+  DIRECT_URL_MODE_UNSPECIFIED = 0;
+
+  // Return no direct URLs and no expiration times.
+  DIRECT_URL_MODE_OMIT = 1;
+
+  // Return unsigned URLs. The client manages object-store credentials.
+  DIRECT_URL_MODE_UNSIGNED = 2;
+
+  // Return server-signed URLs, usable without object-store credentials.
+  DIRECT_URL_MODE_SIGNED = 3;
+}
+
+// Request for `FindChunks`.
+message FindChunksRequest {
+  // The entities and components to include. Required.
+  ContentSelection contents = 1;
+
+  // The selection mode. Required.
+  //
+  // A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
+  // has no data.
+  oneof mode {
+    // The static chunks of the selected segments.
+    StaticSelection static = 2;
+    // The chunks that overlap a time range on one timeline, plus the matching static chunks.
+    RangeSelection range = 3;
+    // The chunks with data at given times, per segment, plus the matching static chunks.
+    SegmentSamplesSelection samples = 4;
+  }
+
+  // Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
+  DirectUrlMode direct_url_mode = 5;
+}
+
+// One batch of chunk candidates yielded by `FindChunks`.
+message FindChunksResponse {
+  // One row per candidate chunk, in the fixed `ChunkCandidatesDataframe` column layout.
+  rerun.common.v1alpha1.DataframePart data = 1;
+  // Metadata for the entire stream.
+  // Servers may omit it.
+  // When set, only the first response message carries it.
+  DatasetResponseMeta meta = 100;
+}
+
+// Selects every segment of the dataset, or an explicit list.
+message SegmentSelection {
+  // The segment set. Required.
+  oneof selection {
+    // Every segment of the dataset.
+    google.protobuf.Empty all = 1;
+    // Exactly the listed segments.
+    SegmentIds explicit = 2;
+  }
+}
+
+// An explicit list of segment ids.
+message SegmentIds {
+  // The segment ids. An empty list selects no segments.
+  // Unknown ids select nothing, and duplicates are ignored.
+  repeated rerun.common.v1alpha1.SegmentId ids = 1;
+}
+
+// Selects the static chunks of the selected segments.
+message StaticSelection {
+  // The segments to select from. Required.
+  SegmentSelection segments = 1;
+}
+
+// Whether a selection also selects the chunks that resolve state from earlier or later data.
+enum FillMode {
+  // Same as `FILL_MODE_NONE`.
+  FILL_MODE_UNSPECIFIED = 0;
+
+  // Select only the chunks with data in the range, or at the sample times.
+  FILL_MODE_NONE = 1;
+
+  // Also select the chunks that resolve latest-at state at a range's `start_inclusive`, or at
+  // each sample time. A range requires `start_inclusive`.
+  FILL_MODE_LATEST_AT = 2;
+
+  // Reserved for selecting the chunks that resolve state from later data, at a range's
+  // `end_inclusive` or at each sample time. UNIMPLEMENTED.
+  FILL_MODE_EARLIEST_AT = 3;
+}
+
+// Selects the chunks that overlap `[start_inclusive, end_inclusive]` on `timeline`.
+//
+// Both bounds are inclusive. A missing bound is unbounded, and a range with neither bound selects
+// every chunk.
+//
+// Also selects every static chunk of the selected contents and segments, whatever the bounds and
+// the fill mode.
+message RangeSelection {
+  // The timeline of the bounds. Required.
+  string timeline = 1;
+  // The lower bound. Unbounded when unset.
+  optional int64 start_inclusive = 2;
+  // The upper bound. Unbounded when unset.
+  optional int64 end_inclusive = 3;
+  // Whether to also select the chunks that resolve state at a bound. Defaults to
+  // `FILL_MODE_NONE`.
+  FillMode fill_mode = 4;
+  // The segments to select from. Required.
+  SegmentSelection segments = 5;
+}
+
+// Selects, per segment, the chunks with data at each sample time.
+//
+// Also selects every static chunk of the selected contents in each listed segment, whatever the
+// fill mode. A segment entry with no sample times selects nothing, not even static chunks.
+message SegmentSamplesSelection {
+  // The timeline of the sample times. Required.
+  string timeline = 1;
+  // The segments to select from, with their sample times.
+  repeated SegmentSamples segments = 2;
+  // Whether to also select the chunks that resolve state at each sample time. Defaults to
+  // `FILL_MODE_NONE`.
+  FillMode fill_mode = 3;
+}
+
+// The sample times for one segment.
+message SegmentSamples {
+  // The segment these times apply to. Required.
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+  // The sample times, in the unit of the selection's timeline.
+  repeated int64 values = 2;
+}
+
+// Selects the entities and components to include.
+message ContentSelection {
+  // The content set. Required.
+  oneof selection {
+    // Every entity and component.
+    google.protobuf.Empty all = 1;
+    // Exactly the listed entities, each with its own component set.
+    EntitySelections explicit = 2;
+  }
+}
+
+// An explicit list of entity selections.
+message EntitySelections {
+  // The entities to select. An empty list selects nothing. Each entity path may appear once.
+  repeated EntitySelection entities = 1;
+}
+
+// Selects one entity and the components to include for it.
+message EntitySelection {
+  // The entity path. Required.
+  rerun.common.v1alpha1.EntityPath entity_path = 1;
+  // The component set for this entity. Required.
+  oneof components {
+    // Every component logged on this entity.
+    google.protobuf.Empty all = 2;
+    // Exactly the listed component identifiers.
+    ComponentIds explicit = 3;
+  }
+}
+
+// An explicit list of component identifiers.
+message ComponentIds {
+  // The component identifiers, e.g. `Points3D:positions`. Each must be non-empty.
+  // An empty list selects nothing for this entity.
+  repeated string ids = 1;
 }
 
 // --- Table Apis ---

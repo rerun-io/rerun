@@ -127,6 +127,8 @@ This action also removes the canvas from the page.
 
 You can `start` and `stop` the same `WebViewer` instance multiple times.
 
+For a runnable TypeScript example that controls playback (`set_playing`, `set_current_time`) and listens to Viewer events, see [`examples/js/viewer_control`](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control).
+
 ### Callbacks
 
 The Viewer API also allows registering callbacks for certain events.

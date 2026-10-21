@@ -228,7 +228,7 @@ pub fn test_all_components_ui_as_list_items() {
 
 fn run_all_component_tests(width: f32, theme: egui::Theme, output_dir: &str) {
     let test_context = get_test_context();
-    let test_cases = test_cases(&test_context.reflection);
+    let test_cases = test_cases(&test_context.reflection.read());
     let snapshot_options =
         re_ui::testing::default_snapshot_options_for_ui().output_path(output_dir);
 

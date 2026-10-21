@@ -27,11 +27,11 @@ Ingestion is ordered: decide the data model first, then the mechanism, then read
 
 Standalone:
 
-| Skill                                                     | What it covers                                                        |
-| --------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`rerun-docs`](rerun-docs/SKILL.md)                       | Where the docs and code snippets live on disk, and how to search them |
-| [`rerun-blueprint`](rerun-blueprint/SKILL.md)             | Designing a layout, then iterating on it from headless screenshots    |
-| [`rerun-catalog-queries`](rerun-catalog-queries/SKILL.md) | Performance patterns for querying a catalog from Python               |
+| Skill                                                     | What it covers                                                                                                                       |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [`rerun-docs`](rerun-docs/SKILL.md)                       | Where the docs and code snippets live on disk, and how to search them                                                                |
+| [`rerun-blueprint`](rerun-blueprint/SKILL.md)             | Designing a layout from headless screenshots. Also segment and catalog tables, to hide columns, change column order and filter rows   |
+| [`rerun-catalog-queries`](rerun-catalog-queries/SKILL.md) | Performance patterns for querying a catalog from Python                                                                              |
 
 Internal, not aimed at users of the SDK:
 

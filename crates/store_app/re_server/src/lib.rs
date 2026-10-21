@@ -16,9 +16,7 @@ mod server;
 mod store;
 
 pub use self::named_path::{NamedPath, NamedPathCollection};
-pub use self::rerun_cloud::{
-    RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings,
-};
+pub use self::rerun_cloud::{RerunCloudHandler, RerunCloudHandlerBuilder};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     entrypoint::Args,
@@ -32,11 +30,12 @@ pub use self::{
 /// there, so that build does not support registering them.
 pub(crate) fn capability_names() -> Vec<String> {
     cfg_select! {
-        target_arch = "wasm32" => Vec::new(),
+        target_arch = "wasm32" => vec![re_protos::capabilities::DATASET_FIND_CHUNKS.to_owned()],
         _ => {
             vec![
                 re_protos::capabilities::catalog_write_register("file"),
                 re_protos::capabilities::CATALOG_WRITE_STAGING.to_owned(),
+                re_protos::capabilities::DATASET_FIND_CHUNKS.to_owned(),
             ]
         }
     }
