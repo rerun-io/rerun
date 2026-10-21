@@ -1777,7 +1777,7 @@ export const GetViewerStateRequestSchema: GenMessage<GetViewerStateRequest> = /*
 export type GetViewerStateResponse = Message<"rerun.viewer_control.v1alpha1.GetViewerStateResponse"> & {
   /**
    * What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-   * See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+   * See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
    *
    * @generated from field: string location = 1;
    */
@@ -2082,7 +2082,7 @@ export type ViewerRecording = Message<"rerun.viewer_control.v1alpha1.ViewerRecor
   currentTime?: TimeCursor | undefined;
 
   /**
-   * The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+   * The location that shows this recording, for `set_location`. See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
    *
    * @generated from field: string location = 4;
    */
@@ -2847,7 +2847,7 @@ export const GetLocationRequestSchema: GenMessage<GetLocationRequest> = /*@__PUR
  */
 export type GetLocationResponse = Message<"rerun.viewer_control.v1alpha1.GetLocationResponse"> & {
   /**
-   * What the viewer is showing. See <https://rerun.io/docs/reference/viewer/urls?speculative-link> for the syntax.
+   * What the viewer is showing. See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
    *
    * @generated from field: string location = 1;
    */

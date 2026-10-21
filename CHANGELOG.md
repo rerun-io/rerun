@@ -1,5 +1,109 @@
 # Rerun changelog
 
+## [0.40.0](https://github.com/rerun-io/rerun/compare/0.39.0...0.40.0) - 2026-10-21
+
+### ✨ Overview & highlights
+
+- Viewer design refresh: a new home screen, a command palette in the top bar, and consistent typography and colors
+
+  <picture>
+    <img src="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/full.png" alt="The refreshed Viewer showing a robot manipulation episode, with the command palette in the top bar">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/1200w.png">
+  </picture>
+
+- Agents can [inspect transform graphs via MCP](https://rerun.io/docs/reference/viewer/mcp#inspecting-transforms) with `rerun_get_transform_graph`
+- [Catalog API improvements](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#managing-segment-layers-with-the-python-catalog-api): `Segment` and `Layer` handles, `DatasetEntry.schema()`, and [`DatasetEntry.info()`](https://rerun.io/docs/howto/query-and-transform/get-data-out#getting-an-overview)
+- The selection panel shows which [layers](https://rerun.io/docs/howto/logging-and-ingestion/layers) a component comes from
+
+  <picture>
+    <img src="https://static.rerun.io/component-layer/9b4d33a5cc99f35fe5ac93cafe95bd6dcbc0f15d/full.png" alt="The selection panel listing the layers that a component's data comes from">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/component-layer/9b4d33a5cc99f35fe5ac93cafe95bd6dcbc0f15d/480w.png">
+  </picture>
+
+- Edit [asset coverage](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) in the Viewer ([video](https://static.rerun.io/ffb69f38b2c182b51bb250ac8d17ee406cec920d_asset_coverage_ui.mp4))
+- [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) assets without normals are shaded
+
+  <picture>
+    <img src="https://static.rerun.io/mesh-flat-normals-after/36e12e0553ebd4dc6e1f75541df5cdc950312350/full.png" alt="The Rerun logo mesh shaded with computed flat normals">
+  </picture>
+
+#### 🧪 Experimental and unstable
+
+These may change in future releases, and unstable types may not stay backwards compatible.
+
+- [Table filters and sorting in the table blueprint](https://rerun.io/docs/howto/visualization/configure-table-blueprints#filtering-rows), and much faster filters
+- [LeRobot dataset metadata](https://rerun.io/docs/getting-started/train) with `LeRobotReader.metadata()`
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-40#highlights
+
+### ⚠️ Breaking changes
+
+- [Python 3.11 is the minimum supported version](https://rerun.io/docs/changelog/changeset-0-40#python-311-is-the-minimum-supported-version)
+- [`DatasetView` renamed to `DatasetSelection`](https://rerun.io/docs/changelog/changeset-0-40#datasetview-renamed-to-datasetselection)
+- [Rust: catalog methods moved from `re_redap_client` to `re_catalog_client`](https://rerun.io/docs/changelog/changeset-0-40#rust-catalog-methods-moved-from-re_redap_client-to-re_catalog_client)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-40#breaking-changes
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Add [LeRobot dataset metadata](https://rerun.io/docs/getting-started/train) utilities [c9be0f6](https://github.com/rerun-io/rerun/commit/c9be0f682e595cb2fdb61bb4b77ca5b33fd2c06b)
+- Bound gRPC connection retries during shutdown [f786516](https://github.com/rerun-io/rerun/commit/f786516f53e1371e493e2fff5d8a1d5705ba5105)
+
+#### 🐍 Python API
+- Drop Python 3.10 support [2fbbe04](https://github.com/rerun-io/rerun/commit/2fbbe044b3f165aa828132d099dd0e19b7c5e7dc)
+- Introduce [`Segment` handle](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#managing-segment-layers-with-the-python-catalog-api) in Python Catalog client [0d03800](https://github.com/rerun-io/rerun/commit/0d03800b7bf27f8bda6b30aa752494f4d1d4c791)
+- Add `Layer` handle to Python Catalog SDK [8c384a2](https://github.com/rerun-io/rerun/commit/8c384a2908f5ce2c9cc76b360cc8debdd0c4e540)
+- Add [`dataset.info()`](https://rerun.io/docs/howto/query-and-transform/get-data-out#getting-an-overview) and related structures [826db1e](https://github.com/rerun-io/rerun/commit/826db1e2cf1d8826e4bba656bc90cad1a16eae81)
+- Add `.schema()` on dataset and segment objects in Python [e1f1658](https://github.com/rerun-io/rerun/commit/e1f165814f93a75766fab39f6c964b77b235a066)
+- [Table blueprint filter](https://rerun.io/docs/howto/visualization/configure-table-blueprints#filtering-rows) API [cb454f9](https://github.com/rerun-io/rerun/commit/cb454f921ffe31a63c4382115219cdbee025617f)
+- Answer `open_url` once its initial load is done [6c2c3be](https://github.com/rerun-io/rerun/commit/6c2c3bebde5be39582ad966ff49f3cea0fa2d76d)
+
+#### 🪳 Bug fixes
+- Reject TLS certificates from the compromised eMudhra intermediate CAs ([RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381), [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382), [RUSTSEC-2026-0383](https://rustsec.org/advisories/RUSTSEC-2026-0383)) [4b14970](https://github.com/rerun-io/rerun/commit/4b14970b3661d1acbba48f1864ee16d226f9304f)
+- Fix anamorphic pinhole projection for 3D in 2D projections [55b565d](https://github.com/rerun-io/rerun/commit/55b565d009815c30cb34e8b9801b32a42021aa3d) (thanks [@mikamikasuki](https://github.com/mikamikasuki)!)
+- Don't react to clicks on popups covering the timeline [925dbad](https://github.com/rerun-io/rerun/commit/925dbad0b94e64f519341e9522c9d6784813aa26)
+- Stop masking connection errors when credentials are present [0be32f6](https://github.com/rerun-io/rerun/commit/0be32f6141d37812ae6a44c1e3f136c8f3f77f38)
+- Fix uneditable components showing edit ui [1760c3c](https://github.com/rerun-io/rerun/commit/1760c3c903579ed3acf061502c3ad8b91c17c5e3)
+- Disable blueprint UI editing of text-log bodies [2c87e2e](https://github.com/rerun-io/rerun/commit/2c87e2e7b058ca294b2c5f6291468a749f524f8e)
+- Make audio work in previews [f7f8d6d](https://github.com/rerun-io/rerun/commit/f7f8d6dcc24fa1402d6baf20ed6ed0d430e28f27)
+- Fix stale Python docs search results [bcdd257](https://github.com/rerun-io/rerun/commit/bcdd257af8a3f2b24b169156b119ce63c6883d25)
+- Bump zip to 9 for RUSTSEC-2026-0367/0368/0369 [513de14](https://github.com/rerun-io/rerun/commit/513de144d94c736e9126eb2de3faddd519f580e7)
+- Fix flaky internal_catalog_load snapshots: refetch the catalog listing for an unknown entry [500fc27](https://github.com/rerun-io/rerun/commit/500fc279f348a3a2e31da13d38f30059abb5169b)
+- Fix flaky `test_filter_planning_errors`: send a table query's schema together with its first batch [e6ffe84](https://github.com/rerun-io/rerun/commit/e6ffe8477f58e9653ca54f414baf847a8ee6c88c)
+
+#### 🌁 Viewer improvements
+- Show what [layers](https://rerun.io/docs/howto/logging-and-ingestion/layers) a component is from [b00ca6d](https://github.com/rerun-io/rerun/commit/b00ca6dfebad1928116d08865788b21ef2e88979)
+- [Asset coverage](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) edit UI [1405a80](https://github.com/rerun-io/rerun/commit/1405a800727f1e477095e97285d99cbe58942f9b)
+- Compute [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) normals when they are missing [7df8021](https://github.com/rerun-io/rerun/commit/7df80219ea39bde56859587da21568bfa41dbd9f)
+- Table blueprint undo & redo [a8f579e](https://github.com/rerun-io/rerun/commit/a8f579e83851f52e823f6c08ae062dbd32f6dd64)
+- Add [MCP interface for inspecting transform graphs](https://rerun.io/docs/reference/viewer/mcp#inspecting-transforms) [9184397](https://github.com/rerun-io/rerun/commit/918439733127c7ecaaa46b3c694bd960927a654b)
+- Answer [viewer-control](https://rerun.io/docs/reference/viewer/mcp) operations once their commands have run [cc15755](https://github.com/rerun-io/rerun/commit/cc1575549773fe0c8ae535d06501e43b668321e1)
+- Emit [LeRobot](https://rerun.io/docs/howto/logging-and-ingestion/lerobot) v2 videos as `VideoStream`, like v3 [d0afc97](https://github.com/rerun-io/rerun/commit/d0afc9795811aa3b63aa11824edf2eeb9d149883)
+
+#### 🚀 Performance improvements
+- Remove custom filter UDFs and only use SQL [54c35bd](https://github.com/rerun-io/rerun/commit/54c35bd3fe625fbcae7c1fef67730c168bbb17c2)
+- Drastically speed up text log view for huge amount of text logs [3af1922](https://github.com/rerun-io/rerun/commit/3af192212cd8828c66a5150cfaea1ee7bab9c12a)
+- Keep fetched dataloader columns chunked instead of copying them [6910b32](https://github.com/rerun-io/rerun/commit/6910b32e378deb3c73f94446892b15d300392529)
+- Further simplifications to manifest validation [62a6d0f](https://github.com/rerun-io/rerun/commit/62a6d0ff9c7da11e685c102cd1b7558bf52919f5)
+
+#### 🖼 UI improvements
+- Viewer design refresh [ffd18ae](https://github.com/rerun-io/rerun/commit/ffd18ae99f5b95c9a2406ebff570a58c09745a15)
+
+#### 🗣 Refactors
+- Add new `re_catalog_client` crate [5aa3d4e](https://github.com/rerun-io/rerun/commit/5aa3d4e454175cfee7601d6d3e4ebd24ddc98e5d)
+
+#### 📦 Dependencies
+- Bump the "rerun-example-droid-semantic-search" group with 1 update across multiple ecosystems [3277139](https://github.com/rerun-io/rerun/commit/3277139f31bc4cc753cd384cfd8cb47e31458d41)
+
+#### 🤷‍ Other
+- Save [table filters](https://rerun.io/docs/howto/visualization/configure-table-blueprints#filtering-rows) in table blueprint [b0563bd](https://github.com/rerun-io/rerun/commit/b0563bde293e4956efafafd5b15ba9b9699e955a)
+- Add sorting by column in table blueprint [da5ce19](https://github.com/rerun-io/rerun/commit/da5ce19cfe42d0453c12d1bd708b650b1549b79b)
+- Rename `DatasetView` to `DatasetSelection` [0439052](https://github.com/rerun-io/rerun/commit/0439052191e67c24f2cd65d520bb0754fe397887)
+
 ## [0.39.0](https://github.com/rerun-io/rerun/compare/0.38.1...0.39.0) - 2026-10-08
 
 ### ✨ Overview & highlights

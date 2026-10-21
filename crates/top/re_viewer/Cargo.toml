@@ -30,6 +30,7 @@ include = [
   "data/**/*.png",
   "data/**/*.py",
   "data/**/*.rs",
+  "data/**/*.svg",
 ]
 
 [lints]

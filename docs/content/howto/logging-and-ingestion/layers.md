@@ -212,7 +212,7 @@ Output:
 
 ### How many segments contain each layer?
 
-[`DatasetEntry.info()`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetEntry.info) counts the distinct segments of each layer:
+[`DatasetEntry.info()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.info) counts the distinct segments of each layer:
 
 ```python
 >>> {layer.name: layer.num_segments for layer in dataset.info().layers}
