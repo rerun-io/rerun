@@ -888,6 +888,13 @@ function resolveAbsoluteUrl(url: string): string {
  * ```
  *
  * For the full list of available events, see {@link ViewerEvent}.
+ *
+ * Methods that read or drive the Viewer, like {@link WebViewer.get_state} and {@link WebViewer.set_time},
+ * return promises, because the Viewer handles each request on its next frame.
+ * Some requests take even longer, such as a screenshot, or opening a URL, which waits for the data to load.
+ * They are all async so that they work the same way.
+ * {@link WebViewer.open} and {@link WebViewer.close} are different: they return right away,
+ * without waiting for the data to load.
  */
 export class WebViewer {
   #id = randomId();

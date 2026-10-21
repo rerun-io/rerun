@@ -3,6 +3,8 @@ title: Embed Rerun in Web pages
 order: 100
 ---
 
+For the full JavaScript API, see the [Web Viewer API reference](https://ref.rerun.io/docs/js/).
+
 Integrating the Rerun Viewer into your web application can be accomplished either by [utilizing an iframe](#embedding-apprerunio-using-an-iframe) or by using our [JavaScript package](#using-the-javascript-package).
 
 ## Embedding `app.rerun.io` using an `<iframe>`
@@ -127,7 +129,30 @@ This action also removes the canvas from the page.
 
 You can `start` and `stop` the same `WebViewer` instance multiple times.
 
-For a runnable TypeScript example that controls playback (`set_playing`, `set_current_time`) and listens to Viewer events, see [`examples/js/viewer_control`](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control).
+### Reading and driving the Viewer
+
+The Viewer can report what it shows, and be driven from code:
+
+```js,id=embed-web-viewer-control
+// What the Viewer shows: the open recordings, their timelines, and time cursors.
+const state = await viewer.get_state();
+
+// On a duration timeline, seek the active recording to one second, and play from there.
+await viewer.set_time({ duration_nanos: 1_000_000_000n, play_state: "playing" });
+
+// Show another open recording.
+await viewer.set_location(state.recordings[0].location);
+```
+
+Each of these methods returns a promise, because the Viewer handles each request on its next frame.
+Some requests take even longer, such as a screenshot, or opening a URL, which waits for the data to load.
+They are all async so that they work the same way.
+`open` and `close` are different: they return right away, without waiting for the data to load.
+
+A failed call rejects with a `ViewerControlError`, whose `code` is a gRPC status code such as `NOT_FOUND`.
+This API is experimental, and may change between releases.
+
+For a runnable TypeScript example that controls playback and listens to Viewer events, see [`examples/js/viewer_control`](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control).
 
 ### Callbacks
 

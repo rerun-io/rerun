@@ -465,6 +465,9 @@ js-example-viewer-control = { cmd = "npm install && npm run dev", cwd = "example
 # Smoke test `examples/js/viewer_control` with Playwright. Needs a built web-viewer and `$CHROME` (or `npx playwright install chromium`).
 js-example-viewer-control-test = { cmd = "npm ci && npm test", cwd = "examples/js/viewer_control" }
 
+# Fail if any of our JS or TS code uses a deprecated web-viewer API. Needs a built web-viewer.
+js-check-deprecated = { cmd = "npm ci --prefix rerun_notebook && npm ci --prefix examples/js/viewer_control && node rerun_js/scripts/check_deprecated.mjs rerun_js/web-viewer/tsconfig.json rerun_js/web-viewer-react/tsconfig.json rerun_notebook/tsconfig.json examples/js/viewer_control/tsconfig.json" }
+
 
 # Build and install a development version of the rerun-sdk Python package.
 #

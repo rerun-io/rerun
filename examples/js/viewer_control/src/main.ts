@@ -1,4 +1,9 @@
-import { WebViewer } from "@rerun-io/web-viewer";
+import {
+  WebViewer,
+  type SetTimeOptions,
+  type ViewerRecording,
+  type ViewerTimeline,
+} from "@rerun-io/web-viewer";
 
 const DEFAULT_RRD_URL = "https://app.rerun.io/version/0.39.0/examples/dna.rrd";
 
@@ -20,33 +25,57 @@ await viewer.start(rrdUrl, $("viewer"), {
   hide_welcome_screen: true,
 });
 
-
 function logEvent(text: string) {
   log.textContent += `${text}\n`;
   log.scrollTop = log.scrollHeight;
 }
 
-/** Read the playback state of the active recording back from the viewer, and show it in the controls. */
+function logError(err: unknown) {
+  logEvent(`error: ${err}`);
+}
+
+/** Ask the viewer for its active recording, and the timeline its time cursor is on. */
+async function getActive(): Promise<{ recording: ViewerRecording; timeline?: ViewerTimeline } | undefined> {
+  const state = await viewer.get_state();
+  const recording = state.recordings.find((recording) => recording.store_id === state.active_store_id);
+  if (recording === undefined) {
+    return undefined;
+  }
+  const timeline = recording.timelines.find((t) => t.name === recording.current_time?.timeline);
+  return { recording, timeline };
+}
+
+/**
+ * Show the viewer's state in the controls.
+ *
+ * The viewer answers requests in order, so the last answer to arrive is the latest state.
+ */
 function refresh() {
-  const recordingId = viewer.get_active_recording_id();
-  if (recordingId === null) {
+  showState().catch(logError);
+}
+
+/** Show the active recording's playback in the controls. */
+async function showState() {
+  const active = await getActive();
+  if (active === undefined) {
     return;
   }
+  const { recording, timeline } = active;
 
   playButton.disabled = false;
-  playButton.textContent = viewer.get_playing(recordingId) ? "Pause" : "Play";
+  playButton.textContent = recording.play_state === "paused" ? "Play" : "Pause";
 
-  const timeline = viewer.get_active_timeline(recordingId);
-  timelineLabel.textContent = timeline ?? "No timeline";
+  const cursor = recording.current_time;
+  timelineLabel.textContent = cursor?.timeline ?? "No timeline";
 
-  const range = timeline === null ? null : viewer.get_time_range(recordingId, timeline);
-  timeSlider.disabled = range === null;
-  if (timeline !== null && range !== null) {
-    const time = viewer.get_current_time(recordingId, timeline);
-    timeSlider.min = String(range.min);
-    timeSlider.max = String(range.max);
-    timeSlider.value = String(time);
-    timeLabel.textContent = String(time);
+  const range = timeline?.time_range;
+  timeSlider.disabled = range === undefined;
+  if (range !== undefined) {
+    const time = String(cursor?.time ?? range.start);
+    timeSlider.min = String(range.start);
+    timeSlider.max = String(range.end);
+    timeSlider.value = time;
+    timeLabel.textContent = time;
   }
 }
 
@@ -73,16 +102,37 @@ viewer.on("selection_change", (event) => {
 });
 
 // Page → viewer
-playButton.addEventListener("click", () => {
-  const recordingId = viewer.get_active_recording_id();
-  if (recordingId !== null) {
-    viewer.set_playing(recordingId, !viewer.get_playing(recordingId));
+//
+// Each handler asks for the active recording afresh,
+// since switching between open recordings need not emit any event.
+
+async function togglePlaying() {
+  const active = await getActive();
+  if (active !== undefined) {
+    const play_state = active.recording.play_state === "paused" ? "playing" : "paused";
+    await viewer.set_time({ recording: active.recording.store_id, play_state });
   }
+}
+
+async function seek(time: bigint) {
+  const active = await getActive();
+  if (active === undefined) {
+    return;
+  }
+
+  // The slider works in the timeline's own unit: sequence indices, or nanoseconds.
+  const at: SetTimeOptions =
+    active.timeline?.time_type === "sequence"
+      ? { sequence: time }
+      : active.timeline?.time_type === "timestamp"
+        ? { timestamp_nanos: time }
+        : { duration_nanos: time };
+  await viewer.set_time({ ...at, recording: active.recording.store_id });
+}
+
+playButton.addEventListener("click", () => {
+  togglePlaying().catch(logError);
 });
 timeSlider.addEventListener("input", () => {
-  const recordingId = viewer.get_active_recording_id();
-  const timeline = recordingId === null ? null : viewer.get_active_timeline(recordingId);
-  if (recordingId !== null && timeline !== null) {
-    viewer.set_current_time(recordingId, timeline, Number(timeSlider.value));
-  }
+  seek(BigInt(timeSlider.value)).catch(logError);
 });
