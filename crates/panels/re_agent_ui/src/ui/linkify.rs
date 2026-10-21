@@ -3,11 +3,19 @@
 
 use std::borrow::Cow;
 
-const SCHEMES: [&str; 2] = ["https://", "http://"];
+/// Clicking a `rerun` URL opens it in the viewer.
+const SCHEMES: [&str; 5] = [
+    "https://",
+    "http://",
+    "rerun://",
+    "rerun+https://",
+    "rerun+http://",
+];
 
-/// Wraps bare `http(s)://` URLs in `<…>` so the markdown renderer turns them into links.
+/// Wraps bare `http(s)://` and `rerun://` URLs in `<…>` so the markdown renderer turns them into links.
 ///
-/// Leaves alone anything inside code spans or fences, and URLs that are already part of a link.
+/// A code span holding nothing but such a URL becomes a link too.
+/// Leaves alone any other code spans or fences, and URLs that are already part of a link.
 pub fn linkify_bare_urls(markdown: &str) -> Cow<'_, str> {
     if !SCHEMES.iter().any(|scheme| markdown.contains(scheme)) {
         return Cow::Borrowed(markdown);
@@ -18,6 +26,14 @@ pub fn linkify_bare_urls(markdown: &str) -> Cow<'_, str> {
     let mut rest = markdown;
 
     while !rest.is_empty() {
+        if !in_code && let Some(url) = url_code_span(rest) {
+            out.push('<');
+            out.push_str(url);
+            out.push('>');
+            rest = &rest[url.len() + 2..];
+            continue;
+        }
+
         if let Some(stripped) = rest.strip_prefix('`') {
             in_code = !in_code;
             out.push('`');
@@ -48,6 +64,16 @@ pub fn linkify_bare_urls(markdown: &str) -> Cow<'_, str> {
     }
 
     Cow::Owned(out)
+}
+
+/// The URL in a single-backtick code span at the start of `text`, if the span holds nothing else.
+fn url_code_span(text: &str) -> Option<&str> {
+    let inner = text.strip_prefix('`')?;
+    let end = inner.find('`')?;
+    let url = &inner[..end];
+    let is_url = SCHEMES.iter().any(|scheme| url.starts_with(scheme))
+        && !url.contains(|c: char| c.is_whitespace() || c == '<' || c == '>');
+    (is_url && !inner[end + 1..].starts_with('`')).then_some(url)
 }
 
 /// A URL may start here if what came before is not part of a word or of markdown link syntax.
@@ -84,6 +110,22 @@ mod tests {
             linkify_bare_urls("(see https://example.com/wiki/Foo_(bar))"),
             "(see <https://example.com/wiki/Foo_(bar)>)"
         );
+        assert_eq!(
+            linkify_bare_urls(
+                "Open rerun://host/dataset/abc?segment_id=s1, or rerun+http://localhost:51234/entry/xyz."
+            ),
+            "Open <rerun://host/dataset/abc?segment_id=s1>, or <rerun+http://localhost:51234/entry/xyz>."
+        );
+    }
+
+    #[test]
+    fn links_code_spans_holding_only_a_url() {
+        assert_eq!(
+            linkify_bare_urls(
+                "Open `rerun://host/dataset/abc?segment_id=s1` or `https://rerun.io`."
+            ),
+            "Open <rerun://host/dataset/abc?segment_id=s1> or <https://rerun.io>."
+        );
     }
 
     #[test]
@@ -91,8 +133,10 @@ mod tests {
         for unchanged in [
             "[docs](https://rerun.io/docs)",
             "<https://rerun.io>",
-            "`https://rerun.io`",
+            "`curl https://rerun.io`",
+            "`ftp://rerun.io`",
             "```\ncurl https://rerun.io\n```",
+            "```\nhttps://rerun.io\n```",
             "prefix/https://example.com/not-a-link",
         ] {
             assert_eq!(linkify_bare_urls(unchanged), unchanged, "{unchanged}");
