@@ -48,6 +48,9 @@
     }
   },
   "files": [
+    "exact_json.d.ts",
+    "exact_json.d.ts.map",
+    "exact_json.ts",
     "index.d.ts",
     "index.d.ts.map",
     "index.js",

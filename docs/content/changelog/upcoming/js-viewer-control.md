@@ -7,6 +7,7 @@ type: feature
 ### Typed viewer API in the JS web viewer
 
 `WebViewer` has new typed methods to read and drive the viewer: `get_state`, `set_time`, `get_location`, and `set_location`.
+Others open URLs and close recordings, read and write blueprints, read recording, dataset, and table schemas, inspect the transform graph, read the viewer's logs, run command palette commands, and highlight a part of the screen.
 
 ```ts
 // Which recordings are open, and the time range of each of their timelines:
