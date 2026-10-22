@@ -1102,6 +1102,12 @@ class DatasetEntryInternal:
 
     # ---
 
+    def write_segment_bytes(
+        self, data: bytes, storage_prefix: str | None, layer: str, on_duplicate: str
+    ) -> WriteOperationInternal: ...
+    def write_segment_path(
+        self, path: str, storage_prefix: str | None, layer: str, on_duplicate: str
+    ) -> WriteOperationInternal: ...
     def register(
         self,
         recording_uris: list[str],
@@ -1422,6 +1428,10 @@ class CatalogClientInternal:
     # ---
 
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
+
+class WriteOperationInternal:
+    def status(self) -> str: ...
+    def wait(self, timeout_secs: int | None = None) -> tuple[list[str], str]: ...
 
 class RegistrationHandleInternal:
     def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str, str | None]]: ...

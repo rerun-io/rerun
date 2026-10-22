@@ -9355,6 +9355,7 @@ version = "0.41.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "bytes",
  "ehttp",
  "futures",
  "itertools 0.15.0",
@@ -9370,6 +9371,7 @@ dependencies = [
  "re_sorbet",
  "re_span",
  "re_tracing",
+ "re_tuid",
  "re_types_core",
  "re_uri",
  "re_workspace_hack",

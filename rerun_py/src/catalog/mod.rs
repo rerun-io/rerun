@@ -30,6 +30,7 @@ mod table_entry;
 mod table_provider_adapter;
 mod type_aliases;
 mod unregistration_handle;
+mod write_operation;
 
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::prelude::*;
@@ -75,6 +76,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;
     m.add_class::<PyUnregistrationHandleInternal>()?;
+    m.add_class::<write_operation::PyWriteOperationInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
     m.add_class::<PySegmentUrlUdfInternal>()?;

@@ -47,6 +47,26 @@ struct Registration {
     descriptor_indices_by_task_id: HashMap<TaskId, Vec<usize>>,
 }
 
+/// Whether waiting failed before or after registration reached a terminal state.
+#[derive(Debug, thiserror::Error)]
+pub enum RegistrationError {
+    /// Registration failed terminally; waiting again will return the same error.
+    #[error(transparent)]
+    Failed(ApiError),
+
+    /// The completion query failed; waiting again may succeed.
+    #[error(transparent)]
+    Query(ApiError),
+}
+
+impl From<RegistrationError> for ApiError {
+    fn from(err: RegistrationError) -> Self {
+        match err {
+            RegistrationError::Failed(err) | RegistrationError::Query(err) => err,
+        }
+    }
+}
+
 /// A submitted dataset registration.
 ///
 /// This retains the originating [`ConnectionHandle`], so lifecycle operations always resolve
@@ -173,21 +193,23 @@ impl RegistrationHandle {
     /// Wait for all registration tasks to complete.
     ///
     /// Returns the registered segment IDs in descriptor order.
-    /// Returns an [`ApiError`] if any task fails or if the request, query, or timeout fails.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn wait(&self, timeout: Duration) -> ApiResult<Vec<SegmentId>> {
-        let results = self.indexed_results(timeout).await?;
+    pub async fn wait(&self, timeout: Duration) -> Result<Vec<SegmentId>, RegistrationError> {
+        let results = self
+            .indexed_results(timeout)
+            .await
+            .map_err(RegistrationError::Query)?;
         self.collect_results(results).await
     }
 
     async fn collect_results(
         &self,
         mut results: ApiResponseStream<IndexedRegistrationResult>,
-    ) -> ApiResult<Vec<SegmentId>> {
+    ) -> Result<Vec<SegmentId>, RegistrationError> {
         let query_trace_id = results.trace_id();
         let mut outcomes = vec![None; self.descriptors().len()];
         while let Some(result) = results.next().await {
-            let result = result?;
+            let result = result.map_err(RegistrationError::Query)?;
             let previous = outcomes[result.descriptor_index].replace(result.result);
             re_log::debug_assert!(
                 previous.is_none(),
@@ -228,14 +250,14 @@ impl RegistrationHandle {
             return Ok(segment_ids);
         }
 
-        Err(ApiError::invalid_arguments(
-            &self.connection.origin().clone(),
+        Err(RegistrationError::Failed(ApiError::invalid_arguments(
+            self.connection.origin(),
             format!(
                 "Registration failed.{}\n\nThe following segments failed:\n{}",
                 format_trace_ids(self.trace_id(), query_trace_id),
                 errors.join("\n")
             ),
-        ))
+        )))
     }
 }
 

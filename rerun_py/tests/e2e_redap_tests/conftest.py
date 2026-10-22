@@ -366,7 +366,7 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     after the test completes.
     """
 
-    prefix = f"{request.node.name}_"
+    prefix = f"{request.node.name.replace('/', '_')}_"
     factory = EntryFactory(catalog_client, prefix)
     yield factory
     factory.cleanup()

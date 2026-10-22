@@ -32,7 +32,7 @@ from ._entry import (
 )
 from ._layer import Layer as Layer
 from ._registration_handle import (
-    RegistrationHandle as RegistrationHandle,
+    RegistrationOperation as RegistrationOperation,
     RegistrationResult as RegistrationResult,
     SegmentRegistrationResult as SegmentRegistrationResult,
 )
@@ -45,6 +45,16 @@ from ._unregistration_handle import (
 
 def __getattr__(name: str) -> Any:
     """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
+    if name == "RegistrationHandle":
+        import warnings
+
+        warnings.warn(
+            "`rerun.catalog.RegistrationHandle` was renamed to `rerun.catalog.RegistrationOperation`. "
+            "The `RegistrationHandle` alias is deprecated and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return RegistrationOperation
     # TODO(RR-6017): remove the `DatasetView` alias.
     if name == "DatasetView":
         import warnings

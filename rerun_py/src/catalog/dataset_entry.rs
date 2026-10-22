@@ -1,4 +1,5 @@
 use std::num::NonZeroU64;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
@@ -11,12 +12,13 @@ use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymetho
 use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails, ObjectKey};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_redap_client::{DatasetSchema, SegmentChunkProvider};
 use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
+use super::write_operation::PyWriteOperationInternal;
 use super::{
     PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails, PyTableProviderAdapterInternal,
     to_py_err,
@@ -612,6 +614,65 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(registration))
     }
 
+    #[pyo3(signature = (data, storage_prefix, layer, on_duplicate))]
+    fn write_segment_bytes(
+        self_: PyRef<'_, Self>,
+        data: Vec<u8>,
+        storage_prefix: Option<&str>,
+        layer: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyWriteOperationInternal> {
+        let py = self_.py();
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry.write_segment_bytes").entered();
+        let layer = LayerName::try_new(layer).map_err(to_py_err)?;
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_id();
+        let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
+        Ok(PyWriteOperationInternal::new(async move {
+            connection
+                .inner()
+                .write_segment_bytes(
+                    dataset_id,
+                    bytes::Bytes::from(data),
+                    storage_prefix.as_ref(),
+                    layer,
+                    on_duplicate,
+                )
+                .await
+        }))
+    }
+
+    #[pyo3(signature = (path, storage_prefix, layer, on_duplicate))]
+    fn write_segment_path(
+        self_: PyRef<'_, Self>,
+        path: PathBuf,
+        storage_prefix: Option<&str>,
+        layer: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyWriteOperationInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.write_segment_path").entered();
+        let layer = LayerName::try_new(layer).map_err(to_py_err)?;
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_id();
+        let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
+        Ok(PyWriteOperationInternal::new(async move {
+            connection
+                .inner()
+                .write_segment_path(
+                    dataset_id,
+                    path,
+                    storage_prefix.as_ref(),
+                    layer,
+                    on_duplicate,
+                )
+                .await
+        }))
+    }
+
     /// Unregisters segments and layers from the dataset.
     ///
     /// Excluding IO errors, this will always succeed as long the target dataset exists.
@@ -897,6 +958,11 @@ fn parse_on_duplicate(on_duplicate: &str) -> PyResult<IfDuplicateBehavior> {
             "invalid on_duplicate value: '{on_duplicate}'. Expected 'error', 'skip', or 'replace'"
         ))),
     }
+}
+
+fn parse_storage_prefix(storage_prefix: &str) -> PyResult<ObjectKey> {
+    ObjectKey::try_new(storage_prefix)
+        .map_err(|err| PyValueError::new_err(format!("invalid storage_prefix: {err}")))
 }
 
 /// Helper function to convert a Python object to i64.

@@ -367,7 +367,7 @@ impl CatalogClient {
         let registered = registration
             .wait(timeout)
             .await
-            .map_err(|err| AssetRegistrationError::new(asset_id.clone(), err))?
+            .map_err(|err| AssetRegistrationError::new(asset_id.clone(), err.into()))?
             .into_iter()
             .next();
 

@@ -8,6 +8,7 @@ mod registration;
 mod segment;
 mod staging;
 mod table;
+mod write;
 
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle};
 
@@ -17,8 +18,9 @@ pub use self::asset::{
 };
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
-pub use self::registration::{RegistrationHandle, SegmentRegistrationResult};
+pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};
 pub use self::staging::StagingError;
+pub use self::write::{WriteError, WriteHandle};
 
 /// High-level catalog operations backed by a short-lived protocol client per request.
 #[derive(Clone, Debug)]

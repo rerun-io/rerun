@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -32,6 +33,7 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+    from typing import BinaryIO
 
     import datafusion
     import numpy as np
@@ -45,11 +47,12 @@ if TYPE_CHECKING:
         EntryKind,
         IndexValuesLike,
         Layer,
-        RegistrationHandle,
+        RegistrationOperation,
         Schema,
         Segment,
         UnregistrationHandle,
     )
+    from ._write_operation import WriteOperation
 
 
 class OnDuplicateSegmentLayer(StrEnum):
@@ -742,6 +745,49 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
+    # TODO(RR-2168): Allow selecting an arbitrary recording from the RRD and add a segment_id
+    # parameter once registration supports overriding encoded recording IDs.
+    @with_tracing("DatasetEntry._write_segments")
+    def _write_segments(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RRD and register its first recording.
+
+        Experimental API. Only the first recording in the RRD is registered.
+        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
+        Duplicate handling follows `register()`.
+        `storage_prefix` is relative to catalog storage; None adds no prefix.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        from ._write_operation import WriteOperation
+
+        if isinstance(source, (str, Path)):
+            return WriteOperation(
+                self._internal.write_segment_path(str(source), storage_prefix, layer_name, on_duplicate)
+            )
+        elif isinstance(source, (bytes, bytearray, memoryview)):
+            data = bytes(source)
+        elif callable(read := getattr(source, "read", None)):
+            data = read()
+            if not isinstance(data, bytes):
+                raise TypeError("binary readers must return bytes")
+        else:
+            # TODO(RR-5715): Pass sequential sources through the bounded streaming upload path.
+            data = b"".join(source)
+        return WriteOperation(self._internal.write_segment_bytes(data, storage_prefix, layer_name, on_duplicate))
+
+    # TODO(RR-2168): Allow selecting an arbitrary recording from each RRD and add a segment_id
+    # parameter once registration supports overriding encoded recording IDs.
     @with_tracing("DatasetEntry.register")
     def register(
         self,
@@ -751,12 +797,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         layer_name: str | Sequence[str] = "base",
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         object_store_config: str | None = None,
-    ) -> RegistrationHandle:
+    ) -> RegistrationOperation:
         """
         Register RRD URIs to the dataset and return a handle to track progress.
 
         This method initiates the registration of recordings to the dataset, and returns
         a handle that can be used to wait for completion or iterate over results.
+
+        Only the first recording in each RRD is registered.
+        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
 
         Prefer batching many URIs into a single `register` call rather than calling
         `register` repeatedly in a loop, which is much slower.
@@ -782,13 +831,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        RegistrationHandle
+        RegistrationOperation
             A handle to track and wait on the registration tasks.
 
         """
         from rerun.error_utils import _send_warning_or_raise
 
-        from ._registration_handle import RegistrationHandle
+        from ._registration_handle import RegistrationOperation
 
         if isinstance(recording_uri, str):
             _send_warning_or_raise(
@@ -809,7 +858,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if len(layer_names) != len(recording_uris):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-        return RegistrationHandle(
+        return RegistrationOperation(
             self._internal.register(
                 recording_uris,
                 recording_layers=layer_names,
@@ -899,7 +948,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         *,
         object_store_config: str | None = None,
-    ) -> RegistrationHandle:
+    ) -> RegistrationOperation:
         """
         Register all RRDs under a given prefix to the dataset and return a handle to track progress.
 
@@ -931,12 +980,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         A handle to track and wait on the registration tasks.
 
         """
-        from ._registration_handle import RegistrationHandle
+        from ._registration_handle import RegistrationOperation
 
         if layer_name is None:
             layer_name = "base"
 
-        return RegistrationHandle(
+        return RegistrationOperation(
             self._internal.register_prefix(
                 recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
             )
