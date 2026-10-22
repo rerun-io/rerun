@@ -23,6 +23,7 @@ package = false
 # Isolated examples don't inherit the workspace root's constraint-dependencies, so pin it here.
 # pyarrow arrives transitively (via rerun-sdk), hence a constraint rather than a direct dependency.
 constraint-dependencies = ["pyarrow>=23.0.1,<24"]
+override-dependencies = ["pillow>=13.0.0,<14"]
 
 # Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
 # After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
