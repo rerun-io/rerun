@@ -279,7 +279,7 @@ pub const SOURCE_CHANGED_MESSAGE: &str =
 /// `W/` prefix on the response usually means an intermediary (CDN, edge
 /// cache, transparent compressor) re-encoded or transformed the bytes — in
 /// which case the bytes we'll decode may not match what the manifest indexed.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct ETag(String);
 
 impl ETag {
