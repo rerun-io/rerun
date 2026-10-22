@@ -448,6 +448,8 @@ pub fn build_text_chunk(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use std::sync::Arc;
 
     use arrow::array::Int64Array;
@@ -502,7 +504,7 @@ mod tests {
             out[0].as_ref().unwrap().entity_path(),
             &EntityPath::from("/action")
         );
-        assert!(matches!(out[1], Err(LeRobotError::Lens(_))));
+        assert_matches!(out[1], Err(LeRobotError::Lens(_)));
     }
 
     /// A language column whose rows are not lists of annotation rows errors on the first
@@ -524,7 +526,7 @@ mod tests {
             &mut columns_done,
         )
         .unwrap_err();
-        assert!(matches!(err, LeRobotError::InvalidLanguageColumn { .. }));
+        assert_matches!(err, LeRobotError::InvalidLanguageColumn { .. });
 
         let tracks = language_tracks(
             &chunk,

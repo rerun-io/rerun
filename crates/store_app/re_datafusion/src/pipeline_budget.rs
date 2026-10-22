@@ -1218,14 +1218,12 @@ impl PipelineBudget {
         }
         let observed = ((actual as f64) / (estimated as f64))
             .clamp(MIN_ESTIMATE_MULTIPLIER, MAX_ESTIMATE_MULTIPLIER);
-        self.estimate_multiplier
-            .fetch_update(AcqRel, Acquire, |bits| {
-                let curr = f64::from_bits(bits);
-                let next = ESTIMATE_EMA_ALPHA * observed + (1.0 - ESTIMATE_EMA_ALPHA) * curr;
-                let next = next.clamp(MIN_ESTIMATE_MULTIPLIER, MAX_ESTIMATE_MULTIPLIER);
-                Some(next.to_bits())
-            })
-            .expect("closure always returns Some");
+        self.estimate_multiplier.update(AcqRel, Acquire, |bits| {
+            let curr = f64::from_bits(bits);
+            let next = ESTIMATE_EMA_ALPHA * observed + (1.0 - ESTIMATE_EMA_ALPHA) * curr;
+            next.clamp(MIN_ESTIMATE_MULTIPLIER, MAX_ESTIMATE_MULTIPLIER)
+                .to_bits()
+        });
     }
 
     /// Wake the highest-priority parked waiter that can *actually* be
@@ -1643,11 +1641,9 @@ impl PipelineBudget {
             let new_cur = self.current.fetch_add(actual - reserved, AcqRel) + (actual - reserved);
             self.record_peak_decoded_bytes(new_cur);
         } else if reserved > actual {
-            self.current
-                .fetch_update(AcqRel, Acquire, |current| {
-                    Some(current.saturating_sub(reserved - actual))
-                })
-                .expect("closure always returns Some");
+            self.current.update(AcqRel, Acquire, |current| {
+                current.saturating_sub(reserved - actual)
+            });
             // Budget bytes were just freed — same progress signal as
             // `release`. Clear the stall detector so a now-stale
             // `force_overcommit` can't make the next `reserve`
@@ -1670,10 +1666,7 @@ impl PipelineBudget {
     pub(crate) fn release(&self, bytes: usize) {
         let prev = self
             .current
-            .fetch_update(AcqRel, Acquire, |current| {
-                Some(current.saturating_sub(bytes))
-            })
-            .expect("closure always returns Some");
+            .update(AcqRel, Acquire, |current| current.saturating_sub(bytes));
         self.total_released_bytes.fetch_add(bytes, AcqRel);
         self.total_releases.fetch_add(1, AcqRel);
         // Real progress: budget bytes were just freed, so the stall
@@ -1792,10 +1785,7 @@ impl PipelineBudget {
             return;
         }
         self.current
-            .fetch_update(AcqRel, Acquire, |current| {
-                Some(current.saturating_sub(reserved))
-            })
-            .expect("closure always returns Some");
+            .update(AcqRel, Acquire, |current| current.saturating_sub(reserved));
         self.wake_next();
     }
 

@@ -100,6 +100,8 @@ pub fn decode_tiff(data: &[u8]) -> Result<super::DecodedFrameContent, super::Dec
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     fn encode_gray_f32_tiff(values: &[f32], width: u32, height: u32) -> Vec<u8> {
@@ -119,7 +121,7 @@ mod tests {
         let decoded = decode_tiff(&encoded).unwrap();
         assert_eq!(decoded.width, 2);
         assert_eq!(decoded.height, 2);
-        assert!(matches!(decoded.format, crate::PixelFormat::R32Float));
+        assert_matches!(decoded.format, crate::PixelFormat::R32Float);
         let pixels: &[f32] = bytemuck::cast_slice(&decoded.data);
         assert_eq!(pixels, &values);
     }

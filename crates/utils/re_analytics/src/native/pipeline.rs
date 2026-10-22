@@ -430,6 +430,8 @@ fn flush_events(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     fn write_session_file(path: &Path, content: &str) {
@@ -480,7 +482,7 @@ mod tests {
             .open(&path)
             .unwrap();
 
-        assert!(matches!(second.try_lock(), Err(TryLockError::WouldBlock)));
+        assert_matches!(second.try_lock(), Err(TryLockError::WouldBlock));
 
         let mut sent = Vec::new();
         flush_pending_file(&mut first, &path, |file| {

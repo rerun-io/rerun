@@ -132,6 +132,8 @@ viewer_control_ops! {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -140,10 +142,10 @@ mod tests {
             url: "rerun://example".to_owned(),
             navigate: None,
         };
-        assert!(matches!(
+        assert_matches!(
             request.into_envelope().kind,
             Some(viewer_control_request::Kind::Open(_))
-        ));
+        );
 
         let envelope = ViewerControlResponse::from(OpenResponse::default());
         assert!(OpenRequest::from_envelope(envelope).is_ok());

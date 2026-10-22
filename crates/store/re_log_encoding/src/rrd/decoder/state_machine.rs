@@ -522,6 +522,8 @@ fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use re_chunk::RowId;
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo};
 
@@ -620,10 +622,7 @@ mod tests {
         decoder.push_byte_chunk(data);
 
         assert!(decoder.try_read().unwrap().is_none());
-        assert!(matches!(
-            decoder.state,
-            DecoderState::WaitingForMessagePayload(_)
-        ));
+        assert_matches!(decoder.state, DecoderState::WaitingForMessagePayload(_));
         assert_eq!(
             decoder.byte_chunks.queued_len,
             decoder

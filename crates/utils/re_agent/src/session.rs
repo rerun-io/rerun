@@ -1055,6 +1055,8 @@ fn is_within(path: &Path, directories: &[PathBuf]) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use agent_client_protocol::schema::v1::{
         ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
         ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
@@ -1325,10 +1327,10 @@ mod tests {
             ToolCall::new("call-1", "mcp__rerun__startup").status(ToolCallStatus::Failed),
         )));
 
-        assert!(matches!(
+        assert_matches!(
             session.transcript.items[0].item,
             TranscriptItem::ToolCall(_)
-        ));
+        );
     }
 
     fn call(

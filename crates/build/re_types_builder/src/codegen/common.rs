@@ -80,7 +80,7 @@ impl<'a> ExampleInfo<'a> {
 
             if args.starts_with('"') {
                 // \example example_name "Example Title"
-                title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
+                title = args.strip_circumfix('"', '"');
             } else {
                 // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" missing="cpp, py"
                 title = find_keyed("title", args);

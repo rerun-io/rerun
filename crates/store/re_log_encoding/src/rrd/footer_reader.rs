@@ -241,6 +241,8 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
+    use std::assert_matches;
+
     use std::fs::File;
 
     use super::*;
@@ -672,8 +674,9 @@ mod tests {
 
         let file = File::open(file.path()).unwrap();
         let result = futures::executor::block_on(read_rrd_footer(&file));
-        assert!(
-            matches!(result, Err(CodecError::CrcMismatch { .. })),
+        assert_matches!(
+            result,
+            Err(CodecError::CrcMismatch { .. }),
             "Expected CRC mismatch, got: {result:?}"
         );
     }

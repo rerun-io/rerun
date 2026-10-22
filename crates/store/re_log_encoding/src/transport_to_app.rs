@@ -524,6 +524,8 @@ fn decode_arrow(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::CodecError;
 
     #[test]
@@ -538,10 +540,8 @@ mod tests {
             arrow_msg.payload = vec![0].into();
             arrow_msg.uncompressed_size = declared;
 
-            assert!(matches!(
-                super::arrow_msg_transport_to_app(&arrow_msg),
-                Err(CodecError::InvalidUncompressedSize { declared: size, max: 255 }) if size == declared
-            ));
+            assert_matches!(super::arrow_msg_transport_to_app(&arrow_msg),
+                Err(CodecError::InvalidUncompressedSize { declared: size, max: 255 }) if size == declared);
         }
     }
 
@@ -561,7 +561,7 @@ mod tests {
     fn arrow_msg_unknown_compression_errors() {
         let arrow_msg = arrow_msg_with_compression(99);
         let result = super::arrow_msg_transport_to_app(&arrow_msg);
-        assert!(matches!(result, Err(CodecError::TypeConversion(_))));
+        assert_matches!(result, Err(CodecError::TypeConversion(_)));
     }
 
     #[test]

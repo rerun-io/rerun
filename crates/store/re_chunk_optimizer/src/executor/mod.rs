@@ -243,6 +243,8 @@ pub fn select_columns(chunk: Arc<Chunk>, columns: &ColumnSelection) -> Result<Ar
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
@@ -297,20 +299,18 @@ mod tests {
         ));
 
         // A column the chunk lacks, or nothing kept.
-        assert!(matches!(
-            select_columns(
+        assert_matches!(select_columns(
                 Arc::clone(&mixed),
                 &ColumnSelection::Only(BTreeSet::from([labels]))
             ),
-            Err(Error::IndexMismatch { missing, .. }) if missing == vec![labels]
-        ));
-        assert!(matches!(
+            Err(Error::IndexMismatch { missing, .. }) if missing == vec![labels]);
+        assert_matches!(
             select_columns(
                 Arc::clone(&mixed),
                 &ColumnSelection::Except(BTreeSet::from([points, colors]))
             ),
             Err(Error::EmptySelection { .. })
-        ));
+        );
 
         // Partial selections: a new id, the selected columns, every row kept.
         let only_colors = select_columns(

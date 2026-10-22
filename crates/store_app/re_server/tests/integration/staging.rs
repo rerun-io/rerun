@@ -2,6 +2,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::assert_matches;
+
 use std::time::Duration;
 
 use re_catalog_client::{CatalogClient, StagingError};
@@ -49,10 +51,10 @@ async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
             .await?
             .is_empty()
     );
-    assert!(matches!(
+    assert_matches!(
         catalog_client.stage(key, rrd).await,
         Err(StagingError::Rejected { status: 409, .. })
-    ));
+    );
 
     let segment_ids = catalog_client
         .register_with_dataset(

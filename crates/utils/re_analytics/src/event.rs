@@ -911,6 +911,8 @@ impl Properties for WelcomeScreenNavigation {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     /// The text fields must not overwrite the counts that [`AgentTurnUsage`] already inserted.
@@ -938,19 +940,12 @@ mod tests {
         }
         .serialize(&mut event);
 
-        assert!(matches!(
-            event.props["failed_tool_calls"],
-            Property::Integer(2)
-        ));
-        assert!(matches!(event.props["errors"], Property::Integer(1)));
-        assert!(matches!(
-            &event.props["failed_tool_call_text"],
-            Property::String(text) if text == "a: boom\nb: bang"
-        ));
-        assert!(matches!(
-            &event.props["error_text"],
-            Property::String(text) if text == "oh no"
-        ));
+        assert_matches!(event.props["failed_tool_calls"], Property::Integer(2));
+        assert_matches!(event.props["errors"], Property::Integer(1));
+        assert_matches!(&event.props["failed_tool_call_text"],
+            Property::String(text) if text == "a: boom\nb: bang");
+        assert_matches!(&event.props["error_text"],
+            Property::String(text) if text == "oh no");
     }
 
     #[test]

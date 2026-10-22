@@ -324,6 +324,8 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use std::collections::HashMap;
 
     use arrow::array::{FixedSizeBinaryBuilder, StringArray};
@@ -450,10 +452,10 @@ mod tests {
         let props = segment_stream_plan_properties(&schema, Some(Index::from("log_time")), 4);
 
         assert_eq!(ordering_columns(&props), Vec::<String>::new());
-        assert!(matches!(
+        assert_matches!(
             props.partitioning,
             datafusion::physical_expr::Partitioning::UnknownPartitioning(4)
-        ));
+        );
     }
 
     #[test]
@@ -483,10 +485,10 @@ mod tests {
         let props = segment_stream_plan_properties(&schema, Some(Index::from("log_time")), 4);
 
         assert_eq!(ordering_columns(&props), Vec::<String>::new());
-        assert!(matches!(
+        assert_matches!(
             props.partitioning,
             datafusion::physical_expr::Partitioning::UnknownPartitioning(4)
-        ));
+        );
     }
 
     #[test]

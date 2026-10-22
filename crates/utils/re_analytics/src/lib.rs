@@ -550,6 +550,8 @@ impl Properties for re_build_info::BuildInfo {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use serde_json::Value;
 
     use super::*;
@@ -585,10 +587,8 @@ mod tests {
 
         build_info.serialize(&mut event);
 
-        assert!(matches!(
-            event.props.get("git_hash"),
-            Some(Property::String(git_hash)) if git_hash == "v0.38.1"
-        ));
+        assert_matches!(event.props.get("git_hash"),
+            Some(Property::String(git_hash)) if git_hash == "v0.38.1");
     }
 
     #[test]

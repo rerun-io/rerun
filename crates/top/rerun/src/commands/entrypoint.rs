@@ -2186,6 +2186,8 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
 #[cfg(test)]
 mod cli_data_source_tests {
+    use std::assert_matches;
+
     use std::path::PathBuf;
 
     use clap::Parser as _;
@@ -2202,7 +2204,7 @@ mod cli_data_source_tests {
     #[test]
     fn connect_and_viewer_server_ports_are_independent() {
         let args = Args::try_parse_from(["rerun", "--connect", "--port", "1234"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_matches!(args.port, Some(PortArg::Port(1234)));
         assert_eq!(
             connect_proxy_uri(None).unwrap().to_string(),
             "rerun+http://127.0.0.1:9876/proxy"
@@ -2216,10 +2218,10 @@ mod cli_data_source_tests {
         );
 
         let args = Args::try_parse_from(["rerun", "--port", "auto"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Auto)));
+        assert_matches!(args.port, Some(PortArg::Auto));
 
         let args = Args::try_parse_from(["rerun", "--connect", "4321", "--port", "1234"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_matches!(args.port, Some(PortArg::Port(1234)));
         assert_eq!(
             connect_proxy_uri(Some("4321".to_owned()))
                 .unwrap()

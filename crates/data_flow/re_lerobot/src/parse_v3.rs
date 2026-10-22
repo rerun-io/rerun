@@ -1043,6 +1043,8 @@ impl LeRobotDatasetV3Info {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use crate::LeRobotDataset;
 
     #[test]
@@ -1766,10 +1768,10 @@ mod tests {
         write_tasks(root);
         std::fs::create_dir_all(root.join("data/chunk-000")).unwrap();
         std::fs::write(root.join("data/chunk-000/file-000.parquet"), b"not parquet").unwrap();
-        assert!(matches!(
+        assert_matches!(
             read_data_footer(&root.join("data/chunk-000/file-000.parquet")),
             Err(LeRobotError::DataFileFooter { .. })
-        ));
+        );
 
         assert!(matches!(
             LeRobotDataset::open(root),
@@ -2203,10 +2205,10 @@ mod tests {
 
         let dataset = LeRobotDataset::open(root).expect("fixture opens");
         std::fs::write(root.join("data/chunk-000/file-000.parquet"), b"not parquet").unwrap();
-        assert!(matches!(
+        assert_matches!(
             read_data_footer(&root.join("data/chunk-000/file-000.parquet")),
             Err(LeRobotError::DataFileFooter { .. })
-        ));
+        );
 
         let result = dataset.stream(EpisodeIndex(0), &LeRobotConfig::default());
         assert!(

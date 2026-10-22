@@ -1288,13 +1288,13 @@ mod tests {
         assert_eq!(parse("about:settings").to_route(&settings), Some(settings));
 
         let dataset = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae";
-        assert!(matches!(
+        assert_matches!(
             parse(dataset).to_route(&home),
             Some(Route::RedapEntry {
                 kind: Some(crate::EntryKind::Dataset(_)),
                 ..
             })
-        ));
+        );
         assert_eq!(
             parse(&format!("{dataset}?segment_id=sid")).to_route(&home),
             None
