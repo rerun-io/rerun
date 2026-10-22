@@ -86,7 +86,6 @@ fn install_panic_hook(_build_info: BuildInfo) {
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(target_os = "windows"))]
 #[expect(unsafe_code)]
-#[expect(clippy::fn_to_numeric_cast_any)]
 pub fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 

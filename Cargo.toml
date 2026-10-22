@@ -36,7 +36,7 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.96"
+rust-version = "1.98"
 version = "0.41.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
@@ -937,6 +937,7 @@ struct_field_names = "allow" # 38 hits
 trivially_copy_pass_by_ref = "allow" # 169 hits
 unnecessary_debug_formatting = "allow" # consider enabling this lint, and/or switch to camino's utf8 paths
 unreadable_literal = "allow" # 474 hits
+unused_async_trait_impl = "allow" # 4 hits; `fn … -> impl Future` returning `std::future::ready(…)` reads worse than `async fn`
 used_underscore_binding = "allow" # 404 hits
 
 # These are meh:
