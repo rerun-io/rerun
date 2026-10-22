@@ -578,9 +578,11 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
         return;
     }
 
-    // Keyboard shortcuts act on the oldest request only.
+    // Keyboard shortcuts act on the oldest request only, while the chat input has focus.
     // While a question is open, Enter and Escape must not answer a tool approval instead.
-    let shortcuts_enabled = session.pending_elicitations().is_empty();
+    let input_id = ui.make_persistent_id("chat_input");
+    let shortcuts_enabled =
+        session.pending_elicitations().is_empty() && ui.memory(|memory| memory.has_focus(input_id));
     let enter = shortcuts_enabled && consume_plain_enter(ui);
     let escape = shortcuts_enabled && ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
 

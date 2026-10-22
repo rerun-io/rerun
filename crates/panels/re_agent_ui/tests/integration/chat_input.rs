@@ -6,12 +6,71 @@ use egui::Role;
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent_ui::acp::schema::v1::{
-    AvailableCommand, AvailableCommandsUpdate, CurrentModeUpdate, SessionId, SessionMode,
-    SessionModeState, SessionUpdate,
+    AvailableCommand, AvailableCommandsUpdate, CurrentModeUpdate, PermissionOption,
+    PermissionOptionKind, RequestPermissionRequest, SessionId, SessionMode, SessionModeState,
+    SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
 };
 use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
+
+/// Checks that approval shortcuts only answer permissions while the chat input has focus.
+#[test]
+fn permission_shortcuts_require_chat_input_focus() {
+    for key in [egui::Key::Enter, egui::Key::Escape] {
+        let mut panel = ready_panel();
+        let session = panel.session_mut().unwrap();
+        session.begin_test_turn();
+        session.push_test_permission_request(RequestPermissionRequest::new(
+            SessionId::new("test-session"),
+            ToolCallUpdate::new("tool-1", ToolCallUpdateFields::new()),
+            vec![
+                PermissionOption::new("allow", "Allow once", PermissionOptionKind::AllowOnce),
+                PermissionOption::new("reject", "Reject once", PermissionOptionKind::RejectOnce),
+            ],
+        ));
+        let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+            .build_ui_state(
+                |ui, (panel, text): &mut (AgentPanel, String)| {
+                    panel.ui(ui);
+                    ui.text_edit_singleline(text).accessible_name("Other input");
+                },
+                (panel, String::new()),
+            );
+        harness.run_steps(3);
+        harness.get_by_label("Other input").focus();
+        harness.run_steps(2);
+        harness.key_press(key);
+        harness.run_steps(3);
+        assert_eq!(
+            harness
+                .state()
+                .0
+                .session()
+                .unwrap()
+                .pending_permissions()
+                .len(),
+            1,
+            "{key:?} outside the chat must leave the permission pending",
+        );
+
+        harness.get_by_role(Role::MultilineTextInput).focus();
+        harness.run_steps(2);
+        harness.key_press(key);
+        harness.run_steps(3);
+        assert_eq!(
+            harness
+                .state()
+                .0
+                .session()
+                .unwrap()
+                .pending_permissions()
+                .len(),
+            0,
+            "{key:?} in the chat must answer the permission",
+        );
+    }
+}
 
 pub fn ready_panel() -> AgentPanel {
     let agents = AgentProfile::builtin()
