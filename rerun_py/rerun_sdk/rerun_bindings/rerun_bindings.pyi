@@ -1398,6 +1398,8 @@ class CatalogClientInternal:
 
     @property
     def url(self) -> str: ...
+    @property
+    def token(self) -> str | None: ...
 
     # ---
 

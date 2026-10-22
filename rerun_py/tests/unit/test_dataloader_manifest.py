@@ -66,7 +66,9 @@ FETCH_BLOCK_SIZE = 4
 _SOURCE = cast(
     "DataSource",
     SimpleNamespace(
-        dataset=SimpleNamespace(catalog=SimpleNamespace(url="rerun+http://fake"), name="ds", id="id"),
+        dataset=SimpleNamespace(
+            catalog=SimpleNamespace(url="rerun+http://fake", _internal=SimpleNamespace(token=None)), name="ds", id="id"
+        ),
     ),
 )
 _FIELDS = {"x": Field("/e:Scalars:scalars", decode=NumericDecoder())}

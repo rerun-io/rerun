@@ -35,6 +35,9 @@ pub struct PyCatalogClientInternal {
 
     /// Authentication for direct object store fetches made by dataframe queries.
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+
+    /// The token the client was created with, for processes that must reconnect as this client.
+    token: Option<String>,
 }
 
 impl PyCatalogClientInternal {
@@ -110,6 +113,7 @@ impl PyCatalogClientInternal {
         }
 
         let credentials = match token
+            .clone()
             .map(TryFrom::try_from)
             .transpose()
             .map_err(to_py_err)?
@@ -135,6 +139,7 @@ impl PyCatalogClientInternal {
             connection,
             datafusion_ctx,
             object_store_auth,
+            token,
         };
 
         ret.register_catalog_provider_list(py)?;
@@ -146,6 +151,12 @@ impl PyCatalogClientInternal {
     #[getter]
     pub fn url(&self) -> String {
         self.connection.origin().to_string()
+    }
+
+    /// The token this client was created with, if any.
+    #[getter]
+    pub fn token(&self) -> Option<String> {
+        self.token.clone()
     }
 
     /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).

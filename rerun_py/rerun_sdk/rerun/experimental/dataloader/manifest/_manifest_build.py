@@ -122,11 +122,7 @@ def build_manifest_table(
 
     sample_index = SampleIndex.build(source, index, fields, timeline_sampling=timeline_sampling)
 
-    conn = _WorkerConnection(
-        catalog_url=source.dataset.catalog.url,
-        dataset_name=source.dataset.name,
-        fields=fields,
-    )
+    conn = _WorkerConnection.from_source(source, fields)
     view, _ = conn.ensure()
 
     # The scan only needs each segment's largest target (for the prior-keyframe query),

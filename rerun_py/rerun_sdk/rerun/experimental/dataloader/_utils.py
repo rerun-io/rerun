@@ -176,10 +176,12 @@ class _WorkerConnection:
         self,
         *,
         catalog_url: str,
+        token: str | None,
         dataset_name: str,
         fields: dict[str, Field],
     ) -> None:
         self._catalog_url = catalog_url
+        self._token = token
         self._dataset_name = dataset_name
         self._fields = fields
         self._initialized: bool = False
@@ -190,7 +192,13 @@ class _WorkerConnection:
     @classmethod
     def from_source(cls, source: DataSource, fields: dict[str, Field]) -> _WorkerConnection:
         """Build a connection for a [`DataSource`][rerun.experimental.dataloader.DataSource]'s catalog."""
-        return cls(catalog_url=source.dataset.catalog.url, dataset_name=source.dataset.name, fields=fields)
+        catalog = source.dataset.catalog
+        return cls(
+            catalog_url=catalog.url,
+            token=catalog._internal.token,
+            dataset_name=source.dataset.name,
+            fields=fields,
+        )
 
     @with_tracing("RerunDataset._ensure_initialized")
     def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder[DecodedValue]]]:
@@ -201,7 +209,7 @@ class _WorkerConnection:
             return self._view, self._decoders
 
         client = CatalogClient._from_internal(
-            CatalogClientInternal(self._catalog_url, client_name=_DATALOADER_CLIENT_NAME)
+            CatalogClientInternal(self._catalog_url, self._token, client_name=_DATALOADER_CLIENT_NAME)
         )
         dataset = client.get_dataset(self._dataset_name)
         self._decoders = {k: f.decode for k, f in self._fields.items()}
