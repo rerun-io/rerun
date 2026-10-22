@@ -310,19 +310,18 @@
           var content_multiplier = 1;
           // If our custom size header is set, use that (see `re_web_viewer_server` crate)
           var custom_size_header = response.headers.get("rerun-final-length");
+          // GCS custom metadata, needed since our wasm there is Brotli-compressed
+          var gcs_size_header = response.headers.get(
+            "x-goog-meta-uncompressed-size",
+          );
           if (custom_size_header != null) {
             content_length = custom_size_header;
+          } else if (gcs_size_header != null) {
+            content_length = gcs_size_header;
           } else if (response.headers.get("content-encoding") == "gzip") {
-            // If the content is gzip encoded, try to get the uncompressed size.
-            content_length = response.headers.get(
-              "x-goog-meta-uncompressed-size",
-            );
-
-            // If the uncompressed size wasn't found 3 seems to be a very good approximation
-            if (content_length == null) {
-              content_length = response.headers.get("content-length");
-              content_multiplier = 3;
-            }
+            // 3 seems to be a very good approximation
+            content_length = response.headers.get("content-length");
+            content_multiplier = 3;
           } else {
             content_length = response.headers.get("content-length");
           }
