@@ -641,6 +641,25 @@ impl ViewerUrl {
         self.sharable_url(None).map(SystemCommand::CopyViewerUrl)
     }
 
+    /// The data sources this link loads from, including those of every URL a web viewer link
+    /// wraps, however deeply.
+    pub fn data_sources(&self) -> Vec<LogSource> {
+        let mut sources = Vec::new();
+        self.collect_data_sources(&mut sources);
+        sources
+    }
+
+    fn collect_data_sources(&self, sources: &mut Vec<LogSource>) {
+        match self {
+            Self::WebViewer { url_parameters, .. } => {
+                for url in url_parameters {
+                    url.collect_data_sources(sources);
+                }
+            }
+            _ => sources.extend(self.get_data_source()),
+        }
+    }
+
     /// Get the data source related to this link, if any.
     pub fn get_data_source(&self) -> Option<LogSource> {
         match &self {

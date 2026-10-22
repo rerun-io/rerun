@@ -124,7 +124,7 @@ message ViewerControlRequest {
     //   are fetched on demand afterwards, and need not all fit in memory.
     // * Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted
     //   on it.
-    // If the response says `still_loading`, poll `GetViewerState` until its `loading` list
+    // If the response names anything as `loading`, poll `GetViewerState` until its `loading` list
     // is empty; only then does an absent timeline mean an empty recording rather than one still
     // arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
     // so anything waiting on one stalls, while `GetViewerState` keeps answering.
@@ -1122,8 +1122,20 @@ message OpenRequest {
 
 // Response for `Open`.
 message OpenResponse {
-  // True if the initial load (see `Open`) was not done when the viewer answered.
-  bool still_loading = 1;
+  reserved 1;
+  reserved "still_loading";
+
+  // The recordings loaded from the URL, each as `{kind}:{application_id}:{recording_id}`.
+  //
+  // A recording loaded from a dataset segment, including a file registered with the viewer
+  // catalog, has the dataset's entry id as its application id, and the segment id as its
+  // recording id.
+  repeated string store_ids = 2;
+
+  // The URL, as passed in, if what it loads from had not finished its initial load (see `Open`)
+  // when the viewer answered. A file registered with the viewer's catalog counts as loading until
+  // it is registered and its manifest has arrived. Empty once it is done.
+  repeated string loading = 3;
 }
 
 // ----------------------------------------------------------------------------

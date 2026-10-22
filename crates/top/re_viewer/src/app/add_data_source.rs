@@ -450,6 +450,8 @@ impl AppCore {
         let path = path.to_owned();
         #[cfg(not(target_arch = "wasm32"))]
         let assets = assets.to_vec();
+        #[cfg(not(target_arch = "wasm32"))]
+        let registered_files = self.connections.registered_files.clone();
         let catalog = CatalogHandle::internal(&connection_registry);
         // Count it before spawning, so that whatever checks for it right after cannot miss it.
         let registration_guard = catalog.as_ref().map(|catalog| {
@@ -485,6 +487,8 @@ impl AppCore {
             match registration {
                 Ok(RegistrationTarget::DatasetSegment(uri)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    registered_files.insert(&path, (*uri).clone());
                     sender.send_system(SystemCommand::RefreshRedapEntry {
                         origin: uri.origin.clone(),
                         entry_id: uri.dataset_id.into(),

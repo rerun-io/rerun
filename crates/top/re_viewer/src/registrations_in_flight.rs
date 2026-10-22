@@ -2,6 +2,8 @@
 //! report them.
 
 use std::collections::BTreeMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Identifies one registration in progress. Later registrations get larger ids.
@@ -66,6 +68,49 @@ impl Drop for RegistrationGuard {
         let Self { registrations, id } = self;
         registrations.0.lock().in_flight.remove(id);
     }
+}
+
+/// The dataset segments each local file was registered as, shared by every clone.
+///
+/// A recording loaded through the catalog only knows its segment, so this is what links it back
+/// to the file path it was opened as.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Default)]
+pub struct RegisteredFiles(Arc<re_mutex::Mutex<ahash::HashMap<PathBuf, Vec<re_uri::DatasetUri>>>>);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl RegisteredFiles {
+    /// Remember that `path` was registered as `segment`.
+    ///
+    /// Registering a regenerated file can produce a new segment while the old one is still open,
+    /// so every segment is kept.
+    pub fn insert(&self, path: &Path, segment: re_uri::DatasetUri) {
+        let mut files = self.0.lock();
+        let segments = files.entry(normalize(path)).or_default();
+        if !segments.contains(&segment) {
+            segments.push(segment);
+        }
+    }
+
+    /// Every segment `path` was registered as.
+    pub fn segments(&self, path: &Path) -> Vec<re_uri::DatasetUri> {
+        self.0
+            .lock()
+            .get(&normalize(path))
+            .cloned()
+            .unwrap_or_default()
+    }
+}
+
+/// The canonical form of `path`, so that every way of writing a file's path finds its segments.
+///
+/// A path that cannot be canonicalized, e.g. of a file that no longer exists, is only made
+/// absolute.
+#[cfg(not(target_arch = "wasm32"))]
+fn normalize(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path)
+        .or_else(|_err| std::path::absolute(path))
+        .unwrap_or_else(|_err| path.to_owned())
 }
 
 #[cfg(test)]

@@ -486,13 +486,37 @@ async fn open_answers_once_the_recording_has_arrived() {
                 .map(|response| response.kind)
                 .map_err(|err| err.message)
         });
+        let Some(Ok(Some(viewer_control_response::Kind::Open(OpenResponse {
+            store_ids,
+            loading,
+        })))) = response
+        else {
+            panic!("expected an open response, got {response:?}");
+        };
         assert_eq!(
-            response,
-            Some(Ok(Some(viewer_control_response::Kind::Open(
-                OpenResponse {
-                    still_loading: false
-                }
-            )))),
+            loading,
+            Vec::<String>::new(),
+            "use_viewer_catalog: {use_viewer_catalog}"
+        );
+        let application_id = if use_viewer_catalog {
+            let catalog = re_catalog_client::CatalogClient::new(
+                harness
+                    .state()
+                    .connection_registry()
+                    .internal_connection_handle()
+                    .expect("internal catalog should be configured"),
+            );
+            catalog
+                .find_or_create_dataset(&EntryName::new(RRD_APP_ID).expect("valid entry name"))
+                .await
+                .expect("failed to find the file's dataset")
+                .to_string()
+        } else {
+            RRD_APP_ID.to_owned()
+        };
+        assert_eq!(
+            store_ids,
+            vec![format!("Recording:{application_id}:{RRD_RECORDING_ID}")],
             "use_viewer_catalog: {use_viewer_catalog}"
         );
 

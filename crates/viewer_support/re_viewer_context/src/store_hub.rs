@@ -641,6 +641,15 @@ impl StoreHub {
             .find(|db| db.store_id().is_recording() && db.is_from_source(data_source))
     }
 
+    /// The recordings that got data from any of `sources`, ignoring URI fragments.
+    pub fn recordings_from_sources(&self, sources: &[re_log_channel::LogSource]) -> Vec<StoreId> {
+        self.store_bundle
+            .recordings()
+            .filter(|db| sources.iter().any(|source| db.is_from_source(source)))
+            .map(|db| db.store_id().clone())
+            .collect()
+    }
+
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_entries(&mut self) {
         // Keep only the welcome screen:

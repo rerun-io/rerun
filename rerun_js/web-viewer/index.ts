@@ -305,12 +305,15 @@ export interface OpenUrlOptions {
 
 /** What {@link WebViewer.open_url} did. */
 export interface OpenUrlResult {
+  /** The store ids of the recordings loaded from the URL. */
+  store_ids: string[];
+
   /**
-   * Whether the initial load was not done yet when the viewer answered.
+   * The URL, as passed in, if what it loads from had not finished its initial load when the viewer answered.
    *
-   * If so, poll {@link WebViewer.get_state} until its `loading` list is empty.
+   * If anything, poll {@link WebViewer.get_state} until its `loading` list is empty.
    */
-  still_loading: boolean;
+  loading: string[];
 }
 
 /** Which part of a recording or dataset a schema describes. */
@@ -1934,11 +1937,11 @@ export class WebViewer {
    * This API is experimental, and may change between releases.
    */
   async open_url(url: string, options: OpenUrlOptions = {}): Promise<OpenUrlResult> {
-    const { stillLoading } = await this.#viewer_control("open", {
+    const { storeIds, loading } = await this.#viewer_control("open", {
       url,
       navigate: options.navigate,
     });
-    return { still_loading: stillLoading };
+    return { store_ids: storeIds, loading };
   }
 
   /**

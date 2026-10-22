@@ -236,7 +236,7 @@ impl ViewerConnectionHandle {
     }
 
     fn open_url(&mut self, py: Python<'_>, url: String, navigate: bool) -> PyResult<bool> {
-        let re_protos::viewer_control::v1alpha1::OpenResponse { still_loading } =
+        let re_protos::viewer_control::v1alpha1::OpenResponse { loading, .. } =
             self.execute::<re_protos::viewer_control::v1alpha1::OpenRequest>(
                 py,
                 re_protos::viewer_control::v1alpha1::OpenRequest {
@@ -245,7 +245,7 @@ impl ViewerConnectionHandle {
                 },
             )?;
 
-        Ok(!still_loading)
+        Ok(loading.is_empty())
     }
 
     fn save_screenshot(

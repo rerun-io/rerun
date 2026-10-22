@@ -102,13 +102,16 @@ enum PendingAnswer {
     /// Sent as soon as the queued commands have run.
     Ready(Result<ViewerControlResponse, ViewerControlError>),
 
-    /// `open`, which also waits for what it started loading, until `deadline`.
+    /// `open`, which also waits for what the URL loads from, until `deadline`.
     Open {
-        /// What was loading before the URL was opened, and so is not waited for.
-        sources_before: Vec<Arc<LogSource>>,
+        /// The URL as the caller passed it, which the answer names if it is still loading.
+        url: String,
 
-        /// What was being registered before the URL was opened, and so is not waited for.
-        registrations_before: Vec<RegistrationId>,
+        /// The parsed URL. Its sources are worked out when answering, since a file registered
+        /// with the catalog only gets its segment once the registration is done.
+        parsed: ViewerUrl,
+
+        /// When to stop waiting, and answer with what is still loading.
         deadline: web_time::Instant,
     },
 
@@ -229,28 +232,30 @@ impl AppCore {
             match answer {
                 PendingAnswer::Ready(result) => on_done.call(result),
                 PendingAnswer::Open {
-                    sources_before,
-                    registrations_before,
+                    url,
+                    parsed,
                     deadline,
                 } => {
-                    let still_loading = registrations
-                        .keys()
-                        .any(|id| !registrations_before.contains(id))
-                        || sources.iter().any(|source| {
-                            source.loading_name().is_some() && !sources_before.contains(source)
-                        });
+                    let url_sources = self.connections.sources_of_url(&parsed);
+                    let still_loading = is_loading(&url_sources, &sources, &registrations);
                     if still_loading && now < deadline {
                         self.pending_viewer_control_replies.push(PendingReply {
                             on_done,
                             answer: PendingAnswer::Open {
-                                sources_before,
-                                registrations_before,
+                                url,
+                                parsed,
                                 deadline,
                             },
                         });
                         self.egui_ctx.request_repaint_after(OPEN_POLL_INTERVAL);
                     } else {
-                        on_done.call(Ok(OpenResponse { still_loading }.into()));
+                        let store_ids = store_hub
+                            .recordings_from_sources(&url_sources)
+                            .iter()
+                            .map(StoreId::to_string)
+                            .collect();
+                        let loading = if still_loading { vec![url] } else { Vec::new() };
+                        on_done.call(Ok(OpenResponse { store_ids, loading }.into()));
                     }
                 }
                 PendingAnswer::GetBlueprint { target, deadline } => {
@@ -457,23 +462,27 @@ impl AppCore {
                                     | Route::RedapEntry { .. }
                             ) =>
                         {
+                            let mut store_ids = store_hub.recordings_from_sources(
+                                &self.connections.sources_of_url(&open_url),
+                            );
+                            if let Route::LocalRecording { recording_id } = &route
+                                && !store_ids.contains(recording_id)
+                            {
+                                store_ids.push(recording_id.clone());
+                            }
+                            let store_ids = store_ids.iter().map(StoreId::to_string).collect();
                             if navigate {
                                 self.command_sender
                                     .send_system(SystemCommand::SetRoute(route));
                             }
                             let response = OpenResponse {
-                                still_loading: false,
+                                store_ids,
+                                loading: Vec::new(),
                             };
                             self.reply_after_commands(on_done, Ok(response.into()), egui_ctx);
                         }
                         Ok(_) => {
-                            let sources_before = self.rx_log.sources();
-                            let registrations_before = self
-                                .connections
-                                .registrations_in_flight
-                                .snapshot()
-                                .into_keys()
-                                .collect();
+                            let parsed = open_url.clone();
                             if navigate {
                                 // Opens like a URL the user pastes: a recording becomes the active one.
                                 open_url.open(
@@ -499,8 +508,8 @@ impl AppCore {
                             self.pending_viewer_control_replies.push(PendingReply {
                                 on_done,
                                 answer: PendingAnswer::Open {
-                                    sources_before,
-                                    registrations_before,
+                                    url,
+                                    parsed,
                                     deadline: web_time::Instant::now() + OPEN_MAX_WAIT,
                                 },
                             });
@@ -2075,6 +2084,31 @@ pub(crate) fn serve_egui_inspect_request(
     });
 
     egui_ctx.request_repaint();
+}
+
+/// Whether any of `url_sources` is still on its initial load: a receiver still loading, or a
+/// file still being registered with a catalog.
+fn is_loading(
+    url_sources: &[LogSource],
+    receivers: &[Arc<LogSource>],
+    registrations: &BTreeMap<RegistrationId, InFlightRegistration>,
+) -> bool {
+    let receiver_loading = receivers.iter().any(|receiver| {
+        receiver.loading_name().is_some()
+            && url_sources
+                .iter()
+                .any(|source| receiver.is_same_ignoring_uri_fragments(source))
+    });
+    let file_registering = url_sources.iter().any(|source| match source {
+        LogSource::File { path } => {
+            let name = path.display().to_string();
+            registrations
+                .values()
+                .any(|registration| registration.name == name)
+        }
+        _ => false,
+    });
+    receiver_loading || file_registering
 }
 
 #[cfg(test)]
