@@ -122,6 +122,18 @@ jobs:
             --channel "release" \
             crates/top/re_web_viewer_server/web_viewer/examples_manifest.json
 
+      # The wasm is uploaded separately, since `upload-cloud-storage` only does gzip.
+      # Brotli is ~35% smaller, and browsers accept it over HTTPS.
+      # GCS serves the stored encoding as-is.
+      - name: Brotli-compress wasm
+        run: |
+          command -v brotli > /dev/null || { sudo apt-get update && sudo apt-get install -y brotli; }
+          wasm="crates/top/re_web_viewer_server/web_viewer/re_viewer_bg.wasm"
+          mkdir -p web_viewer_br
+          stat --format=%s "$wasm" > web_viewer_br/uncompressed_size
+          brotli --quality=11 --output=web_viewer_br/re_viewer_bg.wasm "$wasm"
+          rm "$wasm"
+
       - name: Upload app.rerun.io (versioned)
         uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
@@ -137,6 +149,20 @@ jobs:
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
           process_gcloudignore: false
+
+      # `uncompressed-size` is read by the loader for its progress bar.
+      - name: Upload Brotli-compressed wasm
+        env:
+          RELEASE_VERSION: ${{ inputs.release-version }}
+          SHORT_SHA: ${{ needs.get-commit-sha.outputs.short-sha }}
+        run: |
+          for dir in "version/$RELEASE_VERSION" "commit/$SHORT_SHA"; do
+            gcloud storage cp \
+              --content-type=application/wasm \
+              --content-encoding=br \
+              --custom-metadata="uncompressed-size=$(cat web_viewer_br/uncompressed_size)" \
+              web_viewer_br/re_viewer_bg.wasm "gs://rerun-web-viewer/$dir/re_viewer_bg.wasm"
+          done
 
       # rerun.io/viewer/* maps to the bucket root, so these objects serve
       # rerun.io/viewer/signed-in and rerun.io/viewer/signed-out.

@@ -55,6 +55,18 @@ jobs:
           name: web_viewer
           path: "crates/top/re_web_viewer_server/web_viewer"
 
+      # The wasm is uploaded separately, since `upload-cloud-storage` only does gzip.
+      # Brotli is ~35% smaller, and browsers accept it over HTTPS.
+      # GCS serves the stored encoding as-is.
+      - name: Brotli-compress wasm
+        run: |
+          command -v brotli > /dev/null || { sudo apt-get update && sudo apt-get install -y brotli; }
+          wasm="crates/top/re_web_viewer_server/web_viewer/re_viewer_bg.wasm"
+          mkdir -p web_viewer_br
+          stat --format=%s "$wasm" > web_viewer_br/uncompressed_size
+          brotli --quality=11 --output=web_viewer_br/re_viewer_bg.wasm "$wasm"
+          rm "$wasm"
+
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -143,6 +155,37 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+
+      # Mirrors the destinations of the upload steps above.
+      # `uncompressed-size` is read by the loader for its progress bar.
+      - name: "Upload Brotli-compressed wasm"
+        env:
+          SHA: ${{ steps.get-sha.outputs.sha }}
+          NIGHTLY: ${{ inputs.NIGHTLY }}
+          MARK_TAGGED_VERSION: ${{ inputs.MARK_TAGGED_VERSION }}
+          RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+          ADHOC_NAME: ${{ inputs.ADHOC_NAME }}
+          PR_NUMBER: ${{ inputs.PR_NUMBER }}
+        run: |
+          upload() {
+            gcloud storage cp \
+              --content-type=application/wasm \
+              --content-encoding=br \
+              --custom-metadata="uncompressed-size=$(cat web_viewer_br/uncompressed_size)" \
+              "${@:2}" \
+              web_viewer_br/re_viewer_bg.wasm "gs://rerun-web-viewer/$1/re_viewer_bg.wasm"
+          }
+          no_cache="--cache-control=no-cache, max-age=0"
+
+          if [[ "$NIGHTLY" != "true" ]]; then upload "commit/$SHA"; fi
+          if [[ "$MARK_TAGGED_VERSION" == "true" ]]; then upload "version/$RELEASE_VERSION"; fi
+          if [[ -n "$ADHOC_NAME" ]]; then upload "adhoc/$ADHOC_NAME"; fi
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            upload "prerelease" "$no_cache"
+            upload "version/main" "$no_cache"
+          fi
+          if [[ -n "$PR_NUMBER" ]]; then upload "pr/$PR_NUMBER" "$no_cache"; fi
+          if [[ "$NIGHTLY" == "true" ]]; then upload "version/nightly" "$no_cache"; fi
 
       # Upload extensionless HTML aliases (signed-in, signed-out) to the
       # bucket root with the correct Content-Type. The OAuth redirect uses the
