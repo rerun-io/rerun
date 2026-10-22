@@ -332,15 +332,7 @@ impl Route {
                 ..
             } => {
                 let db = store_hub.entity_db(recording_id)?;
-                let source = db.data_source.as_ref()?;
-                let uri = source.redap_uri()?;
-
-                // Don't return proxy origins — they are local.
-                if matches!(uri, re_uri::RedapUri::Proxy(_)) {
-                    return None;
-                }
-
-                Some(uri.origin().clone())
+                Some(db.redap_uri()?.origin.clone())
             }
 
             Self::Settings { return_route }

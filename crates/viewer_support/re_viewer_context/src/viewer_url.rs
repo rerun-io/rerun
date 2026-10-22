@@ -464,8 +464,7 @@ impl ViewerUrl {
                     .get(recording_id)
                     .ok_or_else(|| anyhow::anyhow!("No data for active recording"))?;
                 let data_source = recording
-                    .data_source
-                    .as_ref()
+                    .primary_data_source()
                     .ok_or_else(|| anyhow::anyhow!("No data source"))?;
 
                 Self::from_data_source(data_source)
@@ -1525,10 +1524,12 @@ mod tests {
     fn test_viewer_open_url_from_local_recordings_route() {
         let mut store_hub = StoreHub::test_hub();
 
-        fn add_store(store_hub: &mut StoreHub, data_source: Option<LogSource>) -> StoreId {
+        fn add_store(store_hub: &mut StoreHub, data_source: Option<&LogSource>) -> StoreId {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             let mut entity_db = EntityDb::new(store_id.clone());
-            entity_db.data_source = data_source;
+            if let Some(data_source) = data_source {
+                entity_db.add_data_source(&std::sync::Arc::new(data_source.clone()));
+            }
             store_hub.insert_entity_db(entity_db);
             store_id
         }
@@ -1536,7 +1537,7 @@ mod tests {
         // originating from a file.
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::File {
+            Some(&LogSource::File {
                 path: std::path::PathBuf::from("/path/to/test.rrd"),
             }),
         );
@@ -1548,7 +1549,7 @@ mod tests {
         // originating from HTTP stream.
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::HttpStream {
+            Some(&LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
             }),
         );
@@ -1558,19 +1559,19 @@ mod tests {
         );
 
         // originating from SDK (not possible).
-        let id = add_store(&mut store_hub, Some(LogSource::Sdk));
+        let id = add_store(&mut store_hub, Some(&LogSource::Sdk));
         assert!(
             ViewerUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id }).is_err(),
         );
 
         // originating from stdin (not possible).
-        let id = add_store(&mut store_hub, Some(LogSource::Stdin));
+        let id = add_store(&mut store_hub, Some(&LogSource::Stdin));
         assert!(
             ViewerUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id }).is_err(),
         );
 
         // originating from web event listener.
-        let id = add_store(&mut store_hub, Some(LogSource::RrdWebEvent));
+        let id = add_store(&mut store_hub, Some(&LogSource::RrdWebEvent));
         assert_eq!(
             ViewerUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id }).unwrap(),
             ViewerUrl::WebEventListener
@@ -1579,7 +1580,7 @@ mod tests {
         // originating from JS channel (not possible).
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::JsChannel {
+            Some(&LogSource::JsChannel {
                 channel_name: "test_channel".to_owned(),
             }),
         );
@@ -1592,7 +1593,7 @@ mod tests {
         let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::RedapGrpcStream {
+            Some(&LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
                 open_behavior: RecordingOpenBehavior::Background,
             }),
@@ -1640,7 +1641,7 @@ mod tests {
         let uri = "rerun://localhost:51234/proxy";
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::MessageProxy(uri.parse().unwrap())),
+            Some(&LogSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
             ViewerUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id }).unwrap(),

@@ -140,9 +140,9 @@ fn top_bar_ui(
             .filter(|store_context| {
                 store_context
                     .recording
-                    .data_source
-                    .as_ref()
-                    .is_some_and(re_log_channel::LogSource::may_be_live)
+                    .data_sources()
+                    .iter()
+                    .any(|source| source.may_be_live())
             })
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 

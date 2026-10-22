@@ -1229,23 +1229,8 @@ pub(crate) fn create_time_control_for<'cfgs>(
         entity_db: &'_ EntityDb,
         blueprint_ctx: &'_ impl BlueprintContext,
     ) -> TimeControl {
-        let follow = if let Some(data_source) = &entity_db.data_source {
-            match data_source {
-                // Not live data:
-                LogSource::File { .. }
-                | LogSource::HttpStream { .. }
-                | LogSource::RedapGrpcStream { .. }
-                | LogSource::RrdWebEvent => false,
-
-                // Live data:
-                LogSource::Sdk
-                | LogSource::MessageProxy { .. }
-                | LogSource::Stdin
-                | LogSource::JsChannel { .. } => true,
-            }
-        } else {
-            true // No known source 🤷‍♂️
-        };
+        let sources = entity_db.data_sources();
+        let follow = sources.is_empty() || sources.iter().any(|source| source.may_be_live());
 
         let play_state = if follow {
             PlayState::Following

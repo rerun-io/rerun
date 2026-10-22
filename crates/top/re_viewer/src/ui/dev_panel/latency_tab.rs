@@ -20,18 +20,16 @@ pub fn latency_tab_ui(ui: &mut egui::Ui, recording: Option<&EntityDb>) {
         return;
     };
 
-    match &recording.data_source {
-        Some(source) if source.may_be_live() => {}
-        Some(source) => {
+    let sources = recording.data_sources();
+    if !sources.iter().any(|source| source.may_be_live()) {
+        if let Some(source) = sources.first() {
             ui.label(format!(
                 "{source} replays data that was logged earlier, so there is no latency to measure."
             ));
-            return;
-        }
-        None => {
+        } else {
             ui.label("This recording has no data source, so there is no latency to measure.");
-            return;
         }
+        return;
     }
 
     let latency = recording.ingestion_stats().latency_snapshot();

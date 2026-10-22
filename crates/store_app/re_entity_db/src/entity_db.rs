@@ -135,10 +135,14 @@ pub struct EntityDb {
     /// these indexes for some reason.
     enable_viewer_indexes: bool,
 
-    /// Set by whomever created this [`EntityDb`].
+    /// Every source this database got data from, in the order they first sent some.
     ///
-    /// Clones of an [`EntityDb`] gets a `None` source.
-    pub data_source: Option<re_log_channel::LogSource>,
+    /// Usually one, but data with the same store id from several sources lands in one database:
+    /// one recording split across several files, a file opened twice under different paths, etc.
+    /// Use [`Self::add_data_source`] to add one.
+    ///
+    /// Clones of an [`EntityDb`] get no sources.
+    data_sources: Vec<Arc<LogSource>>,
 
     /// If this database is a clone, the ID of the source database.
     cloned_from: Option<StoreId>,
@@ -190,7 +194,7 @@ impl Debug for EntityDb {
         f.debug_struct("EntityDb")
             .field("enable_viewer_indexes", &self.enable_viewer_indexes)
             .field("store_id", &self.store_id)
-            .field("data_source", &self.data_source)
+            .field("data_sources", &self.data_sources)
             .field("set_store_info", &self.set_store_info)
             .finish_non_exhaustive()
     }
@@ -229,7 +233,7 @@ impl EntityDb {
         Self {
             store_id,
             enable_viewer_indexes,
-            data_source: None,
+            data_sources: Vec::new(),
             cloned_from: None,
             rrd_manifest_index: Default::default(),
             set_store_info: None,
@@ -350,10 +354,7 @@ impl EntityDb {
 
     pub fn redap_connection_state(&self) -> RedapConnectionState {
         // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
-        let is_connected_to_redap = self
-            .data_source
-            .as_ref()
-            .is_some_and(|source| source.is_redap());
+        let is_connected_to_redap = self.data_sources.iter().any(|source| source.is_redap());
 
         if is_connected_to_redap {
             if self.rrd_manifest_index.has_manifest() {
@@ -453,18 +454,77 @@ impl EntityDb {
         self.store_id().kind()
     }
 
+    /// Every source this database got data from, in the order they first sent some.
+    #[inline]
+    pub fn data_sources(&self) -> &[Arc<LogSource>] {
+        &self.data_sources
+    }
+
+    /// Where the first data came from, if anywhere. See [`Self::data_sources`].
+    #[inline]
+    pub fn primary_data_source(&self) -> Option<&LogSource> {
+        self.data_sources.first().map(|source| &**source)
+    }
+
+    /// Remember that data arrived from `source`, unless it already did.
+    ///
+    /// Called for every message, so it checks identity before comparing by value: a `data:` URL
+    /// source can hold a whole recording.
+    pub fn add_data_source(&mut self, source: &Arc<LogSource>) {
+        let is_known = self
+            .data_sources
+            .iter()
+            .any(|known| Arc::ptr_eq(known, source))
+            || self.data_sources.iter().any(|known| known == source);
+        if !is_known {
+            self.data_sources.push(Arc::clone(source));
+        }
+    }
+
+    /// Whether any data came from `source`, ignoring URI fragments.
+    pub fn is_from_source(&self, source: &re_log_channel::LogSource) -> bool {
+        self.data_sources
+            .iter()
+            .any(|data_source| data_source.is_same_ignoring_uri_fragments(source))
+    }
+
     #[inline]
     pub fn store_id(&self) -> &StoreId {
         &self.store_id
     }
 
+    /// Every redap URI this got data from. See [`Self::redap_uri`].
+    ///
+    /// Several only if one segment was opened through several origins, or with different URI
+    /// fragments.
+    pub fn redap_uris(&self) -> impl Iterator<Item = &re_uri::DatasetUri> {
+        self.data_sources
+            .iter()
+            .filter_map(|source| match &**source {
+                re_log_channel::LogSource::RedapGrpcStream { uri, .. } => Some(uri),
+                _ => None,
+            })
+    }
+
     /// What redap URI does this thing live on?
+    ///
+    /// A recording should come from at most one, ignoring URI fragments.
+    /// If it comes from several, this warns and returns the first.
+    /// Use [`Self::redap_uris`] where every origin matters.
     pub fn redap_uri(&self) -> Option<&re_uri::DatasetUri> {
-        if let Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) = &self.data_source {
-            Some(uri)
-        } else {
-            None
+        let mut uris = self.redap_uris();
+        let first = uris.next()?;
+
+        if let Some(other) =
+            uris.find(|&uri| uri.clone().without_fragment() != first.clone().without_fragment())
+        {
+            re_log::warn_once!(
+                "Recording {} has data from several redap URIs: {first} and {other}",
+                self.store_id.recording_id()
+            );
         }
+
+        Some(first)
     }
 
     /// Returns the [`EntityDbClass`] of this entity db.
@@ -472,7 +532,7 @@ impl EntityDb {
         match self.store_kind() {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
-            StoreKind::Recording => EntityDbClass::for_recording(self.data_source.as_ref()),
+            StoreKind::Recording => EntityDbClass::for_recording(self.primary_data_source()),
         }
     }
 
@@ -1110,7 +1170,7 @@ impl EntityDb {
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;
 
-        // We do NOT clone the `data_source`, because the reason we clone an entity db
+        // We do NOT clone the `data_sources`, because the reason we clone an entity db
         // is so that we can modify it, and then it would be wrong to say its from the same source.
         // Specifically: if we load a blueprint from an `.rdd`, then modify it heavily and save it,
         // it would be wrong to claim that this was the blueprint from that `.rrd`,
@@ -1293,7 +1353,7 @@ impl re_byte_size::SizeBytes for EntityDb {
         let Self {
             store_id,
             enable_viewer_indexes,
-            data_source: _,
+            data_sources: _,
             cloned_from,
             rrd_manifest_index,
             set_store_info,
@@ -1344,7 +1404,7 @@ impl MemUsageTreeCapture for EntityDb {
             // Small:
             store_id: _,
             enable_viewer_indexes: _,
-            data_source: _,
+            data_sources: _,
             cloned_from: _,
             set_store_info: _,
             last_modified_at: _,
@@ -1392,6 +1452,22 @@ mod tests {
     use re_log_types::{StoreId, TimePoint, Timeline};
 
     use super::*;
+
+    #[test]
+    fn remembers_every_source_it_got_data_from() {
+        let file = |path: &str| Arc::new(LogSource::File { path: path.into() });
+        let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording, "test"));
+        assert_eq!(db.primary_data_source(), None);
+
+        for path in ["a.rrd", "a.rrd", "b.rrd", "b.rrd"] {
+            db.add_data_source(&file(path));
+        }
+
+        assert_eq!(db.primary_data_source(), Some(&*file("a.rrd")));
+        assert_eq!(db.data_sources, [file("a.rrd"), file("b.rrd")]);
+        assert!(db.is_from_source(&file("b.rrd")));
+        assert!(!db.is_from_source(&file("c.rrd")));
+    }
 
     #[test]
     fn classify_recording_from_source() {

@@ -206,9 +206,7 @@ impl AppCore {
 
             if let Some(sid) = &msg_store_id {
                 let entity_db = store_hub.entity_db_entry(sid);
-                if entity_db.data_source.is_none() {
-                    entity_db.data_source = Some((*channel_source).clone());
-                }
+                entity_db.add_data_source(&channel_source);
             }
 
             match msg {

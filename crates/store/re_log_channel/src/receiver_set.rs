@@ -58,20 +58,9 @@ impl LogReceiverSet {
 
     /// Disconnect from any channel with a source pointing at this `uri`.
     pub fn remove_by_uri(&self, needle: &str) {
-        self.receivers.lock().retain(|r| match r.source() {
-            // retain only sources which:
-            // - aren't network sources
-            // - don't point at the given `needle`
-            LogSource::HttpStream { url, .. } => url != needle,
-            LogSource::MessageProxy(url) => url.to_string() != needle,
-            LogSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
-
-            LogSource::File { .. }
-            | LogSource::Stdin
-            | LogSource::Sdk
-            | LogSource::RrdWebEvent
-            | LogSource::JsChannel { .. } => true,
-        });
+        self.receivers
+            .lock()
+            .retain(|r| r.source().uri().is_none_or(|uri| uri != needle));
     }
 
     /// List of connected receiver sources.

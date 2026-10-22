@@ -1254,15 +1254,14 @@ impl AppCore {
                 })
             }
             Route::LocalRecording { recording_id } => {
-                let uri = store_hub
+                let Some(uri) = store_hub
                     .entity_db(recording_id)
-                    .and_then(|db| db.data_source.as_ref())
-                    .and_then(|source| source.redap_uri());
-                let Some(re_uri::RedapUri::Dataset(uri)) = uri else {
+                    .and_then(|db| db.redap_uri())
+                else {
                     return Err(no_dataset());
                 };
                 Ok(re_uri::EntryUri {
-                    origin: uri.origin,
+                    origin: uri.origin.clone(),
                     entry_id: uri.dataset_id.into(),
                 })
             }

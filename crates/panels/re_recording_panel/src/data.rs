@@ -60,14 +60,14 @@ impl<'a> RecordingPanelData<'a> {
         let mut loading_segments: HashMap<re_uri::Origin, HashMap<EntryId, Vec<Arc<LogSource>>>> =
             HashMap::default();
 
-        let sources_with_stores: ahash::HashSet<LogSource> = ctx
+        let sources_with_stores: ahash::HashSet<&LogSource> = ctx
             .store_bundle()
             .recordings()
-            .filter_map(|store| store.data_source.clone())
+            .flat_map(|store| store.data_sources().iter().map(|source| &**source))
             .collect();
 
         for source in ctx.connected_receivers.sources() {
-            if sources_with_stores.contains(&source) {
+            if sources_with_stores.contains(source.as_ref()) {
                 continue;
             }
 
@@ -124,10 +124,11 @@ impl<'a> RecordingPanelData<'a> {
             let app_id = entity_db.application_id();
             match entity_db.store_class() {
                 EntityDbClass::LocalRecording => {
-                    let apps = if matches!(
-                        entity_db.data_source.as_ref(),
-                        Some(LogSource::Sdk | LogSource::MessageProxy(_))
-                    ) {
+                    let apps = if entity_db
+                        .data_sources()
+                        .iter()
+                        .any(|source| source.may_be_live())
+                    {
                         &mut live_recordings
                     } else {
                         &mut imported_recordings
@@ -425,13 +426,12 @@ impl<'a> ServerEntriesData<'a> {
                                 SegmentData::Loading { receiver } => {
                                     ctx.store_hub().data_source_order(receiver)
                                 }
-                                SegmentData::Loaded { entity_db, .. } => {
-                                    if let Some(data_source) = &entity_db.data_source {
-                                        ctx.store_hub().data_source_order(data_source)
-                                    } else {
-                                        u64::MAX
-                                    }
-                                }
+                                SegmentData::Loaded { entity_db, .. } => entity_db
+                                    .data_sources()
+                                    .iter()
+                                    .map(|source| ctx.store_hub().data_source_order(source))
+                                    .min()
+                                    .unwrap_or(u64::MAX),
                             });
 
                             entry_tree_entries.push(ServerLeafEntry::Dataset(DatasetData {

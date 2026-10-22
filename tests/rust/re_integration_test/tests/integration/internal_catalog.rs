@@ -303,8 +303,7 @@ async fn internal_catalog_load_rbl() {
                     .hub
                     .entity_db(&store_id)
                     .is_some_and(|db| {
-                        db.data_source
-                            .as_ref()
+                        db.primary_data_source()
                             .is_some_and(|source| source.is_redap())
                             && db
                                 .storage_engine()
@@ -354,8 +353,7 @@ async fn internal_catalog_load_rrd() {
                     .hub
                     .entity_db(&store_id)
                     .is_some_and(|db| {
-                        db.data_source
-                            .as_ref()
+                        db.primary_data_source()
                             .is_some_and(|source| source.is_redap() == use_viewer_catalog)
                             && db
                                 .storage_engine()

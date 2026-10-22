@@ -41,9 +41,9 @@ pub fn redap_uri_button(
 
     let loaded_recording_info = ctx.store_bundle().recordings().find_map(|db| {
         if db
-            .data_source
-            .as_ref()
-            .is_some_and(|source| source.stripped_redap_uri().as_ref() == Some(&uri))
+            .data_sources()
+            .iter()
+            .any(|source| source.stripped_redap_uri().as_ref() == Some(&uri))
         {
             db.store_info()
         } else {

@@ -6,7 +6,6 @@ use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::{EntityDb, entity_db::RedapConnectionState};
 use re_format::{format_bytes, format_uint};
-use re_log_channel::LogSource;
 use re_log_types::StoreKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, UiLayout};
@@ -22,7 +21,7 @@ impl crate::AppUi for EntityDb {
             // probably dead code, as `entity_db_button_ui` is actually used in all single line
             // contexts).
             let mut string = self.store_id().recording_id().to_string();
-            if let Some(data_source) = &self.data_source {
+            if let Some(data_source) = self.primary_data_source() {
                 write!(string, ", {data_source}").ok();
             }
             write!(string, ", {}", self.store_id().application_id()).ok();
@@ -109,14 +108,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
         ui.end_row();
     }
 
-    if let Some(LogSource::RedapGrpcStream {
-        uri: re_uri::DatasetUri {
-            segment_id: Some(segment_id),
-            ..
-        },
-        ..
-    }) = &db.data_source
-    {
+    if let Some(segment_id) = db.redap_uri().and_then(|uri| uri.segment_id.as_ref()) {
         ui.grid_left_hand_label("Segment ID");
         ui.label(segment_id.to_string());
         ui.end_row();
@@ -354,7 +346,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
         ui.end_row();
     }
 
-    if let Some(data_source) = &db.data_source
+    if let Some(data_source) = db.primary_data_source()
         && ui_layout.is_selection_panel()
     {
         ui.grid_left_hand_label("Data source");

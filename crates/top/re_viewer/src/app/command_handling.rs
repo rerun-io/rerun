@@ -794,15 +794,8 @@ impl AppCore {
 
                 // Close any open recordings that came from the logged-out servers.
                 store_hub.retain_recordings(|db| {
-                    let Some(data_source) = &db.data_source else {
-                        return true;
-                    };
-                    match data_source {
-                        LogSource::RedapGrpcStream { uri, .. } => {
-                            !logged_out_origins.contains(&uri.origin)
-                        }
-                        _ => true,
-                    }
+                    db.redap_uris()
+                        .all(|uri| !logged_out_origins.contains(&uri.origin))
                 });
 
                 // Also stop receiving data from those servers.
@@ -1717,7 +1710,7 @@ impl AppCore {
             store_hub.store_bundle().recordings().any(|db| {
                 closing.is_none_or(|closing| db.store_id() != closing)
                     && store_hub.is_opened(db.store_id())
-                    && db.data_source.as_ref().is_some_and(|source| {
+                    && db.data_sources().iter().any(|source| {
                         ViewerUrl::from_data_source(source).is_ok_and(|loaded| &loaded == url)
                     })
             })
@@ -1781,26 +1774,15 @@ impl AppCore {
     /// history entry to step back to.
     ///
     /// - If viewing a recording in a dataset, go to said dataset.
-    /// - Otherwise, if in a redap server, go to said redap server.
     /// - Otherwise go to the start page.
     fn fallback_route_after_close(store_hub: &StoreHub, closing: &StoreId) -> Route {
-        let redap_uri = store_hub
-            .entity_db(closing)
-            .and_then(|db| db.data_source.as_ref())
-            .and_then(|source| source.redap_uri());
-
-        match redap_uri {
-            Some(re_uri::RedapUri::Dataset(uri)) => Route::RedapEntry {
-                origin: uri.origin,
+        match store_hub.entity_db(closing).and_then(|db| db.redap_uri()) {
+            Some(uri) => Route::RedapEntry {
+                origin: uri.origin.clone(),
                 entry_id: uri.dataset_id.into(),
                 kind: Some(re_viewer_context::EntryKind::Dataset(uri.resource)),
             },
-
-            Some(uri) if !matches!(uri, re_uri::RedapUri::Proxy(_)) => {
-                Route::RedapServer(uri.origin().clone())
-            }
-
-            _ => Route::welcome_page(),
+            None => Route::welcome_page(),
         }
     }
 
@@ -1821,12 +1803,10 @@ impl AppCore {
                     return;
                 }
 
-                let data_source = store_hub.entity_db_entry(store_id).data_source.as_ref();
-
-                if let Some(data_source) = data_source {
+                for data_source in store_hub.entity_db_entry(store_id).data_sources() {
                     // Only certain sources should be closed.
                     #[expect(clippy::match_same_arms)]
-                    let should_close = match &data_source {
+                    let should_close = match &**data_source {
                         // Specific files should stop streaming when closing them.
                         LogSource::File { .. } => true,
 
@@ -1846,7 +1826,7 @@ impl AppCore {
                     };
 
                     if should_close {
-                        self.rx_log.retain(|r| r.source() != data_source);
+                        self.rx_log.retain(|r| r.source() != &**data_source);
                     }
                 }
             }

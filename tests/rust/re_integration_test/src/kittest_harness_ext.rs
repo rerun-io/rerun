@@ -193,14 +193,15 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     fn step_until_active_recording_fully_loaded(&mut self) {
         self.step_until("active recording fully loaded", |harness| {
             let app = harness.state();
-            let Some(source) = app
-                .recording_db()
-                .and_then(|recording| recording.data_source.as_ref())
-            else {
+            let Some(recording) = app.recording_db() else {
                 return false;
             };
+            let sources = recording.data_sources();
 
-            !app.msg_receive_set().contains(source)
+            !sources.is_empty()
+                && sources
+                    .iter()
+                    .all(|source| !app.msg_receive_set().contains(source))
         });
     }
 

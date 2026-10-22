@@ -885,13 +885,10 @@ impl AppCore {
 
             if let Some(recording) = store_hub.entity_db(store_id) {
                 // Are we still connected to the data source for the current store?
-                let more_data_is_streaming_in =
-                    recording.data_source.as_ref().is_some_and(|store_source| {
-                        self.rx_log
-                            .sources()
-                            .iter()
-                            .any(|s| s.as_ref() == store_source)
-                    });
+                let connected = self.rx_log.sources();
+                let more_data_is_streaming_in = connected
+                    .iter()
+                    .any(|source| recording.is_from_source(source));
 
                 let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 

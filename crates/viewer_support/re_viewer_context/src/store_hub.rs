@@ -477,7 +477,7 @@ impl StoreHub {
             loading_sources.iter().map(|source| &**source),
             self.store_bundle
                 .recordings()
-                .filter_map(|db| db.data_source.as_ref()),
+                .flat_map(|db| db.data_sources().iter().map(|source| &**source)),
         )
         .collect();
         self.data_source_order
@@ -487,7 +487,7 @@ impl StoreHub {
         for source in std::iter::chain(
             self.store_bundle
                 .recordings()
-                .filter_map(|db| db.data_source.as_ref()),
+                .flat_map(|db| db.data_sources().iter().map(|source| &**source)),
             loading_sources.iter().map(|s| &**s),
         ) {
             self.data_source_order.add(source);
@@ -588,7 +588,9 @@ impl StoreHub {
         };
 
         let mut empty_store = EntityDb::new(store_id.clone());
-        empty_store.data_source = slot.data_source.clone();
+        for source in slot.data_sources() {
+            empty_store.add_data_source(source);
+        }
         let cleared_store = std::mem::replace(slot, empty_store);
 
         // The caches hold data derived from the chunks we drop.
@@ -634,13 +636,9 @@ impl StoreHub {
         &self,
         data_source: &re_log_channel::LogSource,
     ) -> Option<&EntityDb> {
-        self.store_bundle.entity_dbs().find(|db| {
-            db.store_id().is_recording()
-                && db
-                    .data_source
-                    .as_ref()
-                    .is_some_and(|ds| ds.is_same_ignoring_uri_fragments(data_source))
-        })
+        self.store_bundle
+            .entity_dbs()
+            .find(|db| db.store_id().is_recording() && db.is_from_source(data_source))
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
@@ -1161,25 +1159,12 @@ impl StoreHub {
         })
     }
 
-    /// Remove any recordings with a network source pointing at this `uri`.
+    /// Remove any recordings with a source at this `uri`. See [`re_log_channel::LogSource::uri`].
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
         self.retain_recordings(|db| {
-            let Some(data_source) = &db.data_source else {
-                // no data source, keep
-                return true;
-            };
-
-            // retain only sources which:
-            // - aren't network sources
-            // - don't point at the given `uri`
-            match data_source {
-                re_log_channel::LogSource::HttpStream { url, .. } => url != uri,
-
-                re_log_channel::LogSource::RedapGrpcStream { uri: redap_uri, .. } => {
-                    redap_uri.to_string() != uri
-                }
-                _ => true,
-            }
+            db.data_sources()
+                .iter()
+                .all(|data_source| data_source.uri().is_none_or(|source_uri| source_uri != uri))
         });
     }
 
@@ -1476,7 +1461,7 @@ impl StoreHub {
             store_stats.insert(
                 store_id.clone(),
                 StoreStats {
-                    store_source: store.data_source.clone(),
+                    store_source: store.primary_data_source().cloned(),
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),

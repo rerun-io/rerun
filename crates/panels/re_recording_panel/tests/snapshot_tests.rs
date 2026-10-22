@@ -1,5 +1,7 @@
 #![cfg(feature = "testing")]
 
+use std::sync::Arc;
+
 use re_entity_db::EntityDb;
 use re_log_msg::StoreInfo;
 use re_log_types::{StoreId, StoreKind};
@@ -53,9 +55,9 @@ fn fake_local_and_example_recordings_test() {
         "rerun_example_dna",
         "dna_rec_id",
     ));
-    example_entity_db.data_source = Some(re_log_channel::LogSource::HttpStream {
+    example_entity_db.add_data_source(&Arc::new(re_log_channel::LogSource::HttpStream {
         url: "https://app.rerun.io/version/nightly/examples/dna.rrd".to_owned(),
-    });
+    }));
     store_hub.insert_entity_db(example_entity_db);
 
     // fake a local recording
@@ -64,7 +66,7 @@ fn fake_local_and_example_recordings_test() {
         "local_app_id",
         "local_rec_id",
     ));
-    local_entity_db.data_source = Some(re_log_channel::LogSource::Sdk);
+    local_entity_db.add_data_source(&Arc::new(re_log_channel::LogSource::Sdk));
     store_hub.insert_entity_db(local_entity_db);
 
     // fake a local blueprint (it should not be visible in the recording panel)
@@ -73,7 +75,7 @@ fn fake_local_and_example_recordings_test() {
         "local_app_id",
         "local_blueprint_id",
     ));
-    blueprint_entity_db.data_source = Some(re_log_channel::LogSource::Sdk);
+    blueprint_entity_db.add_data_source(&Arc::new(re_log_channel::LogSource::Sdk));
 
     // release the lock lest we deadlock
     drop(store_hub);

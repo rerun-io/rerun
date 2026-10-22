@@ -105,7 +105,7 @@ impl PreviewState {
             .rendered_last_frame = true;
 
         if let Some(db) = store_bundle.get(store_id)
-            && let Some(re_entity_db::LogSource::RedapGrpcStream { uri, .. }) = &db.data_source
+            && let Some(uri) = db.redap_uri()
         {
             // If we've successfully loaded a uri, we could possibly want to request
             // it again later if it gets GC'ed.
