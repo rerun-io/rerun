@@ -16,7 +16,7 @@ use re_log_channel::{UiCallback, ViewerControlCommand};
 use re_log_types::{EntityPath, EntryName, TimelineName};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::viewer_control::v1alpha1::{
-    OpenUrlRequest, OpenUrlResponse, ViewerControlRequest, viewer_control_request,
+    OpenRequest, OpenResponse, ViewerControlRequest, viewer_control_request,
     viewer_control_response,
 };
 use re_sdk::RecordingStreamBuilder;
@@ -453,10 +453,10 @@ async fn internal_catalog_load_rrd() {
     run_with_catalog(&mut snapshot_results, false);
 }
 
-/// A caller reads the recording as soon as `open_url` answers, so the answer must wait for it,
+/// A caller reads the recording as soon as `open` answers, so the answer must wait for it,
 /// including when the file first has to be registered with the viewer catalog.
 #[tokio::test(flavor = "multi_thread")]
-async fn open_url_answers_once_the_recording_has_arrived() {
+async fn open_answers_once_the_recording_has_arrived() {
     for use_viewer_catalog in [false, true] {
         let (_dir, rrd_path) = test_rrd(false);
         let mut harness = viewer_test_utils::viewer_harness(&Default::default());
@@ -467,7 +467,7 @@ async fn open_url_answers_once_the_recording_has_arrived() {
 
         let answer = Arc::new(parking_lot::Mutex::new(None));
         let request = ViewerControlRequest {
-            kind: Some(viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+            kind: Some(viewer_control_request::Kind::Open(OpenRequest {
                 url: rrd_path.display().to_string(),
                 navigate: None,
             })),
@@ -479,9 +479,7 @@ async fn open_url_answers_once_the_recording_has_arrived() {
         tx.send(ViewerControlCommand::ViewerControl { request, on_done }.into())
             .expect("the viewer holds the receiver");
 
-        viewer_test_utils::step_until("open_url answered", &mut harness, |_| {
-            answer.lock().is_some()
-        });
+        viewer_test_utils::step_until("open answered", &mut harness, |_| answer.lock().is_some());
 
         let response = answer.lock().take().map(|response| {
             response
@@ -490,8 +488,8 @@ async fn open_url_answers_once_the_recording_has_arrived() {
         });
         assert_eq!(
             response,
-            Some(Ok(Some(viewer_control_response::Kind::OpenUrl(
-                OpenUrlResponse {
+            Some(Ok(Some(viewer_control_response::Kind::Open(
+                OpenResponse {
                     still_loading: false
                 }
             )))),

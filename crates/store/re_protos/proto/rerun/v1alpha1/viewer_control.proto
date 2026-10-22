@@ -80,7 +80,7 @@ message ViewerControlRequest {
     // makes the viewer state and the UI hard to read.
     //
     // `NOT_FOUND` if the requested recording is not open.
-    CloseRecordingsRequest close_recordings = 1;
+    CloseRequest close = 1;
 
     // Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the
     // warnings and errors the user sees. A warning here usually explains what the user is seeing.
@@ -112,7 +112,7 @@ message ViewerControlRequest {
     //
     // A location the viewer already has open is not loaded again: the viewer only navigates there,
     // like `set_location` does, but also refreshes a server, folder, or entry. Unlike
-    // `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+    // `set_location`, which never loads anything, `open` loads what the viewer does not have
     // yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
     // nothing can load it.
     //
@@ -128,7 +128,7 @@ message ViewerControlRequest {
     // is empty; only then does an absent timeline mean an empty recording rather than one still
     // arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
     // so anything waiting on one stalls, while `GetViewerState` keeps answering.
-    OpenUrlRequest open_url = 4;
+    OpenRequest open = 4;
 
     // Take a screenshot of the viewer, or of a single view within it, and write it to disk.
     //
@@ -258,7 +258,7 @@ message ViewerControlRequest {
     // the header name, and the Arrow datatype. Read it before writing a table blueprint.
     //
     // `FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if
-    // the viewer does not know the table or has not shown it yet, so open it with `OpenUrl`.
+    // the viewer does not know the table or has not shown it yet, so open it with `Open`.
     GetTableSchemaRequest get_table_schema = 17;
 
     // Describe a dataset on a server: the entities of all its segments and the components logged
@@ -291,7 +291,7 @@ message ViewerControlRequest {
 
     // Show a location the viewer already has open, as `get_location` reports it.
     // Each recording in `get_viewer_state` carries its location too.
-    // This only navigates, and never loads anything: use `open_url` for that.
+    // This only navigates, and never loads anything: use `open` for that.
     //
     // Like a user navigating, it leaves the page shown before in the viewer's history, so the
     // back button of the native viewer, or of the browser for the web viewer, returns to it.
@@ -365,8 +365,8 @@ message ViewerControlRequest {
 message ViewerControlResponse {
   // Always the same variant as the request's `kind`.
   oneof kind {
-    // Result of `close_recordings`.
-    CloseRecordingsResponse close_recordings = 1;
+    // Result of `close`.
+    CloseResponse close = 1;
 
     // Result of `get_viewer_logs`.
     GetViewerLogsResponse get_viewer_logs = 2;
@@ -374,8 +374,8 @@ message ViewerControlResponse {
     // Result of `get_viewer_state`.
     GetViewerStateResponse get_viewer_state = 3;
 
-    // Result of `open_url`.
-    OpenUrlResponse open_url = 4;
+    // Result of `open`.
+    OpenResponse open = 4;
 
     // Result of `save_screenshot`.
     SaveScreenshotResponse save_screenshot = 5;
@@ -479,10 +479,10 @@ message GetTransformGraphResponse {
 }
 
 // ----------------------------------------------------------------------------
-// CloseRecordings
+// Close
 
-// Request for `CloseRecordings`.
-message CloseRecordingsRequest {
+// Request for `Close`.
+message CloseRequest {
   // The recordings to close. Exactly one selector, like a Rust enum: there is no default target.
   oneof target {
     // Close the active recording. Must be `true`: this is a selector, not a flag.
@@ -496,14 +496,14 @@ message CloseRecordingsRequest {
   }
 }
 
-// Recording ids selected by `CloseRecordings`.
+// Recording ids selected by `Close`.
 message ViewerRecordingIds {
   // The recording ids to close, each as `{kind}:{application_id}:{recording_id}`.
   repeated string store_ids = 1;
 }
 
-// Response for `CloseRecordings`, reporting what was actually closed.
-message CloseRecordingsResponse {
+// Response for `Close`, reporting what was actually closed.
+message CloseResponse {
   // The recordings that were closed, each as `{kind}:{application_id}:{recording_id}`.
   repeated string closed = 1;
 }
@@ -911,7 +911,7 @@ message GetViewerStateResponse {
 
   // What the viewer is still loading, empty once everything has arrived.
   //
-  // `OpenUrl` returns as soon as the load starts, and a recording appears in `recordings` as
+  // `Open` returns as soon as the load starts, and a recording appears in `recordings` as
   // soon as its first message lands, so a recording with no timelines yet means "still arriving"
   // rather than "empty". Poll until this list is empty before concluding that a load finished,
   // and prefer that over a screenshot: a viewer busy importing does not paint frames, so the
@@ -924,7 +924,7 @@ message GetViewerStateResponse {
   // The Redap servers listed in the viewer's left panel, with their catalog entries.
   //
   // Users name a server by its host or a nickname ("the EU stack"), so this is how a client maps
-  // that name to a URL it can pass to `OpenUrl`.
+  // that name to a URL it can pass to `Open`.
   repeated ViewerServer servers = 8;
 }
 
@@ -948,7 +948,7 @@ message ViewerServerEntry {
   // What kind of entry this is, as the server reports it.
   rerun.cloud.v1alpha1.EntryKind kind = 2;
 
-  // URL that opens this entry, usable with `OpenUrl`.
+  // URL that opens this entry, usable with `Open`.
   string url = 3;
 }
 
@@ -1105,10 +1105,10 @@ message CommandSummary {
 }
 
 // ----------------------------------------------------------------------------
-// OpenUrl
+// Open
 
-// Request for `OpenUrl`.
-message OpenUrlRequest {
+// Request for `Open`.
+message OpenRequest {
   // The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
   // dataset URI, a redap server/catalog URL, or an intra-recording link.
   string url = 1;
@@ -1120,9 +1120,9 @@ message OpenUrlRequest {
   optional bool navigate = 2;
 }
 
-// Response for `OpenUrl`.
-message OpenUrlResponse {
-  // True if the initial load (see `OpenUrl`) was not done when the viewer answered.
+// Response for `Open`.
+message OpenResponse {
+  // True if the initial load (see `Open`) was not done when the viewer answered.
   bool still_loading = 1;
 }
 

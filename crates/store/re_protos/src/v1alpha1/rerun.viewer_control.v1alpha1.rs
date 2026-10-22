@@ -24,7 +24,7 @@ pub mod viewer_control_request {
         ///
         /// `NOT_FOUND` if the requested recording is not open.
         #[prost(message, tag = "1")]
-        CloseRecordings(super::CloseRecordingsRequest),
+        Close(super::CloseRequest),
         /// Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the
         /// warnings and errors the user sees. A warning here usually explains what the user is seeing.
         ///
@@ -55,7 +55,7 @@ pub mod viewer_control_request {
         ///
         /// A location the viewer already has open is not loaded again: the viewer only navigates there,
         /// like `set_location` does, but also refreshes a server, folder, or entry. Unlike
-        /// `set_location`, which never loads anything, `open_url` loads what the viewer does not have
+        /// `set_location`, which never loads anything, `open` loads what the viewer does not have
         /// yet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since
         /// nothing can load it.
         ///
@@ -72,7 +72,7 @@ pub mod viewer_control_request {
         /// arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
         /// so anything waiting on one stalls, while `GetViewerState` keeps answering.
         #[prost(message, tag = "4")]
-        OpenUrl(super::OpenUrlRequest),
+        Open(super::OpenRequest),
         /// Take a screenshot of the viewer, or of a single view within it, and write it to disk.
         ///
         /// The screenshot is saved by the viewer process, so the path is resolved on the machine
@@ -201,7 +201,7 @@ pub mod viewer_control_request {
         /// the header name, and the Arrow datatype. Read it before writing a table blueprint.
         ///
         /// `FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if
-        /// the viewer does not know the table or has not shown it yet, so open it with `OpenUrl`.
+        /// the viewer does not know the table or has not shown it yet, so open it with `Open`.
         #[prost(message, tag = "17")]
         GetTableSchema(super::GetTableSchemaRequest),
         /// Describe a dataset on a server: the entities of all its segments and the components logged
@@ -234,7 +234,7 @@ pub mod viewer_control_request {
         GetLocation(super::GetLocationRequest),
         /// Show a location the viewer already has open, as `get_location` reports it.
         /// Each recording in `get_viewer_state` carries its location too.
-        /// This only navigates, and never loads anything: use `open_url` for that.
+        /// This only navigates, and never loads anything: use `open` for that.
         ///
         /// Like a user navigating, it leaves the page shown before in the viewer's history, so the
         /// back button of the native viewer, or of the browser for the web viewer, returns to it.
@@ -329,18 +329,18 @@ pub mod viewer_control_response {
     /// Always the same variant as the request's `kind`.
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Kind {
-        /// Result of `close_recordings`.
+        /// Result of `close`.
         #[prost(message, tag = "1")]
-        CloseRecordings(super::CloseRecordingsResponse),
+        Close(super::CloseResponse),
         /// Result of `get_viewer_logs`.
         #[prost(message, tag = "2")]
         GetViewerLogs(super::GetViewerLogsResponse),
         /// Result of `get_viewer_state`.
         #[prost(message, tag = "3")]
         GetViewerState(super::GetViewerStateResponse),
-        /// Result of `open_url`.
+        /// Result of `open`.
         #[prost(message, tag = "4")]
-        OpenUrl(super::OpenUrlResponse),
+        Open(super::OpenResponse),
         /// Result of `save_screenshot`.
         #[prost(message, tag = "5")]
         SaveScreenshot(super::SaveScreenshotResponse),
@@ -538,15 +538,15 @@ impl ::prost::Name for GetTransformGraphResponse {
         "/rerun.viewer_control.v1alpha1.GetTransformGraphResponse".into()
     }
 }
-/// Request for `CloseRecordings`.
+/// Request for `Close`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CloseRecordingsRequest {
+pub struct CloseRequest {
     /// The recordings to close. Exactly one selector, like a Rust enum: there is no default target.
-    #[prost(oneof = "close_recordings_request::Target", tags = "1, 2, 3")]
-    pub target: ::core::option::Option<close_recordings_request::Target>,
+    #[prost(oneof = "close_request::Target", tags = "1, 2, 3")]
+    pub target: ::core::option::Option<close_request::Target>,
 }
-/// Nested message and enum types in `CloseRecordingsRequest`.
-pub mod close_recordings_request {
+/// Nested message and enum types in `CloseRequest`.
+pub mod close_request {
     /// The recordings to close. Exactly one selector, like a Rust enum: there is no default target.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
@@ -561,17 +561,17 @@ pub mod close_recordings_request {
         StoreIds(super::ViewerRecordingIds),
     }
 }
-impl ::prost::Name for CloseRecordingsRequest {
-    const NAME: &'static str = "CloseRecordingsRequest";
+impl ::prost::Name for CloseRequest {
+    const NAME: &'static str = "CloseRequest";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.CloseRecordingsRequest".into()
+        "rerun.viewer_control.v1alpha1.CloseRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.CloseRecordingsRequest".into()
+        "/rerun.viewer_control.v1alpha1.CloseRequest".into()
     }
 }
-/// Recording ids selected by `CloseRecordings`.
+/// Recording ids selected by `Close`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ViewerRecordingIds {
     /// The recording ids to close, each as `{kind}:{application_id}:{recording_id}`.
@@ -588,21 +588,21 @@ impl ::prost::Name for ViewerRecordingIds {
         "/rerun.viewer_control.v1alpha1.ViewerRecordingIds".into()
     }
 }
-/// Response for `CloseRecordings`, reporting what was actually closed.
+/// Response for `Close`, reporting what was actually closed.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CloseRecordingsResponse {
+pub struct CloseResponse {
     /// The recordings that were closed, each as `{kind}:{application_id}:{recording_id}`.
     #[prost(string, repeated, tag = "1")]
     pub closed: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-impl ::prost::Name for CloseRecordingsResponse {
-    const NAME: &'static str = "CloseRecordingsResponse";
+impl ::prost::Name for CloseResponse {
+    const NAME: &'static str = "CloseResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.CloseRecordingsResponse".into()
+        "rerun.viewer_control.v1alpha1.CloseResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.CloseRecordingsResponse".into()
+        "/rerun.viewer_control.v1alpha1.CloseResponse".into()
     }
 }
 /// Request for `DescribeCommands`.
@@ -1260,7 +1260,7 @@ pub struct GetViewerStateResponse {
     pub viewer_version: ::core::option::Option<::prost::alloc::string::String>,
     /// What the viewer is still loading, empty once everything has arrived.
     ///
-    /// `OpenUrl` returns as soon as the load starts, and a recording appears in `recordings` as
+    /// `Open` returns as soon as the load starts, and a recording appears in `recordings` as
     /// soon as its first message lands, so a recording with no timelines yet means "still arriving"
     /// rather than "empty". Poll until this list is empty before concluding that a load finished,
     /// and prefer that over a screenshot: a viewer busy importing does not paint frames, so the
@@ -1273,7 +1273,7 @@ pub struct GetViewerStateResponse {
     /// The Redap servers listed in the viewer's left panel, with their catalog entries.
     ///
     /// Users name a server by its host or a nickname ("the EU stack"), so this is how a client maps
-    /// that name to a URL it can pass to `OpenUrl`.
+    /// that name to a URL it can pass to `Open`.
     #[prost(message, repeated, tag = "8")]
     pub servers: ::prost::alloc::vec::Vec<ViewerServer>,
 }
@@ -1319,7 +1319,7 @@ pub struct ViewerServerEntry {
     /// What kind of entry this is, as the server reports it.
     #[prost(enumeration = "super::super::cloud::v1alpha1::EntryKind", tag = "2")]
     pub kind: i32,
-    /// URL that opens this entry, usable with `OpenUrl`.
+    /// URL that opens this entry, usable with `Open`.
     #[prost(string, tag = "3")]
     pub url: ::prost::alloc::string::String,
 }
@@ -1599,9 +1599,9 @@ impl ::prost::Name for CommandSummary {
         "/rerun.viewer_control.v1alpha1.CommandSummary".into()
     }
 }
-/// Request for `OpenUrl`.
+/// Request for `Open`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct OpenUrlRequest {
+pub struct OpenRequest {
     /// The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
     /// dataset URI, a redap server/catalog URL, or an intra-recording link.
     #[prost(string, tag = "1")]
@@ -1613,31 +1613,31 @@ pub struct OpenUrlRequest {
     #[prost(bool, optional, tag = "2")]
     pub navigate: ::core::option::Option<bool>,
 }
-impl ::prost::Name for OpenUrlRequest {
-    const NAME: &'static str = "OpenUrlRequest";
+impl ::prost::Name for OpenRequest {
+    const NAME: &'static str = "OpenRequest";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.OpenUrlRequest".into()
+        "rerun.viewer_control.v1alpha1.OpenRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.OpenUrlRequest".into()
+        "/rerun.viewer_control.v1alpha1.OpenRequest".into()
     }
 }
-/// Response for `OpenUrl`.
+/// Response for `Open`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct OpenUrlResponse {
-    /// True if the initial load (see `OpenUrl`) was not done when the viewer answered.
+pub struct OpenResponse {
+    /// True if the initial load (see `Open`) was not done when the viewer answered.
     #[prost(bool, tag = "1")]
     pub still_loading: bool,
 }
-impl ::prost::Name for OpenUrlResponse {
-    const NAME: &'static str = "OpenUrlResponse";
+impl ::prost::Name for OpenResponse {
+    const NAME: &'static str = "OpenResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.OpenUrlResponse".into()
+        "rerun.viewer_control.v1alpha1.OpenResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.OpenUrlResponse".into()
+        "/rerun.viewer_control.v1alpha1.OpenResponse".into()
     }
 }
 /// Request for `RunCommand`.

@@ -14,7 +14,7 @@ Getting oriented:
 - A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) drives the widgets one input event at a time, the way a person would. Prefer a `rerun_*` tool whenever one fits, and `rerun_run_command` over clicking through menus: clicking through the UI costs several calls and a lot of context, and breaks whenever the layout moves.
 - Start most tasks with `rerun_get_viewer_state`: it names the recordings, timelines, views and Redap servers that are loaded. Confirm a load with it too, not with `screenshot`; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks.
 - Use `rerun_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
-- To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
+- To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
   `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
@@ -45,7 +45,7 @@ Acting and verifying:
 - Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors. `rerun_save_screenshot` scales to 1024 pixels unless you pass `max_size`; pass a `view_id` to capture one view rather than the whole window.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
-- `rerun_close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
+- `rerun_close` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
 
 Reading the data itself:
 - `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
@@ -54,7 +54,7 @@ Reading the data itself:
 - A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
   `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
 - Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
-- `rerun_close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
+- `rerun_close` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
@@ -721,10 +721,10 @@ Conventions:
   }
 }
 
-## rerun_close_recordings
+## rerun_close
 
 {
-  "name": "rerun_close_recordings",
+  "name": "rerun_close",
   "description": "Close recordings in the viewer, to clear away what is no longer needed.\n\nThis only removes them from the viewer. Files on disk are untouched, and registered\nrecordings stay in the catalog and can be reopened, but unsaved blueprint edits are lost.\n\nIterating on a file you keep regenerating leaves a pile of stale recordings behind, which\nmakes the viewer state and the UI hard to read.\n\n`NOT_FOUND` if the requested recording is not open.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
@@ -774,7 +774,7 @@ Conventions:
         ]
       }
     ],
-    "description": "Request for `CloseRecordings`.\n\nExactly one of `current`, `all`, `store_ids` must be set."
+    "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids` must be set."
   }
 }
 
@@ -1005,7 +1005,7 @@ Conventions:
 
 {
   "name": "rerun_get_table_schema",
-  "description": "Name a table's columns in display order, as last shown: the name a table blueprint uses,\nthe header name, and the Arrow datatype. Read it before writing a table blueprint.\n\n`FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if\nthe viewer does not know the table or has not shown it yet, so open it with `OpenUrl`.\n\nRequires `rerun_connect`.",
+  "description": "Name a table's columns in display order, as last shown: the name a table blueprint uses,\nthe header name, and the Arrow datatype. Read it before writing a table blueprint.\n\n`FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if\nthe viewer does not know the table or has not shown it yet, so open it with `Open`.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1163,11 +1163,11 @@ Conventions:
   }
 }
 
-## rerun_open_url
+## rerun_open
 
 {
-  "name": "rerun_open_url",
-  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link). A recording it opens, such as a dataset\nsegment, becomes the active recording and is shown.\n\nRoughly the inverse of `get_location`: opening the location it reports goes back there.\n\nA location the viewer already has open is not loaded again: the viewer only navigates there,\nlike `set_location` does, but also refreshes a server, folder, or entry. Unlike\n`set_location`, which never loads anything, `open_url` loads what the viewer does not have\nyet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since\nnothing can load it.\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response says `still_loading`, poll `GetViewerState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
+  "name": "rerun_open",
+  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link). A recording it opens, such as a dataset\nsegment, becomes the active recording and is shown.\n\nRoughly the inverse of `get_location`: opening the location it reports goes back there.\n\nA location the viewer already has open is not loaded again: the viewer only navigates there,\nlike `set_location` does, but also refreshes a server, folder, or entry. Unlike\n`set_location`, which never loads anything, `open` loads what the viewer does not have\nyet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since\nnothing can load it.\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response says `still_loading`, poll `GetViewerState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1183,7 +1183,7 @@ Conventions:
     "required": [
       "url"
     ],
-    "description": "Request for `OpenUrl`."
+    "description": "Request for `Open`."
   }
 }
 
@@ -1304,7 +1304,7 @@ Conventions:
 
 {
   "name": "rerun_set_location",
-  "description": "Show a location the viewer already has open, as `get_location` reports it.\nEach recording in `get_viewer_state` carries its location too.\nThis only navigates, and never loads anything: use `open_url` for that.\n\nLike a user navigating, it leaves the page shown before in the viewer's history, so the\nback button of the native viewer, or of the browser for the web viewer, returns to it.\n\n`INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it\nopen.\n\nRequires `rerun_connect`.",
+  "description": "Show a location the viewer already has open, as `get_location` reports it.\nEach recording in `get_viewer_state` carries its location too.\nThis only navigates, and never loads anything: use `open` for that.\n\nLike a user navigating, it leaves the page shown before in the viewer's history, so the\nback button of the native viewer, or of the browser for the web viewer, returns to it.\n\n`INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it\nopen.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {

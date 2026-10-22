@@ -2,18 +2,18 @@
 //! That file lists every place an operation has to be added.
 
 use crate::viewer_control::v1alpha1::{
-    CaptureProfileTraceRequest, CaptureProfileTraceResponse, CloseRecordingsRequest,
-    CloseRecordingsResponse, DescribeCommandsRequest, DescribeCommandsResponse,
-    GetBlueprintRequest, GetBlueprintResponse, GetDatasetAssetsSchemaRequest,
-    GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
-    GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetTableSchemaRequest, GetTableSchemaResponse, GetTransformGraphRequest,
-    GetTransformGraphResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
-    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, ListCommandsRequest,
-    ListCommandsResponse, OpenUrlRequest, OpenUrlResponse, RunCommandRequest, RunCommandResponse,
-    SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest, SetBlueprintResponse,
-    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
-    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
+    CaptureProfileTraceRequest, CaptureProfileTraceResponse, CloseRequest, CloseResponse,
+    DescribeCommandsRequest, DescribeCommandsResponse, GetBlueprintRequest, GetBlueprintResponse,
+    GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
+    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest,
+    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
+    GetTransformGraphRequest, GetTransformGraphResponse, GetViewerLogsRequest,
+    GetViewerLogsResponse, GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest,
+    HighlightRectResponse, ListCommandsRequest, ListCommandsResponse, OpenRequest, OpenResponse,
+    RunCommandRequest, RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse,
+    SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
+    SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse,
+    viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -109,7 +109,7 @@ macro_rules! viewer_control_ops {
 
 viewer_control_ops! {
     "capture_profile_trace" => CaptureProfileTrace(CaptureProfileTraceRequest, CaptureProfileTraceResponse),
-    "close_recordings" => CloseRecordings(CloseRecordingsRequest, CloseRecordingsResponse),
+    "close" => Close(CloseRequest, CloseResponse),
     "describe_commands" => DescribeCommands(DescribeCommandsRequest, DescribeCommandsResponse),
     "get_blueprint" => GetBlueprint(GetBlueprintRequest, GetBlueprintResponse),
     "get_dataset_assets_schema" => GetDatasetAssetsSchema(GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse),
@@ -122,7 +122,7 @@ viewer_control_ops! {
     "get_viewer_state" => GetViewerState(GetViewerStateRequest, GetViewerStateResponse),
     "highlight_rect" => HighlightRect(HighlightRectRequest, HighlightRectResponse),
     "list_commands" => ListCommands(ListCommandsRequest, ListCommandsResponse),
-    "open_url" => OpenUrl(OpenUrlRequest, OpenUrlResponse),
+    "open" => Open(OpenRequest, OpenResponse),
     "run_command" => RunCommand(RunCommandRequest, RunCommandResponse),
     "save_screenshot" => SaveScreenshot(SaveScreenshotRequest, SaveScreenshotResponse),
     "set_blueprint" => SetBlueprint(SetBlueprintRequest, SetBlueprintResponse),
@@ -136,32 +136,32 @@ mod tests {
 
     #[test]
     fn round_trips_through_the_envelope() {
-        let request = OpenUrlRequest {
+        let request = OpenRequest {
             url: "rerun://example".to_owned(),
             navigate: None,
         };
         assert!(matches!(
             request.into_envelope().kind,
-            Some(viewer_control_request::Kind::OpenUrl(_))
+            Some(viewer_control_request::Kind::Open(_))
         ));
 
-        let envelope = ViewerControlResponse::from(OpenUrlResponse::default());
-        assert!(OpenUrlRequest::from_envelope(envelope).is_ok());
+        let envelope = ViewerControlResponse::from(OpenResponse::default());
+        assert!(OpenRequest::from_envelope(envelope).is_ok());
     }
 
     #[test]
     fn rejects_a_mismatched_response_kind() {
-        let envelope = ViewerControlResponse::from(OpenUrlResponse::default());
+        let envelope = ViewerControlResponse::from(OpenResponse::default());
         let err = GetViewerLogsRequest::from_envelope(envelope)
-            .expect_err("a get_viewer_logs request must not accept an open_url response");
+            .expect_err("a get_viewer_logs request must not accept an open response");
 
         assert_eq!(err.expected, "get_viewer_logs");
-        assert_eq!(err.actual, "open_url");
+        assert_eq!(err.actual, "open");
     }
 
     #[test]
     fn reports_an_unset_response_kind() {
-        let err = OpenUrlRequest::from_envelope(ViewerControlResponse { kind: None })
+        let err = OpenRequest::from_envelope(ViewerControlResponse { kind: None })
             .expect_err("an unset response kind must not be accepted");
 
         assert_eq!(err.actual, "none");

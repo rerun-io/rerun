@@ -550,8 +550,8 @@ mod tests {
         let tools = tools();
         let open_url = tools
             .iter()
-            .find(|tool| tool.name == "open_url")
-            .expect("open_url is an operation");
+            .find(|tool| tool.name == "open")
+            .expect("open is an operation");
 
         let description = open_url
             .description
@@ -593,7 +593,7 @@ mod tests {
                 .unwrap_or_default()
         };
 
-        assert_eq!(required("open_url"), ["url"]);
+        assert_eq!(required("open"), ["url"]);
         assert!(
             required("set_time_cursor").is_empty(),
             "every `set_time_cursor` field is `optional`"
@@ -625,8 +625,8 @@ mod tests {
         let tools = tools();
         let close = tools
             .iter()
-            .find(|tool| tool.name == "close_recordings")
-            .expect("close_recordings is an operation");
+            .find(|tool| tool.name == "close")
+            .expect("close is an operation");
 
         let items =
             &close.input_schema["properties"]["store_ids"]["properties"]["store_ids"]["items"];
@@ -646,15 +646,13 @@ mod tests {
             .cloned()
             .expect("an object");
 
-        let request = build_request("open_url", Some(arguments)).expect("valid arguments");
+        let request = build_request("open", Some(arguments)).expect("valid arguments");
 
         match request.kind {
-            Some(re_protos::viewer_control::v1alpha1::viewer_control_request::Kind::OpenUrl(
-                open,
-            )) => {
+            Some(re_protos::viewer_control::v1alpha1::viewer_control_request::Kind::Open(open)) => {
                 assert_eq!(open.url, "rerun://example");
             }
-            other => panic!("expected an open_url request, got {other:?}"),
+            other => panic!("expected an open request, got {other:?}"),
         }
     }
 
@@ -665,10 +663,10 @@ mod tests {
 
     #[test]
     fn rejects_a_missing_required_field() {
-        let err = build("open_url", &json!({})).expect_err("`url` is required");
+        let err = build("open", &json!({})).expect_err("`url` is required");
         assert!(err.contains("url"), "{err}");
 
-        let err = build("open_url", &json!({ "url": null }))
+        let err = build("open", &json!({ "url": null }))
             .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
         assert!(err.contains("url"), "{err}");
 
@@ -715,7 +713,7 @@ mod tests {
     #[test]
     fn rejects_an_unknown_field() {
         // The shape of a call written against the older, hand-written surface.
-        let err = build("close_recordings", &json!({ "target": "all" }))
+        let err = build("close", &json!({ "target": "all" }))
             .expect_err("silently dropping this would close the current recording instead");
         assert!(err.contains("target"), "{err}");
     }
@@ -744,14 +742,14 @@ mod tests {
     #[test]
     fn rejects_a_response_for_a_different_operation() {
         let response = ViewerControlResponse::from(
-            re_protos::viewer_control::v1alpha1::OpenUrlResponse::default(),
+            re_protos::viewer_control::v1alpha1::OpenResponse::default(),
         );
 
         let err = response_json("get_viewer_state", &response)
             .expect_err("another operation's payload must not pass as this one's result");
-        assert!(err.contains("open_url"), "{err}");
+        assert!(err.contains("open"), "{err}");
 
-        response_json("open_url", &response).expect("the matching operation");
+        response_json("open", &response).expect("the matching operation");
     }
 
     #[test]
@@ -759,8 +757,8 @@ mod tests {
         let tools = tools();
         let close = tools
             .iter()
-            .find(|tool| tool.name == "close_recordings")
-            .expect("close_recordings is an operation");
+            .find(|tool| tool.name == "close")
+            .expect("close is an operation");
 
         let all = &close.input_schema["properties"]["all"];
         assert_eq!(all["enum"], json!([true]), "a selector is not a flag");
@@ -793,11 +791,10 @@ mod tests {
 
     #[test]
     fn rejects_a_request_that_sets_no_oneof_arm_or_several() {
-        let err =
-            build("close_recordings", &json!({})).expect_err("an unset target names no recording");
+        let err = build("close", &json!({})).expect_err("an unset target names no recording");
         assert!(err.contains("none were set"), "{err}");
 
-        let err = build("close_recordings", &json!({ "current": true, "all": true }))
+        let err = build("close", &json!({ "current": true, "all": true }))
             .expect_err("two selectors contradict each other");
         assert!(err.contains("`current`, `all` were set"), "{err}");
     }
@@ -809,6 +806,6 @@ mod tests {
             .cloned()
             .expect("an object");
 
-        build_request("open_url", Some(arguments)).expect_err("a number is not a URL");
+        build_request("open", Some(arguments)).expect_err("a number is not a URL");
     }
 }

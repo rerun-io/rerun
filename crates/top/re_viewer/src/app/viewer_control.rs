@@ -18,19 +18,18 @@ use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::PlayState as ProtoPlayState;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, DatasetAssetSchema, GetBlueprintRequest,
-    GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
-    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
-    GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
-    GetTableSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest,
-    GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse, OpenUrlRequest,
-    OpenUrlResponse, RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest,
-    SaveScreenshotResponse, ScreenRect, SetBlueprintRequest, SetBlueprintResponse,
-    SetLocationRequest, SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse,
-    TableColumnSchema, TimeCursor, ViewerControlRequest, ViewerControlResponse,
-    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerServer, ViewerServerEntry,
-    ViewerTimeline, ViewerView, get_blueprint_request, set_blueprint_request,
-    viewer_control_request,
+    CloseRequest, CloseResponse, DatasetAssetSchema, GetBlueprintRequest, GetBlueprintResponse,
+    GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
+    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest,
+    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
+    GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest, GetViewerStateResponse,
+    HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
+    RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
+    ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
+    SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
+    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
+    ViewerReport, ViewerServer, ViewerServerEntry, ViewerTimeline, ViewerView,
+    get_blueprint_request, set_blueprint_request, viewer_control_request,
 };
 use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
@@ -59,15 +58,15 @@ const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
 /// components on it cost many — which is the whole reason to ask for paths alone.
 const DEFAULT_MAX_SCHEMA_PATHS: u32 = 10_000;
 
-/// How long `open_url` waits for what it loads before answering that it is still loading.
+/// How long `open` waits for what it loads before answering that it is still loading.
 ///
 /// Must stay well below the transport's deadline for an answer, or a slow load reads as a viewer
-/// that has stopped responding. The `OpenUrl` docs in `viewer_control.proto` state this number.
-const OPEN_URL_MAX_WAIT: Duration = Duration::from_secs(10);
+/// that has stopped responding. The `Open` docs in `viewer_control.proto` state this number.
+const OPEN_MAX_WAIT: Duration = Duration::from_secs(10);
 
 const _: () = assert!(
-    OPEN_URL_MAX_WAIT.as_millis() + 5_000 <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
-    "`open_url` must answer well before the transport gives up"
+    OPEN_MAX_WAIT.as_millis() + 5_000 <= re_log_channel::VIEWER_CONTROL_TIMEOUT.as_millis(),
+    "`open` must answer well before the transport gives up"
 );
 
 /// How long `get_blueprint` waits for the recording or table on screen to get the blueprint the
@@ -84,11 +83,11 @@ const _: () = assert!(
     "`get_blueprint` must answer well before the transport gives up"
 );
 
-/// How often a waiting `open_url` checks whether its catalog registration is done.
+/// How often a waiting `open` checks whether its catalog registration is done.
 ///
 /// Nothing wakes the viewer when a registration finishes, so it has to poll. A few frames is
 /// quick enough for a caller, and cheap enough for an idle viewer.
-const OPEN_URL_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const OPEN_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
 /// A `ViewerControlService` answer held back until the work it reports on has happened.
 ///
@@ -103,8 +102,8 @@ enum PendingAnswer {
     /// Sent as soon as the queued commands have run.
     Ready(Result<ViewerControlResponse, ViewerControlError>),
 
-    /// `open_url`, which also waits for what it started loading, until `deadline`.
-    OpenUrl {
+    /// `open`, which also waits for what it started loading, until `deadline`.
+    Open {
         /// What was loading before the URL was opened, and so is not waited for.
         sources_before: Vec<Arc<LogSource>>,
 
@@ -229,7 +228,7 @@ impl AppCore {
         {
             match answer {
                 PendingAnswer::Ready(result) => on_done.call(result),
-                PendingAnswer::OpenUrl {
+                PendingAnswer::Open {
                     sources_before,
                     registrations_before,
                     deadline,
@@ -243,15 +242,15 @@ impl AppCore {
                     if still_loading && now < deadline {
                         self.pending_viewer_control_replies.push(PendingReply {
                             on_done,
-                            answer: PendingAnswer::OpenUrl {
+                            answer: PendingAnswer::Open {
                                 sources_before,
                                 registrations_before,
                                 deadline,
                             },
                         });
-                        self.egui_ctx.request_repaint_after(OPEN_URL_POLL_INTERVAL);
+                        self.egui_ctx.request_repaint_after(OPEN_POLL_INTERVAL);
                     } else {
-                        on_done.call(Ok(OpenUrlResponse { still_loading }.into()));
+                        on_done.call(Ok(OpenResponse { still_loading }.into()));
                     }
                 }
                 PendingAnswer::GetBlueprint { target, deadline } => {
@@ -323,7 +322,7 @@ impl AppCore {
                 }
             }
 
-            Kind::CloseRecordings(request) => {
+            Kind::Close(request) => {
                 let result = close_recordings_target(request)
                     .and_then(|target| {
                         self.apply_close_recordings(store_hub, target)
@@ -432,7 +431,7 @@ impl AppCore {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::OpenUrl(OpenUrlRequest { url, navigate }) => {
+            Kind::Open(OpenRequest { url, navigate }) => {
                 let navigate = navigate.unwrap_or(true);
                 let parsed = ViewerUrl::parse_with_options(
                     &url,
@@ -462,7 +461,7 @@ impl AppCore {
                                 self.command_sender
                                     .send_system(SystemCommand::SetRoute(route));
                             }
-                            let response = OpenUrlResponse {
+                            let response = OpenResponse {
                                 still_loading: false,
                             };
                             self.reply_after_commands(on_done, Ok(response.into()), egui_ctx);
@@ -499,10 +498,10 @@ impl AppCore {
                             }
                             self.pending_viewer_control_replies.push(PendingReply {
                                 on_done,
-                                answer: PendingAnswer::OpenUrl {
+                                answer: PendingAnswer::Open {
                                     sources_before,
                                     registrations_before,
-                                    deadline: web_time::Instant::now() + OPEN_URL_MAX_WAIT,
+                                    deadline: web_time::Instant::now() + OPEN_MAX_WAIT,
                                 },
                             });
                             egui_ctx.request_repaint();
@@ -675,18 +674,18 @@ impl AppCore {
     }
 }
 
-/// Which recordings a `close_recordings` request selects.
+/// Which recordings a `close` request selects.
 fn close_recordings_target(
-    request: CloseRecordingsRequest,
+    request: CloseRequest,
 ) -> Result<CloseRecordingTarget, ViewerControlError> {
-    use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
+    use re_protos::viewer_control::v1alpha1::close_request::Target;
 
     Ok(match request.target {
         // A `oneof` is an enum: an unset target names no recording, so there is nothing to
         // default to without closing something the caller did not ask for.
         None => {
             return Err(ViewerControlError::invalid_argument(
-                "`close_recordings` takes exactly one of `current`, `all` or `store_ids`",
+                "`close` takes exactly one of `current`, `all`, or `store_ids`",
             ));
         }
 
@@ -1446,7 +1445,7 @@ impl AppCore {
         let columns = re_dataframe_ui::DataFusionTableWidget::table_schema(egui_ctx, &table)
             .ok_or_else(|| {
                 ViewerControlError::not_found(format!(
-                    "table {table:?} has not been shown yet. Open it with `OpenUrl` first"
+                    "table {table:?} has not been shown yet. Open it with `open` first"
                 ))
             })?;
 
@@ -1639,7 +1638,7 @@ impl AppCore {
         &self,
         store_hub: &StoreHub,
         target: re_log_channel::CloseRecordingTarget,
-    ) -> Result<CloseRecordingsResponse, String> {
+    ) -> Result<CloseResponse, String> {
         let to_close = match target {
             re_log_channel::CloseRecordingTarget::All => store_hub
                 .store_bundle()
@@ -1668,7 +1667,7 @@ impl AppCore {
                 ));
         }
 
-        Ok(CloseRecordingsResponse {
+        Ok(CloseResponse {
             closed: to_close.iter().map(StoreId::to_string).collect(),
         })
     }
@@ -2081,7 +2080,7 @@ pub(crate) fn serve_egui_inspect_request(
 #[cfg(test)]
 mod tests {
     use re_log_channel::ViewerControlErrorCode;
-    use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
+    use re_protos::viewer_control::v1alpha1::close_request::Target;
 
     use super::*;
 
@@ -2089,7 +2088,7 @@ mod tests {
     mod close_recordings_waits {
         use super::*;
 
-        /// Send `close_recordings` for `store_ids`, and return where its answer lands.
+        /// Send `close` for `store_ids`, and return where its answer lands.
         fn close_recordings(
             app: &mut AppCore,
             store_hub: &StoreHub,
@@ -2102,13 +2101,11 @@ mod tests {
 
             let answer = std::sync::Arc::new(parking_lot::Mutex::new(None));
             let request = ViewerControlRequest {
-                kind: Some(viewer_control_request::Kind::CloseRecordings(
-                    CloseRecordingsRequest {
-                        target: Some(Target::StoreIds(ViewerRecordingIds {
-                            store_ids: store_ids.iter().map(ToString::to_string).collect(),
-                        })),
-                    },
-                )),
+                kind: Some(viewer_control_request::Kind::Close(CloseRequest {
+                    target: Some(Target::StoreIds(ViewerRecordingIds {
+                        store_ids: store_ids.iter().map(ToString::to_string).collect(),
+                    })),
+                })),
             };
             app.serve_viewer_control(
                 request,
@@ -2204,7 +2201,7 @@ mod tests {
         }
 
         fn open_url(url: String, navigate: bool) -> viewer_control_request::Kind {
-            viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+            viewer_control_request::Kind::Open(OpenRequest {
                 url,
                 navigate: Some(navigate),
             })
@@ -2502,7 +2499,7 @@ mod tests {
 
     #[test]
     fn an_omitted_close_target_is_refused() {
-        let err = close_recordings_target(CloseRecordingsRequest { target: None })
+        let err = close_recordings_target(CloseRequest { target: None })
             .expect_err("an unset target names no recording");
         assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
     }
@@ -2711,7 +2708,7 @@ mod tests {
     #[test]
     fn a_false_close_selector_is_refused() {
         for target in [Target::Current(false), Target::All(false)] {
-            let err = close_recordings_target(CloseRecordingsRequest {
+            let err = close_recordings_target(CloseRequest {
                 target: Some(target),
             })
             .expect_err("a false selector says nothing about what to close");

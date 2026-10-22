@@ -1934,7 +1934,7 @@ export class WebViewer {
    * This API is experimental, and may change between releases.
    */
   async open_url(url: string, options: OpenUrlOptions = {}): Promise<OpenUrlResult> {
-    const { stillLoading } = await this.#viewer_control("openUrl", {
+    const { stillLoading } = await this.#viewer_control("open", {
       url,
       navigate: options.navigate,
     });
@@ -1951,7 +1951,7 @@ export class WebViewer {
    * This API is experimental, and may change between releases.
    */
   async close_recordings(target: CloseRecordingsTarget): Promise<string[]> {
-    const { closed } = await this.#viewer_control("closeRecordings", {
+    const { closed } = await this.#viewer_control("close", {
       target:
         target === "current" || target === "all"
           ? { case: target, value: true }

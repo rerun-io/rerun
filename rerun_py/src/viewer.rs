@@ -195,9 +195,7 @@ impl ViewerConnectionHandle {
         target: Option<&str>,
         store_ids: Option<Vec<String>>,
     ) -> PyResult<String> {
-        use re_protos::viewer_control::v1alpha1::{
-            ViewerRecordingIds, close_recordings_request::Target,
-        };
+        use re_protos::viewer_control::v1alpha1::{ViewerRecordingIds, close_request::Target};
 
         let target = match (target, store_ids) {
             (Some(target), None) => match target {
@@ -220,7 +218,7 @@ impl ViewerConnectionHandle {
         };
         let response = self.execute(
             py,
-            re_protos::viewer_control::v1alpha1::CloseRecordingsRequest {
+            re_protos::viewer_control::v1alpha1::CloseRequest {
                 target: Some(target),
             },
         )?;
@@ -238,10 +236,10 @@ impl ViewerConnectionHandle {
     }
 
     fn open_url(&mut self, py: Python<'_>, url: String, navigate: bool) -> PyResult<bool> {
-        let re_protos::viewer_control::v1alpha1::OpenUrlResponse { still_loading } =
-            self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
+        let re_protos::viewer_control::v1alpha1::OpenResponse { still_loading } =
+            self.execute::<re_protos::viewer_control::v1alpha1::OpenRequest>(
                 py,
-                re_protos::viewer_control::v1alpha1::OpenUrlRequest {
+                re_protos::viewer_control::v1alpha1::OpenRequest {
                     url,
                     navigate: Some(navigate),
                 },

@@ -16,7 +16,7 @@ use re_protos::viewer_control::v1alpha1::{ViewerControlRequest, ViewerControlRes
 /// sender under backpressure, so a viewer that has stopped draining it would otherwise hang the
 /// caller before the clock even started.
 ///
-/// The viewer answers every operation within a few frames. Slow work, like `open_url` waiting
+/// The viewer answers every operation within a few frames. Slow work, like `open` waiting
 /// on a slow server, has a shorter time limit of its own, after which the viewer answers that
 /// the work is still in progress. So if this limit is hit, the viewer has stopped responding.
 /// Keep it in step with `re_viewer_mcp`'s own deadlines: whichever of the two is shorter is the

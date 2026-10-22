@@ -93,9 +93,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::viewer_control::v1alpha1::{
-        CloseRecordingsResponse, SetTimeCursorResponse, ViewerLogEntry,
-    };
+    use crate::viewer_control::v1alpha1::{CloseResponse, SetTimeCursorResponse, ViewerLogEntry};
 
     use super::*;
 
@@ -119,7 +117,7 @@ mod tests {
 
     #[test]
     fn omits_fields_holding_their_default() {
-        let json = to_json_value(&CloseRecordingsResponse { closed: Vec::new() })
+        let json = to_json_value(&CloseResponse { closed: Vec::new() })
             .expect("a generated type must have a descriptor");
 
         assert_eq!(json, serde_json::json!({}));

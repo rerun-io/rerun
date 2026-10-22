@@ -18,7 +18,7 @@
 //! Each call becomes one `egui_inspection` request/response exchange carried inside a single
 //! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
 //!
-//! The viewer-control tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, `rerun_close_recordings`, …) are
+//! The viewer-control tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, `rerun_close`, …) are
 //! generated from `viewer_control.proto`: one tool per operation in the request envelope's
 //! `oneof`. `rerun_connect` and `rerun_disconnect` are hand-written, since they manage the connection itself
 //! rather than driving the viewer.
@@ -61,7 +61,7 @@ const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 /// Deadline for one viewer-control operation.
 ///
 /// Matches the viewer's own deadline for an answer, `re_log_channel::VIEWER_CONTROL_TIMEOUT`.
-/// Slow work, like `open_url` waiting on a slow server, answers before that, so anything this
+/// Slow work, like `open` waiting on a slow server, answers before that, so anything this
 /// slow means the viewer is gone rather than busy.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
