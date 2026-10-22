@@ -52,7 +52,8 @@ pub use self::arrow_string::ArrowString;
 pub use self::as_components::AsComponents;
 pub use self::chunk_id::ChunkId;
 pub use self::component_batch::{
-    ComponentBatch, SerializedComponentBatch, SerializedComponentColumn,
+    ComponentBatch, SerializedComponentBatch, SerializedComponentColumn, partition_batches,
+    partition_batches_of_unit_length,
 };
 pub use self::component_descriptor::{
     ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,

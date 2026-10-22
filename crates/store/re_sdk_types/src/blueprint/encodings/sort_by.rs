@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -65,10 +62,10 @@ impl ::re_types_core::ToArrow for SortBy {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -98,29 +95,14 @@ impl ::re_types_core::ToArrow for SortBy {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let column_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let column_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                column.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in column.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, column_validity)
-                            })
+                            serialize_optional_strings(
+                                column
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                column_validity,
+                            )?
                         }
                     },
                     {
@@ -131,10 +113,7 @@ impl ::re_types_core::ToArrow for SortBy {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let direction_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let direction_validity = validity_from_bools(somes);
                         {
                             let _ = direction_validity;
                             crate::blueprint::encodings::SortDirection::to_arrow_opt(direction)?
@@ -163,71 +142,26 @@ impl ::re_types_core::FromArrow for SortBy {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.blueprint.encodings.SortBy",
+                    );
                     let column = {
-                        if !arrays_by_name.contains_key("column") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "column",
-                            ))
-                            .with_context("rerun.blueprint.encodings.SortBy");
-                        }
-                        let arrow_data = &**arrays_by_name["column"];
+                        let arrow_data = fields.required("column")?;
                         {
-                            let arrow_data = arrow_data
-                                .try_cast::<StringArray>(|| DataType::Utf8)
-                                .with_context("rerun.blueprint.encodings.SortBy#column")?;
-                            let arrow_data_buf = arrow_data.values();
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
+                            deserialize_strings(
+                                arrow_data
+                                    .try_cast::<StringArray>(|| DataType::Utf8)
+                                    .with_context("rerun.blueprint.encodings.SortBy#column")?,
                             )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context("rerun.blueprint.encodings.SortBy#column")?
                             .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                         }
                     };
                     let direction = {
-                        if !arrays_by_name.contains_key("direction") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "direction",
-                            ))
-                            .with_context("rerun.blueprint.encodings.SortBy");
-                        }
-                        let arrow_data = &**arrays_by_name["direction"];
+                        let arrow_data = fields.required("direction")?;
                         crate::blueprint::encodings::SortDirection::from_arrow_opt(arrow_data)
                             .with_context("rerun.blueprint.encodings.SortBy#direction")?
                             .into_iter()

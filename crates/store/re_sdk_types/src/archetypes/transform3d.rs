@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
@@ -675,33 +675,17 @@ impl Transform3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.translation
-                .map(|translation| translation.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.rotation_axis_angle
-                .map(|rotation_axis_angle| rotation_axis_angle.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.quaternion
-                .map(|quaternion| quaternion.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.scale
-                .map(|scale| scale.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.mat3x3
-                .map(|mat3x3| mat3x3.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.relation
-                .map(|relation| relation.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.child_frame
-                .map(|child_frame| child_frame.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.parent_frame
-                .map(|parent_frame| parent_frame.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.scale,
+            self.mat3x3,
+            self.relation,
+            self.child_frame,
+            self.parent_frame,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -712,25 +696,19 @@ impl Transform3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_translation = self.translation.as_ref().map(|b| b.array.len());
-        let len_rotation_axis_angle = self.rotation_axis_angle.as_ref().map(|b| b.array.len());
-        let len_quaternion = self.quaternion.as_ref().map(|b| b.array.len());
-        let len_scale = self.scale.as_ref().map(|b| b.array.len());
-        let len_mat3x3 = self.mat3x3.as_ref().map(|b| b.array.len());
-        let len_relation = self.relation.as_ref().map(|b| b.array.len());
-        let len_child_frame = self.child_frame.as_ref().map(|b| b.array.len());
-        let len_parent_frame = self.parent_frame.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_translation)
-            .or(len_rotation_axis_angle)
-            .or(len_quaternion)
-            .or(len_scale)
-            .or(len_mat3x3)
-            .or(len_relation)
-            .or(len_child_frame)
-            .or(len_parent_frame)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.scale,
+            self.mat3x3,
+            self.relation,
+            self.child_frame,
+            self.parent_frame,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Translation vector.

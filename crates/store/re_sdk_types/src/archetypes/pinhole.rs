@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
@@ -549,33 +549,17 @@ impl Pinhole {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.image_from_camera
-                .map(|image_from_camera| image_from_camera.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.resolution
-                .map(|resolution| resolution.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.camera_xyz
-                .map(|camera_xyz| camera_xyz.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.child_frame
-                .map(|child_frame| child_frame.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.parent_frame
-                .map(|parent_frame| parent_frame.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.image_plane_distance
-                .map(|image_plane_distance| image_plane_distance.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.color
-                .map(|color| color.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.line_width
-                .map(|line_width| line_width.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.image_from_camera,
+            self.resolution,
+            self.camera_xyz,
+            self.child_frame,
+            self.parent_frame,
+            self.image_plane_distance,
+            self.color,
+            self.line_width,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -586,25 +570,19 @@ impl Pinhole {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_image_from_camera = self.image_from_camera.as_ref().map(|b| b.array.len());
-        let len_resolution = self.resolution.as_ref().map(|b| b.array.len());
-        let len_camera_xyz = self.camera_xyz.as_ref().map(|b| b.array.len());
-        let len_child_frame = self.child_frame.as_ref().map(|b| b.array.len());
-        let len_parent_frame = self.parent_frame.as_ref().map(|b| b.array.len());
-        let len_image_plane_distance = self.image_plane_distance.as_ref().map(|b| b.array.len());
-        let len_color = self.color.as_ref().map(|b| b.array.len());
-        let len_line_width = self.line_width.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_image_from_camera)
-            .or(len_resolution)
-            .or(len_camera_xyz)
-            .or(len_child_frame)
-            .or(len_parent_frame)
-            .or(len_image_plane_distance)
-            .or(len_color)
-            .or(len_line_width)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.image_from_camera,
+            self.resolution,
+            self.camera_xyz,
+            self.child_frame,
+            self.parent_frame,
+            self.image_plane_distance,
+            self.color,
+            self.line_width,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Camera projection, from image coordinates to view coordinates.

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: References a single video frame.
@@ -414,21 +414,13 @@ impl VideoFrameReference {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.timestamp
-                .map(|timestamp| timestamp.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.video_reference
-                .map(|video_reference| video_reference.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.timestamp,
+            self.video_reference,
+            self.opacity,
+            self.draw_order,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -439,17 +431,15 @@ impl VideoFrameReference {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_timestamp = self.timestamp.as_ref().map(|b| b.array.len());
-        let len_video_reference = self.video_reference.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_timestamp)
-            .or(len_video_reference)
-            .or(len_opacity)
-            .or(len_draw_order)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.timestamp,
+            self.video_reference,
+            self.opacity,
+            self.draw_order,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// References the closest video frame to this timestamp.

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: 3D gaussian splats, e.g. from a 3D Gaussian Splatting (3DGS) reconstruction.
@@ -425,29 +425,15 @@ impl GaussianSplats3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.centers
-                .map(|centers| centers.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.scales
-                .map(|scales| scales.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.quaternions
-                .map(|quaternions| quaternions.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.sh_coefficients
-                .map(|sh_coefficients| sh_coefficients.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.spherical_harmonics_degree
-                .map(|spherical_harmonics_degree| {
-                    spherical_harmonics_degree.partitioned(_lengths.clone())
-                })
-                .transpose()?,
+        let batches = [
+            self.centers,
+            self.scales,
+            self.quaternions,
+            self.colors,
+            self.sh_coefficients,
+            self.spherical_harmonics_degree,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -458,24 +444,17 @@ impl GaussianSplats3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_centers = self.centers.as_ref().map(|b| b.array.len());
-        let len_scales = self.scales.as_ref().map(|b| b.array.len());
-        let len_quaternions = self.quaternions.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_sh_coefficients = self.sh_coefficients.as_ref().map(|b| b.array.len());
-        let len_spherical_harmonics_degree = self
-            .spherical_harmonics_degree
-            .as_ref()
-            .map(|b| b.array.len());
-        let len = None
-            .or(len_centers)
-            .or(len_scales)
-            .or(len_quaternions)
-            .or(len_colors)
-            .or(len_sh_coefficients)
-            .or(len_spherical_harmonics_degree)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.centers,
+            self.scales,
+            self.quaternions,
+            self.colors,
+            self.sh_coefficients,
+            self.spherical_harmonics_degree,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The centers (means) of the gaussians.

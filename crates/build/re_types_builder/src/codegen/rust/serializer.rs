@@ -7,6 +7,43 @@ use crate::data_type::{AtomicDataType, DataType, UnionMode};
 use crate::objects::EnumIntegerType;
 use crate::{Object, Objects, TypeRegistry};
 
+#[derive(Default)]
+pub struct SerializerImports {
+    as_array_ref: bool,
+    concat_u8_buffers: bool,
+    dense_union_offsets: bool,
+    expand_validity: bool,
+    serialize_optional_strings: bool,
+    serialize_strings: bool,
+    validity_from_bools: bool,
+}
+
+impl SerializerImports {
+    pub fn quote(&self) -> TokenStream {
+        let helpers = [
+            (self.as_array_ref, quote!(as_array_ref)),
+            (self.concat_u8_buffers, quote!(concat_u8_buffers)),
+            (self.dense_union_offsets, quote!(dense_union_offsets)),
+            (self.expand_validity, quote!(expand_validity)),
+            (
+                self.serialize_optional_strings,
+                quote!(serialize_optional_strings),
+            ),
+            (self.serialize_strings, quote!(serialize_strings)),
+            (self.validity_from_bools, quote!(validity_from_bools)),
+        ]
+        .into_iter()
+        .filter_map(|(used, helper)| used.then_some(helper))
+        .collect::<Vec<_>>();
+
+        if helpers.is_empty() {
+            quote!()
+        } else {
+            quote!(use ::re_types_core::arrow_helpers::{#(#helpers),*};)
+        }
+    }
+}
+
 // ---
 
 /// Writes out the body of a `to_arrow` (`elements_are_nullable = false`) or `to_arrow_opt`
@@ -20,6 +57,7 @@ pub fn quote_arrow_serializer(
     obj: &Object,
     data_src: &proc_macro2::Ident,
     elements_are_nullable: bool,
+    imports: &mut SerializerImports,
 ) -> TokenStream {
     let datatype = &type_registry.get(&obj.fqname);
 
@@ -49,9 +87,10 @@ pub fn quote_arrow_serializer(
             elements_are_nullable,
             &quoted_data_dst,
             InnerRepr::NativeIterable,
+            imports,
         );
 
-        let quoted_validity = quote_validity(&validity_dst, elements_are_nullable);
+        let quoted_validity = quote_validity(&validity_dst, elements_are_nullable, imports);
         let repr_type = match obj.enum_integer_type() {
             Some(EnumIntegerType::U8) => quote!(u8),
             Some(EnumIntegerType::U16) => quote!(u16),
@@ -126,6 +165,7 @@ pub fn quote_arrow_serializer(
             values_are_nullable,
             &quoted_data_dst,
             InnerRepr::NativeIterable,
+            imports,
         );
 
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -144,7 +184,7 @@ pub fn quote_arrow_serializer(
                         })
                         .unzip();
                 },
-                quote_validity_from_somes(&validity_dst),
+                quote_validity_from_somes(&validity_dst, imports),
             )
         } else if obj_field.is_nullable {
             (
@@ -158,7 +198,7 @@ pub fn quote_arrow_serializer(
                         })
                         .unzip();
                 },
-                quote_validity_from_somes(&validity_dst),
+                quote_validity_from_somes(&validity_dst, imports),
             )
         } else {
             (
@@ -186,54 +226,60 @@ pub fn quote_arrow_serializer(
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(fields) => {
+                imports.as_array_ref = true;
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
 
-                let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
-                    let data_dst = format_ident!("{}", obj_field.name);
-                    let validity_dst = format_ident!("{data_dst}_validity");
+                let quoted_field_serializers = obj
+                    .fields
+                    .iter()
+                    .map(|obj_field| {
+                        let data_dst = format_ident!("{}", obj_field.name);
+                        let validity_dst = format_ident!("{data_dst}_validity");
 
-                    let inner_datatype = &type_registry.get(&obj_field.fqname);
+                        let inner_datatype = &type_registry.get(&obj_field.fqname);
 
-                    // A struct's fields are individually nullable in the Arrow schema, so they
-                    // keep their validity bitmaps even when the elements themselves cannot be null.
-                    let quoted_serializer = quote_arrow_field_serializer(
-                        objects,
-                        inner_datatype,
-                        &validity_dst,
-                        true, // the field itself is always nullable
-                        &data_dst,
-                        InnerRepr::NativeIterable,
-                    );
+                        // A struct's fields are individually nullable in the Arrow schema, so they
+                        // keep their validity bitmaps even when the elements themselves cannot be null.
+                        let quoted_serializer = quote_arrow_field_serializer(
+                            objects,
+                            inner_datatype,
+                            &validity_dst,
+                            true, // the field itself is always nullable
+                            &data_dst,
+                            InnerRepr::NativeIterable,
+                            imports,
+                        );
 
-                    let quoted_flatten = quoted_flatten(obj_field.is_nullable);
+                        let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-                    let quoted_field_value = if elements_are_nullable {
-                        quote!(datum.as_ref().map(|datum| datum.#data_dst.clone()))
-                    } else {
-                        quote!(Some(datum.#data_dst.clone()))
-                    };
+                        let quoted_field_value = if elements_are_nullable {
+                            quote!(datum.as_ref().map(|datum| datum.#data_dst.clone()))
+                        } else {
+                            quote!(Some(datum.#data_dst.clone()))
+                        };
 
-                    let quoted_validity = quote_validity_from_somes(&validity_dst);
+                        let quoted_validity = quote_validity_from_somes(&validity_dst, imports);
 
-                    quote! {{
-                        let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
-                            .iter()
-                            .map(|datum| {
-                                let datum = #quoted_field_value #quoted_flatten;
+                        quote! {{
+                            let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
+                                .iter()
+                                .map(|datum| {
+                                    let datum = #quoted_field_value #quoted_flatten;
 
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
+                                    (datum.is_some(), datum)
+                                })
+                                .unzip();
 
 
-                        #quoted_validity;
+                            #quoted_validity;
 
-                        #quoted_serializer
-                    }}
-                });
+                            #quoted_serializer
+                        }}
+                    })
+                    .collect::<Vec<_>>();
 
                 let quoted_declare_validity =
-                    quote_validity(&format_ident!("validity"), elements_are_nullable);
+                    quote_validity(&format_ident!("validity"), elements_are_nullable, imports);
 
                 let quoted_collect = if elements_are_nullable {
                     quote! {
@@ -273,6 +319,7 @@ pub fn quote_arrow_serializer(
             }
 
             DataType::Union(fields, UnionMode::Sparse) => {
+                imports.as_array_ref = true;
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
@@ -336,6 +383,8 @@ pub fn quote_arrow_serializer(
             }
 
             DataType::Union(fields, UnionMode::Dense) => {
+                imports.as_array_ref = true;
+                imports.dense_union_offsets = true;
                 let quoted_field_type_ids = (0..fields.len()).map(Literal::usize_unsuffixed);
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
                 // A union encodes nullability as a dedicated variant rather than a validity
@@ -385,6 +434,7 @@ pub fn quote_arrow_serializer(
                         elements_are_nullable,
                         &data_dst,
                         InnerRepr::NativeIterable,
+                        imports,
                     );
 
                     quote! {{
@@ -399,16 +449,14 @@ pub fn quote_arrow_serializer(
                         let #validity_dst = None;
                         #quoted_serializer
                     }}
-                });
-
-                let quoted_children_serializers = quoted_field_serializers.clone();
+                }).collect::<Vec<_>>();
 
                 let quoted_children = quote! {
                     vec![
                         as_array_ref(NullArray::new(
                             #data_src.iter().filter(|v| v.is_none()).count(),
                         )),
-                        #(#quoted_children_serializers,)*
+                        #(#quoted_field_serializers,)*
                     ]
                 };
 
@@ -441,48 +489,6 @@ pub fn quote_arrow_serializer(
                     }
                 };
 
-                let quoted_offsets = {
-                    let quoted_counters = obj.fields.iter().map(|obj_field| {
-                        let quoted_obj_field_name =
-                            format_ident!("{}_offset", obj_field.snake_case_name());
-                        quote!(let mut #quoted_obj_field_name = 0)
-                    });
-
-                    let quoted_branches = obj.fields.iter().map(|obj_field| {
-                        let quoted_counter_name =
-                            format_ident!("{}_offset", obj_field.snake_case_name());
-                        let quoted_obj_field_name =
-                            format_ident!("{}", obj_field.pascal_case_name());
-
-                        let match_case =
-                            get_match_case_for_field(&obj_field.typ, quoted_obj_field_name);
-                        quote! {
-                            #match_case => {
-                                let offset = #quoted_counter_name;
-                                #quoted_counter_name += 1;
-                                offset
-                            }
-                        }
-                    });
-
-                    quote! {{
-                        #(#quoted_counters;)*
-                        let mut nulls_offset = 0;
-
-                        #data_src
-                            .iter()
-                            .map(|v| match v.as_deref() {
-                                None => {
-                                    let offset = nulls_offset;
-                                    nulls_offset += 1;
-                                    offset
-                                }
-                                #(#quoted_branches,)*
-                            })
-                            .collect()
-                    }}
-                };
-
                 let comment = quote_comment("Dense Arrow union");
 
                 quote! {{
@@ -493,7 +499,7 @@ pub fn quote_arrow_serializer(
                     let field_type_ids = [#(#quoted_field_type_ids,)*];
                     let fields = vec![#(#quoted_fields,)*];
                     let type_ids: Vec<i8> = #quoted_type_ids;
-                    let offsets = #quoted_offsets;
+                    let offsets = dense_union_offsets(&type_ids)?;
                     let children = #quoted_children;
 
                     re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
@@ -524,9 +530,13 @@ enum InnerRepr {
 }
 
 /// Declares `var` as the validity bitmap for the elements, or as `None` if they cannot be null.
-fn quote_validity(var: &proc_macro2::Ident, elements_are_nullable: bool) -> TokenStream {
+fn quote_validity(
+    var: &proc_macro2::Ident,
+    elements_are_nullable: bool,
+    imports: &mut SerializerImports,
+) -> TokenStream {
     if elements_are_nullable {
-        quote_validity_from_somes(var)
+        quote_validity_from_somes(var, imports)
     } else {
         quote!(let #var = None)
     }
@@ -536,13 +546,13 @@ fn quote_validity(var: &proc_macro2::Ident, elements_are_nullable: bool) -> Toke
 ///
 /// Expects a `somes: Vec<bool>` binding, as produced by the `(somes, values)` unzip that every
 /// nullable serializer starts with.
-fn quote_validity_from_somes(var: &proc_macro2::Ident) -> TokenStream {
+fn quote_validity_from_somes(
+    var: &proc_macro2::Ident,
+    imports: &mut SerializerImports,
+) -> TokenStream {
+    imports.validity_from_bools = true;
     quote! {
-        let #var: Option<arrow::buffer::NullBuffer> = {
-            // NOTE: Don't compute a validity if there isn't at least one null element.
-            let any_nones = somes.iter().any(|some| !*some);
-            any_nones.then(|| somes.into())
-        }
+        let #var = validity_from_bools(somes);
     }
 }
 
@@ -562,6 +572,7 @@ fn quote_arrow_field_serializer(
     elements_are_nullable: bool,
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
+    imports: &mut SerializerImports,
 ) -> TokenStream {
     let inner_obj = if let DataType::Object { fqname, .. } = datatype {
         Some(&objects[fqname])
@@ -597,6 +608,7 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::Atomic(atomic) => {
+            imports.as_array_ref = true;
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default` (unless elements_are_nullable is false)
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -664,14 +676,38 @@ fn quote_arrow_field_serializer(
             }
         }
 
-        DataType::Binary | DataType::Utf8 => {
-            let is_binary = datatype.to_logical_type() == &DataType::Binary;
-            let as_bytes = if is_binary {
-                quote!()
+        DataType::Utf8 => {
+            let member = if inner_is_arrow_transparent {
+                let obj = inner_obj.unwrap();
+                let member = if is_tuple_struct_from_obj(obj) {
+                    quote!(0)
+                } else {
+                    let name = format_ident!("{}", obj.fields[0].name);
+                    quote!(#name)
+                };
+                quote!(.#member)
             } else {
-                quote!(.as_bytes())
+                quote!()
             };
+            let values = if elements_are_nullable {
+                quote!(#data_src.iter().map(|value| value.as_ref().map(|value| value #member.as_str())))
+            } else {
+                quote!(#data_src.iter().map(|value| value #member.as_str()))
+            };
+            let serialize = if elements_are_nullable {
+                imports.serialize_optional_strings = true;
+                quote!(serialize_optional_strings)
+            } else {
+                imports.serialize_strings = true;
+                quote!(serialize_strings)
+            };
+            quote! {{
+                #serialize(#values, #validity_src)?
+            }}
+        }
 
+        DataType::Binary => {
+            imports.as_array_ref = true;
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default`.
             let (quoted_member_accessor, quoted_transparent_length) = if inner_is_arrow_transparent
@@ -724,7 +760,7 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
                     for data in #data_src.iter().flatten() {
-                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
+                        buffer_builder.append_slice(data #quoted_member_accessor);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
@@ -741,32 +777,20 @@ fn quote_arrow_field_serializer(
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     for data in &#data_src {
-                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
+                        buffer_builder.append_slice(data #quoted_member_accessor);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             };
 
-            if is_binary {
-                quote! {{
-                    #inner_data_and_offsets
-                    as_array_ref(LargeBinaryArray::new(offsets, inner_data, #validity_src))
-                }}
-            } else {
-                quote! {{
-                    #inner_data_and_offsets
-
-                    // Safety: we're building this from actual native strings, so no need to do the
-                    // whole utf8 validation _again_.
-                    // It would be nice to use quote_comment here and put this safety notice in the generated code,
-                    // but that seems to push us over some complexity limit causing rustfmt to fail.
-                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
-                }}
-            }
+            quote! {{
+                #inner_data_and_offsets
+                as_array_ref(LargeBinaryArray::new(offsets, inner_data, #validity_src))
+            }}
         }
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
+            imports.as_array_ref = true;
             let inner_datatype = inner_field.data_type();
 
             // Note: We only use the ScalarBuffer optimization for `Lists` but not `FixedSizeList`.
@@ -794,6 +818,7 @@ fn quote_arrow_field_serializer(
                 inner_elements_are_nullable,
                 &quoted_inner_data,
                 inner_repr,
+                imports,
             );
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -853,37 +878,11 @@ fn quote_arrow_field_serializer(
                             matches!(inner_datatype, DataType::Atomic(AtomicDataType::UInt8));
 
                         if is_blob {
-                            // Blob optimization: avoid allocation for single-buffer case
+                            imports.concat_u8_buffers = true;
                             quote! {
-                                {
-                                    let mut iter = #data_src
-                                        .iter()
-                                        #flatten_if_needed;
-                                    let first = iter.next();
-                                    let second = iter.next();
-
-                                    match (first, second) {
-                                        (Some(single), None) => {
-                                            // Single buffer: cheap Arc clone
-                                            single.clone()
-                                        }
-                                        (Some(first_buf), Some(second_buf)) => {
-                                            // Multiple buffers: single Vec allocation for slices
-                                            ::itertools::chain!(
-                                                ::std::iter::once(first_buf.as_ref() as &[_]),
-                                                ::std::iter::once(second_buf.as_ref() as &[_]),
-                                                iter.map(|b| b.as_ref() as &[_]),
-                                            )
-                                            .collect::<Vec<_>>()
-                                            .concat()
-                                            .into()
-                                        }
-                                        _ => {
-                                            // Empty case
-                                            Vec::new().into()
-                                        }
-                                    }
-                                }
+                                concat_u8_buffers(
+                                    &mut #data_src.iter() #flatten_if_needed,
+                                )
                             }
                         } else {
                             // Standard path for other ScalarBuffer types
@@ -991,16 +990,9 @@ fn quote_arrow_field_serializer(
             let quoted_inner_validity = if elements_are_nullable
                 && let DataType::FixedSizeList(_, count) = datatype.to_logical_type()
             {
+                imports.expand_validity = true;
                 quote! {
-                    let #inner_validity_ident: Option<arrow::buffer::NullBuffer> =
-                        #validity_src.as_ref().map(|validity| {
-                            validity
-                                .iter()
-                                .map(|b| std::iter::repeat_n(b, #count))
-                                .flatten()
-                                .collect::<Vec<_>>()
-                                .into()
-                        });
+                    let #inner_validity_ident = expand_validity(#validity_src.as_ref(), #count);
                 }
             } else {
                 // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: An N-dimensional array of numbers.
@@ -248,15 +248,8 @@ impl Tensor {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.data
-                .map(|data| data.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.value_range
-                .map(|value_range| value_range.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.data, self.value_range];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -267,10 +260,10 @@ impl Tensor {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_data = self.data.as_ref().map(|b| b.array.len());
-        let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
-        let len = None.or(len_data).or(len_value_range).unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.data, self.value_range];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The tensor data

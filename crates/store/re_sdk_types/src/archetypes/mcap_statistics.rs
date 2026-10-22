@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Recording-level statistics about an MCAP file.
@@ -486,36 +486,18 @@ impl McapStatistics {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.message_count
-                .map(|message_count| message_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.schema_count
-                .map(|schema_count| schema_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.channel_count
-                .map(|channel_count| channel_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.attachment_count
-                .map(|attachment_count| attachment_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.metadata_count
-                .map(|metadata_count| metadata_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.chunk_count
-                .map(|chunk_count| chunk_count.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.message_start_time
-                .map(|message_start_time| message_start_time.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.message_end_time
-                .map(|message_end_time| message_end_time.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.channel_message_counts
-                .map(|channel_message_counts| channel_message_counts.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.message_count,
+            self.schema_count,
+            self.channel_count,
+            self.attachment_count,
+            self.metadata_count,
+            self.chunk_count,
+            self.message_start_time,
+            self.message_end_time,
+            self.channel_message_counts,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -526,28 +508,20 @@ impl McapStatistics {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_message_count = self.message_count.as_ref().map(|b| b.array.len());
-        let len_schema_count = self.schema_count.as_ref().map(|b| b.array.len());
-        let len_channel_count = self.channel_count.as_ref().map(|b| b.array.len());
-        let len_attachment_count = self.attachment_count.as_ref().map(|b| b.array.len());
-        let len_metadata_count = self.metadata_count.as_ref().map(|b| b.array.len());
-        let len_chunk_count = self.chunk_count.as_ref().map(|b| b.array.len());
-        let len_message_start_time = self.message_start_time.as_ref().map(|b| b.array.len());
-        let len_message_end_time = self.message_end_time.as_ref().map(|b| b.array.len());
-        let len_channel_message_counts =
-            self.channel_message_counts.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_message_count)
-            .or(len_schema_count)
-            .or(len_channel_count)
-            .or(len_attachment_count)
-            .or(len_metadata_count)
-            .or(len_chunk_count)
-            .or(len_message_start_time)
-            .or(len_message_end_time)
-            .or(len_channel_message_counts)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.message_count,
+            self.schema_count,
+            self.channel_count,
+            self.attachment_count,
+            self.metadata_count,
+            self.chunk_count,
+            self.message_start_time,
+            self.message_end_time,
+            self.channel_message_counts,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Total number of data messages contained in the MCAP recording.

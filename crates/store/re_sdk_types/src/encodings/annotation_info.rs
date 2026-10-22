@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -62,10 +59,10 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -80,10 +77,7 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -95,10 +89,7 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let id_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let id_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt16Type>::new(
                             id.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             id_validity,
@@ -113,29 +104,14 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let label_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let label_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                label.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in label.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, label_validity)
-                            })
+                            serialize_optional_strings(
+                                label
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                label_validity,
+                            )?
                         }
                     },
                     {
@@ -147,10 +123,7 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let color_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let color_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
                             color
                                 .into_iter()
@@ -184,82 +157,33 @@ impl ::re_types_core::FromArrowOpt for AnnotationInfo {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.encodings.AnnotationInfo",
+                );
                 let id = {
-                    if !arrays_by_name.contains_key("id") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "id",
-                        ))
-                        .with_context("rerun.encodings.AnnotationInfo");
-                    }
-                    let arrow_data = &**arrays_by_name["id"];
+                    let arrow_data = fields.required("id")?;
                     arrow_data
                         .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.AnnotationInfo#id")?
                         .into_iter()
                 };
                 let label = {
-                    if !arrays_by_name.contains_key("label") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "label",
-                        ))
-                        .with_context("rerun.encodings.AnnotationInfo");
-                    }
-                    let arrow_data = &**arrays_by_name["label"];
+                    let arrow_data = fields.required("label")?;
                     {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context("rerun.encodings.AnnotationInfo#label")?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context("rerun.encodings.AnnotationInfo#label")?
-                            .into_iter()
+                        deserialize_strings(
+                            arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context("rerun.encodings.AnnotationInfo#label")?,
+                        )
+                        .with_context("rerun.encodings.AnnotationInfo#label")?
+                        .into_iter()
+                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                     }
                 };
                 let color = {
-                    if !arrays_by_name.contains_key("color") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "color",
-                        ))
-                        .with_context("rerun.encodings.AnnotationInfo");
-                    }
-                    let arrow_data = &**arrays_by_name["color"];
+                    let arrow_data = fields.required("color")?;
                     arrow_data
                         .try_cast::<UInt32Array>(|| DataType::UInt32)
                         .with_context("rerun.encodings.AnnotationInfo#color")?

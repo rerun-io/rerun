@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
@@ -503,36 +503,18 @@ impl GridMap {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.data
-                .map(|data| data.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.format
-                .map(|format| format.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.cell_size
-                .map(|cell_size| cell_size.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.translation
-                .map(|translation| translation.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.rotation_axis_angle
-                .map(|rotation_axis_angle| rotation_axis_angle.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.quaternion
-                .map(|quaternion| quaternion.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colormap
-                .map(|colormap| colormap.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.data,
+            self.format,
+            self.cell_size,
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.opacity,
+            self.draw_order,
+            self.colormap,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -543,27 +525,20 @@ impl GridMap {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_data = self.data.as_ref().map(|b| b.array.len());
-        let len_format = self.format.as_ref().map(|b| b.array.len());
-        let len_cell_size = self.cell_size.as_ref().map(|b| b.array.len());
-        let len_translation = self.translation.as_ref().map(|b| b.array.len());
-        let len_rotation_axis_angle = self.rotation_axis_angle.as_ref().map(|b| b.array.len());
-        let len_quaternion = self.quaternion.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len_colormap = self.colormap.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_data)
-            .or(len_format)
-            .or(len_cell_size)
-            .or(len_translation)
-            .or(len_rotation_axis_angle)
-            .or(len_quaternion)
-            .or(len_opacity)
-            .or(len_draw_order)
-            .or(len_colormap)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.data,
+            self.format,
+            self.cell_size,
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.opacity,
+            self.draw_order,
+            self.colormap,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The raw grid data.

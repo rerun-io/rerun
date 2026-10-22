@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -85,10 +82,8 @@ impl ::re_types_core::ToArrow for ImageFormat {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -129,10 +124,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let width_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let width_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
                             width.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             width_validity,
@@ -146,10 +138,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let height_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let height_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
                             height.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             height_validity,
@@ -163,10 +152,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let pixel_format_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let pixel_format_validity = validity_from_bools(somes);
                         {
                             let _ = pixel_format_validity;
                             crate::encodings::PixelFormat::to_arrow_opt(pixel_format)?
@@ -180,10 +166,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let color_model_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let color_model_validity = validity_from_bools(somes);
                         {
                             let _ = color_model_validity;
                             crate::encodings::ColorModel::to_arrow_opt(color_model)?
@@ -197,10 +180,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let channel_datatype_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let channel_datatype_validity = validity_from_bools(somes);
                         {
                             let _ = channel_datatype_validity;
                             crate::encodings::ChannelDatatype::to_arrow_opt(channel_datatype)?
@@ -229,76 +209,39 @@ impl ::re_types_core::FromArrow for ImageFormat {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.ImageFormat",
+                    );
                     let width = {
-                        if !arrays_by_name.contains_key("width") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "width",
-                            ))
-                            .with_context("rerun.encodings.ImageFormat");
-                        }
-                        let arrow_data = &**arrays_by_name["width"];
+                        let arrow_data = fields.required("width")?;
                         arrow_data
                             .try_cast::<UInt32Array>(|| DataType::UInt32)
                             .with_context("rerun.encodings.ImageFormat#width")?
                             .into_iter()
                     };
                     let height = {
-                        if !arrays_by_name.contains_key("height") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "height",
-                            ))
-                            .with_context("rerun.encodings.ImageFormat");
-                        }
-                        let arrow_data = &**arrays_by_name["height"];
+                        let arrow_data = fields.required("height")?;
                         arrow_data
                             .try_cast::<UInt32Array>(|| DataType::UInt32)
                             .with_context("rerun.encodings.ImageFormat#height")?
                             .into_iter()
                     };
                     let pixel_format = {
-                        if !arrays_by_name.contains_key("pixel_format") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "pixel_format",
-                            ))
-                            .with_context("rerun.encodings.ImageFormat");
-                        }
-                        let arrow_data = &**arrays_by_name["pixel_format"];
+                        let arrow_data = fields.required("pixel_format")?;
                         crate::encodings::PixelFormat::from_arrow_opt(arrow_data)
                             .with_context("rerun.encodings.ImageFormat#pixel_format")?
                             .into_iter()
                     };
                     let color_model = {
-                        if !arrays_by_name.contains_key("color_model") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "color_model",
-                            ))
-                            .with_context("rerun.encodings.ImageFormat");
-                        }
-                        let arrow_data = &**arrays_by_name["color_model"];
+                        let arrow_data = fields.required("color_model")?;
                         crate::encodings::ColorModel::from_arrow_opt(arrow_data)
                             .with_context("rerun.encodings.ImageFormat#color_model")?
                             .into_iter()
                     };
                     let channel_datatype = {
-                        if !arrays_by_name.contains_key("channel_datatype") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "channel_datatype",
-                            ))
-                            .with_context("rerun.encodings.ImageFormat");
-                        }
-                        let arrow_data = &**arrays_by_name["channel_datatype"];
+                        let arrow_data = fields.required("channel_datatype")?;
                         crate::encodings::ChannelDatatype::from_arrow_opt(arrow_data)
                             .with_context("rerun.encodings.ImageFormat#channel_datatype")?
                             .into_iter()

@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -75,10 +72,8 @@ impl crate::ToArrowOpt for TimeRangeBoundary {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::{as_array_ref, dense_union_offsets};
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
@@ -113,36 +108,7 @@ impl crate::ToArrowOpt for TimeRangeBoundary {
                     Some(Self::Infinite) => 3i8,
                 })
                 .collect();
-            let offsets = {
-                let mut cursor_relative_offset = 0;
-                let mut absolute_offset = 0;
-                let mut infinite_offset = 0;
-                let mut nulls_offset = 0;
-                data.iter()
-                    .map(|v| match v.as_deref() {
-                        None => {
-                            let offset = nulls_offset;
-                            nulls_offset += 1;
-                            offset
-                        }
-                        Some(Self::CursorRelative(_)) => {
-                            let offset = cursor_relative_offset;
-                            cursor_relative_offset += 1;
-                            offset
-                        }
-                        Some(Self::Absolute(_)) => {
-                            let offset = absolute_offset;
-                            absolute_offset += 1;
-                            offset
-                        }
-                        Some(Self::Infinite) => {
-                            let offset = infinite_offset;
-                            infinite_offset += 1;
-                            offset
-                        }
-                    })
-                    .collect()
-            };
+            let offsets = dense_union_offsets(&type_ids)?;
             let children = vec![
                 as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
                 {

@@ -17,10 +17,10 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
+use crate::{ComponentDescriptor, SerializedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
+use crate::{partition_batches, partition_batches_of_unit_length};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
 
@@ -229,11 +229,8 @@ impl Clear {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [self
-            .is_recursive
-            .map(|is_recursive| is_recursive.partitioned(_lengths.clone()))
-            .transpose()?];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.is_recursive];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -244,9 +241,10 @@ impl Clear {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = crate::SerializedComponentColumn>> {
-        let len_is_recursive = self.is_recursive.as_ref().map(|b| b.array.len());
-        let len = None.or(len_is_recursive).unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.is_recursive];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     #[inline]

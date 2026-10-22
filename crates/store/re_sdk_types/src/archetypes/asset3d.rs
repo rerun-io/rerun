@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
@@ -300,18 +300,8 @@ impl Asset3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.blob
-                .map(|blob| blob.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.media_type
-                .map(|media_type| media_type.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.albedo_factor
-                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.blob, self.media_type, self.albedo_factor];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -322,15 +312,10 @@ impl Asset3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_blob = self.blob.as_ref().map(|b| b.array.len());
-        let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
-        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_blob)
-            .or(len_media_type)
-            .or(len_albedo_factor)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.blob, self.media_type, self.albedo_factor];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The asset's bytes.

@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -63,10 +60,8 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -88,10 +83,7 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -103,10 +95,7 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let channel_id_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let channel_id_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt16Type>::new(
                             channel_id
                                 .into_iter()
@@ -123,10 +112,7 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let message_count_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let message_count_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt64Type>::new(
                             message_count
                                 .into_iter()
@@ -160,22 +146,13 @@ impl ::re_types_core::FromArrowOpt for ChannelCountPair {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.encodings.ChannelCountPair",
+                );
                 let channel_id = {
-                    if !arrays_by_name.contains_key("channel_id") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "channel_id",
-                        ))
-                        .with_context("rerun.encodings.ChannelCountPair");
-                    }
-                    let arrow_data = &**arrays_by_name["channel_id"];
+                    let arrow_data = fields.required("channel_id")?;
                     arrow_data
                         .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.ChannelCountPair#channel_id")?
@@ -183,14 +160,7 @@ impl ::re_types_core::FromArrowOpt for ChannelCountPair {
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::UInt16))
                 };
                 let message_count = {
-                    if !arrays_by_name.contains_key("message_count") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "message_count",
-                        ))
-                        .with_context("rerun.encodings.ChannelCountPair");
-                    }
-                    let arrow_data = &**arrays_by_name["message_count"];
+                    let arrow_data = fields.required("message_count")?;
                     arrow_data
                         .try_cast::<UInt64Array>(|| DataType::UInt64)
                         .with_context("rerun.encodings.ChannelCountPair#message_count")?

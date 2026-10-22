@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A state change, representing a transition of an entity into a new state.
@@ -216,11 +216,8 @@ impl StateChange {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [self
-            .state
-            .map(|state| state.partitioned(_lengths.clone()))
-            .transpose()?];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.state];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -231,9 +228,10 @@ impl StateChange {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_state = self.state.as_ref().map(|b| b.array.len());
-        let len = None.or(len_state).unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.state];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The new state values; each instance gets its own lane in the state timeline view.

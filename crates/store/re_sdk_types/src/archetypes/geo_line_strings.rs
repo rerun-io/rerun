@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
@@ -292,18 +292,8 @@ impl GeoLineStrings {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.line_strings
-                .map(|line_strings| line_strings.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.radii
-                .map(|radii| radii.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.line_strings, self.radii, self.colors];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -314,15 +304,10 @@ impl GeoLineStrings {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_line_strings = self.line_strings.as_ref().map(|b| b.array.len());
-        let len_radii = self.radii.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_line_strings)
-            .or(len_radii)
-            .or(len_colors)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.line_strings, self.radii, self.colors];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).

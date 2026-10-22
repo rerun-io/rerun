@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -63,10 +60,8 @@ impl crate::ToArrow for VisibleTimeRange {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::{as_array_ref, serialize_optional_strings, validity_from_bools};
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -100,29 +95,14 @@ impl crate::ToArrow for VisibleTimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let timeline_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let timeline_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                timeline.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in timeline.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, timeline_validity)
-                            })
+                            serialize_optional_strings(
+                                timeline
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                timeline_validity,
+                            )?
                         }
                     },
                     {
@@ -133,10 +113,7 @@ impl crate::ToArrow for VisibleTimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let range_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let range_validity = validity_from_bools(somes);
                         {
                             let _ = range_validity;
                             crate::encodings::TimeRange::to_arrow_opt(range)?
@@ -165,69 +142,26 @@ impl crate::FromArrow for VisibleTimeRange {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.VisibleTimeRange",
+                    );
                     let timeline = {
-                        if !arrays_by_name.contains_key("timeline") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "timeline",
-                            ))
-                            .with_context("rerun.encodings.VisibleTimeRange");
-                        }
-                        let arrow_data = &**arrays_by_name["timeline"];
+                        let arrow_data = fields.required("timeline")?;
                         {
-                            let arrow_data = arrow_data
-                                .try_cast::<StringArray>(|| DataType::Utf8)
-                                .with_context("rerun.encodings.VisibleTimeRange#timeline")?;
-                            let arrow_data_buf = arrow_data.values();
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
+                            deserialize_strings(
+                                arrow_data
+                                    .try_cast::<StringArray>(|| DataType::Utf8)
+                                    .with_context("rerun.encodings.VisibleTimeRange#timeline")?,
                             )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::Utf8(crate::ArrowString::from(v))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context("rerun.encodings.VisibleTimeRange#timeline")?
                             .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                         }
                     };
                     let range = {
-                        if !arrays_by_name.contains_key("range") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "range",
-                            ))
-                            .with_context("rerun.encodings.VisibleTimeRange");
-                        }
-                        let arrow_data = &**arrays_by_name["range"];
+                        let arrow_data = fields.required("range")?;
                         crate::encodings::TimeRange::from_arrow_opt(arrow_data)
                             .with_context("rerun.encodings.VisibleTimeRange#range")?
                             .into_iter()

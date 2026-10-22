@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -61,10 +58,8 @@ impl ::re_types_core::ToArrow for FilterByRange {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -94,10 +89,7 @@ impl ::re_types_core::ToArrow for FilterByRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let start_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let start_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
                             start
                                 .into_iter()
@@ -114,10 +106,7 @@ impl ::re_types_core::ToArrow for FilterByRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let end_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let end_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
                             end.into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -148,22 +137,13 @@ impl ::re_types_core::FromArrow for FilterByRange {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.blueprint.encodings.FilterByRange",
+                    );
                     let start = {
-                        if !arrays_by_name.contains_key("start") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "start",
-                            ))
-                            .with_context("rerun.blueprint.encodings.FilterByRange");
-                        }
-                        let arrow_data = &**arrays_by_name["start"];
+                        let arrow_data = fields.required("start")?;
                         arrow_data
                             .try_cast::<Int64Array>(|| DataType::Int64)
                             .with_context("rerun.blueprint.encodings.FilterByRange#start")?
@@ -171,14 +151,7 @@ impl ::re_types_core::FromArrow for FilterByRange {
                             .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
                     };
                     let end = {
-                        if !arrays_by_name.contains_key("end") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "end",
-                            ))
-                            .with_context("rerun.blueprint.encodings.FilterByRange");
-                        }
-                        let arrow_data = &**arrays_by_name["end"];
+                        let arrow_data = fields.required("end")?;
                         arrow_data
                             .try_cast::<Int64Array>(|| DataType::Int64)
                             .with_context("rerun.blueprint.encodings.FilterByRange#end")?

@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -71,10 +68,8 @@ impl ::re_types_core::ToArrowOpt for NestedUnion {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, dense_union_offsets};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
@@ -111,30 +106,7 @@ impl ::re_types_core::ToArrowOpt for NestedUnion {
                     Some(Self::ManyRequired(_)) => 2i8,
                 })
                 .collect();
-            let offsets = {
-                let mut single_required_offset = 0;
-                let mut many_required_offset = 0;
-                let mut nulls_offset = 0;
-                data.iter()
-                    .map(|v| match v.as_deref() {
-                        None => {
-                            let offset = nulls_offset;
-                            nulls_offset += 1;
-                            offset
-                        }
-                        Some(Self::SingleRequired(_)) => {
-                            let offset = single_required_offset;
-                            single_required_offset += 1;
-                            offset
-                        }
-                        Some(Self::ManyRequired(_)) => {
-                            let offset = many_required_offset;
-                            many_required_offset += 1;
-                            offset
-                        }
-                    })
-                    .collect()
-            };
+            let offsets = dense_union_offsets(&type_ids)?;
             let children = vec![
                 as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
                 {

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: 2D ellipses with half-extents (semi-axes) and optional center, colors etc.
@@ -468,33 +468,17 @@ impl Ellipses2D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.half_sizes
-                .map(|half_sizes| half_sizes.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.centers
-                .map(|centers| centers.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.line_radii
-                .map(|line_radii| line_radii.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.labels
-                .map(|labels| labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.show_labels
-                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.class_ids
-                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.half_sizes,
+            self.centers,
+            self.colors,
+            self.line_radii,
+            self.labels,
+            self.show_labels,
+            self.draw_order,
+            self.class_ids,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -505,25 +489,19 @@ impl Ellipses2D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_half_sizes = self.half_sizes.as_ref().map(|b| b.array.len());
-        let len_centers = self.centers.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
-        let len_labels = self.labels.as_ref().map(|b| b.array.len());
-        let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_half_sizes)
-            .or(len_centers)
-            .or(len_colors)
-            .or(len_line_radii)
-            .or(len_labels)
-            .or(len_show_labels)
-            .or(len_draw_order)
-            .or(len_class_ids)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.half_sizes,
+            self.centers,
+            self.colors,
+            self.line_radii,
+            self.labels,
+            self.show_labels,
+            self.draw_order,
+            self.class_ids,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// All half-extents (semi-axes) that make up the batch of ellipses.

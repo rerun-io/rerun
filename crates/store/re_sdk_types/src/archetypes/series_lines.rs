@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Define the style properties for one or more line series in a chart.
@@ -425,27 +425,15 @@ impl SeriesLines {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.widths
-                .map(|widths| widths.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.names
-                .map(|names| names.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.visible_series
-                .map(|visible_series| visible_series.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.aggregation_policy
-                .map(|aggregation_policy| aggregation_policy.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.interpolation_mode
-                .map(|interpolation_mode| interpolation_mode.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.colors,
+            self.widths,
+            self.names,
+            self.visible_series,
+            self.aggregation_policy,
+            self.interpolation_mode,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -456,21 +444,17 @@ impl SeriesLines {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_widths = self.widths.as_ref().map(|b| b.array.len());
-        let len_names = self.names.as_ref().map(|b| b.array.len());
-        let len_visible_series = self.visible_series.as_ref().map(|b| b.array.len());
-        let len_aggregation_policy = self.aggregation_policy.as_ref().map(|b| b.array.len());
-        let len_interpolation_mode = self.interpolation_mode.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_colors)
-            .or(len_widths)
-            .or(len_names)
-            .or(len_visible_series)
-            .or(len_aggregation_policy)
-            .or(len_interpolation_mode)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.colors,
+            self.widths,
+            self.names,
+            self.visible_series,
+            self.aggregation_policy,
+            self.interpolation_mode,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Color for the corresponding series.

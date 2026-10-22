@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A sparse 3D voxel grid map with grid indices and voxel dimensions.
@@ -540,39 +540,19 @@ impl VoxelGridMap {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.voxel_indices
-                .map(|voxel_indices| voxel_indices.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.voxel_size
-                .map(|voxel_size| voxel_size.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.values
-                .map(|values| values.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.translation
-                .map(|translation| translation.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.rotation_axis_angle
-                .map(|rotation_axis_angle| rotation_axis_angle.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.quaternion
-                .map(|quaternion| quaternion.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.value_range
-                .map(|value_range| value_range.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colormap
-                .map(|colormap| colormap.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.voxel_indices,
+            self.voxel_size,
+            self.values,
+            self.colors,
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.opacity,
+            self.value_range,
+            self.colormap,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -583,29 +563,21 @@ impl VoxelGridMap {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_voxel_indices = self.voxel_indices.as_ref().map(|b| b.array.len());
-        let len_voxel_size = self.voxel_size.as_ref().map(|b| b.array.len());
-        let len_values = self.values.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_translation = self.translation.as_ref().map(|b| b.array.len());
-        let len_rotation_axis_angle = self.rotation_axis_angle.as_ref().map(|b| b.array.len());
-        let len_quaternion = self.quaternion.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
-        let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
-        let len_colormap = self.colormap.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_voxel_indices)
-            .or(len_voxel_size)
-            .or(len_values)
-            .or(len_colors)
-            .or(len_translation)
-            .or(len_rotation_axis_angle)
-            .or(len_quaternion)
-            .or(len_opacity)
-            .or(len_value_range)
-            .or(len_colormap)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.voxel_indices,
+            self.voxel_size,
+            self.values,
+            self.colors,
+            self.translation,
+            self.rotation_axis_angle,
+            self.quaternion,
+            self.opacity,
+            self.value_range,
+            self.colormap,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Indices of the voxels within the grid volume.

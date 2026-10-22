@@ -276,3 +276,41 @@ end_header
 
     similar_asserts::assert_eq!(parsed, expected);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn columns_share_partitioning() {
+        let points =
+            Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]).with_labels(["hello", "world"]);
+        let columns = points.clone().columns([0, 2]).unwrap().collect::<Vec<_>>();
+        assert_eq!(columns.len(), 2);
+        assert_eq!(columns[0].descriptor, Points3D::descriptor_positions());
+        assert_eq!(columns[1].descriptor, Points3D::descriptor_labels());
+        assert_eq!(columns[0].list_array.offsets().as_ref(), &[0, 0, 2]);
+        assert_eq!(
+            columns[0].list_array.offsets().as_ptr(),
+            columns[1].list_array.offsets().as_ptr()
+        );
+        let unary = points
+            .columns_of_unit_batches()
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(unary[0].list_array.offsets().as_ref(), &[0, 1, 2]);
+        assert!(
+            Points3D::update_fields()
+                .columns(std::iter::from_fn(|| panic!("no batches")))
+                .unwrap()
+                .next()
+                .is_none()
+        );
+        assert!(
+            Points3D::new([(0.0, 0.0, 0.0); 2])
+                .with_labels(["short"])
+                .columns_of_unit_batches()
+                .is_err()
+        );
+    }
+}

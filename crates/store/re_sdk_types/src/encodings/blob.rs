@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -53,10 +50,10 @@ impl ::re_types_core::ToArrowOpt for Blob {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, concat_u8_buffers, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -67,33 +64,15 @@ impl ::re_types_core::ToArrowOpt for Blob {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let data0_validity = validity_from_bools(somes);
             {
                 let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
-                let data0_inner_data: ScalarBuffer<_> = {
-                    let mut iter = data0.iter().flatten();
-                    let first = iter.next();
-                    let second = iter.next();
-                    match (first, second) {
-                        (Some(single), None) => single.clone(),
-                        (Some(first_buf), Some(second_buf)) => ::itertools::chain!(
-                            ::std::iter::once(first_buf.as_ref() as &[_]),
-                            ::std::iter::once(second_buf.as_ref() as &[_]),
-                            iter.map(|b| b.as_ref() as &[_]),
-                        )
-                        .collect::<Vec<_>>()
-                        .concat()
-                        .into(),
-                        _ => Vec::new().into(),
-                    }
-                };
+                let data0_inner_data: ScalarBuffer<_> =
+                    concat_u8_buffers(&mut data0.iter().flatten());
                 let data0_inner_validity = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
