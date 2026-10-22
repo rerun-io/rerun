@@ -857,8 +857,9 @@ impl From<ScanParametersOrderClause> for crate::common::v1alpha1::ScanParameters
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IfMissingBehavior {
-    Skip,
-    Error,
+    // Discriminants match the proto enum, so a raw `as i32` cast is the proto value.
+    Skip = 1,
+    Error = 2,
 }
 
 impl Default for IfMissingBehavior {
@@ -888,9 +889,10 @@ impl From<IfMissingBehavior> for crate::common::v1alpha1::IfMissingBehavior {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IfDuplicateBehavior {
-    Overwrite,
-    Skip,
-    Error,
+    // Discriminants match the proto enum, so a raw `as i32` cast is the proto value.
+    Overwrite = 1,
+    Skip = 2,
+    Error = 3,
 }
 
 impl Default for IfDuplicateBehavior {
@@ -1311,6 +1313,35 @@ fn record_batch_from_ipc_bytes(
 
 #[cfg(test)]
 mod tests {
+    /// A raw `as i32` cast of an ext behavior enum must yield the proto value, because
+    /// request builders cast it straight into a proto field.
+    #[test]
+    fn behavior_enums_cast_to_their_proto_values() {
+        use crate::common::v1alpha1 as proto;
+
+        for behavior in [
+            super::IfDuplicateBehavior::Overwrite,
+            super::IfDuplicateBehavior::Skip,
+            super::IfDuplicateBehavior::Error,
+        ] {
+            assert_eq!(
+                behavior as i32,
+                proto::IfDuplicateBehavior::from(behavior) as i32,
+                "{behavior:?}"
+            );
+        }
+        for behavior in [
+            super::IfMissingBehavior::Skip,
+            super::IfMissingBehavior::Error,
+        ] {
+            assert_eq!(
+                behavior as i32,
+                proto::IfMissingBehavior::from(behavior) as i32,
+                "{behavior:?}"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]

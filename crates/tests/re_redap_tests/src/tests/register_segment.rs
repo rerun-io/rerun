@@ -1116,7 +1116,9 @@ pub async fn register_conflicting_schema_filters_segment_table(service: impl Rer
     );
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: second_def.to_data_sources(),
-        on_duplicate: IfDuplicateBehavior::Error as i32,
+        on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(
+            IfDuplicateBehavior::Error,
+        ) as i32,
     })
     .with_entry_name(entry_name(dataset_name));
 
@@ -1193,7 +1195,9 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
     );
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: second_def.to_data_sources(),
-        on_duplicate: IfDuplicateBehavior::Error as i32,
+        on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(
+            IfDuplicateBehavior::Error,
+        ) as i32,
     })
     .with_entry_name(entry_name(dataset_name));
 
@@ -1318,7 +1322,9 @@ async fn register_and_wait_for_task_result(
 
     let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
         data_sources: data_sources_def.to_data_sources(),
-        on_duplicate: IfDuplicateBehavior::Error as i32,
+        on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(
+            IfDuplicateBehavior::Error,
+        ) as i32,
     })
     .with_entry_name(entry_name(dataset_name));
 
