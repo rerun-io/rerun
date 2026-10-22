@@ -966,8 +966,7 @@ impl TestContext {
                             .get(&store_id)
                             .expect("Invalid store id in `SystemCommand::TimeControlCommands`");
 
-                        let blueprint_ctx =
-                            Some(&blueprint_ctx).filter(|_| store_id.is_recording());
+                        let blueprint_ctx = store_id.is_recording().then_some(&blueprint_ctx);
 
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(

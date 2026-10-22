@@ -119,20 +119,20 @@ pub struct AssetRegistrationError {
     /// listed, so this is the asset to unregister to clean up after the failure.
     pub asset_id: Option<SegmentId>,
 
-    pub error: ApiError,
+    pub error: Box<ApiError>,
 }
 
 impl AssetRegistrationError {
     /// A failure from before the server started registering an asset, so nothing is registered.
     fn without_asset(error: ApiError) -> Self {
-        Self {
-            asset_id: None,
-            error,
-        }
+        Self::new(None, error)
     }
 
     fn new(asset_id: Option<SegmentId>, error: ApiError) -> Self {
-        Self { asset_id, error }
+        Self {
+            asset_id,
+            error: Box::new(error),
+        }
     }
 }
 

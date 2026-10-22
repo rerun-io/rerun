@@ -203,7 +203,7 @@ impl Renderer for VolumeRenderer {
             let mut vertices: [[f32; 3]; VERTICES_PER_CUBE] =
                 std::array::from_fn(|i| CUBE_VERTICES[CUBE_TRIANGLES[i / 3][i % 3]]);
             if reverse_winding {
-                for triangle in vertices.chunks_exact_mut(3) {
+                for triangle in vertices.as_chunks_mut::<3>().0 {
                     triangle.swap(0, 2);
                 }
             }

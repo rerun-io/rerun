@@ -229,7 +229,7 @@ use std::sync::atomic::{
     Ordering::{AcqRel, Acquire, Relaxed, Release},
 };
 
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_log_types::TimeInt;
 
 use parking_lot::Mutex;
@@ -493,7 +493,7 @@ impl SegmentAdmissionPolicy {
             SegmentAdmissionCandidateReason::IncompleteMetadata
         } else if p95_segment_bytes > ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES {
             SegmentAdmissionCandidateReason::P95AboveThreshold
-        } else if decoded_window_bytes > pipeline_budget_bytes.saturating_cast::<u64>() {
+        } else if decoded_window_bytes > pipeline_budget_bytes.saturating_into::<u64>() {
             SegmentAdmissionCandidateReason::BudgetInsufficient
         } else {
             SegmentAdmissionCandidateReason::Eligible
@@ -542,7 +542,7 @@ impl SegmentAdmissionPolicy {
     pub(crate) fn record_metrics(self, metrics: &QueryMetrics) {
         metrics
             .segment_admission_candidate_limit
-            .store(self.candidate_limit.saturating_cast::<u64>(), Relaxed);
+            .store(self.candidate_limit.saturating_into::<u64>(), Relaxed);
         metrics
             .segment_admission_source
             .store(self.source as u64, Relaxed);
@@ -554,7 +554,7 @@ impl SegmentAdmissionPolicy {
             .store(u64::from(self.adaptive_enabled), Relaxed);
         metrics
             .segment_admission_profile_segment_count
-            .store(self.profile_segment_count.saturating_cast::<u64>(), Relaxed);
+            .store(self.profile_segment_count.saturating_into::<u64>(), Relaxed);
         metrics
             .segment_admission_profile_complete
             .store(u64::from(self.profile_complete), Relaxed);
@@ -569,7 +569,7 @@ impl SegmentAdmissionPolicy {
             .store(self.largest_window_bytes, Relaxed);
         metrics
             .segment_admission_limit
-            .store(self.effective_limit.saturating_cast::<u64>(), Relaxed);
+            .store(self.effective_limit.saturating_into::<u64>(), Relaxed);
     }
 }
 
@@ -1140,7 +1140,7 @@ impl PipelineBudget {
         if let Some(metrics) = &metrics {
             metrics
                 .pipeline_budget_bytes
-                .fetch_max(budget.saturating_cast::<u64>(), Relaxed);
+                .fetch_max(budget.saturating_into::<u64>(), Relaxed);
         }
 
         Self {
@@ -1323,7 +1323,7 @@ impl PipelineBudget {
         if let Some(metrics) = &self.metrics {
             metrics
                 .pipeline_peak_decoded_bytes
-                .fetch_max(current.saturating_cast::<u64>(), Relaxed);
+                .fetch_max(current.saturating_into::<u64>(), Relaxed);
         }
     }
 

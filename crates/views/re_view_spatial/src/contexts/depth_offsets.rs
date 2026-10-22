@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_log_types::EntityPathHash;
 use re_sdk_types::components::DrawOrder;
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -60,7 +60,7 @@ impl ViewContextSystem for EntityDepthOffsets {
             .map(|entities| entities.len())
             .sum();
         let mut depth_offset =
-            -(num_entities_with_draw_order / 2).saturating_cast::<re_renderer::DepthOffset>();
+            -(num_entities_with_draw_order / 2).saturating_into::<re_renderer::DepthOffset>();
         self.per_entity_and_visualizer = entities_per_draw_order
             .into_values()
             .flat_map(|keys| {

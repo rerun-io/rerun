@@ -91,6 +91,6 @@ fn test_natural_ordering() {
     check_total_order(&["1.001", "1.002", "1.010", "1.02", "1.1", "1.3"]);
     check_total_order(&["a 2", "a2"]);
     check_total_order(&["a", "B", "b", "c"]);
-    assert!(compare("a", "a") == Ordering::Equal);
-    assert!(compare("a", "A") != Ordering::Equal);
+    assert_eq!(compare("a", "a"), Ordering::Equal);
+    assert_ne!(compare("a", "A"), Ordering::Equal);
 }

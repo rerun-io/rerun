@@ -50,7 +50,7 @@ pub enum WriteError {
         dataset_id: EntryId,
         storage_url: url::Url,
         #[source]
-        source: ApiError,
+        source: Box<ApiError>,
     },
 
     #[error("failed to upload RRD: {0}")]
@@ -62,7 +62,7 @@ impl WriteError {
         Self::Register {
             dataset_id,
             storage_url: storage_url.clone(),
-            source,
+            source: Box::new(source),
         }
     }
 }

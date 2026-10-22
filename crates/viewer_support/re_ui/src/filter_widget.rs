@@ -843,20 +843,20 @@ mod test {
             vec![vec![2..3], vec![0..1], vec![0..1]]
         );
 
-        assert!(
+        assert_eq!(
             match_and_normalize("/a/b/c", &["aaa", "b", "cccc"])
                 .into_iter()
                 .flatten()
-                .count()
-                == 0,
+                .count(),
+            0,
         );
 
-        assert!(
+        assert_eq!(
             match_and_normalize("a/b/c/", &["aaa", "b", "cccc"])
                 .into_iter()
                 .flatten()
-                .count()
-                == 0,
+                .count(),
+            0,
         );
 
         assert_eq!(

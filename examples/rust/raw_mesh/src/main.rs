@@ -32,7 +32,11 @@ impl From<GltfPrimitive> for Mesh3D {
 
         if let Some(indices) = indices {
             assert!(indices.len() % 3 == 0);
-            let triangle_indices = indices.chunks_exact(3).map(|tri| (tri[0], tri[1], tri[2]));
+            let triangle_indices = indices
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .map(|tri| (tri[0], tri[1], tri[2]));
             mesh = mesh.with_triangle_indices(triangle_indices);
         }
         if let Some(vertex_normals) = vertex_normals {

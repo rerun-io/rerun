@@ -568,8 +568,6 @@ pub async fn serve(viewer_endpoint: Option<Url>) -> anyhow::Result<()> {
 mod tests {
     use std::fmt::Write as _;
 
-    use rmcp::ServerHandler as _;
-
     use super::*;
 
     #[test]

@@ -281,7 +281,7 @@ pub fn content_block_ui(ui: &mut egui::Ui, block: &ContentBlock, id: egui::Id) {
             use base64::Engine as _;
             match base64::engine::general_purpose::STANDARD.decode(&image.data) {
                 Ok(bytes) => {
-                    let uri = format!("bytes://{}.{}", id.short_debug_format(), &image.mime_type);
+                    let uri = format!("bytes://{}.{}", id.short_debug_format(), image.mime_type);
                     ui.add(
                         egui::Image::from_bytes(uri, bytes)
                             .max_width(ui.available_width().min(800.0))

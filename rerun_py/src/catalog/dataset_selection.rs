@@ -313,7 +313,7 @@ fn resolved_entity_path_filter(content_filters: Option<&Vec<String>>) -> Resolve
 
 /// Whether `schema` has an index column named `index`.
 fn has_index(schema: &ArrowSchema, index: &str) -> bool {
-    schema.field_with_name(index).ok().is_some_and(|field| {
+    schema.field_with_name(index).is_ok_and(|field| {
         field
             .metadata()
             .get(re_sorbet::metadata::RERUN_KIND)

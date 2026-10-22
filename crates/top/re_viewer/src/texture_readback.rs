@@ -98,8 +98,8 @@ fn to_color_image(
 
             egui::ColorImage::from_gray_iter(
                 size,
-                data.chunks_exact(2).map(|slice| {
-                    let pixel = u16::from_ne_bytes(slice.try_into().expect("we use chunks_exact"));
+                data.as_chunks::<2>().0.iter().map(|&pixel| {
+                    let pixel = u16::from_ne_bytes(pixel);
 
                     // Divide by 2 ^ 8 to convert 16 bit to 8 bit.
                     //
@@ -115,16 +115,20 @@ fn to_color_image(
         ExtendedColorType::Bgr8 => egui::ColorImage::from_rgb(
             size,
             &data
-                .chunks_exact(3)
-                .flat_map(|slice| [slice[2], slice[1], slice[0]])
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .flat_map(|&[r, g, b]| [b, g, r])
                 .collect::<Vec<_>>(),
         ),
 
         ExtendedColorType::Bgra8 => egui::ColorImage::from_rgb(
             size,
             &data
-                .chunks_exact(4)
-                .flat_map(|slice| [slice[2], slice[1], slice[0], slice[3]])
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|&[b, g, r, a]| [r, g, b, a])
                 .collect::<Vec<_>>(),
         ),
 
@@ -134,17 +138,13 @@ fn to_color_image(
             egui::ColorImage::from_rgb(
                 size,
                 &data
-                    .chunks_exact(6)
-                    .flat_map(|slice| {
-                        let r = u16::from_ne_bytes(
-                            slice[0..2].try_into().expect("we use chunks_exact"),
-                        );
-                        let g = u16::from_ne_bytes(
-                            slice[2..4].try_into().expect("we use chunks_exact"),
-                        );
-                        let b = u16::from_ne_bytes(
-                            slice[4..6].try_into().expect("we use chunks_exact"),
-                        );
+                    .as_chunks::<6>()
+                    .0
+                    .iter()
+                    .flat_map(|&[r0, r1, g0, g1, b0, b1]| {
+                        let r = u16::from_ne_bytes([r0, r1]);
+                        let g = u16::from_ne_bytes([g0, g1]);
+                        let b = u16::from_ne_bytes([b0, b1]);
 
                         // Divide by 2 ^ 8 to convert 16 bit to 8 bit.
                         //
@@ -161,20 +161,14 @@ fn to_color_image(
             egui::ColorImage::from_rgb(
                 size,
                 &data
-                    .chunks_exact(8)
-                    .flat_map(|slice| {
-                        let r = u16::from_ne_bytes(
-                            slice[0..2].try_into().expect("we use chunks_exact"),
-                        );
-                        let g = u16::from_ne_bytes(
-                            slice[2..4].try_into().expect("we use chunks_exact"),
-                        );
-                        let b = u16::from_ne_bytes(
-                            slice[4..6].try_into().expect("we use chunks_exact"),
-                        );
-                        let a = u16::from_ne_bytes(
-                            slice[6..8].try_into().expect("we use chunks_exact"),
-                        );
+                    .as_chunks::<8>()
+                    .0
+                    .iter()
+                    .flat_map(|&[r0, r1, g0, g1, b0, b1, a0, a1]| {
+                        let r = u16::from_ne_bytes([r0, r1]);
+                        let g = u16::from_ne_bytes([g0, g1]);
+                        let b = u16::from_ne_bytes([b0, b1]);
+                        let a = u16::from_ne_bytes([a0, a1]);
 
                         // Divide by 2 ^ 8 to convert 16 bit to 8 bit.
                         //

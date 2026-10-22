@@ -435,7 +435,6 @@ mod table_query_pipeline_tests {
     use arrow::array::{RecordBatchOptions, StringArray, UInt32Array};
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
     use async_trait::async_trait;
-    use futures_util::StreamExt as _;
     use parking_lot::Mutex;
     use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_redap_client::{ApiError, ApiResponseStream, ApiResult};

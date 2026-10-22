@@ -482,7 +482,7 @@ fn setup_target_config(
     // TODO(andreas): `re_tf` represents crossing a pinhole as an affine image-plane transform,
     // conflating projecting 3D into 2D with embedding 2D on a display plane in 3D.
     // We should preserve these distinct semantics in `re_tf` instead.
-    let focal_length = 0.5 * (focal_length.x + focal_length.y);
+    let focal_length = f32::midpoint(focal_length.x, focal_length.y);
     let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / focal_length).atan();
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {

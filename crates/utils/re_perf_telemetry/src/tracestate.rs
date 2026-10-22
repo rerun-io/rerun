@@ -148,9 +148,7 @@ pub fn parse_pairs(input: &str) -> HashMap<String, String> {
 mod tests {
     use std::collections::HashMap;
 
-    use opentelemetry::trace::{
-        SpanContext, SpanId, TraceContextExt as _, TraceFlags, TraceId, TraceState,
-    };
+    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState};
 
     use super::*;
 

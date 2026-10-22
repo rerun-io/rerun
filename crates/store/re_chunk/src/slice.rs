@@ -988,7 +988,6 @@ impl TimeColumn {
 mod tests {
     #![expect(clippy::cast_possible_wrap)]
 
-    use itertools::Itertools as _;
     use re_log_types::{
         TimePoint,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},

@@ -141,7 +141,7 @@ mod tests {
     use arrow::datatypes::{DataType, Field, Schema};
     use re_chunk::EntityPath;
 
-    use crate::{ImportedData, Importer as _, ImporterSettings};
+    use crate::{ImportedData, ImporterSettings};
 
     use super::*;
 

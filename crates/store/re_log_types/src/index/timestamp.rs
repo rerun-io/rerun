@@ -358,8 +358,6 @@ impl std::ops::Sub<Duration> for Timestamp {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr as _;
-
     use super::*;
 
     #[test]

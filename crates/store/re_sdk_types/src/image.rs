@@ -374,25 +374,17 @@ pub fn rgb_from_yuv(
         v = (v - 128.0) / 255.0;
     }
 
-    let r;
-    let g;
-    let b;
-
-    match coefficients {
+    let (r, g, b) = match coefficients {
         YuvMatrixCoefficients::Bt601 => {
             // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-            r = y + 1.402 * v;
-            g = y - 0.344 * u - 0.714 * v;
-            b = y + 1.772 * u;
+            (y + 1.402 * v, y - 0.344 * u - 0.714 * v, y + 1.772 * u)
         }
 
         YuvMatrixCoefficients::Bt709 => {
             // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-            r = y + 1.575 * v;
-            g = y - 0.187 * u - 0.468 * v;
-            b = y + 1.856 * u;
+            (y + 1.575 * v, y - 0.187 * u - 0.468 * v, y + 1.856 * u)
         }
-    }
+    };
 
     [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
 }

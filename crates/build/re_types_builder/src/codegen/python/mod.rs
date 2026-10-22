@@ -495,7 +495,7 @@ impl PythonCodeGenerator {
                         vec![name.clone(), format!("{name}Batch")]
                     } else {
                         vec![
-                            format!("{name}"),
+                            name.clone(),
                             format!("{name}ArrayLike"),
                             format!("{name}Batch"),
                             format!("{name}Like"),

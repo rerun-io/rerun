@@ -272,7 +272,7 @@ fn trigger_value(raw_axis: f32, button_pressed: bool) -> f32 {
     }
 
     if raw_axis < 0.0 {
-        ((raw_axis + 1.0) * 0.5).clamp(0.0, 1.0)
+        f32::midpoint(raw_axis, 1.0).clamp(0.0, 1.0)
     } else {
         raw_axis.clamp(0.0, 1.0)
     }

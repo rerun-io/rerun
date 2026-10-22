@@ -110,7 +110,8 @@ impl Device {
         fill: FillCallback,
         on_failure: FailureCallback,
     ) -> Result<Self, OutputError> {
-        let window = web_sys::window().ok_or_else(|| OutputError::Device("No window".to_owned()))?;
+        let window =
+            web_sys::window().ok_or_else(|| OutputError::Device("No window".to_owned()))?;
 
         let options = web_sys::AudioContextOptions::new();
         options.set_sample_rate(params.sample_rate as f32);
@@ -286,7 +287,8 @@ impl Feed {
         // After a late callback the buffer starts at the current time, which leaves a gap.
         let start_secs = next_start_secs.max(context.current_time());
         AudioScheduledSourceNode::start_with_when(&source, start_secs)?;
-        *next_start_secs = start_secs + params.frames_per_callback as f64 / params.sample_rate as f64;
+        *next_start_secs =
+            start_secs + params.frames_per_callback as f64 / params.sample_rate as f64;
         slot.source = Some(source);
 
         Ok(())

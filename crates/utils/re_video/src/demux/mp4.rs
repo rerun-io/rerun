@@ -5,7 +5,7 @@ use cros_codecs::codec::h265::parser::{
 };
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_span::Span;
 
 use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
@@ -100,7 +100,7 @@ impl VideoDataDescription {
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
-                let duration = Time::new(sample.duration.saturating_cast());
+                let duration = Time::new(sample.duration.saturating_into());
 
                 let byte_span = Span::from_start_len(sample.offset, sample.size);
 
@@ -204,7 +204,7 @@ impl VideoDataDescription {
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
             delivery_method: VideoDeliveryMethod::Static {
-                duration: Time::new(track.duration.saturating_cast()),
+                duration: Time::new(track.duration.saturating_into()),
             },
             samples_statistics,
             keyframe_indices,

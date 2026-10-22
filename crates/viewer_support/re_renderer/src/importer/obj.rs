@@ -38,20 +38,26 @@ pub fn load_obj_from_buffer(
         let mesh = obj_model.mesh;
         let vertex_positions: Vec<glam::Vec3> = mesh
             .positions
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|p| glam::vec3(p[0], p[1], p[2]))
             .collect();
         let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
         let triangle_indices = mesh
             .indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|p| glam::uvec3(p[0], p[1], p[2]))
             .collect();
 
         let mut vertex_colors: Vec<Rgba32Unmul> = mesh
             .vertex_color
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| {
                 Rgba32Unmul::from_rgb(
                     // It is not specified if the color is in linear or gamma space, but gamma seems a safe bet.
@@ -66,7 +72,9 @@ pub fn load_obj_from_buffer(
         let has_normals = mesh.normals.len() == mesh.positions.len();
         let vertex_normals: Vec<glam::Vec3> = if has_normals {
             mesh.normals
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|n| glam::vec3(n[0], n[1], n[2]))
                 .collect()
         } else {
@@ -75,7 +83,9 @@ pub fn load_obj_from_buffer(
 
         let mut vertex_texcoords: Vec<glam::Vec2> = mesh
             .texcoords
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|t| glam::vec2(t[0], t[1]))
             .collect();
         vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);

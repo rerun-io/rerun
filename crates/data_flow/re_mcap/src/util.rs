@@ -4,7 +4,7 @@ use std::io::{Read, Seek};
 use mcap::Summary;
 use mcap::sans_io::{SummaryReadEvent, SummaryReader};
 use re_chunk::{TimePoint, TimelineName};
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_log_types::{TimeCell, TimeType};
 
 use crate::Error;
@@ -102,7 +102,7 @@ impl TimestampCell {
     /// Always interprets the value as a timestamp, regardless of magnitude.
     /// Use [`Self::from_nanos_with_type`] for configurable [`TimeType`].
     pub fn from_nanos(timestamp_ns: u64, timeline: impl Into<TimelineName>) -> Self {
-        let ns = timestamp_ns.saturating_cast::<i64>();
+        let ns = timestamp_ns.saturating_into::<i64>();
         Self {
             timeline: timeline.into(),
             time: TimeCell::from_timestamp_nanos_since_epoch(ns),
@@ -115,7 +115,7 @@ impl TimestampCell {
         timeline: impl Into<TimelineName>,
         time_type: TimeType,
     ) -> Self {
-        let ns = nanos.saturating_cast::<i64>();
+        let ns = nanos.saturating_into::<i64>();
         let time = match time_type {
             TimeType::TimestampNs => TimeCell::from_timestamp_nanos_since_epoch(ns),
             TimeType::DurationNs => TimeCell::from_duration_nanos(ns),

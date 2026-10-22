@@ -421,10 +421,10 @@ impl AccessToken {
     }
 
     pub fn remaining_duration_secs(&self) -> i64 {
-        use re_int::SaturatingCast as _;
+        use re_int::SaturatingInto as _;
 
         // Time in seconds since unix epoch
-        let now: i64 = jsonwebtoken::get_current_timestamp().saturating_cast();
+        let now: i64 = jsonwebtoken::get_current_timestamp().saturating_into();
         self.expires_at - now
     }
 

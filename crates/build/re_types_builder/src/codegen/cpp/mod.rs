@@ -2848,7 +2848,7 @@ fn quote_loggable_hpp_and_cpp(
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
 ) -> (TokenStream, Option<TokenStream>) {
-    assert!(obj.kind != ObjectKind::Archetype);
+    assert_ne!(obj.kind, ObjectKind::Archetype);
 
     let namespace_ident = obj.namespace_ident();
     let type_ident = obj.ident();

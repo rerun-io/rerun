@@ -192,7 +192,9 @@ fn main() -> anyhow::Result<()> {
     let (rgba, [w, h]) = screenshot.ok_or_else(|| anyhow::anyhow!("no screenshot received"))?;
 
     let rgb: Vec<u8> = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|px| [px[0], px[1], px[2]])
         .collect();
     let our_img =

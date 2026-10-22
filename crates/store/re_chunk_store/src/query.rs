@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_log::debug_assert;
 
 use re_chunk::{
@@ -1107,7 +1107,7 @@ impl PointQuery for LatestAtQuery {
         let lower_bound = upper_bound.as_i64().saturating_sub(
             temporal_chunk_ids_per_time
                 .max_interval_length
-                .saturating_cast(),
+                .saturating_into(),
         );
 
         let temporal_chunk_ids = temporal_chunk_ids_per_time
@@ -1199,7 +1199,7 @@ impl PointQuery for EarliestAtQuery {
         let upper_bound = lower_bound.as_i64().saturating_add(
             temporal_chunk_ids_per_time
                 .max_interval_length
-                .saturating_cast(),
+                .saturating_into(),
         );
 
         let temporal_chunk_ids = temporal_chunk_ids_per_time
@@ -1421,7 +1421,7 @@ impl ChunkStore {
                     query_min.as_i64().saturating_sub(
                         temporal_chunk_ids_per_time
                             .max_interval_length
-                            .saturating_cast(),
+                            .saturating_into(),
                     ),
                 );
 

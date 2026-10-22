@@ -140,7 +140,7 @@ fn write_error_to_py(err: &WriteError) -> PyErr {
             storage_url,
             source,
         } => {
-            let mut contextual = source.clone();
+            let mut contextual = ApiError::clone(source);
             contextual.message = re_error::format_with_details(
                 format!("failed to register uploaded RRD: {}", source.message),
                 format!("Dataset: {dataset_id}\nStaged URL: {storage_url}"),

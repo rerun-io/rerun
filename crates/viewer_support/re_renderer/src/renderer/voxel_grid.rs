@@ -219,7 +219,7 @@ impl VoxelGridDrawData {
             world_from_grid: world_from_grid.into(),
             voxel_size_depth_offset: voxel_size.extend(depth_offset as f32).into(),
             picking_object_id: picking_object_id_packed.into(),
-            outline_mask_ids: mask.0.map_or([0, 0], |mask| mask).into(),
+            outline_mask_ids: mask.0.unwrap_or([0, 0]).into(),
             end_padding: Default::default(),
         };
 

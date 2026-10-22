@@ -179,6 +179,8 @@ fn check(what: &str, status: i32) -> Result<(), OutputError> {
     if status == 0 {
         Ok(())
     } else {
-        Err(OutputError::Device(format!("{what} failed with OSStatus {status}")))
+        Err(OutputError::Device(format!(
+            "{what} failed with OSStatus {status}"
+        )))
     }
 }

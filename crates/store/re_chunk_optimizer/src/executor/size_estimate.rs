@@ -292,7 +292,7 @@ fn sum_elementwise(len: usize, parts: &[ElementSizes], extra: u64) -> (ElementBy
 #[cfg(test)]
 mod tests {
     use arrow::array::{
-        Array as _, ArrayRef, Int32Array, ListArray, MapArray, StructArray, UInt8Array, UnionArray,
+        ArrayRef, Int32Array, ListArray, MapArray, StructArray, UInt8Array, UnionArray,
     };
     use arrow::buffer::{OffsetBuffer, ScalarBuffer};
     use arrow::datatypes::{DataType, Field, Fields, UnionFields, UnionMode};
