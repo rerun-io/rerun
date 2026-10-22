@@ -16,7 +16,7 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
+    classify_scan_hint_filters_for_pushdown, segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
 
@@ -124,9 +124,9 @@ impl GrpcStreamToTable for SegmentTableProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_segment_id_filters_for_pushdown(
+        Ok(classify_scan_hint_filters_for_pushdown(
             filters,
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            &[ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME],
         ))
     }
 

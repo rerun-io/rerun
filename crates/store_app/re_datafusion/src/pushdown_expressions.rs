@@ -5,19 +5,23 @@ use itertools::Itertools as _;
 use re_int::SaturatingCast as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
-use re_protos::cloud::v1alpha1::{SegmentIdFilter, SegmentIdList, segment_id_filter};
+use re_protos::cloud::v1alpha1::{
+    LayerNameFilter, LayerNameList, SegmentIdFilter, SegmentIdList, layer_name_filter,
+    segment_id_filter,
+};
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::SegmentId;
 use std::collections::HashSet;
 use std::ops::Not as _;
 
+/// The values of one string column that a filter keeps, or drops.
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum SegmentIdSelection {
+enum StringSelection {
     ScanOnly(HashSet<String>),
     Skip(HashSet<String>),
 }
 
-impl SegmentIdSelection {
+impl StringSelection {
     fn and(self, other: Self) -> Self {
         match (self, other) {
             (Self::ScanOnly(left), Self::ScanOnly(right)) => Self::ScanOnly(&left & &right),
@@ -43,7 +47,7 @@ impl SegmentIdSelection {
         }
     }
 
-    fn into_proto(self) -> SegmentIdFilter {
+    fn into_segment_id_filter(self) -> SegmentIdFilter {
         let strategy = match self {
             Self::ScanOnly(ids) => segment_id_filter::Strategy::ScanOnly(SegmentIdList {
                 segment_ids: sorted(ids),
@@ -56,13 +60,27 @@ impl SegmentIdSelection {
             strategy: Some(strategy),
         }
     }
+
+    fn into_layer_name_filter(self) -> LayerNameFilter {
+        let strategy = match self {
+            Self::ScanOnly(names) => layer_name_filter::Strategy::ScanOnly(LayerNameList {
+                layer_names: sorted(names),
+            }),
+            Self::Skip(names) => layer_name_filter::Strategy::Skip(LayerNameList {
+                layer_names: sorted(names),
+            }),
+        };
+        LayerNameFilter {
+            strategy: Some(strategy),
+        }
+    }
 }
 
-fn sorted(ids: HashSet<String>) -> Vec<String> {
-    ids.into_iter().sorted().collect()
+fn sorted(values: HashSet<String>) -> Vec<String> {
+    values.into_iter().sorted().collect()
 }
 
-fn segment_id_literal(expr: &Expr) -> Option<String> {
+fn string_literal(expr: &Expr) -> Option<String> {
     match expr {
         Expr::Literal(
             ScalarValue::Utf8(Some(value))
@@ -74,31 +92,31 @@ fn segment_id_literal(expr: &Expr) -> Option<String> {
     }
 }
 
-fn is_segment_id_column(expr: &Expr, column_name: &str) -> bool {
+fn is_column(expr: &Expr, column_name: &str) -> bool {
     matches!(expr, Expr::Column(column) if column.name == column_name)
 }
 
-fn segment_id_selection(expr: &Expr, column_name: &str) -> Option<SegmentIdSelection> {
+fn string_selection(expr: &Expr, column_name: &str) -> Option<StringSelection> {
     match expr {
         Expr::BinaryExpr(binary) if matches!(binary.op, Operator::Eq | Operator::NotEq) => {
-            let value = if is_segment_id_column(&binary.left, column_name) {
-                segment_id_literal(&binary.right)
-            } else if is_segment_id_column(&binary.right, column_name) {
-                segment_id_literal(&binary.left)
+            let value = if is_column(&binary.left, column_name) {
+                string_literal(&binary.right)
+            } else if is_column(&binary.right, column_name) {
+                string_literal(&binary.left)
             } else {
                 None
             }?;
-            let ids = HashSet::from([value]);
+            let values = HashSet::from([value]);
             Some(if binary.op == Operator::Eq {
-                SegmentIdSelection::ScanOnly(ids)
+                StringSelection::ScanOnly(values)
             } else {
-                SegmentIdSelection::Skip(ids)
+                StringSelection::Skip(values)
             })
         }
 
         Expr::BinaryExpr(binary) if matches!(binary.op, Operator::And | Operator::Or) => {
-            let left = segment_id_selection(&binary.left, column_name)?;
-            let right = segment_id_selection(&binary.right, column_name)?;
+            let left = string_selection(&binary.left, column_name)?;
+            let right = string_selection(&binary.right, column_name)?;
             Some(if binary.op == Operator::And {
                 left.and(right)
             } else {
@@ -106,23 +124,31 @@ fn segment_id_selection(expr: &Expr, column_name: &str) -> Option<SegmentIdSelec
             })
         }
 
-        Expr::InList(in_list) if is_segment_id_column(&in_list.expr, column_name) => {
-            let ids = in_list
+        Expr::InList(in_list) if is_column(&in_list.expr, column_name) => {
+            let values = in_list
                 .list
                 .iter()
-                .map(segment_id_literal)
+                .map(string_literal)
                 .collect::<Option<HashSet<_>>>()?;
             Some(if in_list.negated {
-                SegmentIdSelection::Skip(ids)
+                StringSelection::Skip(values)
             } else {
-                SegmentIdSelection::ScanOnly(ids)
+                StringSelection::ScanOnly(values)
             })
         }
 
-        Expr::Not(inner) => Some(segment_id_selection(inner, column_name)?.negate()),
+        Expr::Not(inner) => Some(string_selection(inner, column_name)?.negate()),
 
         _ => None,
     }
+}
+
+/// All the filters representable on `column_name`, intersected.
+fn string_selection_from_filters(filters: &[Expr], column_name: &str) -> Option<StringSelection> {
+    filters
+        .iter()
+        .filter_map(|filter| string_selection(filter, column_name))
+        .reduce(StringSelection::and)
 }
 
 /// Convert all representable segment-ID filters into one best-effort server-side scan hint.
@@ -130,25 +156,35 @@ pub(crate) fn segment_id_filter_from_filters(
     filters: &[Expr],
     column_name: &str,
 ) -> Option<SegmentIdFilter> {
-    filters
-        .iter()
-        .filter_map(|filter| segment_id_selection(filter, column_name))
-        .reduce(SegmentIdSelection::and)
-        .map(SegmentIdSelection::into_proto)
+    string_selection_from_filters(filters, column_name).map(StringSelection::into_segment_id_filter)
 }
 
-/// Classify filters that can be represented by [`SegmentIdFilter`].
-pub(crate) fn classify_segment_id_filters_for_pushdown(
-    filters: &[&Expr],
+/// Convert all representable layer-name filters into one best-effort server-side scan hint.
+pub(crate) fn layer_name_filter_from_filters(
+    filters: &[Expr],
     column_name: &str,
+) -> Option<LayerNameFilter> {
+    string_selection_from_filters(filters, column_name).map(StringSelection::into_layer_name_filter)
+}
+
+/// Classify filters that can be sent as a scan hint on one of `column_names`.
+///
+/// A filter that mixes several of these columns (e.g. `a = x OR b = y`) can't be sent as hints,
+/// since hints on different columns are intersected.
+pub(crate) fn classify_scan_hint_filters_for_pushdown(
+    filters: &[&Expr],
+    column_names: &[&str],
 ) -> Vec<TableProviderFilterPushDown> {
     filters
         .iter()
         .map(|filter| {
-            if segment_id_selection(filter, column_name).is_some() {
-                // Keep this Inexact while clients can connect to servers that predate
-                // `SegmentIdFilter` and silently ignore its unknown protobuf field. This can become
-                // Exact after capability negotiation or the compatibility window ends.
+            if column_names
+                .iter()
+                .any(|column_name| string_selection(filter, column_name).is_some())
+            {
+                // Keep this Inexact while clients can connect to servers that predate these hints
+                // and silently ignore their unknown protobuf fields. This can become Exact after
+                // capability negotiation or the compatibility window ends.
                 TableProviderFilterPushDown::Inexact
             } else {
                 TableProviderFilterPushDown::Unsupported
@@ -891,10 +927,14 @@ mod tests {
     use arrow::datatypes::{Field, Schema};
     use datafusion::logical_expr::expr::InList;
     use datafusion::logical_expr::{col, lit};
+    use re_protos::cloud::v1alpha1::ext::{
+        ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
+    };
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    const SEGMENT_ID: &str = "rerun_segment_id";
+    const SEGMENT_ID: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
+    const LAYER_NAME: &str = ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME_NAME;
 
     fn strategy(expr: Expr) -> segment_id_filter::Strategy {
         segment_id_filter_from_filters(&[expr], SEGMENT_ID)
@@ -977,12 +1017,129 @@ mod tests {
         let pushable = col(SEGMENT_ID).eq(lit("a"));
         let unsupported = col("rerun_num_chunks").gt(lit(5i64));
         assert_eq!(
-            classify_segment_id_filters_for_pushdown(&[&pushable, &unsupported], SEGMENT_ID),
+            classify_scan_hint_filters_for_pushdown(&[&pushable, &unsupported], &[SEGMENT_ID]),
             vec![
                 TableProviderFilterPushDown::Inexact,
                 TableProviderFilterPushDown::Unsupported,
             ]
         );
+    }
+
+    fn layer_strategy(expr: Expr) -> layer_name_filter::Strategy {
+        layer_name_filter_from_filters(&[expr], LAYER_NAME)
+            .unwrap()
+            .strategy
+            .unwrap()
+    }
+
+    fn layer_names(names: &[&str]) -> LayerNameList {
+        LayerNameList {
+            layer_names: names.iter().map(|name| (*name).to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn layer_name_inclusion_becomes_scan_only() {
+        for expr in [
+            col(LAYER_NAME).eq(lit("base")),
+            lit("base").eq(col(LAYER_NAME)),
+        ] {
+            assert_eq!(
+                layer_strategy(expr),
+                layer_name_filter::Strategy::ScanOnly(layer_names(&["base"]))
+            );
+        }
+        assert_eq!(
+            layer_strategy(col(LAYER_NAME).in_list(vec![lit("extra"), lit("base")], false)),
+            layer_name_filter::Strategy::ScanOnly(layer_names(&["base", "extra"]))
+        );
+    }
+
+    #[test]
+    fn layer_name_exclusion_becomes_skip() {
+        assert_eq!(
+            layer_strategy(col(LAYER_NAME).not_eq(lit("extra"))),
+            layer_name_filter::Strategy::Skip(layer_names(&["extra"]))
+        );
+        assert_eq!(
+            layer_strategy(col(LAYER_NAME).in_list(vec![lit("a"), lit("b")], true)),
+            layer_name_filter::Strategy::Skip(layer_names(&["a", "b"]))
+        );
+        assert_eq!(
+            layer_strategy(Expr::Not(Box::new(col(LAYER_NAME).eq(lit("a"))))),
+            layer_name_filter::Strategy::Skip(layer_names(&["a"]))
+        );
+    }
+
+    #[test]
+    fn layer_name_boolean_expressions_are_normalized() {
+        let expr = col(LAYER_NAME)
+            .eq(lit("a"))
+            .or(col(LAYER_NAME).eq(lit("b")));
+        assert_eq!(
+            layer_strategy(expr),
+            layer_name_filter::Strategy::ScanOnly(layer_names(&["a", "b"]))
+        );
+
+        // Separate filters are intersected.
+        let filters = [
+            col(LAYER_NAME).in_list(vec![lit("a"), lit("b")], false),
+            col(LAYER_NAME).not_eq(lit("b")),
+        ];
+        assert_eq!(
+            layer_name_filter_from_filters(&filters, LAYER_NAME)
+                .unwrap()
+                .strategy
+                .unwrap(),
+            layer_name_filter::Strategy::ScanOnly(layer_names(&["a"]))
+        );
+    }
+
+    #[test]
+    fn layer_and_segment_filters_are_extracted_independently() {
+        let filters = [
+            col(SEGMENT_ID).eq(lit("seg")),
+            col(LAYER_NAME).eq(lit("base")),
+        ];
+        assert_eq!(
+            segment_id_filter_from_filters(&filters, SEGMENT_ID)
+                .unwrap()
+                .strategy
+                .unwrap(),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["seg".to_owned()],
+            })
+        );
+        assert_eq!(
+            layer_name_filter_from_filters(&filters, LAYER_NAME)
+                .unwrap()
+                .strategy
+                .unwrap(),
+            layer_name_filter::Strategy::ScanOnly(layer_names(&["base"]))
+        );
+    }
+
+    #[test]
+    fn classify_layer_and_segment_filters() {
+        let segment = col(SEGMENT_ID).eq(lit("seg"));
+        let layer = col(LAYER_NAME).not_eq(lit("extra"));
+        let mixed = col(SEGMENT_ID)
+            .eq(lit("seg"))
+            .or(col(LAYER_NAME).eq(lit("base")));
+        let unsupported = col(LAYER_NAME).gt(lit("a"));
+        assert_eq!(
+            classify_scan_hint_filters_for_pushdown(
+                &[&segment, &layer, &mixed, &unsupported],
+                &[SEGMENT_ID, LAYER_NAME],
+            ),
+            vec![
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Unsupported,
+                TableProviderFilterPushDown::Unsupported,
+            ]
+        );
+        assert!(layer_name_filter_from_filters(&[mixed], LAYER_NAME).is_none());
     }
 
     fn make_schema_with_index(index_name: &str) -> SchemaRef {

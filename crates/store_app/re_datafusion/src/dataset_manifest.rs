@@ -16,7 +16,8 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
+    classify_scan_hint_filters_for_pushdown, layer_name_filter_from_filters,
+    segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
 
@@ -87,6 +88,10 @@ impl GrpcStreamToTable for DatasetManifestProvider {
             &params.filters,
             ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         );
+        let layer_name_filter = layer_name_filter_from_filters(
+            &params.filters,
+            ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME_NAME,
+        );
 
         let request = tonic::Request::new(ScanDatasetManifestRequest {
             columns: params
@@ -95,7 +100,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
                 .unwrap_or_default()
                 .to_vec(),
             segment_id_filter,
-            layer_name_filter: None,
+            layer_name_filter,
         })
         .with_entry_id(self.dataset_id);
 
@@ -125,9 +130,12 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_segment_id_filters_for_pushdown(
+        Ok(classify_scan_hint_filters_for_pushdown(
             filters,
-            ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            &[
+                ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME_NAME,
+            ],
         ))
     }
 
