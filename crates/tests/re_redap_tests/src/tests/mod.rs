@@ -191,6 +191,7 @@ define_redap_tests! {
     register_segment::register_with_prefix,
     scan_filter::scan_segment_table_filter,
     scan_filter::scan_dataset_manifest_filter,
+    scan_filter::scan_dataset_manifest_layer_filter,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,

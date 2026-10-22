@@ -26,11 +26,11 @@ use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
     EntryCreatedEvent, EntryDeletedEvent, EntryDetails, EntryKind, EventKind, FetchChunksRequest,
     GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    GetRrdManifestResponse, GetSegmentTableSchemaResponse, LayerNameFilter, QueryDatasetResponse,
     QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
     QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, ScanDatasetManifestRequest,
     ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter,
-    WatchEventsResponse, segment_id_filter, watch_events_response,
+    WatchEventsResponse, layer_name_filter, segment_id_filter, watch_events_response,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -105,18 +105,53 @@ fn apply_segment_id_filter(
         segment_id_filter::Strategy::ScanOnly(ids) => (&ids.segment_ids, true),
         segment_id_filter::Strategy::Skip(ids) => (&ids.segment_ids, false),
     };
-    let ids = ids.iter().map(String::as_str).collect::<HashSet<_>>();
 
     let segment_ids = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
         .extract(&batch)
         .map_err(|err| Status::internal(err.to_string()))?;
-    let mask = segment_ids
-        .iter()
-        .map(|segment_id| ids.contains(segment_id) == scan_only)
-        .collect::<BooleanArray>();
+    let mask = membership_mask(segment_ids.iter(), ids, scan_only);
 
     arrow::compute::filter_record_batch(&batch, &mask)
         .map_err(|err| Status::internal(format!("Unable to apply segment ID filter: {err:#}")))
+}
+
+fn apply_layer_name_filter(
+    batch: RecordBatch,
+    filter: Option<&LayerNameFilter>,
+) -> tonic::Result<RecordBatch> {
+    let Some(filter) = filter else {
+        return Ok(batch);
+    };
+    let Some(strategy) = filter.strategy.as_ref() else {
+        return Ok(batch);
+    };
+    let (names, scan_only) = match strategy {
+        layer_name_filter::Strategy::ScanOnly(names) => (&names.layer_names, true),
+        layer_name_filter::Strategy::Skip(names) => (&names.layer_names, false),
+    };
+
+    let layer_names = ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+        .extract(&batch)
+        .map_err(|err| Status::internal(err.to_string()))?;
+    let mask = membership_mask(layer_names.iter(), names, scan_only);
+
+    arrow::compute::filter_record_batch(&batch, &mask)
+        .map_err(|err| Status::internal(format!("Unable to apply layer name filter: {err:#}")))
+}
+
+/// Keeps a row when whether `values` lists it matches `scan_only`.
+fn membership_mask<'a>(
+    column: impl Iterator<Item = &'a str>,
+    values: &[String],
+    scan_only: bool,
+) -> BooleanArray {
+    let values = values
+        .iter()
+        .map(String::as_str)
+        .collect::<ahash::HashSet<_>>();
+    column
+        .map(|value| values.contains(value) == scan_only)
+        .collect()
 }
 
 /// Builds a [`RerunCloudHandler`].
@@ -1399,6 +1434,7 @@ impl RerunCloudService for RerunCloudHandler {
         };
 
         record_batch = apply_segment_id_filter(record_batch, request.segment_id_filter.as_ref())?;
+        record_batch = apply_layer_name_filter(record_batch, request.layer_name_filter.as_ref())?;
 
         // project columns
         if !request.columns.is_empty() {

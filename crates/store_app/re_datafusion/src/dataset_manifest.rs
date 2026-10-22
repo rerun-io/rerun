@@ -95,6 +95,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
                 .unwrap_or_default()
                 .to_vec(),
             segment_id_filter,
+            layer_name_filter: None,
         })
         .with_entry_id(self.dataset_id);
 

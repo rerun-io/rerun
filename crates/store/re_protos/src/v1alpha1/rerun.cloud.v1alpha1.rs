@@ -687,6 +687,55 @@ impl ::prost::Name for SegmentIdFilter {
         "/rerun.cloud.v1alpha1.SegmentIdFilter".into()
     }
 }
+/// A plain list of layer names.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LayerNameList {
+    /// The layer names.
+    #[prost(string, repeated, tag = "1")]
+    pub layer_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for LayerNameList {
+    const NAME: &'static str = "LayerNameList";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.LayerNameList".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.LayerNameList".into()
+    }
+}
+/// Narrows a manifest scan down to, or away from, a set of layers.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LayerNameFilter {
+    /// Whether the listed layers are the ones to keep or the ones to drop.
+    #[prost(oneof = "layer_name_filter::Strategy", tags = "1, 2")]
+    pub strategy: ::core::option::Option<layer_name_filter::Strategy>,
+}
+/// Nested message and enum types in `LayerNameFilter`.
+pub mod layer_name_filter {
+    /// Whether the listed layers are the ones to keep or the ones to drop.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Strategy {
+        /// Scan only manifest rows belonging to these layers.
+        /// An empty list scans no rows.
+        #[prost(message, tag = "1")]
+        ScanOnly(super::LayerNameList),
+        /// Scan all manifest rows except those belonging to these layers.
+        /// An empty list skips no rows.
+        #[prost(message, tag = "2")]
+        Skip(super::LayerNameList),
+    }
+}
+impl ::prost::Name for LayerNameFilter {
+    const NAME: &'static str = "LayerNameFilter";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.LayerNameFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.LayerNameFilter".into()
+    }
+}
 /// Request for `ScanSegmentTable`.
 ///
 /// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -799,6 +848,13 @@ pub struct ScanDatasetManifestRequest {
     /// Clients must re-apply filters locally if correctness depends on them.
     #[prost(message, optional, tag = "5")]
     pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
+    /// An optional best-effort hint for pruning layers from the server-side scan.
+    ///
+    /// Combined with `segment_id_filter`, a row is scanned only if it passes both.
+    /// Servers may apply or ignore this filter.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(message, optional, tag = "6")]
+    pub layer_name_filter: ::core::option::Option<LayerNameFilter>,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";

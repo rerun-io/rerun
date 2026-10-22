@@ -956,6 +956,7 @@ impl ScanDatasetManifestRequest {
         Self {
             columns: Vec::new(),
             segment_id_filter: None,
+            layer_name_filter: None,
         }
     }
 
@@ -964,6 +965,7 @@ impl ScanDatasetManifestRequest {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
             segment_id_filter: None,
+            layer_name_filter: None,
         }
     }
 }

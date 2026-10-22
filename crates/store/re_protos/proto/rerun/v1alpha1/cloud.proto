@@ -739,6 +739,26 @@ message SegmentIdFilter {
   }
 }
 
+// A plain list of layer names.
+message LayerNameList {
+  // The layer names.
+  repeated string layer_names = 1;
+}
+
+// Narrows a manifest scan down to, or away from, a set of layers.
+message LayerNameFilter {
+  // Whether the listed layers are the ones to keep or the ones to drop.
+  oneof strategy {
+    // Scan only manifest rows belonging to these layers.
+    // An empty list scans no rows.
+    LayerNameList scan_only = 1;
+
+    // Scan all manifest rows except those belonging to these layers.
+    // An empty list skips no rows.
+    LayerNameList skip = 2;
+  }
+}
+
 // Request for `ScanSegmentTable`.
 //
 // The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -810,6 +830,13 @@ message ScanDatasetManifestRequest {
   // Servers may apply or ignore this filter.
   // Clients must re-apply filters locally if correctness depends on them.
   SegmentIdFilter segment_id_filter = 5;
+
+  // An optional best-effort hint for pruning layers from the server-side scan.
+  //
+  // Combined with `segment_id_filter`, a row is scanned only if it passes both.
+  // Servers may apply or ignore this filter.
+  // Clients must re-apply filters locally if correctness depends on them.
+  LayerNameFilter layer_name_filter = 6;
 }
 
 // One batch of the dataset manifest.
