@@ -405,6 +405,17 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
         };
     }
 
+    #[cfg(target_os = "windows")]
+    if opts.detach_process && !opts.headless {
+        use std::os::windows::process::CommandExt as _;
+
+        // A new process group has Ctrl+C disabled (and its children inherit that), so a
+        // Ctrl+C in the terminal no longer kills the viewer along with the application.
+        // Unlike `setsid` on Unix, closing the terminal window still does.
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        rerun_bin.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    }
+
     let child = rerun_bin.spawn().map_err(map_err)?;
     let child_pid = child.id();
 
