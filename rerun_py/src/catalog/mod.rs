@@ -91,6 +91,10 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyComponentColumnSelector>()?;
 
     // testing
+    m.add_function(wrap_pyfunction!(
+        catalog_client::_get_write_access_grant,
+        m
+    )?)?;
     m.add_class::<PyIndexValuesLikeInternal>()?;
 
     // register exceptions generated with the [`pyo3::create_exception!`] macro

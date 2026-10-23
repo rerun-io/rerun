@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from .conftest import EntryFactory
 
-pytestmark = pytest.mark.local_only
+pytestmark = pytest.mark.requires_write_access_grants
 
 
 @pytest.mark.parametrize("source_kind", ["str", "path", "bytes", "reader", "iterable"])
@@ -63,10 +63,10 @@ def test_write_invalid_prefix(entry_factory: EntryFactory, storage_prefix: str) 
 def test_write_invalid_rrd_fails_terminally(entry_factory: EntryFactory) -> None:
     dataset = entry_factory.create_dataset("write_invalid_rrd")
     operation = dataset._write_segments(b"not an rrd")
-    with pytest.raises(RuntimeError, match="failed to register uploaded RRD") as first_error:
+    with pytest.raises(ValueError, match="failed to register uploaded RRD") as first_error:
         operation.wait(timeout_secs=30)
     assert operation.status() == "failed"
-    with pytest.raises(RuntimeError, match="failed to register uploaded RRD") as second_error:
+    with pytest.raises(ValueError, match="failed to register uploaded RRD") as second_error:
         operation.wait(timeout_secs=30)
     assert str(second_error.value) == str(first_error.value)
     assert "Dataset:" in str(first_error.value)

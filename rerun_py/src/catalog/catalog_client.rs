@@ -3,8 +3,8 @@ use std::sync::Arc;
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
-use pyo3::types::{PyAnyMethods as _, PyDict};
-use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
+use pyo3::types::{PyAnyMethods as _, PyBytes, PyDict};
+use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pyfunction, pymethods};
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
@@ -20,6 +20,9 @@ use crate::utils::wait_for_future;
 
 /// (version, cloud_provider, cloud_region, features), as returned by `version_info`.
 type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
+
+/// (storage URL, expiry, method, request URL, headers).
+type WriteAccessGrantTuple = (String, String, String, String, Vec<(String, Py<PyBytes>)>);
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(
@@ -48,6 +51,62 @@ impl PyCatalogClientInternal {
     pub(crate) fn object_store_auth(&self) -> &Arc<dyn ObjectStoreAuthenticator> {
         &self.object_store_auth
     }
+}
+
+/// Used for testing only.
+#[pyfunction]
+#[pyo3(signature = (client, *, key))]
+pub fn _get_write_access_grant(
+    client: Py<PyCatalogClientInternal>,
+    py: Python<'_>,
+    key: String,
+) -> PyResult<WriteAccessGrantTuple> {
+    use re_protos::cloud::v1alpha1::ext::{HttpRequest, ObjectKey, Redemption};
+
+    let _span = read_trace_context_from_python(py, "_get_write_access_grant").entered();
+    let connection = client.borrow(py).connection.clone();
+    let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+    let response = wait_for_future(py, async {
+        connection
+            .client()
+            .await?
+            .get_write_access_grant(key)
+            .await
+            .map_err(to_py_err)
+    })?;
+    let Redemption::HttpRequest(request) = response.grant.redemption;
+    let (method, url, headers) = match request {
+        HttpRequest::External {
+            method,
+            url,
+            headers,
+        } => (method, url, headers),
+        HttpRequest::SameOrigin {
+            method,
+            path_and_query,
+            headers,
+        } => {
+            let url = url::Url::parse(&connection.origin().as_url())
+                .and_then(|base| base.join(path_and_query.as_str()))
+                .map_err(to_py_err)?;
+            (method, url, headers)
+        }
+    };
+    Ok((
+        response.storage_url.to_string(),
+        response.grant.expires_at.to_string(),
+        method.to_string(),
+        url.to_string(),
+        headers
+            .iter()
+            .map(|(name, value)| {
+                (
+                    name.to_string(),
+                    PyBytes::new(py, value.as_bytes()).unbind(),
+                )
+            })
+            .collect(),
+    ))
 }
 
 fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {

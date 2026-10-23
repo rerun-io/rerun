@@ -1168,7 +1168,7 @@ impl RerunCloudService for RerunCloudHandler {
         let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
             tonic::Status::unimplemented("write access grants are not configured")
         })?;
-        let response = write_access_grants.issue(&key)?;
+        let response = write_access_grants.issue(&key).await?;
         Ok(tonic::Response::new(response.try_into()?))
     }
 

@@ -10,7 +10,7 @@ use base64::Engine as _;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use futures::StreamExt as _;
 use hmac::{Hmac, Mac as _};
-use http::StatusCode;
+use http::{HeaderMap, HeaderValue, StatusCode, header::IF_NONE_MATCH};
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use sha2::Sha256;
 use tokio::io::AsyncWriteExt as _;
@@ -47,13 +47,22 @@ impl WriteAccessGrants {
         })
     }
 
-    pub fn issue(
+    pub async fn issue(
         &self,
         object_key: &ObjectKey,
     ) -> tonic::Result<re_protos::cloud::v1alpha1::ext::GetWriteAccessGrantResponse> {
         use re_protos::cloud::v1alpha1::ext::{
             AccessGrant, GetWriteAccessGrantResponse, HttpRequest, Redemption,
         };
+
+        let destination = self.storage_dir.join(object_key.to_string());
+        if tokio::fs::try_exists(&destination).await.map_err(|err| {
+            tonic::Status::internal(format!("failed to check upload destination: {err}"))
+        })? {
+            return Err(tonic::Status::already_exists(
+                "cannot issue write access grant: object already exists",
+            ));
+        }
 
         let expires_at = jiff::Timestamp::now()
             .checked_add(GRANT_VALIDITY)
@@ -86,7 +95,7 @@ impl WriteAccessGrants {
                 redemption: Redemption::HttpRequest(HttpRequest::SameOrigin {
                     method: http::Method::PUT,
                     path_and_query,
-                    headers: http::HeaderMap::new(),
+                    headers: HeaderMap::from_iter([(IF_NONE_MATCH, HeaderValue::from_static("*"))]),
                 }),
             },
         })
@@ -162,7 +171,7 @@ async fn write_upload(
             .await
             .map_err(|err| {
                 let status = match err.kind() {
-                    std::io::ErrorKind::AlreadyExists => StatusCode::CONFLICT,
+                    std::io::ErrorKind::AlreadyExists => StatusCode::PRECONDITION_FAILED,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 (
@@ -229,6 +238,7 @@ pub fn write_upload_route(state: WriteAccessGrants) -> axum::routing::MethodRout
 async fn put_upload(
     State(state): State<WriteAccessGrants>,
     Path(grant): Path<Grant>,
+    headers: HeaderMap,
     body: Body,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let Some((encoded_claims, encoded_signature)) = grant.split_once('.') else {
@@ -279,13 +289,22 @@ async fn put_upload(
         return Err((StatusCode::FORBIDDEN, "Upload grant has expired".to_owned()));
     }
 
+    // The grant authorizes only create-if-absent uploads; clients cannot remove this condition.
+    let mut conditions = headers.get_all(IF_NONE_MATCH).iter();
+    if conditions.next() != Some(&HeaderValue::from_static("*")) || conditions.next().is_some() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Upload requires If-None-Match: *".to_owned(),
+        ));
+    }
+
     write_upload(&state.storage_dir, &object_key, body)
         .await
         .map_err(|err| {
             re_log::warn!(%object_key, status = %err.0, "Upload failed: {}", err.1);
             upload_error_response(err)
         })?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(StatusCode::OK)
 }
 
 #[cfg(test)]
@@ -299,32 +318,85 @@ mod tests {
         let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
         let object_key = ObjectKey::try_new("project/recording.rrd").expect("valid object key");
 
-        write_upload(storage_dir.path(), &object_key, Body::from("content"))
+        let grants = WriteAccessGrants::new(storage_dir.path().to_owned()).expect("valid grants");
+        let first = grants.issue(&object_key).await.expect("first grant");
+        let second = grants.issue(&object_key).await.expect("second grant");
+        let mut requests = Vec::new();
+        for response in [first, second] {
+            let Redemption::HttpRequest(HttpRequest::SameOrigin {
+                path_and_query,
+                headers,
+                ..
+            }) = response.grant.redemption
+            else {
+                panic!("expected same-origin grant");
+            };
+            assert_eq!(headers[IF_NONE_MATCH], "*");
+            let grant = path_and_query
+                .path()
+                .strip_prefix("/upload/")
+                .expect("upload URL")
+                .to_owned();
+            requests.push((grant, headers));
+        }
+        let (grant, headers) = &requests[0];
+        // A valid grant cannot authorize an unconditional upload if its required header is omitted or changed.
+        for invalid_headers in [
+            HeaderMap::new(),
+            HeaderMap::from_iter([(IF_NONE_MATCH, HeaderValue::from_static("other"))]),
+        ] {
+            let (status, _) = put_upload(
+                State(grants.clone()),
+                Path(grant.clone()),
+                invalid_headers,
+                Body::from("invalid"),
+            )
             .await
-            .expect("upload should succeed");
+            .expect_err("missing or changed condition must fail");
+            assert_eq!(status, StatusCode::FORBIDDEN);
+            assert!(!storage_dir.path().join(object_key.to_string()).exists());
+        }
+        let status = put_upload(
+            State(grants.clone()),
+            Path(grant.clone()),
+            headers.clone(),
+            Body::from("content"),
+        )
+        .await
+        .expect("upload should succeed");
+        assert_eq!(status, StatusCode::OK);
 
-        let (status, _) = write_upload(storage_dir.path(), &object_key, Body::from("new"))
-            .await
-            .expect_err("overwriting should fail");
-        assert_eq!(status, StatusCode::CONFLICT);
+        let (grant, headers) = &requests[1];
+        let (status, _) = put_upload(
+            State(grants.clone()),
+            Path(grant.clone()),
+            headers.clone(),
+            Body::from("new"),
+        )
+        .await
+        .expect_err("overwriting should fail");
+        assert_eq!(status, StatusCode::PRECONDITION_FAILED);
 
         let contents = tokio::fs::read(storage_dir.path().join("project/recording.rrd"))
             .await
             .expect("failed to read uploaded object");
         assert_eq!(contents, b"content");
+        let err = grants
+            .issue(&object_key)
+            .await
+            .expect_err("existing object must reject grant");
+        assert_eq!(err.code(), tonic::Code::AlreadyExists);
     }
 
     #[tokio::test]
     async fn does_not_expose_upload_io_errors() {
         let storage_dir = tempfile::tempdir().expect("failed to create storage directory");
         let parent = storage_dir.path().join("project");
-        tokio::fs::write(&parent, b"not a directory")
-            .await
-            .expect("failed to create blocking file");
         let grants =
             WriteAccessGrants::new(storage_dir.path().to_owned()).expect("failed to create grants");
         let grant = grants
             .issue(&ObjectKey::try_new("project/recording.rrd").expect("valid object key"))
+            .await
             .expect("failed to issue grant");
         let Redemption::HttpRequest(HttpRequest::SameOrigin { path_and_query, .. }) =
             grant.grant.redemption
@@ -337,9 +409,14 @@ mod tests {
             .expect("upload URL")
             .to_owned();
 
-        let (status, message) = put_upload(State(grants), Path(grant), Body::from("content"))
+        tokio::fs::write(&parent, b"not a directory")
             .await
-            .expect_err("upload should fail");
+            .expect("failed to create blocking file");
+        let headers = HeaderMap::from_iter([(IF_NONE_MATCH, HeaderValue::from_static("*"))]);
+        let (status, message) =
+            put_upload(State(grants), Path(grant), headers, Body::from("content"))
+                .await
+                .expect_err("upload should fail");
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(message, "Internal server error");
     }
@@ -377,7 +454,10 @@ mod tests {
         let grants =
             WriteAccessGrants::new(storage_dir.path().to_owned()).expect("failed to create grants");
         let object_key = ObjectKey::try_new("recording.rrd").expect("valid object key");
-        let grant = grants.issue(&object_key).expect("failed to issue grant");
+        let grant = grants
+            .issue(&object_key)
+            .await
+            .expect("failed to issue grant");
         let Redemption::HttpRequest(HttpRequest::SameOrigin { path_and_query, .. }) =
             grant.grant.redemption
         else {
@@ -397,6 +477,7 @@ mod tests {
         let (status, _) = put_upload(
             State(grants.clone()),
             Path(invalid_grant),
+            HeaderMap::new(),
             Body::from("content"),
         )
         .await
@@ -406,6 +487,7 @@ mod tests {
         let (status, _) = put_upload(
             State(grants.clone()),
             Path("malformed".to_owned()),
+            HeaderMap::new(),
             Body::from("content"),
         )
         .await
@@ -426,9 +508,14 @@ mod tests {
             BASE64_URL_SAFE_NO_PAD.encode(&claims),
             BASE64_URL_SAFE_NO_PAD.encode(signer.finalize().into_bytes())
         );
-        let (status, _) = put_upload(State(grants), Path(expired_grant), Body::from("content"))
-            .await
-            .expect_err("expired grant should be rejected");
+        let (status, _) = put_upload(
+            State(grants),
+            Path(expired_grant),
+            HeaderMap::new(),
+            Body::from("content"),
+        )
+        .await
+        .expect_err("expired grant should be rejected");
         assert_eq!(status, StatusCode::FORBIDDEN);
         assert!(!storage_dir.path().join(object_key.to_string()).exists());
     }

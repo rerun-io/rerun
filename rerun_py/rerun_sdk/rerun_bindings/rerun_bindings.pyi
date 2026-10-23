@@ -232,6 +232,11 @@ def format_uint(number: int) -> str:
 def format_index_value(timeline_type: str, value: int) -> str:
     """Format one index value of a timeline, as the viewer does, with timestamps in UTC and always dated."""
 
+def _get_write_access_grant(
+    client: CatalogClientInternal, *, key: str
+) -> tuple[str, str, str, str, list[tuple[str, bytes]]]:
+    """Used for testing only."""
+
 def _optimization_profile_values(name: str) -> dict[str, object]:
     """
     Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.

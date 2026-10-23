@@ -53,7 +53,7 @@ async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
     );
     assert_matches!(
         catalog_client.stage(key, rrd).await,
-        Err(StagingError::Rejected { status: 409, .. })
+        Err(StagingError::Api(err)) if err.kind == re_redap_client::ApiErrorKind::AlreadyExists
     );
 
     let segment_ids = catalog_client

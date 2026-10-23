@@ -452,7 +452,16 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
     let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
         .await
         .map_err(|err| {
-            tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+            let code = match &err {
+                re_log_encoding::CodecError::Io(err)
+                    if err.kind() != std::io::ErrorKind::UnexpectedEof =>
+                {
+                    tonic::Code::Internal
+                }
+                re_log_encoding::CodecError::DecompressionAllocation(_) => tonic::Code::Internal,
+                _ => tonic::Code::InvalidArgument,
+            };
+            tonic::Status::new(code, format!("Failed to enumerate RRD stores: {err:#}"))
         })?;
 
     Ok(store_ids.into_iter().collect())

@@ -269,9 +269,8 @@ class CatalogClient:
             File contents must remain unchanged until the upload completes.
         key:
             The object's key within catalog storage, for example `project/run-001/recording.rrd`.
-            Existing-key behavior is determined by the server: the OSS server rejects overwrites,
-            while Hub uploads may overwrite existing objects.
-            Use unique keys to avoid replacing objects referenced by existing registrations.
+            Existing objects cannot be overwritten.
+            Use a unique key for each upload.
 
         Returns
         -------

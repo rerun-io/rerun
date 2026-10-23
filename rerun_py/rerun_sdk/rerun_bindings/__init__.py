@@ -7,6 +7,7 @@ from .rerun_bindings import (
     _dec_active_tracing_sessions as _dec_active_tracing_sessions,
     _get_trace_context_var as _get_trace_context_var,
     _get_tracing_session_var as _get_tracing_session_var,
+    _get_write_access_grant as _get_write_access_grant,
     _inc_active_tracing_sessions as _inc_active_tracing_sessions,
     _IndexValuesLikeInternal as _IndexValuesLikeInternal,
     _is_telemetry_active as _is_telemetry_active,
