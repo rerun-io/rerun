@@ -3,8 +3,8 @@ title = "MCAP"
 description = "Load, convert, and post-process MCAP files in Rerun, including conversion of older ROS 1/2 bags into MCAP and RRD."
 tags = ["MCAP", "RRD", "ROS", "ROS 2", "Rosbag", "Tutorial"]
 source = "https://github.com/rerun-io/mcap_example"
-thumbnail = "https://static.rerun.io/mcap_example/7a3207652fa411979a96d5c5a25a43be29f1fdfb/480w.png"
-thumbnail_dimensions = [480, 305]
+thumbnail = "https://static.rerun.io/mcap_thumbnail/535c4ce0d8ac909cfee6e003de8b04ae9344c834/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <video width="100%" autoplay loop muted controls>

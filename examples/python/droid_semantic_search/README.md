@@ -2,8 +2,8 @@
 title = "DROID semantic frame search"
 description = "Find moments in robot demonstrations by describing them in plain language. Embeddings flow from a Rerun dataset into a vector store and deep-link back into the viewer."
 tags = ["Robotics", "Semantic search", "Embeddings", "SigLIP", "LanceDB", "Qdrant", "Rerun Hub"]
-thumbnail = "https://static.rerun.io/droid_semantic_search/fd265e110c9d05c9fdd018c68dd83561aa836c52/480w.png"
-thumbnail_dimensions = [480, 320]
+thumbnail = "https://static.rerun.io/droid_semantic_search_thumbnail/4d94cdc2c4edfac809555b7fa8f061fb9bc589a8/768w.png"
+thumbnail_dimensions = [768, 576]
 include_in_manifest = true
 -->
 

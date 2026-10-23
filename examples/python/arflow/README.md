@@ -3,8 +3,8 @@ title = "ARFlow: a framework for simplifying AR experimentation workflow"
 description = "External AR research framework that uses Rerun to visualize multi-modal sensor data from a mobile client in real time."
 source = "https://github.com/cake-lab/ARFlow"
 tags = ["3D", "Augmented reality", "Spatial computing", "Integration"]
-thumbnail = "https://static.rerun.io/arflow/a6b509af10a42b3c7ad3909d44e972a3cb1a9c41/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/arflow_thumbnail/12b041b0b9bf0ffb3a275358100f1855f068d2fa/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This is an external project that uses Rerun as a core component.

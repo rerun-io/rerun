@@ -2,8 +2,8 @@
 title = "OpenStreetMap data"
 description = "Query OpenStreetMap data via the Overpass API and render it on Rerun's geospatial map view. A starting point for ad-hoc world-map context."
 tags = ["Map", "Blueprint"]
-thumbnail_dimensions = [480, 480]
-thumbnail = "https://static.rerun.io/osm_data/0be94071469c49f98326d85456ed2a3af8d1733a/480w.png"
+thumbnail_dimensions = [768, 576]
+thumbnail = "https://static.rerun.io/openstreetmap_data_thumbnail/807a6d3de681c18915676b3a14d4015e8cbe9f33/768w.png"
 # channel = "release" # disabled since the openstreetmap API is flaky
 # include_in_manifest = true
 -->

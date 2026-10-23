@@ -2,8 +2,8 @@
 title = "Notebook: viewer"
 description = "Embed a pre-recorded RRD inside a Jupyter notebook with the Rerun viewer widget. Great for demos and docs."
 tags = ["Notebook", "Widget", "3D"]
-thumbnail = "https://static.rerun.io/notebook_viewer/3e3bc9c7eede26db837fb317b7e2b2de77dfc777/480w.png"
-thumbnail_dimensions = [480, 272]
+thumbnail = "https://static.rerun.io/notebook_viewer_thumbnail/628a5960a8b6b03152380da905d4fa5f97ae6f7c/768w.png"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

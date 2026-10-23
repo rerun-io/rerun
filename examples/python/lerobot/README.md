@@ -3,8 +3,8 @@ title = "Training a model on the LeRobot dataset"
 description = "Train a LeRobot policy on Hugging Face's `pusht` dataset and watch the training progress live in Rerun."
 tags = ["2D", "Hugging Face", "Imitation learning"]
 source = "https://github.com/rerun-io/lerobot"
-thumbnail = "https://static.rerun.io/lerobot-thumbnail/0462caa44339d4e74e01eef2b9206eebb585f6f8/480w.png"
-thumbnail_dimensions = [480, 509]
+thumbnail = "https://static.rerun.io/lerobot_thumbnail/055a604a8efcfe69d80a875cde1fd7c4defd1654/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/983024799?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1920:1080

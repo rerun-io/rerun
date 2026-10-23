@@ -3,8 +3,8 @@ title = "Interactive 3D annotation app with Rerun and Gradio"
 description = "Interactive 3D annotation app built with Gradio and SAM 2. Track objects in monocular video, or fuse masks across multi-view RGB-D."
 tags = ["2D", "3D", "Pinhole camera", "Time series", "SAM", "Segmentation"]
 source = "https://github.com/rerun-io/annotation-example"
-thumbnail = "https://static.rerun.io/square-thumbnail/931d51df4f2cfd84293c5c9212e5e84cecbd79b4/480w.png"
-thumbnail_dimensions = [480, 344]
+thumbnail = "https://static.rerun.io/annotation_gradio_thumbnail/0bca70c96009b0094bacd0c07bd64953afc27a91/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/1078165216?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2802:1790

@@ -2,8 +2,8 @@
 title = "Clock"
 description = "An analog clock built from `Boxes3D`, `Points3D`, and `Arrows3D` primitives, animated along a Rerun timeline."
 tags = ["3D", "API example"]
-thumbnail = "https://static.rerun.io/clock/8c49e25f5cac4d6a1d7d0490b14cf6881bdb707b/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/clock_thumbnail/3882a4544fa0462410f7cf1e9598c527d7fbc4f2/768w.jpg"
+thumbnail_dimensions = [768, 576]
 -->
 
 

@@ -3,8 +3,8 @@ title = "GLOMAP"
 description = "GLOMAP is a global structure-from-motion pipeline. The video shows its joint global triangulation and camera-position step."
 tags = ["3D", "Point cloud", "GLOMAP"]
 source = "https://github.com/rerun-io/glomap"
-thumbnail = "https://static.rerun.io/glomap-thumbnail/d0052fe6083b1e1d5698792ed0efec4d9cfd2f75/480w.png"
-thumbnail_dimensions = [480, 342]
+thumbnail = "https://static.rerun.io/glomap_thumbnail/d921b7c30db00749e7ccd3584a6e43e0edcae8c6/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/995792438?loop=1&autopause=0&background=1&muted=1&ratio=2802:1790

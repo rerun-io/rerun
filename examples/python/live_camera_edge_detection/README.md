@@ -2,8 +2,8 @@
 title = "Live camera edge detection"
 description = "Run OpenCV's Canny edge detector on a live webcam stream, logging RGB, grayscale, and edge images side by side."
 tags = ["2D", "Canny", "Live", "OpenCV"]
-thumbnail = "https://static.rerun.io/live-camera-edge-detection/f747bcf9ff3039c895f0bf0290e2dea0a72631ea/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/live_camera_edge_detection_thumbnail/2323f2b0fc1153071ce8e9b98840e97aced39fc6/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) results from a live camera stream.

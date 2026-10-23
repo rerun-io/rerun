@@ -3,8 +3,8 @@ title = "KISS-ICP"
 description = "Visualize the KISS-ICP LiDAR odometry pipeline on the NCLT dataset: deskewing, local map matching, ICP, step by step."
 tags = ["3D", "Point cloud", "Lidar"]
 source = "https://github.com/rerun-io/kiss-icp"
-thumbnail = "https://static.rerun.io/kiss-icp/088ac256337d0b21694f12344d9fdc14278b66da/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/kiss-icp_thumbnail/9dfb07eb0b785401ae4be1ca73c3f3e3957cae12/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualizes the KISS-ICP LiDAR odometry pipeline on the [NCLT dataset](http://robots.engin.umich.edu/nclt/).

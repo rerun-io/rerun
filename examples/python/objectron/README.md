@@ -2,8 +2,8 @@
 title = "Objectron"
 description = "Visualize Google Research's Objectron: per-frame images, camera poses, sparse point clouds, planes, and 3D boxes."
 tags = ["2D", "3D", "Object detection", "Pinhole camera", "Blueprint"]
-thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/objectron_thumbnail/5cb510d5b289f42441f081e47ba67600ae170fb2/768w.jpg"
+thumbnail_dimensions = [768, 576]
 # Channel = "release" - disabled because it sometimes have bad first-frame heuristics
 build_args = ["--frames=150"]
 -->

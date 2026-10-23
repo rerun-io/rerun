@@ -2,8 +2,8 @@
 title = "Log file"
 description = "How to log any file from the SDK using the Importer machinery, a one-call path for assets the viewer understands."
 tags = ["API example", "Loader"]
-thumbnail = "https://static.rerun.io/log_file/d86e525cce547cd2dde8e2d7619c01bd3bbc861a/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/log_file_thumbnail/d07f535d46853186a740dba32e2fddf134ffa023/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Demonstrates how to log any file from the SDK using the [`Importer`](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview) machinery.

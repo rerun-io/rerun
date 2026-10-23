@@ -4,8 +4,8 @@ description = "Load a URDF file and animate its joints over time with the `UrdfT
 tags = ["3D", "Mesh", "URDF", "Animation"]
 channel = "main"
 include_in_manifest = true
-thumbnail = "https://static.rerun.io/animated-urdf-thumbnail/02cd73ad1155db0a202392b1fd8f8036070ad888/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/animated_urdf_thumbnail/9325061b268e4e9d2570a49a156dbdab39a7b54c/768w.jpg"
+thumbnail_dimensions = [768, 576]
 -->
 
 <picture>

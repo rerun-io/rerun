@@ -3,8 +3,8 @@ title = "Sam2 + DepthAnything2"
 description = "Combine SAM 2 video tracking with Depth Anything 2 to track an object in 3D from a single monocular video."
 tags = ["2D", "3D", "Hugging Face", "Depth", "Pinhole camera", "SAM", "Segmentation"]
 source = "https://github.com/pablovela5620/sam2-depthanything"
-thumbnail = "https://static.rerun.io/sam2_depthanything/ecc229c54a04c55bfba236f86e15cd285429e412/480w.png"
-thumbnail_dimensions = [480, 268]
+thumbnail = "https://static.rerun.io/sam2_depthanything_thumbnail/8e1b3d589e1f4a267fff8e536c27da42104797b5/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

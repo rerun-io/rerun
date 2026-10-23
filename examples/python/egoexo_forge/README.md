@@ -3,8 +3,8 @@ title = "EgoExo forge"
 description = "A unified loader that visualizes multiple egocentric and exocentric human-activity datasets through one consistent layout."
 tags = ["3D", "Hugging Face", "Egocentric", "Exocentric", "Manipulation"]
 source = "https://github.com/rerun-io/egoexo-forge"
-thumbnail = "https://static.rerun.io/egoexo_forge/629a093f1e2653711ad8fdd59c68b2318ca6bc6c/480w.png"
-thumbnail_dimensions = [480, 436]
+thumbnail = "https://static.rerun.io/egoexo_forge_thumbnail/8243c9c703f34f11041618888a9f2f0831c221d8/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/1134260310?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2386:1634

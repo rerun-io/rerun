@@ -2,8 +2,8 @@
 title = "Compressed camera video stream"
 description = "Capture webcam frames with pyAV, encode to H.264, and stream live into the viewer via the `VideoStream` archetype."
 tags = ["2D", "Image encoding", "Video", "Streaming"]
-thumbnail = "https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/480w.png"
-thumbnail_dimensions = [480, 300]
+thumbnail = "https://static.rerun.io/camera_video_stream_thumbnail/7a38ab6d50d0ec5a2ad15f8d894dd83bb433e187/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example uses [pyAV](https://pypi.org/project/av/) to fetch and encode a video stream to H.264 video and streams it live

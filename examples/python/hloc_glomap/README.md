@@ -3,8 +3,8 @@ title = "Hierarchical-Localization and GLOMAP"
 description = "Combine the hloc toolbox with GLOMAP for fast structure-from-motion using deep features and matchers, runnable via Pixi."
 tags = ["2D", "3D", "COLMAP", "Pinhole camera", "Time series", "GLOMAP", ]
 source = "https://github.com/pablovela5620/hloc-glomap"
-thumbnail = "https://static.rerun.io/thumbnail/6a5b887927834a6ea3db9474ce1e843ecd28b3cf/480w.png"
-thumbnail_dimensions = [480, 300]
+thumbnail = "https://static.rerun.io/hloc_glomap_thumbnail/07e43d88fabc5b23aa16c91ff67add55ab83c223/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/1037241347?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2802:1790

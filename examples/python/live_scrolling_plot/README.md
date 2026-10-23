@@ -2,8 +2,8 @@
 title = "Live scrolling plot"
 description = "A live scrolling plot built from a blueprint that updates each `TimeSeriesView`'s `time_ranges` as new data arrives."
 tags = ["Plots", "Live"]
-thumbnail = "https://static.rerun.io/live_scrolling_plot_thumbnail/73c6b11bd074af258b8d30092e15361e358d8069/480w.png"
-thumbnail_dimensions = [480, 384]
+thumbnail = "https://static.rerun.io/live_scrolling_plot_thumbnail/1c59b5e661f278d27e521b67c9d596560b9e4f2c/768w.jpg"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualize a live stream of several plots, scrolling horizontally to keep a fixed window of data.

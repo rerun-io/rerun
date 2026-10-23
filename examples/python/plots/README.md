@@ -2,8 +2,8 @@
 title = "Plots"
 description = "A tour of Rerun's plotting primitives: bar charts, line plots, time-varying scalars, styled series, and measurements with uncertainty bands, each built from a few lines of code."
 tags = ["2D", "Plots", "API example"]
-thumbnail = "https://static.rerun.io/plots/08537d40a669d5d18f80fed0695491934322b6e4/480w.png"
-thumbnail_dimensions = [480, 240]
+thumbnail = "https://static.rerun.io/plots_thumbnail/eb639beec6e363c1ed95bdd678b8669d514e873b/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

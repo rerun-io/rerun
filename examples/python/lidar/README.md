@@ -2,8 +2,8 @@
 title = "Lidar"
 description = "Visualize LiDAR data from the nuScenes self-driving dataset, focused on the point cloud side of the recording."
 tags = ["Lidar", "3D"]
-thumbnail = "https://static.rerun.io/lidar/caaf3b9531e50285442d17f0bc925eb7c8e12246/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/lidar_thumbnail/e8247d0b337a1a0e002e4f8940bba98be02495f3/768w.jpg"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualize the LiDAR data from the [nuScenes dataset](https://www.nuscenes.org/).

@@ -3,8 +3,8 @@ title = "Revy - Rerun integration for Bevy"
 description = "Revy is a time-travel debugger for Bevy: each frame's database is snapshot into Rerun for scrubbable engine state."
 source = "https://github.com/rerun-io/revy"
 tags = ["2D", "3D", "Gamedev", "Bevy"]
-thumbnail = "https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/revy_thumbnail/c4b97f604f3bc7853d7ee0105c51582804c49d58/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <picture>

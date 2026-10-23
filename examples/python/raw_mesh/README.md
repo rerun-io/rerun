@@ -2,8 +2,8 @@
 title = "Raw mesh"
 description = "Log a 3D scene as raw `Mesh3D` data or directly as a prepacked `Asset3D`."
 tags = ["Mesh"]
-thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c32673909071cb40/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/raw_mesh_thumbnail/1350b8893c54ef3bdeced6307053489f2885db5d/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "release"
 include_in_manifest = true
 -->

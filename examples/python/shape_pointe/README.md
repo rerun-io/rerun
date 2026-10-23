@@ -3,8 +3,8 @@ title = "Point-E and Shap-E"
 description = "Visual comparison of two OpenAI text-to-3D models: Point-E (point clouds) and Shap-E (implicit NeRF weights)."
 source = "https://github.com/rerun-io/point-shap-e"
 tags = ["3D", "Diffusion", "Point", "Mesh", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/point-e/5b5beb36dce77d2dac7123b197b825421afcaec0/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/shape_pointe_thumbnail/efdbf9494dc3a4e9dffe0186a7ca426e22ee4be4/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example is a visual comparison of two popular text-to-3D methods that uses Rerun to compare the generation process and results.

@@ -2,8 +2,8 @@
 title = "State timeline"
 description = "Simulates a robot work cell and tours every feature of the state timeline view: transitions, custom styling, resets, and columnar logging."
 tags = ["States", "API example"]
-thumbnail = "https://static.rerun.io/state_timeline/88a787de865d94c0f93045deb1ae304060be16f7/480w.png"
-thumbnail_dimensions = [480, 270]
+thumbnail = "https://static.rerun.io/state_timeline_thumbnail/299dee906f216c01925653e4714d01c7bda28037/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

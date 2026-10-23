@@ -2,8 +2,8 @@
 title = "Segment anything model"
 description = "Run Meta AI's Segment Anything on an image and log every mask as a transparent overlay via Rerun's `Tensor` archetype."
 tags = ["2D", "SAM", "Segmentation"]
-thumbnail = "https://static.rerun.io/segment-anything-model/36438df27a287e5eff3a673e2464af071e665fdf/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/segment_anything_model_thumbnail/f8c7314b8bd6bbba55a50eb3fee7620bcc598eb6/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "release"
 include_in_manifest = true
 -->

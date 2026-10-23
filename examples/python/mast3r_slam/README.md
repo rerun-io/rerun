@@ -3,8 +3,8 @@ title = "Mast3r slam - real-time dense slam with 3D reconstruction priors"
 description = "Mast3r-SLAM is a real-time monocular SLAM system built on the Mast3r 3D reconstruction prior, robust in the wild."
 tags = ["2D", "3D", "Pinhole camera", "Time series", "SLAM"]
 source = "https://github.com/rerun-io/mast3r-slam"
-thumbnail = "https://static.rerun.io/square-thumbnail/56b091d93d23c4353f6a919bf789493da19893e6/480w.png"
-thumbnail_dimensions = [480, 474]
+thumbnail = "https://static.rerun.io/mast3r_slam_thumbnail/f4063cdd57c2cf22ff7a43edd95d711eaae67ab6/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/1064055355?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2802:1790

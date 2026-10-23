@@ -2,8 +2,8 @@
 title = "Robot data preprocessing example"
 description = "Assemble a robot recording from multiple file sources with Rerun's chunk processing API and preprocessing steps."
 tags = ["API example"]
-thumbnail = "https://static.rerun.io/robot_postprocessing_thumb/ae27d24c3f530e71ed15ce47745eda56312ad014/480w.png"
-thumbnail_dimensions = [480, 299]
+thumbnail = "https://static.rerun.io/robot_data_preprocessing_thumbnail/1d64ea2972f5861bb3a8443d16f9c210bda37fdd/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example demonstrates how Rerun's [chunk processing API](https://rerun.io/docs/concepts/logging-and-ingestion/chunk-processing-api) can be used to assemble a robot recording from multiple file sources, including preprocessing to modify or augment the data.

@@ -3,8 +3,8 @@ title = "InstantSplat"
 description = "InstantSplat is a sparse-view, SfM-free framework that reconstructs large-scale Gaussian splatting scenes in seconds."
 tags = ["2D", "3D", "Hugging Face", "Pinhole camera", "Point cloud"]
 source = "https://github.com/pablovela5620/InstantSplat"
-thumbnail = "https://static.rerun.io/final_instantsplat/e488f427179b0f439e60b6a0c29440fc836860dd/480w.png"
-thumbnail_dimensions = [480, 275]
+thumbnail = "https://static.rerun.io/instant_splat_thumbnail/af96f1ca9e1bdd7ad9eb9014093281ef4cda7fe4/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 
