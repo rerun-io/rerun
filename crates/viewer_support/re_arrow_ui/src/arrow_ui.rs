@@ -44,7 +44,13 @@ pub fn arrow_ui(
                 };
                 match highlighted {
                     Ok(job) => {
-                        ui_layout.data_label(ui, job);
+                        if ui_layout == UiLayout::Tooltip || ui.is_tooltip() {
+                            ui_layout.data_label(ui, job);
+                        } else {
+                            ui_layout.data_label_with_details(ui, &job, |ui| {
+                                details_ui(ui, timestamp_format, array);
+                            });
+                        }
                     }
                     Err(err) => {
                         ui.error_with_details_on_hover(err.to_string());
@@ -57,6 +63,50 @@ pub fn arrow_ui(
         }
     }
     ui.style_mut().wrap_mode = previous_wrap_mode;
+}
+
+/// The full tree of `array`, shown on hover when its one-line summary leaves something out.
+fn details_ui(ui: &mut egui::Ui, timestamp_format: TimestampFormat, array: &dyn Array) {
+    /// Taller values scroll, so that every row stays reachable.
+    const MAX_HEIGHT: f32 = 400.0;
+
+    let array_formatter = match make_ui(timestamp_format, array) {
+        Ok(array_formatter) => array_formatter,
+        Err(err) => {
+            ui.error_with_details_on_hover(err.to_string());
+            return;
+        }
+    };
+
+    // A single leaf value (e.g. a long string) has no tree to show, so show all of its text.
+    if array.len() == 1 && !array_formatter.is_item_nested() {
+        match array_formatter.value_highlighted(0) {
+            Ok(job) => {
+                egui::ScrollArea::vertical()
+                    .max_height(MAX_HEIGHT)
+                    .show(ui, |ui| UiLayout::SelectionPanel.data_label(ui, job));
+            }
+            Err(err) => {
+                ui.error_with_details_on_hover(err.to_string());
+            }
+        }
+        return;
+    }
+
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    ui.set_width(ui.spacing().tooltip_width);
+
+    egui::ScrollArea::vertical()
+        .max_height(MAX_HEIGHT)
+        .show(ui, |ui| {
+            list_item_scope(ui, "arrow_ui_details", |ui| {
+                if array.len() == 1 {
+                    array_formatter.show_value(0, ui);
+                } else {
+                    array_formatter.show(ui);
+                }
+            });
+        });
 }
 
 pub(crate) fn make_ui(

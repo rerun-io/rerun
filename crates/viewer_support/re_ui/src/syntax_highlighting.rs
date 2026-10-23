@@ -26,6 +26,9 @@ pub trait SyntaxHighlighting {
 pub struct SyntaxHighlightedBuilder {
     text: String,
     parts: smallvec::SmallVec<[SyntaxHighlightedPart; 1]>,
+
+    /// Set by [`Self::append_truncation_marker`].
+    truncated: bool,
 }
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
@@ -60,6 +63,7 @@ impl SyntaxHighlightedBuilder {
                     byte_range: s.byte_range,
                 })
                 .collect(),
+            truncated: false,
         }
     }
 
@@ -150,6 +154,19 @@ impl SyntaxHighlightedBuilder {
         }
     );
 
+    /// Append `…` (in syntax style) to mark that some content was left out.
+    ///
+    /// Always use this rather than appending a literal `…`, so that [`Self::is_truncated`] knows.
+    pub fn append_truncation_marker(&mut self) -> &mut Self {
+        self.truncated = true;
+        self.append_kind(SyntaxHighlightedStyle::Syntax, "…")
+    }
+
+    /// Was any content left out, i.e. was [`Self::append_truncation_marker`] called?
+    pub fn is_truncated(&self) -> bool {
+        self.truncated
+    }
+
     /// Like [`Self::append_string_value`], but truncates to `max_chars` characters
     /// and appends `…` (in syntax style) when truncated.
     pub fn append_string_value_truncated(&mut self, portion: &str, max_chars: usize) -> &mut Self {
@@ -158,7 +175,7 @@ impl SyntaxHighlightedBuilder {
         if portion.len() > max_chars {
             let truncated = &portion[..portion.floor_char_boundary(max_chars)];
             self.append_kind(SyntaxHighlightedStyle::StringValue, truncated);
-            self.append_kind(SyntaxHighlightedStyle::Syntax, "…");
+            self.append_truncation_marker();
         } else {
             self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
         }

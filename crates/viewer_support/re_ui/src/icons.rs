@@ -231,7 +231,7 @@ pub const CHROME_CLOSE: Icon = icon_from_path!("../data/icons/chrome_close.svg")
 /// Used for HTTP URLs that lead out of the app.
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
-/// but don't add `.on_hover_text(url)`.
+/// but don't add `.on_hover_text(url)` unless the label is elided.
 pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.svg");
 pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.svg");
 

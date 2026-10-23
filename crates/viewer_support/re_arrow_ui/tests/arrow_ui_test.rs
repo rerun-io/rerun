@@ -152,3 +152,57 @@ fn inline_formatting() {
         insta::assert_snapshot!(name, highlighted.text());
     }
 }
+
+#[test]
+fn truncated_value_tooltip() {
+    use egui_kittest::kittest::Queryable as _;
+    use re_sdk_types::ComponentBatch as _;
+    use re_sdk_types::encodings::Utf8;
+
+    let tests = [
+        (
+            "tooltip_long_multiline_string",
+            Utf8::from(
+                "Do any two tasks consecutively.\n\n\
+                Suggested tasks:\n\
+                * Move lid on or off of container (ex: pot, cup, pill bottle)\n\
+                * Fold, spread out, or clump object (ex: cloth, charging cord, clothes)",
+            )
+            .to_arrow()
+            .expect("Failed to convert to arrow"),
+        ),
+        (
+            "tooltip_long_single_line_string",
+            Utf8::from(
+                "This string has no newlines, but it is much longer than the tooltip is wide, \
+                so the tooltip must wrap it onto several rows instead of growing wider or cutting \
+                it off again with an ellipsis like the table cell does.",
+            )
+            .to_arrow()
+            .expect("Failed to convert to arrow"),
+        ),
+        (
+            "tooltip_nested_struct",
+            arrow_test_data::create_metadata_struct(1),
+        ),
+    ];
+
+    let mut results = SnapshotResults::new();
+
+    for (name, arrow) in tests {
+        let mut harness = re_ui::testing::new_harness(
+            re_ui::testing::TestOptions::Gui,
+            egui::Vec2::new(700.0, 400.0),
+        )
+        .build_ui(|ui| {
+            ui.set_max_width(250.0);
+            re_arrow_ui::arrow_ui(ui, UiLayout::List, Default::default(), &arrow);
+        });
+
+        harness.run();
+        harness.get_by_role(egui::accesskit::Role::Label).hover();
+        harness.try_run_realtime().ok();
+
+        results.add(harness.try_snapshot(name));
+    }
+}

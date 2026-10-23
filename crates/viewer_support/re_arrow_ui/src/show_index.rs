@@ -140,6 +140,11 @@ impl<'a> ArrayUi<'a> {
         self.show_index.show(idx, ui, UiLayout::List);
     }
 
+    /// Can a single item be expanded into children, e.g. a struct or a list?
+    pub fn is_item_nested(&self) -> bool {
+        self.show_index.is_item_nested()
+    }
+
     /// Show a `list_item` based tree view of the data.
     pub fn show(&self, ui: &mut Ui) {
         list_ui(
@@ -539,7 +544,7 @@ fn write_list(
 ) -> EmptyArrowResult {
     f.append_syntax("[");
     if max_items == 0 && !range.is_empty() {
-        f.append_syntax("…");
+        f.append_truncation_marker();
     } else {
         if let Some(idx) = range.next() {
             values.write(idx, f)?;
@@ -547,7 +552,7 @@ fn write_list(
 
         for (items, idx) in iter::zip(1.., range) {
             if items >= max_items {
-                f.append_syntax(", …");
+                f.append_syntax(", ").append_truncation_marker();
                 break;
             }
             f.append_syntax(", ");
@@ -701,7 +706,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         let mut iter = items.iter();
         f.append_syntax("{");
         if *max_items == 0 && !items.is_empty() {
-            f.append_syntax("…");
+            f.append_truncation_marker();
         } else {
             if let Some((field, display)) = iter.next() {
                 f.append_identifier(field.name());
@@ -710,7 +715,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             }
             for (items, (field, display)) in iter::zip(1.., iter) {
                 if items >= *max_items {
-                    f.append_syntax(", …");
+                    f.append_syntax(", ").append_truncation_marker();
                     break;
                 }
                 f.append_syntax(", ");
@@ -772,7 +777,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
         f.append_syntax("{");
         if *max_items == 0 && !iter.is_empty() {
-            f.append_syntax("…");
+            f.append_truncation_marker();
         } else {
             if let Some(idx) = iter.next() {
                 keys.write(idx, f)?;
@@ -782,7 +787,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
             for (items, idx) in iter::zip(1.., iter) {
                 if items >= *max_items {
-                    f.append_syntax(", …");
+                    f.append_syntax(", ").append_truncation_marker();
                     break;
                 }
                 f.append_syntax(", ");

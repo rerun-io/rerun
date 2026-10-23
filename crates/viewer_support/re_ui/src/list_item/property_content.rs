@@ -358,7 +358,7 @@ impl ListItemContent for PropertyContent<'_> {
         } else if let Some(max_width) = layout_info.property_content_max_width {
             let desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
-            DesiredWidth::AtLeast(desired_width.ceil())
+            DesiredWidth::AtLeastIncludingIndent(desired_width.ceil())
         } else {
             DesiredWidth::AtLeast(self.min_desired_width)
         }
