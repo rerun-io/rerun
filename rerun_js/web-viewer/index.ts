@@ -4,10 +4,10 @@ import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/p
 import {
   GetTransformGraphRequest_EdgeFilter,
   GetTransformGraphRequest_FrameFilter,
-  GetViewerStateResponseSchema,
+  GetStateResponseSchema,
   ViewerControlRequestSchema,
   ViewerControlResponseSchema,
-  type GetViewerStateResponse,
+  type GetStateResponse,
   PlayState as ProtoPlayState,
   type RecordingEntitySchema,
   type ViewerCommand as ProtoViewerCommand,
@@ -190,8 +190,8 @@ export interface ViewerLoadingSource {
   status: string;
 }
 
-/** The public {@link ViewerState} of a `GetViewerState` response. */
-function viewer_state_of(state: GetViewerStateResponse): ViewerState {
+/** The public {@link ViewerState} of a `GetState` response. */
+function viewer_state_of(state: GetStateResponse): ViewerState {
   return {
     location: state.location,
     active_store_id: state.activeStoreId as RecordingStoreId | undefined,
@@ -780,7 +780,7 @@ function as_viewer_control_error(err: unknown): unknown {
   return err;
 }
 
-/** An operation of the viewer's control protocol, e.g. `"getViewerState"`. */
+/** An operation of the viewer's control protocol, e.g. `"getState"`. */
 type Operation = NonNullable<ViewerControlRequest["kind"]["case"]>;
 
 /** The request of the operation `K`. */
@@ -1877,7 +1877,7 @@ export class WebViewer {
    * This API is experimental, and may change between releases.
    */
   async get_state(): Promise<ViewerState> {
-    return viewer_state_of(await this.#viewer_control("getViewerState", {}));
+    return viewer_state_of(await this.#viewer_control("getState", {}));
   }
 
   /**
@@ -2376,7 +2376,7 @@ export class WebViewer {
     if (this.#cached_viewer_state === null) {
       try {
         this.#cached_viewer_state = viewer_state_of(
-          fromBinary(GetViewerStateResponseSchema, this.#handle.viewer_state()),
+          fromBinary(GetStateResponseSchema, this.#handle.viewer_state()),
         );
       } catch {
         return null;

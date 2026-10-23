@@ -101,7 +101,7 @@ message ViewerControlRequest {
     // recording. To read a part out of one: the kind runs to the first colon, the application id
     // to the next colon that is not preceded by a backslash, and the recording id is the rest.
     // Both ids may contain a colon, so the application id's are escaped as `\:` (and `\` as `\\`).
-    GetViewerStateRequest get_viewer_state = 3;
+    GetStateRequest get_state = 3;
 
     // Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
     // server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
@@ -123,10 +123,10 @@ message ViewerControlRequest {
     //   are fetched on demand afterwards, and need not all fit in memory.
     // * Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted
     //   on it.
-    // If the response names anything as `loading`, poll `GetViewerState` until its `loading` list
+    // If the response names anything as `loading`, poll `GetState` until its `loading` list
     // is empty; only then does an absent timeline mean an empty recording rather than one still
     // arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
-    // so anything waiting on one stalls, while `GetViewerState` keeps answering.
+    // so anything waiting on one stalls, while `GetState` keeps answering.
     OpenRequest open = 4;
 
     // Take a screenshot of the viewer, or of a single view within it, and write it to disk, or
@@ -158,7 +158,7 @@ message ViewerControlRequest {
     //
     // This is the schema, not the data: a component listed here has been logged at some point,
     // which says nothing about the current time cursor. Read values through the catalog server
-    // `GetViewerState` reports as `catalog_url`.
+    // `GetState` reports as `catalog_url`.
     //
     // `NOT_FOUND` if the requested recording is not open.
     GetRecordingSchemaRequest get_recording_schema = 7;
@@ -183,7 +183,7 @@ message ViewerControlRequest {
 
     // Run a command palette command by id.
     //
-    // Returns once queued; verify the effect with `GetViewerState` or a screenshot.
+    // Returns once queued; verify the effect with `GetState` or a screenshot.
     // Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
     // Ask the user before running a `destructive` command.
     RunCommandRequest run_command = 11;
@@ -295,7 +295,7 @@ message ViewerControlRequest {
     GetLocationRequest get_location = 19;
 
     // Show a location the viewer already has open, as `get_location` reports it.
-    // Each recording in `get_viewer_state` carries its location too.
+    // Each recording in `get_state` carries its location too.
     // This only navigates, and never loads anything: use `open` for that.
     //
     // Like a user navigating, it leaves the page shown before in the viewer's history, so the
@@ -342,7 +342,7 @@ message ViewerControlRequest {
     // Inspecting frame assignments is a separate concern from this API, do it only when asked or
     // necessary for debugging.
     //
-    // Use also rerun_get_viewer_state to check spatial-view topology errors.
+    // Use also rerun_get_state to check spatial-view topology errors.
     // For missing content, check if the blueprint's target frame is set to a meaningful value.
     // tf#/ is the default root for entity-path frame topologies, but is also a fallback when
     // there are multiple disconnected trees with named frames.
@@ -382,8 +382,8 @@ message ViewerControlResponse {
     // Result of `get_logs`.
     GetLogsResponse get_logs = 2;
 
-    // Result of `get_viewer_state`.
-    GetViewerStateResponse get_viewer_state = 3;
+    // Result of `get_state`.
+    GetStateResponse get_state = 3;
 
     // Result of `open`.
     OpenResponse open = 4;
@@ -468,7 +468,7 @@ message GetTransformGraphRequest {
     EDGE_FILTER_ALL = 3;
   }
 
-  // Recording store id from GetViewerState. Defaults to the active recording.
+  // Recording store id from GetState. Defaults to the active recording.
   optional string store_id = 1;
   // Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
   optional FrameFilter frame_filter = 2;
@@ -633,7 +633,7 @@ message RecordingBlueprintTarget {
 
 // The table a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
 message TableBlueprintTarget {
-  // The table: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+  // The table: a dataset or table `url` from `servers` in `GetState`, or a server's
   // `origin` for its list of entries. Defaults to the table on screen.
   optional string table_url = 1;
 }
@@ -659,7 +659,7 @@ message GetBlueprintResponse {
 
 // Request for `GetTableSchema`.
 message GetTableSchemaRequest {
-  // The table's URL: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+  // The table's URL: a dataset or table `url` from `servers` in `GetState`, or a server's
   // `origin` for its list of entries. Defaults to the table on screen.
   optional string table_url = 1;
 }
@@ -688,7 +688,7 @@ message TableColumnSchema {
 
 // Request for `GetDatasetSchema`.
 message GetDatasetSchemaRequest {
-  // A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+  // A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or
   // the dataset of the segment on screen.
   optional string dataset_url = 1;
 
@@ -732,7 +732,7 @@ message GetDatasetSchemaResponse {
 
 // Request for `GetDatasetAssetsSchema`.
 message GetDatasetAssetsSchemaRequest {
-  // A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+  // A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or
   // the dataset of the segment on screen.
   optional string dataset_url = 1;
 
@@ -901,13 +901,13 @@ message ViewerLogEntry {
 }
 
 // ----------------------------------------------------------------------------
-// GetViewerState
+// GetState
 
-// Request for `GetViewerState`. Empty: the whole state is always returned.
-message GetViewerStateRequest {}
+// Request for `GetState`. Empty: the whole state is always returned.
+message GetStateRequest {}
 
-// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
-message GetViewerStateResponse {
+// Response for `GetState`: a snapshot of what the viewer is currently showing.
+message GetStateResponse {
   // What the viewer is showing, as `get_location` reports it. Empty if that has no location.
   // See <https://rerun.io/docs/reference/viewer/urls> for the syntax.
   string location = 1;
@@ -1308,7 +1308,7 @@ message SetBlueprintRequest {
     // user what the preview shows, and suggest what tells the segments apart at a glance, such as
     // a moving robot model, a trajectory, or a video. To refine a preview, inspect the recordings
     // it loads rather than opening a segment.
-    // Each card's recording shows in `recordings` of `GetViewerState`, with the dataset id as its
+    // Each card's recording shows in `recordings` of `GetState`, with the dataset id as its
     // application id and the segment id as its recording id, and works with `GetRecordingSchema`.
     // Every visible card renders its own recording, which is costly, so keep previews small: few
     // views, and only the entities that matter.
@@ -1347,7 +1347,7 @@ message SetTimeCursorRequest {
   optional common.v1alpha1.Timeline timeline = 2;
 
   // Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
-  // temporal timelines (see `GetViewerState` for each timeline's type and range).
+  // temporal timelines (see `GetState` for each timeline's type and range).
   // If omitted, the cursor stays at its current time on the timeline.
   optional rerun.common.v1alpha1.TimelineTime time = 3;
 

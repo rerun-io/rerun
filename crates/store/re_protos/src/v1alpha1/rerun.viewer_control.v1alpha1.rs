@@ -46,7 +46,7 @@ pub mod viewer_control_request {
         /// to the next colon that is not preceded by a backslash, and the recording id is the rest.
         /// Both ids may contain a colon, so the application id's are escaped as `\:` (and `\` as `\\`).
         #[prost(message, tag = "3")]
-        GetViewerState(super::GetViewerStateRequest),
+        GetState(super::GetStateRequest),
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
         /// server/catalog URL, or an intra-recording link). A recording it opens, such as a dataset
         /// segment, becomes the active recording and is shown.
@@ -67,10 +67,10 @@ pub mod viewer_control_request {
         ///    are fetched on demand afterwards, and need not all fit in memory.
         /// * Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted
         ///    on it.
-        /// If the response names anything as `loading`, poll `GetViewerState` until its `loading` list
+        /// If the response names anything as `loading`, poll `GetState` until its `loading` list
         /// is empty; only then does an absent timeline mean an empty recording rather than one still
         /// arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
-        /// so anything waiting on one stalls, while `GetViewerState` keeps answering.
+        /// so anything waiting on one stalls, while `GetState` keeps answering.
         #[prost(message, tag = "4")]
         Open(super::OpenRequest),
         /// Take a screenshot of the viewer, or of a single view within it, and write it to disk, or
@@ -102,7 +102,7 @@ pub mod viewer_control_request {
         ///
         /// This is the schema, not the data: a component listed here has been logged at some point,
         /// which says nothing about the current time cursor. Read values through the catalog server
-        /// `GetViewerState` reports as `catalog_url`.
+        /// `GetState` reports as `catalog_url`.
         ///
         /// `NOT_FOUND` if the requested recording is not open.
         #[prost(message, tag = "7")]
@@ -127,7 +127,7 @@ pub mod viewer_control_request {
         DescribeCommands(super::DescribeCommandsRequest),
         /// Run a command palette command by id.
         ///
-        /// Returns once queued; verify the effect with `GetViewerState` or a screenshot.
+        /// Returns once queued; verify the effect with `GetState` or a screenshot.
         /// Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
         /// Ask the user before running a `destructive` command.
         #[prost(message, tag = "11")]
@@ -239,7 +239,7 @@ pub mod viewer_control_request {
         #[prost(message, tag = "19")]
         GetLocation(super::GetLocationRequest),
         /// Show a location the viewer already has open, as `get_location` reports it.
-        /// Each recording in `get_viewer_state` carries its location too.
+        /// Each recording in `get_state` carries its location too.
         /// This only navigates, and never loads anything: use `open` for that.
         ///
         /// Like a user navigating, it leaves the page shown before in the viewer's history, so the
@@ -286,7 +286,7 @@ pub mod viewer_control_request {
         /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
         /// necessary for debugging.
         ///
-        /// Use also rerun_get_viewer_state to check spatial-view topology errors.
+        /// Use also rerun_get_state to check spatial-view topology errors.
         /// For missing content, check if the blueprint's target frame is set to a meaningful value.
         /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
         /// there are multiple disconnected trees with named frames.
@@ -347,9 +347,9 @@ pub mod viewer_control_response {
         /// Result of `get_logs`.
         #[prost(message, tag = "2")]
         GetLogs(super::GetLogsResponse),
-        /// Result of `get_viewer_state`.
+        /// Result of `get_state`.
         #[prost(message, tag = "3")]
-        GetViewerState(super::GetViewerStateResponse),
+        GetState(super::GetStateResponse),
         /// Result of `open`.
         #[prost(message, tag = "4")]
         Open(super::OpenResponse),
@@ -419,7 +419,7 @@ impl ::prost::Name for ViewerControlResponse {
 /// Request for `GetTransformGraph`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTransformGraphRequest {
-    /// Recording store id from GetViewerState. Defaults to the active recording.
+    /// Recording store id from GetState. Defaults to the active recording.
     #[prost(string, optional, tag = "1")]
     pub store_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections.
@@ -815,7 +815,7 @@ impl ::prost::Name for RecordingBlueprintTarget {
 /// The table a `GetBlueprint` or `SetBlueprint` reads or writes the blueprint of.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableBlueprintTarget {
-    /// The table: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// The table: a dataset or table `url` from `servers` in `GetState`, or a server's
     /// `origin` for its list of entries. Defaults to the table on screen.
     #[prost(string, optional, tag = "1")]
     pub table_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -860,7 +860,7 @@ impl ::prost::Name for GetBlueprintResponse {
 /// Request for `GetTableSchema`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTableSchemaRequest {
-    /// The table's URL: a dataset or table `url` from `servers` in `GetViewerState`, or a server's
+    /// The table's URL: a dataset or table `url` from `servers` in `GetState`, or a server's
     /// `origin` for its list of entries. Defaults to the table on screen.
     #[prost(string, optional, tag = "1")]
     pub table_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -919,7 +919,7 @@ impl ::prost::Name for TableColumnSchema {
 /// Request for `GetDatasetSchema`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetDatasetSchemaRequest {
-    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or
     /// the dataset of the segment on screen.
     #[prost(string, optional, tag = "1")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -982,7 +982,7 @@ impl ::prost::Name for GetDatasetSchemaResponse {
 /// Request for `GetDatasetAssetsSchema`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetDatasetAssetsSchemaRequest {
-    /// A dataset `url` from `servers` in `GetViewerState`. Defaults to the dataset on screen, or
+    /// A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or
     /// the dataset of the segment on screen.
     #[prost(string, optional, tag = "1")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -1253,22 +1253,22 @@ impl ::prost::Name for ViewerLogEntry {
         "/rerun.viewer_control.v1alpha1.ViewerLogEntry".into()
     }
 }
-/// Request for `GetViewerState`. Empty: the whole state is always returned.
+/// Request for `GetState`. Empty: the whole state is always returned.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetViewerStateRequest {}
-impl ::prost::Name for GetViewerStateRequest {
-    const NAME: &'static str = "GetViewerStateRequest";
+pub struct GetStateRequest {}
+impl ::prost::Name for GetStateRequest {
+    const NAME: &'static str = "GetStateRequest";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.GetViewerStateRequest".into()
+        "rerun.viewer_control.v1alpha1.GetStateRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.GetViewerStateRequest".into()
+        "/rerun.viewer_control.v1alpha1.GetStateRequest".into()
     }
 }
-/// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
+/// Response for `GetState`: a snapshot of what the viewer is currently showing.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetViewerStateResponse {
+pub struct GetStateResponse {
     /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
     /// See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
     #[prost(string, tag = "1")]
@@ -1314,14 +1314,14 @@ pub struct GetViewerStateResponse {
     #[prost(message, repeated, tag = "8")]
     pub servers: ::prost::alloc::vec::Vec<ViewerServer>,
 }
-impl ::prost::Name for GetViewerStateResponse {
-    const NAME: &'static str = "GetViewerStateResponse";
+impl ::prost::Name for GetStateResponse {
+    const NAME: &'static str = "GetStateResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.GetViewerStateResponse".into()
+        "rerun.viewer_control.v1alpha1.GetStateResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.GetViewerStateResponse".into()
+        "/rerun.viewer_control.v1alpha1.GetStateResponse".into()
     }
 }
 /// A Redap server the viewer is connected to.
@@ -1890,7 +1890,7 @@ pub mod set_blueprint_request {
         /// user what the preview shows, and suggest what tells the segments apart at a glance, such as
         /// a moving robot model, a trajectory, or a video. To refine a preview, inspect the recordings
         /// it loads rather than opening a segment.
-        /// Each card's recording shows in `recordings` of `GetViewerState`, with the dataset id as its
+        /// Each card's recording shows in `recordings` of `GetState`, with the dataset id as its
         /// application id and the segment id as its recording id, and works with `GetRecordingSchema`.
         /// Every visible card renders its own recording, which is costly, so keep previews small: few
         /// views, and only the entities that matter.
@@ -1948,7 +1948,7 @@ pub struct SetTimeCursorRequest {
     #[prost(message, optional, tag = "2")]
     pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
     /// Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
-    /// temporal timelines (see `GetViewerState` for each timeline's type and range).
+    /// temporal timelines (see `GetState` for each timeline's type and range).
     /// If omitted, the cursor stays at its current time on the timeline.
     #[prost(message, optional, tag = "3")]
     pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,

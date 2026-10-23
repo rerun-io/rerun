@@ -21,8 +21,8 @@ use re_protos::viewer_control::v1alpha1::{
     CloseRequest, CloseResponse, DatasetAssetSchema, GetBlueprintRequest, GetBlueprintResponse,
     GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
     GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetLogsRequest,
-    GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
-    GetTableSchemaResponse, GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest,
+    GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetStateRequest,
+    GetStateResponse, GetTableSchemaRequest, GetTableSchemaResponse, HighlightRectRequest,
     HighlightRectResponse, OpenRequest, OpenResponse, RecordingComponentSchema,
     RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect,
     SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
@@ -439,7 +439,7 @@ impl AppCore {
                     }
                 }
             }
-            Kind::GetViewerState(GetViewerStateRequest {}) => {
+            Kind::GetState(GetStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
             }
             Kind::HighlightRect(request) => {
@@ -810,9 +810,9 @@ fn close_recordings_target(
 }
 
 impl App {
-    /// The `get_viewer_state` response.
+    /// The `get_state` response.
     #[cfg(target_arch = "wasm32")]
-    pub fn viewer_state(&mut self) -> GetViewerStateResponse {
+    pub fn viewer_state(&mut self) -> GetStateResponse {
         let Self { store_hub, core } = self;
         core.collect_viewer_state(store_hub)
     }
@@ -939,10 +939,10 @@ impl AppCore {
         true
     }
 
-    /// Snapshot the current viewer state for the `get_viewer_state` operation:
+    /// Snapshot the current viewer state for the `get_state` operation:
     /// the active recording, the current page as a Viewer URL, the catalog the viewer hosts,
     /// and every open recording's timelines with their time ranges and current time cursor.
-    pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetViewerStateResponse {
+    pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetStateResponse {
         let active_id = self.state.active_recording_id().cloned();
         let route = self.state.navigation.current().clone();
         let views = self.collect_views(store_hub, &route, active_id.as_ref());
@@ -1004,7 +1004,7 @@ impl AppCore {
                 );
         let loading = std::iter::chain(loading_registrations, loading_sources).collect();
 
-        GetViewerStateResponse {
+        GetStateResponse {
             location,
             active_store_id: active_id.map(|store_id| store_id.to_string()),
             recordings,
@@ -1269,7 +1269,7 @@ impl AppCore {
             }
             re_uri::RedapUri::Catalog(_) | re_uri::RedapUri::Entry(_) => {
                 Err(ViewerControlError::not_found(format!(
-                    "the viewer has no table at {url:?}. `GetViewerState` lists the tables it has"
+                    "the viewer has no table at {url:?}. `GetState` lists the tables it has"
                 )))
             }
             re_uri::RedapUri::Dataset(_)
@@ -1309,7 +1309,7 @@ impl AppCore {
                 format!("{url:?} is a table, not a dataset"),
             )),
             None => Err(ViewerControlError::not_found(format!(
-                "the viewer has no dataset at {url:?}. `GetViewerState` lists the datasets it has"
+                "the viewer has no dataset at {url:?}. `GetState` lists the datasets it has"
             ))),
         }
     }
@@ -1810,7 +1810,7 @@ impl AppCore {
     }
 
     /// The views of the current blueprint with the warnings and errors they reported when last
-    /// shown, for the `get_viewer_state` operation.
+    /// shown, for the `get_state` operation.
     fn collect_views(
         &mut self,
         store_hub: &StoreHub,
@@ -1958,7 +1958,7 @@ impl AppCore {
     }
 }
 
-/// A recording's timelines with their time ranges, as both `get_viewer_state` and
+/// A recording's timelines with their time ranges, as both `get_state` and
 /// `get_recording_schema` report them.
 ///
 /// A timeline with no data yet has no range, which is what tells "still arriving" from "empty".
@@ -1982,7 +1982,7 @@ fn recording_timelines(
         .collect()
 }
 
-/// The play state as `get_viewer_state` reports it.
+/// The play state as `get_state` reports it.
 fn play_state_to_proto(play_state: PlayState) -> ProtoPlayState {
     match play_state {
         PlayState::Paused => ProtoPlayState::Paused,

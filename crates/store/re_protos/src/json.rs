@@ -238,9 +238,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            error(r#"{"get_viewer_state": {}, "get_location": {}}"#),
+            error(r#"{"get_state": {}, "get_location": {}}"#),
             Some(format!(
-                "{prefix}: multiple fields provided for oneof 'kind' at line 1 column 44"
+                "{prefix}: multiple fields provided for oneof 'kind' at line 1 column 37"
             ))
         );
         assert_eq!(

@@ -255,7 +255,7 @@ def test_deprecated_names_still_work(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.deprecated_call():
         viewer.viewer_logs()  # ty: ignore[deprecated]
 
-    assert [next(iter(request)) for request in requests] == ["open", "close", "close", "get_viewer_state", "get_logs"]
+    assert [next(iter(request)) for request in requests] == ["open", "close", "close", "get_state", "get_logs"]
     assert requests[2] == {"close": {"store_ids": {"store_ids": ["Recording:app:rec"]}}}
 
 

@@ -69,7 +69,7 @@ Ask the agent to launch the Viewer headless or in the background, and it will st
 
 The tool name says which family it belongs to, and the agent is told to prefer the high-level one.
 
-The `rerun_*` tools (`rerun_get_viewer_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open`, `rerun_close`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
+The `rerun_*` tools (`rerun_get_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open`, `rerun_close`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
 
 Among them, `rerun_list_commands`, `rerun_describe_commands`, and `rerun_run_command` reach every command of the Viewer's command palette.
@@ -86,16 +86,16 @@ That is why an agent should drop to them only when no `rerun_*` tool fits.
 
 Besides the accessibility tree and screenshots, the server gives the agent the same signals a user relies on to tell whether the Viewer is healthy:
 
-- **View reports**: `rerun_get_viewer_state` lists every view of the current blueprint together with the warnings and errors it reported the last time it was shown, the same ones behind the warning icon in a view's title bar.
+- **View reports**: `rerun_get_state` lists every view of the current blueprint together with the warnings and errors it reported the last time it was shown, the same ones behind the warning icon in a view's title bar.
   That tells the agent why a view is empty or looks wrong without a screenshot.
 - **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `rerun_get_logs` tool returns the recent history.
   The agent notices the same warnings and errors you see in the notification panel.
-- **What is still loading**: `rerun_get_viewer_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
+- **What is still loading**: `rerun_get_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
   `rerun_open` waits a few seconds for the load to finish, and says so when it is still loading, so this is how the agent tells a recording that is still arriving from one that arrived empty.
   It matters most while a large import is running, because the Viewer paints no frames then and the low-level tools all stall — this one keeps answering.
 - **Where the Viewer is**: `rerun_get_location` reports what the Viewer shows as a [Viewer URL](urls.md), and `rerun_set_location` navigates back to it without loading anything.
-  Each recording in `rerun_get_viewer_state` carries its own `location`, so switching recordings needs no clicking either.
-- **Connected servers**: `rerun_get_viewer_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
+  Each recording in `rerun_get_state` carries its own `location`, so switching recordings needs no clicking either.
+- **Connected servers**: `rerun_get_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
   So "open a dataset on that server" goes straight to `rerun_open`, without clicking through the tree.
 
 ## Reading the data
@@ -113,7 +113,7 @@ For a dataset, entity paths alone are the default when no `entity_path` is given
 These describe the entities in the segments, not the columns of a table, which `rerun_get_table_schema` names.
 
 The transform graph tool described below can return transform values, but for general recording values, use the catalog API.
-The Viewer hosts a catalog server, and `rerun_get_viewer_state` reports its address as `catalog_url`, along with each recording's `store_id`.
+The Viewer hosts a catalog server, and `rerun_get_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.
 The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
@@ -163,7 +163,7 @@ Use the recording schema to locate `CoordinateFrame` components, then read their
 Neither schema presence nor `source.entity_path` reveals an assignment: the latter only says where a transform was logged.
 `CoordinateFrame` does not join frame trees.
 
-When investigating transform problems, call `rerun_get_viewer_state` to check whether the viewer has a spatial view and inspect its reports for transform-topology errors.
+When investigating transform problems, call `rerun_get_state` to check whether the viewer has a spatial view and inspect its reports for transform-topology errors.
 Use those reports as diagnostic evidence; absence of a spatial view or reports does not prove correctness.
 
 If a spatial view does not show the expected named-frame tree, check its target frame in the blueprint: a common cause is that the view still targets the default `tf#/` root.
@@ -295,6 +295,6 @@ The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills
 ## Closing recordings
 
 The `rerun_close` tool removes one, many, or all recordings from the Viewer.
-An agent that regenerates a file and reopens it repeatedly otherwise accumulates stale recordings, which makes both `rerun_get_viewer_state` and the recording panel hard to read.
+An agent that regenerates a file and reopens it repeatedly otherwise accumulates stale recordings, which makes both `rerun_get_state` and the recording panel hard to read.
 Closing a recording does not touch files on disk, but unsaved blueprint edits to it are lost.
 A registered recording also stays in the catalog, so it can still be read over the catalog API and reopened later.

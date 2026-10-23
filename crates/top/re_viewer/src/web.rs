@@ -218,7 +218,7 @@ impl WebHandle {
         })
     }
 
-    /// The encoded `GetViewerStateResponse` of the Viewer Control API, computed right away.
+    /// The encoded `GetStateResponse` of the Viewer Control API, computed right away.
     ///
     /// Unlike [`Self::viewer_control`], this doesn't wait for the next frame,
     /// so it can back synchronous JS APIs.

@@ -547,7 +547,7 @@ mod tests {
         let names: Vec<String> = tools().iter().map(|tool| tool.name.to_string()).collect();
 
         assert!(names.contains(&"set_time_cursor".to_owned()));
-        assert!(names.contains(&"get_viewer_state".to_owned()));
+        assert!(names.contains(&"get_state".to_owned()));
         assert!(
             !names.contains(&"egui_inspect".to_owned()),
             "the egui transport must not be offered as a tool"
@@ -754,7 +754,7 @@ mod tests {
             re_protos::viewer_control::v1alpha1::OpenResponse::default(),
         );
 
-        let err = response_json("get_viewer_state", &response)
+        let err = response_json("get_state", &response)
             .expect_err("another operation's payload must not pass as this one's result");
         assert!(err.contains("open"), "{err}");
 

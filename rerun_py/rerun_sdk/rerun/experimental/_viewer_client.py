@@ -1005,7 +1005,7 @@ class ViewerClient:
             This API is experimental and may change or be removed in future versions.
 
         """
-        return _viewer_state_from_json(self._viewer_control("get_viewer_state", {}))
+        return _viewer_state_from_json(self._viewer_control("get_state", {}))
 
     def take_screenshot(self, view_id: str | UUID | None = None, *, max_size: int | None = None) -> bytes:
         """

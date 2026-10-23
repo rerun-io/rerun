@@ -18,7 +18,7 @@
 //! Each call becomes one `egui_inspection` request/response exchange carried inside a single
 //! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
 //!
-//! The viewer-control tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, `rerun_close`, …) are
+//! The viewer-control tools (`rerun_get_state`, `rerun_set_time_cursor`, `rerun_close`, …) are
 //! generated from `viewer_control.proto`: one tool per operation in the request envelope's
 //! `oneof`. `rerun_connect` and `rerun_disconnect` are hand-written, since they manage the connection itself
 //! rather than driving the viewer.
@@ -116,7 +116,7 @@ impl Transport for GrpcInspector {
                 format!(
                     "The viewer did not paint a frame within {UI_REQUEST_TIMEOUT:?}. \
                      Every UI tool waits on the frame loop, so a long import or an unresponsive \
-                     window stalls all of them. `rerun_get_viewer_state` and \
+                     window stalls all of them. `rerun_get_state` and \
                      `rerun_get_logs` are answered without a frame and still work: use \
                      them to see whether the viewer is busy loading, and retry once it is idle."
                 )
