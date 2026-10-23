@@ -18,17 +18,28 @@ import {
 import { EntryKind as ProtoEntryKind } from "./proto/rerun/v1alpha1/cloud_pb.js";
 import { TimeType as ProtoTimeType } from "./proto/rerun/v1alpha1/common_pb.js";
 import { parse_exact_json, stringify_exact_json } from "./exact_json.js";
-import { parse_store_id } from "./store_id.js";
+import {
+  type BlueprintStoreId,
+  parse_store_id,
+  type RecordingStoreId,
+  type StoreId,
+} from "./store_id.js";
 
-export { parse_store_id, type StoreIdParts } from "./store_id.js";
+export {
+  parse_store_id,
+  type BlueprintStoreId,
+  type RecordingStoreId,
+  type StoreId,
+  type StoreIdParts,
+} from "./store_id.js";
 
 /** What the viewer shows, as {@link WebViewer.get_state} reports it. */
 export interface ViewerState {
   /** Where the viewer is, for {@link WebViewer.set_location}. Empty if that has no location. */
   location: string;
 
-  /** The active recording, as a store id. */
-  active_store_id?: string;
+  /** The active recording. */
+  active_store_id?: RecordingStoreId;
 
   /** Every recording open in the viewer. */
   recordings: ViewerRecording[];
@@ -51,8 +62,8 @@ export interface ViewerState {
 
 /** A recording open in the viewer. */
 export interface ViewerRecording {
-  /** The recording's store id, `{kind}:{application_id}:{recording_id}`. */
-  store_id: string;
+  /** The recording's store id. */
+  store_id: RecordingStoreId;
 
   /** The location that shows this recording, for {@link WebViewer.set_location}. */
   location: string;
@@ -183,9 +194,9 @@ export interface ViewerLoadingSource {
 function viewer_state_of(state: GetViewerStateResponse): ViewerState {
   return {
     location: state.location,
-    active_store_id: state.activeStoreId,
+    active_store_id: state.activeStoreId as RecordingStoreId | undefined,
     recordings: state.recordings.map((recording) => ({
-      store_id: recording.storeId,
+      store_id: recording.storeId as RecordingStoreId,
       location: recording.location,
       timelines: recording.timelines.map(timeline_of),
       play_state: play_state_of(recording.playState),
@@ -302,7 +313,7 @@ export interface ViewerLogEntry {
 export type CloseTarget =
   | (string & {})
   | string[]
-  | { store_ids: string[] }
+  | { store_ids: StoreId[] }
   | "current"
   | "all";
 
@@ -315,7 +326,7 @@ export interface OpenOptions {
 /** What {@link WebViewer.open} did. */
 export interface OpenResult {
   /** The store ids of the recordings loaded from the URLs. */
-  store_ids: string[];
+  store_ids: RecordingStoreId[];
 
   /**
    * The URLs, as passed in, whose sources had not finished their initial load when the viewer answered.
@@ -340,13 +351,13 @@ export interface SchemaOptions {
 /** Which recording {@link WebViewer.get_recording_schema} describes, and which part of it. */
 export interface RecordingSchemaOptions extends SchemaOptions {
   /** The recording, as a store id from {@link WebViewer.get_state}. If omitted, the active recording. */
-  recording?: string;
+  recording?: RecordingStoreId;
 }
 
 /** A recording's timelines, entities, and the components logged on them. */
 export interface RecordingSchema {
   /** The recording that was described, as a store id. */
-  recording: string;
+  recording: RecordingStoreId;
 
   /** The recording's timelines with their time ranges. */
   timelines: ViewerTimeline[];
@@ -461,7 +472,7 @@ export interface ScreenRect {
 /** The recording or server that a command acts on. */
 export interface CommandTarget {
   /** The recording for a `recording` command, as a store id. If omitted, the active recording. */
-  recording?: string;
+  recording?: RecordingStoreId;
 
   /** The server for a `server` command, e.g. `rerun+http://127.0.0.1:51234`. If omitted, the selected server. */
   server_origin?: string;
@@ -528,7 +539,7 @@ export type BlueprintTarget =
       kind: "recording";
 
       /** The recording, as a store id. If omitted, the active recording. */
-      recording?: string;
+      recording?: RecordingStoreId;
     }
   | {
       /** A table's blueprint. */
@@ -557,11 +568,11 @@ export type BlueprintJson = Record<string, Record<string, Record<string, unknown
 
 /** The blueprint that {@link WebViewer.set_blueprint} wrote. */
 export interface BlueprintRef {
-  /** The id of the blueprint store. */
-  blueprint_id: string;
+  /** The blueprint store. */
+  blueprint_id: BlueprintStoreId;
 
   /** The recording whose blueprint it is, as a store id, if it is a recording's. */
-  recording?: string;
+  recording?: RecordingStoreId;
 
   /** The table whose blueprint it is, if it is a table's that has a URL. */
   table_url?: string;
@@ -576,7 +587,7 @@ export interface Blueprint extends BlueprintRef {
 /** Which transform frames and edges {@link WebViewer.get_transform_graph} includes. */
 export interface TransformGraphOptions {
   /** The recording, as a store id. If omitted, the active recording. */
-  recording?: string;
+  recording?: RecordingStoreId;
 
   /** Frames derived from entity paths, explicitly named frames, or both. Defaults to `all`. */
   frame_filter?: "entity_path" | "named" | "all";
@@ -591,7 +602,7 @@ export interface TransformGraphOptions {
 /** A recording's transform graph at its time cursor. */
 export interface TransformGraph {
   /** The recording that was queried, as a store id. */
-  recording: string;
+  recording: RecordingStoreId;
 
   /**
    * The query, options, missing chunks, frames, and edges, as the viewer reports them.
@@ -709,7 +720,7 @@ export interface SetTimeTarget {
   play_state?: PlayState;
 
   /** The recording to seek, as a store id from {@link WebViewer.get_state}. If omitted, the active recording. */
-  recording?: string;
+  recording?: RecordingStoreId;
 }
 
 /**
@@ -1942,7 +1953,7 @@ export class WebViewer {
       ),
     );
     return {
-      store_ids: responses.flatMap((response) => response.storeIds),
+      store_ids: responses.flatMap((response) => response.storeIds as RecordingStoreId[]),
       loading: responses.flatMap((response) => response.loading),
     };
   }
@@ -1963,9 +1974,9 @@ export class WebViewer {
    *
    * This API is experimental, and may change between releases.
    */
-  async close(target: CloseTarget): Promise<string[]> {
+  async close(target: CloseTarget): Promise<StoreId[]> {
     const { closed } = await this.#viewer_control("close", { target: close_target_of(target) });
-    return closed;
+    return closed as StoreId[];
   }
 
   /**
@@ -2004,7 +2015,7 @@ export class WebViewer {
       ...schema_request_of(options),
     });
     return {
-      recording: response.storeId,
+      recording: response.storeId as RecordingStoreId,
       timelines: response.timelines.map(timeline_of),
       entities: response.entities.map(entity_schema_of),
       omitted_entities: response.omittedEntities,
@@ -2083,9 +2094,9 @@ export class WebViewer {
       target: target === undefined ? undefined : blueprint_target_of(target),
     });
     return {
-      blueprint_id: response.blueprintId,
+      blueprint_id: response.blueprintId as BlueprintStoreId,
       blueprint: parse_exact_json(response.json) as BlueprintJson,
-      recording: response.storeId,
+      recording: response.storeId as RecordingStoreId,
       table_url: response.tableUrl,
     };
   }
@@ -2105,8 +2116,8 @@ export class WebViewer {
       target: blueprint_target_of(target),
     });
     return {
-      blueprint_id: response.blueprintId,
-      recording: response.storeId,
+      blueprint_id: response.blueprintId as BlueprintStoreId,
+      recording: response.storeId as RecordingStoreId,
       table_url: response.tableUrl,
     };
   }
@@ -2125,7 +2136,7 @@ export class WebViewer {
       includeTransforms: options.include_transforms,
     });
     return {
-      recording: response.storeId,
+      recording: response.storeId as RecordingStoreId,
       graph: parse_exact_json(response.json) as Record<string, unknown>,
     };
   }

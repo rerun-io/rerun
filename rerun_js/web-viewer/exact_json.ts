@@ -41,7 +41,7 @@ export function stringify_exact_json(value: unknown): string {
     const raw = this[key];
     return typeof raw === "bigint" ? `${marker}${raw}` : value;
   });
-  return json.replaceAll(new RegExp(`"${marker}(-?\\d+)"`, "g"), "$1");
+  return json.replace(new RegExp(`"${marker}(-?\\d+)"`, "g"), "$1");
 }
 
 /** A prefix that no string in the document starts with, so it can tag the integers. */

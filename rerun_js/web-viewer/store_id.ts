@@ -1,3 +1,17 @@
+/**
+ * Names a recording or blueprint store in the viewer: `{kind}:{application_id}:{recording_id}`,
+ * e.g. `Recording:my_app:1830B33B45B963E7`.
+ *
+ * Pass it back whole wherever the API takes one. It is not the bare recording id at its end.
+ */
+export type StoreId = RecordingStoreId | BlueprintStoreId;
+
+/** The {@link StoreId} of a recording. */
+export type RecordingStoreId = `Recording:${string}:${string}`;
+
+/** The {@link StoreId} of a blueprint. */
+export type BlueprintStoreId = `Blueprint:${string}:${string}`;
+
 /** The parts of a store id, as {@link parse_store_id} splits it. */
 export interface StoreIdParts {
   /** What the store holds: `Recording` or `Blueprint`. */
