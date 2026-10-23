@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.catalog import AlreadyExistsError, OnDuplicateSegmentLayer, SegmentRegistrationResult
+from rerun.catalog import OnDuplicateSegmentLayer, SegmentRegistrationResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -666,9 +666,11 @@ def test_register_duplicate_error_behavior(
     assert len(result.segment_ids) == 1
     assert result.segment_ids[0] == recording_id
 
-    # Second registration of the same segment should fail
-    with pytest.raises(AlreadyExistsError, match="already exists"):
+    # Second registration of the same segment is accepted, and its task fails
+    with pytest.raises(ValueError, match="already exists"):
         ds.register([uris[0]], on_duplicate=OnDuplicateSegmentLayer.ERROR).wait()
+
+    assert ds.segment_ids() == [recording_id]
 
 
 @pytest.mark.local_only

@@ -28,7 +28,7 @@ use url::Url;
 
 use super::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _,
-    create_table_entry_with_name, entry_name, prop,
+    create_table_entry_with_name, entry_name, prop, register_and_wait,
 };
 use crate::{
     FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, TuidPrefix,
@@ -585,12 +585,17 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     );
 }
 
-/// Tests that registering the same segment twice with `IfDuplicateBehavior::Error` fails.
-pub async fn register_with_dataset_if_duplicate_behavior_error(service: impl RerunCloudService) {
+/// Tests that registering the same segment twice with `IfDuplicateBehavior::Error` fails the
+/// duplicate's registration task and leaves the existing segment in place.
+///
+/// The request itself is accepted: duplicates are detected while the registration task runs,
+/// so the outcome is reported through `QueryTasks`, not as a `RegisterWithDataset` error.
+pub async fn register_with_dataset_if_duplicate_behavior_error(
+    service: impl RerunCloudService,
+) -> anyhow::Result<()> {
     let dataset_name = "duplicate_error_test";
     service.create_dataset_entry_with_name(dataset_name).await;
 
-    // First registration - should succeed
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [LayerDefinition::simple("segment1", &["my/entity"])],
@@ -604,27 +609,25 @@ pub async fn register_with_dataset_if_duplicate_behavior_error(service: impl Rer
         )
         .await;
 
-    // Second registration of same segment - should fail with AlreadyExists
-    let request = cloud_ext::RegisterWithDatasetRequest {
-        data_sources: data_sources_def.to_data_sources_ext(),
-        on_duplicate: IfDuplicateBehavior::Error,
-    };
+    let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
+        data_sources: data_sources_def.to_data_sources(),
+        on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(
+            IfDuplicateBehavior::Error,
+        ) as i32,
+    })
+    .with_entry_name(entry_name(dataset_name));
 
-    let result = service
-        .register_with_dataset(
-            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
-        )
-        .await;
+    let task_results = register_and_wait(&service, request).await;
+    assert_task_failed(&task_results, "already exists");
 
-    assert!(
-        result.is_err(),
-        "second registration with Error behavior should fail"
-    );
+    let segment_table = scan_segment_table(&service, dataset_name).await;
     assert_eq!(
-        result.unwrap_err().code(),
-        tonic::Code::AlreadyExists,
-        "second registration should return AlreadyExists error"
+        segment_table.num_rows(),
+        1,
+        "the rejected duplicate must not add a second segment"
     );
+
+    Ok(())
 }
 
 /// Tests that registering a duplicate with `IfDuplicateBehavior::Skip` succeeds but keeps original data.

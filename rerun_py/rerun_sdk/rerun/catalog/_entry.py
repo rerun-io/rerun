@@ -822,8 +822,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             Defaults to `"base"`.
 
         on_duplicate:
-            How to handle the cases where the segment id and layer name already exist in the dataset?
-            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+            How to handle a segment layer that already exists in the dataset.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`, which fails that segment's registration; the failure is
+            reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
+            and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
         object_store_config:
             Use a custom object store configuration for the registration.
@@ -968,8 +970,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             If `None`, this defaults to `"base"`.
 
         on_duplicate:
-            How to handle the cases where the segment id and layer name already exist in the dataset?
-            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+            How to handle a segment layer that already exists in the dataset.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`, which fails that segment's registration; the failure is
+            reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
+            and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
         object_store_config:
             Use a custom object store configuration for the registration.

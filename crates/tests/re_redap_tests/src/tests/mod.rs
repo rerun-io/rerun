@@ -151,7 +151,6 @@ define_redap_tests! {
     query_index_values::query_dataset_per_segment_values_wire_level,
     query_index_values::query_dataset_per_segment_values_validation_rejected,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
-    register_asset::asset_dataset_enforces_segment_limit,
     register_asset::asset_dataset_enforces_segment_size_limit,
     register_asset::asset_dataset_rejects_temporal_recording,
     register_asset::blueprint_dataset_enforces_segment_size_limit,
@@ -185,7 +184,6 @@ define_redap_tests! {
     register_segment::register_fully_skipped,
     register_segment::register_intra_request_duplicates,
     register_segment::register_segment_bumps_timestamp,
-    register_segment::register_with_dataset_if_duplicate_behavior_error,
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,
     register_segment::register_with_prefix,
@@ -215,6 +213,11 @@ define_redap_tests! {
     ; // Tests that return `anyhow::Result<()>`:
     ; // OSS-only tests:
     find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
+    // TODO(RR-5971): Rerun Hub still rejects duplicates and segment-count overflows
+    // synchronously instead of failing the registration task.
+    register_asset::asset_dataset_enforces_segment_limit,
+    register_asset::asset_dataset_segment_limit_counts_layers,
+    register_segment::register_with_dataset_if_duplicate_behavior_error,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

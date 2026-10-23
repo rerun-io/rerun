@@ -478,8 +478,7 @@ impl Dataset {
                     .map_err(Error::failed_to_extract_properties)?,
             );
 
-            // In re_server, only successful registrations exist (schema conflicts fail synchronously),
-            // so all entries are always `Done`.
+            // Rejected sources are never stored, so every entry here is `Done`.
             registration_statuses.push(cloud_ext::LayerRegistrationStatus::Done.to_string());
 
             properties.push(source.compute_properties().await?);
@@ -534,21 +533,30 @@ impl Dataset {
     fn enforce_limits(&self, segment_id: &SegmentId, source: &Source) -> Result<(), Error> {
         let limits = self.dataset_kind.limits();
 
-        // Only new segments count against the limit. Adding a layer to an existing segment is fine.
-        // Like the cloud server, the segment-count cap is enforced synchronously up front.
+        // Every segment layer takes a slot, as on Rerun Hub, where the limit counts the rows of
+        // the dataset manifest. Re-registering a layer that already has one is free.
         if let Some(max) = limits.max_segment_count
-            && !self.inner.segments.contains_key(segment_id)
-            && self.inner.segments.len() as u64 >= max
+            && !self
+                .inner
+                .segments
+                .get(segment_id)
+                .is_some_and(|segment| segment.has_layer(&source.layer_info().name))
         {
-            return Err(Error::SegmentLimitReached(format!(
-                "this {} already holds the maximum of {max} {}s",
-                self.dataset_kind.name(),
-                self.dataset_kind.contained_name(),
-            )));
+            let current: u64 = self
+                .inner
+                .segments
+                .values()
+                .map(|segment| segment.source_count() as u64)
+                .sum();
+            if current >= max {
+                return Err(Error::SegmentLimitReached(format!(
+                    "would exceed the limit of {max} ({current} already registered)"
+                )));
+            }
         }
 
-        // The content checks below match the cloud server, which rejects them during the
-        // registration task. `register_with_dataset` reports `SegmentRejected` as a failed task.
+        // The checks here match Rerun Hub, which applies them during the registration task.
+        // `register_with_dataset` reports each rejection as that segment's failed task.
         if limits.static_chunks_only && source.has_temporal_chunks() {
             return Err(Error::SegmentRejected(format!(
                 "{}s only accept static chunks, but {} '{segment_id}' contains temporal data",
