@@ -360,6 +360,12 @@ message ViewerControlRequest {
     // `FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where
     // `NOT_FOUND` means no asset has anything at or below `entity_path`.
     GetDatasetAssetsSchemaRequest get_dataset_assets_schema = 21;
+
+    // Report a problem with a Rerun tool, doc, or API, after you have tried to work around it.
+    // Write only about Rerun, never about the user's data.
+    // The text is only sent when the user has agreed to share redacted prompts with Rerun.
+    // Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
+    SubmitFeedbackRequest submit_feedback = 22;
   }
 }
 
@@ -425,6 +431,9 @@ message ViewerControlResponse {
 
     // Result of `get_dataset_assets_schema`.
     GetDatasetAssetsSchemaResponse get_dataset_assets_schema = 21;
+
+    // Result of `submit_feedback`.
+    SubmitFeedbackResponse submit_feedback = 22;
   }
 }
 
@@ -1414,3 +1423,72 @@ message SetLocationRequest {
 
 // Response for `SetLocation`.
 message SetLocationResponse {}
+
+// ----------------------------------------------------------------------------
+// SubmitFeedback
+
+// Request for `SubmitFeedback`.
+message SubmitFeedbackRequest {
+  // One or two sentences: what you tried to do, and what the tool, doc, or API did wrong or lacked.
+  string title = 1;
+
+  // What kind of problem it is.
+  FeedbackCategory category = 2;
+
+  // The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`.
+  optional string surface = 3;
+
+  // More detail: the error message, what you expected instead, and how you worked around it.
+  optional string summary = 4;
+
+  // Your name as an agent, e.g. `Claude Code` or `Codex`.
+  optional string agent = 5;
+
+  // How much the problem got in your way.
+  FeedbackSeverity severity = 6;
+}
+
+// What kind of problem a `SubmitFeedback` reports.
+enum FeedbackCategory {
+  // Not said.
+  FEEDBACK_CATEGORY_UNSPECIFIED = 0;
+
+  // A tool, command, or API did something wrong or failed.
+  FEEDBACK_CATEGORY_BUG = 1;
+
+  // The documentation, an example, or a skill does not match what Rerun does.
+  FEEDBACK_CATEGORY_DOCS_MISMATCH = 2;
+
+  // It works, but it took too many steps or was hard to find out how.
+  FEEDBACK_CATEGORY_FRICTION = 3;
+
+  // Something you needed is missing.
+  FEEDBACK_CATEGORY_FEATURE_GAP = 4;
+
+  // It used to work better, or it is slow.
+  FEEDBACK_CATEGORY_QUALITY_DEGRADATION = 5;
+
+  // Anything else about Rerun.
+  FEEDBACK_CATEGORY_OTHER = 6;
+}
+
+// How much the problem of a `SubmitFeedback` got in the way.
+enum FeedbackSeverity {
+  // No severity. Set a meaningful severity whenever you can.
+  FEEDBACK_SEVERITY_UNSPECIFIED = 0;
+
+  // You could not do the task at all.
+  FEEDBACK_SEVERITY_CRITICAL = 1;
+
+  // You finished the task only with a workaround that cost a lot.
+  FEEDBACK_SEVERITY_HIGH = 2;
+
+  // You worked around it.
+  FEEDBACK_SEVERITY_MEDIUM = 3;
+
+  // A small annoyance.
+  FEEDBACK_SEVERITY_LOW = 4;
+}
+
+// Response for `SubmitFeedback`.
+message SubmitFeedbackResponse {}

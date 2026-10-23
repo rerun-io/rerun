@@ -173,17 +173,17 @@ fn feedback_event(
         .unwrap_or_default()
         .to_owned();
     let json = trajectory.to_string();
-    let trajectory_bytes = json.len();
     re_analytics::event::Feedback {
         feedback_id,
         author: re_analytics::event::FeedbackAuthor::User,
-        subject: re_analytics::event::FeedbackSubject::Session,
         source: FEEDBACK_SOURCE,
-        feedback,
         agent,
-        trajectory: (trajectory_bytes <= MAX_TRAJECTORY_BYTES).then_some(json),
-        trajectory_bytes: Some(trajectory_bytes),
-        image_count: Some(image_count),
+        about: re_analytics::event::FeedbackAbout::Session(re_analytics::event::SessionFeedback {
+            feedback,
+            trajectory_bytes: Some(json.len()),
+            trajectory: (json.len() <= MAX_TRAJECTORY_BYTES).then_some(json),
+            image_count: Some(image_count),
+        }),
     }
 }
 
@@ -486,6 +486,14 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "analytics")]
+    fn session(event: re_analytics::event::Feedback) -> re_analytics::event::SessionFeedback {
+        match event.about {
+            re_analytics::event::FeedbackAbout::Session(session) => session,
+            re_analytics::event::FeedbackAbout::Product(_) => panic!("expected session feedback"),
+        }
+    }
+
     #[test]
     #[cfg(feature = "analytics")]
     fn a_trajectory_too_large_to_send_is_left_out() {
@@ -500,14 +508,24 @@ mod tests {
         trajectory.extra.feedback = "Too slow".to_owned();
 
         let mut json = serde_json::to_value(&trajectory).expect("serialize");
-        let event = feedback_event(&mut json, Uuid::new_v4(), "Test Agent".to_owned(), 0);
+        let event = session(feedback_event(
+            &mut json,
+            Uuid::new_v4(),
+            "Test Agent".to_owned(),
+            0,
+        ));
         assert_eq!(event.feedback, "Too slow");
         assert!(MAX_TRAJECTORY_BYTES < event.trajectory_bytes.expect("a trajectory"));
         assert!(event.trajectory.is_none());
 
         let mut small =
             serde_json::to_value(Trajectory::new(&Transcript::default(), None)).expect("serialize");
-        let small = feedback_event(&mut small, Uuid::new_v4(), "Test Agent".to_owned(), 0);
+        let small = session(feedback_event(
+            &mut small,
+            Uuid::new_v4(),
+            "Test Agent".to_owned(),
+            0,
+        ));
         let sent: serde_json::Value =
             serde_json::from_str(&small.trajectory.expect("a small trajectory is sent"))
                 .expect("parse");
@@ -523,9 +541,9 @@ mod tests {
         let event = feedback_event(&mut json, feedback_id, "Test Agent".to_owned(), 2);
         assert_eq!(event.feedback_id, feedback_id);
         assert_eq!(event.source, FEEDBACK_SOURCE);
-        assert_eq!(event.image_count, Some(2));
         assert_eq!(event.author, re_analytics::event::FeedbackAuthor::User);
-        assert_eq!(event.subject, re_analytics::event::FeedbackSubject::Session);
+        let event = session(event);
+        assert_eq!(event.image_count, Some(2));
 
         let sent: serde_json::Value =
             serde_json::from_str(&event.trajectory.expect("a small trajectory is sent"))

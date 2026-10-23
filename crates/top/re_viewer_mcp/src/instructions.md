@@ -50,5 +50,8 @@ Reading the data itself:
 - Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
 - `rerun_close` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
+Telling Rerun what let you down:
+- When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `rerun_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool in `surface`. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
+
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.

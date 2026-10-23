@@ -56,6 +56,9 @@ Reading the data itself:
 - Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
 - `rerun_close` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
+Telling Rerun what let you down:
+- When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `rerun_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool in `surface`. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
+
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
 
@@ -1388,6 +1391,64 @@ Conventions:
       }
     },
     "description": "Request for `SetTimeCursor`."
+  }
+}
+
+## rerun_submit_feedback
+
+{
+  "name": "rerun_submit_feedback",
+  "description": "Report a problem with a Rerun tool, doc, or API, after you have tried to work around it.\nWrite only about Rerun, never about the user's data.\nThe text is only sent when the user has agreed to share redacted prompts with Rerun.\nFails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "One or two sentences: what you tried to do, and what the tool, doc, or API did wrong or lacked."
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_CATEGORY_UNSPECIFIED",
+          "FEEDBACK_CATEGORY_BUG",
+          "FEEDBACK_CATEGORY_DOCS_MISMATCH",
+          "FEEDBACK_CATEGORY_FRICTION",
+          "FEEDBACK_CATEGORY_FEATURE_GAP",
+          "FEEDBACK_CATEGORY_QUALITY_DEGRADATION",
+          "FEEDBACK_CATEGORY_OTHER"
+        ],
+        "description": "What kind of problem it is."
+      },
+      "surface": {
+        "type": "string",
+        "description": "The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`."
+      },
+      "summary": {
+        "type": "string",
+        "description": "More detail: the error message, what you expected instead, and how you worked around it."
+      },
+      "agent": {
+        "type": "string",
+        "description": "Your name as an agent, e.g. `Claude Code` or `Codex`."
+      },
+      "severity": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_SEVERITY_UNSPECIFIED",
+          "FEEDBACK_SEVERITY_CRITICAL",
+          "FEEDBACK_SEVERITY_HIGH",
+          "FEEDBACK_SEVERITY_MEDIUM",
+          "FEEDBACK_SEVERITY_LOW"
+        ],
+        "description": "How much the problem got in your way."
+      }
+    },
+    "required": [
+      "title",
+      "category",
+      "severity"
+    ],
+    "description": "Request for `SubmitFeedback`."
   }
 }
 

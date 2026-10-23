@@ -31,6 +31,8 @@ use re_protos::viewer_control::v1alpha1::{
     ViewerReport, ViewerServer, ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView,
     get_blueprint_request, set_blueprint_request, viewer_control_request,
 };
+#[cfg(all(agent_panel, feature = "analytics"))]
+use re_protos::viewer_control::v1alpha1::{SubmitFeedbackRequest, SubmitFeedbackResponse};
 use re_sdk_types::blueprint::components::PlayState;
 use re_sdk_types::external::uuid;
 use re_types_core::SegmentId;
@@ -553,6 +555,29 @@ impl AppCore {
                 }
             }
 
+            Kind::SubmitFeedback(request) => {
+                cfg_select! {
+                    all(agent_panel, feature = "analytics") => {
+                        on_done.call(
+                            self.submit_feedback(request)
+                                .map(ViewerControlResponse::from),
+                        );
+                    }
+                    not(feature = "analytics") => {
+                        _ = request;
+                        on_done.call(Err(ViewerControlError::failed_precondition(
+                            "This viewer was built without analytics, so it cannot send feedback",
+                        )));
+                    }
+                    not(agent_panel) => {
+                        _ = request;
+                        on_done.call(Err(ViewerControlError::failed_precondition(
+                            "The web viewer cannot send feedback",
+                        )));
+                    }
+                }
+            }
+
             Kind::SetTimeCursor(request) => {
                 let SetTimeCursorRequest {
                     store_id,
@@ -681,6 +706,28 @@ impl AppCore {
         egui_ctx.request_repaint();
 
         Ok(HighlightRectResponse {})
+    }
+
+    /// Queue feedback that an agent sent about Rerun, to be sent with analytics.
+    ///
+    /// Its text is only sent with "Share redacted prompts with Rerun".
+    #[cfg(all(agent_panel, feature = "analytics"))]
+    fn submit_feedback(
+        &mut self,
+        request: SubmitFeedbackRequest,
+    ) -> Result<SubmitFeedbackResponse, ViewerControlError> {
+        if request.title.trim().is_empty() {
+            return Err(ViewerControlError::invalid_argument("`title` is empty"));
+        }
+        if !re_analytics::is_enabled() {
+            return Err(ViewerControlError::failed_precondition(
+                "Analytics is turned off in this viewer, so feedback cannot be sent",
+            ));
+        }
+        let share_text = self.state.agent_settings.share_redacted_prompts;
+        self.agent_panel
+            .submit_product_feedback(request, share_text);
+        Ok(SubmitFeedbackResponse {})
     }
 }
 

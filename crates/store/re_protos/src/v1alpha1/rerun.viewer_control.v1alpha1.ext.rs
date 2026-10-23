@@ -12,8 +12,8 @@ use crate::viewer_control::v1alpha1::{
     HighlightRectResponse, ListCommandsRequest, ListCommandsResponse, OpenRequest, OpenResponse,
     RunCommandRequest, RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse,
     SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
-    SetTimeCursorRequest, SetTimeCursorResponse, ViewerControlRequest, ViewerControlResponse,
-    viewer_control_request, viewer_control_response,
+    SetTimeCursorRequest, SetTimeCursorResponse, SubmitFeedbackRequest, SubmitFeedbackResponse,
+    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -128,6 +128,7 @@ viewer_control_ops! {
     "set_blueprint" => SetBlueprint(SetBlueprintRequest, SetBlueprintResponse),
     "set_location" => SetLocation(SetLocationRequest, SetLocationResponse),
     "set_time_cursor" => SetTimeCursor(SetTimeCursorRequest, SetTimeCursorResponse),
+    "submit_feedback" => SubmitFeedback(SubmitFeedbackRequest, SubmitFeedbackResponse),
 }
 
 #[cfg(test)]

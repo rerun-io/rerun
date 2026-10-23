@@ -9,6 +9,8 @@ use re_ui::UiExt as _;
 
 mod feedback;
 mod preamble;
+#[cfg(feature = "analytics")]
+mod product_feedback;
 mod self_improve;
 
 /// The MCP server name the agent sees the viewer under. Tools show up as `mcp__rerun__<tool>`.
@@ -63,11 +65,43 @@ pub struct ViewerAgentPanel {
 
     feedback: feedback::FeedbackModal,
 
+    /// Feedback that agents send about Rerun through the `submit_feedback` viewer control operation.
+    #[cfg(feature = "analytics")]
+    product_feedback: product_feedback::ProductFeedback,
+
     #[cfg(feature = "analytics")]
     analytics: crate::agent_analytics::TurnAnalytics,
 }
 
 impl ViewerAgentPanel {
+    /// Queue feedback that an agent sent about Rerun, to be sent.
+    ///
+    /// Its text is only sent when `share_text` is set, after the panel's agent has redacted it.
+    #[cfg(feature = "analytics")]
+    pub fn submit_product_feedback(
+        &mut self,
+        request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,
+        share_text: bool,
+    ) {
+        let redact_with = if share_text {
+            match self
+                .panel
+                .as_ref()
+                .map(|panel| panel.launch_config(&SessionContext::default()))
+            {
+                Some(Ok(config)) => Some(config),
+                Some(Err(err)) => {
+                    re_log::warn!("The text of an agent's feedback on Rerun is not sent: {err}");
+                    None
+                }
+                None => None,
+            }
+        } else {
+            None
+        };
+        self.product_feedback.submit(request, redact_with);
+    }
+
     /// Queue a nonblank prompt in the active conversation, buffering it until the panel exists.
     /// Requests input focus; the caller must open the panel.
     pub fn submit_prompt(&mut self, prompt: String) {

@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -304,6 +304,12 @@ pub mod viewer_control_request {
         /// `NOT_FOUND` means no asset has anything at or below `entity_path`.
         #[prost(message, tag = "21")]
         GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaRequest),
+        /// Report a problem with a Rerun tool, doc, or API, after you have tried to work around it.
+        /// Write only about Rerun, never about the user's data.
+        /// The text is only sent when the user has agreed to share redacted prompts with Rerun.
+        /// Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
+        #[prost(message, tag = "22")]
+        SubmitFeedback(super::SubmitFeedbackRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -322,7 +328,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -391,6 +397,9 @@ pub mod viewer_control_response {
         /// Result of `get_dataset_assets_schema`.
         #[prost(message, tag = "21")]
         GetDatasetAssetsSchema(super::GetDatasetAssetsSchemaResponse),
+        /// Result of `submit_feedback`.
+        #[prost(message, tag = "22")]
+        SubmitFeedback(super::SubmitFeedbackResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -2069,6 +2078,51 @@ impl ::prost::Name for SetLocationResponse {
         "/rerun.viewer_control.v1alpha1.SetLocationResponse".into()
     }
 }
+/// Request for `SubmitFeedback`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SubmitFeedbackRequest {
+    /// One or two sentences: what you tried to do, and what the tool, doc, or API did wrong or lacked.
+    #[prost(string, tag = "1")]
+    pub title: ::prost::alloc::string::String,
+    /// What kind of problem it is.
+    #[prost(enumeration = "FeedbackCategory", tag = "2")]
+    pub category: i32,
+    /// The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`.
+    #[prost(string, optional, tag = "3")]
+    pub surface: ::core::option::Option<::prost::alloc::string::String>,
+    /// More detail: the error message, what you expected instead, and how you worked around it.
+    #[prost(string, optional, tag = "4")]
+    pub summary: ::core::option::Option<::prost::alloc::string::String>,
+    /// Your name as an agent, e.g. `Claude Code` or `Codex`.
+    #[prost(string, optional, tag = "5")]
+    pub agent: ::core::option::Option<::prost::alloc::string::String>,
+    /// How much the problem got in your way.
+    #[prost(enumeration = "FeedbackSeverity", tag = "6")]
+    pub severity: i32,
+}
+impl ::prost::Name for SubmitFeedbackRequest {
+    const NAME: &'static str = "SubmitFeedbackRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SubmitFeedbackRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SubmitFeedbackRequest".into()
+    }
+}
+/// Response for `SubmitFeedback`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SubmitFeedbackResponse {}
+impl ::prost::Name for SubmitFeedbackResponse {
+    const NAME: &'static str = "SubmitFeedbackResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SubmitFeedbackResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SubmitFeedbackResponse".into()
+    }
+}
 /// Whether a recording's time cursor moves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2102,6 +2156,96 @@ impl PlayState {
             "PLAY_STATE_PAUSED" => Some(Self::Paused),
             "PLAY_STATE_PLAYING" => Some(Self::Playing),
             "PLAY_STATE_FOLLOWING" => Some(Self::Following),
+            _ => None,
+        }
+    }
+}
+/// What kind of problem a `SubmitFeedback` reports.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FeedbackCategory {
+    /// Not said.
+    Unspecified = 0,
+    /// A tool, command, or API did something wrong or failed.
+    Bug = 1,
+    /// The documentation, an example, or a skill does not match what Rerun does.
+    DocsMismatch = 2,
+    /// It works, but it took too many steps or was hard to find out how.
+    Friction = 3,
+    /// Something you needed is missing.
+    FeatureGap = 4,
+    /// It used to work better, or it is slow.
+    QualityDegradation = 5,
+    /// Anything else about Rerun.
+    Other = 6,
+}
+impl FeedbackCategory {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FEEDBACK_CATEGORY_UNSPECIFIED",
+            Self::Bug => "FEEDBACK_CATEGORY_BUG",
+            Self::DocsMismatch => "FEEDBACK_CATEGORY_DOCS_MISMATCH",
+            Self::Friction => "FEEDBACK_CATEGORY_FRICTION",
+            Self::FeatureGap => "FEEDBACK_CATEGORY_FEATURE_GAP",
+            Self::QualityDegradation => "FEEDBACK_CATEGORY_QUALITY_DEGRADATION",
+            Self::Other => "FEEDBACK_CATEGORY_OTHER",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FEEDBACK_CATEGORY_UNSPECIFIED" => Some(Self::Unspecified),
+            "FEEDBACK_CATEGORY_BUG" => Some(Self::Bug),
+            "FEEDBACK_CATEGORY_DOCS_MISMATCH" => Some(Self::DocsMismatch),
+            "FEEDBACK_CATEGORY_FRICTION" => Some(Self::Friction),
+            "FEEDBACK_CATEGORY_FEATURE_GAP" => Some(Self::FeatureGap),
+            "FEEDBACK_CATEGORY_QUALITY_DEGRADATION" => Some(Self::QualityDegradation),
+            "FEEDBACK_CATEGORY_OTHER" => Some(Self::Other),
+            _ => None,
+        }
+    }
+}
+/// How much the problem of a `SubmitFeedback` got in the way.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FeedbackSeverity {
+    /// No severity. Set a meaningful severity whenever you can.
+    Unspecified = 0,
+    /// You could not do the task at all.
+    Critical = 1,
+    /// You finished the task only with a workaround that cost a lot.
+    High = 2,
+    /// You worked around it.
+    Medium = 3,
+    /// A small annoyance.
+    Low = 4,
+}
+impl FeedbackSeverity {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FEEDBACK_SEVERITY_UNSPECIFIED",
+            Self::Critical => "FEEDBACK_SEVERITY_CRITICAL",
+            Self::High => "FEEDBACK_SEVERITY_HIGH",
+            Self::Medium => "FEEDBACK_SEVERITY_MEDIUM",
+            Self::Low => "FEEDBACK_SEVERITY_LOW",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FEEDBACK_SEVERITY_UNSPECIFIED" => Some(Self::Unspecified),
+            "FEEDBACK_SEVERITY_CRITICAL" => Some(Self::Critical),
+            "FEEDBACK_SEVERITY_HIGH" => Some(Self::High),
+            "FEEDBACK_SEVERITY_MEDIUM" => Some(Self::Medium),
+            "FEEDBACK_SEVERITY_LOW" => Some(Self::Low),
             _ => None,
         }
     }
