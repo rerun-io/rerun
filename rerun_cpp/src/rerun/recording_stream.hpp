@@ -166,9 +166,14 @@ namespace rerun {
         ///
         /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
         /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
+        /// \param flush_timeout How long a flush waits for the connection to be established.
+        /// See `GrpcSink::flush_timeout`.
         ///
         /// This function returns immediately.
-        Error connect_grpc(std::string_view url = "rerun+http://127.0.0.1:9876/proxy") const;
+        Error connect_grpc(
+            std::string_view url = "rerun+http://127.0.0.1:9876/proxy",
+            std::chrono::duration<float> flush_timeout = std::chrono::seconds(5)
+        ) const;
 
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
         ///

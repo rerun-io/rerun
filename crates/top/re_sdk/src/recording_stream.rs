@@ -2232,6 +2232,15 @@ impl RecordingStream {
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     pub fn connect_grpc_opts(&self, url: impl Into<String>) -> RecordingStreamResult<()> {
+        self.connect_grpc_with_options(url, re_grpc_client::write::Options::default())
+    }
+
+    #[doc(hidden)]
+    pub fn connect_grpc_with_options(
+        &self,
+        url: impl Into<String>,
+        options: re_grpc_client::write::Options,
+    ) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
@@ -2242,7 +2251,7 @@ impl RecordingStream {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 
-        let sink = crate::log_sink::GrpcSink::new(uri);
+        let sink = crate::log_sink::GrpcSink::new_with_options(uri, options);
 
         self.set_sink(Box::new(sink));
         Ok(())

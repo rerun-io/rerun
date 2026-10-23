@@ -331,6 +331,13 @@ typedef struct rr_grpc_sink {
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     rr_string url;
+
+    /// How long a flush waits for the connection to be established, in seconds.
+    ///
+    /// If the sink has not connected by then, the flush fails, and dropping the sink discards
+    /// the data that has not been sent.
+    /// Must be finite and non-negative.
+    float flush_timeout_sec;
 } rr_grpc_sink;
 
 /// Log sink which writes messages to a file.
@@ -559,10 +566,14 @@ extern void rr_recording_stream_set_sinks(
 ///
 /// The default is `rerun+http://127.0.0.1:9876/proxy`.
 ///
+/// flush_timeout_sec:
+/// How long a flush waits for the connection to be established, in seconds.
+/// See `rr_grpc_sink::flush_timeout_sec`.
+///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect_grpc(
-    rr_recording_stream stream, rr_string url, rr_error* error
+    rr_recording_stream stream, rr_string url, float flush_timeout_sec, rr_error* error
 );
 
 /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.

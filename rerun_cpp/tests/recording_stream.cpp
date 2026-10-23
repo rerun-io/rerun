@@ -17,6 +17,8 @@ namespace fs = std::filesystem;
 
 #define TEST_TAG "[recording_stream]"
 
+static constexpr std::chrono::duration<float> NoServerFlushTimeout = std::chrono::seconds(0);
+
 struct BadComponent {};
 
 // Not making this static makes lsan_suppressions.supp miss this.
@@ -321,9 +323,17 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
             );
         }
     }
+    AND_GIVEN("a negative flush timeout") {
+        THEN("connect call fails") {
+            CHECK(
+                stream.connect_grpc(url, std::chrono::seconds(-1)).code ==
+                rerun::ErrorCode::InvalidTimeArgument
+            );
+        }
+    }
     AND_GIVEN("a valid socket url  " << url) {
         THEN("connect call returns no error") {
-            CHECK(stream.connect_grpc(url).code == rerun::ErrorCode::Ok);
+            CHECK(stream.connect_grpc(url, NoServerFlushTimeout).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -392,12 +402,18 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
         }
         AND_GIVEN("a valid url " << url) {
             THEN("set_sinks(GrpcSink) call returns no error") {
-                CHECK(stream.set_sinks(rerun::GrpcSink{url}).code == rerun::ErrorCode::Ok);
+                CHECK(
+                    stream.set_sinks(rerun::GrpcSink{url, NoServerFlushTimeout}).code ==
+                    rerun::ErrorCode::Ok
+                );
             }
         }
 
         AND_GIVEN("both a url " << url << " and a save path " << test_rrd0) {
-            auto error = stream.set_sinks(rerun::GrpcSink{url}, rerun::FileSink{test_rrd0});
+            auto error = stream.set_sinks(
+                rerun::GrpcSink{url, NoServerFlushTimeout},
+                rerun::FileSink{test_rrd0}
+            );
             AND_GIVEN("Error: " << error.description) {
                 THEN("set_sinks(GrpcSink, FileSink) call returns no error") {
                     CHECK(error.code == rerun::ErrorCode::Ok);
