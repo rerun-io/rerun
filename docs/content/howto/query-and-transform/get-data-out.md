@@ -164,6 +164,28 @@ selection = dataset.filter_contents(["/world/**"]).filter_segments(["recording_0
 
 `filter_contents()` takes [entity path filter](../../concepts/logging-and-ingestion/entity-path.md#entity-path-filters) expressions.
 
+Chained filters narrow the selection: an entity or segment is kept only if every call selects it.
+To combine several subtrees, or includes with excludes, pass all the expressions to a single `filter_contents()` call.
+To exclude entities from an existing selection, start from everything and exclude from there.
+
+```python
+# Selects `/world/robot/arm/**` only
+selection = dataset.filter_contents("/world/robot/**").filter_contents("/world/robot/arm/**")
+
+# Selects nothing, since no entity is in both subtrees
+selection = dataset.filter_contents("/world/robot/**").filter_contents("/sensors/**")
+
+# Selects both subtrees
+selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+
+# Selects `/world/robot/**` without `/world/robot/debug/**`
+selection = dataset.filter_contents(["/world/robot/**", "-/world/robot/debug/**"])
+
+# Same, but narrowing an existing selection
+robot = dataset.filter_contents("/world/robot/**")
+selection = robot.filter_contents(ContentFilter.everything().exclude("/world/robot/debug/**"))
+```
+
 `DatasetSelection` instances have the exact same `reader()` method as the original dataset:
 
 ```python

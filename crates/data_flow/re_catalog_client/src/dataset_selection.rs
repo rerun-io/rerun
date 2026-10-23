@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use re_log_types::EntryId;
+use re_log_types::{EntityPath, EntityPathFilter, EntryId, ResolvedEntityPathFilter};
 use re_types_core::SegmentId;
 
 /// Which segments of a dataset a [`DatasetSelection`] keeps.
@@ -25,6 +25,10 @@ pub enum SegmentSelection {
 pub struct DatasetSelection {
     dataset_id: EntryId,
     segments: SegmentSelection,
+
+    /// An entity is selected only if every filter matches it; no filter selects every entity.
+    //TODO(RR-3157): add the ability to select individual columns.
+    content_filters: Vec<ResolvedEntityPathFilter>,
 }
 
 impl From<EntryId> for DatasetSelection {
@@ -39,6 +43,7 @@ impl DatasetSelection {
         Self {
             dataset_id,
             segments: SegmentSelection::All,
+            content_filters: Vec::new(),
         }
     }
 
@@ -78,7 +83,33 @@ impl DatasetSelection {
         Self {
             dataset_id: self.dataset_id,
             segments: SegmentSelection::Only(segments),
+            content_filters: self.content_filters.clone(),
         }
+    }
+
+    pub fn content_filters(&self) -> &[ResolvedEntityPathFilter] {
+        &self.content_filters
+    }
+
+    /// Restrict the selection to the entities `filter` matches, intersected with any existing
+    /// content restriction.
+    ///
+    /// Each filter is resolved on its own, so it excludes properties unless it names them:
+    /// a later call can't bring back what an earlier one excluded.
+    #[must_use]
+    pub fn filter_contents(&self, filter: EntityPathFilter) -> Self {
+        let mut selection = self.clone();
+        selection
+            .content_filters
+            .push(filter.resolve_without_substitutions());
+        selection
+    }
+
+    /// Without a content filter, every entity is selected, properties included.
+    pub fn selects_entity(&self, entity_path: &EntityPath) -> bool {
+        self.content_filters
+            .iter()
+            .all(|filter| filter.matches(entity_path))
     }
 }
 
@@ -92,6 +123,14 @@ mod tests {
 
     fn selection() -> DatasetSelection {
         DatasetSelection::new(EntryId::new())
+    }
+
+    fn filter(expr: &str) -> EntityPathFilter {
+        EntityPathFilter::parse_forgiving(expr)
+    }
+
+    fn selects(selection: &DatasetSelection, entity_path: &str) -> bool {
+        selection.selects_entity(&EntityPath::from(entity_path))
     }
 
     #[test]
@@ -143,5 +182,89 @@ mod tests {
         let base = selection();
         let filtered = base.filter_segments(ids(&["a"]));
         assert_eq!(filtered.dataset_id(), base.dataset_id());
+    }
+
+    #[test]
+    fn new_selects_every_entity_including_properties() {
+        let selection = selection();
+        assert!(selection.content_filters().is_empty());
+        assert!(selects(&selection, "/anything/at/all"));
+        assert!(selects(&selection, "/__properties"));
+    }
+
+    #[test]
+    fn empty_content_filter_selects_nothing() {
+        let filtered = selection().filter_contents(filter(""));
+        assert!(!selects(&filtered, "/points"));
+        assert!(!selects(&filtered, "/__properties"));
+    }
+
+    #[test]
+    fn content_filter_excludes_properties_unless_named() {
+        assert!(!selects(
+            &selection().filter_contents(filter("/**")),
+            "/__properties"
+        ));
+        assert!(selects(
+            &selection().filter_contents(filter("/** /__properties/**")),
+            "/__properties"
+        ));
+    }
+
+    #[test]
+    fn chained_content_filters_intersect() {
+        let filtered = selection()
+            .filter_contents(filter("/robot/**"))
+            .filter_contents(filter("/robot/arm/**"));
+        assert!(selects(&filtered, "/robot/arm/elbow"));
+        assert!(!selects(&filtered, "/robot/base"));
+    }
+
+    #[test]
+    fn later_content_filter_cannot_include_what_an_earlier_one_excluded() {
+        let filtered = selection()
+            .filter_contents(filter("/robot/** -/robot/arm/**"))
+            .filter_contents(filter("/robot/arm/gripper"));
+        assert!(!selects(&filtered, "/robot/arm/gripper"));
+        assert!(!selects(&filtered, "/robot/base"));
+    }
+
+    #[test]
+    fn later_content_filter_can_exclude_from_everything() {
+        let filtered = selection()
+            .filter_contents(filter("/robot/**"))
+            .filter_contents(filter("/** -/robot/debug/**"));
+        assert!(selects(&filtered, "/robot/arm"));
+        assert!(!selects(&filtered, "/robot/debug/trace"));
+        assert!(!selects(&filtered, "/camera"));
+    }
+
+    #[test]
+    fn exclusion_only_content_filter_selects_nothing() {
+        let filtered = selection()
+            .filter_contents(filter("/robot/**"))
+            .filter_contents(filter("-/robot/debug/**"));
+        assert!(!selects(&filtered, "/robot/arm"));
+        assert!(!selects(&filtered, "/robot/debug/trace"));
+    }
+
+    #[test]
+    fn properties_named_in_one_content_filter_only_stay_excluded() {
+        let filtered = selection()
+            .filter_contents(filter("/** /__properties/**"))
+            .filter_contents(filter("/**"));
+        assert!(selects(&filtered, "/points"));
+        assert!(!selects(&filtered, "/__properties"));
+    }
+
+    #[test]
+    fn segment_and_content_filters_are_independent() {
+        let filtered = selection()
+            .filter_segments(ids(&["a", "b"]))
+            .filter_contents(filter("/points/**"))
+            .filter_segments(ids(&["b"]));
+        assert_eq!(filtered.segment_filter(), Some(&ids(&["b"])));
+        assert!(selects(&filtered, "/points/a"));
+        assert!(!selects(&filtered, "/text"));
     }
 }

@@ -886,7 +886,7 @@ impl PyDatasetEntryInternal {
     ) -> super::PyDatasetSelectionInternal {
         let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id)
             .filter_segments(segment_ids.into_iter().map(SegmentId::from));
-        super::PyDatasetSelectionInternal::new(Py::from(self_), selection, None)
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection)
     }
 
     /// Returns a new `DatasetSelection` filtered to the given entity paths.
@@ -904,8 +904,9 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         exprs: Vec<String>,
     ) -> super::PyDatasetSelectionInternal {
-        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id);
-        super::PyDatasetSelectionInternal::new(Py::from(self_), selection, Some(exprs))
+        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id)
+            .filter_contents(super::parse_content_filter(&exprs));
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection)
     }
 
     pub fn __str__(self_: PyRef<'_, Self>) -> String {

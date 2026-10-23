@@ -154,6 +154,28 @@ def test_dataset_selection_filter_contents_empty_list(
     assert str(schema) == snapshot()
 
 
+def test_dataset_selection_chained_filter_contents_intersect(readonly_test_dataset: DatasetEntry) -> None:
+    """Each chained `filter_contents()` call can only narrow the selection."""
+
+    def entity_columns(schema: pa.Schema) -> list[str]:
+        return sorted(name for name in schema.names if name.startswith("/"))
+
+    obj1_columns = entity_columns(pa.schema(readonly_test_dataset.filter_contents("/obj1/**").schema()))
+    assert obj1_columns
+
+    narrowed = readonly_test_dataset.filter_contents("/**").filter_contents("/obj1/**")
+    assert entity_columns(pa.schema(narrowed.schema())) == obj1_columns
+    assert entity_columns(pa.schema(narrowed.reader(index="time_1").schema())) == obj1_columns
+
+    disjoint = readonly_test_dataset.filter_contents("/obj1/**").filter_contents("/obj2/**")
+    assert entity_columns(pa.schema(disjoint.schema())) == []
+    assert entity_columns(pa.schema(disjoint.reader(index="time_1").schema())) == []
+
+    not_undone = readonly_test_dataset.filter_contents(["/**", "-/obj1/**"]).filter_contents("/obj1/**")
+    assert entity_columns(pa.schema(not_undone.schema())) == []
+    assert entity_columns(pa.schema(not_undone.reader(index="time_1").schema())) == []
+
+
 def test_dataset_selection_no_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test that not using filter_contents returns all data columns."""
 

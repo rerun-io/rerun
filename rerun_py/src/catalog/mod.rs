@@ -45,7 +45,7 @@ pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
 pub use self::dataset_info::PyDatasetInfoInternal;
-pub use self::dataset_selection::PyDatasetSelectionInternal;
+pub use self::dataset_selection::{PyDatasetSelectionInternal, parse_content_filter};
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};

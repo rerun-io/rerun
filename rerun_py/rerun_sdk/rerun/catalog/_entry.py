@@ -1099,6 +1099,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
 
+        Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
+        call's expressions select it. To combine includes and excludes, pass them in a single call.
+
         Parameters
         ----------
         exprs:
@@ -1593,6 +1596,9 @@ class DatasetSelection:
         - `"-/text/**"` excludes all entities under /text
 
         See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+
+        Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
+        call's expressions select it. To combine includes and excludes, pass them in a single call.
 
         Parameters
         ----------

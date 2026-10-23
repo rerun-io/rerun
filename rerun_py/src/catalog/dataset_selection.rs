@@ -13,7 +13,7 @@ use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_catalog_client::DatasetSelection;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
-use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
+use re_log_types::EntityPathFilter;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 use re_types_core::SegmentId;
 
@@ -40,44 +40,24 @@ pub struct PyDatasetSelectionInternal {
     // workflow/performance indicates that it would be useful, we should consider keeping the
     // logical plan and lazily execute it instead of materializing the segment IDs.
     selection: DatasetSelection,
-
-    /// Content filters: entity path expressions like "/points/**", "-/text/**".
-    /// - `None` means no filter was specified (-> keep everything from schema)
-    /// - `Some([])` means filter out everything (`.filter_contents([])`)
-    /// - `Some([...])` use the provided paths as filters
-    content_filters: Option<Vec<String>>,
 }
 
 impl PyDatasetSelectionInternal {
-    /// Create a new `DatasetSelection` from a dataset with optional initial filters.
-    ///
     /// `selection` must select from `dataset`.
-    pub fn new(
-        dataset: Py<PyDatasetEntryInternal>,
-        selection: DatasetSelection,
-        content_filters: Option<Vec<String>>,
-    ) -> Self {
-        Self {
-            dataset,
-            selection,
-            content_filters,
-        }
+    pub fn new(dataset: Py<PyDatasetEntryInternal>, selection: DatasetSelection) -> Self {
+        Self { dataset, selection }
     }
 
     /// Filter schema columns based on content filters.
     fn filter_schema(&self, schema: SorbetColumnDescriptors) -> SorbetColumnDescriptors {
-        if self.content_filters.is_none() {
-            return schema;
-        }
-
-        let filter = resolved_entity_path_filter(self.content_filters.as_ref());
-
         // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
             .into_iter()
             .filter(|col| {
                 match col {
-                    ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
+                    ColumnDescriptor::Component(comp) => {
+                        self.selection.selects_entity(&comp.entity_path)
+                    }
                     // Keep row_id and index columns
                     ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
                 }
@@ -88,6 +68,14 @@ impl PyDatasetSelectionInternal {
             columns: filtered_columns,
         }
     }
+}
+
+/// Parse `filter_contents()` expressions into a single content filter.
+///
+/// Each expression may hold several whitespace-separated rules, and parsing ignores errors.
+/// An empty list yields a filter without rules, which selects nothing.
+pub fn parse_content_filter(exprs: &[String]) -> EntityPathFilter {
+    EntityPathFilter::parse_forgiving(exprs.join(" "))
 }
 
 #[pymethods]
@@ -108,10 +96,25 @@ impl PyDatasetSelectionInternal {
             .map(|ids| ids.iter().map(|id| id.to_string()).collect())
     }
 
-    /// Return the content filter expressions.
+    /// Return the content filter expressions, one per `filter_contents()` call.
+    ///
+    /// `None` when there is no content filter, never `Some([])`.
     #[getter]
     fn content_filters(&self) -> Option<Vec<String>> {
-        self.content_filters.clone()
+        let filters = self.selection.content_filters();
+
+        // Note: this logic is kept here in the ffi glue instead of in re_catalog_client because of
+        // the denormalized return type (`Some([])` never happens).
+        (!filters.is_empty()).then(|| {
+            filters
+                .iter()
+                .map(|filter| {
+                    filter
+                        .iter_unresolved_expressions_without_properties()
+                        .join(" ")
+                })
+                .collect()
+        })
     }
 
     /// Return the schema of the data contained in this selection.
@@ -174,7 +177,6 @@ impl PyDatasetSelectionInternal {
                 self_
                     .selection
                     .filter_segments(segment_ids.into_iter().map(SegmentId::from)),
-                self_.content_filters.clone(),
             ),
         )
     }
@@ -190,22 +192,13 @@ impl PyDatasetSelectionInternal {
         let _span =
             read_trace_context_from_python(py, "DatasetSelection.filter_contents").entered();
 
-        // Combine with existing content filters
-        let combined_filters = match &self_.content_filters {
-            Some(existing) => {
-                let mut combined = existing.clone();
-                combined.extend(exprs);
-                combined
-            }
-            None => exprs,
-        };
-
         Py::new(
             py,
             Self::new(
                 self_.dataset.clone_ref(py),
-                self_.selection.clone(),
-                Some(combined_filters),
+                self_
+                    .selection
+                    .filter_contents(parse_content_filter(&exprs)),
             ),
         )
     }
@@ -261,7 +254,6 @@ impl PyDatasetSelectionInternal {
             py,
             &self_.dataset,
             &self_.selection,
-            self_.content_filters.as_ref(),
             index,
             include_semantically_empty_columns,
             include_tombstone_columns,
@@ -283,34 +275,6 @@ impl PyDatasetSelectionInternal {
     }
 }
 
-/// Get the resolved entity path filter from content filter expressions.
-///
-/// This achieves the following semantics:
-/// - no `filter_contents()` -> everything
-/// - `filter_contents([])` -> nothing
-/// - `filter_contents("/doesnt/exist")` -> nothing
-/// - `filter_contents("/does/exist")` -> only matching columns
-///
-/// Also, it always applies the "hide properties by default" implicit behavior.
-fn resolved_entity_path_filter(content_filters: Option<&Vec<String>>) -> ResolvedEntityPathFilter {
-    match content_filters {
-        None => {
-            // No filter specified - accept everything
-            EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions()
-        }
-
-        Some(filters) if filters.is_empty() => {
-            // Empty filter explicitly specified - accept nothing
-            EntityPathFilter::parse_forgiving("-/**").resolve_without_substitutions()
-        }
-
-        Some(filters) => {
-            let expr = filters.join(" ");
-            EntityPathFilter::parse_forgiving(&expr).resolve_without_substitutions()
-        }
-    }
-}
-
 /// Whether `schema` has an index column named `index`.
 fn has_index(schema: &ArrowSchema, index: &str) -> bool {
     schema.field_with_name(index).is_ok_and(|field| {
@@ -321,12 +285,14 @@ fn has_index(schema: &ArrowSchema, index: &str) -> bool {
     })
 }
 
-/// Build a `ViewContentsSelector` from content filters.
-fn build_view_contents(
-    schema: &ArrowSchema,
-    content_filters: Option<&Vec<String>>,
-) -> ViewContentsSelector {
-    let filter = resolved_entity_path_filter(content_filters);
+/// Build a `ViewContentsSelector` from the selection's content filters.
+fn build_view_contents(schema: &ArrowSchema, selection: &DatasetSelection) -> ViewContentsSelector {
+    // Like `DatasetEntry.reader()`, dataframe queries exclude properties unless a content filter names them.
+    let selection = if selection.content_filters().is_empty() {
+        selection.filter_contents(EntityPathFilter::all())
+    } else {
+        selection.clone()
+    };
 
     schema
         .fields()
@@ -339,7 +305,7 @@ fn build_view_contents(
                 None
             }
         })
-        .filter(|comp| filter.matches(&comp.entity_path))
+        .filter(|comp| selection.selects_entity(&comp.entity_path))
         .map(|comp| (comp.entity_path.clone(), None))
         .collect()
 }
@@ -350,7 +316,6 @@ fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
     selection: &DatasetSelection,
-    content_filters: Option<&Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
@@ -383,7 +348,7 @@ fn build_dataframe_query_table_provider(
     drop(client_ref);
     drop(dataset_ref);
 
-    let view_contents = build_view_contents(&schema, content_filters);
+    let view_contents = build_view_contents(&schema, selection);
     let segment_ids: Vec<&str> = selection
         .segment_filter()
         .map(|ids| ids.iter().map(SegmentId::as_str).collect())

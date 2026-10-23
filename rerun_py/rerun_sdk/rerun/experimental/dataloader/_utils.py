@@ -214,9 +214,7 @@ class _WorkerConnection:
         dataset = client.get_dataset(self._dataset_name)
         self._decoders = {k: f.decode for k, f in self._fields.items()}
         # Leave the dataset unscoped here: each query plan narrows contents to its own
-        # entities at query time (`_fetch_query`, `_fetch_prior_keyframes`). A shared
-        # union filter here would defeat that, since `filter_contents` only ever widens,
-        # so a group could never exclude the other groups' (heavy video) entities.
+        # entities at query time (`_fetch_query`, `_fetch_prior_keyframes`).
         self._view = dataset
         self._initialized = True
         self._init_pid = pid
