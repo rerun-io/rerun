@@ -51,6 +51,7 @@ export default class WebViewer extends React.Component {
   componentDidUpdate(/** @type {Props} */ prevProps) {
     if (
       keysChanged(prevProps, this.props, [
+        "analytics",
         "hide_welcome_screen",
         "check_for_updates_on_startup",
         "manifest_url",
@@ -128,6 +129,7 @@ function startViewer(handle, parent, getProps) {
   const initial = toArray(props.rrd);
   handle
     .start(initial, parent, {
+      analytics: props.analytics,
       manifest_url: props.manifest_url,
       render_backend: props.render_backend,
       hide_welcome_screen: props.hide_welcome_screen,

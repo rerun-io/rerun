@@ -589,6 +589,7 @@ pub struct AppOptions {
     memory_limit: Option<String>,
     hide_welcome_screen: Option<bool>,
     check_for_updates_on_startup: Option<bool>,
+    analytics: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
     enable_history: Option<bool>,
     // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
@@ -657,6 +658,7 @@ fn create_app(
 
     let AppOptions {
         viewer_base_url,
+        analytics,
         url,
         manifest_url,
         render_backend,
@@ -699,6 +701,7 @@ fn create_app(
         location: Some(cc.integration_info.web_info.location.clone()),
         // Don't persist state in integration-test mode.
         persist_state: !integration_test,
+        analytics_enabled: analytics.unwrap_or(true),
         check_for_updates_on_startup,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,

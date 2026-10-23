@@ -460,6 +460,63 @@ pub(crate) async fn connect_grpc_client(
 // in practice.
 pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod analytics_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn host_opt_out_prevents_query_analytics_connections() {
+        struct RestoreAnalytics;
+
+        impl Drop for RestoreAnalytics {
+            fn drop(&mut self) {
+                re_analytics::set_enabled(true);
+            }
+        }
+        let _restore = RestoreAnalytics;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut accepted = tokio::spawn(async move {
+            let (_stream, _) = listener.accept().await.unwrap();
+        });
+        let endpoint =
+            tonic::transport::Endpoint::from_shared(format!("http://{address}")).unwrap();
+        let (_, service) =
+            assemble_grpc_client(PoolChannel::new(vec![endpoint.connect_lazy()]), None, None);
+        let exporter = crate::ConnectionAnalyticsExporter::from_remote_service(
+            format!("rerun+http://{address}").parse().unwrap(),
+            service,
+        );
+
+        re_analytics::set_enabled(false);
+        let disabled = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            exporter.export_trace(Default::default(), None),
+        )
+        .await;
+        assert!(
+            matches!(disabled, Ok(Ok(()))),
+            "disabled analytics reached the transport: {disabled:?}"
+        );
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), &mut accepted)
+                .await
+                .is_err()
+        );
+
+        re_analytics::set_enabled(true);
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            exporter.export_trace(Default::default(), None),
+        )
+        .await;
+        tokio::time::timeout(std::time::Duration::from_secs(1), accepted)
+            .await
+            .expect("enabled analytics should open a connection")
+            .unwrap();
+    }
+}
+
 #[tracing::instrument(level = "debug", skip_all)]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(

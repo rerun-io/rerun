@@ -10,7 +10,8 @@
   "private": true,
   "scripts": {
     "docs": "node scripts/docs.mjs",
-    "docs:serve": "node scripts/serve-docs.mjs"
+    "docs:serve": "node scripts/serve-docs.mjs",
+    "test": "node --test scripts/*.test.mjs"
   },
   "workspaces": [
     "web-viewer",

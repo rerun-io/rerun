@@ -264,6 +264,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
+        re_analytics::set_enabled(startup_options.analytics_enabled);
+
         // Install ring as the default provider for reqwest 0.13.
         #[cfg(not(target_arch = "wasm32"))]
         rustls::crypto::ring::default_provider()
