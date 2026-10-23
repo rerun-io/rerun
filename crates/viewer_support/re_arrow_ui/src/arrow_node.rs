@@ -136,13 +136,39 @@ impl<'a> ArrowNode<'a> {
                             // Keep showing the data type when the tooltip is open, so the
                             // user can interact with it.
                             if visuals.hovered || tooltip_open {
+                                let border_stroke = Stroke::new(1.0, visuals.text_color());
+                                let border_padding = 2.0;
+
+                                // The badge border extends beyond its label, and floating scrollbars
+                                // can cover the clipping edge. Account for any existing inset so
+                                // callers that already pad their content don't pay for it twice.
+                                let scroll = ui.spacing().scroll;
+                                let mut right_visible_edge = ui.clip_rect().right();
+                                if scroll.floating {
+                                    for parent in ui.stack().iter() {
+                                        if parent.kind() == Some(egui::UiKind::ScrollArea) {
+                                            right_visible_edge = right_visible_edge.min(
+                                                parent.max_rect.right()
+                                                    - scroll.bar_width
+                                                    - scroll.bar_inner_margin
+                                                    - scroll.bar_outer_margin,
+                                            );
+                                        }
+                                    }
+                                }
+                                let right = ui.available_rect_before_wrap().right();
+                                let inset = (right + border_padding + border_stroke.width / 2.0
+                                    - right_visible_edge)
+                                    .max(0.0);
+                                ui.add_space(inset);
+
                                 // TODO(lucas): We should show the nullability here too
                                 let response =
                                     ui.small(RichText::new(&data_type_ui.type_name).strong());
                                 ui.painter().rect_stroke(
-                                    response.rect.expand(2.0),
+                                    response.rect.expand(border_padding),
                                     4.0,
-                                    Stroke::new(1.0, visuals.text_color()),
+                                    border_stroke,
                                     StrokeKind::Middle,
                                 );
 

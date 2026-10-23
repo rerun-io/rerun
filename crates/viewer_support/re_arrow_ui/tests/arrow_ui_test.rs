@@ -110,6 +110,39 @@ fn arrow_tree_ui() {
     }
 }
 
+// Regression test for on-hover labels being cut off by scroll bars.
+#[test]
+fn hover_type_badge_in_scroll_area() {
+    use egui_kittest::kittest::Queryable as _;
+
+    let array = arrow::array::StringArray::from(vec!["value"; 5]);
+    let mut results = SnapshotResults::new();
+    for (name, margin) in [("flush", 0), ("padded", 16)] {
+        let mut harness =
+            re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, egui::vec2(300.0, 100.0))
+                .build_ui(|ui| {
+                    egui::Panel::right("selection_panel") // Makes the test more realistic for how this is usually used.
+                        .default_size(284.0)
+                        .frame(egui::Frame::NONE)
+                        .show(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .content_margin(egui::Margin::same(margin))
+                                .show(ui, |ui| {
+                                    re_arrow_ui::arrow_ui(
+                                        ui,
+                                        UiLayout::SelectionPanel,
+                                        Default::default(),
+                                        &array,
+                                    );
+                                });
+                        });
+                });
+        harness.get_by_label("0").hover();
+        harness.run();
+        results.add(harness.try_snapshot(format!("hover_type_badge_scrollbar_{name}")));
+    }
+}
+
 #[test]
 fn inline_formatting() {
     for (name, data) in arrow_test_data::all_arrays() {
