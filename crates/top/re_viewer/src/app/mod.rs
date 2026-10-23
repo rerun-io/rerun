@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::RwLockReadGuard;
 use re_async::AsyncRuntimeHandle;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
@@ -10,7 +10,7 @@ use re_capabilities::MainThreadToken;
 use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_log_channel::{LogReceiverSet, RecordingOpenBehavior, SaveScreenshotError};
+use re_log_channel::{LogReceiverSet, RecordingOpenBehavior};
 use re_log_msg::FileSource;
 use re_log_types::{ApplicationId, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
@@ -21,12 +21,13 @@ use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
     AppBlueprintCtx, AppOptions, AuthContext, CommandReceiver, CommandSender, ComponentUiRegistry,
-    EditRedapServerModalCommand, FallbackProviderRegistry, Item, NeedsRepaint, Route,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassRegistry,
-    ViewClassRegistryError, command_channel,
+    EditRedapServerModalCommand, Item, NeedsRepaint, Route, SystemCommand,
+    SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassRegistryError,
+    command_channel,
 };
 
-use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
+use self::registries::Registries;
+use crate::app_blueprint::{AppBlueprint, ToggleablePanelStateOverrides};
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
 use crate::server_connections::ServerConnections;
@@ -40,11 +41,13 @@ mod command_handling;
 mod logic;
 #[cfg(not(target_arch = "wasm32"))]
 mod profile_capture;
+mod registries;
+mod screenshots;
 mod ui;
 mod viewer_control;
 
 #[cfg(not(target_arch = "wasm32"))]
-use self::profile_capture::PendingProfileCapture;
+use self::profile_capture::{PendingProfileCapture, Profiling};
 
 /// Only `web.rs` needs this by name; on native, `logic` calls it directly.
 #[cfg(target_arch = "wasm32")]
@@ -67,6 +70,16 @@ const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
 /// never target a stale recording.
 fn pending_timeline_shortcut_key() -> egui::Id {
     egui::Id::unique("rerun_pending_timeline_shortcut")
+}
+
+/// State that only exists in the web viewer.
+#[cfg(target_arch = "wasm32")]
+#[derive(Default)]
+pub struct WebState {
+    /// Listens to the browser's back and forward navigation.
+    pub popstate_listener: Option<crate::web_history::PopstateListener>,
+
+    open_files_promise: Option<PendingFilePromise>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -96,56 +109,41 @@ pub struct App {
     core: AppCore,
 }
 
-/// Everything in [`App`] except the [`StoreHub`].
-pub struct AppCore {
-    #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
+/// What [`App`] was started with, and the environment it runs in.
+struct Startup {
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
-
     app_env: crate::AppEnvironment,
-
-    startup_options: StartupOptions,
-
+    options: StartupOptions,
     start_time: web_time::Instant,
+
+    /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
+    adapter_backend: wgpu::Backend,
+}
+
+/// Everything in [`App`] except the [`StoreHub`].
+pub struct AppCore {
+    startup: Startup,
+
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     egui_renderer: Option<Arc<egui::epaint::mutex::RwLock<egui_wgpu::Renderer>>>,
 
-    /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
-    adapter_backend: wgpu::Backend,
-
     screenshotter: crate::screenshotter::Screenshotter,
 
-    /// Screenshots delivered by the renderer, waiting to be processed on the next frame.
-    screenshot_tx:
-        std::sync::mpsc::Sender<(re_viewer_context::ScreenshotInfo, Arc<egui::ColorImage>)>,
-    screenshot_rx:
-        std::sync::mpsc::Receiver<(re_viewer_context::ScreenshotInfo, Arc<egui::ColorImage>)>,
+    screenshots: screenshots::ScreenshotRequests,
     texture_readback: crate::texture_readback::TextureReadbacks,
 
-    /// `ViewerControlService` answers held back until the commands they queued have run.
-    pending_viewer_control_replies: Vec<viewer_control::PendingReply>,
-
     #[cfg(target_arch = "wasm32")]
-    pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
+    pub(crate) web: WebState,
 
     #[cfg(not(target_arch = "wasm32"))]
-    profiler: re_tracing::Profiler,
-
-    /// Active in-memory profile capture, if any.
-    #[cfg(not(target_arch = "wasm32"))]
-    profile_capture: Option<PendingProfileCapture>,
+    profiling: Profiling,
 
     /// Listens to the local text log stream
     text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
 
-    component_ui_registry: ComponentUiRegistry,
-    component_fallback_registry: FallbackProviderRegistry,
-
     rx_log: LogReceiverSet,
-
-    #[cfg(target_arch = "wasm32")]
-    open_files_promise: Option<PendingFilePromise>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -158,15 +156,9 @@ pub struct AppCore {
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
-    /// Recent log messages, served to agents through `re_viewer_mcp`.
-    pub(crate) viewer_log: crate::viewer_log::ViewerLog,
-
-    /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
-    /// until the user clicks.
-    screen_highlight: Option<crate::screen_highlight::ScreenHighlight>,
+    viewer_control: viewer_control::ViewerControlState,
 
     dev_panel: crate::dev_panel::DevPanel,
-    dev_panel_open: bool,
 
     #[cfg(agent_panel)]
     agent_panel: crate::agent_panel::ViewerAgentPanel,
@@ -179,12 +171,6 @@ pub struct AppCore {
 
     egui_debug_panel_open: bool,
 
-    /// Last time the latency was deemed interesting.
-    ///
-    /// Note that initializing with an "old" `Instant` won't work reliably cross platform
-    /// since `Instant`'s counter may start at program start.
-    pub(crate) latest_latency_interest: Option<web_time::Instant>,
-
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
@@ -195,17 +181,11 @@ pub struct AppCore {
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
-    about_modal: re_ui::modal::ModalHandler,
-    #[cfg(debug_assertions)]
-    debug_tools_modal: re_ui::modal::ModalHandler,
+    modals: crate::ui::Modals,
 
-    /// All known view types.
-    view_class_registry: ViewClassRegistry,
+    pub(crate) panel_state_overrides: ToggleablePanelStateOverrides,
 
-    pub(crate) panel_state_overrides_active: bool,
-    pub(crate) panel_state_overrides: PanelStateOverrides,
-
-    reflection: re_viewer_context::SharedReflection,
+    registries: Registries,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
@@ -398,31 +378,8 @@ impl App {
             }
         };
 
-        let mut reflection = re_sdk_types::reflection::reflection().clone();
-        if let Err(err) =
-            re_lenses::register_heuristic_mappings(&mut reflection.component_identifiers)
-        {
-            re_log::error!("Failed to register heuristic mappings: {err}");
-        }
-
         // The blueprint validator needs to know the expected datatype of every component.
-        // `Reflection::components` is never mutated after this point (unlike the archetype
-        // reflection, which embedders can extend), so a snapshot is safe to share.
-        let component_reflection = Arc::new(reflection.components.clone());
-        let reflection = Arc::new(RwLock::new(reflection));
-
-        let mut component_fallback_registry =
-            re_component_fallbacks::create_component_fallback_registry();
-
-        let view_class_registry = crate::default_views::create_view_class_registry(
-            &reflection,
-            &state.app_options,
-            &mut component_fallback_registry,
-        )
-        .unwrap_or_else(|err| {
-            re_log::error!("Failed to create view class registry: {err}");
-            Default::default()
-        });
+        let (registries, component_reflection) = Registries::new(&state.app_options);
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -434,13 +391,6 @@ impl App {
         }
 
         let (command_sender, command_receiver) = command_channel;
-        // Unbounded: the sender is a renderer callback that must never block,
-        // and it delivers at most one image per frame.
-        #[expect(clippy::disallowed_methods)]
-        let (screenshot_tx, screenshot_rx) = std::sync::mpsc::channel();
-
-        let mut component_ui_registry = re_component_ui::create_component_ui_registry();
-        re_data_ui::register_component_uis(&mut component_ui_registry);
 
         let (adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
@@ -550,48 +500,38 @@ impl App {
         );
 
         let core = AppCore {
-            main_thread_token,
-            build_info,
-            app_env,
-            startup_options,
+            startup: Startup {
+                main_thread_token,
+                build_info,
+                app_env,
+                options: startup_options,
+                start_time: web_time::Instant::now(),
+                adapter_backend,
+            },
 
-            start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             egui_renderer,
-            adapter_backend,
             screenshotter,
-            screenshot_tx,
-            screenshot_rx,
+            screenshots: Default::default(),
             texture_readback: Default::default(),
-            pending_viewer_control_replies: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
-            popstate_listener: None,
+            web: Default::default(),
 
             #[cfg(not(target_arch = "wasm32"))]
-            profiler: Default::default(),
-
-            #[cfg(not(target_arch = "wasm32"))]
-            profile_capture: None,
+            profiling: Default::default(),
 
             text_log_rx,
-            component_ui_registry,
-            component_fallback_registry,
             rx_log: Default::default(),
-
-            #[cfg(target_arch = "wasm32")]
-            open_files_promise: Default::default(),
 
             state,
             background_tasks: Default::default(),
             table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
-            viewer_log: Default::default(),
-            screen_highlight: None,
+            viewer_control: Default::default(),
 
             dev_panel: Default::default(),
-            dev_panel_open: false,
 
             #[cfg(agent_panel)]
             agent_panel: Default::default(),
@@ -600,8 +540,6 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_latency_interest: None,
-
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
             window_decorations_request: WindowDecorationsRequest::NotSent,
@@ -609,16 +547,14 @@ impl App {
             command_sender,
             command_receiver,
             cmd_palette: Default::default(),
-            about_modal: Default::default(),
-            #[cfg(debug_assertions)]
-            debug_tools_modal: Default::default(),
+            modals: Default::default(),
 
-            view_class_registry,
+            panel_state_overrides: ToggleablePanelStateOverrides {
+                enabled: true,
+                overrides: panel_state_overrides,
+            },
 
-            panel_state_overrides_active: true,
-            panel_state_overrides,
-
-            reflection,
+            registries,
 
             event_dispatcher,
 
@@ -665,7 +601,7 @@ impl std::ops::DerefMut for App {
 impl AppCore {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
-        self.profiler = profiler;
+        self.profiling.profiler = profiler;
     }
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
@@ -693,11 +629,11 @@ impl AppCore {
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
-        &self.build_info
+        &self.startup.build_info
     }
 
     pub fn startup_options(&self) -> &StartupOptions {
-        &self.startup_options
+        &self.startup.options
     }
 
     pub fn app_options(&self) -> &AppOptions {
@@ -705,7 +641,7 @@ impl AppCore {
     }
 
     pub fn reflection(&self) -> RwLockReadGuard<'_, re_types_core::reflection::Reflection> {
-        self.reflection.read()
+        self.registries.reflection.read()
     }
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
@@ -718,7 +654,7 @@ impl AppCore {
 
     /// Open the dev panel, showing the given tab.
     pub fn show_dev_panel_tab(&mut self, tab: crate::dev_panel::DevPanelTab) {
-        self.dev_panel_open = true;
+        self.dev_panel.open = true;
         self.dev_panel.select_tab(tab);
     }
 
@@ -742,11 +678,11 @@ impl AppCore {
 
     /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
     pub fn adapter_backend(&self) -> wgpu::Backend {
-        self.adapter_backend
+        self.startup.adapter_backend
     }
 
     pub fn app_env(&self) -> &crate::AppEnvironment {
-        &self.app_env
+        &self.startup.app_env
     }
 
     /// Whether we are responsible for painting a window frame.
@@ -964,7 +900,7 @@ impl AppCore {
 
     /// The registry of component UIs used by the viewer.
     pub fn component_ui_registry_mut(&mut self) -> &mut ComponentUiRegistry {
-        &mut self.component_ui_registry
+        &mut self.registries.component_uis
     }
 
     /// Registers runtime reflection metadata for a custom archetype.
@@ -977,7 +913,7 @@ impl AppCore {
         archetype_name: re_sdk_types::ArchetypeName,
         archetype_reflection: re_sdk_types::reflection::ArchetypeReflection,
     ) {
-        let mut reflection = self.reflection.write();
+        let mut reflection = self.registries.reflection.write();
         for field in &archetype_reflection.fields {
             let descriptor = field.component_descriptor(archetype_name);
             reflection
@@ -999,12 +935,13 @@ impl AppCore {
         &mut self,
         view_reflection: re_sdk_types::reflection::ViewReflection,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry.add_class::<T>(
-            &self.reflection,
+        self.registries.view_classes.add_class::<T>(
+            &self.registries.reflection,
             &self.state.app_options,
-            &mut self.component_fallback_registry,
+            &mut self.registries.component_fallbacks,
         )?;
-        self.reflection
+        self.registries
+            .reflection
             .write()
             .views
             .insert(T::identifier(), view_reflection);
@@ -1020,7 +957,7 @@ impl AppCore {
         &mut self,
         edit: impl FnOnce(&mut re_sdk_types::reflection::Reflection),
     ) {
-        edit(&mut self.reflection.write());
+        edit(&mut self.registries.reflection.write());
     }
 
     /// Extends an already registered view class with additional systems (visualizers, context systems, fallbacks, etc.).
@@ -1034,11 +971,11 @@ impl AppCore {
             &mut re_viewer_context::ViewSystemRegistrator<'_>,
         ) -> Result<(), ViewClassRegistryError>,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry.extend_class(
+        self.registries.view_classes.extend_class(
             view_class,
-            &self.reflection,
+            &self.registries.reflection,
             &self.state.app_options,
-            &mut self.component_fallback_registry,
+            &mut self.registries.component_fallbacks,
             register_fn,
         )
     }
@@ -1307,129 +1244,6 @@ impl AppCore {
             }
         }
     }
-
-    fn process_screenshot_result(
-        &self,
-        image: &Arc<egui::ColorImage>,
-        info: re_viewer_context::ScreenshotInfo,
-    ) {
-        use re_viewer_context::ScreenshotInfo;
-
-        let ScreenshotInfo {
-            ui_rect,
-            pixels_per_point,
-            name,
-            target,
-            notify,
-        } = info;
-
-        // Only used in the native `SaveToPath` branch below.
-        #[cfg(target_arch = "wasm32")]
-        let _ = notify;
-
-        let rgba = if let Some(ui_rect) = ui_rect {
-            Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
-        } else {
-            image.clone()
-        };
-
-        match target {
-            re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                self.egui_ctx.copy_image((*rgba).clone());
-            }
-
-            re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
-                use image::ImageEncoder as _;
-                let mut png_bytes: Vec<u8> = Vec::new();
-                if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes).write_image(
-                    rgba.as_raw(),
-                    rgba.width() as u32,
-                    rgba.height() as u32,
-                    image::ExtendedColorType::Rgba8,
-                ) {
-                    re_log::error!("Failed to encode screenshot as PNG: {err}");
-                } else {
-                    let file_name = format!("{name}.png");
-                    self.command_sender.save_file_dialog(
-                        self.main_thread_token,
-                        &file_name,
-                        "Save screenshot".to_owned(),
-                        png_bytes,
-                    );
-                }
-            }
-
-            re_viewer_context::ScreenshotTarget::SaveToPath {
-                path: file_path,
-                max_size,
-                on_done,
-            } => {
-                cfg_select! {
-                    target_arch = "wasm32" => {
-                        _ = max_size;
-                        let reason = "saving screenshots to a path is not supported on web";
-                        if let Some(on_done) = on_done {
-                            on_done.call(Err(SaveScreenshotError::SaveToPathFailed {
-                                path: file_path.to_string(),
-                                reason: reason.to_owned(),
-                            }));
-                        } else {
-                            re_log::error!(%file_path, "Failed to save screenshot: {reason}");
-                        }
-                    }
-                    _ => {
-                        let Some(rgb_image) = scaled_rgb_image(&rgba, max_size) else {
-                            re_log::error!("Failed to create image from screenshot data");
-                            if let Some(on_done) = on_done {
-                                on_done.call(Err(SaveScreenshotError::InvalidImageData));
-                            }
-                            return;
-                        };
-
-                        let result = match rgb_image.save(&file_path) {
-                            Ok(()) => {
-                                // Only show a user-facing toast for user-initiated screenshots.
-                                if notify {
-                                    re_log::info!("Saved screenshot to {file_path:?}");
-                                } else {
-                                    re_log::debug!("Saved screenshot to {file_path:?}");
-                                }
-                                Ok(())
-                            }
-                            Err(err) => {
-                                re_log::error!(?file_path, "Failed to save screenshot: {err}");
-                                // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
-                                std::fs::remove_file(&file_path).ok();
-                                Err(SaveScreenshotError::SaveToPathFailed {
-                                    path: file_path.to_string(),
-                                    reason: err.to_string(),
-                                })
-                            }
-                        };
-
-                        if let Some(on_done) = on_done {
-                            on_done.call(result);
-                        }
-                    }
-                }
-            }
-
-            re_viewer_context::ScreenshotTarget::EncodePng { max_size, on_done } => {
-                let result = scaled_rgb_image(&rgba, max_size)
-                    .ok_or(SaveScreenshotError::InvalidImageData)
-                    .and_then(|rgb_image| {
-                        let mut png = Vec::new();
-                        rgb_image
-                            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
-                            .map_err(|err| SaveScreenshotError::EncodePngFailed {
-                                reason: err.to_string(),
-                            })?;
-                        Ok(png)
-                    });
-                on_done.call(result);
-            }
-        }
-    }
 }
 
 impl eframe::App for App {
@@ -1444,17 +1258,20 @@ impl eframe::App for App {
     }
 
     fn persist_egui_memory(&self) -> bool {
-        self.startup_options.persist_state
+        self.startup.options.persist_state
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if !self.startup_options.persist_state {
+        if !self.startup.options.persist_state {
             return;
         }
 
         re_tracing::profile_function!();
 
-        storage.set_string(RERUN_VERSION_KEY, self.build_info.version.to_string());
+        storage.set_string(
+            RERUN_VERSION_KEY,
+            self.startup.build_info.version.to_string(),
+        );
 
         // Save the app state
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
@@ -1488,7 +1305,8 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         // NOTE: Memory stats can be very costly to compute, so only do so if the dev panel is opened.
         let mem_usage_tree = self
-            .dev_panel_open
+            .dev_panel
+            .open
             .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
 
         let Self { store_hub, core } = self;
@@ -1517,7 +1335,7 @@ impl AppCore {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        PendingProfileCapture::poll(&mut self.profile_capture, ui.ctx());
+        PendingProfileCapture::poll(&mut self.profiling.capture, ui.ctx());
 
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history.add(ui.input(|i| i.time), seconds);
@@ -1526,7 +1344,7 @@ impl AppCore {
         self.external_memory_users.update();
 
         #[cfg(target_arch = "wasm32")]
-        if self.startup_options.enable_history {
+        if self.startup.options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
             let back_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
             let fwd_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
@@ -1551,7 +1369,7 @@ impl AppCore {
         store_hub.update_data_source_order(&self.rx_log.sources());
 
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
+        if let Some(resolution_in_points) = self.startup.options.resolution_in_points.take() {
             ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(
                 resolution_in_points.into(),
             ));
@@ -1574,7 +1392,7 @@ impl AppCore {
             recommended_store_id,
             force_store_info,
             promise,
-        }) = &self.open_files_promise
+        }) = &self.web.open_files_promise
             && let Some(files) = promise.ready()
         {
             for file in files {
@@ -1588,7 +1406,7 @@ impl AppCore {
                         file: file.clone(),
                     }));
             }
-            self.open_files_promise = None;
+            self.web.open_files_promise = None;
         }
 
         // NOTE: GPU resource stats are cheap to compute so we always do.
@@ -1612,11 +1430,12 @@ impl AppCore {
 
         // NOTE: Store and caching stats are very costly to compute: only do so if the dev panel
         // is opened.
-        let store_stats = self.dev_panel_open.then(|| store_hub.stats());
+        let store_stats = self.dev_panel.open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
         let store_bundle_for_streaming = self
-            .dev_panel_open
+            .dev_panel
+            .open
             .then(|| store_hub.store_bundle() as &re_entity_db::StoreBundle);
         self.dev_panel.update(
             &gpu_resource_stats,
@@ -1651,7 +1470,7 @@ impl AppCore {
 
                 if let Some(store_id) = loaded_recording {
                     re_log::debug!("Stream completed, navigating to loaded recording {store_id:?}");
-                    store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry);
+                    store_hub.load_blueprint_and_caches(&store_id, &self.registries.view_classes);
                     self.state.navigation.replace(Route::LocalRecording {
                         recording_id: store_id,
                     });
@@ -1685,8 +1504,10 @@ impl AppCore {
                 if let Some(app_id) = any_other_app_id {
                     store_hub.load_persisted_blueprints_for_app(&app_id);
                     if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                        store_hub
-                            .load_blueprint_and_caches(&recording_id, &self.view_class_registry);
+                        store_hub.load_blueprint_and_caches(
+                            &recording_id,
+                            &self.registries.view_classes,
+                        );
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(recording_id.clone()));
@@ -1729,8 +1550,7 @@ impl AppCore {
                 blueprint,
                 &blueprint_query,
                 ui,
-                self.panel_state_overrides_active
-                    .then_some(self.panel_state_overrides),
+                self.panel_state_overrides.active(),
             );
 
             self.ui_impl(
@@ -1744,48 +1564,14 @@ impl AppCore {
                 store_stats.as_ref(),
             );
 
-            {
-                let modal = &mut self.about_modal;
-                let build_info = &self.build_info;
-                let render_state = frame.wgpu_render_state();
-                modal.ui(
-                    ui.ctx(),
-                    || {
-                        re_ui::modal::ModalWrapper::new("About Rerun")
-                            .min_width(460.0)
-                            .max_width(520.0)
-                    },
-                    |ui| crate::ui::about_rerun_ui(ui, build_info, render_state),
-                );
-            }
-
-            #[cfg(debug_assertions)]
-            {
-                let active_recording_id =
-                    store_context.as_ref().map(|ctx| ctx.recording_store_id());
-                let modal = &mut self.debug_tools_modal;
-                let app_options = &mut self.state.app_options;
-                let command_sender = &self.command_sender;
-                let max_height = (ui.ctx().content_rect().height() - 64.0).max(320.0);
-                modal.ui(
-                    ui.ctx(),
-                    || {
-                        re_ui::modal::ModalWrapper::new("Debug tools")
-                            .min_width(560.0)
-                            .max_width(720.0)
-                            .max_height(max_height)
-                            .scrollable([false, true])
-                    },
-                    |ui| {
-                        crate::ui::debug_tools_ui(
-                            ui,
-                            app_options,
-                            active_recording_id,
-                            command_sender,
-                        );
-                    },
-                );
-            }
+            self.modals.ui(
+                ui,
+                &self.startup.build_info,
+                frame.wgpu_render_state(),
+                &mut self.state.app_options,
+                &self.command_sender,
+                store_context.as_ref().map(|ctx| ctx.recording_store_id()),
+            );
 
             if self.custom_window_frame() {
                 ui::paint_custom_window_frame(ui);
@@ -1922,9 +1708,11 @@ impl AppCore {
 
         self.update_history(store_hub);
 
-        while let Ok((info, image)) = self.screenshot_rx.try_recv() {
-            self.process_screenshot_result(&image, info);
-        }
+        self.screenshots.process_delivered(
+            &self.egui_ctx,
+            &self.command_sender,
+            self.startup.main_thread_token,
+        );
 
         self.state.audio_output.finish_ui_pass(ui.will_discard());
     }
@@ -2039,24 +1827,4 @@ fn noop_blueprint_loader(
         })),
         ..Default::default()
     }
-}
-
-/// The screenshot as an RGB image, scaled down so its longest side is at most `max_size`.
-///
-/// RGB rather than RGBA, so it works with JPG and other formats that don't support alpha.
-/// There's nothing interesting in the alpha channel anyways.
-fn scaled_rgb_image(rgba: &egui::ColorImage, max_size: Option<u32>) -> Option<image::RgbImage> {
-    let rgba_image = image::RgbaImage::from_vec(
-        rgba.width() as _,
-        rgba.height() as _,
-        bytemuck::pod_collect_to_vec(&rgba.pixels),
-    )?;
-
-    let mut image = image::DynamicImage::ImageRgba8(rgba_image);
-    if let Some(max_size) = max_size
-        && max_size < image.width().max(image.height())
-    {
-        image = image.resize(max_size, max_size, image::imageops::FilterType::Triangle);
-    }
-    Some(image.to_rgb8())
 }

@@ -4,8 +4,60 @@ use std::fmt::Write as _;
 
 #[cfg(debug_assertions)]
 use re_ui::RecordingCommandKind;
+use re_viewer_context::CommandSender;
 
 const SPACING: f32 = 12.0;
+
+/// The modal dialogs opened through commands.
+#[derive(Default)]
+pub struct Modals {
+    /// Shows [`about_rerun_ui`].
+    pub about: re_ui::modal::ModalHandler,
+
+    /// Shows [`debug_tools_ui`].
+    #[cfg(debug_assertions)]
+    pub debug_tools: re_ui::modal::ModalHandler,
+}
+
+impl Modals {
+    /// Show whichever modal is open.
+    #[cfg_attr(not(debug_assertions), expect(unused_variables))]
+    pub fn ui(
+        &mut self,
+        ui: &egui::Ui,
+        build_info: &re_build_info::BuildInfo,
+        render_state: Option<&egui_wgpu::RenderState>,
+        app_options: &mut re_viewer_context::AppOptions,
+        command_sender: &CommandSender,
+        active_recording_id: Option<&re_log_types::StoreId>,
+    ) {
+        self.about.ui(
+            ui.ctx(),
+            || {
+                re_ui::modal::ModalWrapper::new("About Rerun")
+                    .min_width(460.0)
+                    .max_width(520.0)
+            },
+            |ui| about_rerun_ui(ui, build_info, render_state),
+        );
+
+        #[cfg(debug_assertions)]
+        {
+            let max_height = (ui.ctx().content_rect().height() - 64.0).max(320.0);
+            self.debug_tools.ui(
+                ui.ctx(),
+                || {
+                    re_ui::modal::ModalWrapper::new("Debug tools")
+                        .min_width(560.0)
+                        .max_width(720.0)
+                        .max_height(max_height)
+                        .scrollable([false, true])
+                },
+                |ui| debug_tools_ui(ui, app_options, active_recording_id, command_sender),
+            );
+        }
+    }
+}
 
 /// The About UI serves two purposes:
 ///
@@ -253,9 +305,6 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
         ui.set_global_style(style);
     }
 }
-
-#[cfg(debug_assertions)]
-use re_viewer_context::CommandSender;
 
 #[cfg(debug_assertions)]
 fn debug_menu_options_ui(

@@ -37,16 +37,6 @@ enum CloseRecording {
 }
 
 impl AppCore {
-    fn request_screenshot(&self, info: re_viewer_context::ScreenshotInfo) {
-        let tx = self.screenshot_tx.clone();
-        let ctx = self.egui_ctx.clone();
-        self.egui_ctx.request_screenshot(move |image| {
-            if tx.send((info, image)).is_ok() {
-                ctx.request_repaint();
-            }
-        });
-    }
-
     pub(super) fn run_pending_system_commands(
         &mut self,
         store_hub: &mut StoreHub,
@@ -161,7 +151,8 @@ impl AppCore {
                             return;
                         }
 
-                        store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
+                        store_hub
+                            .load_blueprint_and_caches(&store_id, &self.registries.view_classes); // Ensure caches and blueprints
                         store_hub.ensure_active_blueprint_for_app(store_id.application_id()); // Materialize the target blueprint on-demand
 
                         let Some(target_blueprint) =
@@ -236,7 +227,7 @@ impl AppCore {
             SystemCommand::CopyViewerUrl(url) => {
                 if cfg!(target_arch = "wasm32") {
                     match combine_with_base_url(
-                        self.startup_options.web_viewer_base_url().as_ref(),
+                        self.startup.options.web_viewer_base_url().as_ref(),
                         [url],
                     ) {
                         Ok(url) => {
@@ -253,7 +244,8 @@ impl AppCore {
             SystemCommand::ActivateApp(app_id) => {
                 store_hub.load_persisted_blueprints_for_app(&app_id);
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                    store_hub.load_blueprint_and_caches(&recording_id, &self.view_class_registry);
+                    store_hub
+                        .load_blueprint_and_caches(&recording_id, &self.registries.view_classes);
                     self.state
                         .navigation
                         .replace(Route::LocalRecording { recording_id });
@@ -356,7 +348,8 @@ impl AppCore {
 
                 if let Some(recording_id) = new_route.recording_id() {
                     store_hub.set_opened(recording_id, true);
-                    store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
+                    store_hub
+                        .load_blueprint_and_caches(recording_id, &self.registries.view_classes);
                     // If we're navigating to a recording that was only ever a preview, fetch the
                     // blueprint we skipped while previewing it.
                     self.fetch_pending_blueprint(store_hub, recording_id);
@@ -422,8 +415,7 @@ impl AppCore {
                     None,
                     &self.state.blueprint_query_for_viewer(None),
                     egui_ctx,
-                    self.panel_state_overrides_active
-                        .then_some(self.panel_state_overrides),
+                    self.panel_state_overrides.active(),
                 );
                 if !app_blueprint.blueprint_panel_state().is_expanded() {
                     app_blueprint.toggle_blueprint_panel(&self.command_sender);
@@ -717,8 +709,10 @@ impl AppCore {
                     // If the selected item has its own page, switch to it.
                     if let Some(route) = self.route_for_item(item) {
                         if let Route::LocalRecording { recording_id } = &route {
-                            store_hub
-                                .load_blueprint_and_caches(recording_id, &self.view_class_registry);
+                            store_hub.load_blueprint_and_caches(
+                                recording_id,
+                                &self.registries.view_classes,
+                            );
                         }
                         self.state.navigation.replace(route);
                     }
@@ -769,7 +763,8 @@ impl AppCore {
             }
             SystemCommand::Logout => {
                 let signed_out_url = self
-                    .startup_options
+                    .startup
+                    .options
                     .login
                     .as_ref()
                     .map(|l| l.signed_out_url.as_str());
@@ -840,13 +835,16 @@ impl AppCore {
                     return;
                 }
 
-                self.request_screenshot(re_viewer_context::ScreenshotInfo {
-                    ui_rect: Some(rect),
-                    pixels_per_point: self.egui_ctx.pixels_per_point(),
-                    name,
-                    target,
-                    notify,
-                });
+                self.screenshots.request(
+                    &self.egui_ctx,
+                    re_viewer_context::ScreenshotInfo {
+                        ui_rect: Some(rect),
+                        pixels_per_point: self.egui_ctx.pixels_per_point(),
+                        name,
+                        target,
+                        notify,
+                    },
+                );
             } else {
                 re_log::warn!("View {view_id} not found for screenshot");
                 target.report_failure(SaveScreenshotError::ViewNotFound {
@@ -856,13 +854,16 @@ impl AppCore {
             }
         } else {
             // Screenshot the entire viewer
-            self.request_screenshot(re_viewer_context::ScreenshotInfo {
-                ui_rect: None,
-                pixels_per_point: self.egui_ctx.pixels_per_point(),
-                name: "screenshot".to_owned(),
-                target,
-                notify,
-            });
+            self.screenshots.request(
+                &self.egui_ctx,
+                re_viewer_context::ScreenshotInfo {
+                    ui_rect: None,
+                    pixels_per_point: self.egui_ctx.pixels_per_point(),
+                    name: "screenshot".to_owned(),
+                    target,
+                    notify,
+                },
+            );
         }
 
         // Screenshot commands may be triggered from receiving messages over the network, so we may not actually do any painting right now.
@@ -907,14 +908,14 @@ impl AppCore {
 
         match cmd {
             UICommand::About => {
-                self.about_modal.open();
+                self.modals.about.open();
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenFile => {
                 use re_data_source::LogDataSource;
                 use re_log_msg::FileSource;
-                for file_path in open_file_dialog_native(self.main_thread_token) {
+                for file_path in open_file_dialog_native(self.startup.main_thread_token) {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
@@ -936,7 +937,7 @@ impl AppCore {
                     files
                 });
 
-                self.open_files_promise = Some(super::PendingFilePromise {
+                self.web.open_files_promise = Some(super::PendingFilePromise {
                     recommended_store_id: None,
                     force_store_info,
                     promise,
@@ -947,7 +948,7 @@ impl AppCore {
             UICommand::ImportFileIntoCurrentRecording => {
                 use re_data_source::LogDataSource;
                 use re_log_msg::FileSource;
-                for file_path in open_file_dialog_native(self.main_thread_token) {
+                for file_path in open_file_dialog_native(self.startup.main_thread_token) {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
@@ -969,7 +970,7 @@ impl AppCore {
                     files
                 });
 
-                self.open_files_promise = Some(super::PendingFilePromise {
+                self.web.open_files_promise = Some(super::PendingFilePromise {
                     recommended_store_id: Some(active_store_id.clone()),
                     force_store_info,
                     promise,
@@ -1072,19 +1073,19 @@ impl AppCore {
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
-                self.profiler.start();
+                self.profiling.profiler.start();
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::CaptureProfileTrace => {
-                if self.profile_capture.is_none() {
-                    self.profile_capture = Some(super::PendingProfileCapture::to_save_dialog());
+                if self.profiling.capture.is_none() {
+                    self.profiling.capture = Some(super::PendingProfileCapture::to_save_dialog());
                     egui_ctx.request_repaint();
                 }
             }
 
             UICommand::ToggleDevPanel => {
-                self.dev_panel_open ^= true;
+                self.dev_panel.open ^= true;
             }
             UICommand::ToggleChunkStoreBrowser => match route {
                 Route::ChunkStoreBrowser { return_route, .. } => {
@@ -1103,7 +1104,7 @@ impl AppCore {
                 }
             },
             UICommand::TogglePanelStateOverrides => {
-                self.panel_state_overrides_active ^= true;
+                self.panel_state_overrides.enabled ^= true;
             }
             UICommand::ToggleTopPanel => {
                 app_blueprint.toggle_top_panel(&self.command_sender);
@@ -1134,7 +1135,7 @@ impl AppCore {
             }
             #[cfg(debug_assertions)]
             UICommand::DebugTools => {
-                self.debug_tools_modal.open();
+                self.modals.debug_tools.open();
             }
 
             UICommand::ToggleFullscreen => {
@@ -1544,7 +1545,7 @@ impl AppCore {
     }
 
     fn run_copy_link_command(&mut self, content_url: &ViewerUrl) {
-        let base_url = self.startup_options.web_viewer_base_url();
+        let base_url = self.startup.options.web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
             Ok(url) => {
@@ -1618,7 +1619,7 @@ impl AppCore {
     pub(crate) fn toggle_fullscreen(&self) {
         cfg_select! {
             target_arch = "wasm32" => {
-                if let Some(options) = &self.startup_options.fullscreen_options {
+                if let Some(options) = &self.startup.options.fullscreen_options {
                     // Tell JS to toggle fullscreen.
                     if let Err(err) = options.on_toggle.call0() {
                         re_log::error!("{err}");
@@ -1637,12 +1638,12 @@ impl AppCore {
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn is_fullscreen_allowed(&self) -> bool {
-        self.startup_options.fullscreen_options.is_some()
+        self.startup.options.fullscreen_options.is_some()
     }
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn is_fullscreen_mode(&self) -> bool {
-        if let Some(options) = &self.startup_options.fullscreen_options {
+        if let Some(options) = &self.startup.options.fullscreen_options {
             // Ask JS if fullscreen is on or not.
             match options.get_state.call0() {
                 Ok(v) => return v.is_truthy(),

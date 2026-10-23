@@ -91,6 +91,20 @@ const _: () = assert!(
 /// quick enough for a caller, and cheap enough for an idle viewer.
 const OPEN_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
+/// What the viewer keeps for, and shows to, `ViewerControlService` callers.
+#[derive(Default)]
+pub struct ViewerControlState {
+    /// Answers held back until the commands they queued have run.
+    pending_replies: Vec<PendingReply>,
+
+    /// Recent log messages, served to agents through `re_viewer_mcp`.
+    pub log: crate::viewer_log::ViewerLog,
+
+    /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
+    /// until the user clicks.
+    pub screen_highlight: Option<crate::screen_highlight::ScreenHighlight>,
+}
+
 /// A `ViewerControlService` answer held back until the work it reports on has happened.
 ///
 /// Operations that act through queued commands would otherwise answer before those commands
@@ -202,7 +216,7 @@ impl AppCore {
             on_done.call(result);
             return;
         }
-        self.pending_viewer_control_replies.push(PendingReply {
+        self.viewer_control.pending_replies.push(PendingReply {
             on_done,
             answer: PendingAnswer::Ready(result),
         });
@@ -216,7 +230,7 @@ impl AppCore {
     /// Must be called right after draining the system commands, so that an empty queue means
     /// the commands a reply waits for have run rather than not yet been sent.
     pub(super) fn answer_pending_viewer_control_replies(&mut self, store_hub: &StoreHub) {
-        if self.pending_viewer_control_replies.is_empty() {
+        if self.viewer_control.pending_replies.is_empty() {
             return;
         }
 
@@ -229,7 +243,7 @@ impl AppCore {
         let sources = self.rx_log.sources();
         let now = web_time::Instant::now();
         for PendingReply { on_done, answer } in
-            std::mem::take(&mut self.pending_viewer_control_replies)
+            std::mem::take(&mut self.viewer_control.pending_replies)
         {
             match answer {
                 PendingAnswer::Ready(result) => on_done.call(result),
@@ -241,7 +255,7 @@ impl AppCore {
                     let url_sources = self.connections.sources_of_url(&parsed);
                     let still_loading = is_loading(&url_sources, &sources, &registrations);
                     if still_loading && now < deadline {
-                        self.pending_viewer_control_replies.push(PendingReply {
+                        self.viewer_control.pending_replies.push(PendingReply {
                             on_done,
                             answer: PendingAnswer::Open {
                                 url,
@@ -262,7 +276,7 @@ impl AppCore {
                 }
                 PendingAnswer::GetBlueprint { target, deadline } => {
                     if now < deadline && self.waits_for_default_blueprint(store_hub, &target) {
-                        self.pending_viewer_control_replies.push(PendingReply {
+                        self.viewer_control.pending_replies.push(PendingReply {
                             on_done,
                             answer: PendingAnswer::GetBlueprint { target, deadline },
                         });
@@ -279,7 +293,7 @@ impl AppCore {
                     match self.apply_set_blueprint(store_hub, &target, &json) {
                         // The write is queued, so the answer waits for it to run.
                         Ok(response) => {
-                            self.pending_viewer_control_replies.push(PendingReply {
+                            self.viewer_control.pending_replies.push(PendingReply {
                                 on_done,
                                 answer: PendingAnswer::Ready(Ok(response.into())),
                             });
@@ -374,7 +388,7 @@ impl AppCore {
             }
             Kind::GetLogs(GetLogsRequest { after_sequence }) => {
                 on_done.call(Ok(GetLogsResponse {
-                    entries: self.viewer_log.entries_after(after_sequence),
+                    entries: self.viewer_control.log.entries_after(after_sequence),
                 }
                 .into()));
             }
@@ -507,7 +521,7 @@ impl AppCore {
                                     &self.command_sender,
                                 );
                             }
-                            self.pending_viewer_control_replies.push(PendingReply {
+                            self.viewer_control.pending_replies.push(PendingReply {
                                 on_done,
                                 answer: PendingAnswer::Open {
                                     url,
@@ -684,7 +698,7 @@ impl AppCore {
     ) -> Result<HighlightRectResponse, ViewerControlError> {
         let HighlightRectRequest { rect, label } = request;
 
-        self.screen_highlight = rect
+        self.viewer_control.screen_highlight = rect
             .map(|rect| {
                 let ScreenRect { x, y, w, h } = rect;
                 let rect = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(w, h));
@@ -1001,7 +1015,7 @@ impl AppCore {
                 .registry
                 .internal_origin()
                 .map(|origin| origin.to_string()),
-            viewer_version: Some(self.build_info.version.to_string()),
+            viewer_version: Some(self.startup.build_info.version.to_string()),
             servers: self.collect_servers(),
         }
     }
@@ -1052,7 +1066,7 @@ impl AppCore {
         let mut json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
             &query,
-            &self.reflection.read(),
+            &self.registries.reflection.read(),
         );
         if let BlueprintTarget::Table(table) = target
             && json.as_object().is_some_and(serde_json::Map::is_empty)
@@ -1512,7 +1526,8 @@ impl AppCore {
         egui_ctx: &egui::Context,
     ) {
         self.command_sender.send_system(ensure_blueprint);
-        self.pending_viewer_control_replies
+        self.viewer_control
+            .pending_replies
             .push(PendingReply { on_done, answer });
         egui_ctx.request_repaint();
     }
@@ -1586,7 +1601,7 @@ impl AppCore {
             json,
             blueprint_db.storage_engine().store(),
             &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
-            &self.reflection.read(),
+            &self.registries.reflection.read(),
         )
         .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))
     }

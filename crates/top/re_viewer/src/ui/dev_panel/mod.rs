@@ -67,6 +67,9 @@ impl DevPanelTab {
 
 #[derive(Default)]
 pub struct DevPanel {
+    /// Whether the panel is shown.
+    pub open: bool,
+
     history: MemoryHistory,
     streaming_history: StreamingHistory,
     memory_purge_times: Vec<f64>,

@@ -30,7 +30,7 @@ impl AppCore {
             num_frames,
         } = request;
 
-        if self.profile_capture.is_some() {
+        if self.profiling.capture.is_some() {
             on_done.call(Err(ViewerControlError::failed_precondition(
                 "Another profile capture is still running",
             )));
@@ -46,12 +46,22 @@ impl AppCore {
             return;
         }
 
-        self.profile_capture = Some(PendingProfileCapture::to_path(
+        self.profiling.capture = Some(PendingProfileCapture::to_path(
             num_frames,
             file_path.into(),
             on_done,
         ));
     }
+}
+
+/// The viewer's profiler, and any in-memory capture of it that is running.
+#[derive(Default)]
+pub struct Profiling {
+    /// Opened by [`re_ui::UICommand::OpenProfiler`].
+    pub profiler: re_tracing::Profiler,
+
+    /// Active in-memory profile capture, if any.
+    pub capture: Option<PendingProfileCapture>,
 }
 
 /// An in-memory profile capture, and where its result goes once enough frames are recorded.

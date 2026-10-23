@@ -109,7 +109,7 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), re_web::Err
         .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
         .ok_or_log_js_error();
 
-    app.popstate_listener = Some(PopstateListener::new(closure));
+    app.web.popstate_listener = Some(PopstateListener::new(closure));
 
     Ok(())
 }

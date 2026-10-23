@@ -184,14 +184,16 @@ fn top_bar_ui(
                 });
 
                 // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
-                if is_latency_interesting {
-                    app.latest_latency_interest = Some(web_time::Instant::now());
-                }
+                let now = ui.input(|i| i.time);
+                let latest_interest_id = egui::Id::unique("latest_latency_interest");
+                let latest_interest = ui.data_mut(|d| {
+                    if is_latency_interesting {
+                        d.insert_temp(latest_interest_id, now);
+                    }
+                    d.get_temp::<f64>(latest_interest_id)
+                });
 
-                if app
-                    .latest_latency_interest
-                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
-                {
+                if latest_interest.is_some_and(|time| now - time < 1.0) {
                     ui.separator();
                     show_latency_tab |= latency_snapshot_button_ui(ui, &latency_snapshot);
                 }

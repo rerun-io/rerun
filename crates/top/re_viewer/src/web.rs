@@ -242,8 +242,8 @@ impl WebHandle {
         };
 
         match value {
-            Some(value) => app.panel_state_overrides_active = value,
-            None => app.panel_state_overrides_active ^= true,
+            Some(value) => app.panel_state_overrides.enabled = value,
+            None => app.panel_state_overrides.enabled ^= true,
         }
 
         // request repaint, because the overrides may cause panels to expand/collapse
@@ -268,7 +268,7 @@ impl WebHandle {
             None => None,
         };
 
-        let overrides = &mut app.panel_state_overrides;
+        let overrides = &mut app.panel_state_overrides.overrides;
         match panel {
             Panel::Top => overrides.top = state,
             Panel::Blueprint => overrides.blueprint = state,

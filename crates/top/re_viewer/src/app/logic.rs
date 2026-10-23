@@ -88,8 +88,7 @@ impl AppCore {
                 blueprint,
                 &blueprint_query,
                 egui_ctx,
-                self.panel_state_overrides_active
-                    .then_some(self.panel_state_overrides),
+                self.panel_state_overrides.active(),
             );
             self.run_pending_ui_commands(
                 egui_ctx,
@@ -215,7 +214,7 @@ impl AppCore {
                     let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     if let Some((entity_db, cache)) =
-                        store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
+                        store_hub.entity_db_and_cache(&store_id, &self.registries.view_classes)
                     {
                         cache.on_store_events(&store_events, entity_db);
                     }
@@ -405,7 +404,7 @@ impl AppCore {
                                 {
                                     store_hub.load_blueprint_and_caches(
                                         &recording_id,
-                                        &self.view_class_registry,
+                                        &self.registries.view_classes,
                                     );
                                     self.state
                                         .selection_state
@@ -449,7 +448,7 @@ impl AppCore {
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some((entity_db, cache)) =
-            store_hub.entity_db_and_cache(store_id, &self.view_class_registry)
+            store_hub.entity_db_and_cache(store_id, &self.registries.view_classes)
         {
             cache.on_store_events(store_events, entity_db);
         }
@@ -540,7 +539,7 @@ impl AppCore {
         let entity_db = store_hub.entity_db_entry(store_id);
         let is_example = entity_db.store_class().is_example();
 
-        if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {
+        if cfg!(target_arch = "wasm32") && !self.startup.options.is_in_notebook && !is_example {
             use std::sync::Once;
             static ONCE: Once = Once::new();
             ONCE.call_once(|| {
@@ -563,7 +562,7 @@ impl AppCore {
             #[cfg(feature = "analytics")]
             if let Some(analytics) = re_analytics::Analytics::global_or_init()
                 && let Some(event) =
-                    crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
+                    crate::viewer_analytics::event::open_recording(&self.startup.app_env, entity_db)
             {
                 analytics.record(event);
             }
@@ -709,7 +708,7 @@ impl AppCore {
         }
 
         store_hub.set_opened(store_id, true);
-        store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
+        store_hub.load_blueprint_and_caches(store_id, &self.registries.view_classes);
         // If this recording was streamed as a preview, fetch the blueprint we skipped back then.
         self.fetch_pending_blueprint(store_hub, store_id);
         self.state.navigation.replace(Route::LocalRecording {
@@ -731,7 +730,7 @@ impl AppCore {
     /// After loading some data; check if the loaded data makes sense.
     fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
         re_tracing::profile_function!();
-        let reflection = self.reflection.read();
+        let reflection = self.registries.reflection.read();
 
         for event in store_events {
             let Some(chunk) = event.delta_chunk() else {
@@ -747,7 +746,12 @@ impl AppCore {
                     }
 
                     for view_class in reflection.views_for_archetype(archetype_name) {
-                        if self.view_class_registry.class_entry(view_class).is_none() {
+                        if self
+                            .registries
+                            .view_classes
+                            .class_entry(view_class)
+                            .is_none()
+                        {
                             re_log::warn_once!(
                                 "Found data associated with unavailable view class {view_class}. This viewer was compiled without support for that view class."
                             );
