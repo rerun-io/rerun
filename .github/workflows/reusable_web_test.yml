@@ -16,8 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUSTFLAGS: --deny warnings
-  RUSTDOCFLAGS: --deny warnings
+  # Empty, so that `.cargo/config.toml` doesn't enable `re_workspace_hack`.
+  RUSTFLAGS: ""
+  CARGO_BUILD_WARNINGS: deny
   RUST_BACKTRACE: full
   CARGO_TERM_COLOR: always
 

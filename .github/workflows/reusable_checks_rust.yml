@@ -15,8 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUSTFLAGS: --deny warnings
-  RUSTDOCFLAGS: --deny warnings
+  # Empty, so that `.cargo/config.toml` doesn't enable `re_workspace_hack`.
+  RUSTFLAGS: ""
+  CARGO_BUILD_WARNINGS: deny
 
   # Improve diagnostics for crashes.
   RUST_BACKTRACE: full
@@ -86,8 +87,6 @@ jobs:
     name: Test on Linux
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTDOCFLAGS: ""
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
