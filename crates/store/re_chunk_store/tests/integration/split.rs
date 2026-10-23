@@ -411,6 +411,39 @@ fn unsorted_chunks_are_not_duplicated() {
 }
 
 #[test]
+fn unsorted_chunks_keep_row_id_order() {
+    let mut store = new_store();
+    // Rows inside the range are logged out of time order: 6 before 4.
+    insert_chunk(
+        &mut store,
+        "/unsorted",
+        [10, 6, 4, 2].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_eq!(
+        times_per_component(&chunks)["/unsorted:example.MyPoints:points"],
+        some(&[4, 6])
+    );
+    for chunk in &chunks {
+        assert!(
+            chunk.is_row_ids_sorted_uncached(),
+            "rows of {} are not in RowId order",
+            chunk.entity_path()
+        );
+    }
+
+    // The split must load back.
+    let mut loaded = new_store();
+    for chunk in chunks {
+        loaded
+            .insert_chunk(&Arc::new(chunk))
+            .expect("insert split chunk");
+    }
+}
+
+#[test]
 fn splits_multiple_ranges() {
     let mut store = new_store();
     insert_chunk(

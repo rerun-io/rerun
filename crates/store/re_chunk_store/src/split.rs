@@ -540,9 +540,15 @@ impl SplitChunk {
             Some(rows) => chunk.row_sliced_deep(rows),
         };
 
-        match components {
+        let mut chunk = match components {
             None => chunk,
             Some(components) => chunk.components_sliced(&components),
-        }
+        };
+
+        // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
+        // `RowId` order: put them back, a recording with such a chunk doesn't load.
+        chunk.sort_by_row_ids_if_needed();
+
+        chunk
     }
 }
