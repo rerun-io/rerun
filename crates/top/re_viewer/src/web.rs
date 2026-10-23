@@ -373,18 +373,6 @@ impl WebHandle {
         }
     }
 
-    #[wasm_bindgen]
-    pub fn remove_receiver(&self, url: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        app.msg_receive_set().remove_by_uri(url);
-        app.store_hub.remove_recording_by_uri(url);
-
-        app.egui_ctx
-            .request_repaint_after(std::time::Duration::from_millis(10));
-    }
-
     /// Open a new channel for streaming data.
     ///
     /// It is an error to open a channel twice with the same id.

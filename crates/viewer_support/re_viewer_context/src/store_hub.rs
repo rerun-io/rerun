@@ -1168,15 +1168,6 @@ impl StoreHub {
         })
     }
 
-    /// Remove any recordings with a source at this `uri`. See [`re_log_channel::LogSource::uri`].
-    pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.retain_recordings(|db| {
-            db.data_sources()
-                .iter()
-                .all(|data_source| data_source.uri().is_none_or(|source_uri| source_uri != uri))
-        });
-    }
-
     /// Drops all but the latest data for every blueprint.
     /// Preserves usable undo points in the process.
     pub fn gc_blueprints(&mut self, undo_state: &HashMap<StoreId, BlueprintUndoState>) {

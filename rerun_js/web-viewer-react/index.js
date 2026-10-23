@@ -186,11 +186,16 @@ function diff(prev, current) {
 function syncRecordings(handle, prev, current) {
   const { added, removed } = diff(prev, current);
 
-  if (removed.length > 0) {
-    handle.close(removed);
+  // One at a time, so that a URL with nothing loaded does not keep the others open.
+  for (const url of removed) {
+    handle
+      .close(url)
+      .catch((err) => console.error("Failed to close recording:", err));
   }
-  if (added.length > 0) {
-    handle.open(added);
+  for (const url of added) {
+    handle
+      .open(url)
+      .catch((err) => console.error("Failed to open recording:", err));
   }
 }
 

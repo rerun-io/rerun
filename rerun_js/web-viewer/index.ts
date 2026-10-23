@@ -294,24 +294,33 @@ export interface ViewerLogEntry {
   message: string;
 }
 
-/** What to close with {@link WebViewer.close_recordings}: the active recording, every recording, or these store ids. */
-export type CloseRecordingsTarget = "current" | "all" | string[];
+/**
+ * What {@link WebViewer.close} closes:
+ * the recordings loaded from these URLs, which also stops loading from them,
+ * these recordings by store id, the active recording (`"current"`), or every recording (`"all"`).
+ */
+export type CloseTarget =
+  | string
+  | string[]
+  | { store_ids: string[] }
+  | "current"
+  | "all";
 
-/** How {@link WebViewer.open_url} opens a URL. */
-export interface OpenUrlOptions {
+/** How {@link WebViewer.open} opens URLs. */
+export interface OpenOptions {
   /** Whether to also show what it opens, making a recording the active one. Defaults to `true`. */
   navigate?: boolean;
 }
 
-/** What {@link WebViewer.open_url} did. */
-export interface OpenUrlResult {
-  /** The store ids of the recordings loaded from the URL. */
+/** What {@link WebViewer.open} did. */
+export interface OpenResult {
+  /** The store ids of the recordings loaded from the URLs. */
   store_ids: string[];
 
   /**
-   * The URL, as passed in, if what it loads from had not finished its initial load when the viewer answered.
+   * The URLs, as passed in, whose sources had not finished their initial load when the viewer answered.
    *
-   * If anything, poll {@link WebViewer.get_state} until its `loading` list is empty.
+   * Empty once everything is loaded. Otherwise, poll {@link WebViewer.get_state} until its `loading` list is empty.
    */
   loading: string[];
 }
@@ -636,6 +645,24 @@ function viewer_command_of(command: ProtoViewerCommand): ViewerCommand {
     destructive: command.destructive,
     target: command.target,
   };
+}
+
+/** The `target` of a close request. */
+function close_target_of(target: CloseTarget) {
+  if (target === "current") {
+    return { case: "current" as const, value: true };
+  }
+  if (target === "all") {
+    return { case: "all" as const, value: true };
+  }
+  if (typeof target === "string" || Array.isArray(target)) {
+    return { case: "urls" as const, value: { urls: Array.isArray(target) ? target : [target] } };
+  }
+  // Plain JavaScript callers are not type-checked, and guessing here could close everything.
+  if (typeof target === "object" && target !== null && "store_ids" in target) {
+    return { case: "storeIds" as const, value: { storeIds: target.store_ids } };
+  }
+  throw new Error('close expects URLs, `{ store_ids }`, `"current"`, or `"all"`');
 }
 
 /** The `target` of a blueprint request. */
@@ -1272,8 +1299,6 @@ function resolveAbsoluteUrl(url: string): string {
  * return promises, because the Viewer handles each request on its next frame.
  * Some requests take even longer, such as a screenshot, or opening a URL, which waits for the data to load.
  * They are all async so that they work the same way.
- * {@link WebViewer.open} and {@link WebViewer.close} are different: they return right away,
- * without waiting for the data to load.
  */
 export class WebViewer {
   #id = randomId();
@@ -1424,7 +1449,7 @@ export class WebViewer {
     this.#dispatch_event("ready");
 
     if (rrd) {
-      this.open(rrd);
+      this.#add_receivers(rrd);
     }
 
     let self = this;
@@ -1570,14 +1595,8 @@ export class WebViewer {
     return this.#state === "ready";
   }
 
-  /**
-   * Open a recording.
-   *
-   * The viewer must have been started via {@link WebViewer.start}.
-   *
-   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
-   */
-  open(rrd: string | string[]) {
+  /** Start loading from `rrd`, without waiting for it. */
+  #add_receivers(rrd: string | string[]) {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
@@ -1588,29 +1607,6 @@ export class WebViewer {
         this.#handle.add_receiver(url);
       } catch (e) {
         this.#fail("Failed to open recording", String(e));
-        throw e;
-      }
-    }
-  }
-
-  /**
-   * Close a recording.
-   *
-   * The viewer must have been started via {@link WebViewer.start}.
-   *
-   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
-   */
-  close(rrd: string | string[]) {
-    if (!this.#handle) {
-      throw new Error(`attempted to close \`${rrd}\` in a stopped viewer`);
-    }
-
-    const urls = Array.isArray(rrd) ? rrd : [rrd];
-    for (const url of urls) {
-      try {
-        this.#handle.remove_receiver(url);
-      } catch (e) {
-        this.#fail("Failed to close recording", String(e));
         throw e;
       }
     }
@@ -1922,7 +1918,7 @@ export class WebViewer {
    * Show a location the viewer already has open.
    *
    * Takes a location from {@link WebViewer.get_location}, or the `location` of a recording from {@link WebViewer.get_state}.
-   * This only navigates, and never loads anything: use {@link WebViewer.open_url} for that.
+   * This only navigates, and never loads anything: use {@link WebViewer.open} for that.
    *
    * Rejects with a {@link ViewerControlError} with the code `NOT_FOUND` if the viewer does not have it open,
    * and `INVALID_ARGUMENT` if it is not a location.
@@ -1934,41 +1930,51 @@ export class WebViewer {
   }
 
   /**
-   * Open a URL: a recording or blueprint file, a `rerun://` dataset URI, a server or catalog URL,
-   * or a link into a recording.
+   * Open URLs: recording or blueprint files, `rerun://` dataset URIs, server or catalog URLs,
+   * or links into a recording.
    *
    * A recording it opens becomes the active recording, unless `navigate` is `false`.
    * A location the viewer already has open is not loaded again, only shown.
    * Resolves once the initial load is done, or after about ten seconds, whichever comes first.
    *
+   * ```ts
+   * const { store_ids } = await viewer.open("https://app.rerun.io/version/0.39.0/examples/dna.rrd");
+   * ```
+   *
    * Rejects with a {@link ViewerControlError} with the code `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded.
    *
    * This API is experimental, and may change between releases.
    */
-  async open_url(url: string, options: OpenUrlOptions = {}): Promise<OpenUrlResult> {
-    const { storeIds, loading } = await this.#viewer_control("open", {
-      url,
-      navigate: options.navigate,
-    });
-    return { store_ids: storeIds, loading };
+  async open(urls: string | string[], options: OpenOptions = {}): Promise<OpenResult> {
+    const responses = await Promise.all(
+      (Array.isArray(urls) ? urls : [urls]).map((url) =>
+        this.#viewer_control("open", { url, navigate: options.navigate }),
+      ),
+    );
+    return {
+      store_ids: responses.flatMap((response) => response.storeIds),
+      loading: responses.flatMap((response) => response.loading),
+    };
   }
 
   /**
    * Close recordings, and return the store ids of the ones that were closed.
    *
-   * This only removes them from the viewer: unsaved blueprint edits are lost.
+   * Closing by URL also stops loading from it.
+   * This only removes recordings from the viewer: unsaved blueprint edits are lost.
    *
-   * Rejects with a {@link ViewerControlError} with the code `NOT_FOUND` if a recording is not open.
+   * ```ts
+   * await viewer.close("https://app.rerun.io/version/0.39.0/examples/dna.rrd");
+   * await viewer.close("all");
+   * ```
+   *
+   * Rejects with a {@link ViewerControlError} with the code `NOT_FOUND` if a recording is not open,
+   * or nothing is loaded from a URL. Then nothing is closed.
    *
    * This API is experimental, and may change between releases.
    */
-  async close_recordings(target: CloseRecordingsTarget): Promise<string[]> {
-    const { closed } = await this.#viewer_control("close", {
-      target:
-        target === "current" || target === "all"
-          ? { case: target, value: true }
-          : { case: "storeIds", value: { storeIds: target } },
-    });
+  async close(target: CloseTarget): Promise<string[]> {
+    const { closed } = await this.#viewer_control("close", { target: close_target_of(target) });
     return closed;
   }
 

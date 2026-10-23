@@ -112,11 +112,11 @@ The Viewer API supports adding and removing recordings:
 ```js,id=embed-web-viewer-api-js-open-close
 const rrdUrl = "https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd";
 
-// Open a recording:
-viewer.open(rrdUrl);
+// Open a recording, and wait for it to load:
+const { store_ids } = await viewer.open(rrdUrl);
 
 // Later on…
-viewer.close(rrdUrl);
+await viewer.close(rrdUrl);
 ```
 
 Once finished with the Viewer, you can stop it and release all associated resources:
@@ -147,7 +147,6 @@ await viewer.set_location(state.recordings[0].location);
 Each of these methods returns a promise, because the Viewer handles each request on its next frame.
 Some requests take even longer, such as a screenshot, or opening a URL, which waits for the data to load.
 They are all async so that they work the same way.
-`open` and `close` are different: they return right away, without waiting for the data to load.
 
 A failed call rejects with a `ViewerControlError`, whose `code` is a gRPC status code such as `NOT_FOUND`.
 This API is experimental, and may change between releases.

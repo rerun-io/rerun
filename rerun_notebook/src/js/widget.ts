@@ -55,11 +55,11 @@ class ViewerWidget {
   viewer: WebViewer = new WebViewer();
 
   /**
-   * The playback operations from Python, run one at a time in the order they arrived.
+   * The viewer operations from Python, run one at a time in the order they arrived.
    *
    * A recording switch reads the viewer state first, so a seek sent right after it must wait for it.
    */
-  playback: Promise<void> = Promise.resolve();
+  operations: Promise<void> = Promise.resolve();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
   options: AppOptions = {
@@ -143,11 +143,17 @@ class ViewerWidget {
         break;
       }
       case "open_url": {
-        this.viewer.open(msg.url)
+        this.queue_operation("Failed to open URL:", async () => {
+          // `open` sends its request right away, but only answers once the URL has loaded.
+          // Waiting for that would hold back a `close_url` meant to cancel the load.
+          this.viewer.open(msg.url).catch((err) => console.warn("Failed to open URL:", err));
+        });
         break;
       }
       case "close_url": {
-        this.viewer.close(msg.url)
+        this.queue_operation("Failed to close URL:", async () => {
+          await this.viewer.close(msg.url);
+        });
         break;
       }
       case "set_credentials": {
@@ -181,7 +187,7 @@ class ViewerWidget {
           : msg.timestamp_nanos != null
             ? { timestamp_nanos: BigInt(msg.timestamp_nanos) }
             : {};
-    this.queue_playback("Failed to set the time:", () =>
+    this.queue_operation("Failed to set the time:", () =>
       this.viewer.set_time({
         timeline: msg.timeline ?? undefined,
         ...time,
@@ -196,7 +202,7 @@ class ViewerWidget {
       return;
     }
 
-    this.queue_playback("Failed to switch recording:", async () => {
+    this.queue_operation("Failed to switch recording:", async () => {
       const state = await this.viewer.get_state();
       const recording = state.recordings.find(
         (recording) => parse_store_id(recording.store_id).recording_id === recording_id,
@@ -207,9 +213,9 @@ class ViewerWidget {
     });
   };
 
-  /** Run `operation` once the earlier playback operations are done, and log if it fails. */
-  queue_playback(failure: string, operation: () => Promise<void>) {
-    this.playback = this.playback
+  /** Run `operation` once the earlier operations are done, and log if it fails. */
+  queue_operation(failure: string, operation: () => Promise<void>) {
+    this.operations = this.operations
       .then(operation)
       .catch((err) => console.warn(failure, err));
   }
