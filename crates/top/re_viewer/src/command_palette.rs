@@ -50,11 +50,23 @@ pub enum CommandPaletteAction {
     /// ui commands usually don't have arbitrary state. We keep the raw query string and let the
     /// handler re-parse it, so this also covers file paths and schemeless URLs.
     OpenUrl(String),
+
+    /// Submit a prompt from agent mode, opening the agent panel.
+    #[cfg(agent_panel)]
+    AskAgent(String),
+
+    /// Open agent setup without submitting a prompt.
+    #[cfg(agent_panel)]
+    SetUpAgent,
 }
 
 impl CommandPaletteAction {
     fn tooltip(&self) -> &'static str {
         match self {
+            #[cfg(agent_panel)]
+            Self::AskAgent(_) => "Send this prompt to the agent",
+            #[cfg(agent_panel)]
+            Self::SetUpAgent => "Set up an agent",
             Self::Command(command) => command.kind().tooltip(),
             Self::SelectEntityPath(_) => "Select and focus on this entity",
             Self::SelectComponentPath(_) => "Select and focus on this component",
@@ -69,6 +81,8 @@ impl CommandPaletteAction {
     #[cfg(debug_assertions)]
     pub fn is_debug_only(&self) -> bool {
         match self {
+            #[cfg(agent_panel)]
+            Self::AskAgent(_) | Self::SetUpAgent => false,
             Self::Command(command) => command.kind().is_debug_only(),
             Self::SelectEntityPath(_)
             | Self::SelectComponentPath(_)
@@ -81,6 +95,14 @@ impl CommandPaletteAction {
 
 /// Feeds the viewer's commands into the [`re_ui::CommandPalette`].
 pub struct CommandPaletteProviderImpl<'a> {
+    /// Whether the agent panel feature is enabled, allowing agent mode in the palette.
+    #[cfg(agent_panel)]
+    pub agent_enabled: bool,
+
+    /// Whether agent setup has been completed, allowing prompt submission.
+    #[cfg(agent_panel)]
+    pub agent_setup_done: bool,
+
     /// The active recording, if any. Provides entity-path completion.
     pub recording: Option<&'a EntityDb>,
 
@@ -92,17 +114,28 @@ pub struct CommandPaletteProviderImpl<'a> {
 }
 
 impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl<'_> {
-    fn initial_hint_ui(&mut self, ui: &mut egui::Ui) {
+    #[cfg(agent_panel)]
+    fn agent_enabled(&self) -> bool {
+        self.agent_enabled
+    }
+
+    #[cfg(agent_panel)]
+    fn submit_agent_prompt(&mut self, query: &str) -> Option<CommandPaletteAction> {
+        (self.agent_enabled && self.agent_setup_done && !query.trim().is_empty())
+            .then(|| CommandPaletteAction::AskAgent(query.to_owned()))
+    }
+
+    #[cfg(agent_panel)]
+    fn agent_setup_action(&self) -> Option<CommandPaletteAction> {
+        (self.agent_enabled && !self.agent_setup_done).then_some(CommandPaletteAction::SetUpAgent)
+    }
+
+    fn search_hint(&self) -> &'static str {
         if self.recording.is_some() {
-            ui.weak(
-                "Find a command, search for an entity, dataset or table, or enter a URL to open",
-            );
+            "Find a command, search for an entity, dataset or table, or enter a URL to open."
         } else {
-            ui.weak(
-                "Find a command, search for a server, dataset or table, or enter a URL to open",
-            );
+            "Find a command, search for a server, dataset or table, or enter a URL to open."
         }
-        ui.add_space(4.0);
     }
 
     fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<MatchGroup<CommandPaletteAction>> {
@@ -264,6 +297,7 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
             vec![]
         };
 
+        // Keep search sources in separate groups for ranking and truncation.
         itertools::chain!(
             [ui_cmd_group, entity_group, server_group],
             entry_groups,
@@ -279,6 +313,8 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         selected: bool,
     ) -> CmdRow {
         let kb_shortcut = match &matched.command {
+            #[cfg(agent_panel)]
+            CommandPaletteAction::AskAgent(_) | CommandPaletteAction::SetUpAgent => String::new(),
             CommandPaletteAction::Command(command) => command
                 .kind()
                 .formatted_kb_shortcut(ui.ctx())
@@ -311,6 +347,10 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         };
 
         let job = match &matched.command {
+            #[cfg(agent_panel)]
+            CommandPaletteAction::AskAgent(_) | CommandPaletteAction::SetUpAgent => {
+                unreachable!("agent prompts are submitted directly, not shown as search results")
+            }
             CommandPaletteAction::SelectEntityPath(entity_path) => {
                 recolor_if_selected(entity_path.syntax_highlighted(ui.style()))
             }

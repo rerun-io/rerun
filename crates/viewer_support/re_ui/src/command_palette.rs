@@ -19,6 +19,8 @@
 
 use std::collections::BTreeSet;
 
+use crate::UiExt as _;
+
 use crate::fuzzy::{FuzzyMatch, FuzzyQuery};
 use egui::text::LayoutJob;
 use egui::{Key, NumExt as _};
@@ -142,14 +144,40 @@ impl<Cmd> MatchedCmd<Cmd> {
 /// Commands in a group, that somehow belong together.
 pub type MatchGroup<Cmd> = Vec<MatchedCmd<Cmd>>;
 
+/// Whether input searches commands or is submitted as an agent prompt.
+#[derive(Default, PartialEq, Eq)]
+enum Mode {
+    #[default]
+    Search,
+    Agent,
+}
+
 /// One source of commands.
 ///
 /// The type of the command is up to the user to provide.
 ///
 /// For instance: match file names, and return a `Cmd::OpenFile(Path)`.
 pub trait CommandPaletteProvider<Cmd> {
-    /// Show when the query field is empty (the user hasn't typed anything yet).
-    fn initial_hint_ui(&mut self, _ui: &mut egui::Ui) {}
+    /// Enables switching between search and agent modes with Tab.
+    fn agent_enabled(&self) -> bool {
+        false
+    }
+
+    /// Action for opening agent setup, if setup is required before submitting prompts.
+    fn agent_setup_action(&self) -> Option<Cmd> {
+        None
+    }
+
+    /// Submit an agent prompt, rejecting blank input.
+    /// Return `None` to keep the palette open without clearing the input.
+    fn submit_agent_prompt(&mut self, _query: &str) -> Option<Cmd> {
+        None
+    }
+
+    /// Placeholder shown when the search field is empty.
+    fn search_hint(&self) -> &'static str {
+        "Search commands"
+    }
 
     /// Find commands that matches this query.
     fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<MatchGroup<Cmd>>;
@@ -171,6 +199,9 @@ pub struct CommandPalette {
 
     /// The raw thing the user entered
     raw_query: String,
+
+    /// How to use the input ([`Mode::Search`], [`Mode::Agent`], …).
+    mode: Mode,
 
     /// Within the selected provider
     selected_alternative: usize,
@@ -268,45 +299,137 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         provider: &mut dyn CommandPaletteProvider<Cmd>,
     ) -> Option<Cmd> {
+        // Allow switching to agent mode via Tab, if possible.
+        let agent_enabled = provider.agent_enabled();
+        if !agent_enabled {
+            self.mode = Mode::Search;
+        }
+        let mode_changed = agent_enabled
+            && ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Tab));
+        if mode_changed {
+            self.mode = match self.mode {
+                Mode::Search => Mode::Agent,
+                Mode::Agent => Mode::Search,
+            };
+        }
+
         // Consume these _before_ we add the `TextEdit`, so it doesn't steal them
         // (e.g. arrow keys would otherwise move the text cursor instead of the selection).
         let (enter_pressed, up, down) = ui.input_mut(|i| {
             (
                 i.consume_key(Default::default(), Key::Enter),
-                i.count_and_consume_key(Default::default(), Key::ArrowUp),
-                i.count_and_consume_key(Default::default(), Key::ArrowDown),
+                if self.mode == Mode::Agent {
+                    // No search suggestions in agent mode.
+                    0
+                } else {
+                    i.count_and_consume_key(Default::default(), Key::ArrowUp)
+                },
+                if self.mode == Mode::Agent {
+                    0
+                } else {
+                    i.count_and_consume_key(Default::default(), Key::ArrowDown)
+                },
             )
         });
 
-        let text_response = ui
-            .add(
-                egui::TextEdit::singleline(&mut self.raw_query)
-                    .desired_width(f32::INFINITY)
-                    .lock_focus(true),
-            )
-            .accessible_name("Search commands");
-        text_response.request_focus();
-        let scroll_to_selected_alternative = if text_response.changed() {
-            self.selected_alternative = 0;
-            self.expanded_groups.clear();
-            true
-        } else {
-            false
+        let query_id = ui.make_persistent_id("query");
+        let (icon, hint, name) = match self.mode {
+            Mode::Search => (
+                &crate::icons::SEARCH,
+                provider.search_hint(),
+                "Search commands",
+            ),
+            Mode::Agent => (
+                &crate::icons::AGENT,
+                "Ask a question or describe what you’d like to do.",
+                "Prompt",
+            ),
         };
-
-        let selected_command = egui::ScrollArea::vertical()
-            .auto_shrink([false, true])
-            .show(ui, |ui| {
-                self.alternatives_ui(
-                    ui,
-                    provider,
-                    enter_pressed,
-                    up,
-                    down,
-                    scroll_to_selected_alternative,
-                )
+        let text_edit = egui::TextEdit::singleline(&mut self.raw_query)
+            .id(query_id)
+            .hint_text(hint)
+            .desired_width(f32::INFINITY)
+            .lock_focus(true);
+        let text_response = ui
+            .horizontal(|ui| {
+                ui.add(
+                    icon.as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .tint(ui.visuals().text_color()),
+                );
+                // TextEdit uses the themed weak color for placeholders, overriding RichText colors.
+                ui.visuals_mut().weak_text_color = Some(ui.tokens().text_subdued);
+                ui.add(text_edit).accessible_name(name)
             })
             .inner;
+        text_response.request_focus();
+        let scroll_to_selected_alternative = mode_changed || text_response.changed();
+        if scroll_to_selected_alternative {
+            self.selected_alternative = 0;
+            self.expanded_groups.clear();
+        }
+
+        if agent_enabled {
+            let (hint, icon) = match self.mode {
+                Mode::Search => ("Press Tab to switch to agent mode", &crate::icons::AGENT),
+                Mode::Agent => ("Press Tab to switch to search mode", &crate::icons::SEARCH),
+            };
+            ui.horizontal_wrapped(|ui| {
+                ui.add(
+                    crate::icons::ARROW_RIGHT
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .tint(ui.visuals().weak_text_color()),
+                );
+                ui.weak(hint);
+                ui.add(
+                    icon.as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .tint(ui.visuals().weak_text_color()),
+                );
+            });
+        }
+
+        let selected_command = if self.mode == Mode::Agent {
+            // Check first if an agent is configured, otherwise guide the user to setup.
+            if let Some(setup_action) = provider.agent_setup_action() {
+                crate::alert::Alert::info()
+                    .show(ui, |ui| {
+                        ui.set_min_width(ui.available_width());
+                        egui::Sides::new()
+                            .show(
+                                ui,
+                                |ui| ui.label("Set up an agent to send prompts."),
+                                |ui| {
+                                    ui.add(crate::ReButton::new("Set up agent").primary())
+                                        .clicked()
+                                },
+                            )
+                            .1
+                    })
+                    .inner
+                    .then_some(setup_action)
+            } else {
+                enter_pressed
+                    .then(|| provider.submit_agent_prompt(&self.raw_query))
+                    .flatten()
+            }
+        } else {
+            ui.separator();
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    self.alternatives_ui(
+                        ui,
+                        provider,
+                        enter_pressed,
+                        up,
+                        down,
+                        scroll_to_selected_alternative,
+                    )
+                })
+                .inner
+        };
 
         if selected_command.is_some() {
             self.reset();
@@ -329,10 +452,6 @@ impl CommandPalette {
         re_tracing::profile_function!();
 
         let query = FuzzyQuery::new(self.raw_query.clone());
-
-        if query.is_empty() {
-            provider.initial_hint_ui(ui);
-        }
 
         let mut groups = provider.all_matching(&query);
 

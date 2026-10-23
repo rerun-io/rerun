@@ -1,6 +1,7 @@
 //! The agent panel: a chat with a coding agent that runs next to the viewer and drives it
 //! through `rerun viewer-mcp`.
 
+use std::collections::VecDeque;
 use std::path::Path;
 
 use re_agent_ui::{AgentPanel, AgentSettings, HostButton, McpServerConfig, SessionContext};
@@ -36,6 +37,12 @@ pub struct ViewerAgentPanel {
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
 
+    /// Prompts waiting for the first conversation to be created — for example, prompts from
+    /// the command palette submitted before the agent panel has been opened.
+    ///
+    /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
+    pending_prompts: VecDeque<String>,
+
     /// Empty working directory handed to the agent in our own development builds, kept alive
     /// for as long as the panel is, since dropping it deletes the directory.
     ///
@@ -61,6 +68,21 @@ pub struct ViewerAgentPanel {
 }
 
 impl ViewerAgentPanel {
+    /// Queue a nonblank prompt in the active conversation, buffering it until the panel exists.
+    /// Requests input focus; the caller must open the panel.
+    pub fn submit_prompt(&mut self, prompt: String) {
+        if prompt.trim().is_empty() {
+            return;
+        }
+
+        self.request_input_focus();
+        if let Some(panel) = self.panel.as_mut() {
+            panel.queue_prompt(prompt);
+        } else {
+            self.pending_prompts.push_back(prompt);
+        }
+    }
+
     /// Give the prompt input keyboard focus once there is a panel to give it to.
     pub fn request_input_focus(&mut self) {
         self.focus_input = true;
@@ -89,9 +111,15 @@ impl ViewerAgentPanel {
         }
 
         let Self {
-            panel, focus_input, ..
+            panel,
+            focus_input,
+            pending_prompts,
+            ..
         } = self;
         if let Some(panel) = panel.as_mut() {
+            for prompt in pending_prompts.drain(..) {
+                panel.queue_prompt(prompt);
+            }
             // A collapsed panel never runs its `ui`, and its agents would otherwise
             // sit on their messages until the user opens it again.
             panel.poll_events();

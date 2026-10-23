@@ -61,13 +61,12 @@ struct CommandProvider {
 }
 
 impl CommandPaletteProvider<Command> for CommandProvider {
-    fn initial_hint_ui(&mut self, ui: &mut egui::Ui) {
+    fn search_hint(&self) -> &'static str {
         if self.rec.is_some() {
-            ui.weak("Find a command, search for an entity, or enter an URL to open");
+            "Find a command, search for an entity, or enter a URL to open"
         } else {
-            ui.weak("Find a command or enter an URL to open");
+            "Find a command or enter a URL to open"
         }
-        ui.add_space(4.0);
     }
 
     fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<MatchGroup<Command>> {

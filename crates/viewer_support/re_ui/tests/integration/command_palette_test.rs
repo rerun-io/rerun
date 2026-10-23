@@ -205,3 +205,81 @@ fn command_palette_expand_truncated_group() {
 
     harness.snapshot("command_palette_expanded_group");
 }
+
+/// Checks that switching modes preserves the prompt and cursor, empty prompts are not submitted,
+/// and reopening the palette returns to search mode.
+#[test]
+fn command_palette_agent_mode_preserves_query_and_resets_on_reopen() {
+    use egui_kittest::kittest::Queryable as _;
+
+    struct ModeProvider;
+
+    impl re_ui::CommandPaletteProvider<String> for ModeProvider {
+        fn agent_enabled(&self) -> bool {
+            true
+        }
+
+        fn submit_agent_prompt(&mut self, query: &str) -> Option<String> {
+            (!query.trim().is_empty()).then(|| query.to_owned())
+        }
+
+        fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<re_ui::MatchGroup<String>> {
+            re_ui::CommandPaletteProvider::all_matching(&mut ManyCommandsProvider, query)
+        }
+
+        fn cmd_row(
+            &self,
+            ui: &egui::Ui,
+            cmd: &re_ui::MatchedCmd<String>,
+            selected: bool,
+        ) -> CmdRow {
+            re_ui::CommandPaletteProvider::cmd_row(&ManyCommandsProvider, ui, cmd, selected)
+        }
+    }
+
+    let mut palette = re_ui::CommandPalette::default();
+    palette.toggle();
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(800.0, 600.0))
+            .build_ui_state(
+                |ui, (palette, actions): &mut (re_ui::CommandPalette, Vec<String>)| {
+                    if let Some(action) = palette.show(ui.ctx(), &mut ModeProvider) {
+                        actions.push(action);
+                    }
+                },
+                (palette, Vec::new()),
+            );
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert!(harness.state().1.is_empty());
+    assert!(harness.query_by_label("First group command 0").is_none());
+    harness
+        .get_by_label("Prompt")
+        .type_text("First group command 0, but explain it");
+    harness.run();
+    harness.key_press(egui::Key::ArrowLeft);
+    harness.key_press(egui::Key::ArrowLeft);
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    harness.get_by_label("First group command 0");
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    assert!(harness.query_by_label("First group command 0").is_none());
+    harness.event(egui::Event::Text("all of ".to_owned()));
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert_eq!(
+        harness.state().1,
+        ["First group command 0, but explain all of it"]
+    );
+    assert!(harness.query_by_label("Prompt").is_none());
+    harness.state_mut().0.toggle();
+    harness.run();
+    harness.get_by_label("Search commands");
+    harness.get_by_label("First group command 0");
+}

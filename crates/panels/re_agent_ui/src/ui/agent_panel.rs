@@ -1,6 +1,8 @@
 //! The complete agent panel: one tab per conversation, each showing setup until its agent runs,
 //! then the chat.
 
+use std::collections::VecDeque;
+
 use egui_tiles::{Container, Tile, TileId, Tiles};
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
 use re_ui::{UiExt as _, icons};
@@ -49,8 +51,10 @@ struct Conversation {
     /// job of its own: a different working directory, preamble, or set of readable directories.
     context: Option<SessionContext>,
 
-    /// Sent as soon as the agent is ready, for a conversation the host started with a prompt.
-    opening_prompt: Option<String>,
+    /// Prompts waiting for the agent to be ready, e.g. sent from the command palette.
+    ///
+    /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
+    pending_prompts: VecDeque<String>,
 }
 
 impl Conversation {
@@ -68,7 +72,7 @@ impl Conversation {
                 Screen::Setup
             },
             context: None,
-            opening_prompt: None,
+            pending_prompts: Default::default(),
         }
     }
 
@@ -165,19 +169,18 @@ impl Conversation {
         }
     }
 
-    /// Sends the prompt the host opened this conversation with, once the agent can take it.
+    /// Sends host prompts once the agent can take them.
     ///
     /// Must be called repeatedly: the agent is not ready for some time after the conversation is
     /// opened, and a send can still be refused after that, so the prompt is kept until one lands.
     /// [`AgentPanel::poll_events`] does this every frame, including while the panel is collapsed.
-    fn send_opening_prompt(&mut self) {
-        if self.opening_prompt.is_none() || !self.session.is_ready() {
-            return;
-        }
-        if let Some(prompt) = self.opening_prompt.take()
-            && !self.session.send_prompt(prompt.clone().into())
-        {
-            self.opening_prompt = Some(prompt);
+    fn send_pending_prompts(&mut self) {
+        while let Some(prompt) = self.pending_prompts.pop_front() {
+            if !self.session.send_prompt(prompt.clone().into()) {
+                // Agent not ready yet; retry on the next poll.
+                self.pending_prompts.push_front(prompt);
+                break;
+            }
         }
     }
 
@@ -592,6 +595,17 @@ impl AgentPanel {
             .is_some_and(|session| session.send_prompt(prompt))
     }
 
+    /// Submit text to the active conversation, retaining it through startup and setup.
+    /// Queued text stays with that conversation when tabs change; blank input is ignored.
+    pub fn queue_prompt(&mut self, prompt: String) {
+        if !prompt.trim().is_empty()
+            && let Some(conversation) = active_conversation_mut(&mut self.tree)
+        {
+            conversation.pending_prompts.push_back(prompt);
+            conversation.input.request_focus();
+        }
+    }
+
     /// What the current settings would launch, for hosts that run side sessions with the same
     /// agent.
     pub fn launch_config(&self, context: &SessionContext) -> Result<LaunchConfig, String> {
@@ -644,7 +658,9 @@ impl AgentPanel {
     ) {
         let mut conversation = Conversation::new(&self.settings, self.auto_approve);
         conversation.context = Some(context);
-        conversation.opening_prompt = Some(opening_prompt.into());
+        conversation
+            .pending_prompts
+            .push_back(opening_prompt.into());
         self.insert_conversation(conversation);
     }
 
@@ -677,7 +693,7 @@ impl AgentPanel {
     pub fn poll_events(&mut self) {
         for conversation in conversations_mut(&mut self.tree) {
             conversation.session.poll_events();
-            conversation.send_opening_prompt();
+            conversation.send_pending_prompts();
         }
     }
 
@@ -781,5 +797,62 @@ fn active_conversation_mut(tree: &mut egui_tiles::Tree<Conversation>) -> Option<
     match tree.tiles.get_mut(tile_id)? {
         Tile::Pane(conversation) => Some(conversation),
         Tile::Container(_) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Checks that prompts from the host join the busy session's queue before later chat prompts.
+    #[test]
+    fn host_prompts_join_busy_session_queue() {
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let session = panel.session_mut().unwrap();
+        session.handle_event(re_agent::AgentEvent::SessionStarted {
+            session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
+            modes: None,
+            config_options: Vec::new(),
+        });
+        session.begin_test_turn();
+
+        panel.queue_prompt("Prompt from command palette".to_owned());
+        panel.poll_events();
+        let session = panel.session_mut().unwrap();
+        assert!(session.send_prompt("Prompt from chat".into()));
+        assert_eq!(
+            session
+                .queued_prompts()
+                .iter()
+                .map(|prompt| prompt.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Prompt from command palette", "Prompt from chat"],
+        );
+    }
+
+    /// Checks that prompts survive setup and remain attached to the conversation they were sent to.
+    #[test]
+    fn host_prompts_survive_setup_and_stay_with_their_conversation() {
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let first = active_tile_id(&panel.tree).unwrap();
+        panel.queue_prompt("First prompt".to_owned());
+        panel.queue_prompt("Second prompt".to_owned());
+        panel.queue_prompt("   ".to_owned());
+        panel.poll_events();
+        panel.open_conversation(SessionContext::default(), "Other conversation");
+        panel.poll_events();
+
+        let Some(Tile::Pane(conversation)) = panel.tree.tiles.get(first) else {
+            panic!("first conversation should still exist");
+        };
+        assert_eq!(conversation.screen, Screen::Setup);
+        assert_eq!(
+            conversation.pending_prompts,
+            ["First prompt", "Second prompt"]
+        );
+        assert_eq!(
+            panel.active_conversation().unwrap().pending_prompts,
+            ["Other conversation"],
+        );
     }
 }

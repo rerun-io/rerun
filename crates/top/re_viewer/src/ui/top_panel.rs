@@ -285,6 +285,7 @@ fn command_palette_trigger_ui(
     const NAVIGATION_GAP: f32 = 8.0;
 
     let navigation_buttons_state = navigation_buttons_state(app);
+    let agent_enabled = cfg!(agent_panel) && app.app_options().experimental.agent_panel;
     let navigation_width = if navigation_buttons_state.is_visible() {
         2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
     } else {
@@ -323,8 +324,14 @@ fn command_palette_trigger_ui(
         icons::SEARCH
             .as_image()
             .fit_to_exact_size(ui.tokens().small_icon_size),
-        RichText::new("Search commands…").color(subdued_color),
+        RichText::new(if agent_enabled {
+            "Search commands or ask agent…"
+        } else {
+            "Search commands…"
+        })
+        .color(subdued_color),
     )
+    .truncate()
     .right_text(RichText::new(shortcut).color(subdued_color))
     .image_tint_follows_text_color(true)
     .corner_radius(ui.tokens().normal_corner_radius())

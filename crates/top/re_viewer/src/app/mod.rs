@@ -1837,12 +1837,25 @@ impl AppCore {
             }
 
             let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
+                #[cfg(agent_panel)]
+                agent_enabled: self.app_options().experimental.agent_panel,
+                #[cfg(agent_panel)]
+                agent_setup_done: self.state.agent_settings.setup_done,
                 recording: store_context.as_ref().map(|ctx| ctx.recording()),
                 redap_servers: &self.state.redap_servers,
                 commands,
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
+                    #[cfg(agent_panel)]
+                    CommandPaletteAction::AskAgent(prompt) => {
+                        self.state.agent_panel_open = true;
+                        self.agent_panel.submit_prompt(prompt);
+                    }
+                    #[cfg(agent_panel)]
+                    CommandPaletteAction::SetUpAgent => {
+                        self.state.agent_panel_open = true;
+                    }
                     CommandPaletteAction::Command(cmd) => self.command_sender.send_command(cmd),
                     CommandPaletteAction::SelectEntityPath(entity_path) => {
                         self.command_sender
