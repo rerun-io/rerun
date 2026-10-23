@@ -34,7 +34,7 @@ function logEvent(text: string) {
 }
 
 function logError(err: unknown) {
-  logEvent(`error: ${err}`);
+  logEvent(`error: ${String(err)}`);
 }
 
 /** Ask the viewer for its active recording, and the timeline its time cursor is on. */

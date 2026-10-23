@@ -465,8 +465,11 @@ js-example-viewer-control = { cmd = "npm install && npm run dev", cwd = "example
 # Smoke test `examples/js/viewer_control` with Playwright. Needs a built web-viewer and `$CHROME` (or `npx playwright install chromium`).
 js-example-viewer-control-test = { cmd = "npm ci && npm test", cwd = "examples/js/viewer_control" }
 
-# Fail if any of our JS or TS code uses a deprecated web-viewer API. Needs a built web-viewer.
-js-check-deprecated = { cmd = "npm ci --prefix rerun_notebook && npm ci --prefix examples/js/viewer_control && node rerun_js/scripts/check_deprecated.mjs rerun_js/web-viewer/tsconfig.json rerun_js/web-viewer-react/tsconfig.json rerun_notebook/tsconfig.json examples/js/viewer_control/tsconfig.json" }
+# Lint our JS and TS code with oxlint, including type-aware rules such as `no-deprecated`.
+# Needs a built web-viewer, so that the other packages see its types.
+js-lint = { cmd = "npm ci --prefix rerun_notebook && npm ci --prefix examples/js/viewer_control && rerun_js/node_modules/.bin/oxlint --type-aware --deny-warnings rerun_js rerun_notebook examples/js", env = { OXLINT_TSGOLINT_PATH = "rerun_js/node_modules/.bin/tsgolint" }, depends-on = [
+  "js-install",
+] }
 
 
 # Build and install a development version of the rerun-sdk Python package.

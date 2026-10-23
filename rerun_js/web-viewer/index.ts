@@ -300,7 +300,7 @@ export interface ViewerLogEntry {
  * these recordings by store id, the active recording (`"current"`), or every recording (`"all"`).
  */
 export type CloseTarget =
-  | string
+  | (string & {})
   | string[]
   | { store_ids: string[] }
   | "current"
@@ -845,7 +845,7 @@ function export_stream(bytes: Uint8Array): ReadableStream<Uint8Array> {
   });
 }
 
-async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
+async function fetch_viewer_js(): Promise<(() => typeof wasm_bindgen)> {
   // @ts-ignore
   return (await import("./re_viewer")).default;
 }
@@ -944,7 +944,7 @@ async function load(
   // but don't load the JS/Wasm source every time
   if (!get_wasm_bindgen || !_wasm_module) {
     [get_wasm_bindgen, _wasm_module] = await Promise.all([
-      fetch_viewer_js(base_url),
+      fetch_viewer_js(),
       WebAssembly.compileStreaming(fetch_viewer_wasm(base_url, on_progress)),
     ]);
   }
@@ -960,14 +960,6 @@ async function load(
 }
 
 let _minimize_current_fullscreen_viewer: (() => void) | null = null;
-
-function randomId(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
@@ -1301,7 +1293,6 @@ function resolveAbsoluteUrl(url: string): string {
  * They are all async so that they work the same way.
  */
 export class WebViewer {
-  #id = randomId();
   // NOTE: Using the handle requires wrapping all calls to its methods in try/catch.
   //       On failure, call `this.stop` to prevent a memory leak, then re-throw the error.
   #handle: WebHandle | null = null;
@@ -1452,16 +1443,14 @@ export class WebViewer {
       this.#add_receivers(rrd);
     }
 
-    let self = this;
-
-    function check_for_panic() {
-      if (self.#handle?.has_panicked()) {
-        self.#fail("Rerun has crashed.", self.#handle?.panic_message());
+    const check_for_panic = () => {
+      if (this.#handle?.has_panicked()) {
+        this.#fail("Rerun has crashed.", this.#handle?.panic_message());
       } else {
         let delay_ms = 1000;
         setTimeout(check_for_panic, delay_ms);
       }
-    }
+    };
 
     check_for_panic();
 
@@ -1505,7 +1494,7 @@ export class WebViewer {
     setTimeout(() => {
       const callbacks = this.#event_map.get(event);
       if (callbacks) {
-        for (const [callback, { once }] of [...callbacks.entries()]) {
+        for (const [callback, { once }] of Array.from(callbacks)) {
           callback(...args);
           if (once) callbacks.delete(callback);
         }
@@ -1598,7 +1587,7 @@ export class WebViewer {
   /** Start loading from `rrd`, without waiting for it. */
   #add_receivers(rrd: string | string[]) {
     if (!this.#handle) {
-      throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
+      throw new Error(`attempted to open \`${String(rrd)}\` in a stopped viewer`);
     }
 
     const urls = Array.isArray(rrd) ? rrd : [rrd];
@@ -1727,7 +1716,7 @@ export class WebViewer {
   open_channel(channel_name: string = "rerun-io/web-viewer"): LogChannel {
     if (!this.#handle) {
       throw new Error(
-        `attempted to open channel \"${channel_name}\" in a stopped web viewer`,
+        `attempted to open channel "${channel_name}" in a stopped web viewer`,
       );
     }
 
@@ -1743,7 +1732,7 @@ export class WebViewer {
     const on_send = (/** @type {Uint8Array} */ data: Uint8Array) => {
       if (!this.#handle) {
         throw new Error(
-          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+          `attempted to send data through channel "${channel_name}" to a stopped web viewer`,
         );
       }
 
@@ -1758,7 +1747,7 @@ export class WebViewer {
     const on_send_table = (/** @type {Uint8Array} */ data: Uint8Array) => {
       if (!this.#handle) {
         throw new Error(
-          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+          `attempted to send data through channel "${channel_name}" to a stopped web viewer`,
         );
       }
 
@@ -1773,7 +1762,7 @@ export class WebViewer {
     const on_close = () => {
       if (!this.#handle) {
         throw new Error(
-          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+          `attempted to send data through channel "${channel_name}" to a stopped web viewer`,
         );
       }
 

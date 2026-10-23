@@ -37,7 +37,7 @@ const server = createServer(async (req, res) => {
     let stat;
     try {
       stat = await fsPromises.stat(filePath);
-    } catch (err) {
+    } catch {
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("404 Not Found\n");
       return;
@@ -48,7 +48,7 @@ const server = createServer(async (req, res) => {
       filePath = join(filePath, "index.html");
       try {
         stat = await fsPromises.stat(filePath);
-      } catch (err) {
+      } catch {
         res.writeHead(403, { "Content-Type": "text/plain" });
         res.end("403 Forbidden\n");
         return;

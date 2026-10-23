@@ -62,7 +62,7 @@ export function inferTag(version) {
 
   const [, prerelease] = version.split("-");
   if (prerelease) {
-    const [kind, n] = prerelease.split(".");
+    const [kind] = prerelease.split(".");
     switch (kind) {
       case "alpha":
         tag = "alpha";

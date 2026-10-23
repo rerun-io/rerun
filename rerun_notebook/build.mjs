@@ -36,9 +36,4 @@ function log(message) {
   return console.log(`[${now()}] ${message}`);
 }
 
-/** @param {string} message */
-function error(message) {
-  return console.error(`[${now()}] ${message}`);
-}
-
 await main();

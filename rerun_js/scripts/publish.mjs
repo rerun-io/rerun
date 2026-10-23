@@ -6,7 +6,6 @@ import {
   fs,
   script_dir,
   path,
-  fail,
   inferTag,
   isPublished,
 } from "./common.mjs";

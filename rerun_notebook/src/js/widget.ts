@@ -97,7 +97,7 @@ class ViewerWidget {
       model.send("ready");
     });
 
-    this.viewer.start(this.url ?? null, el, this.options);
+    void this.viewer.start(this.url ?? null, el, this.options);
     this.on_resize(el, model.get("_width"), model.get("_height"));
   }
 
@@ -240,7 +240,7 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
     } catch (e) {
       const el = document.querySelector(".rerun_notebook");
       if (el) {
-        el.innerHTML = `<div class="error">${e}</div>`;
+        el.innerHTML = `<div class="error">${String(e)}</div>`;
       }
     }
   };
