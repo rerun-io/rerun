@@ -54,7 +54,7 @@ struct Conversation {
     /// Prompts waiting for the agent to be ready, e.g. sent from the command palette.
     ///
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
-    pending_prompts: VecDeque<String>,
+    pending_prompts: VecDeque<Prompt>,
 }
 
 impl Conversation {
@@ -167,6 +167,29 @@ impl Conversation {
                 .preferred_models
                 .insert(self.profile_id.clone(), model);
         }
+        if self.input.restart_after_login_requested {
+            // Restarting after login clears the transcript, so retain
+            // the failed prompt and its attachments to resend once the new session is ready.
+            if let Some(prompt) = self
+                .session
+                .transcript()
+                .items
+                .iter()
+                .rev()
+                .find_map(|entry| {
+                    if let TranscriptItem::User(prompt) = &entry.item {
+                        Some(prompt.clone())
+                    } else {
+                        None
+                    }
+                })
+            {
+                // Put the prompt at the front of the queue so it's picked up as the next prompt on restart.
+                self.pending_prompts.push_front(prompt);
+            }
+            settings.profile_id.clone_from(&self.profile_id);
+            self.start(ui.ctx(), settings, context, agents);
+        }
     }
 
     /// Sends host prompts once the agent can take them.
@@ -176,7 +199,7 @@ impl Conversation {
     /// [`AgentPanel::poll_events`] does this every frame, including while the panel is collapsed.
     fn send_pending_prompts(&mut self) {
         while let Some(prompt) = self.pending_prompts.pop_front() {
-            if !self.session.send_prompt(prompt.clone().into()) {
+            if !self.session.send_prompt(prompt.clone()) {
                 // Agent not ready yet; retry on the next poll.
                 self.pending_prompts.push_front(prompt);
                 break;
@@ -601,7 +624,7 @@ impl AgentPanel {
         if !prompt.trim().is_empty()
             && let Some(conversation) = active_conversation_mut(&mut self.tree)
         {
-            conversation.pending_prompts.push_back(prompt);
+            conversation.pending_prompts.push_back(prompt.into());
             conversation.input.request_focus();
         }
     }
@@ -660,7 +683,7 @@ impl AgentPanel {
         conversation.context = Some(context);
         conversation
             .pending_prompts
-            .push_back(opening_prompt.into());
+            .push_back(Prompt::from(opening_prompt.into()));
         self.insert_conversation(conversation);
     }
 
@@ -847,11 +870,21 @@ mod tests {
         };
         assert_eq!(conversation.screen, Screen::Setup);
         assert_eq!(
-            conversation.pending_prompts,
+            conversation
+                .pending_prompts
+                .iter()
+                .map(|prompt| prompt.text.as_str())
+                .collect::<Vec<_>>(),
             ["First prompt", "Second prompt"]
         );
         assert_eq!(
-            panel.active_conversation().unwrap().pending_prompts,
+            panel
+                .active_conversation()
+                .unwrap()
+                .pending_prompts
+                .iter()
+                .map(|prompt| prompt.text.as_str())
+                .collect::<Vec<_>>(),
             ["Other conversation"],
         );
     }

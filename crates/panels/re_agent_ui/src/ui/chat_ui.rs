@@ -34,6 +34,8 @@ const EXAMPLE_PROMPTS: [&str; 3] = [
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
 pub struct ChatInput {
+    pub restart_after_login_requested: bool,
+
     /// The prompt being composed.
     pub text: String,
     focus: bool,
@@ -168,7 +170,9 @@ pub fn chat_ui(
                 .show(ui, |ui| {
                     transcript_ui(ui, session, show_thoughts);
 
-                    if let Phase::Connecting { status } = session.phase() {
+                    if let Phase::Connecting { status } = session.phase()
+                        && session.auth().is_none()
+                    {
                         ui.add_space(8.0);
                         ui.loading_indicator(status);
                     }
@@ -363,7 +367,12 @@ fn composer_ui(
     ui.spacing_mut().item_spacing.y = 8.0;
 
     if let Some(auth) = session.auth()
-        && let Some(method_id) = auth_ui(ui, auth, login_hint)
+        && let Some(method_id) = auth_ui(
+            ui,
+            auth,
+            login_hint,
+            &mut input.restart_after_login_requested,
+        )
     {
         session.authenticate(method_id);
     }
@@ -532,12 +541,16 @@ fn auth_ui(
     ui: &mut egui::Ui,
     auth: &AuthPrompt,
     login_hint: Option<&str>,
+    restart_after_login_requested: &mut bool,
 ) -> Option<re_agent::acp::schema::v1::AuthMethodId> {
     let mut picked = None;
     Alert::info().show_with_title(ui, "Login required", |ui| {
             ui.label(&auth.message);
-            if let Some(login_hint) = login_hint {
-                ui.weak("The reliable way in is the agent's own CLI. Log in from a terminal, then restart the session:");
+            let has_login_method = auth.methods.iter().any(|method| {
+                matches!(method, AuthMethod::Terminal(_) | AuthMethod::Agent(_))
+            });
+            if !has_login_method && let Some(login_hint) = login_hint {
+                ui.weak("Log in from a terminal, then restart the agent:");
                 ui.push_id("login_hint", |ui| code_ui(ui, login_hint, None));
             }
             for method in &auth.methods {
@@ -548,14 +561,8 @@ fn auth_ui(
                             ui.weak(description);
                         }
                         if !method.args.is_empty() {
-                            ui.weak("Run this in a terminal, then retry:");
+                            ui.weak("Run this in a terminal, then restart the agent:");
                             code_ui(ui, &method.args.join(" "), None);
-                        }
-                        if ui
-                            .add(ReButton::new(format!("Retry: {}", method.name)).primary())
-                            .clicked()
-                        {
-                            picked = Some(method.id.clone());
                         }
                     }
                     AuthMethod::Agent(method) => {
@@ -569,6 +576,18 @@ fn auth_ui(
                     _ => {}
                 }
             }
+            // NOTE: Retrying within the session would be preferable, but may not be supported by all agents.
+            ui.weak("Restarting clears this conversation and resends your last prompt in a new session, without the previous conversation context.");
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.add(ReButton::new("Restart and resend").primary())
+                    .on_hover_text("Restarts the agent to pick up your credentials and resends your last prompt, including attachments, in the new session.")
+                    .clicked()
+                {
+                    *restart_after_login_requested = true;
+                }
+                });
+            });
         });
     picked
 }

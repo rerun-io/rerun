@@ -113,7 +113,7 @@ pub enum AgentEvent {
         config_options: Vec<SessionConfigOption>,
     },
 
-    /// The agent refused to start a session until the user authenticates.
+    /// The agent requires authentication to start a session or continue a prompt.
     AuthRequired {
         methods: Vec<AuthMethod>,
         message: String,
@@ -157,6 +157,28 @@ struct EventSender {
 }
 
 impl EventSender {
+    /// Reports the completed turn.
+    ///
+    /// If authentication failed, requests login _after_ reporting turn completion so that
+    /// completion cannot overwrite the waiting-for-login state.
+    fn finish_turn(&self, result: Result<StopReason, Error>, auth_methods: Vec<AuthMethod>) {
+        let auth_error = result
+            .as_ref()
+            .err()
+            .filter(|err| err.code == Error::auth_required().code)
+            .map(describe_error);
+        // Finish the turn before entering the login state: finishing resets the session phase.
+        self.send(AgentEvent::TurnFinished(
+            result.map_err(|err| describe_error(&err)),
+        ));
+        if let Some(message) = auth_error {
+            self.send(AgentEvent::AuthRequired {
+                methods: auth_methods,
+                message,
+            });
+        }
+    }
+
     fn send(&self, event: AgentEvent) {
         if self.tx.send(event).is_ok() {
             (self.wake)();
@@ -313,12 +335,11 @@ async fn drive(
                     continue;
                 };
                 let events = events.clone();
+                let auth_methods = init.auth_methods.clone();
                 cx.send_request(PromptRequest::new(session_id.clone(), prompt))
                     .on_receiving_result(move |result| async move {
-                        let result = result
-                            .map(|response| response.stop_reason)
-                            .map_err(|err| describe_error(&err));
-                        events.send(AgentEvent::TurnFinished(result));
+                        events
+                            .finish_turn(result.map(|response| response.stop_reason), auth_methods);
                         Ok(())
                     })?;
             }
@@ -611,6 +632,39 @@ mod tests {
     };
 
     use super::*;
+
+    /// Checks that authentication failures request login _after_ finishing the turn,
+    /// while successful turns finish without requesting login.
+    #[test]
+    fn prompt_auth_failure_finishes_turn_before_requesting_login() {
+        #[expect(clippy::disallowed_methods)]
+        let (tx, rx) = std::sync::mpsc::channel();
+        let events = EventSender {
+            tx,
+            wake: Arc::new(|| {}),
+        };
+
+        // Authentication failure must finish the turn before requesting login.
+        events.finish_turn(Err(Error::auth_required()), Vec::new());
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            AgentEvent::TurnFinished(Err(_))
+        ));
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            AgentEvent::AuthRequired { .. }
+        ));
+        assert!(rx.try_recv().is_err());
+
+        // A successful turn must not request login.
+        events.finish_turn(Ok(StopReason::EndTurn), Vec::new());
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            AgentEvent::TurnFinished(Ok(_))
+        ));
+        assert!(rx.try_recv().is_err());
+    }
 
     fn claude_models(current: &str) -> Vec<SessionConfigOption> {
         let models = vec![
