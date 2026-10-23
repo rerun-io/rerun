@@ -77,7 +77,7 @@ def build_wasm(target_dir: Path, profile: str, features: str, timings: bool) -> 
     return target_dir / "wasm32-unknown-unknown" / profile / f"{CRATE_NAME}.wasm"
 
 
-def generate_bindings(wasm_path: Path, out_dir: Path, target: str) -> None:
+def generate_bindings(wasm_path: Path, out_dir: Path, target: str, strip: bool) -> None:
     cmd = [
         "wasm-bindgen",
         str(wasm_path),
@@ -91,6 +91,8 @@ def generate_bindings(wasm_path: Path, out_dir: Path, target: str) -> None:
         cmd += ["--target=bundler"]
     elif target == "no-modules-base":
         cmd += ["--target=no-modules"]
+    if strip:
+        cmd += ["--remove-name-section", "--remove-producers-section"]
 
     try:
         run(cmd)
@@ -99,24 +101,6 @@ def generate_bindings(wasm_path: Path, out_dir: Path, target: str) -> None:
             "Failed to run wasm-bindgen. If it complains about imports from `env`, some dependency is likely "
             f"calling `std::time::Instant::now()` or similar. Diagnose with: wasm2wat {wasm_path} | rg '\"env\"'"
         )
-
-
-def optimize_wasm(wasm_path: Path, debug_symbols: bool) -> None:
-    cmd = [
-        "wasm-opt",
-        str(wasm_path),
-        "-O2",
-        "--output",
-        str(wasm_path),
-        "--enable-reference-types",
-        "--enable-simd",
-        "--enable-bulk-memory",
-        "--enable-nontrapping-float-to-int",
-        "--enable-multivalue",
-        "--vacuum",
-        "-g" if debug_symbols else "--strip-debug",
-    ]
-    run(cmd)
 
 
 def main() -> None:
@@ -128,7 +112,7 @@ def main() -> None:
         "-g",
         "--debug-symbols",
         action="store_true",
-        help="Keep debug symbols in release builds, for readable callstacks and in-browser profiling.",
+        help="Keep function names in release builds, for readable callstacks and in-browser profiling.",
     )
     parser.add_argument(
         "-t",
@@ -168,13 +152,8 @@ def main() -> None:
     print(f"Built .wasm in {time.monotonic() - start:.1f}s", flush=True)
 
     start = time.monotonic()
-    generate_bindings(wasm_path, out_dir, args.target)
+    generate_bindings(wasm_path, out_dir, args.target, strip=args.release and not args.debug_symbols)
     print(f"Generated JS bindings in {time.monotonic() - start:.1f}s", flush=True)
-
-    if args.release:
-        start = time.monotonic()
-        optimize_wasm(out_dir / f"{CRATE_NAME}_bg.wasm", args.debug_symbols)
-        print(f"Optimized wasm in {time.monotonic() - start:.1f}s", flush=True)
 
     print(f"Finished {out_dir / f'{CRATE_NAME}_bg.wasm'}")
 
