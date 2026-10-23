@@ -1,6 +1,13 @@
 use egui::Vec2;
-
 use egui_kittest::{HarnessBuilder, OsThreshold, SnapshotOptions};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod polling;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use polling::{
+    DEFAULT_POLL_INTERVAL, DEFAULT_WAIT_TIMEOUT, step_until, step_until_with_custom_timeout,
+};
 
 /// What is the purpose of the test?
 #[derive(Clone, Copy, Debug)]

@@ -4709,7 +4709,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Level",
                         component_type: "rerun.components.TextLogLevel".into(),
                         docstring_md: "The verbosity level of the message.\n\nThis can be used to filter the log messages in the Rerun Viewer.",
-                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                        flags: ArchetypeFieldFlags::empty(),
                     },
                     ArchetypeFieldReflection {
                         name: "color",

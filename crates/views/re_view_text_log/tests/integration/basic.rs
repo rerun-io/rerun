@@ -30,7 +30,7 @@ fn temporal_anchor_between_sequence_steps() {
     test_context.set_active_timeline(*timeline.name());
 
     // The temporal anchor is intentionally between two sequence steps.
-    test_context.set_time(TimeInt::new_temporal(100));
+    test_context.set_time(TimeInt::new_temporal(95));
 
     let view_id = setup_blueprint(&mut test_context);
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
@@ -40,8 +40,8 @@ fn temporal_anchor_between_sequence_steps() {
         None,
     ));
 
-    // Add the rest
     test_context.add_chunks(chunks);
+    test_context.set_time(TimeInt::new_temporal(100));
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "text_log_temporal_anchor_between_steps_rest",

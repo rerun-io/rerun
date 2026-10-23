@@ -2,9 +2,19 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::mem::size_of;
+use std::ops::Range;
 use std::sync::{Arc, Weak};
 
 use crate::SizeBytes;
+
+impl<T: SizeBytes> SizeBytes for Range<T> {
+    const IS_POD: bool = T::IS_POD;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start.heap_size_bytes() + self.end.heap_size_bytes()
+    }
+}
 
 impl SizeBytes for String {
     #[inline]

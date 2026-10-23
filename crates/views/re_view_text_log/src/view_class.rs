@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
+use std::ops::Range;
 use std::sync::Arc;
 
 use egui::NumExt as _;
 use re_data_ui::item_ui::{self, timeline_button};
 use re_dataframe_ui::{apply_table_style_fixes, cell_ui, header_ui};
 use re_log::ResultExt as _;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_sdk_types::blueprint::encodings as bp_encodings;
@@ -20,27 +21,16 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::visualizer_system::{Entry, TextLogEntries, TextLogSystem};
+use crate::text_log_navigation::{TextLogNavigationController, TextLogScroll};
 
-// TODO(andreas): This should be a blueprint component.
+use super::visualizer_system::{TextLogEntries, TextLogSystem};
+
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
 pub struct TextViewState {
-    /// Keeps track of the latest time selection made by the user.
-    ///
-    /// We need this because we want the user to be able to manually scroll the
-    /// text entry window however they please when the time cursor isn't moving.
-    latest_time: i64,
+    pub navigation: TextLogNavigationController,
 
-    /// Time of the latest entry at or before the cursor on the previous render.
-    ///
-    /// We auto-scroll whenever this changes so the view tracks the latest-at
-    /// row as new (possibly out-of-order) data streams in. This handles both
-    /// the initial catch-up to a programmatic `SetTime` (e.g. a `#when` URL
-    /// anchor pointing past the data loaded so far) and any later arrival
-    /// that lands closer to the cursor.
-    last_anchor_time: Option<i64>,
-
-    seen_levels: BTreeSet<String>,
+    /// Shared discovery labels remain independent of per-view navigation.
+    levels: Arc<BTreeSet<String>>,
 }
 
 impl ViewState for TextViewState {
@@ -128,7 +118,7 @@ Filter message types and toggle column visibility in a selection panel.",
                     return Vec::new();
                 };
                 state
-                    .seen_levels
+                    .levels
                     .iter()
                     .map(|lvl| TextLogLevel(encodings::Utf8::from(lvl.as_str())))
                     .collect::<Vec<_>>()
@@ -199,13 +189,8 @@ Filter message types and toggle column visibility in a selection panel.",
         let state = state.downcast_mut::<TextViewState>()?;
         let output = system_output
             .visualizer_data_or_default::<Arc<TextLogEntries>>(TextLogSystem::identifier())?;
-        let entries = output.entries.as_slice();
 
-        for level in &output.levels {
-            if !state.seen_levels.contains(level) {
-                state.seen_levels.insert(level.clone());
-            }
-        }
+        state.levels = output.levels.clone();
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
@@ -225,21 +210,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_timeline_columns().component,
         )?;
 
-        let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
-
-        // Auto-scroll when the time cursor moves, or whenever the
-        // latest-at row shifts because new (possibly out-of-order) data
-        // landed closer to the cursor.
-        let anchor_time = entries
-            .partition_point(|te| te.time.as_i64() <= time)
-            .checked_sub(1)
-            .map(|i| entries[i].time.as_i64());
-        let anchor_moved = anchor_time != state.last_anchor_time;
-        let time_cursor_moved = state.latest_time != time;
-        let scroll_to_cursor = time_cursor_moved || anchor_moved;
-        let cursor_row = entries.partition_point(|te| te.time.as_i64() < time);
-        state.last_anchor_time = anchor_time;
-        state.latest_time = time;
+        state.navigation.observe(&output.navigation);
 
         egui::Frame {
             inner_margin: tokens.view_padding().into(),
@@ -253,18 +224,29 @@ Filter message types and toggle column visibility in a selection panel.",
             let table_id =
                 egui_table::TableState::id(ui, egui::IdSalt::new(table_id_salt(query.view_id)));
             let table_is_new = egui_table::TableState::load(ui.ctx(), table_id).is_none();
-            let scroll_to_row = (scroll_to_cursor || table_is_new).then_some(cursor_row);
 
-            table_ui(
+            let scroll_to_row = state
+                .navigation
+                .scroll(&output.navigation, table_is_new)
+                .map(|scroll| match scroll {
+                    TextLogScroll::Center(row) => (row, egui::Align::Center),
+                    TextLogScroll::Top(row) => (row, egui::Align::TOP),
+                });
+
+            let visible_rows = table_ui(
                 ctx,
                 ui,
                 query.view_id,
                 &timeline_columns,
                 &columns,
                 **monospace_body,
-                entries,
+                &output,
                 scroll_to_row,
             );
+
+            if state.navigation.rendered(&output.navigation, visible_rows) {
+                ui.ctx().request_repaint();
+            }
         });
 
         Ok(Default::default())
@@ -286,9 +268,9 @@ fn table_ui(
     timeline_columns: &[TimelineColumn],
     columns: &[TextLogColumn],
     monospace_body: bool,
-    entries: &[Entry],
-    scroll_to_row: Option<usize>,
-) {
+    visualizer_output: &TextLogEntries,
+    scroll_to_row: Option<(usize, egui::Align)>,
+) -> Option<Range<usize>> {
     let tokens = ui.tokens();
     let table_style = TableStyle::Dense;
 
@@ -333,16 +315,21 @@ fn table_ui(
                 .iter()
                 .any(|kind| matches!(kind, ColumnKind::Timeline(timeline) if *timeline == global_timeline))
         })
-        .map(|global_time| entries.partition_point(|te| te.time <= global_time) as u64);
+        .map(|global_time| visualizer_output.navigation.index.row_for_time(global_time, true) as u64);
 
+    let num_rows = visualizer_output.navigation.index.len() as u64;
     let mut delegate = TextLogTableDelegate {
         ctx,
         table_style,
         row_height: tokens.table_row_height(table_style),
         column_kinds: &column_kinds,
         monospace_body,
-        entries,
+        visualizer_output,
+        num_rows,
         marker_row,
+
+        // Going to be populated by the table delegate during the `prepare` phase.
+        current_visible_rows: None,
     };
 
     apply_table_style_fixes(ui.style_mut());
@@ -353,13 +340,14 @@ fn table_ui(
         .headers(vec![egui_table::HeaderRow::new(
             tokens.table_header_height(),
         )])
-        .num_rows(entries.len() as u64);
+        .num_rows(num_rows);
 
-    if let Some(scroll_to_row) = scroll_to_row {
-        table = table.scroll_to_row(scroll_to_row as u64, Some(egui::Align::Center));
+    if let Some((scroll_to_row, align)) = scroll_to_row {
+        table = table.scroll_to_row(scroll_to_row as u64, Some(align));
     }
 
     table.show(ui, &mut delegate);
+    delegate.current_visible_rows
 }
 
 enum ColumnKind {
@@ -373,7 +361,9 @@ struct TextLogTableDelegate<'a> {
     row_height: f32,
     column_kinds: &'a [ColumnKind],
     monospace_body: bool,
-    entries: &'a [Entry],
+    visualizer_output: &'a TextLogEntries,
+    current_visible_rows: Option<Range<usize>>,
+    num_rows: u64,
 
     /// Paint the current time indicator at the top of this row
     /// (or at the bottom of the last row if this is one past the end).
@@ -381,6 +371,11 @@ struct TextLogTableDelegate<'a> {
 }
 
 impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
+    fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
+        self.current_visible_rows =
+            Some(info.visible_rows.start as usize..info.visible_rows.end as usize);
+    }
+
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
         let col_nr = cell.col_range.start;
         let is_last = col_nr + 1 == self.column_kinds.len();
@@ -400,19 +395,22 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
         let col_nr = cell.col_nr;
         let is_last = col_nr + 1 == self.column_kinds.len();
         cell_ui(ui, self.table_style, is_last, |ui| {
-            let Some(entry) = self.entries.get(cell.row_nr as usize) else {
+            let Some(entry) = self.visualizer_output.entry(cell.row_nr as usize) else {
+                if matches!(
+                    self.column_kinds[col_nr],
+                    ColumnKind::Kind(bp_encodings::TextLogColumnKind::Body)
+                ) {
+                    ui.weak("Loading…");
+                }
                 return;
             };
 
             match &self.column_kinds[col_nr] {
                 ColumnKind::Timeline(timeline) => {
                     ui.set_truncate_style();
-                    let row_time = entry
-                        .timepoint
-                        .get(timeline)
-                        .map(re_log_types::TimeInt::from)
-                        .unwrap_or(re_log_types::TimeInt::STATIC);
-                    item_ui::time_button(self.ctx, ui, timeline, row_time);
+                    if let Some(row_time) = entry.timepoint.get(timeline) {
+                        item_ui::time_button(self.ctx, ui, timeline, TimeInt::from(row_time));
+                    }
                 }
                 ColumnKind::Kind(bp_encodings::TextLogColumnKind::EntityPath) => {
                     ui.set_truncate_style();
@@ -457,7 +455,7 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
         });
 
         // Painted per cell rather than in `row_ui`, so that it ends up on top of the cell separators.
-        let num_rows = self.entries.len() as u64;
+        let num_rows = self.num_rows;
         let paint_marker_at = if self.marker_row == Some(cell.row_nr) {
             Some(ui.max_rect().top())
         } else if cell.row_nr + 1 == num_rows && self.marker_row == Some(num_rows) {
@@ -530,13 +528,13 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                         };
 
                         let mut new_levels = std::iter::chain(
-                            state.seen_levels.iter().map(|s| {
-                                let level_active = levels.iter().any(|l| l.as_str() == s);
+                            state.levels.iter().map(|s| {
+                                let level_active = levels.iter().any(|l| l.as_str() == s.as_str());
                                 (s.clone(), level_active)
                             }),
                             levels
                                 .iter()
-                                .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
+                                .filter(|lvl| !state.levels.contains(lvl.as_str()))
                                 .map(|lvl| (lvl.as_str().to_owned(), true)),
                         )
                         .collect::<Vec<_>>();

@@ -362,7 +362,7 @@ impl BlueprintResolvedRangeResults<'_> {
     }
 
     /// Are there any chunks that need to be fetched from a remote store?
-    fn any_missing_chunks(&self) -> bool {
+    pub fn any_missing_chunks(&self) -> bool {
         0 < self.overrides.missing_virtual.len()
             + self.store_results.missing_virtual.len()
             + self.view_defaults.missing_virtual.len()
@@ -822,18 +822,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
-        self.chunks_with_component
-            .chunks
-            .iter()
-            .flat_map(move |chunk| {
-                itertools::izip!(
-                    chunk.iter_component_indices(
-                        self.timeline,
-                        self.chunks_with_component.component
-                    ),
-                    chunk.iter_slices::<S>(self.chunks_with_component.component),
-                )
-            })
+        self.chunks_with_component.slice::<S>(self.timeline)
     }
 
     /// Iterate as indexed, sliced, deserialized component batches for a specific struct field.

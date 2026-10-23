@@ -35,6 +35,19 @@ impl ChunksWithComponent<'_> {
         })
     }
 
+    /// Iterate as indexed, sliced component batches on the given timeline.
+    pub fn slice<'a, S: ChunkComponentSlicer + 'a>(
+        &'a self,
+        timeline: TimelineName,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
+        self.iter().flat_map(move |chunk| {
+            std::iter::zip(
+                chunk.iter_component_indices(timeline),
+                chunk.iter_slices::<S>(),
+            )
+        })
+    }
+
     #[inline]
     pub fn empty(component: ComponentIdentifier) -> Self {
         Self {

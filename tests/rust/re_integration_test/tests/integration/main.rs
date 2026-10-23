@@ -33,6 +33,7 @@ mod rrd_bw_compat_test;
 mod source_component_test;
 mod spatial_cross_view_interaction;
 mod state_timeline_hover_highlight;
+mod text_log;
 mod undo_redo_test;
 mod view_defaults_test;
 mod view_entity_picker_test;
