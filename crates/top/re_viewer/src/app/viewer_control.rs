@@ -28,7 +28,7 @@ use re_protos::viewer_control::v1alpha1::{
     ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
     SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
     ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerServer, ViewerServerEntry, ViewerTimeline, ViewerView,
+    ViewerReport, ViewerServer, ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView,
     get_blueprint_request, set_blueprint_request, viewer_control_request,
 };
 use re_sdk_types::blueprint::components::PlayState;
@@ -694,7 +694,7 @@ fn close_recordings_target(
         // default to without closing something the caller did not ask for.
         None => {
             return Err(ViewerControlError::invalid_argument(
-                "`close` takes exactly one of `current`, `all`, or `store_ids`",
+                "`close` takes exactly one of `current`, `all`, `store_ids`, or `urls`",
             ));
         }
 
@@ -719,6 +719,31 @@ fn close_recordings_target(
                     ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
                 })?,
         ),
+
+        Some(Target::Urls(ViewerSourceUrls { urls })) => {
+            let mut sources = Vec::new();
+            for url in urls {
+                let parsed = ViewerUrl::parse_with_options(
+                    &url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: true,
+                    },
+                )
+                .map_err(|err| {
+                    ViewerControlError::invalid_argument(format!(
+                        "Failed to parse the URL: {err}\nURL: {url:?}"
+                    ))
+                })?;
+                let url_sources = parsed.data_sources();
+                if url_sources.is_empty() {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "This URL loads no recording, so there is nothing to close: {url:?}"
+                    )));
+                }
+                sources.extend(url_sources);
+            }
+            CloseRecordingTarget::Sources(sources)
+        }
     })
 }
 
@@ -1661,6 +1686,9 @@ impl AppCore {
                     .ok_or_else(|| "no active recording to close".to_owned())?,
             ],
             re_log_channel::CloseRecordingTarget::Some(store_ids) => store_ids,
+            re_log_channel::CloseRecordingTarget::Sources(sources) => {
+                return self.close_recordings_from_sources(store_hub, &sources);
+            }
         };
         // Check every id before closing any, so that a failed request closes nothing.
         if let Some(missing) = to_close
@@ -1678,6 +1706,43 @@ impl AppCore {
 
         Ok(CloseResponse {
             closed: to_close.iter().map(StoreId::to_string).collect(),
+        })
+    }
+
+    /// Close the recordings loaded from `sources`, and stop loading from them.
+    fn close_recordings_from_sources(
+        &self,
+        store_hub: &StoreHub,
+        sources: &[LogSource],
+    ) -> Result<CloseResponse, String> {
+        // Check every source before closing any, so that a failed request closes nothing.
+        let receivers = self.rx_log.sources();
+        if let Some(missing) = sources.iter().find(|source| {
+            store_hub
+                .recordings_from_sources(std::slice::from_ref(source))
+                .is_empty()
+                && !receivers
+                    .iter()
+                    .any(|receiver| receiver.is_same_ignoring_uri_fragments(source))
+        }) {
+            return Err(format!("Nothing is loaded from {missing}"));
+        }
+
+        self.rx_log.retain(|receiver| {
+            sources
+                .iter()
+                .all(|source| !receiver.source().is_same_ignoring_uri_fragments(source))
+        });
+        let closed = store_hub.recordings_from_sources(sources);
+        for store_id in &closed {
+            self.command_sender
+                .send_system(SystemCommand::CloseRecordingOrTable(
+                    store_id.clone().into(),
+                ));
+        }
+
+        Ok(CloseResponse {
+            closed: closed.iter().map(StoreId::to_string).collect(),
         })
     }
 
@@ -2175,6 +2240,61 @@ mod tests {
             app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
             assert!(store_hub.entity_db(&store_id).is_none());
+        }
+
+        /// Closing by URL closes only what was loaded from it, and nothing at all if one of the
+        /// URLs has nothing loaded.
+        #[tokio::test]
+        async fn close_by_url_closes_what_was_loaded_from_it() {
+            use re_log_types::StoreKind;
+            use re_protos::viewer_control::v1alpha1::ViewerSourceUrls;
+
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let mut loaded_from = |path: &str| {
+                let store_id = StoreId::random(StoreKind::Recording, "test_app");
+                store_hub
+                    .entity_db_entry(&store_id)
+                    .add_data_source(&std::sync::Arc::new(LogSource::File { path: path.into() }));
+                store_id
+            };
+            let a = loaded_from("a.rrd");
+            let b = loaded_from("b.rrd");
+
+            let close = |urls: &[&str]| {
+                viewer_control_request::Kind::Close(CloseRequest {
+                    target: Some(Target::Urls(ViewerSourceUrls {
+                        urls: urls.iter().map(|url| (*url).to_owned()).collect(),
+                    })),
+                })
+            };
+
+            let answer = super::locations::serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                close(&["a.rrd", "missing.rrd"]),
+            );
+            assert_eq!(
+                super::locations::error_code(&answer),
+                ViewerControlErrorCode::NotFound
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(
+                store_hub.entity_db(&a).is_some(),
+                "closed despite the error"
+            );
+
+            let answer = super::locations::serve(app, store_hub, &egui_ctx, close(&["a.rrd"]));
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+            assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
+            assert!(store_hub.entity_db(&a).is_none());
+            assert!(store_hub.entity_db(&b).is_some());
         }
 
         /// An error answers at once, so it must not leave any recording queued to close.
@@ -2749,5 +2869,16 @@ mod tests {
 
             assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
         }
+    }
+
+    #[test]
+    fn closing_a_url_that_loads_no_recording_is_refused() {
+        let err = close_recordings_target(CloseRequest {
+            target: Some(Target::Urls(ViewerSourceUrls {
+                urls: vec!["rerun+http://localhost:51234".to_owned()],
+            })),
+        })
+        .expect_err("a server URL loads no recording");
+        assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
     }
 }

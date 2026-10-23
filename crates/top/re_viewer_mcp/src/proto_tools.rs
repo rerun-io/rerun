@@ -775,6 +775,7 @@ mod tests {
                 { "required": ["current"] },
                 { "required": ["all"] },
                 { "required": ["store_ids"] },
+                { "required": ["urls"] },
             ])
         );
     }

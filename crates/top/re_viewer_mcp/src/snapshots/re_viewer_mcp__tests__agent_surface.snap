@@ -755,6 +755,19 @@ Conventions:
           }
         },
         "description": "Close these recordings."
+      },
+      "urls": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The URLs the recordings were opened from, as passed to `Open`. `INVALID_ARGUMENT` if one\ncannot load anything, and `NOT_FOUND` if the viewer has neither a recording nor a stream\nfrom one of them."
+          }
+        },
+        "description": "Close the recordings loaded from these URLs, and stop loading from them."
       }
     },
     "oneOf": [
@@ -772,9 +785,14 @@ Conventions:
         "required": [
           "store_ids"
         ]
+      },
+      {
+        "required": [
+          "urls"
+        ]
       }
     ],
-    "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids` must be set."
+    "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids`, `urls` must be set."
   }
 }
 

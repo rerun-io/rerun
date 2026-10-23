@@ -65,6 +65,9 @@ pub enum CloseRecordingTarget {
 
     /// The named recordings.
     Some(Vec<StoreId>),
+
+    /// The recordings loaded from these sources, whose streams are stopped too.
+    Sources(Vec<crate::LogSource>),
 }
 
 /// Viewer-control commands, issued while streaming in datasets or by a remote client.

@@ -493,6 +493,9 @@ message CloseRequest {
 
     // Close these recordings.
     ViewerRecordingIds store_ids = 3;
+
+    // Close the recordings loaded from these URLs, and stop loading from them.
+    ViewerSourceUrls urls = 4;
   }
 }
 
@@ -500,6 +503,14 @@ message CloseRequest {
 message ViewerRecordingIds {
   // The recording ids to close, each as `{kind}:{application_id}:{recording_id}`.
   repeated string store_ids = 1;
+}
+
+// Source URLs selected by `Close`.
+message ViewerSourceUrls {
+  // The URLs the recordings were opened from, as passed to `Open`. `INVALID_ARGUMENT` if one
+  // cannot load anything, and `NOT_FOUND` if the viewer has neither a recording nor a stream
+  // from one of them.
+  repeated string urls = 1;
 }
 
 // Response for `Close`, reporting what was actually closed.

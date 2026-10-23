@@ -542,7 +542,7 @@ impl ::prost::Name for GetTransformGraphResponse {
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CloseRequest {
     /// The recordings to close. Exactly one selector, like a Rust enum: there is no default target.
-    #[prost(oneof = "close_request::Target", tags = "1, 2, 3")]
+    #[prost(oneof = "close_request::Target", tags = "1, 2, 3, 4")]
     pub target: ::core::option::Option<close_request::Target>,
 }
 /// Nested message and enum types in `CloseRequest`.
@@ -559,6 +559,9 @@ pub mod close_request {
         /// Close these recordings.
         #[prost(message, tag = "3")]
         StoreIds(super::ViewerRecordingIds),
+        /// Close the recordings loaded from these URLs, and stop loading from them.
+        #[prost(message, tag = "4")]
+        Urls(super::ViewerSourceUrls),
     }
 }
 impl ::prost::Name for CloseRequest {
@@ -586,6 +589,25 @@ impl ::prost::Name for ViewerRecordingIds {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerRecordingIds".into()
+    }
+}
+/// Source URLs selected by `Close`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerSourceUrls {
+    /// The URLs the recordings were opened from, as passed to `Open`. `INVALID_ARGUMENT` if one
+    /// cannot load anything, and `NOT_FOUND` if the viewer has neither a recording nor a stream
+    /// from one of them.
+    #[prost(string, repeated, tag = "1")]
+    pub urls: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerSourceUrls {
+    const NAME: &'static str = "ViewerSourceUrls";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerSourceUrls".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerSourceUrls".into()
     }
 }
 /// Response for `Close`, reporting what was actually closed.
