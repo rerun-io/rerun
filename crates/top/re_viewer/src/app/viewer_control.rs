@@ -594,7 +594,7 @@ impl AppCore {
     /// The capture needs at least one more frame, so the callback is parked until then. Wrapping
     /// it here keeps the screenshot plumbing typed in terms of its own error.
     fn begin_screenshot(
-        &mut self,
+        &self,
         request: SaveScreenshotRequest,
         on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
     ) {
@@ -616,35 +616,36 @@ impl AppCore {
             }
         };
 
-        let file_path: camino::Utf8PathBuf = file_path.into();
-        self.pending_screenshot_notifiers.insert(
-            file_path.clone(),
-            UiCallback::new(move |result: Result<(), SaveScreenshotError>| {
-                on_done.call(match result {
-                    Ok(()) => Ok(SaveScreenshotResponse {}.into()),
-                    Err(err @ SaveScreenshotError::InvalidViewId { .. }) => {
-                        Err(ViewerControlError::invalid_argument(err.to_string()))
-                    }
-                    Err(err @ SaveScreenshotError::ViewNotFound { .. }) => {
-                        Err(ViewerControlError::not_found(err.to_string()))
-                    }
-                    Err(err @ SaveScreenshotError::ViewTooSmall { .. }) => {
-                        Err(ViewerControlError::failed_precondition(err.to_string()))
-                    }
-                    Err(
-                        err @ (SaveScreenshotError::InvalidImageData
-                        | SaveScreenshotError::SaveToPathFailed { .. }),
-                    ) => Err(ViewerControlError::internal(err.to_string())),
-                });
-            }),
-        );
+        let target = if let Some(file_path) = file_path {
+            re_viewer_context::ScreenshotTarget::SaveToPath {
+                path: file_path.into(),
+                max_size,
+                on_done: Some(UiCallback::new(
+                    move |result: Result<(), SaveScreenshotError>| {
+                        on_done.call(
+                            result
+                                .map(|()| SaveScreenshotResponse { png: None }.into())
+                                .map_err(|err| screenshot_error(&err)),
+                        );
+                    },
+                )),
+            }
+        } else {
+            re_viewer_context::ScreenshotTarget::EncodePng {
+                max_size,
+                on_done: UiCallback::new(move |result: Result<Vec<u8>, SaveScreenshotError>| {
+                    on_done.call(
+                        result
+                            .map(|png| SaveScreenshotResponse { png: Some(png) }.into())
+                            .map_err(|err| screenshot_error(&err)),
+                    );
+                }),
+            }
+        };
 
         self.command_sender
             .send_system(SystemCommand::SaveScreenshot {
-                target: re_viewer_context::ScreenshotTarget::SaveToPath {
-                    path: file_path,
-                    max_size,
-                },
+                target,
                 view_id,
                 notify: false,
             });
@@ -2151,6 +2152,24 @@ pub(crate) fn serve_egui_inspect_request(
     egui_ctx.request_repaint();
 }
 
+/// The [`ViewerControlError`] a failed screenshot answers with.
+fn screenshot_error(err: &SaveScreenshotError) -> ViewerControlError {
+    match err {
+        SaveScreenshotError::InvalidViewId { .. } => {
+            ViewerControlError::invalid_argument(err.to_string())
+        }
+        SaveScreenshotError::ViewNotFound { .. } => ViewerControlError::not_found(err.to_string()),
+        SaveScreenshotError::ViewTooSmall { .. } => {
+            ViewerControlError::failed_precondition(err.to_string())
+        }
+        SaveScreenshotError::InvalidImageData
+        | SaveScreenshotError::SaveToPathFailed { .. }
+        | SaveScreenshotError::EncodePngFailed { .. } => {
+            ViewerControlError::internal(err.to_string())
+        }
+    }
+}
+
 /// Whether any of `url_sources` is still on its initial load: a receiver still loading, or a
 /// file still being registered with a catalog.
 fn is_loading(
@@ -2561,6 +2580,90 @@ mod tests {
                 set_location("not a url".to_owned()),
             );
             assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    mod save_screenshot {
+        use re_protos::viewer_control::v1alpha1::ViewerControlOp as _;
+
+        use super::locations::{error_code, serve};
+        use super::*;
+
+        fn save_screenshot(
+            view_id: Option<String>,
+            max_size: Option<u32>,
+        ) -> viewer_control_request::Kind {
+            viewer_control_request::Kind::SaveScreenshot(SaveScreenshotRequest {
+                view_id,
+                file_path: None,
+                max_size,
+            })
+        }
+
+        /// Ask for a screenshot without a path, and return the PNG it answers with, decoded.
+        fn take_png(
+            harness: &mut egui_kittest::Harness<'static, crate::App>,
+            max_size: Option<u32>,
+        ) -> image::DynamicImage {
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+            let answer = serve(app, store_hub, &egui_ctx, save_screenshot(None, max_size));
+            crate::viewer_test_utils::step_until("the screenshot answered", harness, |_| {
+                answer.lock().is_some()
+            });
+
+            let response = answer
+                .lock()
+                .take()
+                .and_then(Result::ok)
+                .and_then(|response| SaveScreenshotRequest::from_envelope(response).ok())
+                .expect("a save_screenshot response");
+            image::load_from_memory_with_format(
+                &response.png.expect("a PNG without a file_path"),
+                image::ImageFormat::Png,
+            )
+            .expect("a valid PNG")
+        }
+
+        #[tokio::test]
+        async fn without_a_path_answers_with_a_png() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+
+            let full = take_png(&mut harness, None);
+            assert!(
+                64 < full.width().max(full.height()),
+                "{}x{}",
+                full.width(),
+                full.height()
+            );
+
+            let small = take_png(&mut harness, Some(64));
+            assert_eq!(small.width().max(small.height()), 64);
+        }
+
+        #[tokio::test]
+        async fn a_missing_view_fails() {
+            let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+            let egui_ctx = harness.ctx.clone();
+            let crate::App {
+                store_hub,
+                core: app,
+            } = harness.state_mut();
+
+            let view_id = uuid::Uuid::new_v4().to_string();
+            let answer = serve(
+                app,
+                store_hub,
+                &egui_ctx,
+                save_screenshot(Some(view_id), None),
+            );
+            app.run_pending_system_commands(store_hub, &egui_ctx);
+
+            assert_eq!(error_code(&answer), ViewerControlErrorCode::NotFound);
         }
     }
 

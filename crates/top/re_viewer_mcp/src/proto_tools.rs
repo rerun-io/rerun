@@ -42,6 +42,13 @@ const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
 const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
 
+/// Fully-qualified names of the fields an agent must set, although the `.proto` marks them `optional`.
+///
+/// Without a `file_path`, a screenshot comes back as PNG bytes, which would land in the agent's
+/// context as base64.
+const REQUIRED_OPTIONAL_FIELDS: &[&str] =
+    &["rerun.viewer_control.v1alpha1.SaveScreenshotRequest.file_path"];
+
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
 
@@ -140,12 +147,14 @@ fn message_comment(message: &MessageDescriptor) -> Option<&'static str> {
 ///
 /// Proto3 message fields always track presence, so presence alone says nothing. The `optional`
 /// keyword does: it is the only way a `.proto` author marks a field as omittable, and a field in
-/// a `oneof` or a repeated field is omittable by construction.
+/// a `oneof` or a repeated field is omittable by construction. [`REQUIRED_OPTIONAL_FIELDS`]
+/// overrides it.
 fn is_required(field: &FieldDescriptor) -> bool {
-    !field.field_descriptor_proto().proto3_optional()
-        && !field.is_list()
-        && !field.is_map()
-        && field.containing_oneof().is_none()
+    REQUIRED_OPTIONAL_FIELDS.contains(&field.full_name())
+        || (!field.field_descriptor_proto().proto3_optional()
+            && !field.is_list()
+            && !field.is_map()
+            && field.containing_oneof().is_none())
 }
 
 /// Whether this field is one arm of a `oneof` the author actually wrote.

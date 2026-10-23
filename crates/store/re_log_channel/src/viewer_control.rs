@@ -177,7 +177,7 @@ pub enum ViewerControlErrorCode {
     Internal,
 }
 
-/// Why a `save_screenshot` operation did not produce a file.
+/// Why a `save_screenshot` operation did not produce a screenshot.
 #[derive(thiserror::Error, Debug)]
 pub enum SaveScreenshotError {
     /// The requested view id could not be parsed as a UUID.
@@ -199,6 +199,10 @@ pub enum SaveScreenshotError {
     /// Writing the screenshot to disk failed.
     #[error("Failed to save screenshot to {path}: {reason}")]
     SaveToPathFailed { path: String, reason: String },
+
+    /// Encoding the screenshot as a PNG failed.
+    #[error("Failed to encode screenshot as PNG: {reason}")]
+    EncodePngFailed { reason: String },
 }
 
 /// Why an `egui_inspect` operation could not be serviced.

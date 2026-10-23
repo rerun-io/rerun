@@ -73,14 +73,16 @@ pub mod viewer_control_request {
         /// so anything waiting on one stalls, while `GetViewerState` keeps answering.
         #[prost(message, tag = "4")]
         Open(super::OpenRequest),
-        /// Take a screenshot of the viewer, or of a single view within it, and write it to disk.
+        /// Take a screenshot of the viewer, or of a single view within it, and write it to disk, or
+        /// return it as a PNG.
         ///
         /// The screenshot is saved by the viewer process, so the path is resolved on the machine
-        /// running the viewer, not on the machine making the request.
+        /// running the viewer, not on the machine making the request. Without a `file_path`, the
+        /// response carries the PNG instead. The web viewer cannot write files, so it needs that.
         ///
         /// Fails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is
         /// currently visible, `FAILED_PRECONDITION` if the view is too small to capture, and
-        /// `INTERNAL` if the capture itself or the write to disk failed.
+        /// `INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.
         #[prost(message, tag = "5")]
         SaveScreenshot(super::SaveScreenshotRequest),
         /// Move the time cursor (timeline position) of a recording in the viewer, switch its active
@@ -1722,10 +1724,12 @@ pub struct SaveScreenshotRequest {
     /// Optional view ID to screenshot. If omitted, screenshots the entire viewer.
     #[prost(string, optional, tag = "1")]
     pub view_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// Path at which the screenshot will be saved.
+    /// Path at which the screenshot will be saved, which picks the image format by its extension.
     /// This path is relative to the current working directory of the viewer process.
-    #[prost(string, tag = "2")]
-    pub file_path: ::prost::alloc::string::String,
+    ///
+    /// If omitted, nothing is saved, and the response carries the screenshot as a PNG.
+    #[prost(string, optional, tag = "2")]
+    pub file_path: ::core::option::Option<::prost::alloc::string::String>,
     /// Longest side of the saved image, in pixels. A larger screenshot is scaled down to fit,
     /// keeping its aspect ratio. If omitted, the screenshot is saved at full resolution.
     #[prost(uint32, optional, tag = "3")]
@@ -1741,11 +1745,15 @@ impl ::prost::Name for SaveScreenshotRequest {
         "/rerun.viewer_control.v1alpha1.SaveScreenshotRequest".into()
     }
 }
-/// Response for `SaveScreenshot`. Empty: an error is reported as a gRPC status instead.
+/// Response for `SaveScreenshot`. An error is reported as a gRPC status instead.
 ///
 /// The response is only sent once the screenshot has actually been written to disk.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct SaveScreenshotResponse {}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SaveScreenshotResponse {
+    /// The screenshot as a PNG, set when the request had no `file_path`.
+    #[prost(bytes = "vec", optional, tag = "1")]
+    pub png: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+}
 impl ::prost::Name for SaveScreenshotResponse {
     const NAME: &'static str = "SaveScreenshotResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";

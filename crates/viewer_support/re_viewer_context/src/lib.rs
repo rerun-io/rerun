@@ -212,7 +212,7 @@ pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_
 /// Info given to egui when taking a screenshot.
 ///
 /// Specified what we are screenshotting.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ScreenshotInfo {
     /// What portion of the UI to take a screenshot of (in ui points).
     pub ui_rect: Option<egui::Rect>,
@@ -229,7 +229,7 @@ pub struct ScreenshotInfo {
 }
 
 /// Where to put the screenshot.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum ScreenshotTarget {
     /// The screenshot will be copied to the clipboard.
     CopyToClipboard,
@@ -245,7 +245,36 @@ pub enum ScreenshotTarget {
         /// Longest side of the saved image, in pixels.
         /// A larger screenshot is scaled down to fit; `None` applies no limit.
         max_size: Option<u32>,
+
+        /// Called once the file is written, or the screenshot failed.
+        on_done:
+            Option<re_log_channel::UiCallback<Result<(), re_log_channel::SaveScreenshotError>>>,
     },
+
+    /// The screenshot will be encoded as a PNG, and handed to `on_done`.
+    EncodePng {
+        /// Longest side of the image, in pixels.
+        /// A larger screenshot is scaled down to fit; `None` applies no limit.
+        max_size: Option<u32>,
+
+        /// Called with the PNG, or with why the screenshot failed.
+        on_done: re_log_channel::UiCallback<Result<Vec<u8>, re_log_channel::SaveScreenshotError>>,
+    },
+}
+
+impl ScreenshotTarget {
+    /// Tell the caller waiting for this screenshot, if any, that it failed.
+    pub fn report_failure(self, err: re_log_channel::SaveScreenshotError) {
+        match self {
+            Self::SaveToPath { on_done, .. } => {
+                if let Some(on_done) = on_done {
+                    on_done.call(Err(err));
+                }
+            }
+            Self::EncodePng { on_done, .. } => on_done.call(Err(err)),
+            Self::CopyToClipboard | Self::SaveToPathFromFileDialog => {}
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------------------

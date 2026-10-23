@@ -425,6 +425,15 @@ export interface TableColumnSchema {
   datatype: string;
 }
 
+/** What {@link WebViewer.take_screenshot} captures. */
+export interface ScreenshotOptions {
+  /** The view to capture, as a `view_id` from {@link WebViewer.get_state}. If omitted, the whole viewer. */
+  view_id?: string;
+
+  /** Longest side of the image, in pixels. A larger screenshot is scaled down to fit. If omitted, full resolution. */
+  max_size?: number;
+}
+
 /** A rectangle in the viewer, in logical points from its top-left corner. */
 export interface ScreenRect {
   /** Distance from the left edge of the viewer to the left edge of the rectangle. */
@@ -2122,6 +2131,25 @@ export class WebViewer {
       recording: response.storeId,
       graph: parse_exact_json(response.json) as Record<string, unknown>,
     };
+  }
+
+  /**
+   * Take a screenshot of the viewer, or of one of its views, as a PNG.
+   *
+   * Rejects with a {@link ViewerControlError} with the code `INVALID_ARGUMENT` if `view_id` is not a UUID,
+   * `NOT_FOUND` if no such view is visible, and `FAILED_PRECONDITION` if the view is too small to capture.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async take_screenshot(options: ScreenshotOptions = {}): Promise<Uint8Array> {
+    const { png } = await this.#viewer_control("saveScreenshot", {
+      viewId: options.view_id,
+      maxSize: options.max_size,
+    });
+    if (png === undefined) {
+      throw new Error("Expected the screenshot as a PNG");
+    }
+    return png;
   }
 
   /**

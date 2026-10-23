@@ -47,5 +47,12 @@ test("controls playback and logs viewer events", async ({ page }) => {
   await slider.fill(max);
   await expect(timeLabel).toHaveText(max);
 
+  // The web viewer can't write files, so the screenshot comes back as PNG bytes.
+  await page.locator("#screenshot").click();
+  await expect(log).toContainText("screenshot: ");
+  await expect
+    .poll(() => page.locator("#screenshot-image").evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0);
+
   expect(errors).toEqual([]);
 });

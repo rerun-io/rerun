@@ -259,7 +259,7 @@ impl ViewerConnectionHandle {
             self.control_client.viewer_control(
                 re_protos::viewer_control::v1alpha1::SaveScreenshotRequest {
                     view_id,
-                    file_path,
+                    file_path: Some(file_path),
                     max_size: None,
                 }
                 .into_envelope(),

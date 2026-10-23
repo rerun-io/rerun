@@ -14,6 +14,9 @@ const timelineLabel = $("timeline");
 const timeSlider = $<HTMLInputElement>("time");
 const timeLabel = $("time-label");
 const log = $("log");
+const screenshotButton = $<HTMLButtonElement>("screenshot");
+const screenshotLink = $<HTMLAnchorElement>("screenshot-link");
+const screenshotImage = $<HTMLImageElement>("screenshot-image");
 
 // Resolve relative URLs, which the viewer doesn't accept.
 const rrdUrl = new URL(new URLSearchParams(location.search).get("url") ?? DEFAULT_RRD_URL, location.href).href;
@@ -135,4 +138,21 @@ playButton.addEventListener("click", () => {
 });
 timeSlider.addEventListener("input", () => {
   seek(BigInt(timeSlider.value)).catch(logError);
+});
+
+/** Take a screenshot of the viewer, and show it as a thumbnail that downloads it when clicked. */
+async function takeScreenshot() {
+  const png = await viewer.take_screenshot({ max_size: 1024 });
+  if (screenshotLink.href) {
+    URL.revokeObjectURL(screenshotLink.href);
+  }
+  const url = URL.createObjectURL(new Blob([new Uint8Array(png)], { type: "image/png" }));
+  screenshotLink.href = url;
+  screenshotImage.src = url;
+  screenshotLink.hidden = false;
+  logEvent(`screenshot: ${png.byteLength} bytes`);
+}
+
+screenshotButton.addEventListener("click", () => {
+  takeScreenshot().catch(logError);
 });

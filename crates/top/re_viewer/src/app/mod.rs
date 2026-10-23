@@ -123,12 +123,6 @@ pub struct AppCore {
         std::sync::mpsc::Receiver<(re_viewer_context::ScreenshotInfo, Arc<egui::ColorImage>)>,
     texture_readback: crate::texture_readback::TextureReadbacks,
 
-    /// Notifiers waiting for a file-path screenshot to finish writing.
-    pending_screenshot_notifiers: std::collections::HashMap<
-        camino::Utf8PathBuf,
-        re_log_channel::UiCallback<Result<(), SaveScreenshotError>>,
-    >,
-
     /// `ViewerControlService` answers held back until the commands they queued have run.
     pending_viewer_control_replies: Vec<viewer_control::PendingReply>,
 
@@ -570,7 +564,6 @@ impl App {
             screenshot_tx,
             screenshot_rx,
             texture_readback: Default::default(),
-            pending_screenshot_notifiers: Default::default(),
             pending_viewer_control_replies: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
@@ -1315,9 +1308,8 @@ impl AppCore {
         }
     }
 
-    #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // False positive on wasm
     fn process_screenshot_result(
-        &mut self,
+        &self,
         image: &Arc<egui::ColorImage>,
         info: re_viewer_context::ScreenshotInfo,
     ) {
@@ -1370,13 +1362,14 @@ impl AppCore {
             re_viewer_context::ScreenshotTarget::SaveToPath {
                 path: file_path,
                 max_size,
+                on_done,
             } => {
                 cfg_select! {
                     target_arch = "wasm32" => {
                         _ = max_size;
                         let reason = "saving screenshots to a path is not supported on web";
-                        if let Some(notifier) = self.pending_screenshot_notifiers.remove(&file_path) {
-                            notifier.call(Err(SaveScreenshotError::SaveToPathFailed {
+                        if let Some(on_done) = on_done {
+                            on_done.call(Err(SaveScreenshotError::SaveToPathFailed {
                                 path: file_path.to_string(),
                                 reason: reason.to_owned(),
                             }));
@@ -1385,34 +1378,13 @@ impl AppCore {
                         }
                     }
                     _ => {
-                        let rgba = rgba.clone();
-                        let notifier = self.pending_screenshot_notifiers.remove(&file_path);
-                        let Some(rgba_image) = image::RgbaImage::from_vec(
-                            rgba.width() as _,
-                            rgba.height() as _,
-                            bytemuck::pod_collect_to_vec(&rgba.pixels),
-                        ) else {
+                        let Some(rgb_image) = scaled_rgb_image(&rgba, max_size) else {
                             re_log::error!("Failed to create image from screenshot data");
-                            if let Some(notifier) = notifier {
-                                notifier.call(Err(SaveScreenshotError::InvalidImageData));
+                            if let Some(on_done) = on_done {
+                                on_done.call(Err(SaveScreenshotError::InvalidImageData));
                             }
                             return;
                         };
-
-                        let mut image = image::DynamicImage::ImageRgba8(rgba_image);
-                        if let Some(max_size) = max_size
-                            && max_size < image.width().max(image.height())
-                        {
-                            image = image.resize(
-                                max_size,
-                                max_size,
-                                image::imageops::FilterType::Triangle,
-                            );
-                        }
-
-                        // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
-                        // (There's nothing interesting in the alpha channel anyways.)
-                        let rgb_image = image.to_rgb8();
 
                         let result = match rgb_image.save(&file_path) {
                             Ok(()) => {
@@ -1435,11 +1407,26 @@ impl AppCore {
                             }
                         };
 
-                        if let Some(notifier) = notifier {
-                            notifier.call(result);
+                        if let Some(on_done) = on_done {
+                            on_done.call(result);
                         }
                     }
                 }
+            }
+
+            re_viewer_context::ScreenshotTarget::EncodePng { max_size, on_done } => {
+                let result = scaled_rgb_image(&rgba, max_size)
+                    .ok_or(SaveScreenshotError::InvalidImageData)
+                    .and_then(|rgb_image| {
+                        let mut png = Vec::new();
+                        rgb_image
+                            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+                            .map_err(|err| SaveScreenshotError::EncodePngFailed {
+                                reason: err.to_string(),
+                            })?;
+                        Ok(png)
+                    });
+                on_done.call(result);
             }
         }
     }
@@ -2052,4 +2039,24 @@ fn noop_blueprint_loader(
         })),
         ..Default::default()
     }
+}
+
+/// The screenshot as an RGB image, scaled down so its longest side is at most `max_size`.
+///
+/// RGB rather than RGBA, so it works with JPG and other formats that don't support alpha.
+/// There's nothing interesting in the alpha channel anyways.
+fn scaled_rgb_image(rgba: &egui::ColorImage, max_size: Option<u32>) -> Option<image::RgbImage> {
+    let rgba_image = image::RgbaImage::from_vec(
+        rgba.width() as _,
+        rgba.height() as _,
+        bytemuck::pod_collect_to_vec(&rgba.pixels),
+    )?;
+
+    let mut image = image::DynamicImage::ImageRgba8(rgba_image);
+    if let Some(max_size) = max_size
+        && max_size < image.width().max(image.height())
+    {
+        image = image.resize(max_size, max_size, image::imageops::FilterType::Triangle);
+    }
+    Some(image.to_rgb8())
 }

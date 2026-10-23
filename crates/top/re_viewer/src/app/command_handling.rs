@@ -817,7 +817,7 @@ impl AppCore {
     }
 
     fn save_screenshot(
-        &mut self,
+        &self,
         target: re_viewer_context::ScreenshotTarget,
         view_id: Option<re_viewer_context::ViewId>,
         notify: bool,
@@ -834,12 +834,9 @@ impl AppCore {
                 let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
                 if !rect.is_positive() {
                     re_log::warn!("View too small for a screenshot");
-                    self.notify_screenshot_failed(
-                        &target,
-                        SaveScreenshotError::ViewTooSmall {
-                            view_id: view_id.to_string(),
-                        },
-                    );
+                    target.report_failure(SaveScreenshotError::ViewTooSmall {
+                        view_id: view_id.to_string(),
+                    });
                     return;
                 }
 
@@ -852,12 +849,9 @@ impl AppCore {
                 });
             } else {
                 re_log::warn!("View {view_id} not found for screenshot");
-                self.notify_screenshot_failed(
-                    &target,
-                    SaveScreenshotError::ViewNotFound {
-                        view_id: view_id.to_string(),
-                    },
-                );
+                target.report_failure(SaveScreenshotError::ViewNotFound {
+                    view_id: view_id.to_string(),
+                });
                 return;
             }
         } else {
@@ -879,24 +873,6 @@ impl AppCore {
         // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
         self.egui_ctx
             .send_viewport_cmd(egui::ViewportCommand::Focus);
-    }
-
-    /// Tell any RPC caller waiting for a screenshot at this file path that it failed.
-    ///
-    /// Without this, `ViewerControlService::SaveScreenshot` would hang forever,
-    /// and the notifier map entry would leak.
-    fn notify_screenshot_failed(
-        &mut self,
-        target: &re_viewer_context::ScreenshotTarget,
-        err: SaveScreenshotError,
-    ) {
-        if let re_viewer_context::ScreenshotTarget::SaveToPath {
-            path: file_path, ..
-        } = target
-            && let Some(notifier) = self.pending_screenshot_notifiers.remove(file_path)
-        {
-            notifier.call(Err(err));
-        }
     }
 
     fn run_ui_command(

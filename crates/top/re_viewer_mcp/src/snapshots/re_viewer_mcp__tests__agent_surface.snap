@@ -1241,7 +1241,7 @@ Conventions:
 
 {
   "name": "rerun_save_screenshot",
-  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to disk.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine\nrunning the viewer, not on the machine making the request.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is\ncurrently visible, `FAILED_PRECONDITION` if the view is too small to capture, and\n`INTERNAL` if the capture itself or the write to disk failed.\n\nRequires `rerun_connect`.",
+  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to disk, or\nreturn it as a PNG.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine\nrunning the viewer, not on the machine making the request. Without a `file_path`, the\nresponse carries the PNG instead. The web viewer cannot write files, so it needs that.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is\ncurrently visible, `FAILED_PRECONDITION` if the view is too small to capture, and\n`INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1251,7 +1251,7 @@ Conventions:
       },
       "file_path": {
         "type": "string",
-        "description": "Path at which the screenshot will be saved.\nThis path is relative to the current working directory of the viewer process."
+        "description": "Path at which the screenshot will be saved, which picks the image format by its extension.\nThis path is relative to the current working directory of the viewer process.\n\nIf omitted, nothing is saved, and the response carries the screenshot as a PNG."
       },
       "max_size": {
         "type": "integer",

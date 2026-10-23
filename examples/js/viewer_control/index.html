@@ -30,6 +30,11 @@
         flex: 1;
       }
 
+      #screenshot-image {
+        height: 32px;
+        vertical-align: middle;
+      }
+
       #viewer {
         flex: 1;
         min-height: 0;
@@ -50,6 +55,13 @@
       <span id="timeline">No recording</span>
       <input id="time" type="range" aria-label="Time" disabled />
       <code id="time-label"></code>
+      <button id="screenshot">Screenshot</button>
+      <a id="screenshot-link" download="screenshot.png" hidden>
+        <img
+          id="screenshot-image"
+          alt="The latest screenshot. Click to download it."
+        />
+      </a>
     </div>
     <div id="viewer"></div>
     <pre id="log"></pre>
