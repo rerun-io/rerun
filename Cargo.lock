@@ -9843,7 +9843,6 @@ dependencies = [
  "toml",
  "ureq",
  "url",
- "wasm-bindgen-cli-support",
 ]
 
 [[package]]

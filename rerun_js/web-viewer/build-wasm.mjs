@@ -28,7 +28,7 @@ function buildWebViewer(mode) {
   }
   return exec(
     [
-      "cargo run -p re_dev_tools -- build-web-viewer",
+      "python ../../scripts/build_web_viewer.py",
       modeFlags,
       "--target no-modules-base",
       "--features default_web", // no `analytics`

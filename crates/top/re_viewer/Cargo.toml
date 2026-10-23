@@ -50,7 +50,7 @@ default = ["agent_context", "analytics", "default_web"]
 
 ## The default features of web builds, apart from `analytics`, which each web build opts into separately.
 ##
-## `re_dev_tools build-web-viewer` builds with `--no-default-features --features analytics,default_web`,
+## `scripts/build_web_viewer.py` builds with `--no-default-features --features analytics,default_web`,
 ## so a feature that should be on for the web must be added here.
 default_web = ["audio", "map_view"]
 

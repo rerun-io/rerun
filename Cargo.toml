@@ -549,7 +549,6 @@ wildmatch = "2.6"
 #     with newer `wasm-bindgen` versions when they are not building the web viewer.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "0.2.129" # ⚠️ read above notice before touching this!
-wasm-bindgen-cli-support = "0.2.129" # ⚠️ read above notice before touching this!
 wasm-bindgen-futures = "0.4.79"
 wasm-bindgen-test = "0.3.79"
 wayland-client = "0.31.15"

@@ -215,10 +215,10 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 ] }
 
 # Compile the web-viewer wasm, does not include the cli.
-rerun-build-web = "cargo run -p re_dev_tools -- build-web-viewer --debug"
+rerun-build-web = "python scripts/build_web_viewer.py --debug"
 
 # Compile the web-viewer wasm and the cli.
-rerun-build-web-cli = "cargo run -p re_dev_tools -- build-web-viewer --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "python scripts/build_web_viewer.py --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -228,7 +228,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 ] }
 
 # Compile the web-viewer wasm in release mode.
-rerun-build-web-release = "cargo run -p re_dev_tools -- build-web-viewer --release"
+rerun-build-web-release = "python scripts/build_web_viewer.py --release"
 
 # Run the `re_integration_test` suite against the real wasm web viewer in headless Chrome.
 # Builds the web viewer first, then runs the tests against the `browser` inspection target.
@@ -689,6 +689,7 @@ tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 ty = "==0.0.84" # Keep in sync with `dataplatform/pixi.toml`.
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
+wasm-bindgen-cli = "==0.2.129"
 wasm-pack = "0.15.*"
 urllib3 = ">=2.8" # Pinned only to hold a security floor.
 gh = ">=2.79.0,<3"
