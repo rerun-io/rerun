@@ -1276,6 +1276,26 @@ fn compute_unique_chunk_info_ids(
     )?))
 }
 
+/// Sorts `df` by `rerun_segment_id`, then by `index`, both ascending with nulls first.
+///
+/// Over a [`DataframeQueryTableProvider`] scan planned in-process, this plans as a
+/// streaming merge of the scan's partitions instead of a full sort, because it matches
+/// the ordering the segment stream declares. Both keys must stay `NULLS FIRST`:
+/// DataFusion only elides the sort on a nullable column when `nulls_first` matches the
+/// declared ordering exactly.
+pub fn sort_by_segment_and_index(
+    df: datafusion::dataframe::DataFrame,
+    index: Option<&str>,
+) -> datafusion::common::Result<datafusion::dataframe::DataFrame> {
+    use datafusion::prelude::ident;
+
+    let mut sort =
+        vec![ident(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME).sort(true, true)];
+    sort.extend(index.map(|index| ident(index).sort(true, true)));
+
+    df.sort(sort)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -1913,5 +1933,62 @@ mod tests {
                 "supports_find_chunks={supports_find_chunks}"
             );
         }
+    }
+
+    /// A regression here keeps the output correct but silently turns the streaming merge
+    /// back into a sort that materializes every partition.
+    #[tokio::test]
+    async fn sort_by_segment_and_index_plans_as_merge_without_sort() {
+        use datafusion::physical_plan::displayable;
+        use datafusion::prelude::{SessionConfig, SessionContext};
+
+        let timeline = re_log_types::Timeline::new_sequence("frame");
+        let schema = Schema::new_with_metadata(
+            vec![
+                Field::new(
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                    DataType::Utf8,
+                    false,
+                ),
+                re_sorbet::RowIdColumnDescriptor::from_sorted(true).to_arrow_field(),
+                re_sorbet::IndexColumnDescriptor::from_timeline(timeline, true).to_arrow_field(),
+            ],
+            Default::default(),
+        );
+
+        let provider = DataframeQueryTableProvider::new_from_client(
+            MockClient::new().with_find_chunks(Ok(vec![])),
+            EntryId::new(),
+            &QueryExpression {
+                filtered_index: Some(*timeline.name()),
+                ..Default::default()
+            },
+            &["segment"],
+            None,
+            Some(schema),
+            None,
+            vec![],
+            Arc::new(crate::NoOpObjectStoreAuthenticator::default()),
+        )
+        .await
+        .unwrap();
+
+        let ctx = SessionContext::new_with_config(SessionConfig::new().with_target_partitions(4));
+        let df = sort_by_segment_and_index(
+            ctx.read_table(Arc::new(provider)).unwrap(),
+            Some(timeline.name().as_str()),
+        )
+        .unwrap();
+        let plan = df.create_physical_plan().await.unwrap();
+        let plan = displayable(plan.as_ref()).indent(false).to_string();
+
+        assert!(
+            plan.contains("SortPreservingMergeExec"),
+            "expected a streaming merge, got plan:\n{plan}"
+        );
+        assert!(
+            !plan.contains("SortExec"),
+            "expected no full sort, got plan:\n{plan}"
+        );
     }
 }

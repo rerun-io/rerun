@@ -113,6 +113,7 @@ fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let df_module = py.import("datafusion")?;
 
     let config_options = PyDict::new(py);
+    // TODO(RR-6101): share these options with `ordered_record_batch_stream` in `dataset_selection.rs`.
     config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
 
     if let Some(cores) = re_datafusion::rerun_sdk_num_cpus() {

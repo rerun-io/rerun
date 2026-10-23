@@ -1505,6 +1505,72 @@ class DatasetSelection:
         A DataFusion DataFrame.
 
         """
+        selection, index_values_dict = self._resolve_using_index_values(index, using_index_values)
+
+        return selection.reader(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=index_values_dict,
+        )
+
+    def _read_arrow(
+        self,
+        index: str | None,
+        *,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
+        fill_latest_at: bool = False,
+    ) -> pa.RecordBatchReader:
+        """
+        Read this DatasetSelection as a stream of Arrow record batches.
+
+        Rows are ordered by `rerun_segment_id` ascending, then by `index` ascending within
+        each segment.
+        This is not a global chronological order across segments.
+        The order of rows with equal `(rerun_segment_id, index)` is unspecified.
+
+        The returned reader is single-pass.
+        Use `read_all()` on it to collect the full result into a `pyarrow.Table`.
+
+        Parameters
+        ----------
+        index
+            The index (timeline) to order by within each segment.
+            Pass `None` to read only static data, ordered by segment.
+        include_semantically_empty_columns
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns
+            Whether to include tombstone columns.
+        using_index_values
+            Index values at which to resample data.
+            Same semantics as in [`DatasetSelection.reader`][rerun.catalog.DatasetSelection.reader].
+        fill_latest_at
+            Whether to fill null values with the latest valid data.
+
+        Returns
+        -------
+        pa.RecordBatchReader
+            A single-pass reader over the ordered record batches.
+
+        """
+        selection, index_values_dict = self._resolve_using_index_values(index, using_index_values)
+
+        return selection.read_arrow(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=index_values_dict,
+        )
+
+    def _resolve_using_index_values(
+        self,
+        index: str | None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None,
+    ) -> tuple[DatasetSelectionInternal, dict[str, IndexValuesLike] | None]:
         import datafusion as dfn
 
         index_values_dict = None
@@ -1533,17 +1599,9 @@ class DatasetSelection:
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
-            selection = self._internal.filter_segments(list(index_values_dict.keys()))
-        else:
-            selection = self._internal
+            return self._internal.filter_segments(list(index_values_dict.keys())), index_values_dict
 
-        return selection.reader(
-            index=index,
-            include_semantically_empty_columns=include_semantically_empty_columns,
-            include_tombstone_columns=include_tombstone_columns,
-            fill_latest_at=fill_latest_at,
-            using_index_values=index_values_dict,
-        )
+        return self._internal, None
 
     @with_tracing("DatasetSelection.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetSelection:

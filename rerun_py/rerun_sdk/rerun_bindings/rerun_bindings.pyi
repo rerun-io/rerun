@@ -1214,8 +1214,17 @@ class DatasetSelectionInternal:
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
-        using_index_values: IndexValuesLike | None = None,
+        using_index_values: dict[str, IndexValuesLike] | None = None,
     ) -> dfn.DataFrame: ...
+    def read_arrow(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        fill_latest_at: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | None = None,
+    ) -> pa.RecordBatchReader: ...
     def filter_segments(self, segment_ids: list[str]) -> DatasetSelectionInternal: ...
     def filter_contents(self, exprs: list[str]) -> DatasetSelectionInternal: ...
 

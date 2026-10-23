@@ -1,10 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::array::{RecordBatch, RecordBatchReader};
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use arrow::error::ArrowError;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion::datasource::empty::EmptyTable;
+use datafusion::execution::SendableRecordBatchStream;
+use datafusion::prelude::{SessionConfig, SessionContext};
+use futures::StreamExt as _;
+use futures::channel::mpsc;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
@@ -24,7 +30,7 @@ use crate::catalog::{
 #[cfg(feature = "perf_telemetry")]
 use crate::trace_context::extract_trace_context_from_contextvar;
 use crate::trace_context::read_trace_context_from_python;
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// A selection of a dataset with optional segment and content filters applied lazily.
 //TODO(RR-3157): add the ability to filter on components, not just entity paths
@@ -239,15 +245,7 @@ impl PyDatasetSelectionInternal {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.reader").entered();
 
-        // Convert IndexValuesLike to BTreeSet<TimeInt>
-        let using_index_values = using_index_values
-            .map(|values_map| {
-                values_map
-                    .into_iter()
-                    .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
-                    .try_collect()
-            })
-            .transpose()?;
+        let using_index_values = convert_using_index_values(using_index_values)?;
 
         // Build table provider with query parameters
         let provider = build_dataframe_query_table_provider(
@@ -273,6 +271,166 @@ impl PyDatasetSelectionInternal {
 
         ctx.call_method1("read_table", (table,))
     }
+
+    /// Read this DatasetSelection as a `pyarrow.RecordBatchReader`.
+    ///
+    /// Rows are ordered by `rerun_segment_id` ascending, then by `index` ascending within
+    /// each segment.
+    ///
+    /// The query is planned in-process rather than through datafusion-ffi, so the
+    /// per-partition ordering declared by the segment stream reaches the planner and the
+    /// global sort becomes a streaming merge of the partitions.
+    #[expect(clippy::fn_params_excessive_bools)]
+    #[pyo3(signature = (
+        *,
+        index,
+        include_semantically_empty_columns = false,
+        include_tombstone_columns = false,
+        fill_latest_at = false,
+        using_index_values = None,
+    ))]
+    fn read_arrow(
+        self_: PyRef<'_, Self>,
+        index: Option<String>,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetSelection._read_arrow").entered();
+
+        let using_index_values = convert_using_index_values(using_index_values)?;
+
+        let provider = build_dataframe_query_table_provider(
+            py,
+            &self_.dataset,
+            &self_.selection,
+            index.clone(),
+            include_semantically_empty_columns,
+            include_tombstone_columns,
+            fill_latest_at,
+            using_index_values,
+        )?;
+
+        let stream =
+            wait_for_future(py, ordered_record_batch_stream(provider, index)).map_err(to_py_err)?;
+
+        Ok(PyArrowType(Box::new(BlockingRecordBatchReader::spawn(
+            py, stream,
+        ))))
+    }
+}
+
+/// Plans `SELECT * ORDER BY rerun_segment_id, <index>` over `provider` and starts executing it.
+async fn ordered_record_batch_stream(
+    provider: Arc<dyn TableProvider + Send>,
+    index: Option<String>,
+) -> datafusion::error::Result<SendableRecordBatchStream> {
+    let mut config = SessionConfig::new();
+
+    // TODO(RR-6101): share these options with `setup_datafusion_context` in `catalog_client.rs`.
+    config.options_mut().execution.coalesce_batches = false;
+    if let Some(cores) = re_datafusion::rerun_sdk_num_cpus() {
+        config = config.with_target_partitions(cores);
+    }
+    let ctx = SessionContext::new_with_config(config);
+
+    re_datafusion::sort_by_segment_and_index(ctx.read_table(provider)?, index.as_deref())?
+        .execute_stream()
+        .await
+}
+
+/// Adapts an async [`SendableRecordBatchStream`] to the blocking [`RecordBatchReader`]
+/// interface that the Arrow C stream exports to pyarrow.
+///
+/// The stream is polled by a task on the SDK runtime, and `next` waits on a channel without
+/// entering any tokio runtime. Consumers may therefore pull from a tokio worker thread, as
+/// `TableEntry.append` does, where blocking on a runtime would panic.
+///
+/// Dropping the reader aborts the task, which drops the stream and cancels the query.
+struct BlockingRecordBatchReader {
+    schema: SchemaRef,
+    batches: mpsc::Receiver<datafusion::error::Result<RecordBatch>>,
+    producer: tokio::task::JoinHandle<()>,
+}
+
+impl BlockingRecordBatchReader {
+    /// `_py` proves that the GIL is held, which reading the active tracing session requires.
+    fn spawn(_py: Python<'_>, mut stream: SendableRecordBatchStream) -> Self {
+        use futures::SinkExt as _;
+        use tracing::Instrument as _;
+
+        let schema = stream.schema();
+        let (mut tx, batches) = mpsc::channel(0);
+
+        let producer = async move {
+            while let Some(batch) = stream.next().await {
+                if tx.send(batch).await.is_err() {
+                    break;
+                }
+            }
+        }
+        .in_current_span();
+
+        cfg_select! {
+            feature = "perf_telemetry" => {
+                let producer = re_perf_telemetry::with_current_tracing_session(producer);
+            }
+            _ => {}
+        }
+
+        Self {
+            schema,
+            batches,
+            producer: get_tokio_runtime().spawn(producer),
+        }
+    }
+}
+
+impl Iterator for BlockingRecordBatchReader {
+    type Item = Result<RecordBatch, ArrowError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut recv =
+            || Python::attach(|py| py.detach(|| futures::executor::block_on(self.batches.next())));
+
+        // A caller on a multi-threaded tokio worker would otherwise block that worker while the
+        // producer may need it, e.g. on a single-worker runtime.
+        let next = match tokio::runtime::Handle::try_current() {
+            Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+                tokio::task::block_in_place(recv)
+            }
+            _ => recv(),
+        };
+
+        next.map(|batch| batch.map_err(|err| ArrowError::ExternalError(Box::new(err))))
+    }
+}
+
+impl Drop for BlockingRecordBatchReader {
+    fn drop(&mut self) {
+        self.producer.abort();
+    }
+}
+
+impl RecordBatchReader for BlockingRecordBatchReader {
+    fn schema(&self) -> SchemaRef {
+        Arc::clone(&self.schema)
+    }
+}
+
+fn convert_using_index_values(
+    using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
+) -> PyResult<Option<BTreeMap<SegmentId, BTreeSet<TimeInt>>>> {
+    using_index_values
+        .map(|values_map| {
+            values_map
+                .into_iter()
+                .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
+                .try_collect()
+        })
+        .transpose()
 }
 
 /// Whether `schema` has an index column named `index`.

@@ -41,6 +41,7 @@ pub use chunk_fetcher::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 pub use cpu_count::{available_cpus, rerun_sdk_num_cpus};
 pub use dataframe_query_common::{
     DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,
+    sort_by_segment_and_index,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use dataframe_query_provider::SegmentStreamExec;
