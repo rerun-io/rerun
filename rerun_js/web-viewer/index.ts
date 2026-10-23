@@ -279,9 +279,9 @@ function entry_kind_of(kind: ProtoEntryKind): EntryKind | undefined {
 /** How severe a {@link ViewerLogEntry} is. */
 export type ViewerLogLevel = "INFO" | "WARN" | "ERROR";
 
-/** A log message the viewer emitted, as {@link WebViewer.get_viewer_logs} reports it. */
+/** A log message the viewer emitted, as {@link WebViewer.get_logs} reports it. */
 export interface ViewerLogEntry {
-  /** Increases by one per message. Pass the last one seen to {@link WebViewer.get_viewer_logs} for only what is new. */
+  /** Increases by one per message. Pass the last one seen to {@link WebViewer.get_logs} for only what is new. */
   sequence: bigint;
 
   /** How severe the message is. */
@@ -354,7 +354,7 @@ export interface RecordingSchema {
   /** The matching entities in path order. */
   entities: EntitySchema[];
 
-  /** How many matching entities `max_entities` left out. */
+  /** How many matching entities got left out because of `max_entities`. */
   omitted_entities: number;
 }
 
@@ -403,7 +403,7 @@ export interface DatasetSchema {
   /** The matching entities in path order. */
   entities: EntitySchema[];
 
-  /** How many matching entities `max_entities` left out. */
+  /** How many matching entities got left out because of `max_entities`. */
   omitted_entities: number;
 
   /** The ids of the dataset's assets, which {@link WebViewer.get_dataset_assets_schema} describes. */
@@ -418,7 +418,7 @@ export interface DatasetAssetSchema {
   /** The matching entities in path order. */
   entities: EntitySchema[];
 
-  /** How many matching entities `max_entities` left out of this asset. */
+  /** How many matching entities of this asset got left out because of `max_entities`. */
   omitted_entities: number;
 }
 
@@ -543,6 +543,7 @@ export type BlueprintTarget =
 
 /**
  * A whole blueprint, keyed by blueprint entity path, then archetype, then field.
+ * See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
  *
  * An integer is a `number` if a `number` holds it exactly, and a `bigint` if not, such as most nanosecond times.
  * So the same field can be either, depending on its value: handle both, e.g. with `BigInt(value)`.
@@ -1974,8 +1975,8 @@ export class WebViewer {
    *
    * This API is experimental, and may change between releases.
    */
-  async get_viewer_logs(after_sequence?: bigint): Promise<ViewerLogEntry[]> {
-    const { entries } = await this.#viewer_control("getViewerLogs", {
+  async get_logs(after_sequence?: bigint): Promise<ViewerLogEntry[]> {
+    const { entries } = await this.#viewer_control("getLogs", {
       afterSequence: after_sequence,
     });
     return entries.map(({ sequence, level, target, message }) => ({
@@ -2112,6 +2113,7 @@ export class WebViewer {
 
   /**
    * A recording's transform graph at its time cursor: its frames, and the edges between them.
+   * See [Transforms & Coordinate Frames](https://rerun.io/docs/concepts/logging-and-ingestion/transforms).
    *
    * This API is experimental, and may change between releases.
    */

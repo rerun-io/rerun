@@ -17,7 +17,7 @@ Getting oriented:
 - To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
   `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
-- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
+- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_logs` fetches older messages.
 - Whenever the user asks where something is, answer with `rerun_highlight_rect` (below), not with prose about the layout.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
@@ -703,7 +703,7 @@ Conventions:
 
 {
   "name": "rerun_capture_profile_trace",
-  "description": "Record a puffin profile of the next frames the viewer paints, and write it to disk as a\n`.puffin` file.\n\nThe viewer keeps repainting while it records, so this finishes even when nothing changes on\nscreen. It answers when the file is written. Use the `investigate-puffin` skill\nto analyze the trace.\n\nFails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if\nanother profile capture is still running or on the web viewer, and `INTERNAL` if the write\nto disk failed.\n\nRequires `rerun_connect`.",
+  "description": "Record a puffin profile of the next frames the viewer paints, and write it to disk as a\n`.puffin` file.\n\nThis is for profiling the viewer's own performance: where its time goes in each frame.\nOpen the file in puffin_viewer, see https://github.com/EmbarkStudios/puffin.\n\nThe viewer keeps repainting while it records, so this finishes even when nothing changes on\nscreen. It answers when the file is written. Use the `investigate-puffin` skill\nto analyze the trace.\n\nFails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if\nanother profile capture is still running or on the web viewer, and `INTERNAL` if the write\nto disk failed.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -863,7 +863,7 @@ Conventions:
 
 {
   "name": "rerun_get_blueprint",
-  "description": "Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then\narchetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.\n\nA recording's blueprint has the layout, views, their properties and overrides. A table's\nblueprint only has what it sets, such as row filters, the layout, and column settings.\n`GetTableSchema` names all columns of a table.\n\nSet at most one of `recording` and `table`, such as `{\"recording\": {}}` or\n`{\"table\": {\"table_url\": \"…\"}}`. With neither it reads the blueprint of what is on screen:\nthe table if one is shown, else the active recording. Without a `store_id` it reads the\nactive recording's blueprint, and without a `table_url` the blueprint of the table on\nscreen. The response names the recording or table it read.\n\nA recording or table without a blueprint gets a default one. For a recording on screen,\nthis is the heuristic blueprint unless the user did manual changes to it. A table shows\na set of columns by default, with potential sorting and filtering done by the user.\n\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
+  "description": "Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then\narchetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.\n\nA recording's blueprint has the layout, views, their properties and overrides. A table's\nblueprint only has what it sets, such as row filters, the layout, and column settings.\n`GetTableSchema` names all columns of a table.\nSee https://rerun.io/docs/concepts/visualization/blueprints.\n\nSet at most one of `recording` and `table`, such as `{\"recording\": {}}` or\n`{\"table\": {\"table_url\": \"…\"}}`. With neither it reads the blueprint of what is on screen:\nthe table if one is shown, else the active recording. Without a `store_id` it reads the\nactive recording's blueprint, and without a `table_url` the blueprint of the table on\nscreen. The response names the recording or table it read.\n\nA recording or table without a blueprint gets a default one. For a recording on screen,\nthis is the heuristic blueprint unless the user did manual changes to it. A table shows\na set of columns by default, with potential sorting and filtering done by the user.\n\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -992,6 +992,24 @@ Conventions:
   }
 }
 
+## rerun_get_logs
+
+{
+  "name": "rerun_get_logs",
+  "description": "Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the\nwarnings and errors the user sees. A warning here usually explains what the user is seeing.\n\nEntries carry a sequence number, so passing the last one back fetches only what is new.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "after_sequence": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Only return entries with a sequence number greater than this.\nOmit for everything still buffered."
+      }
+    },
+    "description": "Request for `GetLogs`."
+  }
+}
+
 ## rerun_get_recording_schema
 
 {
@@ -1077,24 +1095,6 @@ Conventions:
       }
     },
     "description": "Request for `GetTransformGraph`."
-  }
-}
-
-## rerun_get_viewer_logs
-
-{
-  "name": "rerun_get_viewer_logs",
-  "description": "Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the\nwarnings and errors the user sees. A warning here usually explains what the user is seeing.\n\nEntries carry a sequence number, so passing the last one back fetches only what is new.\n\nRequires `rerun_connect`.",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "after_sequence": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Only return entries with a sequence number greater than this.\nOmit for everything still buffered."
-      }
-    },
-    "description": "Request for `GetViewerLogs`."
   }
 }
 

@@ -76,13 +76,13 @@ def test_save_screenshot(tmp_path: Path) -> None:
             assert f.read(8) == b"\x89PNG\r\n\x1a\n"
 
 
-def test_viewer_dies_on_client_close() -> None:
-    """Closing the ViewerClient should kill the viewer it spawned."""
+def test_viewer_dies_on_client_quit() -> None:
+    """Quitting the ViewerClient should kill the viewer it spawned."""
     port = _find_free_port()
     viewer = ViewerClient.spawn(headless=True, port=port, hide_welcome_screen=True)
 
     _wait_for_port(port, timeout=30.0)
-    viewer.close()
+    viewer.quit()
     with socket.socket() as connection:
         connection.settimeout(0.2)
         assert connection.connect_ex(("127.0.0.1", port)) != 0
@@ -96,4 +96,4 @@ def test_viewer_can_restart_on_same_port() -> None:
     port = _find_free_port()
     for _ in range(4):
         with ViewerClient.spawn(headless=True, port=port) as viewer:
-            assert viewer.viewer_state().viewer_version is not None
+            assert viewer.get_state().viewer_version is not None

@@ -1,45 +1,47 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
 import subprocess
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import Mock, call
 
 import datafusion
+import numpy as np
 import pyarrow as pa
 import pytest
 from rerun._arrow import to_record_batch
-from rerun.experimental import ViewerClient, _viewer_client
+from rerun.experimental import OpenResult, ViewerClient, _viewer_client
 from rerun.experimental._viewer_client import _viewer_state_from_json
 
 import rerun_bindings  # noqa: TID251
 
 
-def _capturing_viewer(
+def _controlling_viewer(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[ViewerClient, list[tuple[str | None, int | None, str | None, str | None]]]:
-    calls: list[tuple[str | None, int | None, str | None, str | None]] = []
+    responses: dict[str, Any],
+) -> tuple[ViewerClient, list[Any]]:
+    """A viewer whose `viewer_control` answers each operation with `responses[operation]`."""
+    requests: list[Any] = []
 
-    class CapturingViewerClientInternal:
+    class ControllingViewerClientInternal:
         def __init__(self, _url: str) -> None:
             pass
 
-        def set_time_cursor(
-            self,
-            *,
-            timeline: str | None,
-            time: int | None,
-            play_state: str | None,
-            store_id: str | None = None,
-        ) -> None:
-            calls.append((timeline, time, play_state, store_id))
+        def viewer_control(self, request_json: str) -> str:
+            request = json.loads(request_json)
+            requests.append(request)
+            [operation] = request
+            return json.dumps({operation: responses.get(operation, {})})
 
-    monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", CapturingViewerClientInternal)
-    return ViewerClient.connect(), calls
+    monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", ControllingViewerClientInternal)
+    return ViewerClient.connect(), requests
 
 
-def test_close_without_waiting(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, _calls = _capturing_viewer(monkeypatch)
+def test_quit_without_waiting(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, _requests = _controlling_viewer(monkeypatch, {})
     viewer._pid = 123
     terminate, wait = Mock(), Mock()
     monkeypatch.setattr(_viewer_client, "_wait_for_processes", wait)
@@ -48,15 +50,15 @@ def test_close_without_waiting(monkeypatch: pytest.MonkeyPatch) -> None:
     else:
         monkeypatch.setattr(subprocess, "run", terminate)
 
-    viewer.close(wait=False)
+    viewer.quit(wait=False)
 
     terminate.assert_called_once()
     wait.assert_not_called()
     assert viewer._pid is None
 
 
-def test_close_reports_failed_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, _calls = _capturing_viewer(monkeypatch)
+def test_quit_reports_failed_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, _requests = _controlling_viewer(monkeypatch, {})
     launcher = Mock(pid=123)
     launcher.children.return_value = []
     viewer._pid = launcher.pid
@@ -69,7 +71,7 @@ def test_close_reports_failed_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(subprocess, "run", Mock())
 
     with pytest.raises(RuntimeError, match="Viewer processes did not exit"):
-        viewer.close(timeout=0.25)
+        viewer.quit(timeout=0.25)
 
     assert wait.call_args_list == [call([launcher], timeout=0.25)] * 2
     launcher.kill.assert_called_once_with()
@@ -77,10 +79,10 @@ def test_close_reports_failed_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("timeout", [0, -1, float("inf"), float("-inf"), float("nan")])
-def test_close_rejects_invalid_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
-    viewer, _calls = _capturing_viewer(monkeypatch)
+def test_quit_rejects_invalid_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
+    viewer, _requests = _controlling_viewer(monkeypatch, {})
     with pytest.raises(ValueError, match="timeout must be finite and greater than zero"):
-        viewer.close(timeout=timeout)
+        viewer.quit(timeout=timeout)
 
 
 @pytest.mark.parametrize("gone", [False, True])
@@ -121,44 +123,55 @@ def test_to_record_batch_datafusion_dataframe() -> None:
 
 # TODO(andreas): Add a setter/getter round-trip test once ViewerClient has a direct time-cursor getter.
 def test_set_time_uses_active_timeline_when_omitted(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer, requests = _controlling_viewer(monkeypatch, {})
     viewer.set_time(sequence=42)
 
-    assert calls == [(None, 42, None, None)]
+    assert requests == [{"set_time_cursor": {"time": {"time": 42}}}]
 
 
 def test_set_time_converts_temporal_values(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer, requests = _controlling_viewer(monkeypatch, {})
     viewer.set_time("elapsed", duration=1.5, play_state="playing")
     viewer.set_time("capture_time", timestamp=datetime(1970, 1, 1, tzinfo=UTC))
+    viewer.set_time("elapsed", duration=np.timedelta64(2, "s"))
 
-    assert calls == [("elapsed", 1_500_000_000, "playing", None), ("capture_time", 0, None, None)]
+    assert requests == [
+        {
+            "set_time_cursor": {
+                "timeline": {"name": "elapsed"},
+                "time": {"time": 1_500_000_000},
+                "play_state": "PLAY_STATE_PLAYING",
+            }
+        },
+        {"set_time_cursor": {"timeline": {"name": "capture_time"}, "time": {"time": 0}}},
+        {"set_time_cursor": {"timeline": {"name": "elapsed"}, "time": {"time": 2_000_000_000}}},
+    ]
 
 
 def test_set_time_targets_a_named_recording(monkeypatch: pytest.MonkeyPatch) -> None:
     """Without this, only the active recording can be given a new time."""
-    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer, requests = _controlling_viewer(monkeypatch, {})
     viewer.set_time(sequence=7, recording="Recording:app:rec")
 
-    assert calls == [(None, 7, None, "Recording:app:rec")]
+    assert requests == [{"set_time_cursor": {"store_id": "Recording:app:rec", "time": {"time": 7}}}]
 
 
 def test_set_time_can_follow_without_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer, requests = _controlling_viewer(monkeypatch, {})
     viewer.set_time(play_state="following")
 
-    assert calls == [(None, None, "following", None)]
+    assert requests == [{"set_time_cursor": {"play_state": "PLAY_STATE_FOLLOWING"}}]
 
 
 def test_set_time_can_switch_timeline_alone(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _capturing_viewer(monkeypatch)
+    viewer, requests = _controlling_viewer(monkeypatch, {})
     viewer.set_time("frame")
 
-    assert calls == [("frame", None, None, None)]
+    assert requests == [{"set_time_cursor": {"timeline": {"name": "frame"}}}]
 
 
 def test_set_time_refuses_conflicting_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, _calls = _capturing_viewer(monkeypatch)
+    viewer, _requests = _controlling_viewer(monkeypatch, {})
 
     with pytest.raises(ValueError, match="expects a timeline"):
         viewer.set_time()  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
@@ -170,56 +183,115 @@ def test_set_time_refuses_conflicting_arguments(monkeypatch: pytest.MonkeyPatch)
         viewer.set_time(sequence=1, play_state="following")  # type: ignore[call-overload]
 
 
-def _closing_viewer(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[ViewerClient, list[tuple[str | None, list[str] | None]]]:
-    calls: list[tuple[str | None, list[str] | None]] = []
+def test_get_blueprint_picks_its_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(monkeypatch, {})
+    viewer.get_blueprint()
+    viewer.get_blueprint(store_id="Recording:app:rec")
+    viewer.get_blueprint("table")
 
-    class CapturingViewerClientInternal:
+    assert requests == [
+        {"get_blueprint": {}},
+        {"get_blueprint": {"recording": {"store_id": "Recording:app:rec"}}},
+        {"get_blueprint": {"table": {}}},
+    ]
+
+    with pytest.raises(ValueError, match="table_url"):
+        viewer.get_blueprint("recording", table_url="rerun+http://localhost/entry/1")
+
+    with pytest.raises(ValueError, match="expects"):
+        viewer.set_blueprint({})
+
+
+def test_close_picks_its_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(monkeypatch, {"close": {"closed": ["Recording:a:1"]}})
+
+    assert viewer.close("current") == ["Recording:a:1"]
+    viewer.close("all")
+    viewer.close("file:///a.rrd")
+    viewer.close(["a.rrd", "b.rrd"])
+    viewer.close(store_ids=["Recording:a:1"])
+    viewer.close(store_ids=[])
+
+    assert requests == [
+        {"close": {"current": True}},
+        {"close": {"all": True}},
+        {"close": {"urls": {"urls": ["file:///a.rrd"]}}},
+        {"close": {"urls": {"urls": ["a.rrd", "b.rrd"]}}},
+        {"close": {"store_ids": {"store_ids": ["Recording:a:1"]}}},
+        {"close": {"store_ids": {"store_ids": []}}},
+    ]
+
+    with pytest.raises(ValueError, match="either"):
+        viewer.close()
+    with pytest.raises(ValueError, match="either"):
+        viewer.close("all", store_ids=["Recording:a:1"])
+
+
+def test_open_sends_one_request_per_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(
+        monkeypatch, {"open": {"store_ids": ["Recording:a:1"], "loading": ["a.rrd"]}}
+    )
+
+    assert viewer.open("a.rrd") == OpenResult(store_ids=["Recording:a:1"], loading=["a.rrd"])
+    assert viewer.open(["a.rrd", "b.rrd"], navigate=False).store_ids == ["Recording:a:1"] * 2
+    assert requests == [
+        {"open": {"url": "a.rrd", "navigate": True}},
+        {"open": {"url": "a.rrd", "navigate": False}},
+        {"open": {"url": "b.rrd", "navigate": False}},
+    ]
+
+
+def test_deprecated_names_still_work(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(monkeypatch, {"open": {"loading": ["a.rrd"]}})
+
+    with pytest.deprecated_call():
+        assert viewer.open_url("a.rrd") is False  # ty: ignore[deprecated]
+    with pytest.deprecated_call():
+        viewer.close_recordings()  # ty: ignore[deprecated]
+    with pytest.deprecated_call():
+        viewer.close_recordings("Recording:app:rec")  # ty: ignore[deprecated]
+    with pytest.deprecated_call():
+        viewer.viewer_state()  # ty: ignore[deprecated]
+    with pytest.deprecated_call():
+        viewer.viewer_logs()  # ty: ignore[deprecated]
+
+    assert [next(iter(request)) for request in requests] == ["open", "close", "close", "get_viewer_state", "get_logs"]
+    assert requests[2] == {"close": {"store_ids": {"store_ids": ["Recording:app:rec"]}}}
+
+
+def test_take_screenshot_asks_for_png_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    png = b"\x89PNG\r\n"
+    viewer, requests = _controlling_viewer(monkeypatch, {"save_screenshot": {"png": base64.b64encode(png).decode()}})
+
+    assert viewer.take_screenshot(max_size=64) == png
+    assert requests == [{"save_screenshot": {"max_size": 64}}]
+
+
+def test_schema_reads_omitted_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Canonical protobuf JSON leaves out `false` and `0`, which must not read as missing."""
+    viewer, _requests = _controlling_viewer(
+        monkeypatch,
+        {"get_recording_schema": {"entities": [{"entity_path": "/points", "components": [{"component": "c"}]}]}},
+    )
+    schema = viewer.get_recording_schema()
+
+    assert schema.omitted_entities == 0
+    assert schema.entities[0].components[0].has_static is False
+    assert schema.entities[0].components[0].archetype is None
+
+
+def test_viewer_control_rejects_a_mismatched_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    class MismatchedViewerClientInternal:
         def __init__(self, _url: str) -> None:
             pass
 
-        def close_recordings(
-            self,
-            target: str | None = None,
-            store_ids: list[str] | None = None,
-        ) -> str:
-            calls.append((target, store_ids))
-            return "{}"
+        def viewer_control(self, _request_json: str) -> str:
+            return json.dumps({"get_location": {}})
 
-    monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", CapturingViewerClientInternal)
-    return ViewerClient.connect(), calls
+    monkeypatch.setattr(rerun_bindings, "ViewerClientInternal", MismatchedViewerClientInternal)
 
-
-def test_close_recordings_selects_by_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _closing_viewer(monkeypatch)
-    viewer.close_recordings()
-    viewer.close_recordings("all")
-
-    assert calls == [("current", None), ("all", None)]
-
-
-def test_close_recordings_accepts_a_bare_store_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A store id is itself a string, so it must not be iterated character by character."""
-    viewer, calls = _closing_viewer(monkeypatch)
-    viewer.close_recordings("Recording:app:rec")
-
-    assert calls == [(None, ["Recording:app:rec"])]
-
-
-def test_close_recordings_accepts_several_store_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    viewer, calls = _closing_viewer(monkeypatch)
-    viewer.close_recordings(["Recording:a:1", "Recording:b:2"])
-
-    assert calls == [(None, ["Recording:a:1", "Recording:b:2"])]
-
-
-def test_close_recordings_of_nothing_asks_the_viewer_for_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An empty selection must stay empty, rather than falling back to closing everything."""
-    viewer, calls = _closing_viewer(monkeypatch)
-    viewer.close_recordings([])
-
-    assert calls == [(None, [])]
+    with pytest.raises(RuntimeError, match="Expected a list_commands response"):
+        ViewerClient.connect().list_commands()
 
 
 def test_viewer_state_reads_an_absent_wrapper_as_none() -> None:

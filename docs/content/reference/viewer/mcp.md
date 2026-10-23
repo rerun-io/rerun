@@ -88,7 +88,7 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 
 - **View reports**: `rerun_get_viewer_state` lists every view of the current blueprint together with the warnings and errors it reported the last time it was shown, the same ones behind the warning icon in a view's title bar.
   That tells the agent why a view is empty or looks wrong without a screenshot.
-- **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `rerun_get_viewer_logs` tool returns the recent history.
+- **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `rerun_get_logs` tool returns the recent history.
   The agent notices the same warnings and errors you see in the notification panel.
 - **What is still loading**: `rerun_get_viewer_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
   `rerun_open` waits a few seconds for the load to finish, and says so when it is still loading, so this is how the agent tells a recording that is still arriving from one that arrived empty.

@@ -10564,6 +10564,7 @@ dependencies = [
  "re_workspace_hack",
  "serde",
  "serde_json",
+ "serde_path_to_error",
  "thiserror 2.0.19",
  "tonic",
  "tonic-prost",

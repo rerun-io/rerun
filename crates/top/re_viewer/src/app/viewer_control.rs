@@ -20,12 +20,12 @@ use re_protos::viewer_control::v1alpha1::PlayState as ProtoPlayState;
 use re_protos::viewer_control::v1alpha1::{
     CloseRequest, CloseResponse, DatasetAssetSchema, GetBlueprintRequest, GetBlueprintResponse,
     GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
-    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest,
-    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
-    GetViewerLogsRequest, GetViewerLogsResponse, GetViewerStateRequest, GetViewerStateResponse,
-    HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
-    RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
-    ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
+    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetLogsRequest,
+    GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest,
+    HighlightRectResponse, OpenRequest, OpenResponse, RecordingComponentSchema,
+    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect,
+    SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
     SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
     ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
     ViewerReport, ViewerServer, ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView,
@@ -372,8 +372,8 @@ impl AppCore {
                         .map(ViewerControlResponse::from),
                 );
             }
-            Kind::GetViewerLogs(GetViewerLogsRequest { after_sequence }) => {
-                on_done.call(Ok(GetViewerLogsResponse {
+            Kind::GetLogs(GetLogsRequest { after_sequence }) => {
+                on_done.call(Ok(GetLogsResponse {
                     entries: self.viewer_log.entries_after(after_sequence),
                 }
                 .into()));

@@ -52,7 +52,7 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetViewerLogsRequest, ViewerControlOp, ViewerLogEntry,
+    EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
 
@@ -117,7 +117,7 @@ impl Transport for GrpcInspector {
                     "The viewer did not paint a frame within {UI_REQUEST_TIMEOUT:?}. \
                      Every UI tool waits on the frame loop, so a long import or an unresponsive \
                      window stalls all of them. `rerun_get_viewer_state` and \
-                     `rerun_get_viewer_logs` are answered without a frame and still work: use \
+                     `rerun_get_logs` are answered without a frame and still work: use \
                      them to see whether the viewer is busy loading, and retry once it is idle."
                 )
             })?
@@ -256,7 +256,7 @@ impl ViewerMcpServer {
         let peer = bridge.peer_info.clone();
         let newest_log = execute(
             &mut client,
-            GetViewerLogsRequest {
+            GetLogsRequest {
                 after_sequence: None,
             },
         )
@@ -285,7 +285,7 @@ impl ViewerMcpServer {
         let mut client = conn.client.clone();
         let Ok(response) = execute(
             &mut client,
-            GetViewerLogsRequest {
+            GetLogsRequest {
                 after_sequence: Some(after_sequence),
             },
         )

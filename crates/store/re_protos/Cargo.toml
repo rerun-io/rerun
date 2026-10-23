@@ -66,6 +66,7 @@ tonic-reflection.workspace = true
 # native-only keeps the descriptor set out of the wasm viewer.
 prost-reflect = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
+serde_path_to_error.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -30,7 +30,7 @@ pub mod viewer_control_request {
         ///
         /// Entries carry a sequence number, so passing the last one back fetches only what is new.
         #[prost(message, tag = "2")]
-        GetViewerLogs(super::GetViewerLogsRequest),
+        GetLogs(super::GetLogsRequest),
         /// Report what the viewer is currently showing, so a caller can orient itself.
         ///
         /// Covers the active recording, the current page URL, every open recording with its timelines,
@@ -139,6 +139,7 @@ pub mod viewer_control_request {
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings.
         /// `GetTableSchema` names all columns of a table.
+        /// See <https://rerun.io/docs/concepts/visualization/blueprints.>
         ///
         /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
         /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -156,6 +157,9 @@ pub mod viewer_control_request {
         GetBlueprint(super::GetBlueprintRequest),
         /// Record a puffin profile of the next frames the viewer paints, and write it to disk as a
         /// `.puffin` file.
+        ///
+        /// This is for profiling the viewer's own performance: where its time goes in each frame.
+        /// Open the file in puffin_viewer, see <https://github.com/EmbarkStudios/puffin.>
         ///
         /// The viewer keeps repainting while it records, so this finishes even when nothing changes on
         /// screen. It answers when the file is written. Use the `investigate-puffin` skill
@@ -340,9 +344,9 @@ pub mod viewer_control_response {
         /// Result of `close`.
         #[prost(message, tag = "1")]
         Close(super::CloseResponse),
-        /// Result of `get_viewer_logs`.
+        /// Result of `get_logs`.
         #[prost(message, tag = "2")]
-        GetViewerLogs(super::GetViewerLogsResponse),
+        GetLogs(super::GetLogsResponse),
         /// Result of `get_viewer_state`.
         #[prost(message, tag = "3")]
         GetViewerState(super::GetViewerStateResponse),
@@ -955,7 +959,7 @@ pub struct GetDatasetSchemaResponse {
     /// The matching entities in path order, each with the components logged on it.
     #[prost(message, repeated, tag = "2")]
     pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
-    /// How many matching entities `max_entities` left out.
+    /// How many matching entities got left out because of `max_entities`.
     ///
     /// Anything above zero means this answer describes only part of the dataset: narrow with
     /// `entity_path`, or raise `max_entities`.
@@ -1032,7 +1036,7 @@ pub struct DatasetAssetSchema {
     /// asset's data is static.
     #[prost(message, repeated, tag = "2")]
     pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
-    /// How many matching entities `max_entities` left out of this asset.
+    /// How many matching entities of this asset got left out because of `max_entities`.
     #[prost(uint32, tag = "3")]
     pub omitted_entities: u32,
 }
@@ -1106,7 +1110,7 @@ pub struct GetRecordingSchemaResponse {
     /// something logged on it, nothing more.
     #[prost(message, repeated, tag = "2")]
     pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
-    /// How many matching entities `max_entities` left out.
+    /// How many matching entities got left out because of `max_entities`.
     ///
     /// Anything above zero means this answer describes only part of the recording: narrow with
     /// `entity_path`, or raise `max_entities`.
@@ -1188,39 +1192,39 @@ impl ::prost::Name for RecordingComponentSchema {
         "/rerun.viewer_control.v1alpha1.RecordingComponentSchema".into()
     }
 }
-/// Request for `GetViewerLogs`.
+/// Request for `GetLogs`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetViewerLogsRequest {
+pub struct GetLogsRequest {
     /// Only return entries with a sequence number greater than this.
     /// Omit for everything still buffered.
     #[prost(uint64, optional, tag = "1")]
     pub after_sequence: ::core::option::Option<u64>,
 }
-impl ::prost::Name for GetViewerLogsRequest {
-    const NAME: &'static str = "GetViewerLogsRequest";
+impl ::prost::Name for GetLogsRequest {
+    const NAME: &'static str = "GetLogsRequest";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.GetViewerLogsRequest".into()
+        "rerun.viewer_control.v1alpha1.GetLogsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.GetViewerLogsRequest".into()
+        "/rerun.viewer_control.v1alpha1.GetLogsRequest".into()
     }
 }
-/// Response for `GetViewerLogs`: the buffered log entries, oldest first.
+/// Response for `GetLogs`: the buffered log entries, oldest first.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetViewerLogsResponse {
+pub struct GetLogsResponse {
     /// The matching entries. The viewer keeps a bounded buffer, so old entries drop out.
     #[prost(message, repeated, tag = "1")]
     pub entries: ::prost::alloc::vec::Vec<ViewerLogEntry>,
 }
-impl ::prost::Name for GetViewerLogsResponse {
-    const NAME: &'static str = "GetViewerLogsResponse";
+impl ::prost::Name for GetLogsResponse {
+    const NAME: &'static str = "GetLogsResponse";
     const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.viewer_control.v1alpha1.GetViewerLogsResponse".into()
+        "rerun.viewer_control.v1alpha1.GetLogsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.viewer_control.v1alpha1.GetViewerLogsResponse".into()
+        "/rerun.viewer_control.v1alpha1.GetLogsResponse".into()
     }
 }
 /// One log message emitted by the viewer.

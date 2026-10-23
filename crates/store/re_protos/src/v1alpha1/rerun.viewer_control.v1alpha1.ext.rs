@@ -5,15 +5,15 @@ use crate::viewer_control::v1alpha1::{
     CaptureProfileTraceRequest, CaptureProfileTraceResponse, CloseRequest, CloseResponse,
     DescribeCommandsRequest, DescribeCommandsResponse, GetBlueprintRequest, GetBlueprintResponse,
     GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
-    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetRecordingSchemaRequest,
-    GetRecordingSchemaResponse, GetTableSchemaRequest, GetTableSchemaResponse,
-    GetTransformGraphRequest, GetTransformGraphResponse, GetViewerLogsRequest,
-    GetViewerLogsResponse, GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest,
-    HighlightRectResponse, ListCommandsRequest, ListCommandsResponse, OpenRequest, OpenResponse,
-    RunCommandRequest, RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse,
-    SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
-    SetTimeCursorRequest, SetTimeCursorResponse, SubmitFeedbackRequest, SubmitFeedbackResponse,
-    ViewerControlRequest, ViewerControlResponse, viewer_control_request, viewer_control_response,
+    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetLogsRequest,
+    GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, GetTransformGraphRequest, GetTransformGraphResponse,
+    GetViewerStateRequest, GetViewerStateResponse, HighlightRectRequest, HighlightRectResponse,
+    ListCommandsRequest, ListCommandsResponse, OpenRequest, OpenResponse, RunCommandRequest,
+    RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest,
+    SetBlueprintResponse, SetLocationRequest, SetLocationResponse, SetTimeCursorRequest,
+    SetTimeCursorResponse, SubmitFeedbackRequest, SubmitFeedbackResponse, ViewerControlRequest,
+    ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -118,7 +118,7 @@ viewer_control_ops! {
     "get_transform_graph" => GetTransformGraph(GetTransformGraphRequest, GetTransformGraphResponse),
     "get_recording_schema" => GetRecordingSchema(GetRecordingSchemaRequest, GetRecordingSchemaResponse),
     "get_table_schema" => GetTableSchema(GetTableSchemaRequest, GetTableSchemaResponse),
-    "get_viewer_logs" => GetViewerLogs(GetViewerLogsRequest, GetViewerLogsResponse),
+    "get_logs" => GetLogs(GetLogsRequest, GetLogsResponse),
     "get_viewer_state" => GetViewerState(GetViewerStateRequest, GetViewerStateResponse),
     "highlight_rect" => HighlightRect(HighlightRectRequest, HighlightRectResponse),
     "list_commands" => ListCommands(ListCommandsRequest, ListCommandsResponse),
@@ -155,10 +155,10 @@ mod tests {
     #[test]
     fn rejects_a_mismatched_response_kind() {
         let envelope = ViewerControlResponse::from(OpenResponse::default());
-        let err = GetViewerLogsRequest::from_envelope(envelope)
-            .expect_err("a get_viewer_logs request must not accept an open response");
+        let err = GetLogsRequest::from_envelope(envelope)
+            .expect_err("a get_logs request must not accept an open response");
 
-        assert_eq!(err.expected, "get_viewer_logs");
+        assert_eq!(err.expected, "get_logs");
         assert_eq!(err.actual, "open");
     }
 

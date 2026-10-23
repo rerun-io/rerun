@@ -164,7 +164,7 @@ def save_screenshots(
             # An open viewer does not pick up default table blueprint changes,
             # so we have to re-open it each time.
             with ViewerClient.spawn(headless=True) as viewer:
-                viewer.open_url(f"{catalog_url}/entry/{table.id}")
+                viewer.open(f"{catalog_url}/entry/{table.id}")
                 # Previews load asynchronously after the table opens and
                 # we don't have a way of waiting yet.
                 time.sleep(5)
@@ -229,7 +229,7 @@ def run(
             with ViewerClient.spawn(
                 headless=headless, detach_process=False
             ) as viewer:
-                viewer.open_url(server.url())
+                viewer.open(server.url())
                 input("Press Enter to stop the example…")
 
 

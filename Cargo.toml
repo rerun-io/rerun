@@ -465,6 +465,7 @@ serde_json = { version = "1.0", default-features = false, features = [
   "preserve_order", # `agent-client-protocol` turns this on anyway; enabling it everywhere keeps JSON key order predictable
   "std",
 ] }
+serde_path_to_error = "0.1.20"
 shell-words = "1.1"
 serde-wasm-bindgen = "0.6.5"
 sha2 = "0.10.9" # pinned by `jsonwebtoken` (RustCrypto family); see hmac note.

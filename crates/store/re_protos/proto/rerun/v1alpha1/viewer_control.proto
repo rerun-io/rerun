@@ -7,19 +7,18 @@
 // generated code lands in its own file. Serving several packages on one port is normal here:
 // the viewer already serves `rerun.cloud.v1alpha1` alongside these two.
 //
-// Adding an operation means editing two files:
+// Adding or modifying an operation means editing four files, so the viewer, Python, and JavaScript stay in sync:
 //
 //   crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.ext.rs
 //     One line in the `viewer_control_ops!` table, pairing the request with its response.
 //   crates/top/re_viewer/src/app/viewer_control.rs
 //     A match arm in `serve_viewer_control`, and what the operation does to the viewer.
-//
-// Optionally, to reach Python:
-//
-//   rerun_py/src/viewer.rs
-//     A `PyViewerClientInternal` method sending the one RPC and validating the response variant.
 //   rerun_py/rerun_sdk/rerun/experimental/_viewer_client.py
-//     The public `ViewerClient` method, with keyword arguments and a docstring.
+//     The public `ViewerClient` method, with keyword arguments and a docstring. It sends the
+//     request as JSON through `ViewerClientInternal.viewer_control`, so it needs no Rust.
+//   rerun_js/web-viewer/index.ts
+//     The public `WebViewer` method, taking and returning hand-written snake_case types rather
+//     than the generated ones.
 //
 // Nothing else needs touching. The transports carry `ViewerControlRequest` without looking
 // inside it, and `crates/top/re_viewer_mcp/src/proto_tools.rs` derives the MCP tool, its JSON
@@ -86,7 +85,7 @@ message ViewerControlRequest {
     // warnings and errors the user sees. A warning here usually explains what the user is seeing.
     //
     // Entries carry a sequence number, so passing the last one back fetches only what is new.
-    GetViewerLogsRequest get_viewer_logs = 2;
+    GetLogsRequest get_logs = 2;
 
     // Report what the viewer is currently showing, so a caller can orient itself.
     //
@@ -196,6 +195,7 @@ message ViewerControlRequest {
     // A recording's blueprint has the layout, views, their properties and overrides. A table's
     // blueprint only has what it sets, such as row filters, the layout, and column settings.
     // `GetTableSchema` names all columns of a table.
+    // See https://rerun.io/docs/concepts/visualization/blueprints.
     //
     // Set at most one of `recording` and `table`, such as `{"recording": {}}` or
     // `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -213,6 +213,9 @@ message ViewerControlRequest {
 
     // Record a puffin profile of the next frames the viewer paints, and write it to disk as a
     // `.puffin` file.
+    //
+    // This is for profiling the viewer's own performance: where its time goes in each frame.
+    // Open the file in puffin_viewer, see https://github.com/EmbarkStudios/puffin.
     //
     // The viewer keeps repainting while it records, so this finishes even when nothing changes on
     // screen. It answers when the file is written. Use the `investigate-puffin` skill
@@ -376,8 +379,8 @@ message ViewerControlResponse {
     // Result of `close`.
     CloseResponse close = 1;
 
-    // Result of `get_viewer_logs`.
-    GetViewerLogsResponse get_viewer_logs = 2;
+    // Result of `get_logs`.
+    GetLogsResponse get_logs = 2;
 
     // Result of `get_viewer_state`.
     GetViewerStateResponse get_viewer_state = 3;
@@ -714,7 +717,7 @@ message GetDatasetSchemaResponse {
   // The matching entities in path order, each with the components logged on it.
   repeated RecordingEntitySchema entities = 2;
 
-  // How many matching entities `max_entities` left out.
+  // How many matching entities got left out because of `max_entities`.
   //
   // Anything above zero means this answer describes only part of the dataset: narrow with
   // `entity_path`, or raise `max_entities`.
@@ -761,7 +764,7 @@ message DatasetAssetSchema {
   // asset's data is static.
   repeated RecordingEntitySchema entities = 2;
 
-  // How many matching entities `max_entities` left out of this asset.
+  // How many matching entities of this asset got left out because of `max_entities`.
   uint32 omitted_entities = 3;
 }
 
@@ -816,7 +819,7 @@ message GetRecordingSchemaResponse {
   // something logged on it, nothing more.
   repeated RecordingEntitySchema entities = 2;
 
-  // How many matching entities `max_entities` left out.
+  // How many matching entities got left out because of `max_entities`.
   //
   // Anything above zero means this answer describes only part of the recording: narrow with
   // `entity_path`, or raise `max_entities`.
@@ -867,17 +870,17 @@ message RecordingComponentSchema {
 }
 
 // ----------------------------------------------------------------------------
-// GetViewerLogs
+// GetLogs
 
-// Request for `GetViewerLogs`.
-message GetViewerLogsRequest {
+// Request for `GetLogs`.
+message GetLogsRequest {
   // Only return entries with a sequence number greater than this.
   // Omit for everything still buffered.
   optional uint64 after_sequence = 1;
 }
 
-// Response for `GetViewerLogs`: the buffered log entries, oldest first.
-message GetViewerLogsResponse {
+// Response for `GetLogs`: the buffered log entries, oldest first.
+message GetLogsResponse {
   // The matching entries. The viewer keeps a bounded buffer, so old entries drop out.
   repeated ViewerLogEntry entries = 1;
 }
