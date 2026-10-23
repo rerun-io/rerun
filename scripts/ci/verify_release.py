@@ -7,8 +7,8 @@ Checks:
 - registries: rerun-sdk and rerun-notebook on PyPI, @rerun-io/web-viewer on npm, rerun on crates.io.
   conda-forge lags behind by hours to days, so a missing conda-forge version is only a warning.
 - github-release: published, not a prerelease, marked latest, with assets.
-- website: rerun.io/docs and rerun.io/viewer serve the release, and app.rerun.io, the changeset page,
-  and the Python reference docs exist for it.
+- website: rerun.io/docs and rerun.io/viewer serve the release, rerun.io/docs/changelog redirects to its changeset,
+  and app.rerun.io, the changeset page, and the Python reference docs exist for it.
 - docs-latest: the `docs-latest` branch contains the release tag.
 - gradio: rerun-io/gradio-rerun-viewer has a published release with the same version tag.
 
@@ -74,6 +74,19 @@ def http_get(url: str, *, headers: dict[str, str] | None = None) -> tuple[int, s
     except (urllib.error.URLError, TimeoutError) as err:
         print(f"  {url}: {err}")
         return 0, ""
+
+
+def redirect_target(url: str) -> str:
+    """Where `url` lands after following up to 10 redirects; empty on more redirects or no response."""
+    if not url.startswith("https://"):
+        raise ValueError(f"Not an https URL: {url}")
+    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})  # noqa: S310
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
+            return str(response.geturl())
+    except (urllib.error.URLError, TimeoutError) as err:
+        print(f"  {url}: {err}")
+        return ""
 
 
 def gh_headers() -> dict[str, str]:
@@ -185,9 +198,18 @@ def check_website(version: str) -> str:
         print(f"  {url}: HTTP {status}")
         if status != 200:
             problems.append(f"HTTP {status} for {url}")
+
+    # Ensure that our changelog page redirects to the latest release
+    changelog = redirect_target("https://rerun.io/docs/changelog")
+    print(f"  rerun.io/docs/changelog redirects to: {changelog or '?'}")
+    if not changelog.endswith(f"/docs/changelog/changeset-{major}-{minor}"):
+        problems.append(
+            f"rerun.io/docs/changelog redirects to {changelog or 'nowhere'}: redeploy the website to refresh it"
+        )
+
     if problems:
         raise CheckFailed("; ".join(problems))
-    return "rerun.io/docs, rerun.io/viewer, app.rerun.io"
+    return "rerun.io/docs, rerun.io/docs/changelog, rerun.io/viewer, app.rerun.io"
 
 
 def check_docs_latest(version: str) -> str:
