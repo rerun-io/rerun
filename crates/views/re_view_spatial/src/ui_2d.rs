@@ -586,7 +586,7 @@ fn show_projections_from_3d_space(
                 shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
 
                 let text_color = ui.visuals().strong_text_color();
-                let text = format!("Depth: {:.3} m", pos_2d.z);
+                let text = format!("Depth: {}", re_format::format_f32(pos_2d.z));
                 let font_id = egui::TextStyle::Body.resolve(ui.style());
                 let galley = ui.fonts_mut(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
                 let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
