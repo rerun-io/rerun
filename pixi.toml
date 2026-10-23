@@ -497,8 +497,8 @@ py-build-notebook = { cmd = "uv sync --package rerun-notebook --inexact --no-ins
   "js-build-base",
 ] }
 py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk" }
-# Create a wheel for the `rerun-sdk` package.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+# Create a wheel for the `rerun-sdk` package, with the same features as the one on PyPI.
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml --no-default-features --features perf_telemetry,pypi", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 # Install example dependencies without rebuilding rerun-sdk.
