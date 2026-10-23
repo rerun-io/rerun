@@ -358,7 +358,9 @@ impl ChunkStore {
         // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
         // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
         // to what we do below for ranges.
-        let chunks_bootstrap = components_to_bootstrap.iter().flat_map(move |component| {
+        // Sorted, so that saving the same range twice gives the chunks in the same order.
+        let sorted_bootstrap = components_to_bootstrap.iter().sorted().collect_vec();
+        let chunks_bootstrap = sorted_bootstrap.into_iter().flat_map(move |component| {
             let chunks = self
                 .latest_at_relevant_chunks(tracking, &query_bootstrap, entity, *component)
                 .chunks
