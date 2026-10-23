@@ -1,0 +1,12 @@
+# Speculative links: links that are correct, but not live until the next release, e.g. a docs page a PR adds.
+#
+# Copy this file to a name of your own in this folder (e.g. `catalog-tables-docs.txt`), one file per PR,
+# so PRs never conflict here.
+# Each line is a regular expression lychee matches against the full URL; lines starting with `#` are comments.
+# Escape the dots and anchor the regex at the start, e.g.:
+#
+# ^https://rerun\.io/docs/howto/catalog-tables
+#
+# `pixi run link-check` and `pixi run link-check-pr` combine these files into `.lycheeignore`, which lychee reads.
+# Each rc and final release deletes every file here except this one (`RELEASES.md` step 5),
+# and the release workflow fails if any are left.

@@ -107,6 +107,7 @@ justfile
 
 # Lychee link checker cache
 .lycheecache
+/.lycheeignore
 
 # Saved pytest-benchmark results
 /.benchmarks

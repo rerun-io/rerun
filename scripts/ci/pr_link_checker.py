@@ -44,7 +44,7 @@ def load_lychee_excludes(config_path: str = "lychee.toml") -> list[str]:
                 if not isinstance(pattern, str):
                     eprint(f"Error: exclude_path patterns must be strings, got {type(pattern).__name__}: {pattern}")
                     sys.exit(1)
-                normalized.append(pattern.lstrip("./"))
+                normalized.append(pattern.removeprefix("./").rstrip("/"))
 
             return normalized
     except FileNotFoundError:
@@ -62,7 +62,7 @@ def should_exclude_file(filepath: str, exclude_patterns: list[str]) -> bool:
     if not exclude_patterns:
         return False
 
-    normalized = filepath.lstrip("./")
+    normalized = filepath.removeprefix("./")
     for pattern in exclude_patterns:
         # Exact match or directory prefix match
         if normalized == pattern or normalized.startswith(pattern + "/"):
@@ -71,6 +71,25 @@ def should_exclude_file(filepath: str, exclude_patterns: list[str]) -> bool:
         if fnmatch.fnmatch(normalized, pattern):
             return True
     return False
+
+
+def generated_files(paths: list[str]) -> set[str]:
+    """The subset of `paths` that codegen generates (marked `linguist-generated=true` in `.gitattributes`)."""
+    if not paths:
+        return set()
+    result = subprocess.run(
+        ["git", "check-attr", "--stdin", "linguist-generated"],
+        input="\n".join(paths),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Output lines look like `path: linguist-generated: true`.
+    return {
+        line.rsplit(": linguist-generated: ", 1)[0]
+        for line in result.stdout.splitlines()
+        if line.endswith(": linguist-generated: true")
+    }
 
 
 def get_added_lines_with_links(
@@ -161,8 +180,9 @@ def get_added_lines_with_links(
             ):
                 lines_by_file[current_file].append(line_content)
 
-    # Remove empty entries
-    return {filename: lines for filename, lines in lines_by_file.items() if lines}
+    # Generated files are checked in the sources they are generated from, and on `docs-latest` in the nightly.
+    generated = generated_files(list(lines_by_file))
+    return {filename: lines for filename, lines in lines_by_file.items() if lines and filename not in generated}
 
 
 class TempLinkFile:

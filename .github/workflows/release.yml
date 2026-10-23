@@ -56,21 +56,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
-      - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: 3.11
-
-      - name: Check links for `?speculative-link`
-        # This checks that we have no links with `?speculative-link` in its query params.
-        # We use those markers to get our link checker to ignore links to unreleased docs.
-        #
-        # NOTE: For alpha releases, we won't fully publish all our docs,
-        #       so we skip the check here, because we won't be able to
-        #       remove the markers yet.
+      - name: Check that the speculative links are deleted
+        # Alphas don't publish all our docs, so their speculative links stay.
+        if: ${{ inputs.release-type != 'alpha' }}
         run: |
-          if [ ${{ inputs.release-type }} != "alpha" ]; then
-            python3 scripts/ci/check_speculative_links.py
+          left=$(git ls-files 'docs/speculative_links/*.txt' ':!docs/speculative_links/_template.txt')
+          if [ -n "$left" ]; then
+            echo "Delete these speculative links before releasing (RELEASES.md step 5):"
+            echo "$left"
+            exit 1
           fi
 
   # NOTE: When updating this job, also remember to update `post-release-version-bump`.

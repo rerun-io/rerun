@@ -261,10 +261,17 @@ format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "t
 fmt = { depends-on = ["format"] }
 
 # Check links
+# Combines the per-PR files in `docs/speculative_links/` into `.lycheeignore`, which lychee reads by itself.
+speculative-links = "cat docs/speculative_links/*.txt > .lycheeignore"
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
+], depends-on = [
+  "speculative-links",
 ] }
-link-check = 'lychee --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+# Generated files are skipped: their links are checked on `docs-latest` in the nightly.
+link-check = { cmd = "git ls-files -- '*.cpp' '*.hpp' '*.html' '*.md' '*.proto' '*.py' '*.rs' '*.toml' '*.txt' '*.yml' ':(exclude,attr:linguist-generated=true)' | lychee --cache --max-cache-age 1d --root-dir \"$PIXI_PROJECT_ROOT\" --files-from -", depends-on = [
+  "speculative-links",
+] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"

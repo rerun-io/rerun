@@ -317,8 +317,7 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
-      - name: Set up pixi for PR Link Checker
-        if: ${{ inputs.CHANNEL == 'pr' }}
+      - name: Set up pixi
         uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           pixi-version: v0.82.1
@@ -336,12 +335,22 @@ jobs:
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
-        id: lychee
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        run: pixi run link-check
+
+      # The links codegen builds point at the docs of each type, which only go live with its release.
+      # `docs-latest` holds the latest release, so all of its generated links must resolve.
+      - name: Check out docs-latest
+        if: ${{ !cancelled() && inputs.CHANNEL == 'nightly' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          fail: true
-          lycheeVersion: "v0.23.0"
-          # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
-          # If updating version or args update the pixi.toml to match.
-          args: |
-            --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+          ref: docs-latest
+          path: docs-latest
+
+      - name: Link Checker for generated files on docs-latest
+        if: ${{ !cancelled() && inputs.CHANNEL == 'nightly' }}
+        working-directory: docs-latest
+        # Only checks actually generated code and not e.g. pixi.lock
+        run: |
+          git ls-files ':(attr:linguist-generated=true)' \
+            | grep -E '\.(md|py|rs|h|hpp|cpp)$' \ 
+            | pixi run --manifest-path ../pixi.toml lychee --cache --max-cache-age 1d --files-from -

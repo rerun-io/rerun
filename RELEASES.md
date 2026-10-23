@@ -139,9 +139,8 @@ the next release's per-PR entries.
 
 ⚠️ Skip this step when preparing an alpha release.
 
-Remove all the `#[docs(unreleased)]` attributes in `re_type_definitions`, followed by `pixi run codegen`.
-
-Remove the speculative link markers (`?speculative-link`).
+Delete every file in [`docs/speculative_links/`](./docs/speculative_links/_template.txt) except `_template.txt`: the release puts their links live.
+The release workflow fails if any are left.
 
 Update the [python support table](./rerun_py/docs/gen_common_index.py) for the major release.
 

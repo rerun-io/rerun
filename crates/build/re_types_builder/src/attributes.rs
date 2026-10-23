@@ -54,10 +54,6 @@ pub enum DocsAttr {
     #[strum(serialize = "attr.docs.category")]
     Category,
 
-    /// The type is not in a release yet, and is marked as such wherever it is documented.
-    #[strum(serialize = "attr.docs.unreleased")]
-    Unreleased,
-
     /// The views an archetype can be shown in, as `View`, or `View: why`, separated by commas.
     #[strum(serialize = "attr.docs.view_types")]
     ViewTypes,

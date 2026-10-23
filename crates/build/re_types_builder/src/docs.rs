@@ -333,7 +333,6 @@ mod doclink_translation {
         let kind = object.kind.plural_snake_case();
         let type_name = object.name.as_str();
         let scope = object.scope().unwrap_or_default();
-        let is_unreleased = object.is_attr_set(crate::DocsAttr::Unreleased);
 
         if let Some(deprecation_summary) = object.deprecation_summary() {
             return Err(format!(
@@ -393,15 +392,8 @@ mod doclink_translation {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
-                let query = if is_unreleased {
-                    "?speculative-link" // or our link checker will complain
-                } else {
-                    ""
-                };
-
-                let url = format!(
-                    "https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}{query}"
-                );
+                let url =
+                    format!("https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}");
                 if let Some(field_or_enum_name) = field_or_enum_name {
                     format!("[`{kind_and_type}#{field_or_enum_name}`]({url})")
                 } else {

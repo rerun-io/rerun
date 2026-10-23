@@ -317,23 +317,14 @@ fn object_page(
 }
 
 fn list_links(page: &mut String, object: &Object) {
-    // The per-language API docs are published per release, so a whole kind of page can be
-    // unreachable even when the object itself is old.
-    let speculative_marker = if object.is_attr_set(DocsAttr::Unreleased) {
-        "?speculative-link"
-    } else {
-        ""
-    };
-
     if object.kind == ObjectKind::View {
         // More complicated link due to scope
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}{}#rerun.{}.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}#rerun.{}.{}.{})",
             object.name,
             object.scope().unwrap_or_default(),
             object.kind.plural_snake_case(),
-            speculative_marker,
             object.scope().unwrap_or_default(),
             object.kind.plural_snake_case(),
             object.name
@@ -358,23 +349,22 @@ fn list_links(page: &mut String, object: &Object) {
         // In alphabetical order by language.
         putln!(
             page,
-            " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
+            " * 🌊 [C++ API docs for `{}`]({cpp_link})",
             object.name,
         );
 
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}#rerun.{}.{})",
             object.name,
             object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
-            speculative_marker,
             object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
             object.name
         );
 
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html)",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
@@ -530,18 +520,11 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.is_attr_set(DocsAttr::Unreleased);
-                let speculative_marker = if is_unreleased {
-                    "?speculative-link"
-                } else {
-                    ""
-                };
                 used_by.push(format!(
-                    "* [`{}`](../{}/{}.md{})",
+                    "* [`{}`](../{}/{}.md)",
                     ty.name,
                     ty.kind.plural_snake_case(),
                     ty.snake_case_name(),
-                    speculative_marker
                 ));
             }
         }
