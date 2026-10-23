@@ -348,20 +348,16 @@ impl CommandPalette {
         let text_edit = egui::TextEdit::singleline(&mut self.raw_query)
             .id(query_id)
             .hint_text(hint)
+            .prefix(
+                icon.as_image()
+                    .fit_to_exact_size(ui.tokens().small_icon_size)
+                    .tint(ui.tokens().text_strong),
+            )
             .desired_width(f32::INFINITY)
             .lock_focus(true);
-        let text_response = ui
-            .horizontal(|ui| {
-                ui.add(
-                    icon.as_image()
-                        .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .tint(ui.visuals().text_color()),
-                );
-                // TextEdit uses the themed weak color for placeholders, overriding RichText colors.
-                ui.visuals_mut().weak_text_color = Some(ui.tokens().text_subdued);
-                ui.add(text_edit).accessible_name(name)
-            })
-            .inner;
+        // TextEdit uses the themed weak color for placeholders, overriding RichText colors.
+        ui.visuals_mut().weak_text_color = Some(ui.tokens().text_subdued);
+        let text_response = ui.add(text_edit).accessible_name(name);
         text_response.request_focus();
         let scroll_to_selected_alternative = mode_changed || text_response.changed();
         if scroll_to_selected_alternative {
@@ -375,12 +371,6 @@ impl CommandPalette {
                 Mode::Agent => ("Press Tab to switch to search mode", &crate::icons::SEARCH),
             };
             ui.horizontal_wrapped(|ui| {
-                ui.add(
-                    crate::icons::ARROW_RIGHT
-                        .as_image()
-                        .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .tint(ui.visuals().weak_text_color()),
-                );
                 ui.weak(hint);
                 ui.add(
                     icon.as_image()
