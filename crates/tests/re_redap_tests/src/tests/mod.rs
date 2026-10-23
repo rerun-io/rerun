@@ -211,13 +211,11 @@ define_redap_tests! {
     update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
-    ; // OSS-only tests:
-    find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
-    // TODO(RR-5971): Rerun Hub still rejects duplicates and segment-count overflows
-    // synchronously instead of failing the registration task.
     register_asset::asset_dataset_enforces_segment_limit,
     register_asset::asset_dataset_segment_limit_counts_layers,
     register_segment::register_with_dataset_if_duplicate_behavior_error,
+    ; // OSS-only tests:
+    find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,
