@@ -148,7 +148,7 @@ similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit-mut"] }
+syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
@@ -310,7 +310,7 @@ similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit-mut"] }
+syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
