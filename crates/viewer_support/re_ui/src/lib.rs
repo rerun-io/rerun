@@ -25,6 +25,7 @@ pub mod modal;
 mod motion;
 pub mod notifications;
 mod panel_title_bar;
+mod progress_ring;
 mod relative_time_range;
 mod requested_object;
 mod section_collapsing_header;
@@ -77,6 +78,7 @@ pub use self::link_button::LinkButton;
 pub use self::markdown_utils::*;
 pub use self::notifications::Link;
 pub use self::panel_title_bar::PanelTitleBar;
+pub use self::progress_ring::ProgressRing;
 pub use self::relative_time_range::{
     RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
 };

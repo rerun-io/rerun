@@ -4,3 +4,4 @@ mod help_ui_test;
 mod list_item_tests;
 mod modal_tests;
 mod notification_test;
+mod progress_ring_test;

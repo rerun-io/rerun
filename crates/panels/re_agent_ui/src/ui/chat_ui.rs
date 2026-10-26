@@ -488,8 +488,8 @@ fn stop_agent(ui: &egui::Ui, session: &mut AgentSession, input: &mut ChatInput) 
     session.cancel();
 }
 
-/// The row at the bottom of the input: mode picker, model, connection status or token usage,
-/// and the agent log toggle on the left; the send or stop button on the right.
+/// The row at the bottom of the input: mode picker, model, connection status, and the agent
+/// log toggle on the left; context usage and the send or stop button on the right.
 fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
@@ -497,6 +497,12 @@ fn footer_ui(
     preferred_mode: &mut Option<SessionModeId>,
     preferred_model: &mut Option<SessionConfigValueId>,
 ) {
+    let usage = session
+        .transcript()
+        .usage
+        .as_ref()
+        .filter(|_| *session.phase() == Phase::Ready)
+        .map(|usage| (usage.used, usage.size));
     let turn_in_progress = session.turn_in_progress();
     let can_send =
         session.is_ready() && (!input.text.trim().is_empty() || !input.pending_images.is_empty());
@@ -520,20 +526,10 @@ fn footer_ui(
                     Phase::Connecting { status } => {
                         ui.weak(status);
                     }
-                    Phase::Ready => {
-                        if let Some(usage) = &session.transcript().usage {
-                            let text = format!(
-                                "{} / {} tokens",
-                                format_tokens(usage.used),
-                                format_tokens(usage.size)
-                            );
-                            ui.weak(text).on_hover_text("Context window usage");
-                        }
-                    }
                     Phase::Disconnected { reason } => {
                         ui.error_label(reason.clone());
                     }
-                    Phase::Idle => {}
+                    Phase::Idle | Phase::Ready => {}
                 }
 
                 let log_lines = session.log().len();
@@ -549,7 +545,7 @@ fn footer_ui(
                 }
             },
             |ui| {
-                if turn_in_progress {
+                let clicked = if turn_in_progress {
                     let stop = ui
                         .add(ReButton::new("Stop").outlined().small())
                         .on_hover_text("Cancel the current turn (Esc)")
@@ -563,7 +559,11 @@ fn footer_ui(
                     )
                     .on_hover_text("Send (⏎)")
                     .clicked()
+                };
+                if let Some((used_tokens, max_tokens)) = usage {
+                    context_usage_ui(ui, used_tokens, max_tokens);
                 }
+                clicked
             },
         );
 
@@ -994,14 +994,21 @@ fn log_ui(ui: &mut egui::Ui, session: &AgentSession) {
         });
 }
 
-fn format_tokens(n: u64) -> String {
-    if n < 1_000 {
-        n.to_string()
-    } else if n < 1_000_000 {
-        format!("{:.1}k", n as f64 / 1_000.0)
+/// How full the agent's context window is, as a ring with the numbers in its tooltip.
+fn context_usage_ui(ui: &mut egui::Ui, used_tokens: u64, max_tokens: u64) {
+    let fraction = if max_tokens == 0 {
+        0.0
     } else {
-        format!("{:.2}M", n as f64 / 1_000_000.0)
-    }
+        used_tokens as f32 / max_tokens as f32
+    };
+    let description = format!(
+        "Context window: {} / {} tokens ({:.0}%)",
+        re_format::format_uint(used_tokens),
+        re_format::format_uint(max_tokens),
+        100.0 * fraction
+    );
+    ui.add(re_ui::ProgressRing::new(fraction).label(description.clone()))
+        .on_hover_text(description);
 }
 
 #[cfg(test)]
