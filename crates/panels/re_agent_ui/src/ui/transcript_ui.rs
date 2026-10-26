@@ -43,9 +43,9 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
         let scope = ui.push_id(index, |ui| {
             if 2 <= folded_calls {
                 let run = items.get(index..next_index).unwrap_or_default();
-                Some(tool_call_group_ui(ui, run, transcript_id))
+                Some(tool_call_group_ui(ui, session, run, transcript_id))
             } else {
-                entry_ui(ui, entry, show_thoughts, transcript_id)
+                entry_ui(ui, session, entry, show_thoughts, transcript_id)
             }
         });
         let rect = scope.inner.unwrap_or(scope.response.rect);
@@ -113,6 +113,7 @@ fn tool_call_run_len(items: &[TranscriptEntry], index: usize) -> usize {
 /// whole entry.
 fn entry_ui(
     ui: &mut egui::Ui,
+    session: &AgentSession,
     entry: &TranscriptEntry,
     show_thoughts: bool,
     transcript_id: egui::Id,
@@ -131,7 +132,7 @@ fn entry_ui(
             None
         }
         TranscriptItem::ToolCall(call) => {
-            tool_call_ui(ui, call, transcript_id.with(&call.id.0));
+            tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
             None
         }
         TranscriptItem::McpStartupFailure(failure) => {
@@ -155,6 +156,7 @@ fn entry_ui(
 /// Returns the rect of the header, which shows the time of the first call on hover.
 fn tool_call_group_ui(
     ui: &mut egui::Ui,
+    session: &AgentSession,
     run: &[TranscriptEntry],
     transcript_id: egui::Id,
 ) -> egui::Rect {
@@ -183,7 +185,9 @@ fn tool_call_group_ui(
         .show(ui, |ui| {
             for (entry, call) in &calls {
                 let rect = ui
-                    .scope(|ui| tool_call_ui(ui, call, transcript_id.with(&call.id.0)))
+                    .scope(|ui| {
+                        tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
+                    })
                     .response
                     .rect;
                 if ui.rect_contains_pointer(rect) {

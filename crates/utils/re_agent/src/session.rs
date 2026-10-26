@@ -10,11 +10,11 @@ use std::time::Instant;
 
 use agent_client_protocol::schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
-    ElicitationAction, ElicitationMode, ImageContent, PermissionOption, PermissionOptionId,
-    PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome, RequestPermissionRequest,
-    RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigId, SessionConfigValueId,
-    SessionModeId, SessionModeState, SessionUpdate, StopReason, TextContent, ToolCallStatus,
-    ToolKind,
+    ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
+    PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
+    RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
+    SessionConfigId, SessionConfigValueId, SessionModeId, SessionModeState, SessionUpdate,
+    StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
 use agent_client_protocol::{LineDirection, Responder};
 
@@ -330,6 +330,28 @@ impl AgentSession {
     /// Polling removes requests withdrawn by the agent.
     pub fn pending_elicitations(&self) -> &[PendingElicitation] {
         &self.pending_elicitations
+    }
+
+    /// The agent is blocked on the user: a login, a permission request, or a question.
+    pub fn is_waiting_on_user(&self) -> bool {
+        self.auth.is_some()
+            || !self.pending_permissions.is_empty()
+            || !self.pending_elicitations.is_empty()
+    }
+
+    /// The tool call is blocked on the user: a permission request or a question names it.
+    ///
+    /// A login, or a question that names no tool call, could belong to any running call, so
+    /// those count for all of them.
+    pub fn is_tool_call_waiting_on_user(&self, id: &ToolCallId) -> bool {
+        let permission = self
+            .pending_permissions
+            .iter()
+            .any(|pending| pending.request.tool_call.tool_call_id == *id);
+        let question = self.pending_elicitations.iter().any(|pending| {
+            elicitation_tool_call(&pending.request).is_none_or(|tool_call| tool_call == id)
+        });
+        self.auth.is_some() || permission || question
     }
 
     pub fn log(&self) -> &VecDeque<LogLine> {
@@ -1053,6 +1075,19 @@ fn is_within(path: &Path, directories: &[PathBuf]) -> bool {
             .any(|directory| path.starts_with(directory))
 }
 
+/// The tool call a question is about, if the agent says.
+fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCallId> {
+    let scope = match &request.mode {
+        ElicitationMode::Form(form) => &form.scope,
+        ElicitationMode::Url(url) => &url.scope,
+        _ => return None,
+    };
+    match scope {
+        ElicitationScope::Session(session) => session.tool_call_id.as_ref(),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
@@ -1139,6 +1174,31 @@ mod tests {
                 "properties": { "environment": { "type": "string", "enum": ["existing", "temporary"] } }
             }
         })).expect("valid question")
+    }
+
+    #[test]
+    fn a_question_waits_on_its_tool_call_or_on_all_of_them() {
+        let asking = ToolCallId::new("asking");
+        let other = ToolCallId::new("other");
+
+        let mut session = AgentSession::default();
+        assert!(!session.is_tool_call_waiting_on_user(&asking));
+
+        let mut scoped = form_question();
+        if let ElicitationMode::Form(form) = &mut scoped.mode
+            && let ElicitationScope::Session(scope) = &mut form.scope
+        {
+            scope.tool_call_id = Some(asking.clone());
+        }
+        session.push_elicitation(scoped, None);
+        assert!(session.is_tool_call_waiting_on_user(&asking));
+        assert!(!session.is_tool_call_waiting_on_user(&other));
+
+        session.push_elicitation(form_question(), None);
+        assert!(
+            session.is_tool_call_waiting_on_user(&other),
+            "unscoped questions count for all"
+        );
     }
 
     #[test]

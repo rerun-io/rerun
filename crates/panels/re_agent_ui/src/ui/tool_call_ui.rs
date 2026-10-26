@@ -2,13 +2,13 @@ use egui::{Color32, RichText};
 use re_agent::acp::schema::v1::{ContentBlock, Diff, ToolCallContent, ToolCallStatus, ToolKind};
 use re_ui::{UiExt as _, icons};
 
-use re_agent::ToolCallState;
+use re_agent::{AgentSession, ToolCallState};
 
 /// A collapsible row for one tool call: status, kind, title, and the details underneath.
 ///
 /// Only running and failed calls show a status icon, so the transcript stays quiet.
 /// `id` keeps the open state, so it must not change when the row moves into a group.
-pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState, id: egui::Id) {
+pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, id: egui::Id) {
     let default_open = call.status == ToolCallStatus::Failed;
 
     let state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -19,18 +19,20 @@ pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState, id: egui::Id) {
     let is_open = state.is_open();
     state
         .show_header(ui, |ui| {
-            header_ui(ui, call, is_open);
+            header_ui(ui, session, call, is_open);
         })
         .body(|ui| body_ui(ui, call));
 }
 
 /// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.
-fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
+fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is_open: bool) {
     ui.spacing_mut().item_spacing.x = 6.0;
 
     let tokens = ui.tokens();
     match call.status {
-        ToolCallStatus::Pending | ToolCallStatus::InProgress => {
+        ToolCallStatus::Pending | ToolCallStatus::InProgress
+            if !session.is_tool_call_waiting_on_user(&call.id) =>
+        {
             ui.inline_loading_indicator("Running the tool call");
         }
         ToolCallStatus::Failed => {

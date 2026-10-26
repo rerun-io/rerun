@@ -49,6 +49,10 @@ pub trait UiExt {
     /// `reason` describes why we are loading. It labels the indicator for screen readers and
     /// tests, and is shown on hover in debug builds, so it must not be empty.
     ///
+    /// Only show it while the user is waiting: something is loading, or work is running that the
+    /// user waits for. Never while the app is waiting on the user, e.g. for an answer or a
+    /// confirmation: then nothing is in progress from the user's point of view.
+    ///
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!
     #[doc(alias = "spinner")]
@@ -61,6 +65,8 @@ pub trait UiExt {
     ///
     /// `reason` describes why we are loading. It labels the indicator for screen readers and
     /// tests, and is shown on hover in debug builds, so it must not be empty.
+    ///
+    /// The same rules as for [`Self::loading_indicator`] apply: only while the user is waiting.
     #[doc(alias = "spinner")]
     fn inline_loading_indicator(&mut self, reason: &str) -> egui::Response {
         crate::loading_indicator::inline_loading_indicator_ui(self.ui_mut(), reason)

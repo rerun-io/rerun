@@ -227,7 +227,7 @@ pub fn chat_ui(
                     transcript_ui(ui, session, show_thoughts);
 
                     if let Phase::Connecting { status } = session.phase()
-                        && session.auth().is_none()
+                        && !session.is_waiting_on_user()
                     {
                         ui.add_space(8.0);
                         ui.loading_indicator(status);
@@ -545,6 +545,7 @@ fn footer_ui(
         .filter(|_| *session.phase() == Phase::Ready)
         .map(|usage| (usage.used, usage.size));
     let turn_in_progress = session.turn_in_progress();
+    let waiting_on_user = session.is_waiting_on_user();
     let can_send = session.is_ready()
         && (!input.prompt.text.trim().is_empty() || !input.prompt.images.is_empty());
 
@@ -591,7 +592,9 @@ fn footer_ui(
                         .add(ReButton::icon(icons::STOP, "Stop").primary().small())
                         .on_hover_text("Cancel the current turn (Esc)")
                         .clicked();
-                    ui.inline_loading_indicator("The agent is working");
+                    if !waiting_on_user {
+                        ui.inline_loading_indicator("The agent is working");
+                    }
                     stop
                 } else {
                     ui.add_enabled(

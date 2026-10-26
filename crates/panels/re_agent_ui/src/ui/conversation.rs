@@ -136,9 +136,7 @@ impl Conversation {
     pub fn status(&self) -> ConversationStatus {
         let session = &self.session;
         let items = &session.transcript().items;
-        let needs_input = !session.pending_permissions().is_empty()
-            || !session.pending_elicitations().is_empty()
-            || session.auth().is_some();
+        let needs_input = session.is_waiting_on_user();
         let last_error = items.last().and_then(|entry| entry.item.error_text());
         if needs_input {
             ConversationStatus::Notification { needs_input: true }

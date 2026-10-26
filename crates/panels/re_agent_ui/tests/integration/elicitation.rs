@@ -190,3 +190,72 @@ fn custom_answer_without_selecting_an_option() {
         "Which Python environment should I use?\nOther:    Run Python inside my Docker container"
     );
 }
+
+#[test]
+fn enter_in_a_text_field_sends_the_answer() {
+    let mut harness = harness(question(
+        "What is the URL of latest-eu?",
+        &json!({
+            "type": "object",
+            "properties": {"url": {"type": "string", "title": "URL"}}
+        }),
+    ));
+    harness.run_steps(3);
+    let input = harness.get_by_role(Role::TextInput);
+    input.focus();
+    harness.run_steps(1);
+    harness.key_press(egui::Key::Enter);
+    harness.run_steps(2);
+    let session = harness.state_mut().session_mut();
+    assert_eq!(
+        session.pending_elicitations().len(),
+        1,
+        "a blank answer is not sent"
+    );
+
+    let input = harness.get_by_role(Role::TextInput);
+    input.focus();
+    input.type_text("api.latest-eu.cloud.rerun.io");
+    harness.run_steps(2);
+    harness.key_press(egui::Key::Enter);
+    harness.run_steps(2);
+    let session = harness.state_mut().session_mut();
+    assert!(session.pending_elicitations().is_empty());
+    assert_eq!(
+        last_answer_note(session),
+        "What is the URL of latest-eu?\nURL: api.latest-eu.cloud.rerun.io"
+    );
+}
+
+/// The agent waits on the user, so nothing shows progress: not the turn, and not the tool call
+/// that asked.
+#[test]
+fn no_progress_indicator_while_a_question_is_open() {
+    use re_agent_ui::AgentEvent;
+    use re_agent_ui::acp::schema::v1::{SessionUpdate, ToolCall, ToolCallStatus};
+
+    let mut harness = harness(question(
+        "What is the URL of latest-eu?",
+        &json!({
+            "type": "object",
+            "properties": {"url": {"type": "string", "title": "URL"}}
+        }),
+    ));
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("ask-1", "Ask for the URL").status(ToolCallStatus::InProgress),
+        )));
+    harness.run_steps(3);
+    assert!(harness.query_by_role(Role::ProgressIndicator).is_none());
+
+    harness.get_by_label("Skip").click();
+    harness.run_steps(2);
+    assert!(
+        harness
+            .query_all_by_role(Role::ProgressIndicator)
+            .next()
+            .is_some()
+    );
+}

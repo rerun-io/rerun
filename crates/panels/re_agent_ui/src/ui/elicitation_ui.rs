@@ -190,12 +190,13 @@ fn indent_description_text(ui: &mut egui::Ui, description: &str, text_offset: f3
     });
 }
 
+/// Returns `true` if the user pressed Enter in a text field, to send the form.
 fn field_ui(
     ui: &mut egui::Ui,
     name: &str,
     schema: &ElicitationPropertySchema,
     input: &mut FieldInput,
-) {
+) -> bool {
     let (title, description) = match schema {
         ElicitationPropertySchema::String(schema) => (&schema.title, &schema.description),
         ElicitationPropertySchema::Number(schema) => (&schema.title, &schema.description),
@@ -204,7 +205,7 @@ fn field_ui(
         ElicitationPropertySchema::Array(schema) => (&schema.title, &schema.description),
         _ => {
             ui.error_label("Unsupported field type");
-            return;
+            return false;
         }
     };
     let label = title.as_deref().unwrap_or(name);
@@ -212,6 +213,7 @@ fn field_ui(
     if let Some(description) = description {
         ui.markdown_ui(description);
     }
+    let mut text_field = None;
     match (input, schema) {
         (FieldInput::Text(text), ElicitationPropertySchema::String(schema)) => {
             let options = schema
@@ -249,17 +251,17 @@ fn field_ui(
                     }
                 }
             } else {
-                ui.add_sized(
+                text_field = Some(ui.add_sized(
                     [ui.available_width(), ui.spacing().interact_size.y],
                     ReTextEdit::singleline(text).hint_text(label),
-                );
+                ));
             }
         }
         (FieldInput::Text(text), _) => {
-            ui.add_sized(
+            text_field = Some(ui.add_sized(
                 [ui.available_width(), ui.spacing().interact_size.y],
                 ReTextEdit::singleline(text).hint_text(label),
-            );
+            ));
         }
         (FieldInput::Boolean(value), _) => {
             ui.re_checkbox(value, label);
@@ -299,6 +301,9 @@ fn field_ui(
         }
         _ => {}
     }
+    text_field.is_some_and(|response| {
+        response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))
+    })
 }
 
 /// Collects validated answers, omitting blank optional fields.
@@ -348,6 +353,7 @@ fn form_ui(
     fields: &mut BTreeMap<String, FieldInput>,
 ) -> Option<CreateElicitationResponse> {
     let mut response = None;
+    let mut enter_pressed = false;
     egui::Frame::new()
         .fill(ui.tokens().faint_bg_color)
         .corner_radius(6)
@@ -362,7 +368,7 @@ fn form_ui(
                     for (name, property) in &schema.properties {
                         ui.push_id(name, |ui| {
                             if let Some(input) = fields.get_mut(name) {
-                                field_ui(ui, name, property, input);
+                                enter_pressed |= field_ui(ui, name, property, input);
                             }
                         });
                     }
@@ -376,9 +382,10 @@ fn form_ui(
                 egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    if ui
+                    let send = ui
                         .add_enabled(content.is_ok(), ReButton::new("Send").primary())
-                        .clicked()
+                        .clicked();
+                    if (send || enter_pressed)
                         && let Ok(content) = content
                     {
                         response = Some(CreateElicitationResponse::new(
