@@ -45,14 +45,14 @@ pub fn encode(source: &egui::ColorImage) -> Option<(PromptImage, egui::ColorImag
         )
         .ok()?;
 
-    let size = [decoded.width() as usize, decoded.height() as usize];
-    let preview = egui::ColorImage::from_rgba_unmultiplied(size, decoded.to_rgba8().as_raw());
+    let resolution = [decoded.width() as usize, decoded.height() as usize];
+    let preview = egui::ColorImage::from_rgba_unmultiplied(resolution, decoded.to_rgba8().as_raw());
 
     Some((
         PromptImage {
             bytes: bytes.into(),
             mime_type: MIME_TYPE.to_owned(),
-            size,
+            resolution,
         },
         preview,
     ))

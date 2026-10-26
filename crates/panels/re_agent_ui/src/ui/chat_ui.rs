@@ -802,7 +802,7 @@ fn pending_images_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
     let mut remove = None;
     ui.horizontal_wrapped(|ui| {
         for (index, pending) in input.pending_images.iter().enumerate() {
-            let [width, height] = pending.image.size;
+            let [width, height] = pending.image.resolution;
             let aspect = width as f32 / height as f32;
             let size = egui::vec2(PREVIEW_HEIGHT * aspect, PREVIEW_HEIGHT);
             ui.image((pending.preview.id(), size))

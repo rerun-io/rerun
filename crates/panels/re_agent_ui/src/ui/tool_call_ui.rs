@@ -283,7 +283,9 @@ pub fn content_block_ui(ui: &mut egui::Ui, block: &ContentBlock, id: egui::Id) {
                 Ok(bytes) => {
                     let uri = format!("bytes://{}.{}", id.short_debug_format(), image.mime_type);
                     ui.add(
+                        // One image pixel per physical pixel, shrunk to fit but never blown up.
                         egui::Image::from_bytes(uri, bytes)
+                            .fit_to_original_size(1.0 / ui.pixels_per_point())
                             .max_width(ui.available_width().min(800.0))
                             .corner_radius(4),
                     );

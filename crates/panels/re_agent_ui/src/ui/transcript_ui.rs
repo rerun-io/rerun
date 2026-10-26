@@ -36,33 +36,37 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             | TranscriptItem::ToolCall(_) => {}
         }
 
-        let rect = ui
-            .push_id(index, |ui| match &entry.item {
-                TranscriptItem::User(prompt) => {
-                    user_message_ui(ui, prompt, ui.make_persistent_id("user"));
+        let scope = ui.push_id(index, |ui| match &entry.item {
+            TranscriptItem::User(prompt) => {
+                Some(user_message_ui(ui, prompt, ui.make_persistent_id("user")))
+            }
+            TranscriptItem::Agent { content, thoughts } => {
+                if show_thoughts && !thoughts.is_empty() {
+                    thoughts_ui(ui, thoughts);
                 }
-                TranscriptItem::Agent { content, thoughts } => {
-                    if show_thoughts && !thoughts.is_empty() {
-                        thoughts_ui(ui, thoughts);
-                    }
-                    for (block_index, block) in content.iter().enumerate() {
-                        content_block_ui(ui, block, ui.make_persistent_id(block_index));
-                    }
+                for (block_index, block) in content.iter().enumerate() {
+                    content_block_ui(ui, block, ui.make_persistent_id(block_index));
                 }
-                TranscriptItem::ToolCall(call) => tool_call_ui(ui, call),
-                TranscriptItem::McpStartupFailure(failure) => {
-                    mcp_startup_failure_ui(ui, failure);
+                None
+            }
+            TranscriptItem::ToolCall(call) => {
+                tool_call_ui(ui, call);
+                None
+            }
+            TranscriptItem::McpStartupFailure(failure) => {
+                mcp_startup_failure_ui(ui, failure);
+                None
+            }
+            TranscriptItem::Note { text, is_error } => {
+                if *is_error {
+                    ui.error_label(text.clone());
+                } else {
+                    ui.weak(text);
                 }
-                TranscriptItem::Note { text, is_error } => {
-                    if *is_error {
-                        ui.error_label(text.clone());
-                    } else {
-                        ui.weak(text);
-                    }
-                }
-            })
-            .response
-            .rect;
+                None
+            }
+        });
+        let rect = scope.inner.unwrap_or(scope.response.rect);
         if ui.rect_contains_pointer(rect) {
             timestamp_overlay(ui, rect, entry);
         }
@@ -118,8 +122,11 @@ fn turn_footer_ui(
     });
 }
 
-/// Paints the time an entry was created at the right edge of the panel:
-/// vertically centered on a one-line entry, else in the gap above it so it covers no text.
+/// Paints the time an entry was created.
+///
+/// Left of a user message bubble when it fits there, else in the gap above the bubble.
+/// Other entries get it at the right edge of the panel: vertically centered on a one-line entry,
+/// else in the gap above it so it covers no text.
 fn timestamp_overlay(ui: &egui::Ui, entry_rect: egui::Rect, entry: &TranscriptEntry) {
     let tokens = ui.tokens();
     let font_id = egui::TextStyle::Small.resolve(ui.style());
@@ -132,13 +139,27 @@ fn timestamp_overlay(ui: &egui::Ui, entry_rect: egui::Rect, entry: &TranscriptEn
     let size = galley.size();
     let padding = 2.0;
 
-    let (entry_background, frame_margin) = match &entry.item {
-        TranscriptItem::User(_) => (tokens.form_field_bg_color, USER_FRAME_MARGIN),
-        _ => (ui.visuals().panel_fill, 0.0),
+    let is_user = matches!(entry.item, TranscriptItem::User(_));
+    if is_user {
+        let right = entry_rect.left() - 2.0 * padding;
+        if ui.max_rect().left() <= right - size.x {
+            let first_line_height = ui.text_style_height(&egui::TextStyle::Body);
+            let top = (entry_rect.top() + USER_FRAME_MARGIN + 0.5 * (first_line_height - size.y))
+                .max(ui.clip_rect().top() + padding);
+            painter.galley(egui::pos2(right - size.x, top), galley, tokens.text_subdued);
+            return;
+        }
+    }
+
+    let entry_background = if is_user {
+        tokens.form_field_bg_color
+    } else {
+        ui.visuals().panel_fill
     };
     // Half a line of slack: a wrapped entry is at least a full line taller.
-    let one_line_height = 1.5 * ui.text_style_height(&egui::TextStyle::Body) + 2.0 * frame_margin;
-    let top = if entry_rect.height() <= one_line_height {
+    let one_line_height = 1.5 * ui.text_style_height(&egui::TextStyle::Body);
+    // A user bubble hugs its text, so only the gap above it is free.
+    let top = if !is_user && entry_rect.height() <= one_line_height {
         entry_rect.center().y - 0.5 * size.y
     } else {
         // Keep it visible when the gap above is scrolled away, at the cost of covering text.
@@ -150,7 +171,11 @@ fn timestamp_overlay(ui: &egui::Ui, entry_rect: egui::Rect, entry: &TranscriptEn
         ui.visuals().panel_fill
     };
 
-    let right = ui.max_rect().right() - USER_FRAME_MARGIN;
+    let right = if is_user {
+        entry_rect.right()
+    } else {
+        ui.max_rect().right() - USER_FRAME_MARGIN
+    };
     let text_rect = egui::Rect::from_min_size(egui::pos2(right - size.x, top), size);
     painter.rect_filled(text_rect.expand(padding), padding, background);
     painter.galley(text_rect.min, galley, tokens.text_subdued);
@@ -188,16 +213,54 @@ fn format_timestamp(time: std::time::SystemTime) -> String {
 /// Inner margin of the frame around a user message, in points.
 const USER_FRAME_MARGIN: f32 = 8.0;
 
-fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) {
+/// A user message is at most this fraction of the transcript width,
+/// so it reads as a reply bubble rather than a full-width block.
+const USER_MESSAGE_MAX_WIDTH_FRACTION: f32 = 0.8;
+
+/// A bubble on the right, as wide as its content. Returns the bubble's rect.
+fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) -> egui::Rect {
     let Prompt { text, images } = prompt;
     let tokens = ui.tokens();
-    egui::Frame::new()
+    let frame = egui::Frame::new()
         .fill(tokens.form_field_bg_color)
         .stroke(tokens.control_stroke)
         .corner_radius(6)
-        .inner_margin(USER_FRAME_MARGIN)
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
+        .inner_margin(USER_FRAME_MARGIN);
+    let frame_width = frame.total_margin().sum().x;
+    let available = ui.available_rect_before_wrap();
+    let max_width = (USER_MESSAGE_MAX_WIDTH_FRACTION * available.width() - frame_width).max(0.0);
+
+    // Measure first, so the bubble can hug its content from the right edge.
+    let text_width = if text.is_empty() {
+        0.0
+    } else {
+        egui::WidgetText::from(text)
+            .into_galley(
+                ui,
+                Some(egui::TextWrapMode::Wrap),
+                max_width,
+                egui::TextStyle::Body,
+            )
+            .size()
+            .x
+    };
+
+    // Expand the bubble up to `max_width` if the prompt contains images wider than the text.
+    let content_width = images
+        .iter()
+        .map(|image| image.resolution[0] as f32)
+        .fold(text_width, f32::max)
+        .min(max_width)
+        .ceil();
+
+    let bubble_width = content_width + frame_width;
+    let bubble_rect = egui::Rect::from_min_max(
+        egui::pos2(available.right() - bubble_width, available.top()),
+        available.max,
+    );
+    ui.scope_builder(egui::UiBuilder::new().max_rect(bubble_rect), |ui| {
+        frame.show(ui, |ui| {
+            ui.set_width(content_width);
             if !text.is_empty() {
                 ui.add(egui::Label::new(text).selectable(true));
             }
@@ -205,6 +268,9 @@ fn user_message_ui(ui: &mut egui::Ui, prompt: &Prompt, id: egui::Id) {
                 attached_image_ui(ui, image, id.with(index));
             }
         });
+    })
+    .response
+    .rect
 }
 
 /// One image the user attached, at its own size up to the width of the message.
@@ -215,8 +281,8 @@ fn attached_image_ui(ui: &mut egui::Ui, image: &PromptImage, id: egui::Id) {
     let uri = format!("bytes://{}.{extension}", id.short_debug_format());
     // Shown at its own size, shrunk to fit but never blown up: a pasted screenshot is read, and
     // upscaling only softens it.
-    let [width, height] = image.size;
-    let natural = egui::vec2(width as f32, height as f32);
+    let [width, height] = image.resolution;
+    let natural = egui::vec2(width as f32, height as f32); // One point per pixel
     let max = egui::vec2(natural.x.min(ui.available_width()), natural.y);
     ui.add(
         egui::Image::from_bytes(uri, image.bytes.clone())

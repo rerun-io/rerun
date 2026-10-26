@@ -535,7 +535,7 @@ fn describe_agent_block(block: &ContentBlock) -> String {
 
 /// An attached image, named rather than embedded, the way agent images are in a dump.
 fn describe_prompt_image(image: &PromptImage) -> String {
-    let [width, height] = image.size;
+    let [width, height] = image.resolution;
     format!("`[image {} {width}×{height}]`", image.mime_type)
 }
 
@@ -758,7 +758,7 @@ mod tests {
             images: vec![PromptImage {
                 bytes: Arc::from([0_u8].as_slice()),
                 mime_type: "image/png".to_owned(),
-                size: [800, 600],
+                resolution: [800, 600],
             }],
         });
 

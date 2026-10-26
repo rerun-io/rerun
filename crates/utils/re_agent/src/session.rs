@@ -39,7 +39,7 @@ pub struct PromptImage {
     pub mime_type: String,
 
     /// Width and height of the encoded image, in pixels.
-    pub size: [usize; 2],
+    pub resolution: [usize; 2],
 }
 
 /// What a single prompt carries: the text as typed, and any images attached to it.

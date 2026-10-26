@@ -562,7 +562,7 @@ mod tests {
             images: vec![PromptImage {
                 bytes: std::sync::Arc::from([0_u8].as_slice()),
                 mime_type: "image/png".to_owned(),
-                size: [800, 600],
+                resolution: [800, 600],
             }],
         });
         transcript.apply(SessionUpdate::AgentMessageChunk(ContentChunk::new(
