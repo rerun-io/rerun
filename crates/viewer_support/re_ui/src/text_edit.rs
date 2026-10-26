@@ -1,5 +1,6 @@
-use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
-use egui::widget_style::{StyleArgs, TextEditStyle};
+use crate::{ContextExt as _, DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
+use egui::class::HasClasses as _;
+use egui::widget_style::{ButtonStyle, StyleArgs, TextEditStyle};
 use egui::{Align2, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
 
 /// Wrapper around eguis [`TextEdit`] that applies reruns styling
@@ -344,6 +345,25 @@ pub fn autocomplete_text_edit(
     }
 
     response
+}
+
+/// Completion navigation uses hover styling rather than persistent-selection styling.
+pub struct CompletionButtonTheme;
+
+impl egui::theme::StyleProvider<ButtonStyle> for CompletionButtonTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> ButtonStyle {
+        let mut style: ButtonStyle = egui::theme::DefaultStyle.style(args);
+        if args
+            .classes
+            .has_class(&egui::CompletionPopup::CLASS_SUGGESTION)
+            && args.classes.has_class(&egui::Button::CLASS_SELECTED)
+        {
+            let tokens = args.ctx.tokens();
+            style.atom_layout.frame.fill = tokens.list_item_hovered_bg;
+            style.atom_layout.text_style.color = tokens.text_default;
+        }
+        style
+    }
 }
 
 /// Rerun's style for every [`TextEdit`]: egui's default, with room between the frame and the text.

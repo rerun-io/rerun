@@ -312,6 +312,13 @@ impl FilterMatcher {
         }
     }
 
+    /// Match against a query string, without going through a [`FilterState`].
+    ///
+    /// An empty query matches everything.
+    pub fn for_query(query: &str) -> Self {
+        Self::new(Some(query))
+    }
+
     /// Is the filter currently active?
     pub fn is_active(&self) -> bool {
         self.keywords.is_some()
