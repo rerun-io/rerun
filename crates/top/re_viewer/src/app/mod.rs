@@ -1471,6 +1471,9 @@ impl AppCore {
                 if let Some(store_id) = loaded_recording {
                     re_log::debug!("Stream completed, navigating to loaded recording {store_id:?}");
                     store_hub.load_blueprint_and_caches(&store_id, &self.registries.view_classes);
+                    self.state
+                        .selection_state
+                        .set_selection(Item::StoreId(store_id.clone()));
                     self.state.navigation.replace(Route::LocalRecording {
                         recording_id: store_id,
                     });

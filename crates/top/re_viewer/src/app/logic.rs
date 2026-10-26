@@ -694,6 +694,11 @@ impl AppCore {
     }
 
     /// Makes the given store active and request user attention if Rerun in the background.
+    ///
+    /// A recording that was streamed as a preview, and whose app has neither an active nor a
+    /// default blueprint, shows the loading screen until its server blueprint has streamed in.
+    /// A recording whose store doesn't exist yet, because its stream hasn't sent anything, shows
+    /// the loading screen for that stream.
     pub(super) fn make_store_active_and_highlight(
         &mut self,
         store_hub: &mut StoreHub,
@@ -708,23 +713,66 @@ impl AppCore {
         }
 
         store_hub.set_opened(store_id, true);
+
+        // A recording has no store until its first message arrives. Until then the loading screen
+        // stays up, and the viewer shows and selects the recording once every stream for its
+        // segment has finished.
+        if store_hub.entity_db(store_id).is_none() {
+            let is_loading = matches!(self.state.navigation.current(), Route::Loading(_));
+            if !is_loading && let Some(source) = self.receiving_source_for(store_id) {
+                self.state
+                    .navigation
+                    .replace(Route::Loading(Box::new(source)));
+            }
+            return;
+        }
+
         store_hub.load_blueprint_and_caches(store_id, &self.registries.view_classes);
+
+        let app_id = store_id.application_id();
+        let waits_for_blueprint = store_hub.is_blueprint_pending(store_id)
+            && store_hub.active_blueprint_for_app(app_id).is_none()
+            && store_hub.default_blueprint_for_app(app_id).is_none();
+
         // If this recording was streamed as a preview, fetch the blueprint we skipped back then.
         self.fetch_pending_blueprint(store_hub, store_id);
-        self.state.navigation.replace(Route::LocalRecording {
-            recording_id: store_id.clone(),
-        });
 
-        // Also select the new recording:
-        self.command_sender
-            .send_system(SystemCommand::set_selection(
-                re_viewer_context::Item::StoreId(store_id.clone()),
-            ));
+        if waits_for_blueprint
+            && let Some(data_source) = store_hub
+                .entity_db(store_id)
+                .and_then(|db| db.primary_data_source().cloned())
+        {
+            // The viewer shows and selects the recording once every stream for its segment has
+            // finished.
+            self.state
+                .navigation
+                .replace(Route::Loading(Box::new(data_source)));
+        } else {
+            self.state.navigation.replace(Route::LocalRecording {
+                recording_id: store_id.clone(),
+            });
+
+            // Also select the new recording:
+            self.command_sender
+                .send_system(SystemCommand::set_selection(
+                    re_viewer_context::Item::StoreId(store_id.clone()),
+                ));
+        }
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
             egui::UserAttentionType::Informational,
         ));
+    }
+
+    /// The source of a connected stream for the given dataset segment, if any.
+    fn receiving_source_for(&self, store_id: &StoreId) -> Option<LogSource> {
+        self.rx_log.sources().into_iter().find_map(|source| {
+            let re_uri::RedapUri::Dataset(uri) = source.redap_uri()? else {
+                return None;
+            };
+            (uri.store_id().as_ref() == Some(store_id)).then(|| source.as_ref().clone())
+        })
     }
 
     /// After loading some data; check if the loaded data makes sense.
