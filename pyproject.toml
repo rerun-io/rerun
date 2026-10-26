@@ -72,8 +72,9 @@ dev = [
   "polars>=1.0",
   "datafusion>=54.0",
   "jupyter>=1.0",
-  # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive)
-  "jupyter-server>=2.20.0",
+  # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive).
+  # >=2.21.1 serves static files with tornado>=6.5.9 (older versions return 500s).
+  "jupyter-server>=2.21.1",
   # Runs the marimo example notebooks in `scripts/ci/run_example_notebooks.py`
   "marimo>=0.25.0",
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
