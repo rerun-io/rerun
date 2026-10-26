@@ -251,6 +251,13 @@ fn chat_conversation() {
     harness.get_by_label("Plan (1/3)").click();
     harness.run_steps(4);
     harness.snapshot("chat_plan_expanded");
+
+    // The folded tool calls, with the failed one in red.
+    harness.get_by_label("Used 4 tools").click();
+    // Off the transcript, so no hover times (which depend on the clock) show up.
+    harness.hover_at(egui::pos2(1.0, SIZE.y - 1.0));
+    harness.run_steps(4);
+    harness.snapshot("chat_tool_calls_expanded");
 }
 
 /// Once a turn has ended, its tool calls fold into one row.
@@ -433,6 +440,30 @@ fn chat_pasted_image() {
     });
 
     snapshot("chat_pasted_image", panel);
+}
+
+/// An MCP server that failed to start is an error in the transcript, with what Rerun asked for.
+#[test]
+fn chat_mcp_startup_failure() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+    session
+        .transcript_mut()
+        .push_mcp_startup_failure(re_agent::McpStartupFailure {
+            server_name: "rerun".to_owned(),
+            error: "missing field `cacheScope`".to_owned(),
+            requested_command: Some(PathBuf::from("rerun")),
+            requested_args: vec![
+                "viewer-mcp".to_owned(),
+                "--endpoint".to_owned(),
+                "rerun+http://127.0.0.1:9876/proxy".to_owned(),
+            ],
+            hint: Some("Update the agent's ACP adapter, then restart the agent.".to_owned()),
+        });
+
+    snapshot("chat_mcp_startup_failure", panel);
 }
 
 #[test]

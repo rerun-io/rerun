@@ -287,18 +287,26 @@ fn timestamp_overlay(ui: &egui::Ui, entry_rect: egui::Rect, entry: &TranscriptEn
 }
 
 fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
-    let mut lines = vec![format!(
-        "MCP server `{}` failed to start.",
-        failure.server_name
-    )];
-    if let Some(command) = failure.requested_command_line() {
-        lines.push(format!("Requested by Rerun: `{command}`"));
-    }
-    lines.push(failure.error.clone());
-    if let Some(hint) = &failure.hint {
-        lines.push(hint.clone());
-    }
-    ui.error_label(lines.join("\n"));
+    let McpStartupFailure {
+        server_name,
+        error,
+        requested_command: _,
+        requested_args: _,
+        hint,
+    } = failure;
+    let title = format!("MCP server {server_name:?} failed to start");
+    re_ui::alert::Alert::error().show_with_title(ui, title, |ui| {
+        if let Some(command) = failure.requested_command_line() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Requested by Rerun:");
+                ui.add(egui::Label::new(RichText::new(command).monospace()).selectable(true));
+            });
+        }
+        ui.add(egui::Label::new(error).selectable(true));
+        if let Some(hint) = hint {
+            ui.label(hint);
+        }
+    });
 }
 
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.

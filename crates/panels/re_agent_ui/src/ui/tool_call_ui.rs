@@ -43,6 +43,11 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
         ui.small_icon(icon, Some(tokens.text_subdued));
     }
 
+    let title_color = if call.status == ToolCallStatus::Failed {
+        tokens.error_fg_color
+    } else {
+        tokens.text_subdued
+    };
     let title = if call.title.is_empty() {
         kind_name(call.kind).to_owned()
     } else {
@@ -54,7 +59,7 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
         egui::TextWrapMode::Truncate
     };
     ui.add(
-        egui::Label::new(RichText::new(title).color(tokens.text_subdued))
+        egui::Label::new(RichText::new(title).color(title_color))
             .wrap_mode(wrap_mode)
             .show_tooltip_when_elided(false)
             .selectable(false),
