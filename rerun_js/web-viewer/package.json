@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build:wasm": "node build-wasm.mjs --mode release",
-    "build:js": "tsc --emitDeclarationOnly && esbuild index.ts --bundle --format=esm --platform=browser --target=esnext --external:./re_viewer --legal-comments=inline --keep-names --sourcemap --outfile=index.js",
+    "build:js": "tsc --emitDeclarationOnly && esbuild index.ts --bundle --format=esm --platform=browser --target=esnext --external:./re_viewer.js --legal-comments=inline --keep-names --sourcemap --outfile=index.js",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",

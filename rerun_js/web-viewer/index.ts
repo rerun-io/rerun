@@ -1,5 +1,5 @@
 // @ts-ignore
-import type { WebHandle, wasm_bindgen } from "./re_viewer";
+import type { WebHandle, wasm_bindgen } from "./re_viewer.js";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
   GetTransformGraphRequest_EdgeFilter,
@@ -859,7 +859,7 @@ function export_stream(bytes: Uint8Array): ReadableStream<Uint8Array> {
 
 async function fetch_viewer_js(): Promise<(() => typeof wasm_bindgen)> {
   // @ts-ignore
-  return (await import("./re_viewer")).default;
+  return (await import("./re_viewer.js")).default;
 }
 
 async function fetch_viewer_wasm(
