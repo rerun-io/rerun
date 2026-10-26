@@ -1159,17 +1159,58 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
-        let ext::GetWriteAccessGrantRequest { key, location } = request.into_inner().try_into()?;
-        if location.is_some() {
+        let request: ext::GetWriteAccessGrantRequest = request.into_inner().try_into()?;
+        if request.location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
+            ));
+        }
+        if request.signing == ext::UrlSigning::Unsigned {
+            return Err(tonic::Status::unimplemented(
+                "unsigned upload requests are not implemented",
+            ));
+        }
+        if !request.accepts(re_protos::cloud::v1alpha1::UploadMethod::SingleRequest) {
+            return Err(tonic::Status::failed_precondition(
+                "this server only issues single-request grants",
             ));
         }
         let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
             tonic::Status::unimplemented("write access grants are not configured")
         })?;
-        let response = write_access_grants.issue(&key).await?;
+        let response = write_access_grants.issue(&request.key).await?;
         Ok(tonic::Response::new(response.try_into()?))
+    }
+
+    async fn get_multipart_upload_part_grants(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::GetMultipartUploadPartGrantsRequest>,
+    ) -> tonic::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::GetMultipartUploadPartGrantsResponse>,
+    > {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
+    }
+
+    async fn complete_multipart_upload(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::CompleteMultipartUploadRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CompleteMultipartUploadResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
+    }
+
+    async fn abort_multipart_upload(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::AbortMultipartUploadRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::AbortMultipartUploadResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
     }
 
     // --- Manifest Registry ---

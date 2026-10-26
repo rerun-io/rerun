@@ -61,7 +61,10 @@ pub fn _get_write_access_grant(
     py: Python<'_>,
     key: String,
 ) -> PyResult<WriteAccessGrantTuple> {
-    use re_protos::cloud::v1alpha1::ext::{HttpRequest, ObjectKey, Redemption};
+    use re_protos::cloud::v1alpha1::UploadMethod;
+    use re_protos::cloud::v1alpha1::ext::{
+        GetWriteAccessGrantRequest, HttpRequest, ObjectKey, Redemption, UrlSigning,
+    };
 
     let _span = read_trace_context_from_python(py, "_get_write_access_grant").entered();
     let connection = client.borrow(py).connection.clone();
@@ -70,11 +73,24 @@ pub fn _get_write_access_grant(
         connection
             .client()
             .await?
-            .get_write_access_grant(key)
+            .get_write_access_grant(GetWriteAccessGrantRequest {
+                key,
+                location: None,
+                size_bytes: None,
+                supported_upload_methods: vec![UploadMethod::SingleRequest],
+                signing: UrlSigning::Signed,
+            })
             .await
             .map_err(to_py_err)
     })?;
-    let Redemption::HttpRequest(request) = response.grant.redemption;
+    let request = match response.grant.redemption {
+        Redemption::HttpRequest(request) => request,
+        Redemption::MultipartRequest(_) => {
+            return Err(PyRuntimeError::new_err(
+                "server returned a multipart grant, which this client did not accept",
+            ));
+        }
+    };
     let (method, url, headers) = match request {
         HttpRequest::External {
             method,

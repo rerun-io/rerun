@@ -306,16 +306,30 @@ impl ::prost::Name for Error {
         "/rerun.cloud.v1alpha1.Error".into()
     }
 }
-/// Requests authorization to write one object.
+/// Requests authorization to create one object.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteAccessGrantRequest {
     /// The full object key, including the file name, relative to the location's base.
+    /// Clients must generate a fresh random key for each new upload session.
+    /// Retries within a multipart session use its existing token and key.
+    /// A grant does not reserve the key; another writer may publish first and make this write fail.
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
     /// The requested storage location.
     /// The request fails if this is absent and the server has no default location.
     #[prost(message, optional, tag = "2")]
     pub location: ::core::option::Option<Location>,
+    /// Exact object size, if known; absent means unknown.
+    /// Servers use it to select the upload method and part size.
+    #[prost(uint64, optional, tag = "3")]
+    pub size_bytes: ::core::option::Option<u64>,
+    /// Upload methods the client supports; the server must select one of them.
+    /// Empty means SINGLE_REQUEST only, which is what clients predating this field support.
+    #[prost(enumeration = "UploadMethod", repeated, tag = "4")]
+    pub supported_upload_methods: ::prost::alloc::vec::Vec<i32>,
+    /// Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
+    #[prost(enumeration = "UrlSigning", tag = "5")]
+    pub signing: i32,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
     const NAME: &'static str = "GetWriteAccessGrantRequest";
@@ -342,12 +356,10 @@ impl ::prost::Name for Location {
         "/rerun.cloud.v1alpha1.Location".into()
     }
 }
-/// Contains the URL that identifies the object and the authorization needed to write it.
+/// Authorization to create one object.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetWriteAccessGrantResponse {
-    /// Stable, credential-free URL naming the object.
-    ///
-    /// Pass this URL to `RegisterWithDataset` after writing the object.
+    /// Credential-free object URL for subsequent registration.
     #[prost(string, tag = "1")]
     pub storage_url: ::prost::alloc::string::String,
     /// Authorization for the write operation.
@@ -364,15 +376,22 @@ impl ::prost::Name for GetWriteAccessGrantResponse {
         "/rerun.cloud.v1alpha1.GetWriteAccessGrantResponse".into()
     }
 }
-/// Authorizes one storage operation until `expires_at`.
+/// Authorization to create one object.
+/// Publication must atomically fail if the destination exists, leaving that object unchanged.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AccessGrant {
-    /// The time after which the caller must not redeem this grant.
+    /// Deadline for HTTP requests, or session deadline for multipart renewal and publication.
+    /// HTTP grants may stop working earlier. After the session deadline, clients may still
+    /// confirm an already-published upload or abort; they must not publish an unfinished upload.
     #[prost(message, optional, tag = "1")]
     pub expires_at: ::core::option::Option<::prost_types::Timestamp>,
+    /// Effective signing mode for all HTTP requests in this grant, including renewed part requests.
+    /// UNSPECIFIED means SIGNED. Clients must reject a mode that differs from their request.
+    #[prost(enumeration = "UrlSigning", tag = "4")]
+    pub signing: i32,
     /// How the caller redeems this grant.
     /// TODO(grtlr): Add data-plane and client-side SDK redemption mechanisms when needed.
-    #[prost(oneof = "access_grant::Redemption", tags = "2")]
+    #[prost(oneof = "access_grant::Redemption", tags = "2, 3")]
     pub redemption: ::core::option::Option<access_grant::Redemption>,
 }
 /// Nested message and enum types in `AccessGrant`.
@@ -384,6 +403,9 @@ pub mod access_grant {
         /// The HTTP request that redeems this grant.
         #[prost(message, tag = "2")]
         HttpRequest(super::HttpRequest),
+        /// Multipart upload session and the initial part-upload requests.
+        #[prost(message, tag = "3")]
+        MultipartRequest(super::MultipartRequest),
     }
 }
 impl ::prost::Name for AccessGrant {
@@ -394,6 +416,159 @@ impl ::prost::Name for AccessGrant {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.AccessGrant".into()
+    }
+}
+/// Describes a multipart upload session and its initial part-upload requests.
+///
+/// TODO(RR-6103): Define multipart upload size limits.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MultipartRequest {
+    /// Bearer token for renewal, completion, and abort. Return it unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Clients must upload parts of this size, except the last, which may be smaller.
+    /// Part numbers must be consecutive from 1; parts may be uploaded in any order.
+    /// The server chooses it from `GetWriteAccessGrantRequest.size_bytes` when known.
+    #[prost(uint64, tag = "2")]
+    pub part_size_bytes: u64,
+    /// HTTP requests for consecutive parts starting at 1, using the grant's signing mode.
+    /// Expired requests can be renewed before the session deadline.
+    #[prost(message, repeated, tag = "3")]
+    pub part_requests: ::prost::alloc::vec::Vec<HttpRequest>,
+}
+impl ::prost::Name for MultipartRequest {
+    const NAME: &'static str = "MultipartRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.MultipartRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.MultipartRequest".into()
+    }
+}
+/// Requests HTTP upload instructions for selected parts of an active multipart upload.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetMultipartUploadPartGrantsRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Distinct, one-based part numbers; non-empty. Grants may be renewed.
+    /// Retries must upload identical bytes for the same part number, including after renewal.
+    #[prost(uint32, repeated, tag = "2")]
+    pub part_numbers: ::prost::alloc::vec::Vec<u32>,
+}
+impl ::prost::Name for GetMultipartUploadPartGrantsRequest {
+    const NAME: &'static str = "GetMultipartUploadPartGrantsRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsRequest".into()
+    }
+}
+/// Returns HTTP requests for the requested multipart upload parts.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMultipartUploadPartGrantsResponse {
+    /// HTTP requests in the same order as the requested part numbers, using the session's signing mode.
+    #[prost(message, repeated, tag = "1")]
+    pub requests: ::prost::alloc::vec::Vec<HttpRequest>,
+}
+impl ::prost::Name for GetMultipartUploadPartGrantsResponse {
+    const NAME: &'static str = "GetMultipartUploadPartGrantsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsResponse".into()
+    }
+}
+/// Completes a multipart upload using the uploaded parts and their receipts.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CompleteMultipartUploadRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Non-empty list in ascending part-number order, numbered consecutively from 1.
+    #[prost(message, repeated, tag = "2")]
+    pub parts: ::prost::alloc::vec::Vec<UploadedPart>,
+}
+impl ::prost::Name for CompleteMultipartUploadRequest {
+    const NAME: &'static str = "CompleteMultipartUploadRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CompleteMultipartUploadRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CompleteMultipartUploadRequest".into()
+    }
+}
+/// Identifies an uploaded part and its storage-service receipt.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UploadedPart {
+    /// One-based number of the uploaded part.
+    #[prost(uint32, tag = "1")]
+    pub part_number: u32,
+    /// Value of the part response's `ETag` header, preserved verbatim, including any quotes.
+    /// Opaque to the client and untrusted by the server; empty if the provider returns none.
+    ///
+    /// NOTE: Browsers can read this header only if the bucket's CORS rule exposes it,
+    /// for example S3's `ExposeHeaders: \["ETag"\]`.
+    #[prost(string, tag = "2")]
+    pub etag: ::prost::alloc::string::String,
+}
+impl ::prost::Name for UploadedPart {
+    const NAME: &'static str = "UploadedPart";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UploadedPart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UploadedPart".into()
+    }
+}
+/// Confirms publication, not catalog registration.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CompleteMultipartUploadResponse {}
+impl ::prost::Name for CompleteMultipartUploadResponse {
+    const NAME: &'static str = "CompleteMultipartUploadResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CompleteMultipartUploadResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CompleteMultipartUploadResponse".into()
+    }
+}
+/// Aborts an active multipart upload.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortMultipartUploadRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+}
+impl ::prost::Name for AbortMultipartUploadRequest {
+    const NAME: &'static str = "AbortMultipartUploadRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.AbortMultipartUploadRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.AbortMultipartUploadRequest".into()
+    }
+}
+/// Confirms the abort request, not cleanup of in-flight parts.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortMultipartUploadResponse {}
+impl ::prost::Name for AbortMultipartUploadResponse {
+    const NAME: &'static str = "AbortMultipartUploadResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.AbortMultipartUploadResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.AbortMultipartUploadResponse".into()
     }
 }
 /// Describes an HTTP request that the caller can perform directly.
@@ -2883,6 +3058,72 @@ impl ErrorCode {
         }
     }
 }
+/// How the object is uploaded, independently of URL signing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum UploadMethod {
+    /// Never selected; servers ignore it.
+    Unspecified = 0,
+    /// `AccessGrant.http_request`.
+    SingleRequest = 1,
+    /// `AccessGrant.multipart_request`.
+    Multipart = 2,
+}
+impl UploadMethod {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "UPLOAD_METHOD_UNSPECIFIED",
+            Self::SingleRequest => "UPLOAD_METHOD_SINGLE_REQUEST",
+            Self::Multipart => "UPLOAD_METHOD_MULTIPART",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "UPLOAD_METHOD_UNSPECIFIED" => Some(Self::Unspecified),
+            "UPLOAD_METHOD_SINGLE_REQUEST" => Some(Self::SingleRequest),
+            "UPLOAD_METHOD_MULTIPART" => Some(Self::Multipart),
+            _ => None,
+        }
+    }
+}
+/// Who supplies authorization for the upload's HTTP requests.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum UrlSigning {
+    /// Same as SIGNED.
+    Unspecified = 0,
+    /// Server-signed URLs, usable without client-managed object-store credentials.
+    Signed = 1,
+    /// Unsigned URLs. The client authorizes requests with its own object-store credentials.
+    Unsigned = 2,
+}
+impl UrlSigning {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "URL_SIGNING_UNSPECIFIED",
+            Self::Signed => "URL_SIGNING_SIGNED",
+            Self::Unsigned => "URL_SIGNING_UNSIGNED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "URL_SIGNING_UNSPECIFIED" => Some(Self::Unspecified),
+            "URL_SIGNING_SIGNED" => Some(Self::Signed),
+            "URL_SIGNING_UNSIGNED" => Some(Self::Unsigned),
+            _ => None,
+        }
+    }
+}
 /// What format the data behind a `DataSource` is stored in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -3555,9 +3796,11 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Returns authorization to write one object at the requested key.
+        /// Returns authorization to create one object at the requested key.
         ///
-        /// The grant expires at the time in the response.
+        /// The server selects one of the upload methods the request accepts,
+        /// or fails with FAILED_PRECONDITION if it supports none of them.
+        /// The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         pub async fn get_write_access_grant(
             &mut self,
@@ -3575,6 +3818,74 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetWriteAccessGrant",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Issues part grants without extending the session deadline.
+        pub async fn get_multipart_upload_part_grants(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMultipartUploadPartGrantsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMultipartUploadPartGrantsResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetMultipartUploadPartGrants",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetMultipartUploadPartGrants",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Publishes an upload at its authorized key without replacing an existing object.
+        /// If another object exists at the destination, fails atomically with ALREADY_EXISTS.
+        /// Idempotent: confirming this upload's publication succeeds even after the session deadline.
+        /// After the deadline, this RPC must not publish an unfinished upload.
+        pub async fn complete_multipart_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CompleteMultipartUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CompleteMultipartUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/CompleteMultipartUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "CompleteMultipartUpload",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Aborts an upload, even after the session deadline.
+        /// Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
+        pub async fn abort_multipart_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AbortMultipartUploadRequest>,
+        ) -> std::result::Result<tonic::Response<super::AbortMultipartUploadResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/AbortMultipartUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "AbortMultipartUpload",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -4349,14 +4660,41 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UpdateTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
-        /// Returns authorization to write one object at the requested key.
+        /// Returns authorization to create one object at the requested key.
         ///
-        /// The grant expires at the time in the response.
+        /// The server selects one of the upload methods the request accepts,
+        /// or fails with FAILED_PRECONDITION if it supports none of them.
+        /// The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         async fn get_write_access_grant(
             &self,
             request: tonic::Request<super::GetWriteAccessGrantRequest>,
         ) -> std::result::Result<tonic::Response<super::GetWriteAccessGrantResponse>, tonic::Status>;
+        /// Issues part grants without extending the session deadline.
+        async fn get_multipart_upload_part_grants(
+            &self,
+            request: tonic::Request<super::GetMultipartUploadPartGrantsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMultipartUploadPartGrantsResponse>,
+            tonic::Status,
+        >;
+        /// Publishes an upload at its authorized key without replacing an existing object.
+        /// If another object exists at the destination, fails atomically with ALREADY_EXISTS.
+        /// Idempotent: confirming this upload's publication succeeds even after the session deadline.
+        /// After the deadline, this RPC must not publish an unfinished upload.
+        async fn complete_multipart_upload(
+            &self,
+            request: tonic::Request<super::CompleteMultipartUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CompleteMultipartUploadResponse>,
+            tonic::Status,
+        >;
+        /// Aborts an upload, even after the session deadline.
+        /// Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
+        async fn abort_multipart_upload(
+            &self,
+            request: tonic::Request<super::AbortMultipartUploadRequest>,
+        ) -> std::result::Result<tonic::Response<super::AbortMultipartUploadResponse>, tonic::Status>;
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -5304,6 +5642,137 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetWriteAccessGrantSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetMultipartUploadPartGrants" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetMultipartUploadPartGrantsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetMultipartUploadPartGrantsRequest>
+                        for GetMultipartUploadPartGrantsSvc<T>
+                    {
+                        type Response = super::GetMultipartUploadPartGrantsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetMultipartUploadPartGrantsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_multipart_upload_part_grants(
+                                    &inner, request,
+                                )
+                                .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetMultipartUploadPartGrantsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/CompleteMultipartUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct CompleteMultipartUploadSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::CompleteMultipartUploadRequest>
+                        for CompleteMultipartUploadSvc<T>
+                    {
+                        type Response = super::CompleteMultipartUploadResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CompleteMultipartUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::complete_multipart_upload(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CompleteMultipartUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/AbortMultipartUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct AbortMultipartUploadSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::AbortMultipartUploadRequest>
+                        for AbortMultipartUploadSvc<T>
+                    {
+                        type Response = super::AbortMultipartUploadResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AbortMultipartUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::abort_multipart_upload(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = AbortMultipartUploadSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

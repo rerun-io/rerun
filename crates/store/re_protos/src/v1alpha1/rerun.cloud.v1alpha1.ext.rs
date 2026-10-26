@@ -15,6 +15,7 @@ use crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, GetDatasetSchemaResponse, QueryTasksResponse,
     ScanDatasetManifestResponse, ScanSegmentTableResponse, UnregisterFromDatasetResponse,
+    UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
@@ -1861,6 +1862,22 @@ pub struct GetWriteAccessGrantRequest {
 
     /// The requested storage location, or the server's default.
     pub location: Option<crate::cloud::v1alpha1::Location>,
+
+    /// Exact object size, if known.
+    pub size_bytes: Option<u64>,
+
+    /// Upload methods the client supports. Empty means none.
+    pub supported_upload_methods: Vec<UploadMethod>,
+
+    /// Required signing mode for the grant's HTTP requests.
+    pub signing: UrlSigning,
+}
+
+impl GetWriteAccessGrantRequest {
+    /// Whether the client accepts a grant using `method`.
+    pub fn accepts(&self, method: UploadMethod) -> bool {
+        method != UploadMethod::Unspecified && self.supported_upload_methods.contains(&method)
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAccessGrantRequest {
@@ -1869,20 +1886,93 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     fn try_from(
         value: crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
     ) -> Result<Self, Self::Error> {
-        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest { key, location } = value;
+        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
+            key,
+            location,
+            size_bytes,
+            supported_upload_methods,
+            signing,
+        } = value;
         Ok(Self {
             key: ObjectKey::try_new(key)?,
             location,
+            size_bytes,
+            supported_upload_methods: if supported_upload_methods.is_empty() {
+                vec![UploadMethod::SingleRequest]
+            } else {
+                supported_upload_methods
+                    .into_iter()
+                    .filter_map(|method| UploadMethod::try_from(method).ok())
+                    .filter(|method| *method != UploadMethod::Unspecified)
+                    .collect()
+            },
+            signing: signing.try_into().map_err(|err: prost::UnknownEnumValue| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+                    "signing",
+                    err.to_string()
+                )
+            })?,
         })
     }
 }
 
 impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
     fn from(value: GetWriteAccessGrantRequest) -> Self {
-        let GetWriteAccessGrantRequest { key, location } = value;
+        let GetWriteAccessGrantRequest {
+            key,
+            location,
+            size_bytes,
+            supported_upload_methods,
+            signing,
+        } = value;
         Self {
             key: key.0,
             location,
+            size_bytes,
+            supported_upload_methods: if supported_upload_methods.is_empty() {
+                // An empty wire list means single-request only, so encode no support explicitly.
+                vec![UploadMethod::Unspecified.into()]
+            } else {
+                supported_upload_methods
+                    .into_iter()
+                    .map(Into::into)
+                    .collect()
+            },
+            signing: signing.into(),
+        }
+    }
+}
+
+/// Who supplies authorization for an upload's HTTP requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UrlSigning {
+    /// Server-signed URLs, usable without client-managed object-store credentials.
+    Signed,
+    /// Unsigned URLs that the client authorizes with its own object-store credentials.
+    Unsigned,
+}
+
+impl TryFrom<i32> for UrlSigning {
+    type Error = prost::UnknownEnumValue;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::UrlSigning as Proto;
+
+        Ok(match Proto::try_from(value)? {
+            Proto::Unspecified | Proto::Signed => Self::Signed,
+            Proto::Unsigned => Self::Unsigned,
+        })
+    }
+}
+
+impl From<UrlSigning> for i32 {
+    fn from(value: UrlSigning) -> Self {
+        use crate::cloud::v1alpha1::UrlSigning as Proto;
+
+        match value {
+            UrlSigning::Signed => Proto::Signed.into(),
+            UrlSigning::Unsigned => Proto::Unsigned.into(),
         }
     }
 }
@@ -1934,11 +2024,19 @@ impl TryFrom<GetWriteAccessGrantResponse> for crate::cloud::v1alpha1::GetWriteAc
     }
 }
 
-/// Authorizes one storage operation until `expires_at`.
+/// Authorizes create-only publication through HTTP or a multipart session.
+///
+/// Publication must atomically reject an existing destination without modifying it.
 #[derive(Debug, Clone)]
 pub struct AccessGrant {
+    /// HTTP request deadline, or the session deadline for multipart renewal and publication.
+    /// Storage may reject HTTP requests earlier. Confirming publication and abort remain valid
+    /// after the session deadline; publishing an unfinished upload does not.
     pub expires_at: jiff::Timestamp,
+    /// The server-selected mechanism; clients must support it before consuming the source.
     pub redemption: Redemption,
+    /// Effective signing mode, including for renewed part requests. Must match the request.
+    pub signing: UrlSigning,
 }
 
 /// How the caller redeems an [`AccessGrant`].
@@ -1946,6 +2044,71 @@ pub struct AccessGrant {
 pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
+    /// A multipart session whose bytes are uploaded directly to storage.
+    MultipartRequest(MultipartRequest),
+}
+
+/// A multipart session with initial part requests and an opaque token.
+#[derive(Debug, Clone)]
+pub struct MultipartRequest {
+    /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
+    pub upload_token: prost::bytes::Bytes,
+    /// Size of each part except the last, which may be smaller.
+    pub part_size_bytes: std::num::NonZeroU64,
+    /// Requests for consecutive parts starting at 1, in part-number order.
+    pub part_requests: Vec<HttpRequest>,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::MultipartRequest) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::MultipartRequest as Proto;
+
+        let Proto {
+            upload_token,
+            part_size_bytes,
+            part_requests,
+        } = value;
+        if upload_token.is_empty() {
+            return Err(invalid_field!(
+                Proto,
+                "upload_token",
+                "expected a non-empty token"
+            ));
+        }
+        let part_size_bytes = std::num::NonZeroU64::new(part_size_bytes).ok_or_else(|| {
+            invalid_field!(Proto, "part_size_bytes", "expected a positive part size")
+        })?;
+        Ok(Self {
+            upload_token,
+            part_size_bytes,
+            part_requests: part_requests
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+        })
+    }
+}
+
+impl TryFrom<MultipartRequest> for crate::cloud::v1alpha1::MultipartRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: MultipartRequest) -> Result<Self, Self::Error> {
+        let MultipartRequest {
+            upload_token,
+            part_size_bytes,
+            part_requests,
+        } = value;
+        Ok(Self {
+            upload_token,
+            part_size_bytes: part_size_bytes.get(),
+            part_requests: part_requests
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
@@ -1955,6 +2118,7 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
         let crate::cloud::v1alpha1::AccessGrant {
             expires_at,
             redemption,
+            signing,
         } = value;
         let expires_at = expires_at
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::AccessGrant, "expires_at"))?;
@@ -1964,10 +2128,20 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
             crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
                 Redemption::HttpRequest(request.try_into()?)
             }
+            crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(request) => {
+                Redemption::MultipartRequest(request.try_into()?)
+            }
         };
         Ok(Self {
             expires_at: jiff::Timestamp::new(expires_at.seconds, expires_at.nanos)?,
             redemption,
+            signing: signing.try_into().map_err(|err: prost::UnknownEnumValue| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::AccessGrant,
+                    "signing",
+                    err.to_string()
+                )
+            })?,
         })
     }
 }
@@ -1979,12 +2153,19 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
         let AccessGrant {
             expires_at,
             redemption,
+            signing,
         } = value;
         Ok(Self {
             expires_at: Some(common_ext::timestamp_to_proto(expires_at)),
+            signing: signing.into(),
             redemption: Some(match redemption {
                 Redemption::HttpRequest(request) => {
                     crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(
+                        request.try_into()?,
+                    )
+                }
+                Redemption::MultipartRequest(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
                         request.try_into()?,
                     )
                 }
@@ -2775,6 +2956,78 @@ mod tests {
         ] {
             assert!(ObjectKey::try_new(invalid).is_err(), "{invalid:?}");
         }
+    }
+
+    #[test]
+    fn write_access_grant_request_supported_upload_methods() {
+        use crate::cloud::v1alpha1::GetWriteAccessGrantRequest as Proto;
+        use crate::cloud::v1alpha1::UploadMethod::{Multipart, SingleRequest, Unspecified};
+
+        for (supported_upload_methods, expected) in [
+            (vec![], vec![SingleRequest]),
+            (vec![Unspecified.into()], vec![]),
+            (vec![Multipart.into()], vec![Multipart]),
+        ] {
+            let proto = Proto {
+                key: "recording.rrd".to_owned(),
+                supported_upload_methods,
+                ..Default::default()
+            };
+            let parsed = GetWriteAccessGrantRequest::try_from(proto.clone()).unwrap();
+            let roundtrip =
+                GetWriteAccessGrantRequest::try_from(Proto::from(parsed.clone())).unwrap();
+
+            for method in [SingleRequest, Multipart, Unspecified] {
+                assert_eq!(
+                    parsed.accepts(method),
+                    expected.contains(&method),
+                    "{method:?} with wire methods {:?}",
+                    proto.supported_upload_methods,
+                );
+                assert_eq!(
+                    roundtrip.accepts(method),
+                    expected.contains(&method),
+                    "{method:?} after roundtrip with wire methods {:?}",
+                    proto.supported_upload_methods,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn multipart_grant_roundtrip_and_validation() {
+        let grant = crate::cloud::v1alpha1::AccessGrant {
+            signing: UrlSigning::Signed.into(),
+            expires_at: Some(common_ext::timestamp_to_proto(
+                jiff::Timestamp::new(1_700_000_000, 0).unwrap(),
+            )),
+            redemption: Some(
+                crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
+                    crate::cloud::v1alpha1::MultipartRequest {
+                        upload_token: b"opaque-token".as_slice().into(),
+                        part_size_bytes: 8 * 1024 * 1024,
+                        part_requests: vec![],
+                    },
+                ),
+            ),
+        };
+        let parsed = AccessGrant::try_from(grant.clone()).unwrap();
+        assert!(matches!(parsed.redemption, Redemption::MultipartRequest(_)));
+        assert_eq!(
+            crate::cloud::v1alpha1::AccessGrant::try_from(parsed).unwrap(),
+            grant
+        );
+
+        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(mut request)) =
+            grant.redemption
+        else {
+            panic!("expected multipart request");
+        };
+        request.part_size_bytes = 0;
+        assert!(MultipartRequest::try_from(request.clone()).is_err());
+        request.part_size_bytes = 1;
+        request.upload_token = prost::bytes::Bytes::new();
+        assert!(MultipartRequest::try_from(request).is_err());
     }
 
     #[test]

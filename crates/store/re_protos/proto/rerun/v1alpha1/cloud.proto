@@ -155,11 +155,26 @@ service RerunCloudService {
 
   // --- Grants ---
 
-  // Returns authorization to write one object at the requested key.
+  // Returns authorization to create one object at the requested key.
   //
-  // The grant expires at the time in the response.
+  // The server selects one of the upload methods the request accepts,
+  // or fails with FAILED_PRECONDITION if it supports none of them.
+  // The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
   // TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
   rpc GetWriteAccessGrant(GetWriteAccessGrantRequest) returns (GetWriteAccessGrantResponse) {}
+
+  // Issues part grants without extending the session deadline.
+  rpc GetMultipartUploadPartGrants(GetMultipartUploadPartGrantsRequest) returns (GetMultipartUploadPartGrantsResponse) {}
+
+  // Publishes an upload at its authorized key without replacing an existing object.
+  // If another object exists at the destination, fails atomically with ALREADY_EXISTS.
+  // Idempotent: confirming this upload's publication succeeds even after the session deadline.
+  // After the deadline, this RPC must not publish an unfinished upload.
+  rpc CompleteMultipartUpload(CompleteMultipartUploadRequest) returns (CompleteMultipartUploadResponse) {}
+
+  // Aborts an upload, even after the session deadline.
+  // Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
+  rpc AbortMultipartUpload(AbortMultipartUploadRequest) returns (AbortMultipartUploadResponse) {}
 
   // --- Manifest Registry ---
 
@@ -525,19 +540,52 @@ enum ErrorCode {
 
 // --- Grants ---
 
-// TODO(RR-5715): Extend grants for multipart uploads:
-// - Negotiate support; add initiate, part grant/renewal, complete, and abort.
-// - Define idempotency and size limits; keep long-lived credentials server-side.
-// - Represent unknown lengths explicitly; size_bytes=0 means an empty object.
-
-// Requests authorization to write one object.
+// Requests authorization to create one object.
 message GetWriteAccessGrantRequest {
   // The full object key, including the file name, relative to the location's base.
+  // Clients must generate a fresh random key for each new upload session.
+  // Retries within a multipart session use its existing token and key.
+  // A grant does not reserve the key; another writer may publish first and make this write fail.
   string key = 1;
 
   // The requested storage location.
   // The request fails if this is absent and the server has no default location.
   optional Location location = 2;
+
+  // Exact object size, if known; absent means unknown.
+  // Servers use it to select the upload method and part size.
+  optional uint64 size_bytes = 3;
+
+  // Upload methods the client supports; the server must select one of them.
+  // Empty means SINGLE_REQUEST only, which is what clients predating this field support.
+  repeated UploadMethod supported_upload_methods = 4;
+
+  // Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
+  UrlSigning signing = 5;
+}
+
+// How the object is uploaded, independently of URL signing.
+enum UploadMethod {
+  // Never selected; servers ignore it.
+  UPLOAD_METHOD_UNSPECIFIED = 0;
+
+  // `AccessGrant.http_request`.
+  UPLOAD_METHOD_SINGLE_REQUEST = 1;
+
+  // `AccessGrant.multipart_request`.
+  UPLOAD_METHOD_MULTIPART = 2;
+}
+
+// Who supplies authorization for the upload's HTTP requests.
+enum UrlSigning {
+  // Same as SIGNED.
+  URL_SIGNING_UNSPECIFIED = 0;
+
+  // Server-signed URLs, usable without client-managed object-store credentials.
+  URL_SIGNING_SIGNED = 1;
+
+  // Unsigned URLs. The client authorizes requests with its own object-store credentials.
+  URL_SIGNING_UNSIGNED = 2;
 }
 
 // Selects a cloud location for an object.
@@ -545,20 +593,21 @@ message GetWriteAccessGrantRequest {
 // TODO(grtlr): Define provider, region, and network constraints.
 message Location {}
 
-// Contains the URL that identifies the object and the authorization needed to write it.
+// Authorization to create one object.
 message GetWriteAccessGrantResponse {
-  // Stable, credential-free URL naming the object.
-  //
-  // Pass this URL to `RegisterWithDataset` after writing the object.
+  // Credential-free object URL for subsequent registration.
   string storage_url = 1;
 
   // Authorization for the write operation.
   AccessGrant grant = 2;
 }
 
-// Authorizes one storage operation until `expires_at`.
+// Authorization to create one object.
+// Publication must atomically fail if the destination exists, leaving that object unchanged.
 message AccessGrant {
-  // The time after which the caller must not redeem this grant.
+  // Deadline for HTTP requests, or session deadline for multipart renewal and publication.
+  // HTTP grants may stop working earlier. After the session deadline, clients may still
+  // confirm an already-published upload or abort; they must not publish an unfinished upload.
   google.protobuf.Timestamp expires_at = 1;
 
   // How the caller redeems this grant.
@@ -566,8 +615,79 @@ message AccessGrant {
   oneof redemption {
     // The HTTP request that redeems this grant.
     HttpRequest http_request = 2;
+    // Multipart upload session and the initial part-upload requests.
+    MultipartRequest multipart_request = 3;
   }
+
+  // Effective signing mode for all HTTP requests in this grant, including renewed part requests.
+  // UNSPECIFIED means SIGNED. Clients must reject a mode that differs from their request.
+  UrlSigning signing = 4;
 }
+
+// Describes a multipart upload session and its initial part-upload requests.
+//
+// TODO(RR-6103): Define multipart upload size limits.
+message MultipartRequest {
+  // Bearer token for renewal, completion, and abort. Return it unchanged.
+  bytes upload_token = 1;
+
+  // Clients must upload parts of this size, except the last, which may be smaller.
+  // Part numbers must be consecutive from 1; parts may be uploaded in any order.
+  // The server chooses it from `GetWriteAccessGrantRequest.size_bytes` when known.
+  uint64 part_size_bytes = 2;
+
+  // HTTP requests for consecutive parts starting at 1, using the grant's signing mode.
+  // Expired requests can be renewed before the session deadline.
+  repeated HttpRequest part_requests = 3;
+}
+
+// Requests HTTP upload instructions for selected parts of an active multipart upload.
+message GetMultipartUploadPartGrantsRequest {
+  // Token from GetWriteAccessGrant, unchanged.
+  bytes upload_token = 1;
+  // Distinct, one-based part numbers; non-empty. Grants may be renewed.
+  // Retries must upload identical bytes for the same part number, including after renewal.
+  repeated uint32 part_numbers = 2;
+}
+
+// Returns HTTP requests for the requested multipart upload parts.
+message GetMultipartUploadPartGrantsResponse {
+  // HTTP requests in the same order as the requested part numbers, using the session's signing mode.
+  repeated HttpRequest requests = 1;
+}
+
+// Completes a multipart upload using the uploaded parts and their receipts.
+message CompleteMultipartUploadRequest {
+  // Token from GetWriteAccessGrant, unchanged.
+  bytes upload_token = 1;
+  // Non-empty list in ascending part-number order, numbered consecutively from 1.
+  repeated UploadedPart parts = 2;
+}
+
+// Identifies an uploaded part and its storage-service receipt.
+message UploadedPart {
+  // One-based number of the uploaded part.
+  uint32 part_number = 1;
+
+  // Value of the part response's `ETag` header, preserved verbatim, including any quotes.
+  // Opaque to the client and untrusted by the server; empty if the provider returns none.
+  //
+  // NOTE: Browsers can read this header only if the bucket's CORS rule exposes it,
+  // for example S3's `ExposeHeaders: ["ETag"]`.
+  string etag = 2;
+}
+
+// Confirms publication, not catalog registration.
+message CompleteMultipartUploadResponse {}
+
+// Aborts an active multipart upload.
+message AbortMultipartUploadRequest {
+  // Token from GetWriteAccessGrant, unchanged.
+  bytes upload_token = 1;
+}
+
+// Confirms the abort request, not cleanup of in-flight parts.
+message AbortMultipartUploadResponse {}
 
 // Describes an HTTP request that the caller can perform directly.
 message HttpRequest {

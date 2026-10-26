@@ -14,8 +14,8 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DatasetDetails, DatasetEntry,
-    EntryDetails, EntryDetailsUpdate, GetWriteAccessGrantResponse, LanceTable, ObjectKey,
-    ProviderDetails, QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+    EntryDetails, EntryDetailsUpdate, GetWriteAccessGrantResponse, LanceTable, ProviderDetails,
+    QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
     ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
     RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry, TableInsertMode,
     UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
@@ -1952,7 +1952,7 @@ where
 
     // --- Grants ---
 
-    /// Requests authorization to write one object at `key`.
+    /// Requests authorization to write one object.
     ///
     /// Writing the object does not register it: redeem the grant, then pass the returned storage
     /// URL to [`Self::register_with_dataset`], which is a separate operation and may happen much
@@ -1960,12 +1960,10 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_write_access_grant(
         &mut self,
-        key: ObjectKey,
+        request: cloud_ext::GetWriteAccessGrantRequest,
     ) -> ApiResult<GetWriteAccessGrantResponse> {
-        let request = cloud_ext::GetWriteAccessGrantRequest {
-            key,
-            location: None,
-        };
+        let supported_upload_methods = request.supported_upload_methods.clone();
+        let signing = request.signing;
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .get_write_access_grant(
@@ -1974,14 +1972,42 @@ where
                 .await
                 .map_err(|err| ApiError::tonic(&self.origin, err, "/GetWriteAccessGrant failed"))?,
         );
-        inner.try_into().map_err(|err| {
+        let response: GetWriteAccessGrantResponse = inner.try_into().map_err(|err| {
             ApiError::deserialization_with_source(
                 &self.origin,
                 trace_id,
                 err,
                 "failed parsing /GetWriteAccessGrant response",
             )
-        })
+        })?;
+        let method = match &response.grant.redemption {
+            cloud_ext::Redemption::HttpRequest(_) => {
+                re_protos::cloud::v1alpha1::UploadMethod::SingleRequest
+            }
+            cloud_ext::Redemption::MultipartRequest(_) => {
+                re_protos::cloud::v1alpha1::UploadMethod::Multipart
+            }
+        };
+        if !supported_upload_methods.contains(&method) {
+            return Err(ApiError::failed_precondition(
+                &self.origin,
+                format!(
+                    "/GetWriteAccessGrant returned upload method {method:?}, but the request accepted {supported_upload_methods:?}",
+                ),
+            )
+            .with_trace_id(trace_id));
+        }
+        if response.grant.signing != signing {
+            return Err(ApiError::unimplemented(
+                &self.origin,
+                format!(
+                    "/GetWriteAccessGrant returned {:?} URLs, but {signing:?} URLs were requested",
+                    response.grant.signing,
+                ),
+            )
+            .with_trace_id(trace_id));
+        }
+        Ok(response)
     }
 }
 

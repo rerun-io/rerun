@@ -1,7 +1,10 @@
 //! Stage objects in catalog storage.
 
 use re_async::AsyncReadAt;
-use re_protos::cloud::v1alpha1::ext::{GetWriteAccessGrantResponse, ObjectKey, Redemption};
+use re_protos::cloud::v1alpha1::UploadMethod;
+use re_protos::cloud::v1alpha1::ext::{
+    GetWriteAccessGrantRequest, GetWriteAccessGrantResponse, ObjectKey, Redemption, UrlSigning,
+};
 use re_span::Span;
 
 use crate::CatalogClient;
@@ -24,18 +27,15 @@ pub enum StagingError {
 
     #[error("the upload was rejected: HTTP {status} {status_text}")]
     Rejected { status: u16, status_text: String },
+
+    #[error("unsupported upload method: {0:?}")]
+    UnsupportedUploadMethod(UploadMethod),
 }
 
 impl CatalogClient {
     /// Stages `source` in the catalog's storage under `key` and returns its credential-free URL
     /// after the upload succeeds.
-    //
-    // TODO(RR-5715): Streaming and multipart uploads:
-    // - Stream bounded ranges with backpressure on native and web; keep exact-size grants.
-    // - Support sequential sources without requiring AsyncReadAt.
-    // - Bound multipart concurrency and buffers; retry parts and refresh expired grants.
-    // - Abort failed/cancelled uploads; expire abandoned sessions server-side.
-    // - Return the URL only after completion; keep registration separate.
+    // TODO(RR-5715): Stream uploads with bounded memory and multipart support.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn stage(
         &self,
@@ -43,13 +43,27 @@ impl CatalogClient {
         source: impl AsyncReadAt,
     ) -> Result<url::Url, StagingError> {
         let size = source.size().await?;
+        let request = GetWriteAccessGrantRequest {
+            key,
+            location: None,
+            size_bytes: Some(size),
+            supported_upload_methods: vec![UploadMethod::SingleRequest],
+            signing: UrlSigning::Signed,
+        };
         let GetWriteAccessGrantResponse { storage_url, grant } =
-            self.client().await?.get_write_access_grant(key).await?;
+            self.client().await?.get_write_access_grant(request).await?;
 
-        if jiff::Timestamp::now() >= grant.expires_at {
-            return Err(StagingError::Expired {
-                expires_at: grant.expires_at,
-            });
+        let expires_at = grant.expires_at;
+        let http_request = match grant.redemption {
+            Redemption::HttpRequest(request) => request,
+            Redemption::MultipartRequest(_) => {
+                return Err(StagingError::UnsupportedUploadMethod(
+                    UploadMethod::Multipart,
+                ));
+            }
+        };
+        if jiff::Timestamp::now() >= expires_at {
+            return Err(StagingError::Expired { expires_at });
         }
 
         let body = source
@@ -58,8 +72,6 @@ impl CatalogClient {
                 len: size,
             })
             .await?;
-
-        let Redemption::HttpRequest(http_request) = grant.redemption;
         let (method, url, headers) = match http_request {
             re_protos::cloud::v1alpha1::ext::HttpRequest::External {
                 method,
