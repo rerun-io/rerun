@@ -5,9 +5,6 @@
 
 #![expect(clippy::exit)]
 
-/// The encoded `FileDescriptorSet` that `re_protos` serves through gRPC server reflection.
-pub const FILE_DESCRIPTOR_SET_FILE_NAME: &str = "rerun.v1alpha1.fds.bin";
-
 /// Generate rust from protobuf definitions. We rely on `tonic_build` to do the heavy lifting.
 /// `tonic_build` relies on `prost` which itself relies on `protoc`.
 ///
@@ -18,7 +15,6 @@ where
 {
     let mut prost_config = tonic_prost_build::Config::new();
     prost_config.enable_type_names(); // tonic doesn't expose this option
-    prost_config.file_descriptor_set_path(output_dir.as_ref().join(FILE_DESCRIPTOR_SET_FILE_NAME));
     prost_config.bytes([
         ".rerun.common.v1alpha1",
         ".rerun.cloud.v1alpha1",

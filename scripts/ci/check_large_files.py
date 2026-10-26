@@ -14,7 +14,6 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store_app/re_dataframe/src/query.rs",
     "crates/store/re_protos/src/v1alpha1/rerun.cloud.v1alpha1.rs",
     "crates/store/re_protos/src/v1alpha1/rerun.cloud.v1alpha1.ext.rs",
-    "crates/store/re_protos/src/v1alpha1/rerun.v1alpha1.fds.bin",
     "crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.rs",
     "crates/store_app/re_query/src/range_zip/generated.rs",
     "crates/store/re_sdk_types/src/encodings/tensor_buffer.rs",

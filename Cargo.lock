@@ -10547,6 +10547,7 @@ dependencies = [
  "prost",
  "prost-reflect",
  "prost-types",
+ "protoc-bin-vendored",
  "pyo3",
  "quiver",
  "re_arrow_util",

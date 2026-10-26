@@ -30,7 +30,7 @@ include = [
   "../../Cargo.lock", # So that users can pass `--locked` to `cargo install rerun-cli`
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
-  "**/*.bin", # protobuf descriptor sets
+  "**/*.proto", # compiled into descriptor sets by re_protos/build.rs
   "**/*.rs",
   "Cargo.toml",
 ]
@@ -427,7 +427,9 @@ prost = "0.14.4"
 prost-build = "0.14.4"
 prost-reflect = "0.16.5"
 prost-types = "0.14.4"
-protoc-bin-vendored = "3.2"
+# NOTE: Executes bundled binaries at build time. Before upgrading, perform due diligence on
+# crate ownership, release changes, and binary provenance per compliance/dependency-reputation/METHODOLOGY.md (repo root).
+protoc-bin-vendored = "=3.2.0"
 puffin = "0.20.0"
 puffin_http = "0.17.0"
 pulldown-cmark = { version = "0.13", default-features = false }

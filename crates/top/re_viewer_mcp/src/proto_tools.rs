@@ -4,8 +4,8 @@
 //! the input schemas, and the descriptions an agent reads can all come from the descriptor set
 //! rather than being restated in Rust. Adding an operation to `viewer_control.proto` adds a tool.
 //!
-//! `pixi run codegen-protos` keeps `SourceCodeInfo` in the descriptor set, which is where the
-//! descriptions come from: the `.proto` comments are the agent-facing documentation.
+//! The descriptor set retains `SourceCodeInfo`, which is where the descriptions come from:
+//! the `.proto` comments are the agent-facing documentation.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
