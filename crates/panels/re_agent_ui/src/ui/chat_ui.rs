@@ -1,6 +1,8 @@
 //! The chat view: the transcript, and the composer at the bottom
 //! (login and permission prompts, plan, prompt input with its footer, agent log).
 
+use std::sync::Arc;
+
 use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
@@ -39,8 +41,8 @@ pub struct ChatInput {
     /// An example prompt the user clicked, to be sent the way a host prompt is.
     pub example_prompt_clicked: Option<String>,
 
-    /// The prompt being composed.
-    pub text: String,
+    /// The prompt being composed: what is typed, and the images pasted in.
+    pub prompt: Prompt,
     focus: bool,
 
     /// Used to request focus when the agent becomes ready.
@@ -55,15 +57,49 @@ pub struct ChatInput {
 
     history: PromptHistory,
 
-    /// Images pasted into the composer, sent with the next prompt.
-    pending_images: Vec<PendingImage>,
+    /// Thumbnails of [`Prompt::images`] in [`Self::prompt`].
+    previews: ImagePreviews,
     elicitation_ui: ElicitationUi,
 }
 
-/// A pasted image waiting to be sent, and the texture the composer shows for it.
-struct PendingImage {
-    image: PromptImage,
-    preview: egui::TextureHandle,
+/// Textures for the images attached to the prompt being composed.
+///
+/// Keyed by the image's shared bytes. Each entry keeps those bytes alive, so their address cannot
+/// be reused by another image while the entry exists.
+#[derive(Default)]
+struct ImagePreviews {
+    /// `None` for an image that failed to decode, so it is not decoded again every frame.
+    textures: Vec<(Arc<[u8]>, Option<egui::TextureHandle>)>,
+}
+
+impl ImagePreviews {
+    fn insert(&mut self, image: &PromptImage, texture: egui::TextureHandle) {
+        self.textures.push((image.bytes.clone(), Some(texture)));
+    }
+
+    /// The texture for `image`, decoding and uploading it the first time it is asked for.
+    ///
+    /// `None` if it cannot be decoded.
+    fn get(&mut self, ctx: &egui::Context, image: &PromptImage) -> Option<egui::TextureId> {
+        if let Some((_, texture)) = self
+            .textures
+            .iter()
+            .find(|(bytes, _)| Arc::ptr_eq(bytes, &image.bytes))
+        {
+            return texture.as_ref().map(egui::TextureHandle::id);
+        }
+        let texture = pasted_image::decode(image)
+            .map(|pixels| ctx.load_texture("pasted_image", pixels, egui::TextureOptions::LINEAR));
+        let id = texture.as_ref().map(egui::TextureHandle::id);
+        self.textures.push((image.bytes.clone(), texture));
+        id
+    }
+
+    /// Frees the textures of images that are no longer attached.
+    fn retain(&mut self, images: &[PromptImage]) {
+        self.textures
+            .retain(|(bytes, _)| images.iter().any(|image| Arc::ptr_eq(bytes, &image.bytes)));
+    }
 }
 
 impl ChatInput {
@@ -438,7 +474,7 @@ fn queue_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     if let Some(index) = take_back
         && let Some(prompt) = session.remove_queued(index)
     {
-        move_into_input(ui, input, prompt);
+        move_into_input(input, prompt);
     }
 }
 
@@ -446,19 +482,14 @@ fn queue_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
 ///
 /// Its images go back to the front of the pending ones, so sending again attaches them in the
 /// order they were pasted in.
-fn move_into_input(ui: &egui::Ui, input: &mut ChatInput, prompt: Prompt) {
+fn move_into_input(input: &mut ChatInput, prompt: Prompt) {
     let Prompt { text, images } = prompt;
-    if input.text.trim().is_empty() {
-        input.text = text;
+    if input.prompt.text.trim().is_empty() {
+        input.prompt.text = text;
     } else {
-        input.text = format!("{text}\n{}", input.text);
+        input.prompt.text = format!("{text}\n{}", input.prompt.text);
     }
-
-    let restored: Vec<PendingImage> = images
-        .into_iter()
-        .filter_map(|image| pending_image(ui.ctx(), image))
-        .collect();
-    input.pending_images.splice(..0, restored);
+    input.prompt.images.splice(..0, images);
     input.focus = true;
 }
 
@@ -473,17 +504,10 @@ fn queued_summary(prompt: &Prompt) -> String {
     }
 }
 
-/// Uploads `image`'s preview, so the composer can show what is attached.
-fn pending_image(ctx: &egui::Context, image: PromptImage) -> Option<PendingImage> {
-    let pixels = pasted_image::decode(&image)?;
-    let preview = ctx.load_texture("pasted_image", pixels, egui::TextureOptions::LINEAR);
-    Some(PendingImage { image, preview })
-}
-
 /// Stops the agent. Queued prompts go back into the input instead of starting new turns.
-fn stop_agent(ui: &egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
+fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
     for prompt in session.take_queued().into_iter().rev() {
-        move_into_input(ui, input, prompt);
+        move_into_input(input, prompt);
     }
     session.cancel();
 }
@@ -504,8 +528,8 @@ fn footer_ui(
         .filter(|_| *session.phase() == Phase::Ready)
         .map(|usage| (usage.used, usage.size));
     let turn_in_progress = session.turn_in_progress();
-    let can_send =
-        session.is_ready() && (!input.text.trim().is_empty() || !input.pending_images.is_empty());
+    let can_send = session.is_ready()
+        && (!input.prompt.text.trim().is_empty() || !input.prompt.images.is_empty());
 
     let ((), clicked) = egui::containers::Sides::new()
         .shrink_left()
@@ -569,7 +593,7 @@ fn footer_ui(
 
     if clicked {
         if turn_in_progress {
-            stop_agent(ui, session, input);
+            stop_agent(session, input);
         } else {
             send_input(session, input);
             input.focus = true;
@@ -743,7 +767,7 @@ fn input_ui(
                 })
                 .show(
                     ui,
-                    &mut input.text,
+                    &mut input.prompt.text,
                     |text| {
                         egui::TextEdit::multiline(text)
                             .hint_text(hint)
@@ -779,7 +803,7 @@ fn input_ui(
         if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
             && session.turn_in_progress()
         {
-            stop_agent(ui, session, input);
+            stop_agent(session, input);
         }
     }
 }
@@ -788,20 +812,14 @@ fn input_ui(
 ///
 /// Returns `true` if the prompt was taken, which also clears the input.
 fn send_input(session: &mut AgentSession, input: &mut ChatInput) -> bool {
-    let text = input.text.trim().to_owned();
-    let images: Vec<PromptImage> = input
-        .pending_images
-        .iter()
-        .map(|pending| pending.image.clone())
-        .collect();
-    let sent = session.send_prompt(Prompt {
-        text: text.clone(),
-        images,
-    });
+    let prompt = Prompt {
+        text: input.prompt.text.trim().to_owned(),
+        images: input.prompt.images.clone(),
+    };
+    let sent = session.send_prompt(prompt.clone());
     if sent {
-        input.history.push(&text);
-        input.text.clear();
-        input.pending_images.clear();
+        input.history.push(&prompt.text);
+        input.prompt = Prompt::default();
     }
     sent
 }
@@ -815,7 +833,7 @@ fn take_pasted_images(ui: &egui::Ui, input: &mut ChatInput) {
         let mut pasted = Vec::new();
         state.events.retain(|event| {
             if let egui::Event::PasteImage(image) = event {
-                pasted.push(std::sync::Arc::clone(image));
+                pasted.push(Arc::clone(image));
                 false
             } else {
                 true
@@ -832,24 +850,33 @@ fn take_pasted_images(ui: &egui::Ui, input: &mut ChatInput) {
         let preview = ui
             .ctx()
             .load_texture("pasted_image", preview, egui::TextureOptions::LINEAR);
-        input.pending_images.push(PendingImage { image, preview });
+        input.previews.insert(&image, preview);
+        input.prompt.images.push(image);
     }
 }
 
 /// The images attached to the prompt being composed, each with a button to drop it again.
 fn pending_images_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
-    if input.pending_images.is_empty() {
+    let ChatInput {
+        prompt, previews, ..
+    } = input;
+    previews.retain(&prompt.images);
+    if prompt.images.is_empty() {
         return;
     }
 
     let mut remove = None;
     ui.horizontal_wrapped(|ui| {
-        for (index, pending) in input.pending_images.iter().enumerate() {
-            let [width, height] = pending.image.resolution;
+        for (index, image) in prompt.images.iter().enumerate() {
+            let [width, height] = image.resolution;
             let aspect = width as f32 / height as f32;
             let size = egui::vec2(PREVIEW_HEIGHT * aspect, PREVIEW_HEIGHT);
-            ui.image((pending.preview.id(), size))
-                .on_hover_text(format!("Pasted image, {width}×{height} pixels"));
+            let hover_text = format!("Pasted image, {width}×{height} pixels");
+            if let Some(texture) = previews.get(ui.ctx(), image) {
+                ui.image((texture, size)).on_hover_text(hover_text);
+            } else {
+                ui.weak("(image)").on_hover_text(hover_text);
+            }
             if ui
                 .small_icon_button(&icons::CLOSE_SMALL, "Remove this image")
                 .on_hover_text("Do not send this image")
@@ -861,7 +888,7 @@ fn pending_images_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
     });
 
     if let Some(index) = remove {
-        input.pending_images.remove(index);
+        prompt.images.remove(index);
     }
     ui.add_space(4.0);
 }
@@ -896,7 +923,11 @@ fn history_navigation(ui: &egui::Ui, input: &mut ChatInput, input_id: egui::Id) 
     if input.completion_open || !ui.memory(|memory| memory.has_focus(input_id)) {
         return;
     }
-    let ChatInput { text, history, .. } = input;
+    let ChatInput {
+        prompt: Prompt { text, .. },
+        history,
+        ..
+    } = input;
 
     let mut state = TextEditState::load(ui.ctx(), input_id).unwrap_or_default();
     let cursor = state
