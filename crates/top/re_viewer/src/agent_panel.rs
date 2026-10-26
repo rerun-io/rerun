@@ -4,7 +4,7 @@
 use std::collections::VecDeque;
 use std::path::Path;
 
-use re_agent_ui::{AgentPanel, AgentSettings, HostButton, McpServerConfig, SessionContext};
+use re_agent_ui::{AgentPanel, AgentSettings, McpServerConfig, SessionContext};
 use re_ui::UiExt as _;
 
 mod feedback;
@@ -185,7 +185,7 @@ impl ViewerAgentPanel {
         if self
             .panel
             .as_ref()
-            .is_some_and(AgentPanel::host_button_clicked)
+            .is_some_and(AgentPanel::self_improve_requested)
         {
             self.start_self_improvement();
         }
@@ -319,16 +319,7 @@ impl ViewerAgentPanel {
 
         let mut panel = AgentPanel::new(settings);
         panel.set_feedback_enabled(true);
-        panel.set_host_button(rerun_workspace.is_some().then(|| {
-            HostButton {
-                label: "Self-improve".to_owned(),
-                tooltip: "Rerun development builds only, never shown in a release build.\n\n\
-                      Opens a second agent in the Rerun checkout that reviews this session, \
-                      finds what the viewer's MCP tools, skills, docs, and instructions made \
-                      hard, and files the fixes."
-                    .into(),
-            }
-        }));
+        panel.set_self_improve_available(rerun_workspace.is_some());
         panel.set_context(SessionContext {
             preamble: Some(
                 preamble::Preamble {

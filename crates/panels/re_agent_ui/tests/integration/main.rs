@@ -3,10 +3,10 @@ mod chat_input;
 mod copy_response;
 mod elicitation;
 mod feedback_button;
-mod host_button;
 mod model_selection;
 mod new_conversation_shortcut;
 mod pasted_images;
+mod self_improve;
 
 /// Shows hover timestamps in UTC, so snapshots do not depend on where they run.
 ///

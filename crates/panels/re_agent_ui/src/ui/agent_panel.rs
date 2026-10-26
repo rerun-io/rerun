@@ -25,6 +25,11 @@ pub const RECOMMENDED_WIDTH: f32 = 420.0;
 /// Longest tab title before it is cut with an ellipsis.
 const MAX_TAB_TITLE_CHARS: usize = 24;
 
+/// Shown when hovering "Self-improve" in the options menu.
+const SELF_IMPROVE_TOOLTIP: &str = "Rerun development builds only.\n\n\
+    Opens a second agent in the Rerun checkout that reviews this session, finds what the \
+    viewer's MCP tools, skills, docs, and instructions made hard, and files the fixes.";
+
 /// Horizontal padding inside a tab, around its title.
 const TAB_TITLE_SPACING: f32 = 12.0;
 
@@ -38,8 +43,13 @@ const TAB_BAR_BUTTON_SPACING: f32 = 8.0;
 const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::T);
 
+/// Identifies one conversation for as long as the panel lives. Never reused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ConversationId(u64);
+
 /// One chat with one agent: the content of a tab.
 struct Conversation {
+    id: ConversationId,
     session: AgentSession,
     input: ChatInput,
     profile_id: String,
@@ -59,10 +69,11 @@ struct Conversation {
 
 impl Conversation {
     /// A fresh conversation. Skips the setup screen when the user has completed it before.
-    fn new(settings: &AgentSettings, auto_approve: bool) -> Self {
+    fn new(id: ConversationId, settings: &AgentSettings, auto_approve: bool) -> Self {
         let mut session = AgentSession::default();
         session.set_auto_approve(auto_approve);
         Self {
+            id,
             session,
             input: ChatInput::default(),
             profile_id: settings.profile_id.clone(),
@@ -234,44 +245,28 @@ impl Conversation {
     }
 }
 
-/// A button the host adds to the right end of the tab bar, for an action of its own.
+/// What the tab bar asked for this frame: the "+" button, the options menu, or the back button.
 ///
-/// Drawn as an orange badge rather than as one of the panel's own icon buttons: a host adds one
-/// for something the panel does not do, which is rarely something every user should see.
-/// Clicks come back from [`AgentPanel::host_button_clicked`]; the panel itself does nothing
-/// with them.
-#[derive(Clone)]
-pub struct HostButton {
-    /// Shown on the button. A word or two: the tab bar is narrow.
-    ///
-    /// Plain text, because the panel renders it as a badge in its own warning colors: anything a
-    /// host styled here would be overridden on the way in.
-    pub label: String,
-
-    /// Shown on hover. Say who the button is for, and what clicking it starts.
-    pub tooltip: egui::WidgetText,
-}
-
-/// What the buttons at the right end of the tab bar asked for.
+/// Variants with a [`ConversationId`] act on that conversation.
 #[derive(Clone, Copy)]
-enum TabAction {
-    OpenSetup,
-    BackToChat,
-    Restart,
+enum TabBarAction {
+    NewConversation,
+    OpenSetup(ConversationId),
+    BackToChat(ConversationId),
+    Restart(ConversationId),
+    SendFeedback,
+    SelfImprove,
 }
 
 /// Tabs only: no dragging tabs into splits, closable tabs, "+" for a new conversation,
-/// and the active conversation's setup/restart buttons at the right end of the bar.
+/// and the options menu at the right end of the bar.
 struct TabsBehavior<'a> {
     settings: &'a mut AgentSettings,
     context: &'a SessionContext,
     agents: &'a mut Vec<AgentEntry>,
-    host_button: Option<&'a HostButton>,
+    self_improve_available: bool,
     feedback_enabled: bool,
-    add_requested: bool,
-    host_button_clicked: bool,
-    feedback_requested: bool,
-    tab_action: Option<(TileId, TabAction)>,
+    action: Option<TabBarAction>,
 }
 
 impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
@@ -323,7 +318,7 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
             .on_hover_text(tooltip)
             .clicked()
         {
-            self.add_requested = true;
+            self.action = Some(TabBarAction::NewConversation);
         }
     }
 
@@ -342,47 +337,27 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
             return;
         };
         let has_agent = *conversation.session.phase() != Phase::Idle;
+        let in_chat = conversation.screen == Screen::Chat;
 
         ui.add_space(TAB_BAR_BUTTON_SPACING);
-        if let Some(button) = self.host_button
-            && host_button_ui(ui, button).clicked()
-        {
-            self.host_button_clicked = true;
+        let menu = OptionsMenu {
+            conversation: conversation.id,
+            in_chat,
+            feedback: self.feedback_enabled && in_chat && conversation.session.has_finished_turn(),
+            self_improve: self.self_improve_available,
+        };
+        if let Some(action) = menu.ui(ui) {
+            self.action = Some(action);
         }
-        if self.feedback_enabled
-            && conversation.screen == Screen::Chat
-            && conversation.session.has_finished_turn()
+
+        if !in_chat
+            && has_agent
             && ui
-                .add(re_ui::ReButton::new("Feedback").ghost().small())
-                .on_hover_text("Tell us how the agent did in this conversation")
+                .small_icon_button(&icons::CLOSE, "Back to the conversation")
+                .on_hover_text("Back to the conversation")
                 .clicked()
         {
-            self.feedback_requested = true;
-        }
-        if conversation.screen == Screen::Setup {
-            if has_agent
-                && ui
-                    .small_icon_button(&icons::CLOSE, "Back to the conversation")
-                    .on_hover_text("Back to the conversation")
-                    .clicked()
-            {
-                self.tab_action = Some((active, TabAction::BackToChat));
-            }
-        } else {
-            if ui
-                .small_icon_button(&icons::SETTINGS, "Agent setup")
-                .on_hover_text("Agent setup")
-                .clicked()
-            {
-                self.tab_action = Some((active, TabAction::OpenSetup));
-            }
-            if ui
-                .small_icon_button(&icons::RESET, "New session (restarts the agent)")
-                .on_hover_text("New session (restarts the agent)")
-                .clicked()
-            {
-                self.tab_action = Some((active, TabAction::Restart));
-            }
+            self.action = Some(TabBarAction::BackToChat(conversation.id));
         }
     }
 
@@ -453,15 +428,88 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
     }
 }
 
-/// The host's own tab-bar button, in the warning colors the viewer marks debug-only UI with.
-fn host_button_ui(ui: &mut egui::Ui, button: &HostButton) -> egui::Response {
-    let tokens = ui.tokens();
-    let label = egui::RichText::new(format!(" {} ", button.label))
-        .small()
-        .color(tokens.alert_warning.icon)
-        .background_color(tokens.alert_warning.fill);
-    ui.add(re_ui::ReButton::new(label).ghost().small())
-        .on_hover_text(button.tooltip.clone())
+/// The "…" menu at the right end of the tab bar, with the actions for the active conversation.
+struct OptionsMenu {
+    /// The active conversation, which the menu acts on.
+    conversation: ConversationId,
+
+    /// Agent setup and restart only make sense from the chat.
+    in_chat: bool,
+
+    /// See [`AgentPanel::set_feedback_enabled`].
+    feedback: bool,
+
+    /// See [`AgentPanel::set_self_improve_available`].
+    self_improve: bool,
+}
+
+impl OptionsMenu {
+    fn ui(self, ui: &mut egui::Ui) -> Option<TabBarAction> {
+        let button = ui.small_icon_button_widget(&icons::MORE, "More options");
+        let menu = egui::containers::menu::MenuButton::from_button(button)
+            .config(egui::containers::menu::MenuConfig::new().style(re_ui::menu::menu_style()));
+        let (_, inner) = menu.ui(ui, |ui| {
+            let action = self.items_ui(ui);
+            // The menu only closes by itself on a pointer click, not on keyboard activation.
+            if action.is_some() {
+                ui.close();
+            }
+            action
+        });
+        inner?.inner
+    }
+
+    fn items_ui(&self, ui: &mut egui::Ui) -> Option<TabBarAction> {
+        let &Self {
+            conversation,
+            in_chat,
+            feedback,
+            self_improve,
+        } = self;
+
+        let new_conversation = egui::Button::new("New conversation")
+            .shortcut_text(re_ui::format_shortcut(ui.ctx(), &NEW_CONVERSATION_SHORTCUT));
+        if ui.add(new_conversation).clicked() {
+            return Some(TabBarAction::NewConversation);
+        }
+        if in_chat {
+            if ui.button("Agent setup…").clicked() {
+                return Some(TabBarAction::OpenSetup(conversation));
+            }
+            if ui
+                .button("Clear session and restart agent")
+                .on_hover_text("Starts a new session, without the conversation so far")
+                .clicked()
+            {
+                return Some(TabBarAction::Restart(conversation));
+            }
+        }
+        if feedback || self_improve {
+            ui.separator();
+        }
+        if feedback
+            && ui
+                .button("Send feedback…")
+                .on_hover_text("Tell us how the agent did in this conversation")
+                .clicked()
+        {
+            return Some(TabBarAction::SendFeedback);
+        }
+        if self_improve {
+            let badge = egui::RichText::new(" dev ")
+                .small()
+                .color(ui.tokens().alert_warning.icon)
+                .background_color(ui.tokens().alert_warning.fill);
+            if ui
+                .add(egui::Button::new("Self-improve").shortcut_text(badge))
+                .on_hover_text(SELF_IMPROVE_TOOLTIP)
+                .clicked()
+            {
+                return Some(TabBarAction::SelfImprove);
+            }
+        }
+        None
+    }
 }
 
 /// The complete agent UI: a tab per conversation. Owns the sessions and the shared settings.
@@ -472,17 +520,20 @@ pub struct AgentPanel {
     tree: egui_tiles::Tree<Conversation>,
     auto_approve: bool,
 
-    /// Set by the host; drawn in the tab bar.
-    host_button: Option<HostButton>,
+    /// Set by the host. Shows "Self-improve" in the options menu.
+    self_improve_available: bool,
 
-    /// Whether [`Self::host_button`] was clicked during the last [`Self::ui`].
-    host_button_clicked: bool,
+    /// Whether "Self-improve" was picked during the last [`Self::ui`].
+    self_improve_requested: bool,
 
-    /// Set by the host. Shows the feedback button in the tab bar.
+    /// Set by the host. Shows "Send feedback…" in the options menu.
     feedback_enabled: bool,
 
-    /// Whether the feedback button was clicked during the last [`Self::ui`].
+    /// Whether "Send feedback…" was picked during the last [`Self::ui`].
     feedback_requested: bool,
+
+    /// Given to the next conversation that is opened.
+    next_conversation_id: ConversationId,
 }
 
 impl AgentPanel {
@@ -501,17 +552,18 @@ impl AgentPanel {
             settings.profile_id = agent.profile.id.clone();
         }
 
-        let first = Conversation::new(&settings, false);
+        let first = Conversation::new(ConversationId(0), &settings, false);
         Self {
             settings,
             context: SessionContext::default(),
             agents,
             tree: new_tree(first),
             auto_approve: false,
-            host_button: None,
-            host_button_clicked: false,
+            self_improve_available: false,
+            self_improve_requested: false,
             feedback_enabled: false,
             feedback_requested: false,
+            next_conversation_id: ConversationId(1),
         }
     }
 
@@ -520,23 +572,26 @@ impl AgentPanel {
         self.context = context;
     }
 
-    /// Shows an extra button in the tab bar. `None` removes it.
-    pub fn set_host_button(&mut self, button: Option<HostButton>) {
-        self.host_button = button;
+    /// Shows "Self-improve" in the options menu, marked as a developer feature. Off by default.
+    ///
+    /// Only for Rerun's own development builds: the host acts on [`Self::self_improve_requested`]
+    /// by starting a side conversation that reviews this one.
+    pub fn set_self_improve_available(&mut self, available: bool) {
+        self.self_improve_available = available;
     }
 
-    /// Whether the host's own tab-bar button was clicked during the last [`Self::ui`].
-    pub fn host_button_clicked(&self) -> bool {
-        self.host_button_clicked
+    /// Whether "Self-improve" was picked during the last [`Self::ui`].
+    pub fn self_improve_requested(&self) -> bool {
+        self.self_improve_requested
     }
 
-    /// Shows a feedback button in the tab bar while the active conversation is in chat
+    /// Shows "Send feedback…" in the options menu while the active conversation is in chat
     /// and has a finished turn. Off by default.
     pub fn set_feedback_enabled(&mut self, enabled: bool) {
         self.feedback_enabled = enabled;
     }
 
-    /// Whether the feedback button was clicked during the last [`Self::ui`].
+    /// Whether "Send feedback…" was picked during the last [`Self::ui`].
     ///
     /// The feedback is for the conversation of [`Self::session`].
     pub fn feedback_requested(&self) -> bool {
@@ -669,7 +724,11 @@ impl AgentPanel {
 
     /// Opens a new conversation tab and makes it active.
     pub fn new_conversation(&mut self) {
-        let conversation = Conversation::new(&self.settings, self.auto_approve);
+        let conversation = Conversation::new(
+            self.allocate_conversation_id(),
+            &self.settings,
+            self.auto_approve,
+        );
         self.insert_conversation(conversation);
     }
 
@@ -683,12 +742,22 @@ impl AgentPanel {
         context: SessionContext,
         opening_prompt: impl Into<String>,
     ) {
-        let mut conversation = Conversation::new(&self.settings, self.auto_approve);
+        let mut conversation = Conversation::new(
+            self.allocate_conversation_id(),
+            &self.settings,
+            self.auto_approve,
+        );
         conversation.context = Some(context);
         conversation
             .pending_prompts
             .push_back(Prompt::from(opening_prompt.into()));
         self.insert_conversation(conversation);
+    }
+
+    fn allocate_conversation_id(&mut self) -> ConversationId {
+        let id = self.next_conversation_id;
+        self.next_conversation_id = ConversationId(id.0 + 1);
+        id
     }
 
     /// Adds `conversation` as a tab and makes it active.
@@ -731,35 +800,35 @@ impl AgentPanel {
             settings: &mut self.settings,
             context: &self.context,
             agents: &mut self.agents,
-            host_button: self.host_button.as_ref(),
+            self_improve_available: self.self_improve_available,
             feedback_enabled: self.feedback_enabled,
-            add_requested: false,
-            host_button_clicked: false,
-            feedback_requested: false,
-            tab_action: None,
+            action: None,
         };
         self.tree.ui(&mut behavior, ui);
         let panel_rect = ui.min_rect();
-        let TabsBehavior {
-            add_requested,
-            host_button_clicked,
-            feedback_requested,
-            tab_action,
-            ..
-        } = behavior;
-        self.host_button_clicked = host_button_clicked;
-        self.feedback_requested = feedback_requested;
-
-        if let Some((tile_id, action)) = tab_action
-            && let Some(Tile::Pane(conversation)) = self.tree.tiles.get_mut(tile_id)
-        {
-            match action {
-                TabAction::OpenSetup => conversation.screen = Screen::Setup,
-                TabAction::BackToChat => conversation.screen = Screen::Chat,
-                TabAction::Restart => {
+        self.self_improve_requested = false;
+        self.feedback_requested = false;
+        let mut add_requested = false;
+        match behavior.action {
+            Some(TabBarAction::NewConversation) => add_requested = true,
+            Some(TabBarAction::OpenSetup(id)) => {
+                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
+                    conversation.screen = Screen::Setup;
+                }
+            }
+            Some(TabBarAction::BackToChat(id)) => {
+                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
+                    conversation.screen = Screen::Chat;
+                }
+            }
+            Some(TabBarAction::Restart(id)) => {
+                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
                     conversation.start(ui.ctx(), &mut self.settings, &self.context, &self.agents);
                 }
             }
+            Some(TabBarAction::SendFeedback) => self.feedback_requested = true,
+            Some(TabBarAction::SelfImprove) => self.self_improve_requested = true,
+            None => {}
         }
 
         let has_conversations = self.tree.tiles.tiles().any(|tile| tile.is_pane());
@@ -796,6 +865,13 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
 
 fn new_tree(first: Conversation) -> egui_tiles::Tree<Conversation> {
     egui_tiles::Tree::new_tabs(egui::Id::unique("agent_conversations"), vec![first])
+}
+
+fn conversation_mut(
+    tree: &mut egui_tiles::Tree<Conversation>,
+    id: ConversationId,
+) -> Option<&mut Conversation> {
+    conversations_mut(tree).find(|conversation| conversation.id == id)
 }
 
 fn conversations_mut(

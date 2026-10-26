@@ -1,4 +1,4 @@
-//! The feedback button in the tab bar.
+//! "Send feedback…" in the options menu.
 
 use std::path::PathBuf;
 
@@ -66,13 +66,21 @@ fn harness(panel: AgentPanel) -> egui_kittest::Harness<'static, AgentPanel> {
     harness
 }
 
+const FEEDBACK_LABEL: &str = "Send feedback…";
+
+fn open_menu(harness: &mut egui_kittest::Harness<'static, AgentPanel>) {
+    harness.get_by_label("More options").click();
+    harness.run_steps(2);
+}
+
 #[test]
 fn the_feedback_click_is_reported_only_in_the_frame_it_happened() {
     let mut harness = harness(panel(true));
+    open_menu(&mut harness);
     assert!(!harness.state().feedback_requested());
     harness.snapshot("feedback_button");
 
-    harness.get_by_label("Feedback").click();
+    harness.get_by_label(FEEDBACK_LABEL).click();
     harness.run_steps(1);
     assert!(harness.state().feedback_requested());
 
@@ -87,12 +95,14 @@ fn there_is_no_feedback_button_while_the_turn_runs() {
         .session_mut()
         .expect("one conversation")
         .begin_test_turn();
-    let harness = harness(panel);
-    assert!(harness.query_by_label("Feedback").is_none());
+    let mut harness = harness(panel);
+    open_menu(&mut harness);
+    assert!(harness.query_by_label(FEEDBACK_LABEL).is_none());
 }
 
 #[test]
 fn feedback_is_off_unless_the_host_enables_it() {
-    let harness = harness(panel(false));
-    assert!(harness.query_by_label("Feedback").is_none());
+    let mut harness = harness(panel(false));
+    open_menu(&mut harness);
+    assert!(harness.query_by_label(FEEDBACK_LABEL).is_none());
 }

@@ -12,4 +12,4 @@ pub use re_agent::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnOutcome, TurnReport, acp,
     find_executable, message_text, truncate_bytes,
 };
-pub use ui::{AgentPanel, HostButton, RECOMMENDED_WIDTH};
+pub use ui::{AgentPanel, RECOMMENDED_WIDTH};
