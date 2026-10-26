@@ -167,6 +167,10 @@ impl Conversation {
                 .preferred_models
                 .insert(self.profile_id.clone(), model);
         }
+        if let Some(prompt) = self.input.example_prompt_clicked.take() {
+            self.pending_prompts.push_back(prompt.into());
+            self.input.request_focus();
+        }
         if self.input.restart_after_login_requested {
             // Restarting after login clears the transcript, so retain
             // the failed prompt and its attachments to resend once the new session is ready.

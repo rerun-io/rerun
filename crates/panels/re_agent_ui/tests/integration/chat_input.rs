@@ -264,26 +264,43 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     assert!(input.accesskit_node().is_focused());
 }
 
+/// An example prompt goes straight to the agent, leaving what was typed alone.
 #[test]
-fn clicking_an_example_prompt_puts_it_in_the_input() {
+fn clicking_an_example_prompt_sends_it() {
+    let mut panel = ready_panel();
+    // Busy, so the prompt waits in the session's queue, where the test can see it.
+    panel
+        .session_mut()
+        .expect("one conversation")
+        .begin_test_turn();
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
                 panel.ui(ui);
             },
-            ready_panel(),
+            panel,
         );
+    harness.run_steps(2);
+    let input = harness.get_by_role(Role::MultilineTextInput);
+    input.focus();
+    input.type_text("draft");
     harness.run_steps(2);
 
     harness
         .get_by_label("Set up a blueprint for this recording")
         .click();
-    harness.run_steps(2);
+    harness.run_steps(3);
 
-    let input = harness.get_by_role(Role::MultilineTextInput);
+    let session = harness.state().session().expect("one conversation");
     assert_eq!(
-        input.accesskit_node().value(),
-        Some("Set up a blueprint for this recording".into())
+        session
+            .queued_prompts()
+            .iter()
+            .map(|prompt| prompt.text.as_str())
+            .collect::<Vec<_>>(),
+        ["Set up a blueprint for this recording"]
     );
+    let input = harness.get_by_role(Role::MultilineTextInput);
+    assert_eq!(input.accesskit_node().value(), Some("draft".into()));
     assert!(input.accesskit_node().is_focused());
 }

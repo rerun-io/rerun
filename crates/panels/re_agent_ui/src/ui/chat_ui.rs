@@ -36,6 +36,9 @@ const EXAMPLE_PROMPTS: [&str; 3] = [
 pub struct ChatInput {
     pub restart_after_login_requested: bool,
 
+    /// An example prompt the user clicked, to be sent the way a host prompt is.
+    pub example_prompt_clicked: Option<String>,
+
     /// The prompt being composed.
     pub text: String,
     focus: bool,
@@ -219,7 +222,7 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
     for prompt in EXAMPLE_PROMPTS {
         if ui.add(ReButton::new(prompt).outlined().small()).clicked() {
-            move_into_input(ui, input, prompt.into());
+            input.example_prompt_clicked = Some(prompt.to_owned());
         }
     }
 }
