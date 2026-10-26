@@ -38,6 +38,7 @@ image = { workspace = true, default-features = false, features = ["png"] }
 jiff.workspace = true
 pulldown-cmark.workspace = true
 serde_json.workspace = true
+web-time.workspace = true
 
 [dev-dependencies]
 re_agent = { workspace = true, features = ["testing"] }

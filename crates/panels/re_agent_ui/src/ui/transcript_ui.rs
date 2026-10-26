@@ -1,7 +1,8 @@
 use egui::RichText;
-use re_agent::acp::schema::v1::{Plan, PlanEntryStatus};
+use re_agent::acp::schema::v1::{Plan, PlanEntryStatus, ToolCallStatus};
 use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
 use re_ui::{ReButton, UiExt as _, icons};
+use web_time::SystemTime;
 
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
 use re_agent::{
@@ -11,59 +12,40 @@ use re_agent::{
 
 /// Each ended turn with an agent answer gets a footer that offers to copy that answer.
 ///
+/// In an ended turn, consecutive tool calls fold into one row.
+///
 /// The copied text is the last agent message of the turn with non-blank text, not the whole turn.
 /// The last turn counts as ended only when no turn is in progress.
 pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: bool) {
     let transcript = session.transcript();
     ui.spacing_mut().item_spacing.y = 10.0;
 
-    let mut turn_top = None;
-    let mut last_answer: Option<(String, std::time::SystemTime)> = None;
-    for (index, entry) in transcript.items.iter().enumerate() {
-        match &entry.item {
-            TranscriptItem::User(_) => {
-                turn_top = Some(ui.cursor().top());
-                last_answer = None;
-            }
-            TranscriptItem::Agent { content, .. } => {
-                let text = message_text(content);
-                if !text.trim().is_empty() {
-                    last_answer = Some((text, entry.created_at));
-                }
-            }
-            TranscriptItem::McpStartupFailure(_)
-            | TranscriptItem::Note { .. }
-            | TranscriptItem::ToolCall(_) => {}
-        }
+    let transcript_id = ui.make_persistent_id("transcript");
+    let items = &transcript.items;
+    let last_user_index = items
+        .iter()
+        .rposition(|entry| matches!(entry.item, TranscriptItem::User(_)));
 
-        let scope = ui.push_id(index, |ui| match &entry.item {
-            TranscriptItem::User(prompt) => {
-                Some(user_message_ui(ui, prompt, ui.make_persistent_id("user")))
-            }
-            TranscriptItem::Agent { content, thoughts } => {
-                if show_thoughts && !thoughts.is_empty() {
-                    thoughts_ui(ui, thoughts);
-                }
-                for (block_index, block) in content.iter().enumerate() {
-                    content_block_ui(ui, block, ui.make_persistent_id(block_index));
-                }
-                None
-            }
-            TranscriptItem::ToolCall(call) => {
-                tool_call_ui(ui, call);
-                None
-            }
-            TranscriptItem::McpStartupFailure(failure) => {
-                mcp_startup_failure_ui(ui, failure);
-                None
-            }
-            TranscriptItem::Note { text, is_error } => {
-                if *is_error {
-                    ui.error_label(text.clone());
-                } else {
-                    ui.weak(text);
-                }
-                None
+    let mut turn = TurnState::default();
+    let mut index = 0;
+    while let Some(entry) = items.get(index) {
+        turn.observe(ui, entry);
+
+        let turn_ended = last_user_index.is_some_and(|last_user| index < last_user)
+            || !session.turn_in_progress();
+        let folded_calls = if turn_ended {
+            tool_call_run_len(items, index)
+        } else {
+            0
+        };
+        let next_index = index + folded_calls.max(1);
+
+        let scope = ui.push_id(index, |ui| {
+            if 2 <= folded_calls {
+                let run = items.get(index..next_index).unwrap_or_default();
+                Some(tool_call_group_ui(ui, run, transcript_id))
+            } else {
+                entry_ui(ui, entry, show_thoughts, transcript_id)
             }
         });
         let rect = scope.inner.unwrap_or(scope.response.rect);
@@ -71,30 +53,153 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             timestamp_overlay(ui, rect, entry);
         }
 
-        let turn_ends_here = match transcript.items.get(index + 1) {
+        let turn_ends_here = match items.get(next_index) {
             Some(next) => matches!(next.item, TranscriptItem::User(_)),
             None => !session.turn_in_progress(),
         };
         if turn_ends_here
-            && let (Some(turn_top), Some((answer, answered_at))) = (turn_top, &last_answer)
+            && let (Some(turn_top), Some((answer, answered_at))) = (turn.top, &turn.last_answer)
         {
             ui.push_id(("turn_footer", index), |ui| {
                 turn_footer_ui(ui, turn_top, answer, *answered_at);
             });
         }
+
+        index = next_index;
     }
+}
+
+/// What the turn footer needs to know about the turn shown so far.
+#[derive(Default)]
+struct TurnState {
+    /// Where the turn's user message starts, in the same space as `ui.cursor()`.
+    top: Option<f32>,
+
+    /// The last agent message with non-blank text, and when it was written.
+    last_answer: Option<(String, SystemTime)>,
+}
+
+impl TurnState {
+    /// Call for each entry before showing it.
+    fn observe(&mut self, ui: &egui::Ui, entry: &TranscriptEntry) {
+        match &entry.item {
+            TranscriptItem::User(_) => {
+                self.top = Some(ui.cursor().top());
+                self.last_answer = None;
+            }
+            TranscriptItem::Agent { content, .. } => {
+                let text = message_text(content);
+                if !text.trim().is_empty() {
+                    self.last_answer = Some((text, entry.created_at));
+                }
+            }
+            TranscriptItem::McpStartupFailure(_)
+            | TranscriptItem::Note { .. }
+            | TranscriptItem::ToolCall(_) => {}
+        }
+    }
+}
+
+/// How many tool calls follow each other from `index` on.
+fn tool_call_run_len(items: &[TranscriptEntry], index: usize) -> usize {
+    items
+        .iter()
+        .skip(index)
+        .take_while(|entry| matches!(entry.item, TranscriptItem::ToolCall(_)))
+        .count()
+}
+
+/// One transcript entry. Returns the rect to show its hover timestamp for, if it is not the
+/// whole entry.
+fn entry_ui(
+    ui: &mut egui::Ui,
+    entry: &TranscriptEntry,
+    show_thoughts: bool,
+    transcript_id: egui::Id,
+) -> Option<egui::Rect> {
+    match &entry.item {
+        TranscriptItem::User(prompt) => {
+            Some(user_message_ui(ui, prompt, ui.make_persistent_id("user")))
+        }
+        TranscriptItem::Agent { content, thoughts } => {
+            if show_thoughts && !thoughts.is_empty() {
+                thoughts_ui(ui, thoughts);
+            }
+            for (block_index, block) in content.iter().enumerate() {
+                content_block_ui(ui, block, ui.make_persistent_id(block_index));
+            }
+            None
+        }
+        TranscriptItem::ToolCall(call) => {
+            tool_call_ui(ui, call, transcript_id.with(&call.id.0));
+            None
+        }
+        TranscriptItem::McpStartupFailure(failure) => {
+            mcp_startup_failure_ui(ui, failure);
+            None
+        }
+        TranscriptItem::Note { text, is_error } => {
+            if *is_error {
+                ui.error_label(text.clone());
+            } else {
+                ui.weak(text);
+            }
+            None
+        }
+    }
+}
+
+/// Consecutive tool calls of an ended turn, folded into one collapsed header.
+///
+/// The header is red if any of the calls failed.
+/// Returns the rect of the header, which shows the time of the first call on hover.
+fn tool_call_group_ui(
+    ui: &mut egui::Ui,
+    run: &[TranscriptEntry],
+    transcript_id: egui::Id,
+) -> egui::Rect {
+    let calls: Vec<_> = run
+        .iter()
+        .filter_map(|entry| match &entry.item {
+            TranscriptItem::ToolCall(call) => Some((entry, call)),
+            _ => None,
+        })
+        .collect();
+    let any_failed = calls
+        .iter()
+        .any(|(_, call)| call.status == ToolCallStatus::Failed);
+
+    let tokens = ui.tokens();
+    let color = if any_failed {
+        tokens.error_fg_color
+    } else {
+        tokens.text_subdued
+    };
+    // Keyed by its first call, not its position, so it never inherits another group's open state.
+    let first_call_id = calls.first().map(|(_, call)| &call.id.0);
+    egui::CollapsingHeader::new(RichText::new(format!("Used {} tools", calls.len())).color(color))
+        .id_salt(transcript_id.with(("tool_call_group", first_call_id)))
+        .default_open(false)
+        .show(ui, |ui| {
+            for (entry, call) in &calls {
+                let rect = ui
+                    .scope(|ui| tool_call_ui(ui, call, transcript_id.with(&call.id.0)))
+                    .response
+                    .rect;
+                if ui.rect_contains_pointer(rect) {
+                    timestamp_overlay(ui, rect, entry);
+                }
+            }
+        })
+        .header_response
+        .rect
 }
 
 /// The copy button and the answer time show only while the pointer is over the turn, from `turn_top` down to the footer itself.
 ///
 /// `turn_top` is a y position in the same space as `ui.cursor()`.
 /// The footer takes its space even when the button is hidden, so the transcript does not shift on hover.
-fn turn_footer_ui(
-    ui: &mut egui::Ui,
-    turn_top: f32,
-    answer: &str,
-    answered_at: std::time::SystemTime,
-) {
+fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: SystemTime) {
     let turn_bottom = ui.cursor().top() + re_ui::Size::Small.height();
     let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
     let hovered = ui.rect_contains_pointer(turn_rect);
@@ -197,7 +302,7 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
 }
 
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.
-fn format_timestamp(time: std::time::SystemTime) -> String {
+fn format_timestamp(time: SystemTime) -> String {
     let Ok(timestamp) = jiff::Timestamp::try_from(time) else {
         return "unknown time".to_owned();
     };

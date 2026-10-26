@@ -246,7 +246,85 @@ fn chat_conversation() {
     snapshot("chat_conversation", panel);
 }
 
-/// Hovering an entry shows when it was created, at the right edge of the panel.
+/// Once a turn has ended, its tool calls fold into one row.
+#[test]
+fn chat_finished_turn() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+    session
+        .transcript_mut()
+        .push_user("Help me detect missing frames".into());
+
+    let updates = [
+        SessionUpdate::AgentMessageChunk(ContentChunk::new(text(
+            "I'll start by looking at what's in this recording.",
+        ))),
+        SessionUpdate::ToolCall(
+            ToolCall::new("schema-1", "Read recording schema").status(ToolCallStatus::Completed),
+        ),
+        SessionUpdate::ToolCall(
+            ToolCall::new("blueprint-1", "Check blueprint").status(ToolCallStatus::Completed),
+        ),
+        SessionUpdate::ToolCall(
+            ToolCall::new("run-1", "Run detect_gaps.py")
+                .kind(ToolKind::Execute)
+                .status(ToolCallStatus::Completed),
+        ),
+        SessionUpdate::AgentMessageChunk(ContentChunk::new(text(
+            "Found 3 gaps in `/camera/wrist`. The other cameras are complete.",
+        ))),
+    ];
+    for update in updates {
+        session.handle_event(AgentEvent::Update(update));
+    }
+
+    snapshot("chat_finished_turn", panel);
+}
+
+/// Tool calls fold once the turn has ended, failed or not, and expand again on click.
+#[test]
+fn tool_calls_fold_when_turn_ended() {
+    for (second_status, turn_running, folded) in [
+        (ToolCallStatus::Completed, false, true),
+        (ToolCallStatus::Failed, false, true),
+        (ToolCallStatus::Completed, true, false),
+    ] {
+        let mut panel = panel();
+        panel.show_chat();
+        let session = panel.session_mut().expect("one conversation");
+        open_session(session);
+        session
+            .transcript_mut()
+            .push_user("Check the recording".into());
+        if turn_running {
+            session.begin_test_turn();
+        }
+        for call in [
+            ToolCall::new("schema-1", "Read recording schema").status(ToolCallStatus::Completed),
+            ToolCall::new("blueprint-1", "Check blueprint").status(second_status),
+        ] {
+            session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(call)));
+        }
+
+        let mut harness = harness(panel);
+        harness.run_steps(4);
+        assert_eq!(
+            harness.query_by_label("Check blueprint").is_none(),
+            folded,
+            "{second_status:?}, turn running: {turn_running}",
+        );
+
+        if folded {
+            harness.get_by_label("Used 2 tools").click();
+            harness.run_steps(2);
+            harness.get_by_label("Check blueprint");
+        }
+    }
+}
+
+/// Hovering an entry shows when it was created.
 #[test]
 fn chat_hover_timestamp() {
     crate::use_utc();

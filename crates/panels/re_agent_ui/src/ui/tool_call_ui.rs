@@ -7,8 +7,8 @@ use re_agent::ToolCallState;
 /// A collapsible row for one tool call: status, kind, title, and the details underneath.
 ///
 /// Only running and failed calls show a status icon, so the transcript stays quiet.
-pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState) {
-    let id = ui.make_persistent_id(&call.id.0);
+/// `id` keeps the open state, so it must not change when the row moves into a group.
+pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState, id: egui::Id) {
     let default_open = call.status == ToolCallStatus::Failed;
 
     let state = egui::collapsing_header::CollapsingState::load_with_default_open(
