@@ -497,7 +497,22 @@ impl AppCore {
         channel_source: &LogSource,
         store_hub: &mut StoreHub,
     ) {
-        match channel_source.open_behavior() {
+        let mut open_behavior = channel_source.open_behavior();
+        if open_behavior == RecordingOpenBehavior::OpenAndSelect
+            && store_id.kind() == StoreKind::Recording
+            && matches!(channel_source, LogSource::Sdk | LogSource::MessageProxy(_))
+            && !self.app_options().switch_to_streamed_recordings
+            && self
+                .state
+                .navigation
+                .current()
+                .recording_id()
+                .is_some_and(|id| id != store_id && store_hub.entity_db(id).is_some())
+        {
+            open_behavior = RecordingOpenBehavior::Open;
+        }
+
+        match open_behavior {
             RecordingOpenBehavior::Background => {
                 // Background streams (previews) skip the blueprint download.
                 if store_id.kind() == StoreKind::Recording {
