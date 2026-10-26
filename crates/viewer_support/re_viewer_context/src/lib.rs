@@ -147,10 +147,10 @@ pub use self::utils::{
 };
 pub use self::view::{
     ActivePreview, BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult,
-    IdentifiedViewSystem, MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities,
-    PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
-    SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass,
-    ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
+    IdentifiedViewSystem, MAX_VIEWS_SPAWNED, NoopVisualizer, OptionalViewEntityHighlight,
+    PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
+    SelectionSection, SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput,
+    ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
     ViewClassRegistryError, ViewClassUiOutput, ViewContext, ViewContextCollection,
     ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
     ViewOutlineMasks, ViewQuery, ViewSelectionUi, ViewSpawnHeuristics, ViewState, ViewStateExt,

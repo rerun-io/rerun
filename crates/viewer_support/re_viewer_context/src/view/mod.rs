@@ -7,6 +7,7 @@
 mod diagnostic;
 mod highlights;
 mod named_system;
+mod noop_visualizer;
 mod spawn_heuristics;
 mod system_execution_output;
 mod view_class;
@@ -27,6 +28,7 @@ pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
+pub use noop_visualizer::NoopVisualizer;
 pub use spawn_heuristics::{MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,
