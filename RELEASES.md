@@ -180,8 +180,9 @@ For a final release, the same workflow also does the post-release chores:
 - Announces the release on Discord, with a link and the first paragraph of the release highlights.
 - Removes `consider-patch` (rerun-io/rerun) and `consider-oss-patch` (rerun-io/reality) from the PRs that shipped in this release.
 - Waits for the website to redeploy, then runs [`scripts/ci/verify_release.py`](./scripts/ci/verify_release.py), which fails the job if anything is missing and writes its summary to the workflow run.
-  It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, `docs-latest`, and the gradio-rerun-viewer release.
+  It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, the web viewer embedded by `rerun-io/landing`, `docs-latest`, and the gradio-rerun-viewer release.
   conda-forge often lags behind by hours, so a missing conda-forge version is only a warning.
+  The same goes for `rerun-io/landing`: Dependabot opens its `@rerun-io/web-viewer` bump PR within a day, and someone must merge it by hand.
 
 Follow up on anything the check reports as failed.
 The `#ship-room` Slack announcement is done by the release captain, or the release agent via the `oss-release` skill.
@@ -198,6 +199,8 @@ This happens in our internal monorepo, which `main` is exported from, not by mer
 
 - For a minor or patch release, the release branch's commits are cherry-picked onto `main`, except the release bot's version bumps and fixes that are already on `main`.
   `main` then gets bumped to the next `-alpha.N+dev` version, and its lockfiles are refreshed.
+- For a final release, close the release PR without merging once every post-release chore is verified done, including the merge-back and the `rerun-io/landing` web viewer bump.
+  A closed release PR marks the release as done.
 - For an alpha release, close the release PR without merging, whether or not the release job succeeded.
   Its version bump commit points documentation links at the alpha version, which must not land on `main`.
   Cherry-pick any fixes made on the release branch into `reality` instead, but not the version bump commit.
