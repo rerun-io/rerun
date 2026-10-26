@@ -39,7 +39,7 @@ pub struct ViewerAgentPanel {
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
 
-    /// Prompts waiting for the first conversation to be created — for example, prompts from
+    /// Prompts waiting for the agent panel to be created — for example, prompts from
     /// the command palette submitted before the agent panel has been opened.
     ///
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
@@ -193,10 +193,9 @@ impl ViewerAgentPanel {
             .panel
             .as_ref()
             .filter(|panel| panel.feedback_requested())
-            && let Some(session) = panel.session()
         {
             let config = panel.launch_config(&SessionContext::default()).ok();
-            self.feedback.open(session, config);
+            self.feedback.open(panel.session(), config);
         }
         self.feedback.ui(ui.ctx());
 
@@ -224,14 +223,12 @@ impl ViewerAgentPanel {
         // The review preamble tells the second agent that the first one "just finished", and a
         // dump taken mid-turn is missing the answer and the tool results still to come — which
         // it can never gain, since the file is written once.
-        if panel.turn_in_progress() {
+        if panel.is_turn_in_progress() {
             re_log::warn!("Wait for the agent to finish its turn before reviewing the session");
             return;
         }
 
-        let Some(transcript) = panel.session().map(self_improve::session_dump) else {
-            return;
-        };
+        let transcript = self_improve::session_dump(panel.session());
         if transcript.trim().is_empty() {
             re_log::warn!("There is no agent session to review yet");
             return;

@@ -14,10 +14,7 @@ use crate::chat_input::ready_panel;
 /// number of frames instead.
 fn queued_panel() -> AgentPanel {
     let mut panel = ready_panel();
-    panel
-        .session_mut()
-        .expect("one conversation")
-        .begin_test_turn();
+    panel.session_mut().begin_test_turn();
     panel
 }
 
@@ -68,7 +65,7 @@ fn a_pasted_image_is_attached_to_the_next_prompt() {
         harness.query_by_label("Remove this image").is_none(),
         "the image outlived the prompt it was attached to"
     );
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     let queued = session.queued_prompts().front().expect("one queued prompt");
     assert_eq!(queued.text, "what is this?");
     assert_eq!(queued.images.len(), 1);

@@ -1155,6 +1155,11 @@ impl DesignTokens {
         egui::Margin::symmetric(8, 0)
     }
 
+    /// Radius of a small status dot, e.g. one marking unread messages or an error.
+    pub fn status_dot_radius(&self) -> f32 {
+        3.0
+    }
+
     pub fn text_to_icon_padding(&self) -> f32 {
         4.0
     }

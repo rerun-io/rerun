@@ -33,7 +33,7 @@ pub use agent_client_protocol as acp;
 
 pub use connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
 pub use error::McpStartupFailure;
-pub use profiles::{AgentEntry, AgentProfile, find_executable};
+pub use profiles::{AgentEntry, AgentProfile, AgentProfileId, find_executable};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
     PromptImage,

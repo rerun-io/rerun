@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use agent_client_protocol::schema::v1::{SessionConfigValueId, SessionModeId};
 
 use crate::connection::{LaunchConfig, McpStdioServer};
-use crate::profiles::{AgentEntry, find_executable};
+use crate::profiles::{AgentEntry, AgentProfileId, find_executable};
 
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
@@ -79,11 +79,11 @@ pub struct SessionContext {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct AgentSettings {
-    /// One of [`crate::AgentProfile::builtin`], or [`Self::CUSTOM_PROFILE_ID`].
+    /// One of [`crate::AgentProfile::builtin`], or [`AgentProfileId::CUSTOM`].
     /// Empty means "pick an installed agent and start it without asking".
-    pub profile_id: String,
+    pub profile_id: AgentProfileId,
 
-    /// Used when [`Self::profile_id`] is [`Self::CUSTOM_PROFILE_ID`].
+    /// Used when [`Self::profile_id`] is [`AgentProfileId::CUSTOM`].
     pub custom_command_line: String,
 
     /// Working directory for the agent session. Empty means the current directory.
@@ -106,7 +106,7 @@ pub struct AgentSettings {
     pub preferred_mode: Option<SessionModeId>,
 
     /// Exact model choice per agent profile; model IDs belong to the agent that offered them.
-    pub preferred_models: BTreeMap<String, SessionConfigValueId>,
+    pub preferred_models: BTreeMap<AgentProfileId, SessionConfigValueId>,
 
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
@@ -117,15 +117,13 @@ pub struct AgentSettings {
 }
 
 impl AgentSettings {
-    pub const CUSTOM_PROFILE_ID: &'static str = "custom";
-
     /// Resolves these settings into something that can be spawned.
     pub fn launch_config(
         &self,
         agents: &[AgentEntry],
         context: &SessionContext,
     ) -> Result<LaunchConfig, String> {
-        let (command, args, env) = if self.profile_id == Self::CUSTOM_PROFILE_ID {
+        let (command, args, env) = if self.profile_id == AgentProfileId::CUSTOM {
             let mut parts = shell_words::split(&self.custom_command_line)
                 .map_err(|err| format!("Invalid agent command line: {err}"))?;
             let env = take_leading_env_vars(&mut parts);
@@ -207,7 +205,7 @@ impl AgentSettings {
 impl Default for AgentSettings {
     fn default() -> Self {
         Self {
-            profile_id: String::new(),
+            profile_id: AgentProfileId::default(),
             custom_command_line: String::new(),
             cwd: String::new(),
             env_vars: String::new(),
@@ -275,13 +273,17 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{AgentSettings, SessionContext, parse_env_vars, take_leading_env_vars};
+    use agent_client_protocol::schema::v1::SessionConfigValueId;
+
+    use super::{
+        AgentProfileId, AgentSettings, SessionContext, parse_env_vars, take_leading_env_vars,
+    };
 
     #[test]
     fn the_host_picks_the_working_directory_only_as_a_default() {
         let cwd = |setting: &str, default_cwd: Option<&str>| {
             let settings = AgentSettings {
-                profile_id: AgentSettings::CUSTOM_PROFILE_ID.to_owned(),
+                profile_id: AgentProfileId::CUSTOM,
                 custom_command_line: "agent".to_owned(),
                 cwd: setting.to_owned(),
                 ..Default::default()
@@ -320,6 +322,27 @@ mod tests {
         assert!(!settings.share_redacted_prompts);
         assert_eq!(settings.preferred_mode, None);
         assert!(settings.preferred_models.is_empty());
+    }
+
+    #[test]
+    fn profile_ids_are_stored_as_plain_strings() {
+        let mut settings = AgentSettings {
+            profile_id: AgentProfileId::new("codex"),
+            ..Default::default()
+        };
+        settings.preferred_models.insert(
+            AgentProfileId::new("claude"),
+            SessionConfigValueId::new("sonnet"),
+        );
+        let Ok(json) = serde_json::to_value(&settings) else {
+            panic!("settings should serialize");
+        };
+        assert_eq!(json["profile_id"], "codex");
+        assert_eq!(json["preferred_models"]["claude"], "sonnet");
+        assert_eq!(
+            serde_json::from_value::<AgentSettings>(json).ok(),
+            Some(settings)
+        );
     }
 
     #[test]

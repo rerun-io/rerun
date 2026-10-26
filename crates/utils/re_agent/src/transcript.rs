@@ -143,6 +143,27 @@ pub enum TranscriptItem {
     },
 }
 
+impl TranscriptItem {
+    /// The prompt, if the user wrote this.
+    pub fn user_prompt(&self) -> Option<&Prompt> {
+        match self {
+            Self::User(prompt) => Some(prompt),
+            _ => None,
+        }
+    }
+
+    /// The text of an error note.
+    pub fn error_text(&self) -> Option<&str> {
+        match self {
+            Self::Note {
+                text,
+                is_error: true,
+            } => Some(text),
+            _ => None,
+        }
+    }
+}
+
 /// A transcript item plus when it first appeared.
 #[derive(Clone, Debug)]
 pub struct TranscriptEntry {

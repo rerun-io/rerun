@@ -5,7 +5,9 @@ use std::path::PathBuf;
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
 use re_agent_ui::acp::schema::v1::{SessionId, SessionMode, SessionModeState};
-use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
+use re_agent_ui::{
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
@@ -25,14 +27,16 @@ fn panel(self_improve_available: bool) -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, agents);
     panel.set_self_improve_available(self_improve_available);
     panel.show_chat();
+    // Self-improve reviews the shown conversation, so the list does not offer it.
+    panel.queue_prompt("Hello".to_owned());
 
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.handle_event(AgentEvent::Initialized {
         agent_info: None,
         capabilities: Box::default(),

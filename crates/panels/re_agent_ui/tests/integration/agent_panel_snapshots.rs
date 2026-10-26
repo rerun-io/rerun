@@ -14,8 +14,8 @@ use re_agent_ui::acp::schema::v1::{
     ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSession, AgentSettings, McpServerConfig,
-    Prompt, PromptImage, RECOMMENDED_WIDTH,
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
+    McpServerConfig, Prompt, PromptImage, RECOMMENDED_WIDTH,
 };
 
 /// As wide as a host is meant to make the panel, so the snapshots show what users see.
@@ -39,7 +39,7 @@ fn snapshot(name: &str, panel: AgentPanel) {
 
 fn settings() -> AgentSettings {
     AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         cwd: "/home/user/robot-project".to_owned(),
         mcp_servers: vec![McpServerConfig {
             name: "rerun".to_owned(),
@@ -96,13 +96,16 @@ fn open_session(session: &mut AgentSession) {
 fn clicking_the_custom_command_selects_it() {
     let mut harness = harness(panel());
     harness.run_steps(2);
-    assert_eq!(harness.state().settings().profile_id, "claude");
+    assert_eq!(
+        harness.state().settings().profile_id,
+        AgentProfileId::new("claude")
+    );
 
     harness.get_by_role(egui::Role::TextInput).click();
     harness.run_steps(2);
     assert_eq!(
         harness.state().settings().profile_id,
-        re_agent_ui::AgentSettings::CUSTOM_PROFILE_ID
+        AgentProfileId::CUSTOM
     );
 }
 
@@ -197,7 +200,7 @@ fn redacted_prompt_sharing_is_opt_in() {
 fn chat_conversation() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     let updates = [
@@ -294,7 +297,7 @@ fn chat_conversation() {
 fn chat_finished_turn() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     session
         .transcript_mut()
@@ -336,7 +339,7 @@ fn tool_calls_fold_when_turn_ended() {
     ] {
         let mut panel = panel();
         panel.show_chat();
-        let session = panel.session_mut().expect("one conversation");
+        let session = panel.session_mut();
         open_session(session);
         session
             .transcript_mut()
@@ -374,7 +377,7 @@ fn chat_hover_timestamp() {
 
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     session.transcript_mut().push_user("open a dataset".into());
     session.handle_event(AgentEvent::Update(SessionUpdate::AgentMessageChunk(
@@ -399,7 +402,7 @@ fn chat_hover_timestamp() {
     harness.try_run_realtime().ok();
     harness.snapshot("chat_hover_timestamp_one_line");
 
-    // The tab title shows the same text, so pick the message below it.
+    // The header shows the same text, so pick the message below it.
     harness
         .get_all_by_label("open a dataset")
         .max_by(|a, b| a.rect().top().total_cmp(&b.rect().top()))
@@ -422,7 +425,7 @@ fn chat_hover_timestamp_user_scrolled() {
 
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     let lines = (1..=60).map(|i| format!("Line {i}")).collect::<Vec<_>>();
     session.transcript_mut().push_user(lines.join("\n").into());
@@ -460,7 +463,7 @@ fn pasted_image() -> PromptImage {
 fn chat_pasted_image() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     session.transcript_mut().push_user(Prompt {
@@ -476,7 +479,7 @@ fn chat_pasted_image() {
 fn chat_mcp_startup_failure() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     session
         .transcript_mut()
@@ -499,7 +502,7 @@ fn chat_mcp_startup_failure() {
 fn chat_permission_request() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     session
@@ -539,7 +542,7 @@ fn chat_permission_request() {
 fn chat_agent_log() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     for (direction, line) in [
@@ -580,7 +583,7 @@ fn chat_agent_log() {
 fn chat_wide_table() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     session
@@ -605,7 +608,7 @@ fn chat_wide_table() {
 fn chat_plan_approval() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     session
@@ -653,7 +656,7 @@ fn chat_plan_approval() {
 fn chat_empty() {
     let mut panel = panel();
     panel.show_chat();
-    open_session(panel.session_mut().expect("one conversation"));
+    open_session(panel.session_mut());
 
     snapshot("chat_empty", panel);
 }
@@ -662,7 +665,7 @@ fn chat_empty() {
 fn chat_login_required() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.handle_event(AgentEvent::Status("Starting session…".to_owned()));
     session.handle_event(AgentEvent::AuthRequired {
         methods: vec![AuthMethod::Terminal(
@@ -676,11 +679,80 @@ fn chat_login_required() {
     snapshot("chat_login_required", panel);
 }
 
+/// The conversation list, with one conversation in each status.
+#[test]
+fn conversation_list() {
+    enum State {
+        NeedsInput,
+        Errored,
+        Working,
+        NewMessage,
+        NothingNew,
+    }
+
+    let mut panel = panel();
+    for (prompt, state) in [
+        ("Plot the IMU", State::NothingNew),
+        ("Make the rectangle green", State::NewMessage),
+        ("Export the wrist camera", State::Working),
+        ("Load the dataset", State::Errored),
+        ("Find failed grasps", State::NeedsInput),
+    ] {
+        panel.new_conversation();
+        panel.show_chat();
+        let session = panel.session_mut();
+        open_session(session);
+        session.transcript_mut().push_user(prompt.into());
+        match state {
+            State::NeedsInput => {
+                session.begin_test_turn();
+                session.push_test_permission_request(RequestPermissionRequest::new(
+                    SessionId::new("test-session"),
+                    ToolCallUpdate::new("exec-1", ToolCallUpdateFields::new()),
+                    vec![PermissionOption::new(
+                        "allow",
+                        "Yes",
+                        PermissionOptionKind::AllowOnce,
+                    )],
+                ));
+            }
+            State::Errored => {
+                session
+                    .transcript_mut()
+                    .push_note("The agent stopped: rate limit reached", true);
+            }
+            State::Working => session.begin_test_turn(),
+            State::NewMessage | State::NothingNew => {}
+        }
+        panel.poll_events();
+        if matches!(state, State::NewMessage) {
+            // Arrives after the user left, so it is unseen.
+            panel
+                .session_mut()
+                .handle_event(AgentEvent::Update(SessionUpdate::AgentMessageChunk(
+                    ContentChunk::new(text("Done!")),
+                )));
+        }
+    }
+    panel.new_conversation();
+    panel.show_chat();
+    open_session(panel.session_mut());
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    // Hovering shows the close button next to the status.
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "Make the rectangle green")
+        .hover();
+    harness.run_steps(4);
+    harness.snapshot("conversation_list");
+}
+
 #[test]
 fn chat_queued_prompts() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
 
     session
@@ -703,7 +775,7 @@ fn chat_queued_prompts() {
 fn chat_model_picker() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     let models = vec![
         SessionConfigSelectOption::new("default", "Default (recommended)")
@@ -734,7 +806,7 @@ fn chat_model_picker() {
 fn chat_narrow_composer() {
     let mut panel = panel();
     panel.show_chat();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     open_session(session);
     session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
         ConfigOptionUpdate::new(vec![

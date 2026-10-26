@@ -1,10 +1,10 @@
-//! Cmd-T / Ctrl-T opens another conversation tab.
+//! Cmd-T / Ctrl-T goes back to the conversation list, to start a new conversation.
 
 use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent_ui::{AgentEntry, AgentPanel, AgentProfile, AgentSettings};
+use re_agent_ui::{AgentEntry, AgentPanel, AgentProfile, AgentProfileId, AgentSettings};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
@@ -17,10 +17,13 @@ fn panel() -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
-    AgentPanel::with_agents(settings, agents)
+    let mut panel = AgentPanel::with_agents(settings, agents);
+    // A prompt makes it a conversation of its own, which the panel then shows.
+    panel.queue_prompt("Hello".to_owned());
+    panel
 }
 
 fn harness() -> egui_kittest::Harness<'static, AgentPanel> {
@@ -35,27 +38,27 @@ fn harness() -> egui_kittest::Harness<'static, AgentPanel> {
     harness
 }
 
-/// Every conversation tab has its own close button.
-fn tab_count(harness: &egui_kittest::Harness<'_, AgentPanel>) -> usize {
-    harness.query_all_by_label("Close").count()
+/// Only a conversation has a way back to the list.
+fn shows_a_conversation(harness: &egui_kittest::Harness<'_, AgentPanel>) -> bool {
+    harness.query_by_label("Back to conversations").is_some()
 }
 
 /// Focus a widget inside the panel, which is what scopes the shortcut to it.
 fn focus_panel(harness: &mut egui_kittest::Harness<'_, AgentPanel>) {
-    harness.get_by_label("New conversation").focus();
+    harness.get_by_label("More options").focus();
     harness.run_steps(2);
 }
 
 #[test]
-fn shortcut_opens_another_tab() {
+fn shortcut_shows_the_conversation_list() {
     let mut harness = harness();
     focus_panel(&mut harness);
-    assert_eq!(tab_count(&harness), 1);
+    assert!(shows_a_conversation(&harness));
 
     harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::T);
     harness.run_steps(3);
 
-    assert_eq!(tab_count(&harness), 2);
+    assert!(!shows_a_conversation(&harness));
 }
 
 /// The panel is one widget among many in its host: with the focus and the pointer elsewhere,
@@ -67,5 +70,5 @@ fn shortcut_outside_the_panel_is_ignored() {
     harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::T);
     harness.run_steps(3);
 
-    assert_eq!(tab_count(&harness), 1);
+    assert!(shows_a_conversation(&harness));
 }

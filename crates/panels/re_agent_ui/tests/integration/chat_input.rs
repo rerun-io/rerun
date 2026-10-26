@@ -10,7 +10,9 @@ use re_agent_ui::acp::schema::v1::{
     PermissionOptionKind, RequestPermissionRequest, SessionId, SessionMode, SessionModeState,
     SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
 };
-use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
+use re_agent_ui::{
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
@@ -19,7 +21,7 @@ const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 fn permission_shortcuts_require_chat_input_focus() {
     for key in [egui::Key::Enter, egui::Key::Escape] {
         let mut panel = ready_panel();
-        let session = panel.session_mut().unwrap();
+        let session = panel.session_mut();
         session.begin_test_turn();
         session.push_test_permission_request(RequestPermissionRequest::new(
             SessionId::new("test-session"),
@@ -43,13 +45,7 @@ fn permission_shortcuts_require_chat_input_focus() {
         harness.key_press(key);
         harness.run_steps(3);
         assert_eq!(
-            harness
-                .state()
-                .0
-                .session()
-                .unwrap()
-                .pending_permissions()
-                .len(),
+            harness.state().0.session().pending_permissions().len(),
             1,
             "{key:?} outside the chat must leave the permission pending",
         );
@@ -59,13 +55,7 @@ fn permission_shortcuts_require_chat_input_focus() {
         harness.key_press(key);
         harness.run_steps(3);
         assert_eq!(
-            harness
-                .state()
-                .0
-                .session()
-                .unwrap()
-                .pending_permissions()
-                .len(),
+            harness.state().0.session().pending_permissions().len(),
             0,
             "{key:?} in the chat must answer the permission",
         );
@@ -81,13 +71,13 @@ pub fn ready_panel() -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, agents);
     panel.show_chat();
 
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.handle_event(AgentEvent::Initialized {
         agent_info: None,
         capabilities: Box::default(),
@@ -187,7 +177,6 @@ fn mode_picker_requests_the_clicked_mode() {
     let mut panel = ready_panel();
     panel
         .session_mut()
-        .expect("one conversation")
         .handle_event(AgentEvent::Update(SessionUpdate::CurrentModeUpdate(
             CurrentModeUpdate::new("default"),
         )));
@@ -205,7 +194,7 @@ fn mode_picker_requests_the_clicked_mode() {
     harness.get_by_label("Accept edits").click();
     harness.run_steps(2);
 
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     assert_eq!(
         session.requested_mode().map(|id| id.0.as_ref()),
         Some("acceptEdits")
@@ -226,10 +215,7 @@ fn mode_picker_requests_the_clicked_mode() {
 #[test]
 fn enter_while_busy_queues_and_escape_takes_it_back() {
     let mut panel = ready_panel();
-    panel
-        .session_mut()
-        .expect("one conversation")
-        .begin_test_turn();
+    panel.session_mut().begin_test_turn();
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
@@ -245,7 +231,7 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     harness.key_press(egui::Key::Enter);
     harness.run_steps(2);
 
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     assert_eq!(session.queued_prompts().len(), 1);
     harness.get_by_label("also fix the tests");
     let input = harness.get_by_role(Role::MultilineTextInput);
@@ -254,7 +240,7 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     harness.key_press(egui::Key::Escape);
     harness.run_steps(3);
 
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     assert!(session.queued_prompts().is_empty());
     let input = harness.get_by_role(Role::MultilineTextInput);
     assert_eq!(
@@ -294,7 +280,7 @@ fn send_button_needs_input() {
 #[test]
 fn stop_button_takes_queued_prompts_back() {
     let mut panel = ready_panel();
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.begin_test_turn();
     assert!(session.send_prompt("also fix the tests".into()));
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
@@ -309,7 +295,7 @@ fn stop_button_takes_queued_prompts_back() {
     harness.get_by_label("Stop").click();
     harness.run_steps(3);
 
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     assert!(session.queued_prompts().is_empty());
     let input = harness.get_by_role(Role::MultilineTextInput);
     assert_eq!(
@@ -323,10 +309,7 @@ fn stop_button_takes_queued_prompts_back() {
 fn clicking_an_example_prompt_sends_it() {
     let mut panel = ready_panel();
     // Busy, so the prompt waits in the session's queue, where the test can see it.
-    panel
-        .session_mut()
-        .expect("one conversation")
-        .begin_test_turn();
+    panel.session_mut().begin_test_turn();
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
@@ -345,7 +328,7 @@ fn clicking_an_example_prompt_sends_it() {
         .click();
     harness.run_steps(3);
 
-    let session = harness.state().session().expect("one conversation");
+    let session = harness.state().session();
     assert_eq!(
         session
             .queued_prompts()

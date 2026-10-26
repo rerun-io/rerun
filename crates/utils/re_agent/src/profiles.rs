@@ -1,16 +1,70 @@
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
+
+/// Short machine-readable identifier of an agent profile, such as `claude` or `codex`.
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+#[serde(transparent)]
+pub struct AgentProfileId(Cow<'static, str>);
+
+impl AgentProfileId {
+    /// A command line typed in by the user, stored in [`crate::AgentSettings::custom_command_line`].
+    pub const CUSTOM: Self = Self::new("custom");
+
+    /// For ids known at compile time. Use [`From<String>`] for others.
+    pub const fn new(id: &'static str) -> Self {
+        Self(Cow::Borrowed(id))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// No profile chosen yet.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl From<String> for AgentProfileId {
+    fn from(id: String) -> Self {
+        Self(Cow::Owned(id))
+    }
+}
+
+impl std::fmt::Display for AgentProfileId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// Profile ids by popularity, most popular first. Decides which installed agent is picked
 /// when the user has not chosen one.
-const DEFAULT_AGENT_PRIORITY: [&str; 7] = [
-    "claude", "codex", "gemini", "copilot", "cursor", "opencode", "goose",
+const DEFAULT_AGENT_PRIORITY: [AgentProfileId; 7] = [
+    AgentProfileId::new("claude"),
+    AgentProfileId::new("codex"),
+    AgentProfileId::new("gemini"),
+    AgentProfileId::new("copilot"),
+    AgentProfileId::new("cursor"),
+    AgentProfileId::new("opencode"),
+    AgentProfileId::new("goose"),
 ];
 
 /// How to launch a particular agent, and how to tell whether it is installed.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AgentProfile {
-    /// Short machine-readable identifier such as `claude` or `codex`, stored in settings.
-    pub id: String,
+    /// Stored in settings.
+    pub id: AgentProfileId,
 
     /// Human-readable name shown in the UI, e.g. "Claude Code".
     pub name: String,
@@ -98,7 +152,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
 
     let mut profiles = vec![
         AgentProfile {
-            id: "claude".to_owned(),
+            id: AgentProfileId::new("claude"),
             name: "Claude Code".to_owned(),
             description: "Anthropic's Claude Code, via the official ACP adapter (needs Node.js)."
                 .to_owned(),
@@ -112,7 +166,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             env: vec![("CLAUDE_CODE_ENABLE_TODO_TOOLS".to_owned(), "1".to_owned())],
         },
         AgentProfile {
-            id: "codex".to_owned(),
+            id: AgentProfileId::new("codex"),
             name: "Codex".to_owned(),
             description: "OpenAI's Codex, via the official ACP adapter (needs Node.js).".to_owned(),
             command: "npx".to_owned(),
@@ -135,7 +189,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             ],
         },
         AgentProfile {
-            id: "gemini".to_owned(),
+            id: AgentProfileId::new("gemini"),
             name: "Gemini CLI".to_owned(),
             description: "Google's Gemini CLI, native ACP support.".to_owned(),
             command: "gemini".to_owned(),
@@ -146,7 +200,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             env: Vec::new(),
         },
         AgentProfile {
-            id: "copilot".to_owned(),
+            id: AgentProfileId::new("copilot"),
             name: "GitHub Copilot CLI".to_owned(),
             description: "GitHub Copilot CLI, native ACP support.".to_owned(),
             command: "copilot".to_owned(),
@@ -158,7 +212,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             env: Vec::new(),
         },
         AgentProfile {
-            id: "opencode".to_owned(),
+            id: AgentProfileId::new("opencode"),
             name: "OpenCode".to_owned(),
             description: "OpenCode, native ACP support.".to_owned(),
             command: "opencode".to_owned(),
@@ -169,7 +223,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             env: Vec::new(),
         },
         AgentProfile {
-            id: "goose".to_owned(),
+            id: AgentProfileId::new("goose"),
             name: "Goose".to_owned(),
             description: "Block's Goose, native ACP support.".to_owned(),
             command: "goose".to_owned(),
@@ -180,7 +234,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             env: Vec::new(),
         },
         AgentProfile {
-            id: "cursor".to_owned(),
+            id: AgentProfileId::new("cursor"),
             name: "Cursor CLI".to_owned(),
             description: "Cursor's CLI agent, native ACP support.".to_owned(),
             command: "cursor-agent".to_owned(),

@@ -107,6 +107,17 @@ impl ChatInput {
     pub fn request_focus(&mut self) {
         self.focus = true;
     }
+
+    /// Starts over for a new session, except for the prompt being composed and a pending focus
+    /// request.
+    pub fn reset_keeping_prompt(&mut self) {
+        *self = Self {
+            prompt: std::mem::take(&mut self.prompt),
+            previews: std::mem::take(&mut self.previews),
+            focus: self.focus,
+            ..Default::default()
+        };
+    }
 }
 
 /// Prompts sent so far, browsed with the arrow keys the way a shell browses its history.
@@ -161,6 +172,7 @@ impl PromptHistory {
 
 /// The whole chat view for one session: transcript on top, composer at the bottom.
 /// `login_hint` is the terminal command that logs in to the agent, shown when it asks for auth.
+/// `home_ui`, if given, is shown above the composer instead of the transcript.
 pub fn chat_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
@@ -169,6 +181,7 @@ pub fn chat_ui(
     preferred_model: &mut Option<SessionConfigValueId>,
     show_thoughts: bool,
     login_hint: Option<&str>,
+    home_ui: Option<&mut dyn FnMut(&mut egui::Ui)>,
 ) {
     if session.is_ready() && !input.was_ready {
         input.focus = true;
@@ -196,6 +209,10 @@ pub fn chat_ui(
             bottom: 4,
         }))
         .show(ui, |ui| {
+            if let Some(home_ui) = home_ui {
+                home_ui(ui);
+                return;
+            }
             if session.transcript().items.is_empty()
                 && !matches!(session.phase(), Phase::Connecting { .. })
             {

@@ -8,7 +8,9 @@ use re_agent_ui::acp::schema::v1::{
     ContentBlock, ContentChunk, SessionId, SessionMode, SessionModeState, SessionUpdate,
     TextContent,
 };
-use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
+use re_agent_ui::{
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 400.0);
 
@@ -23,14 +25,14 @@ fn panel(feedback_enabled: bool) -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, agents);
     panel.set_feedback_enabled(feedback_enabled);
     panel.show_chat();
 
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.handle_event(AgentEvent::Initialized {
         agent_info: None,
         capabilities: Box::default(),
@@ -91,10 +93,7 @@ fn the_feedback_click_is_reported_only_in_the_frame_it_happened() {
 #[test]
 fn there_is_no_feedback_button_while_the_turn_runs() {
     let mut panel = panel(true);
-    panel
-        .session_mut()
-        .expect("one conversation")
-        .begin_test_turn();
+    panel.session_mut().begin_test_turn();
     let mut harness = harness(panel);
     open_menu(&mut harness);
     assert!(harness.query_by_label(FEEDBACK_LABEL).is_none());

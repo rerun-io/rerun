@@ -1,5 +1,6 @@
 mod agent_panel_snapshots;
 mod chat_input;
+mod conversation_list;
 mod copy_response;
 mod elicitation;
 mod feedback_button;

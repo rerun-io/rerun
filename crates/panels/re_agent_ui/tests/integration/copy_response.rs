@@ -8,7 +8,9 @@ use re_agent_ui::acp::schema::v1::{
     ContentBlock, ContentChunk, SessionId, SessionMode, SessionModeState, SessionUpdate,
     TextContent,
 };
-use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
+use re_agent_ui::{
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 400.0);
 
@@ -23,13 +25,13 @@ fn panel(turn_in_progress: bool) -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: "claude".to_owned(),
+        profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, agents);
     panel.show_chat();
 
-    let session = panel.session_mut().expect("one conversation");
+    let session = panel.session_mut();
     session.handle_event(AgentEvent::Initialized {
         agent_info: None,
         capabilities: Box::default(),

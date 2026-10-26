@@ -7,7 +7,7 @@ use re_ui::{ReButton, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{AgentSettings, McpServerConfig};
+use re_agent::{AgentProfileId, AgentSettings, McpServerConfig};
 
 /// What prompt sharing actually does, behind the checkbox and the "Details" link.
 const ANALYTICS_DETAILS: &str = "Prompts and the agent's answers go to Rerun only after a second \
@@ -138,9 +138,9 @@ fn agent_list_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &[Agen
         }
     }
 
-    let custom_selected = settings.profile_id == AgentSettings::CUSTOM_PROFILE_ID;
+    let custom_selected = settings.profile_id == AgentProfileId::CUSTOM;
     if custom_agent_ui(ui, settings, custom_selected) {
-        picked = Some(AgentSettings::CUSTOM_PROFILE_ID.to_owned());
+        picked = Some(AgentProfileId::CUSTOM);
     }
 
     if let Some(profile_id) = picked {
@@ -292,8 +292,8 @@ fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> Strin
 }
 
 /// Whether the selected agent can be started, or why not.
-fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> Result<(), String> {
-    if settings.profile_id == AgentSettings::CUSTOM_PROFILE_ID {
+pub fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> Result<(), String> {
+    if settings.profile_id == AgentProfileId::CUSTOM {
         if settings.custom_command_line.trim().is_empty() {
             return Err("Enter the command that starts your agent".to_owned());
         }

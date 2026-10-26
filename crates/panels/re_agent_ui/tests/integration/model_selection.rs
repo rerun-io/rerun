@@ -5,21 +5,25 @@ use re_agent_ui::acp::schema::v1::{
     SessionConfigSelectOption, SessionConfigValueId, SessionUpdate,
 };
 use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings, SessionContext,
+    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings, SessionContext,
 };
 
 use super::chat_input::ready_panel;
 
 #[test]
-fn selected_model_is_preserved_for_new_tabs_and_after_settings_reload() {
+fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload() {
     let mut panel = ready_panel();
+    // A conversation of its own, which keeps its agent when another one is selected.
+    panel
+        .session_mut()
+        .transcript_mut()
+        .push_user("Hello".into());
     panel.settings_mut().preferred_models.insert(
-        "codex".to_owned(),
+        AgentProfileId::new("codex"),
         SessionConfigValueId::new("gpt-5.6-high"),
     );
     panel
         .session_mut()
-        .expect("session")
         .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
             ConfigOptionUpdate::new(vec![
                 SessionConfigOption::select(
@@ -55,7 +59,11 @@ fn selected_model_is_preserved_for_new_tabs_and_after_settings_reload() {
     harness.get_by_label("Opus 5.5 Fast").click();
     harness.run_steps(2);
     assert_eq!(
-        harness.state().settings().preferred_models.get("claude"),
+        harness
+            .state()
+            .settings()
+            .preferred_models
+            .get(&AgentProfileId::new("claude")),
         Some(&SessionConfigValueId::new("opus-fast"))
     );
     assert_eq!(
@@ -67,17 +75,25 @@ fn selected_model_is_preserved_for_new_tabs_and_after_settings_reload() {
         Some(SessionConfigValueId::new("opus-fast"))
     );
 
-    harness.state_mut().settings_mut().profile_id = "codex".to_owned();
+    harness.state_mut().settings_mut().profile_id = AgentProfileId::new("codex");
     harness.get_by_value("Opus 5.5").click();
     harness.run_steps(2);
     harness.get_by_label("Opus 5.5 Thinking").click();
     harness.run_steps(2);
     assert_eq!(
-        harness.state().settings().preferred_models.get("claude"),
+        harness
+            .state()
+            .settings()
+            .preferred_models
+            .get(&AgentProfileId::new("claude")),
         Some(&SessionConfigValueId::new("opus-thinking"))
     );
     assert_eq!(
-        harness.state().settings().preferred_models.get("codex"),
+        harness
+            .state()
+            .settings()
+            .preferred_models
+            .get(&AgentProfileId::new("codex")),
         Some(&SessionConfigValueId::new("gpt-5.6-high"))
     );
 
@@ -86,7 +102,7 @@ fn selected_model_is_preserved_for_new_tabs_and_after_settings_reload() {
         harness
             .state()
             .launch_config(&SessionContext::default())
-            .expect("new tab launch config")
+            .expect("new conversation launch config")
             .preferred_model,
         Some(SessionConfigValueId::new("gpt-5.6-high"))
     );
@@ -107,7 +123,7 @@ fn selected_model_is_preserved_for_new_tabs_and_after_settings_reload() {
             .preferred_model,
         Some(SessionConfigValueId::new("gpt-5.6-high"))
     );
-    reopened.settings_mut().profile_id = "claude".to_owned();
+    reopened.settings_mut().profile_id = AgentProfileId::new("claude");
     assert_eq!(
         reopened
             .launch_config(&SessionContext::default())

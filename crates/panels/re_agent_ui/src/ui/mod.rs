@@ -1,5 +1,7 @@
 mod agent_panel;
 mod chat_ui;
+mod conversation;
+mod conversation_list;
 mod elicitation_ui;
 mod linkify;
 mod pasted_image;

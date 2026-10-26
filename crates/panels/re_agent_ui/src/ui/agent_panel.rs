@@ -1,19 +1,17 @@
-//! The complete agent panel: one tab per conversation, each showing setup until its agent runs,
-//! then the chat.
+//! The agent panel: the conversation list, or one conversation.
 
-use std::collections::VecDeque;
-
-use egui_tiles::{Container, Tile, TileId, Tiles};
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 
 use super::Screen;
-use super::chat_ui::{ChatInput, chat_ui};
-use super::setup_ui::setup_ui;
+use super::conversation::Conversation;
+use super::conversation_list::{ConversationRow, ConversationStatus, conversation_list_ui};
+use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
+use re_agent::Transcript;
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
 use re_agent::{AgentSettings, LaunchConfig, SessionContext};
-use re_agent::{Transcript, TranscriptItem};
 
 /// How wide a host should make the panel.
 ///
@@ -22,21 +20,12 @@ use re_agent::{Transcript, TranscriptItem};
 /// so what they show is what a default install looks like.
 pub const RECOMMENDED_WIDTH: f32 = 420.0;
 
-/// Longest tab title before it is cut with an ellipsis.
-const MAX_TAB_TITLE_CHARS: usize = 24;
-
 /// Shown when hovering "Self-improve" in the options menu.
 const SELF_IMPROVE_TOOLTIP: &str = "Rerun development builds only.\n\n\
     Opens a second agent in the Rerun checkout that reviews this session, finds what the \
     viewer's MCP tools, skills, docs, and instructions made hard, and files the fixes.";
 
-/// Horizontal padding inside a tab, around its title.
-const TAB_TITLE_SPACING: f32 = 12.0;
-
-/// Gap between the tabs and the buttons at either end of the tab bar.
-const TAB_BAR_BUTTON_SPACING: f32 = 8.0;
-
-/// Opens another conversation tab, the way a browser opens another tab.
+/// Goes back to the conversation list, with the input focused to start a new conversation.
 ///
 /// `COMMAND` is Cmd on Mac and Ctrl everywhere else, so this reads as the platform's own
 /// new-tab shortcut. Only fires while the panel holds the pointer or the keyboard focus.
@@ -44,213 +33,25 @@ const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::T);
 
 /// Identifies one conversation for as long as the panel lives. Never reused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ConversationId(u64);
+
+/// What the panel shows: the conversation list, or one conversation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct ConversationId(u64);
-
-/// One chat with one agent: the content of a tab.
-struct Conversation {
-    id: ConversationId,
-    session: AgentSession,
-    input: ChatInput,
-    profile_id: String,
-
-    /// [`Screen::Chat`] with an idle session means "start the agent on the next frame".
-    screen: Screen,
-
-    /// Used instead of the panel's shared context, for a conversation the host started with a
-    /// job of its own: a different working directory, preamble, or set of readable directories.
-    context: Option<SessionContext>,
-
-    /// Prompts waiting for the agent to be ready, e.g. sent from the command palette.
-    ///
-    /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
-    pending_prompts: VecDeque<Prompt>,
+enum View {
+    List,
+    Conversation(ConversationId),
 }
 
-impl Conversation {
-    /// A fresh conversation. Skips the setup screen when the user has completed it before.
-    fn new(id: ConversationId, settings: &AgentSettings, auto_approve: bool) -> Self {
-        let mut session = AgentSession::default();
-        session.set_auto_approve(auto_approve);
-        Self {
-            id,
-            session,
-            input: ChatInput::default(),
-            profile_id: settings.profile_id.clone(),
-            screen: if settings.setup_done {
-                Screen::Chat
-            } else {
-                Screen::Setup
-            },
-            context: None,
-            pending_prompts: Default::default(),
-        }
-    }
-
-    fn start(
-        &mut self,
-        ctx: &egui::Context,
-        settings: &mut AgentSettings,
-        context: &SessionContext,
-        agents: &[AgentEntry],
-    ) {
-        let context = self.context.as_ref().unwrap_or(context);
-        match settings.launch_config(agents, context) {
-            Ok(config) => {
-                self.profile_id.clone_from(&settings.profile_id);
-                let ctx = ctx.clone();
-                self.session.start(config, move || ctx.request_repaint());
-                self.input = ChatInput::default();
-                self.screen = Screen::Chat;
-                settings.setup_done = true;
-            }
-            Err(err) => {
-                self.session.report_error(err);
-                self.screen = Screen::Setup;
-            }
-        }
-    }
-
-    /// Session title if the agent gave one, else the first prompt, else the agent name.
-    fn title(&self, settings: &AgentSettings, agents: &[AgentEntry]) -> String {
-        let transcript = self.session.transcript();
-        let title = transcript
-            .title
-            .clone()
-            .or_else(|| {
-                transcript.items.iter().find_map(|entry| match &entry.item {
-                    TranscriptItem::User(prompt) => {
-                        Some(prompt.text.lines().next().unwrap_or_default().to_owned())
-                    }
-                    _ => None,
-                })
-            })
-            .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
-            .or_else(|| {
-                agents
-                    .iter()
-                    .find(|agent| agent.profile.id == settings.profile_id)
-                    .map(|agent| agent.profile.name.clone())
-            })
-            .unwrap_or_else(|| "New chat".to_owned());
-
-        if title.chars().count() <= MAX_TAB_TITLE_CHARS {
-            title
-        } else {
-            let cut: String = title.chars().take(MAX_TAB_TITLE_CHARS - 1).collect();
-            format!("{}…", cut.trim_end())
-        }
-    }
-
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        settings: &mut AgentSettings,
-        context: &SessionContext,
-        agents: &mut [AgentEntry],
-    ) {
-        if self.screen == Screen::Chat && *self.session.phase() == Phase::Idle {
-            self.start(ui.ctx(), settings, context, agents);
-        }
-
-        if self.screen == Screen::Setup {
-            self.setup_view(ui, settings, context, agents);
-            return;
-        }
-
-        let login_hint = agents
-            .iter()
-            .find(|agent| agent.profile.id == self.profile_id)
-            .map(|agent| agent.profile.login_hint.as_str())
-            .filter(|hint| !hint.is_empty());
-        let mut preferred_model = settings.preferred_models.get(&self.profile_id).cloned();
-        chat_ui(
-            ui,
-            &mut self.session,
-            &mut self.input,
-            &mut settings.preferred_mode,
-            &mut preferred_model,
-            settings.show_thoughts,
-            login_hint,
-        );
-        if let Some(model) = preferred_model {
-            settings
-                .preferred_models
-                .insert(self.profile_id.clone(), model);
-        }
-        if let Some(prompt) = self.input.example_prompt_clicked.take() {
-            self.pending_prompts.push_back(prompt.into());
-            self.input.request_focus();
-        }
-        if self.input.restart_after_login_requested {
-            // Restarting after login clears the transcript, so retain
-            // the failed prompt and its attachments to resend once the new session is ready.
-            if let Some(prompt) = self
-                .session
-                .transcript()
-                .items
-                .iter()
-                .rev()
-                .find_map(|entry| {
-                    if let TranscriptItem::User(prompt) = &entry.item {
-                        Some(prompt.clone())
-                    } else {
-                        None
-                    }
-                })
-            {
-                // Put the prompt at the front of the queue so it's picked up as the next prompt on restart.
-                self.pending_prompts.push_front(prompt);
-            }
-            settings.profile_id.clone_from(&self.profile_id);
-            self.start(ui.ctx(), settings, context, agents);
-        }
-    }
-
-    /// Sends host prompts once the agent can take them.
-    ///
-    /// Must be called repeatedly: the agent is not ready for some time after the conversation is
-    /// opened, and a send can still be refused after that, so the prompt is kept until one lands.
-    /// [`AgentPanel::poll_events`] does this every frame, including while the panel is collapsed.
-    fn send_pending_prompts(&mut self) {
-        while let Some(prompt) = self.pending_prompts.pop_front() {
-            if !self.session.send_prompt(prompt.clone()) {
-                // Agent not ready yet; retry on the next poll.
-                self.pending_prompts.push_front(prompt);
-                break;
-            }
-        }
-    }
-
-    fn setup_view(
-        &mut self,
-        ui: &mut egui::Ui,
-        settings: &mut AgentSettings,
-        context: &SessionContext,
-        agents: &mut [AgentEntry],
-    ) {
-        // Escape returns to the conversation, once an agent has been started.
-        let back = *self.session.phase() != Phase::Idle
-            && ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
-        let next_screen = egui::CentralPanel::default()
-            .frame(egui::Frame::new())
-            .show(ui, |ui| setup_ui(ui, settings, agents))
-            .inner;
-
-        if next_screen == Screen::Chat {
-            self.start(ui.ctx(), settings, context, agents);
-        } else if back {
-            self.screen = Screen::Chat;
-        }
-    }
-}
-
-/// What the tab bar asked for this frame: the "+" button, the options menu, or the back button.
+/// What the header, the options menu, or the conversation list asked for this frame.
 ///
 /// Variants with a [`ConversationId`] act on that conversation.
 #[derive(Clone, Copy)]
-enum TabBarAction {
+pub enum PanelAction {
+    ShowList,
     NewConversation,
+    Open(ConversationId),
+    Close(ConversationId),
     OpenSetup(ConversationId),
     BackToChat(ConversationId),
     Restart(ConversationId),
@@ -258,179 +59,9 @@ enum TabBarAction {
     SelfImprove,
 }
 
-/// Tabs only: no dragging tabs into splits, closable tabs, "+" for a new conversation,
-/// and the options menu at the right end of the bar.
-struct TabsBehavior<'a> {
-    settings: &'a mut AgentSettings,
-    context: &'a SessionContext,
-    agents: &'a mut Vec<AgentEntry>,
-    self_improve_available: bool,
-    feedback_enabled: bool,
-    action: Option<TabBarAction>,
-}
-
-impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
-    fn pane_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _tile_id: TileId,
-        conversation: &mut Conversation,
-    ) -> egui_tiles::UiResponse {
-        conversation.ui(ui, self.settings, self.context, self.agents);
-        egui_tiles::UiResponse::None
-    }
-
-    fn tab_title_for_pane(&mut self, conversation: &Conversation) -> egui::WidgetText {
-        egui::RichText::new(conversation.title(self.settings, self.agents))
-            .strong()
-            .into()
-    }
-
-    fn is_tab_closable(&self, _tiles: &Tiles<Conversation>, _tile_id: TileId) -> bool {
-        true
-    }
-
-    fn on_tab_close(&mut self, tiles: &mut Tiles<Conversation>, tile_id: TileId) -> bool {
-        if let Some(Tile::Pane(conversation)) = tiles.get_mut(tile_id) {
-            conversation.session.stop();
-        }
-        true
-    }
-
-    fn is_tile_draggable(&self, _tiles: &Tiles<Conversation>, _tile_id: TileId) -> bool {
-        false
-    }
-
-    fn tab_bar_trailing_ui(
-        &mut self,
-        _tiles: &Tiles<Conversation>,
-        ui: &mut egui::Ui,
-        _tile_id: TileId,
-        _tabs: &egui_tiles::Tabs,
-    ) {
-        ui.add_space(TAB_BAR_BUTTON_SPACING);
-        let tooltip = format!(
-            "New conversation ({})",
-            re_ui::format_shortcut(ui.ctx(), &NEW_CONVERSATION_SHORTCUT)
-        );
-        if ui
-            .small_icon_button(&icons::ADD, "New conversation")
-            .on_hover_text(tooltip)
-            .clicked()
-        {
-            self.action = Some(TabBarAction::NewConversation);
-        }
-    }
-
-    fn top_bar_right_ui(
-        &mut self,
-        tiles: &Tiles<Conversation>,
-        ui: &mut egui::Ui,
-        _tile_id: TileId,
-        tabs: &egui_tiles::Tabs,
-        _scroll_offset: &mut f32,
-    ) {
-        let Some(active) = tabs.active else {
-            return;
-        };
-        let Some(conversation) = tiles.get_pane(&active) else {
-            return;
-        };
-        let has_agent = *conversation.session.phase() != Phase::Idle;
-        let in_chat = conversation.screen == Screen::Chat;
-
-        ui.add_space(TAB_BAR_BUTTON_SPACING);
-        let menu = OptionsMenu {
-            conversation: conversation.id,
-            in_chat,
-            feedback: self.feedback_enabled && in_chat && conversation.session.has_finished_turn(),
-            self_improve: self.self_improve_available,
-        };
-        if let Some(action) = menu.ui(ui) {
-            self.action = Some(action);
-        }
-
-        if !in_chat
-            && has_agent
-            && ui
-                .small_icon_button(&icons::CLOSE, "Back to the conversation")
-                .on_hover_text("Back to the conversation")
-                .clicked()
-        {
-            self.action = Some(TabBarAction::BackToChat(conversation.id));
-        }
-    }
-
-    // Styling, matching the viewport's tabs:
-
-    fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        re_ui::design_tokens_of_visuals(visuals).tab_bar_color
-    }
-
-    fn tab_bg_color(
-        &self,
-        visuals: &egui::Visuals,
-        _tiles: &Tiles<Conversation>,
-        _tile_id: TileId,
-        state: &egui_tiles::TabState,
-    ) -> egui::Color32 {
-        if state.active {
-            visuals.panel_fill
-        } else {
-            self.tab_bar_color(visuals)
-        }
-    }
-
-    fn tab_outline_stroke(
-        &self,
-        _visuals: &egui::Visuals,
-        _tiles: &Tiles<Conversation>,
-        _tile_id: TileId,
-        _state: &egui_tiles::TabState,
-    ) -> egui::Stroke {
-        egui::Stroke::NONE
-    }
-
-    fn tab_text_color(
-        &self,
-        visuals: &egui::Visuals,
-        _tiles: &Tiles<Conversation>,
-        _tile_id: TileId,
-        state: &egui_tiles::TabState,
-    ) -> egui::Color32 {
-        if state.active {
-            visuals.strong_text_color()
-        } else {
-            visuals.text_color()
-        }
-    }
-
-    fn tab_title_spacing(&self, _visuals: &egui::Visuals) -> f32 {
-        TAB_TITLE_SPACING
-    }
-
-    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
-        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
-    }
-
-    fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        visuals.panel_fill.gamma_multiply(0.5)
-    }
-
-    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        egui_tiles::SimplificationOptions {
-            all_panes_must_have_tabs: true,
-            prune_empty_tabs: false,
-            prune_empty_containers: false,
-            prune_single_child_tabs: false,
-            ..Default::default()
-        }
-    }
-}
-
-/// The "…" menu at the right end of the tab bar, with the actions for the active conversation.
+/// The "…" menu at the right end of the header, with the actions for the shown conversation.
 struct OptionsMenu {
-    /// The active conversation, which the menu acts on.
+    /// The conversation the menu acts on.
     conversation: ConversationId,
 
     /// Agent setup and restart only make sense from the chat.
@@ -441,10 +72,13 @@ struct OptionsMenu {
 
     /// See [`AgentPanel::set_self_improve_available`].
     self_improve: bool,
+
+    /// The shown conversation can be closed. Its row only shows a close button on hover.
+    closable: bool,
 }
 
 impl OptionsMenu {
-    fn ui(self, ui: &mut egui::Ui) -> Option<TabBarAction> {
+    fn ui(self, ui: &mut egui::Ui) -> Option<PanelAction> {
         let button = ui.small_icon_button_widget(&icons::MORE, "More options");
         let menu = egui::containers::menu::MenuButton::from_button(button)
             .config(egui::containers::menu::MenuConfig::new().style(re_ui::menu::menu_style()));
@@ -459,30 +93,34 @@ impl OptionsMenu {
         inner?.inner
     }
 
-    fn items_ui(&self, ui: &mut egui::Ui) -> Option<TabBarAction> {
+    fn items_ui(&self, ui: &mut egui::Ui) -> Option<PanelAction> {
         let &Self {
             conversation,
             in_chat,
             feedback,
+            closable,
             self_improve,
         } = self;
 
         let new_conversation = egui::Button::new("New conversation")
             .shortcut_text(re_ui::format_shortcut(ui.ctx(), &NEW_CONVERSATION_SHORTCUT));
         if ui.add(new_conversation).clicked() {
-            return Some(TabBarAction::NewConversation);
+            return Some(PanelAction::NewConversation);
         }
         if in_chat {
             if ui.button("Agent setup…").clicked() {
-                return Some(TabBarAction::OpenSetup(conversation));
+                return Some(PanelAction::OpenSetup(conversation));
             }
             if ui
                 .button("Clear session and restart agent")
                 .on_hover_text("Starts a new session, without the conversation so far")
                 .clicked()
             {
-                return Some(TabBarAction::Restart(conversation));
+                return Some(PanelAction::Restart(conversation));
             }
+        }
+        if closable && ui.button("Close conversation").clicked() {
+            return Some(PanelAction::Close(conversation));
         }
         if feedback || self_improve {
             ui.separator();
@@ -493,7 +131,7 @@ impl OptionsMenu {
                 .on_hover_text("Tell us how the agent did in this conversation")
                 .clicked()
         {
-            return Some(TabBarAction::SendFeedback);
+            return Some(PanelAction::SendFeedback);
         }
         if self_improve {
             let badge = egui::RichText::new(" dev ")
@@ -505,19 +143,33 @@ impl OptionsMenu {
                 .on_hover_text(SELF_IMPROVE_TOOLTIP)
                 .clicked()
             {
-                return Some(TabBarAction::SelfImprove);
+                return Some(PanelAction::SelfImprove);
             }
         }
         None
     }
 }
 
-/// The complete agent UI: a tab per conversation. Owns the sessions and the shared settings.
+/// The complete agent UI: a list of conversations. Owns the sessions and the shared settings.
 pub struct AgentPanel {
     settings: AgentSettings,
     context: SessionContext,
     agents: Vec<AgentEntry>,
-    tree: egui_tiles::Tree<Conversation>,
+
+    /// Every conversation the user has started, in the order they were opened.
+    conversations: Vec<Conversation>,
+
+    /// The conversation the list view's input starts. It joins [`Self::conversations`] when the
+    /// user sends its first prompt.
+    draft: Conversation,
+
+    /// The user opened the draft's setup screen from the options menu, so it fills the panel.
+    ///
+    /// A draft can also be on its setup screen because its agent failed to start. Then the
+    /// conversation list is shown instead, and the error waits until the user opens setup.
+    user_opened_draft_setup: bool,
+
+    view: View,
     auto_approve: bool,
 
     /// Set by the host. Shows "Self-improve" in the options menu.
@@ -537,6 +189,7 @@ pub struct AgentPanel {
 }
 
 impl AgentPanel {
+    /// A panel for the agents installed on this machine.
     pub fn new(settings: AgentSettings) -> Self {
         Self::with_agents(settings, AgentEntry::detect_all())
     }
@@ -552,12 +205,15 @@ impl AgentPanel {
             settings.profile_id = agent.profile.id.clone();
         }
 
-        let first = Conversation::new(ConversationId(0), &settings, false);
+        let draft = Conversation::new(ConversationId(0), &settings, false);
         Self {
             settings,
             context: SessionContext::default(),
             agents,
-            tree: new_tree(first),
+            conversations: Vec::new(),
+            draft,
+            user_opened_draft_setup: false,
+            view: View::List,
             auto_approve: false,
             self_improve_available: false,
             self_improve_requested: false,
@@ -585,7 +241,7 @@ impl AgentPanel {
         self.self_improve_requested
     }
 
-    /// Shows "Send feedback…" in the options menu while the active conversation is in chat
+    /// Shows "Send feedback…" in the options menu while the shown conversation is in chat
     /// and has a finished turn. Off by default.
     pub fn set_feedback_enabled(&mut self, enabled: bool) {
         self.feedback_enabled = enabled;
@@ -598,91 +254,89 @@ impl AgentPanel {
         self.feedback_requested
     }
 
+    /// What the user chose in setup, shared by all conversations.
     pub fn settings(&self) -> &AgentSettings {
         &self.settings
     }
 
+    /// See [`Self::settings`].
     pub fn settings_mut(&mut self) -> &mut AgentSettings {
         &mut self.settings
     }
 
-    /// The session of the active tab.
-    pub fn session(&self) -> Option<&AgentSession> {
-        self.active_conversation()
-            .map(|conversation| &conversation.session)
+    /// The session of the shown conversation, or of the draft while the list is shown.
+    pub fn session(&self) -> &AgentSession {
+        &self.active_conversation().session
     }
 
-    pub fn session_mut(&mut self) -> Option<&mut AgentSession> {
-        active_conversation_mut(&mut self.tree).map(|conversation| &mut conversation.session)
+    /// See [`Self::session`].
+    pub fn session_mut(&mut self) -> &mut AgentSession {
+        &mut self.active_conversation_mut().session
     }
 
-    /// Give the active conversation's prompt input keyboard focus when it is next shown.
+    /// Give the shown conversation's prompt input keyboard focus when it is next shown.
     pub fn request_input_focus(&mut self) {
-        if let Some(conversation) = active_conversation_mut(&mut self.tree) {
-            conversation.input.request_focus();
-        }
+        self.active_conversation_mut().input.request_focus();
     }
 
-    /// Switch the active tab to the chat view. Starts its agent if none is running.
+    /// Switch the shown conversation to the chat view. Starts its agent if none is running.
     pub fn show_chat(&mut self) {
-        if let Some(conversation) = active_conversation_mut(&mut self.tree) {
-            conversation.screen = Screen::Chat;
-        }
+        self.active_conversation_mut().screen = Screen::Chat;
     }
 
-    /// The transcript of the active tab.
-    pub fn transcript(&self) -> Option<&Transcript> {
-        self.session().map(AgentSession::transcript)
+    /// The transcript of the shown conversation.
+    pub fn transcript(&self) -> &Transcript {
+        self.session().transcript()
     }
 
-    /// Whether the active conversation's agent is in the middle of a turn.
+    /// Whether the shown conversation's agent is in the middle of a turn.
     ///
     /// Its transcript is incomplete until the turn ends, so a host that dumps one wants to know.
-    pub fn turn_in_progress(&self) -> bool {
-        self.session().is_some_and(AgentSession::turn_in_progress)
+    pub fn is_turn_in_progress(&self) -> bool {
+        self.session().turn_in_progress()
     }
 
     /// See [`AgentSession::set_auto_approve`]. Applies to every conversation, current and future.
     pub fn set_auto_approve(&mut self, auto_approve: bool) {
         self.auto_approve = auto_approve;
-        for conversation in conversations_mut(&mut self.tree) {
+        for conversation in self.all_conversations_mut() {
             conversation.session.set_auto_approve(auto_approve);
         }
     }
 
+    /// Whether the shown conversation is connected to its agent.
     pub fn is_connected(&self) -> bool {
-        self.session().is_some_and(AgentSession::is_connected)
+        self.session().is_connected()
     }
 
+    /// Whether the shown conversation's agent has a session open and is idle.
     pub fn is_ready(&self) -> bool {
-        self.session().is_some_and(AgentSession::is_ready)
+        self.session().is_ready()
     }
 
+    /// The permission modes the shown conversation's agent offers, if it offers any.
     pub fn modes(&self) -> Option<&SessionModeState> {
-        self.session()?.modes()
+        self.session().modes()
     }
 
+    /// Switches the shown conversation's permission mode, and makes it the default for new ones.
     pub fn set_mode(&mut self, mode_id: SessionModeId) {
         self.settings.preferred_mode = Some(mode_id.clone());
-        if let Some(session) = self.session_mut() {
-            session.set_mode(mode_id);
-        }
+        self.session_mut().set_mode(mode_id);
     }
 
-    /// Sends a prompt in the active tab as if the user had typed it.
+    /// Sends a prompt in the shown conversation as if the user had typed it.
     /// Returns `false` if it was dropped because the agent is not [`Self::is_ready`].
     pub fn send_prompt(&mut self, prompt: impl Into<Prompt>) -> bool {
-        let prompt = prompt.into();
-        self.session_mut()
-            .is_some_and(|session| session.send_prompt(prompt))
+        self.session_mut().send_prompt(prompt.into())
     }
 
-    /// Submit text to the active conversation, retaining it through startup and setup.
-    /// Queued text stays with that conversation when tabs change; blank input is ignored.
+    /// Queues a prompt for the shown conversation, to send once its agent is ready.
+    ///
+    /// The prompt stays with that conversation through startup and setup. Blank input is ignored.
     pub fn queue_prompt(&mut self, prompt: String) {
-        if !prompt.trim().is_empty()
-            && let Some(conversation) = active_conversation_mut(&mut self.tree)
-        {
+        if !prompt.trim().is_empty() {
+            let conversation = self.active_conversation_mut();
             conversation.pending_prompts.push_back(prompt.into());
             conversation.input.request_focus();
         }
@@ -696,40 +350,49 @@ impl AgentPanel {
 
     /// Drains the reports of the turns finished in every conversation since the last call.
     pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        conversations_mut(&mut self.tree)
+        self.all_conversations_mut()
             .flat_map(|conversation| conversation.session.take_finished_turns())
             .collect()
     }
 
-    /// Starts (or restarts) the agent of the active tab with the current settings.
+    /// Starts (or restarts) the agent of the shown conversation with the current settings.
     pub fn start(&mut self, ctx: &egui::Context) {
+        self.start_conversation(ctx, self.active_conversation().id);
+    }
+
+    /// Starts (or restarts) the agent of any conversation, including the draft.
+    fn start_conversation(&mut self, ctx: &egui::Context, id: ConversationId) {
         let Self {
             settings,
             context,
             agents,
-            tree,
+            conversations,
+            draft,
             ..
         } = self;
-        if let Some(conversation) = active_conversation_mut(tree) {
+        if let Some(conversation) =
+            std::iter::chain(conversations.iter_mut(), std::iter::once(draft))
+                .find(|conversation| conversation.id == id)
+        {
             conversation.start(ctx, settings, context, agents);
         }
     }
 
-    /// Stops the agent of the active tab.
+    /// Stops the agent of the shown conversation.
     pub fn stop(&mut self) {
-        if let Some(session) = self.session_mut() {
-            session.stop();
-        }
+        self.session_mut().stop();
     }
 
-    /// Opens a new conversation tab and makes it active.
+    /// Shows the conversation list, with the input focused to start a new conversation.
     pub fn new_conversation(&mut self) {
-        let conversation = Conversation::new(
-            self.allocate_conversation_id(),
-            &self.settings,
-            self.auto_approve,
-        );
-        self.insert_conversation(conversation);
+        self.view = View::List;
+        if self.user_opened_draft_setup {
+            self.user_opened_draft_setup = false;
+            if *self.draft.session.phase() != Phase::Idle {
+                self.draft.screen = Screen::Chat;
+            }
+        }
+        self.draft.input.request_focus();
     }
 
     /// Opens a conversation that runs with `context` instead of the panel's shared one, and sends
@@ -742,43 +405,64 @@ impl AgentPanel {
         context: SessionContext,
         opening_prompt: impl Into<String>,
     ) {
-        let mut conversation = Conversation::new(
-            self.allocate_conversation_id(),
-            &self.settings,
-            self.auto_approve,
-        );
+        let mut conversation = self.fresh_conversation();
         conversation.context = Some(context);
         conversation
             .pending_prompts
             .push_back(Prompt::from(opening_prompt.into()));
-        self.insert_conversation(conversation);
+        self.view = View::Conversation(conversation.id);
+        self.conversations.push(conversation);
     }
 
-    fn allocate_conversation_id(&mut self) -> ConversationId {
+    /// A new conversation under a new id, for the current settings.
+    fn fresh_conversation(&mut self) -> Conversation {
         let id = self.next_conversation_id;
         self.next_conversation_id = ConversationId(id.0 + 1);
-        id
+        Conversation::new(id, &self.settings, self.auto_approve)
     }
 
-    /// Adds `conversation` as a tab and makes it active.
-    fn insert_conversation(&mut self, conversation: Conversation) {
-        let root_tabs = self
-            .tree
-            .root()
-            .and_then(|root| match self.tree.tiles.get(root) {
-                Some(Tile::Container(Container::Tabs(_))) => Some(root),
-                _ => None,
-            });
-        match root_tabs {
-            Some(root) => {
-                let tile_id = self.tree.tiles.insert_pane(conversation);
-                if let Some(Tile::Container(Container::Tabs(tabs))) = self.tree.tiles.get_mut(root)
-                {
-                    tabs.add_child(tile_id);
-                    tabs.set_active(tile_id);
-                }
-            }
-            None => self.tree = new_tree(conversation),
+    /// Once the draft has a prompt, it becomes a conversation of its own, and is shown.
+    fn promote_started_draft(&mut self) {
+        if self.view != View::List || !self.draft.has_started() {
+            return;
+        }
+        let next = self.fresh_conversation();
+        let mut started = std::mem::replace(&mut self.draft, next);
+        self.user_opened_draft_setup = false;
+        started.mark_seen();
+        // It is shown under its own id from now on, so the input loses the focus it had.
+        started.input.request_focus();
+        self.view = View::Conversation(started.id);
+        self.conversations.push(started);
+    }
+
+    /// Keeps the unused draft in line with the settings.
+    ///
+    /// It skips setup once setup is done in another conversation. It is replaced when it runs
+    /// another agent than the selected one, unless the selected agent cannot be launched or the
+    /// draft's own setup is open. What the user typed into it carries over.
+    fn refresh_draft(&mut self) {
+        // A draft whose start failed keeps its setup screen, with the error in the transcript.
+        let draft = &mut self.draft;
+        if draft.screen == Screen::Setup
+            && !self.user_opened_draft_setup
+            && self.settings.setup_done
+            && *draft.session.phase() == Phase::Idle
+            && draft.session.transcript().items.is_empty()
+        {
+            draft.screen = Screen::Chat;
+        }
+
+        let outdated = self.draft.profile_id != self.settings.profile_id
+            && *self.draft.session.phase() != Phase::Idle
+            && !self.draft.has_started()
+            && !self.user_opened_draft_setup
+            && selected_agent_ready(&self.settings, &self.agents).is_ok();
+        if outdated {
+            let next = self.fresh_conversation();
+            let mut outdated = std::mem::replace(&mut self.draft, next);
+            outdated.session.stop();
+            self.draft.input = std::mem::take(&mut outdated.input);
         }
     }
 
@@ -787,61 +471,264 @@ impl AgentPanel {
     /// [`Self::ui`] does this too, but must also be called while the panel is collapsed,
     /// or messages queue up unseen until the user opens it again.
     pub fn poll_events(&mut self) {
-        for conversation in conversations_mut(&mut self.tree) {
+        for conversation in self.all_conversations_mut() {
             conversation.session.poll_events();
             conversation.send_pending_prompts();
         }
+        self.promote_started_draft();
     }
 
+    /// Shows the header, then the conversation list or the shown conversation.
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         self.poll_events();
+        self.refresh_draft();
 
-        let mut behavior = TabsBehavior {
-            settings: &mut self.settings,
-            context: &self.context,
-            agents: &mut self.agents,
-            self_improve_available: self.self_improve_available,
-            feedback_enabled: self.feedback_enabled,
-            action: None,
+        let mut action = self.header_ui(ui);
+        let panel_rect = ui.max_rect();
+
+        let Self {
+            settings,
+            context,
+            agents,
+            conversations,
+            draft,
+            user_opened_draft_setup,
+            view,
+            ..
+        } = self;
+        match *view {
+            View::Conversation(id) => {
+                if let Some(conversation) = conversations
+                    .iter_mut()
+                    .find(|conversation| conversation.id == id)
+                {
+                    ui.push_id(id, |ui| {
+                        conversation.ui(ui, settings, context, agents, None);
+                    });
+                    // Its setup screen hides the transcript.
+                    if conversation.screen == Screen::Chat {
+                        conversation.mark_seen();
+                    }
+                } else {
+                    *view = View::List;
+                }
+            }
+            View::List if conversations.is_empty() => {
+                ui.push_id(draft.id, |ui| draft.ui(ui, settings, context, agents, None));
+            }
+            View::List => {
+                let rows = conversation_rows(conversations, settings, agents);
+                // The draft has no row, so the list is the only place its startup error can go.
+                let draft_error = match draft.status() {
+                    ConversationStatus::Errored { message } => Some(message),
+                    _ => None,
+                };
+                let draft_id = draft.id;
+                let mut list_action = None;
+                let mut home_ui = |ui: &mut egui::Ui| {
+                    if let Some(message) = &draft_error {
+                        list_action = draft_error_ui(ui, message, draft_id);
+                    }
+                    let picked = conversation_list_ui(ui, &rows);
+                    list_action = list_action.or(picked);
+                };
+                if draft.screen == Screen::Setup && !*user_opened_draft_setup {
+                    egui::CentralPanel::default().show(ui, |ui| home_ui(ui));
+                } else {
+                    ui.push_id(draft.id, |ui| {
+                        draft.ui(ui, settings, context, agents, Some(&mut home_ui));
+                    });
+                }
+                action = action.or(list_action);
+            }
+        }
+
+        if new_conversation_shortcut_pressed(ui, panel_rect) {
+            action = Some(PanelAction::NewConversation);
+        }
+        self.handle_action(ui.ctx(), action);
+        self.promote_started_draft();
+    }
+
+    /// The bar along the top: back button and title, and the options menu.
+    fn header_ui(&self, ui: &mut egui::Ui) -> Option<PanelAction> {
+        let tokens = ui.tokens();
+        let conversation = self.active_conversation();
+        let in_conversation = matches!(self.view, View::Conversation(_));
+        let title = if in_conversation {
+            conversation.title(&self.settings, &self.agents)
+        } else {
+            "Rerun agent".to_owned()
         };
-        self.tree.ui(&mut behavior, ui);
-        let panel_rect = ui.min_rect();
+        let in_chat = conversation.screen == Screen::Chat;
+        // From the list, the draft's setup leads back to the list, even if its agent never ran.
+        let can_leave_setup = *conversation.session.phase() != Phase::Idle
+            || !in_conversation && !self.conversations.is_empty();
+        let menu = OptionsMenu {
+            conversation: conversation.id,
+            in_chat,
+            feedback: self.feedback_enabled && in_chat && conversation.session.has_finished_turn(),
+            // It reviews the shown conversation, which the list does not have.
+            self_improve: self.self_improve_available && in_conversation,
+            closable: in_conversation,
+        };
+
+        let height = tokens.top_bar_height();
+        egui::Panel::top("agent_header")
+            .exact_size(height)
+            .frame(
+                egui::Frame::new()
+                    .fill(tokens.tab_bar_color)
+                    .inner_margin(egui::Margin::symmetric(8, 0)),
+            )
+            .show(ui, |ui| {
+                let (left, right) = egui::containers::Sides::new()
+                    .height(height)
+                    .shrink_left()
+                    .truncate()
+                    .show(
+                        ui,
+                        |ui| {
+                            let back = in_conversation
+                                && ui
+                                    .small_icon_button(&icons::ARROW_LEFT, "Back to conversations")
+                                    .on_hover_text("Back to conversations")
+                                    .clicked();
+                            ui.label(egui::RichText::new(title).strong());
+                            back.then_some(PanelAction::ShowList)
+                        },
+                        |ui| {
+                            let action = menu.ui(ui);
+                            let back_to_chat = !in_chat
+                                && can_leave_setup
+                                && ui
+                                    .small_icon_button(&icons::CLOSE, "Back to the conversation")
+                                    .on_hover_text("Back to the conversation")
+                                    .clicked();
+                            if back_to_chat {
+                                Some(PanelAction::BackToChat(conversation.id))
+                            } else {
+                                action
+                            }
+                        },
+                    );
+                left.or(right)
+            })
+            .inner
+    }
+
+    fn handle_action(&mut self, ctx: &egui::Context, action: Option<PanelAction>) {
         self.self_improve_requested = false;
         self.feedback_requested = false;
-        let mut add_requested = false;
-        match behavior.action {
-            Some(TabBarAction::NewConversation) => add_requested = true,
-            Some(TabBarAction::OpenSetup(id)) => {
-                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
+        let Some(action) = action else {
+            return;
+        };
+        match action {
+            PanelAction::ShowList => self.view = View::List,
+            PanelAction::NewConversation => self.new_conversation(),
+            PanelAction::Open(id) => self.view = View::Conversation(id),
+            PanelAction::Close(id) => {
+                if let Some(index) = self
+                    .conversations
+                    .iter()
+                    .position(|conversation| conversation.id == id)
+                {
+                    self.conversations.remove(index).session.stop();
+                }
+                if self.view == View::Conversation(id) {
+                    self.view = View::List;
+                }
+            }
+            PanelAction::OpenSetup(id) => {
+                self.user_opened_draft_setup |= id == self.draft.id;
+                if let Some(conversation) = self.conversation_mut(id) {
                     conversation.screen = Screen::Setup;
                 }
             }
-            Some(TabBarAction::BackToChat(id)) => {
-                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
+            PanelAction::BackToChat(id) => {
+                if id == self.draft.id {
+                    self.user_opened_draft_setup = false;
+                }
+                if let Some(conversation) = self.conversation_mut(id) {
                     conversation.screen = Screen::Chat;
                 }
             }
-            Some(TabBarAction::Restart(id)) => {
-                if let Some(conversation) = conversation_mut(&mut self.tree, id) {
-                    conversation.start(ui.ctx(), &mut self.settings, &self.context, &self.agents);
-                }
-            }
-            Some(TabBarAction::SendFeedback) => self.feedback_requested = true,
-            Some(TabBarAction::SelfImprove) => self.self_improve_requested = true,
-            None => {}
-        }
-
-        let has_conversations = self.tree.tiles.tiles().any(|tile| tile.is_pane());
-        if add_requested || !has_conversations || new_conversation_shortcut_pressed(ui, panel_rect)
-        {
-            self.new_conversation();
+            PanelAction::Restart(id) => self.start_conversation(ctx, id),
+            PanelAction::SendFeedback => self.feedback_requested = true,
+            PanelAction::SelfImprove => self.self_improve_requested = true,
         }
     }
 
-    fn active_conversation(&self) -> Option<&Conversation> {
-        let tile_id = active_tile_id(&self.tree)?;
-        self.tree.tiles.get_pane(&tile_id)
+    /// The shown conversation, or the draft while the list is shown.
+    fn active_conversation(&self) -> &Conversation {
+        match self.view {
+            View::Conversation(id) => self
+                .conversations
+                .iter()
+                .find(|conversation| conversation.id == id)
+                .unwrap_or(&self.draft),
+            View::List => &self.draft,
+        }
     }
+
+    fn active_conversation_mut(&mut self) -> &mut Conversation {
+        match self.view {
+            View::Conversation(id) => self
+                .conversations
+                .iter_mut()
+                .find(|conversation| conversation.id == id)
+                .unwrap_or(&mut self.draft),
+            View::List => &mut self.draft,
+        }
+    }
+
+    /// Any conversation, including the draft.
+    fn conversation_mut(&mut self, id: ConversationId) -> Option<&mut Conversation> {
+        self.all_conversations_mut()
+            .find(|conversation| conversation.id == id)
+    }
+
+    fn all_conversations_mut(&mut self) -> impl Iterator<Item = &mut Conversation> {
+        std::iter::chain(
+            self.conversations.iter_mut(),
+            std::iter::once(&mut self.draft),
+        )
+    }
+}
+
+/// The rows of the conversation list: by status, then the most recently prompted first.
+/// Why the draft's agent failed to start, and a way to fix its setup.
+fn draft_error_ui(ui: &mut egui::Ui, message: &str, draft: ConversationId) -> Option<PanelAction> {
+    let action = Alert::error()
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+            ui.label(message);
+            ui.button("Agent setup…")
+                .clicked()
+                .then_some(PanelAction::OpenSetup(draft))
+        })
+        .inner;
+    ui.add_space(8.0);
+    action
+}
+
+fn conversation_rows(
+    conversations: &[Conversation],
+    settings: &AgentSettings,
+    agents: &[AgentEntry],
+) -> Vec<ConversationRow> {
+    let mut rows: Vec<ConversationRow> = conversations
+        .iter()
+        .map(|conversation| ConversationRow {
+            id: conversation.id,
+            title: conversation.title(settings, agents),
+            status: conversation.status(),
+            last_prompt_at: conversation.last_prompt_at(),
+        })
+        .collect();
+    rows.sort_by_key(|row| (row.status.rank(), std::cmp::Reverse(row.last_prompt_at)));
+    rows
 }
 
 /// Whether the user pressed [`NEW_CONVERSATION_SHORTCUT`] "in" the panel.
@@ -863,55 +750,41 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
         && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
 }
 
-fn new_tree(first: Conversation) -> egui_tiles::Tree<Conversation> {
-    egui_tiles::Tree::new_tabs(egui::Id::unique("agent_conversations"), vec![first])
-}
-
-fn conversation_mut(
-    tree: &mut egui_tiles::Tree<Conversation>,
-    id: ConversationId,
-) -> Option<&mut Conversation> {
-    conversations_mut(tree).find(|conversation| conversation.id == id)
-}
-
-fn conversations_mut(
-    tree: &mut egui_tiles::Tree<Conversation>,
-) -> impl Iterator<Item = &mut Conversation> {
-    tree.tiles.tiles_mut().filter_map(|tile| match tile {
-        Tile::Pane(conversation) => Some(conversation),
-        Tile::Container(_) => None,
-    })
-}
-
-/// The pane shown in the root tab bar, or the first one if none is marked active.
-fn active_tile_id(tree: &egui_tiles::Tree<Conversation>) -> Option<TileId> {
-    let root = tree.root()?;
-    match tree.tiles.get(root)? {
-        Tile::Pane(_) => Some(root),
-        Tile::Container(Container::Tabs(tabs)) => {
-            tabs.active.or_else(|| tabs.children.first().copied())
-        }
-        Tile::Container(_) => None,
-    }
-}
-
-fn active_conversation_mut(tree: &mut egui_tiles::Tree<Conversation>) -> Option<&mut Conversation> {
-    let tile_id = active_tile_id(tree)?;
-    match tree.tiles.get_mut(tile_id)? {
-        Tile::Pane(conversation) => Some(conversation),
-        Tile::Container(_) => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use re_agent::AgentProfileId;
+
+    use super::super::conversation_list::ConversationStatus;
     use super::*;
+
+    #[test]
+    fn turn_that_ends_unseen_is_a_notification() {
+        let mut conversation =
+            Conversation::new(ConversationId(0), &AgentSettings::default(), false);
+        conversation
+            .session
+            .transcript_mut()
+            .push_user("Hello".into());
+        conversation.session.begin_test_turn();
+        conversation.mark_seen();
+        assert!(conversation.status() == ConversationStatus::Working);
+
+        conversation
+            .session
+            .handle_event(re_agent::AgentEvent::TurnFinished(Ok(
+                re_agent::acp::schema::v1::StopReason::EndTurn,
+            )));
+        assert!(conversation.status() == ConversationStatus::Notification { needs_input: false });
+
+        conversation.mark_seen();
+        assert!(conversation.status() == ConversationStatus::NothingNew);
+    }
 
     /// Checks that prompts from the host join the busy session's queue before later chat prompts.
     #[test]
     fn host_prompts_join_busy_session_queue() {
         let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
-        let session = panel.session_mut().unwrap();
+        let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
             modes: None,
@@ -921,7 +794,7 @@ mod tests {
 
         panel.queue_prompt("Prompt from command palette".to_owned());
         panel.poll_events();
-        let session = panel.session_mut().unwrap();
+        let session = panel.session_mut();
         assert!(session.send_prompt("Prompt from chat".into()));
         assert_eq!(
             session
@@ -937,7 +810,6 @@ mod tests {
     #[test]
     fn host_prompts_survive_setup_and_stay_with_their_conversation() {
         let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
-        let first = active_tile_id(&panel.tree).unwrap();
         panel.queue_prompt("First prompt".to_owned());
         panel.queue_prompt("Second prompt".to_owned());
         panel.queue_prompt("   ".to_owned());
@@ -945,27 +817,104 @@ mod tests {
         panel.open_conversation(SessionContext::default(), "Other conversation");
         panel.poll_events();
 
-        let Some(Tile::Pane(conversation)) = panel.tree.tiles.get(first) else {
-            panic!("first conversation should still exist");
-        };
-        assert_eq!(conversation.screen, Screen::Setup);
-        assert_eq!(
+        let pending = |conversation: &Conversation| {
             conversation
                 .pending_prompts
                 .iter()
-                .map(|prompt| prompt.text.as_str())
-                .collect::<Vec<_>>(),
-            ["First prompt", "Second prompt"]
-        );
-        assert_eq!(
-            panel
-                .active_conversation()
-                .unwrap()
-                .pending_prompts
-                .iter()
-                .map(|prompt| prompt.text.as_str())
-                .collect::<Vec<_>>(),
-            ["Other conversation"],
-        );
+                .map(|prompt| prompt.text.clone())
+                .collect::<Vec<_>>()
+        };
+        let [first, other] = panel.conversations.as_slice() else {
+            panic!(
+                "expected two conversations, got {}",
+                panel.conversations.len()
+            );
+        };
+        assert_eq!(first.screen, Screen::Setup);
+        assert_eq!(pending(first), ["First prompt", "Second prompt"]);
+        assert_eq!(pending(other), ["Other conversation"]);
+        assert_eq!(panel.view, View::Conversation(other.id));
+    }
+
+    /// Picking another agent replaces an unused, running draft, but only with an agent that can
+    /// be launched.
+    #[test]
+    fn draft_follows_the_selected_agent_only_if_it_is_installed() {
+        let agents = re_agent::AgentProfile::builtin()
+            .into_iter()
+            .map(|profile| {
+                let installed = matches!(profile.id.as_str(), "claude" | "codex");
+                AgentEntry {
+                    executable: installed
+                        .then(|| std::path::PathBuf::from("/usr/local/bin").join(&profile.command)),
+                    profile,
+                }
+            })
+            .collect();
+        let settings = AgentSettings {
+            profile_id: AgentProfileId::new("claude"),
+            ..Default::default()
+        };
+        let mut panel = AgentPanel::with_agents(settings, agents);
+        panel
+            .draft
+            .session
+            .handle_event(re_agent::AgentEvent::SessionStarted {
+                session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
+                modes: None,
+                config_options: Vec::new(),
+            });
+        panel.draft.input.prompt = "Half-written".into();
+        let first = panel.draft.id;
+
+        panel.settings.profile_id = AgentProfileId::new("gemini");
+        panel.refresh_draft();
+        assert_eq!(panel.draft.id, first, "gemini is not installed");
+
+        panel.settings.profile_id = AgentProfileId::new("codex");
+        panel.user_opened_draft_setup = true;
+        panel.refresh_draft();
+        assert_eq!(panel.draft.id, first, "the draft's own setup starts codex");
+
+        panel.user_opened_draft_setup = false;
+        panel.refresh_draft();
+        assert_ne!(panel.draft.id, first, "codex is installed");
+        assert_eq!(panel.draft.input.prompt.text, "Half-written");
+    }
+
+    /// Setup finished in another conversation, e.g. one the host opened, applies to the draft.
+    #[test]
+    fn draft_skips_setup_once_another_conversation_finished_it() {
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        panel.refresh_draft();
+        assert_eq!(panel.draft.screen, Screen::Setup, "setup is not done yet");
+
+        panel.settings.setup_done = true;
+        panel.draft.session.report_error("Failed to start");
+        panel.refresh_draft();
+        assert_eq!(panel.draft.screen, Screen::Setup, "its own start failed");
+
+        panel.draft = Conversation::new(ConversationId(99), &AgentSettings::default(), false);
+        panel.refresh_draft();
+        assert_eq!(panel.draft.screen, Screen::Chat);
+    }
+
+    #[test]
+    fn draft_becomes_a_conversation_once_it_has_a_prompt() {
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        panel.poll_events();
+        assert!(panel.conversations.is_empty());
+        assert_eq!(panel.view, View::List);
+
+        panel.queue_prompt("Hello".to_owned());
+        panel.poll_events();
+        let [conversation] = panel.conversations.as_slice() else {
+            panic!(
+                "expected one conversation, got {}",
+                panel.conversations.len()
+            );
+        };
+        assert_eq!(panel.view, View::Conversation(conversation.id));
+        assert!(!panel.draft.has_started());
     }
 }

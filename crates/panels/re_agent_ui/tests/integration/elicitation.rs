@@ -18,7 +18,7 @@ fn question(message: &str, schema: &serde_json::Value) -> CreateElicitationReque
 
 fn harness(request: CreateElicitationRequest) -> egui_kittest::Harness<'static, AgentPanel> {
     let mut panel = ready_panel();
-    let session = panel.session_mut().expect("session");
+    let session = panel.session_mut();
     session.begin_test_turn();
     session.push_test_elicitation_request(request);
     re_ui::testing::new_harness(
@@ -73,7 +73,7 @@ fn python_environment_choice_and_follow_up() {
     harness.snapshot("python_environment_question");
     harness.get_by_label("Send").click();
     harness.run_steps(2);
-    let session = harness.state_mut().session_mut().expect("session");
+    let session = harness.state_mut().session_mut();
     assert!(session.pending_elicitations().is_empty());
     assert_eq!(
         last_answer_note(session),
@@ -92,7 +92,7 @@ fn python_environment_choice_and_follow_up() {
     harness.run_steps(2);
     harness.get_by_label("Send").click();
     harness.run_steps(2);
-    let session = harness.state_mut().session_mut().expect("session");
+    let session = harness.state_mut().session_mut();
     assert!(session.pending_elicitations().is_empty());
     assert_eq!(
         last_answer_note(session),
@@ -128,7 +128,7 @@ fn multi_select_and_custom_answer() {
     harness.run_steps(2);
     harness.get_by_label("Send").click();
     harness.run_steps(2);
-    let session = harness.state_mut().session_mut().expect("session");
+    let session = harness.state_mut().session_mut();
     assert!(session.pending_elicitations().is_empty());
     assert_eq!(
         last_answer_note(session),
@@ -147,7 +147,7 @@ fn skipping_a_question_does_not_cancel_the_turn() {
     harness.run_steps(3);
     harness.get_by_label("Skip").click();
     harness.run_steps(2);
-    let session = harness.state_mut().session_mut().expect("session");
+    let session = harness.state_mut().session_mut();
     assert!(session.pending_elicitations().is_empty());
     assert!(session.turn_in_progress());
     assert_eq!(
@@ -183,7 +183,7 @@ fn custom_answer_without_selecting_an_option() {
     harness.run_steps(2);
     harness.get_by_label("Send").click();
     harness.run_steps(2);
-    let session = harness.state_mut().session_mut().expect("session");
+    let session = harness.state_mut().session_mut();
     assert!(session.pending_elicitations().is_empty());
     assert_eq!(
         last_answer_note(session),

@@ -14,7 +14,9 @@
 use std::time::{Duration, Instant};
 
 use clap::Parser;
-use re_agent_ui::{AgentPanel, AgentProfile, AgentSettings, McpServerConfig, SessionContext};
+use re_agent_ui::{
+    AgentPanel, AgentProfile, AgentProfileId, AgentSettings, McpServerConfig, SessionContext,
+};
 use re_ui::UiExt as _;
 
 const SETTINGS_KEY: &str = "agent_settings";
@@ -139,14 +141,15 @@ fn apply_args(mut settings: AgentSettings, args: &Args) -> AgentSettings {
     } = args;
 
     if let Some(agent) = agent {
-        let is_profile = agent == AgentSettings::CUSTOM_PROFILE_ID
+        let profile_id = AgentProfileId::from(agent.clone());
+        let is_profile = profile_id == AgentProfileId::CUSTOM
             || AgentProfile::builtin()
                 .iter()
-                .any(|profile| &profile.id == agent);
+                .any(|profile| profile.id == profile_id);
         if is_profile {
-            settings.profile_id = agent.clone();
+            settings.profile_id = profile_id;
         } else {
-            settings.profile_id = AgentSettings::CUSTOM_PROFILE_ID.to_owned();
+            settings.profile_id = AgentProfileId::CUSTOM;
             settings.custom_command_line = agent.clone();
         }
         // Naming the agent on the command line means: use it, do not ask.
