@@ -889,11 +889,11 @@ function estimate_total_bytes(response: Response): number | null {
   const final_length = response.headers.get("rerun-final-length");
   if (final_length != null) return parseInt(final_length, 10);
 
-  // When gzip-compressed, try the GCS uncompressed-size header.
-  if (response.headers.get("content-encoding") === "gzip") {
-    const uncompressed = response.headers.get("x-goog-meta-uncompressed-size");
-    if (uncompressed != null) return parseInt(uncompressed, 10);
+  // GCS custom metadata, needed since our wasm there is Brotli-compressed.
+  const uncompressed = response.headers.get("x-goog-meta-uncompressed-size");
+  if (uncompressed != null) return parseInt(uncompressed, 10);
 
+  if (response.headers.get("content-encoding") === "gzip") {
     // Fall back to content-length * 3 (good empirical approximation for gzip'd wasm).
     const cl = response.headers.get("content-length");
     if (cl != null) return parseInt(cl, 10) * 3;
