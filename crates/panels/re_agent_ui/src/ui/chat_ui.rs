@@ -547,7 +547,7 @@ fn footer_ui(
             |ui| {
                 let clicked = if turn_in_progress {
                     let stop = ui
-                        .add(ReButton::new("Stop").outlined().small())
+                        .add(ReButton::icon(icons::STOP, "Stop").primary().small())
                         .on_hover_text("Cancel the current turn (Esc)")
                         .clicked();
                     ui.inline_loading_indicator("The agent is working");
