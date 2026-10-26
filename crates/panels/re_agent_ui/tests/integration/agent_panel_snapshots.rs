@@ -243,7 +243,14 @@ fn chat_conversation() {
         session.handle_event(AgentEvent::Update(update));
     }
 
-    snapshot("chat_conversation", panel);
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.snapshot("chat_conversation");
+
+    // The plan is one line until clicked.
+    harness.get_by_label("Plan (1/3)").click();
+    harness.run_steps(4);
+    harness.snapshot("chat_plan_expanded");
 }
 
 /// Once a turn has ended, its tool calls fold into one row.

@@ -410,6 +410,7 @@ fn thoughts_ui(ui: &mut egui::Ui, thoughts: &str) {
     });
 }
 
+/// One collapsed line with the progress, which expands into the whole plan.
 pub fn plan_ui(ui: &mut egui::Ui, plan: &Plan) {
     if plan.entries.is_empty() {
         return;
@@ -420,10 +421,9 @@ pub fn plan_ui(ui: &mut egui::Ui, plan: &Plan) {
         .filter(|entry| entry.status == PlanEntryStatus::Completed)
         .count();
     let title = format!("Plan ({done}/{})", plan.entries.len());
-
     egui::CollapsingHeader::new(RichText::new(title).strong())
         .id_salt("plan")
-        .default_open(true)
+        .default_open(false)
         .show(ui, |ui| {
             let tokens = ui.tokens();
             for entry in &plan.entries {
