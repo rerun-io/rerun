@@ -26,6 +26,7 @@ analytics = ["dep:re_analytics"]
 
 [dependencies]
 re_analytics = { workspace = true, optional = true }
+re_arrow_ui.workspace = true
 re_arrow_util.workspace = true
 re_async.workspace = true
 re_case.workspace = true

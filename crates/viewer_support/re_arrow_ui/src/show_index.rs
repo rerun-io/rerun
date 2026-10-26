@@ -61,8 +61,11 @@ pub struct DisplayOptions<'a> {
 
     /// Where should strings ([`arrow::array::StringArray`] etc.) be truncated?
     ///
-    /// [`usize::MAX`] by default, will be set to `min(max_string_chars, 100)` by [`DisplayOptions::nested`].
+    /// [`usize::MAX`] by default, will be set to [`Self::max_nested_string_chars`] by [`DisplayOptions::nested`].
     pub max_string_chars: usize,
+
+    /// Where should strings inside nested items be truncated?
+    pub max_nested_string_chars: usize,
 }
 
 impl Default for DisplayOptions<'_> {
@@ -78,11 +81,26 @@ impl Default for DisplayOptions<'_> {
             max_struct_items: 6,
             decrease_nested_items_per_nested_level: 1,
             max_string_chars: usize::MAX,
+            max_nested_string_chars: 100,
         }
     }
 }
 
 impl DisplayOptions<'_> {
+    /// Options that show every item and every character.
+    pub fn untruncated() -> Self {
+        Self {
+            max_nested_array_items: usize::MAX,
+            max_array_items: usize::MAX,
+            max_map_items: usize::MAX,
+            max_struct_items: usize::MAX,
+            decrease_nested_items_per_nested_level: 0,
+            max_string_chars: usize::MAX,
+            max_nested_string_chars: usize::MAX,
+            ..Default::default()
+        }
+    }
+
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
@@ -100,7 +118,8 @@ impl DisplayOptions<'_> {
                 .max_struct_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
             decrease_nested_items_per_nested_level: self.decrease_nested_items_per_nested_level,
-            max_string_chars: 100,
+            max_string_chars: self.max_nested_string_chars,
+            max_nested_string_chars: self.max_nested_string_chars,
         }
     }
 

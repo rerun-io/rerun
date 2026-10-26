@@ -1872,12 +1872,43 @@ impl DataFusionTableDelegate<'_> {
         )
     }
 
-    pub fn row_context_menu(&self, ui: &Ui, _row_number: u64) {
-        let has_context_menu = self.query_data.segment_links.is_some();
-        if !has_context_menu {
-            return;
-        }
+    /// The visible columns, in display order, with their data column index.
+    fn visible_columns(&self) -> impl Iterator<Item = (&TableColumn<'_>, usize)> {
+        self.blueprint
+            .iter_visible_columns(TableLayoutKind::Table)
+            .filter_map(|column| {
+                let column_index = self
+                    .columns
+                    .index_by_physical_name(column.physical_name())?;
+                Some((column, column_index))
+            })
+    }
 
+    /// The names of the visible columns, separated by tabs.
+    fn header_text(&self) -> String {
+        self.visible_columns()
+            .map(|(column, _)| tsv_field(column.display_name()))
+            .join("\t")
+    }
+
+    /// The visible cells of `row`, separated by tabs.
+    fn row_text(&self, row: u64) -> String {
+        self.visible_columns()
+            .map(|(_, column_index)| tsv_field(self.cell_text(row, column_index)))
+            .join("\t")
+    }
+
+    /// The cell at `row` and data column `column_index` as plain text, with nothing left out.
+    fn cell_text(&self, row: u64, column_index: usize) -> String {
+        find_row_batch(self.display_record_batches, row as usize)
+            .and_then(|(batch, local_row)| {
+                let column = batch.columns().get(column_index)?;
+                Some(column.full_text(local_row, self.ctx.app_options.timestamp_format))
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn row_context_menu(&self, ui: &Ui, row_number: u64) {
         re_ui::menu::container_context_menu(&ui.response(), |ui| {
             let selection = TableSelectionState::load(ui.ctx(), self.session_id);
 
@@ -1910,8 +1941,57 @@ impl DataFusionTableDelegate<'_> {
                 } else if response.clicked() {
                     open(false);
                 }
+
+                ui.separator();
+            }
+
+            if let Some(column_index) = selection.context_menu_column
+                && ui
+                    .icon_and_text_menu_item(&icons::COPY, "Copy cell")
+                    .clicked()
+            {
+                ui.copy_text(self.cell_text(row_number, column_index));
+            }
+
+            if ui
+                .icon_and_text_menu_item(&icons::COPY, "Copy row")
+                .clicked()
+            {
+                ui.copy_text(self.row_text(row_number));
+            }
+
+            if selected_rows.len() > 1
+                && ui
+                    .icon_and_text_menu_item(
+                        &icons::COPY,
+                        format!(
+                            "Copy {}",
+                            format_plural_s(selected_rows.len(), "selected row")
+                        ),
+                    )
+                    .clicked()
+            {
+                let rows = selected_rows
+                    .iter()
+                    .copied()
+                    .sorted()
+                    .map(|row| self.row_text(row));
+                let text = std::iter::chain([self.header_text()], rows).join("\n");
+                ui.copy_text(text);
             }
         });
+    }
+}
+
+/// `text` as one field of tab-separated values, as spreadsheets read them from the clipboard.
+///
+/// A field with a tab or newline, or one that starts with a quote, is put in quotes, with its quotes
+/// doubled. Spreadsheets read a quote anywhere else as part of the text.
+fn tsv_field(text: String) -> String {
+    if text.contains(['\t', '\n', '\r']) || text.starts_with('"') {
+        ["\"", &text.replace('"', "\"\""), "\""].concat()
+    } else {
+        text
     }
 }
 

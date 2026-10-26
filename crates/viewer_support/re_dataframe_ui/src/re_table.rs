@@ -52,6 +52,7 @@ impl<'a> ReTable<'a> {
         let previous_selection = selection.clone();
         selection.all_hovered = false;
         selection.hovered_row = None;
+        selection.hovered_column = None;
         Self {
             session_id,
             inner,
@@ -256,6 +257,11 @@ impl egui_table::TableDelegate for ReTable<'_> {
             });
         } else {
             // Data column.
+            if ui.rect_contains_pointer(ui.max_rect())
+                && let Some((_, col_index)) = self.visible_columns.get(cell.col_nr - 1)
+            {
+                self.selection.hovered_column = Some(*col_index);
+            }
             cell_ui(ui, self.table_style, false, |ui| {
                 ui.set_truncate_style();
                 let col_index = cell.col_nr - 1;
@@ -312,11 +318,15 @@ impl egui_table::TableDelegate for ReTable<'_> {
             let modifiers = ui.input(|i| i.modifiers);
             self.selection.handle_row_click(row_nr, modifiers, false);
         }
-        if response.container_secondary_clicked() && !self.selection.selected_rows.contains(&row_nr)
-        {
-            // If right-clicking a non-selected row, select it first.
-            let modifiers = ui.input(|i| i.modifiers);
-            self.selection.handle_row_click(row_nr, modifiers, false);
+        if response.container_secondary_clicked() {
+            // Cells are shown after the row, so the hovered cell is the one from the last frame.
+            self.selection.context_menu_column = self.previous_selection.hovered_column;
+
+            if !self.selection.selected_rows.contains(&row_nr) {
+                // If right-clicking a non-selected row, select it first.
+                let modifiers = ui.input(|i| i.modifiers);
+                self.selection.handle_row_click(row_nr, modifiers, false);
+            }
         }
         self.inner.row_ui(ui, row_nr);
     }

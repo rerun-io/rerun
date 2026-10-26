@@ -16,7 +16,7 @@ use re_component_ui::{
 };
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, TimeInt, Timeline, TimestampFormat};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::blueprint::components::TableCellKind;
 use re_sdk_types::components::{Blob, MediaType};
@@ -453,6 +453,43 @@ impl DisplayColumn {
             }
         }
         None
+    }
+
+    /// The value at `row_index` as plain text, with nothing left out.
+    ///
+    /// Empty if there is no value.
+    pub fn full_text(&self, row_index: usize, timestamp_format: TimestampFormat) -> String {
+        match self {
+            Self::RowId { row_ids } => row_ids
+                .get(row_index)
+                .map(ToString::to_string)
+                .unwrap_or_default(),
+
+            Self::Timeline {
+                timeline,
+                time_data,
+                time_nulls,
+            } => {
+                let is_valid = time_nulls
+                    .as_ref()
+                    .is_none_or(|nulls| nulls.is_valid(row_index));
+                time_data
+                    .get(row_index)
+                    .filter(|_| is_valid)
+                    .and_then(|value| TimeInt::try_from(*value).ok())
+                    .map(|time| timeline.typ().format(time, timestamp_format))
+                    .unwrap_or_default()
+            }
+
+            Self::Component(component_column) => component_column
+                .component_data
+                .row_data(row_index)
+                .map(|data| {
+                    re_arrow_ui::arrow_full_text(&data, timestamp_format)
+                        .unwrap_or_else(|err| err.to_string())
+                })
+                .unwrap_or_default(),
+        }
     }
 
     /// Try to decode the time from the given row index.
