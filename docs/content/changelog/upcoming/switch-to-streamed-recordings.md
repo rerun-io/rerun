@@ -1,10 +1,9 @@
 ---
-title: Option to stay on the current recording while new ones stream in
+title: Stay on the current recording while new ones stream in
 hidden: true
 type: misc
 ---
 
-### Option to stay on the current recording while new ones stream in
+### Stay on the current recording while new ones stream in
 
-A new "Switch to newly streamed recordings" setting lets you keep looking at the current recording while new recordings stream in from an SDK.
-When it is turned off, they are only added to the recordings panel.
+With "Switch to newly streamed recordings" turned off in the settings, a recording that streams in from an SDK is added to the recordings panel instead of replacing the one you are looking at.
