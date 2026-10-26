@@ -1,5 +1,5 @@
-//! The chat view: title bar with mode picker, the transcript, and the composer at the bottom
-//! (login and permission prompts, plan, prompt input, agent log).
+//! The chat view: the transcript, and the composer at the bottom
+//! (login and permission prompts, plan, prompt input with its footer, agent log).
 
 use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
@@ -390,9 +390,11 @@ fn composer_ui(
     }
 
     queue_ui(ui, session, input);
-    input_ui(ui, session, input);
+    input_ui(ui, session, input, preferred_mode, preferred_model);
 
-    footer_ui(ui, session, input, preferred_mode, preferred_model);
+    if input.log_open {
+        log_ui(ui, session);
+    }
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -486,7 +488,8 @@ fn stop_agent(ui: &egui::Ui, session: &mut AgentSession, input: &mut ChatInput) 
     session.cancel();
 }
 
-/// Mode picker, model, connection status or token usage, and the agent log toggle.
+/// The row at the bottom of the input: mode picker, model, connection status or token usage,
+/// and the agent log toggle on the left; the send or stop button on the right.
 fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
@@ -494,48 +497,83 @@ fn footer_ui(
     preferred_mode: &mut Option<SessionModeId>,
     preferred_model: &mut Option<SessionConfigValueId>,
 ) {
-    ui.horizontal(|ui| {
-        mode_picker_ui(ui, session, preferred_mode);
+    let turn_in_progress = session.turn_in_progress();
+    let can_send =
+        session.is_ready() && (!input.text.trim().is_empty() || !input.pending_images.is_empty());
 
-        model_picker_ui(ui, session, preferred_model);
+    let ((), clicked) = egui::containers::Sides::new()
+        .shrink_left()
+        .truncate()
+        .show(
+            ui,
+            |ui| {
+                // In a narrow panel, truncated labels still paint their "…" past the edge.
+                // Use a stricter `clip_rect` to avoid overlap with the right side UI.
+                let mut clip_rect = ui.clip_rect();
+                clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
+                ui.set_clip_rect(clip_rect);
+                mode_picker_ui(ui, session, preferred_mode);
 
-        match session.phase() {
-            Phase::Connecting { status } => {
-                ui.weak(status);
-            }
-            Phase::Ready => {
-                if let Some(usage) = &session.transcript().usage {
-                    let text = format!(
-                        "{} / {} tokens",
-                        format_tokens(usage.used),
-                        format_tokens(usage.size)
-                    );
-                    ui.weak(text).on_hover_text("Context window usage");
+                model_picker_ui(ui, session, preferred_model);
+
+                match session.phase() {
+                    Phase::Connecting { status } => {
+                        ui.weak(status);
+                    }
+                    Phase::Ready => {
+                        if let Some(usage) = &session.transcript().usage {
+                            let text = format!(
+                                "{} / {} tokens",
+                                format_tokens(usage.used),
+                                format_tokens(usage.size)
+                            );
+                            ui.weak(text).on_hover_text("Context window usage");
+                        }
+                    }
+                    Phase::Disconnected { reason } => {
+                        ui.error_label(reason.clone());
+                    }
+                    Phase::Idle => {}
                 }
-            }
-            Phase::Disconnected { reason } => {
-                ui.error_label(reason.clone());
-            }
-            Phase::Idle => {}
-        }
 
-        let log_lines = session.log().len();
-        if log_lines != 0 {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let text = RichText::new(format!("Agent log ({log_lines} lines)")).small();
-                if ui
-                    .selectable_label(input.log_open, text)
-                    .on_hover_text("Show what the agent wrote to stderr")
+                let log_lines = session.log().len();
+                if log_lines != 0 {
+                    let text = RichText::new(format!("Agent log ({log_lines} lines)")).small();
+                    if ui
+                        .selectable_label(input.log_open, text)
+                        .on_hover_text("Show what the agent wrote to stderr")
+                        .clicked()
+                    {
+                        input.log_open = !input.log_open;
+                    }
+                }
+            },
+            |ui| {
+                if turn_in_progress {
+                    let stop = ui
+                        .add(ReButton::new("Stop").outlined().small())
+                        .on_hover_text("Cancel the current turn (Esc)")
+                        .clicked();
+                    ui.inline_loading_indicator("The agent is working");
+                    stop
+                } else {
+                    ui.add_enabled(
+                        can_send,
+                        ReButton::icon(icons::ARROW_UP, "Send").primary().small(),
+                    )
+                    .on_hover_text("Send (⏎)")
                     .clicked()
-                {
-                    input.log_open = !input.log_open;
                 }
-            });
-        }
-    });
+            },
+        );
 
-    if input.log_open {
-        log_ui(ui, session);
+    if clicked {
+        if turn_in_progress {
+            stop_agent(ui, session, input);
+        } else {
+            send_input(session, input);
+            input.focus = true;
+        }
     }
 }
 
@@ -669,7 +707,13 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
     }
 }
 
-fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
+fn input_ui(
+    ui: &mut egui::Ui,
+    session: &mut AgentSession,
+    input: &mut ChatInput,
+    preferred_mode: &mut Option<SessionModeId>,
+    preferred_model: &mut Option<SessionConfigValueId>,
+) {
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
     } else if session.is_ready() {
@@ -713,20 +757,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
-            if session.turn_in_progress() {
-                ui.horizontal(|ui| {
-                    ui.inline_loading_indicator("Working…");
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .add(ReButton::new("Stop").outlined().small())
-                            .on_hover_text("Cancel the current turn (Esc)")
-                            .clicked()
-                        {
-                            stop_agent(ui, session, input);
-                        }
-                    });
-                });
-            }
+            footer_ui(ui, session, input, preferred_mode, preferred_model);
 
             response
         })
@@ -739,22 +770,9 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     if response.has_focus() {
         take_pasted_images(ui, input);
 
-        if consume_plain_enter(ui) {
-            let text = input.text.trim().to_owned();
-            let images: Vec<PromptImage> = input
-                .pending_images
-                .iter()
-                .map(|pending| pending.image.clone())
-                .collect();
-            if session.send_prompt(Prompt {
-                text: text.clone(),
-                images,
-            }) {
-                input.history.push(&text);
-                input.text.clear();
-                input.pending_images.clear();
-                response.request_focus();
-            }
+        if consume_plain_enter(ui) && send_input(session, input) {
+            // Keep focus after hitting enter to send, so the next message can be typed directly.
+            response.request_focus();
         }
 
         // The event filter keeps focus on Escape: here it means "stop the agent", not "leave the input".
@@ -764,6 +782,28 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
             stop_agent(ui, session, input);
         }
     }
+}
+
+/// Sends what is in the input, or queues it while a turn is running.
+///
+/// Returns `true` if the prompt was taken, which also clears the input.
+fn send_input(session: &mut AgentSession, input: &mut ChatInput) -> bool {
+    let text = input.text.trim().to_owned();
+    let images: Vec<PromptImage> = input
+        .pending_images
+        .iter()
+        .map(|pending| pending.image.clone())
+        .collect();
+    let sent = session.send_prompt(Prompt {
+        text: text.clone(),
+        images,
+    });
+    if sent {
+        input.history.push(&text);
+        input.text.clear();
+        input.pending_images.clear();
+    }
+    sent
 }
 
 /// Takes the images pasted this frame into the composer.

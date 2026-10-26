@@ -583,3 +583,45 @@ fn chat_model_picker() {
     harness.run_steps(4);
     harness.snapshot("chat_model_picker");
 }
+
+/// In a narrow panel, the composer footer truncates instead of running under the stop button.
+#[test]
+fn chat_narrow_composer() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut().expect("one conversation");
+    open_session(session);
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                "default",
+                vec![SessionConfigSelectOption::new(
+                    "default",
+                    "Default (recommended)",
+                )],
+            )
+            .category(SessionConfigOptionCategory::Model),
+        ]),
+    )));
+    session.handle_event(AgentEvent::Update(SessionUpdate::UsageUpdate(
+        UsageUpdate::new(21_300, 1_000_000),
+    )));
+    session.handle_event(AgentEvent::Log {
+        direction: LineDirection::Stderr,
+        line: "warning: falling back to the bundled Node.js".to_owned(),
+    });
+    session.begin_test_turn();
+
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(260.0, 400.0))
+            .build_ui_state(
+                |ui, panel: &mut AgentPanel| {
+                    panel.ui(ui);
+                },
+                panel,
+            );
+    harness.run_steps(4);
+    harness.snapshot("chat_narrow_composer");
+}

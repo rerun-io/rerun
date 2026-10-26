@@ -264,6 +264,60 @@ fn enter_while_busy_queues_and_escape_takes_it_back() {
     assert!(input.accesskit_node().is_focused());
 }
 
+/// The send button is only enabled while there is something to send.
+#[test]
+fn send_button_needs_input() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            ready_panel(),
+        );
+    harness.run_steps(2);
+    assert!(harness.get_by_label("Send").accesskit_node().is_disabled());
+
+    let input = harness.get_by_role(Role::MultilineTextInput);
+    input.focus();
+    input.type_text("  ");
+    harness.run_steps(2);
+    assert!(harness.get_by_label("Send").accesskit_node().is_disabled());
+
+    harness
+        .get_by_role(Role::MultilineTextInput)
+        .type_text("hi");
+    harness.run_steps(2);
+    assert!(!harness.get_by_label("Send").accesskit_node().is_disabled());
+}
+
+/// The stop button does what Escape does: it hands queued prompts back to the input.
+#[test]
+fn stop_button_takes_queued_prompts_back() {
+    let mut panel = ready_panel();
+    let session = panel.session_mut().expect("one conversation");
+    session.begin_test_turn();
+    assert!(session.send_prompt("also fix the tests".into()));
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            panel,
+        );
+    harness.run_steps(2);
+
+    harness.get_by_label("Stop").click();
+    harness.run_steps(3);
+
+    let session = harness.state().session().expect("one conversation");
+    assert!(session.queued_prompts().is_empty());
+    let input = harness.get_by_role(Role::MultilineTextInput);
+    assert_eq!(
+        input.accesskit_node().value(),
+        Some("also fix the tests".into())
+    );
+}
+
 /// An example prompt goes straight to the agent, leaving what was typed alone.
 #[test]
 fn clicking_an_example_prompt_sends_it() {

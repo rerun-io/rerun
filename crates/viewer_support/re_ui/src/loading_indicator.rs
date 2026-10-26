@@ -85,6 +85,11 @@ pub fn paint_loading_indicator_inside(
     color: Option<Color32>,
     reason: &str,
 ) {
+    re_log::debug_assert!(
+        !reason.is_empty(),
+        "A loading indicator needs a reason: it is shown on hover and read by screen readers"
+    );
+
     if opacity <= 0.0 {
         return;
     }

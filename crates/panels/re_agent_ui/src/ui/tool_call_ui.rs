@@ -33,7 +33,7 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
     let tokens = ui.tokens();
     match call.status {
         ToolCallStatus::Pending | ToolCallStatus::InProgress => {
-            ui.inline_loading_indicator("");
+            ui.inline_loading_indicator("Running the tool call");
         }
         ToolCallStatus::Completed => {
             ui.small_icon(&icons::SUCCESS, Some(tokens.text_subdued));

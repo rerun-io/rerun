@@ -46,7 +46,8 @@ pub trait UiExt {
 
     /// Show an animated loading indicator.
     ///
-    /// `reason` describes why we are loading. In debug builds, it is shown on hover.
+    /// `reason` describes why we are loading. It labels the indicator for screen readers and
+    /// tests, and is shown on hover in debug builds, so it must not be empty.
     ///
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!
@@ -57,6 +58,9 @@ pub trait UiExt {
 
     /// Like [`Self::loading_indicator`], but as tall as one line of text, so a label can take its
     /// place without changing layout.
+    ///
+    /// `reason` describes why we are loading. It labels the indicator for screen readers and
+    /// tests, and is shown on hover in debug builds, so it must not be empty.
     #[doc(alias = "spinner")]
     fn inline_loading_indicator(&mut self, reason: &str) -> egui::Response {
         crate::loading_indicator::inline_loading_indicator_ui(self.ui_mut(), reason)
