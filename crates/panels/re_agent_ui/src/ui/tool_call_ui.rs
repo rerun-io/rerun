@@ -4,7 +4,9 @@ use re_ui::{UiExt as _, icons};
 
 use re_agent::ToolCallState;
 
-/// A collapsible card for one tool call: status, kind, title, and the details underneath.
+/// A collapsible row for one tool call: status, kind, title, and the details underneath.
+///
+/// Only running and failed calls show a status icon, so the transcript stays quiet.
 pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState) {
     let id = ui.make_persistent_id(&call.id.0);
     let default_open = call.status == ToolCallStatus::Failed;
@@ -19,11 +21,7 @@ pub fn tool_call_ui(ui: &mut egui::Ui, call: &ToolCallState) {
         .show_header(ui, |ui| {
             header_ui(ui, call, is_open);
         })
-        .body_unindented(|ui| {
-            egui::Frame::new()
-                .inner_margin(egui::Margin::symmetric(8, 4))
-                .show(ui, |ui| body_ui(ui, call));
-        });
+        .body(|ui| body_ui(ui, call));
 }
 
 /// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.
@@ -34,9 +32,6 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
     match call.status {
         ToolCallStatus::Pending | ToolCallStatus::InProgress => {
             ui.inline_loading_indicator("Running the tool call");
-        }
-        ToolCallStatus::Completed => {
-            ui.small_icon(&icons::SUCCESS, Some(tokens.text_subdued));
         }
         ToolCallStatus::Failed => {
             ui.small_icon(&icons::ERROR, Some(tokens.error_fg_color));
@@ -59,7 +54,7 @@ fn header_ui(ui: &mut egui::Ui, call: &ToolCallState, is_open: bool) {
         egui::TextWrapMode::Truncate
     };
     ui.add(
-        egui::Label::new(RichText::new(title).monospace())
+        egui::Label::new(RichText::new(title).color(tokens.text_subdued))
             .wrap_mode(wrap_mode)
             .show_tooltip_when_elided(false)
             .selectable(false),
