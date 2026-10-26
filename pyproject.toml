@@ -23,7 +23,7 @@ dev = [
   #
   # This fixup package points the `rerun` CLI of editable installs at `target/debug/rerun`.
   "rerun-dev-fixup",
-  "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
   "maturin>=1.14.1",
   "ruff==0.16.9",
   "mypy==1.19.1",
