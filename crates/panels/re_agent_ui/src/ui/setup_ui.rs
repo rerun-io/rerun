@@ -2,7 +2,6 @@
 
 use egui::RichText;
 use re_ui::alert::Alert;
-use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::text_edit::ReTextEdit;
 use re_ui::{ReButton, UiExt as _, icons};
 
@@ -10,10 +9,7 @@ use super::Screen;
 use re_agent::AgentEntry;
 use re_agent::{AgentSettings, McpServerConfig};
 
-const CARD_MIN_WIDTH: f32 = 180.0;
-const CARD_INNER_MARGIN: i8 = 10;
-
-/// What prompt sharing actually does, behind the checkbox and the "What is shared?" hint.
+/// What prompt sharing actually does, behind the checkbox and the "Details" link.
 const ANALYTICS_DETAILS: &str = "Prompts and the agent's answers go to Rerun only after a second \
      session of your own agent has removed names, identifiers, paths, and secrets, which spends \
      your own quota.\n\
@@ -52,68 +48,29 @@ fn setup_ui_inner(
 
     warning_ui(ui);
 
+    ui.add_space(8.0);
+    ui.label(RichText::new("Choose your agent").strong().size(15.0));
+    ui.label(
+        "Rerun agent uses your own subscription and a locally installed chat agent. \
+         Which agent do you want to use?",
+    );
+
+    ui.add_space(8.0);
+    agent_list_ui(ui, settings, agents);
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Choose your agent").strong().size(15.0));
-        if ui
-            .small_icon_button(&icons::RESET, "Re-check which agents are installed")
-            .on_hover_text("Re-check which agents are installed")
-            .clicked()
-        {
+        ui.weak("Installed something new?");
+        if ui.link("Re-check").clicked() {
             for agent in agents.iter_mut() {
                 agent.refresh();
             }
         }
     });
 
-    ui.horizontal_top(|ui| {
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-        ui.small_icon(&icons::WARNING, Some(ui.tokens().alert_warning.icon));
-        ui.label(
-            "Runs on this machine using your own login and subscription. \
-             The agent can reach your MCP servers and skills, and read and change files in its working directory.",
-        );
-    });
-
-    agent_cards_ui(ui, settings, agents);
-
+    ui.add_space(8.0);
+    ui.separator();
     prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
 
-    ui.add_space(4.0);
-    re_ui::list_item::list_item_scope(ui, "advanced", |ui| {
-        ui.section_collapsing_header("Advanced")
-            .default_open(false)
-            .show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 6.0;
-
-                ui.label(RichText::new("Working directory").strong());
-                let current_dir = std::env::current_dir()
-                    .map_or_else(|_| String::new(), |dir| dir.display().to_string());
-                ui.add(ReTextEdit::singleline(&mut settings.cwd).hint_text(current_dir));
-                ui.weak("The agent reads and edits files here. Point it at the project you want help with.");
-
-                ui.add_space(8.0);
-                ui.label(RichText::new("Environment variables").strong());
-                ui.add(
-                    ReTextEdit::multiline(&mut settings.env_vars)
-                        .hint_text("CLAUDE_CONFIG_DIR=~/.claude-work"),
-                );
-                ui.weak("One NAME=value per line, set for the agent process.");
-
-                ui.add_space(8.0);
-                mcp_servers_ui(ui, &mut settings.mcp_servers);
-
-                ui.add_space(8.0);
-                ui.label(RichText::new("Options").strong());
-                ui.re_checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
-                ui.re_checkbox(
-                    &mut settings.log_protocol,
-                    "Log every protocol message (for debugging)",
-                );
-            });
-    });
-
     ui.add_space(8.0);
-
     let ready = selected_agent_ready(settings, agents);
     let label = format!("Start {}", selected_agent_name(settings, agents));
     let button = ReButton::new((label, icons::ARROW_RIGHT)).primary();
@@ -129,113 +86,124 @@ fn setup_ui_inner(
         ui.error_label(problem);
     }
 
+    ui.add_space(8.0);
+    ui.collapsing_header("Advanced", false, |ui| {
+        ui.spacing_mut().item_spacing.y = 6.0;
+
+        ui.label(RichText::new("Working directory").strong());
+        let current_dir =
+            std::env::current_dir().map_or_else(|_| String::new(), |dir| dir.display().to_string());
+        ui.add(
+            ReTextEdit::singleline(&mut settings.cwd)
+                .hint_text(current_dir)
+                .desired_width(f32::INFINITY),
+        );
+        ui.weak(
+            "The agent reads and edits files here. Point it at the project you want help with.",
+        );
+
+        ui.add_space(8.0);
+        ui.label(RichText::new("Environment variables").strong());
+        ui.add(
+            ReTextEdit::multiline(&mut settings.env_vars)
+                .hint_text("CLAUDE_CONFIG_DIR=~/.claude-work")
+                .desired_width(f32::INFINITY),
+        );
+        ui.weak("One NAME=value per line, set for the agent process.");
+
+        ui.add_space(8.0);
+        mcp_servers_ui(ui, &mut settings.mcp_servers);
+
+        ui.add_space(8.0);
+        ui.label(RichText::new("Options").strong());
+        ui.re_checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
+        ui.re_checkbox(
+            &mut settings.log_protocol,
+            "Log every protocol message (for debugging)",
+        );
+    });
+
     next_screen
 }
 
-/// One card per known agent, plus one for a custom command. Clicking a card selects it.
-fn agent_cards_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &[AgentEntry]) {
-    let tokens = ui.tokens();
-    let card_frame = egui::Frame::new()
-        .inner_margin(CARD_INNER_MARGIN)
-        .fill(tokens.card_fill)
-        .stroke(tokens.card_stroke)
-        .corner_radius(tokens.normal_corner_radius());
-    let selected_frame = card_frame
-        .fill(tokens.faint_bg_color)
-        .stroke(tokens.focus_outline_stroke);
+/// One radio button per known agent, plus one for a custom command.
+///
+/// Installed agents are tagged "Installed"; the others are disabled.
+fn agent_list_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &[AgentEntry]) {
+    let mut picked = None;
+    for agent in agents {
+        let selected = agent.profile.id == settings.profile_id;
+        if agent_row_ui(ui, agent, selected).clicked() {
+            picked = Some(agent.profile.id.clone());
+        }
+    }
 
-    let custom_index = agents.len();
-    let selected_index = if settings.profile_id == AgentSettings::CUSTOM_PROFILE_ID {
-        Some(custom_index)
-    } else {
-        agents
-            .iter()
-            .position(|agent| agent.profile.id == settings.profile_id)
-    };
-    let is_selected = |index: usize| selected_index == Some(index);
+    let custom_selected = settings.profile_id == AgentSettings::CUSTOM_PROFILE_ID;
+    if custom_agent_ui(ui, settings, custom_selected) {
+        picked = Some(AgentSettings::CUSTOM_PROFILE_ID.to_owned());
+    }
 
-    let items = (0..=custom_index)
-        .map(|index| CardLayoutItem {
-            frame: is_selected(index).then_some(selected_frame),
-            min_width: CARD_MIN_WIDTH,
-            clickable: None,
-        })
-        .collect();
-
-    let mut clicked = None;
-    let card_clicked = CardLayout::new(items, card_frame)
-        .clickable()
-        .hover_stroke(tokens.card_hover_stroke)
-        .show(ui, |ui, index, _hovered| {
-            ui.vertical(|ui| {
-                ui.spacing_mut().item_spacing.y = 4.0;
-                let selected = is_selected(index);
-                if let Some(agent) = agents.get(index) {
-                    if agent_card_ui(ui, agent, selected) {
-                        clicked = Some(index);
-                    }
-                } else if custom_agent_card_ui(ui, settings, selected) {
-                    clicked = Some(index);
-                }
-            });
-        });
-
-    if let Some(index) = card_clicked.or(clicked) {
-        settings.profile_id = if index == custom_index {
-            AgentSettings::CUSTOM_PROFILE_ID.to_owned()
-        } else {
-            agents[index].profile.id.clone()
-        };
+    if let Some(profile_id) = picked {
+        settings.profile_id = profile_id;
     }
 }
 
-/// Returns `true` if the radio button was clicked.
-fn agent_card_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> bool {
+/// Returns the response of the radio button.
+fn agent_row_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> egui::Response {
     let AgentEntry {
         profile,
         executable,
     } = agent;
-    let tokens = ui.tokens();
-    let installed = executable.is_some();
-
-    let name = RichText::new(&profile.name).strong();
-    let name = if installed {
-        name
-    } else {
-        name.color(tokens.text_subdued)
-    };
-    let radio_clicked = ui.radio(selected, name).clicked();
 
     ui.horizontal(|ui| {
+        let radio = ui
+            .add_enabled(
+                executable.is_some(),
+                egui::RadioButton::new(selected, &profile.name),
+            )
+            .on_disabled_hover_text("Not installed");
         if let Some(path) = executable {
-            ui.label(RichText::new("Installed").color(tokens.success_text_color))
-                .on_hover_text(path.display().to_string());
-        } else {
-            ui.weak("Not found ·");
-            ui.re_hyperlink("Install", &profile.url, true)
-                .on_hover_text(&profile.install_hint);
+            installed_tag_ui(ui).on_hover_text(path.display().to_string());
         }
-    });
-
-    ui.response().on_hover_text(&profile.description);
-    radio_clicked
+        radio
+    })
+    .inner
 }
 
-/// Returns `true` if the radio button was clicked, or the command edited.
-fn custom_agent_card_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bool) -> bool {
+/// The small "Installed" pill next to an agent that was found on this machine.
+fn installed_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+    let tokens = ui.tokens();
+    egui::WidgetAtom::new(RichText::new("Installed").small())
+        .frame(
+            egui::Frame::new()
+                .fill(tokens.example_tag_bg_fill)
+                .stroke(tokens.example_tag_stroke)
+                .corner_radius(tokens.normal_corner_radius())
+                .inner_margin(egui::Margin::symmetric(6, 1)),
+        )
+        .show(ui)
+        .response
+}
+
+/// Returns `true` if the radio button was clicked, or the command field focused or edited.
+fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bool) -> bool {
     let radio_clicked = ui
-        .radio(selected, RichText::new("Custom command").strong())
+        .radio(selected, "Custom command")
         .on_hover_text(
             "Any command that speaks ACP over stdio. Leading NAME=value pairs set environment variables.",
         )
         .clicked();
-    let edited = ui
-        .add_sized(
-            [ui.available_width(), ui.spacing().interact_size.y],
-            ReTextEdit::singleline(&mut settings.custom_command_line).hint_text("my-agent --acp"),
-        )
-        .changed();
-    radio_clicked || edited
+    let field_used = ui
+        .indent("custom_command", |ui| {
+            let response = ui.add_sized(
+                [ui.available_width(), ui.spacing().interact_size.y],
+                ReTextEdit::singleline(&mut settings.custom_command_line)
+                    .hint_text("my-agent --acp"),
+            );
+            response.gained_focus() || response.changed()
+        })
+        .inner;
+    radio_clicked || field_used
 }
 
 /// What the user is signing up for before they hand the panel their agent.
@@ -257,28 +225,28 @@ fn warning_ui(ui: &mut egui::Ui) {
     });
 }
 
-/// The prompt-sharing opt-in, and one line on what the current setting means.
+/// The prompt-sharing opt-in, and one line on why it helps.
 ///
-/// Both states get the same weight, so neither reads as a hazard.
-/// The particulars stay in the tooltip that the checkbox and "What is shared?" share.
+/// The particulars stay in the tooltip that the checkbox and "Details" share.
 fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
     ui.scope(|ui| {
-        // The consequence line belongs to the checkbox above it, closer than the panel's rhythm.
+        // The explanation belongs to the checkbox above it, closer than the panel's rhythm.
         ui.spacing_mut().item_spacing.y = 2.0;
 
-        ui.re_checkbox(share_redacted_prompts, "Share redacted prompts with Rerun")
-            .on_hover_ui(analytics_details_ui);
+        ui.re_checkbox(
+            share_redacted_prompts,
+            "Share anonymized prompts with Rerun",
+        )
+        .on_hover_ui(analytics_details_ui);
 
-        let consequence = if *share_redacted_prompts {
-            "Sent after a second agent redacts them."
-        } else {
-            // Not "stay on this machine": the agent still sends them to its model provider.
-            "Prompts are not shared with Rerun."
-        };
         ui.horizontal(|ui| {
             ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
             ui.horizontal_wrapped(|ui| {
-                ui.weak(consequence);
+                ui.label(
+                    RichText::new("This helps us make the feature better.")
+                        .small()
+                        .weak(),
+                );
                 analytics_details_button(ui);
             });
         });
@@ -288,12 +256,13 @@ fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
 /// The width the analytics details wrap at, in both the menu and the tooltip.
 const ANALYTICS_DETAILS_WIDTH: f32 = 340.0;
 
-/// "What is shared?": the particulars, on hover and on click.
+/// "Details": the particulars of what is shared, on hover and on click.
 ///
 /// Clickable as well as hoverable, like [`re_ui::UiExt::help_button`]: hover alone cannot be
 /// reached without a pointer, and it gives the reader no way to keep the text open.
 fn analytics_details_button(ui: &mut egui::Ui) -> egui::Response {
-    let label = RichText::new("What is shared?")
+    let label = RichText::new("Details")
+        .small()
         .underline()
         .color(ui.visuals().weak_text_color());
     let button = egui::Button::new(label).frame(false);
@@ -347,30 +316,44 @@ fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> Resu
 }
 
 fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("MCP servers").strong());
-        if ui
-            .small_icon_button(&icons::ADD, "Add MCP server")
-            .on_hover_text("Add MCP server")
-            .clicked()
-        {
-            servers.push(McpServerConfig {
-                name: "rerun".to_owned(),
-                command_line: "rerun viewer-mcp".to_owned(),
-                enabled: true,
-            });
-        }
-    });
+    egui::containers::Sides::new().show(
+        ui,
+        |ui| ui.label(RichText::new("MCP servers").strong()),
+        |ui| {
+            let add = egui::Button::new(RichText::new("Add").underline()).frame(false);
+            if ui.add(add).on_hover_text("Add an MCP server").clicked() {
+                servers.push(McpServerConfig {
+                    name: "rerun".to_owned(),
+                    command_line: "rerun viewer-mcp".to_owned(),
+                    enabled: true,
+                });
+            }
+        },
+    );
     ui.weak("Given to the agent when the session starts. `rerun viewer-mcp` lets it see and drive a running Rerun Viewer.");
 
     let mut remove = None;
     for (index, server) in servers.iter_mut().enumerate() {
         ui.horizontal(|ui| {
-            let height = ui.spacing().interact_size.y;
-            ui.re_checkbox(&mut server.enabled, "");
-            ui.add_sized(
-                [120.0, height],
-                ReTextEdit::singleline(&mut server.name).hint_text("name"),
+            // Set first for centering
+            ui.set_min_height(re_ui::DesignTokens::list_item_height());
+
+            let response = ui
+                .re_checkbox(&mut server.enabled, "")
+                .on_hover_text("Give this server to the agent");
+            let enabled = server.enabled;
+            response.widget_info(|| {
+                egui::WidgetInfo::selected(
+                    egui::Role::CheckBox,
+                    true,
+                    enabled,
+                    "Give this server to the agent",
+                )
+            });
+            ui.add(
+                ReTextEdit::singleline(&mut server.name)
+                    .hint_text("name")
+                    .desired_width(120.0),
             )
             .on_hover_text("Name the agent sees this server under");
 
@@ -383,9 +366,10 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
                 {
                     remove = Some(index);
                 }
-                ui.add_sized(
-                    [ui.available_width(), height],
-                    ReTextEdit::singleline(&mut server.command_line).hint_text("command args…"),
+                ui.add(
+                    ReTextEdit::singleline(&mut server.command_line)
+                        .hint_text("command args…")
+                        .desired_width(ui.available_width()),
                 );
             });
         });

@@ -91,9 +91,38 @@ fn open_session(session: &mut AgentSession) {
     });
 }
 
+/// Clicking into the custom command selects "Custom command", so what is typed there is used.
+#[test]
+fn clicking_the_custom_command_selects_it() {
+    let mut harness = harness(panel());
+    harness.run_steps(2);
+    assert_eq!(harness.state().settings().profile_id, "claude");
+
+    harness.get_by_role(egui::Role::TextInput).click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        re_agent_ui::AgentSettings::CUSTOM_PROFILE_ID
+    );
+}
+
 #[test]
 fn setup_screen() {
     snapshot("setup_screen", panel());
+}
+
+/// Clicking "Advanced" opens it without leaving a focus outline behind.
+#[test]
+fn setup_screen_advanced() {
+    let mut harness = harness(panel());
+    harness.run_steps(2);
+    harness.get_by_label("Advanced").click();
+    harness.run_steps(4);
+    harness.snapshot("setup_screen_advanced");
+
+    harness.get_by_label("MCP servers").scroll_to_me();
+    harness.run_steps(4);
+    harness.snapshot("setup_screen_advanced_scrolled");
 }
 
 /// A phrase that only appears once the particulars are on screen.
@@ -112,16 +141,16 @@ fn snapshot_hovering(name: &str, label: &str) {
 fn prompt_sharing_details_from_the_checkbox() {
     snapshot_hovering(
         "prompt_sharing_details_checkbox",
-        "Share redacted prompts with Rerun",
+        "Share anonymized prompts with Rerun",
     );
 }
 
 #[test]
 fn prompt_sharing_details_from_the_link() {
-    snapshot_hovering("prompt_sharing_details_link", "What is shared?");
+    snapshot_hovering("prompt_sharing_details_link", "Details");
 }
 
-/// Clicking "What is shared?" opens the particulars, for readers without a steady hover.
+/// Clicking "Details" opens the particulars, for readers without a steady hover.
 #[test]
 fn analytics_details_open_on_click() {
     let mut harness = harness(panel());
@@ -134,7 +163,7 @@ fn analytics_details_open_on_click() {
         "the details should start closed"
     );
 
-    harness.get_by_label_contains("What is shared?").click();
+    harness.get_by_label("Details").click();
     harness.run_steps(2);
     assert_eq!(
         harness
@@ -156,7 +185,7 @@ fn redacted_prompt_sharing_is_opt_in() {
     // The checkbox must be reachable without expanding "Advanced":
     assert!(!harness.state().settings().share_redacted_prompts);
     harness
-        .get_by_label_contains("Share redacted prompts with Rerun")
+        .get_by_label_contains("Share anonymized prompts with Rerun")
         .click();
     harness.run_steps(4);
 
