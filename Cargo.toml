@@ -513,7 +513,7 @@ tonic-reflection = { version = "0.14.6", default-features = false, features = ["
 tonic-web = "0.14.6"
 tonic-types = "0.14.6"
 # tonic-web-wasm-client = "0.8.0" # 0.9 pulls wasm-streams 0.5, duplicating the 0.4 from reqwest 0.12. Update when we update to reqwest 0.13.
-tonic-web-wasm-client = { version = "0.8.1", package = "rerun-tonic-web-wasm-client" } # our fork of 0.8.1
+tonic-web-wasm-client = { version = "0.8.2", package = "rerun-tonic-web-wasm-client" } # our fork of 0.8.0 with additional fixes - see https://github.com/rerun-io/tonic-web-wasm-client/tree/patch-0.8.2#how-this-fork-differs-from-upstream
 tower = "0.5.3"
 tower-http = "0.6.11" # 0.7 duplicates the 0.6 that reqwest 0.12 (via http-cache-reqwest/walkers) requires. Update when we update to reqwest 0.13.
 tower-service = "0.3.3"
