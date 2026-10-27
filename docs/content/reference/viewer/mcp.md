@@ -216,6 +216,7 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 `rerun_set_blueprint` replaces the whole blueprint with JSON of the same form, and clears anything it leaves out.
 So an agent reads the blueprint, edits it, and sends all of it back.
 The write is a normal blueprint edit, so the user can undo it.
+An explicit `root_container` defaults omitted `auto_layout` and `auto_views` to `false` for recordings; set both to `false` if copying a blueprint that enables them.
 
 ### Table blueprints
 

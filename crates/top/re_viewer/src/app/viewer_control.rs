@@ -44,6 +44,7 @@ use re_viewer_context::{
 use super::{App, AppCore};
 use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
+mod blueprint;
 mod commands;
 mod transform_graph;
 
@@ -1097,7 +1098,12 @@ impl AppCore {
         re_tracing::profile_function!();
 
         let blueprint_db = self.active_blueprint(store_hub, target)?;
-        let chunks = self.blueprint_chunks_from_json(blueprint_db, json)?;
+        let chunks = blueprint::chunks_from_json(
+            blueprint_db,
+            json,
+            matches!(target, BlueprintTarget::Recording(_)),
+            &self.registries.reflection.read(),
+        )?;
         if let BlueprintTarget::Table(table) = target {
             self.check_table_filters(table, &chunks)?;
         }
@@ -1589,21 +1595,6 @@ impl AppCore {
             }
         }
         Ok(())
-    }
-
-    /// The chunks that replace the whole of `blueprint_db` with the blueprint in `json`.
-    fn blueprint_chunks_from_json(
-        &self,
-        blueprint_db: &re_entity_db::EntityDb,
-        json: &serde_json::Value,
-    ) -> Result<Vec<re_chunk::Chunk>, ViewerControlError> {
-        re_arrow_json::chunks_from_json(
-            json,
-            blueprint_db.storage_engine().store(),
-            &re_viewer_context::blueprint_timepoint_for_writes(blueprint_db),
-            &self.registries.reflection.read(),
-        )
-        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))
     }
 
     /// Queue a write of `chunks` to `blueprint_db`.
