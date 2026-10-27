@@ -614,62 +614,90 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(registration))
     }
 
-    #[pyo3(signature = (data, storage_prefix, layer, on_duplicate))]
-    fn write_segment_bytes(
+    #[pyo3(signature = (data, storage_prefix, kind, layer, on_duplicate))]
+    fn write_bytes(
         self_: PyRef<'_, Self>,
         data: Vec<u8>,
         storage_prefix: Option<&str>,
+        kind: &str,
         layer: String,
         on_duplicate: &str,
     ) -> PyResult<PyWriteOperationInternal> {
         let py = self_.py();
-        let _span =
-            read_trace_context_from_python(py, "DatasetEntry.write_segment_bytes").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.write_bytes").entered();
+        let kind = WriteKind::parse(kind)?;
         let layer = LayerName::try_new(layer).map_err(to_py_err)?;
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_id();
         let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
         Ok(PyWriteOperationInternal::new(async move {
-            connection
-                .inner()
-                .write_segment_bytes(
-                    dataset_id,
-                    bytes::Bytes::from(data),
-                    storage_prefix.as_ref(),
-                    layer,
-                    on_duplicate,
-                )
-                .await
+            let client = connection.inner();
+            let storage_prefix = storage_prefix.as_ref();
+            let data = bytes::Bytes::from(data);
+            match kind {
+                WriteKind::Asset => {
+                    client
+                        .write_asset_bytes(dataset_id, data, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Blueprint => {
+                    client
+                        .write_blueprint_bytes(
+                            dataset_id,
+                            data,
+                            storage_prefix,
+                            layer,
+                            on_duplicate,
+                        )
+                        .await
+                }
+                WriteKind::Segment => {
+                    client
+                        .write_segment_bytes(dataset_id, data, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+            }
         }))
     }
 
-    #[pyo3(signature = (path, storage_prefix, layer, on_duplicate))]
-    fn write_segment_path(
+    #[pyo3(signature = (path, storage_prefix, kind, layer, on_duplicate))]
+    fn write_path(
         self_: PyRef<'_, Self>,
         path: PathBuf,
         storage_prefix: Option<&str>,
+        kind: &str,
         layer: String,
         on_duplicate: &str,
     ) -> PyResult<PyWriteOperationInternal> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetEntry.write_segment_path").entered();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.write_path").entered();
+        let kind = WriteKind::parse(kind)?;
         let layer = LayerName::try_new(layer).map_err(to_py_err)?;
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_id();
         let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
         Ok(PyWriteOperationInternal::new(async move {
-            connection
-                .inner()
-                .write_segment_path(
-                    dataset_id,
-                    path,
-                    storage_prefix.as_ref(),
-                    layer,
-                    on_duplicate,
-                )
-                .await
+            let client = connection.inner();
+            let storage_prefix = storage_prefix.as_ref();
+            match kind {
+                WriteKind::Asset => {
+                    client
+                        .write_asset_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Blueprint => {
+                    client
+                        .write_blueprint_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Segment => {
+                    client
+                        .write_segment_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+            }
         }))
     }
 
@@ -946,6 +974,25 @@ impl PyDatasetEntryInternal {
         self_.dataset_schema.observe(&ds_schema);
 
         Ok(ds_schema.schema)
+    }
+}
+
+enum WriteKind {
+    Asset,
+    Blueprint,
+    Segment,
+}
+
+impl WriteKind {
+    fn parse(kind: &str) -> PyResult<Self> {
+        match kind {
+            "asset" => Ok(Self::Asset),
+            "blueprint" => Ok(Self::Blueprint),
+            "segment" => Ok(Self::Segment),
+            _ => Err(PyValueError::new_err(format!(
+                "invalid write kind: {kind:?}. Expected 'asset', 'blueprint', or 'segment'"
+            ))),
+        }
     }
 }
 

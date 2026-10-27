@@ -147,6 +147,11 @@ fn write_error_to_py(err: &WriteError) -> PyErr {
             );
             to_py_err(contextual)
         }
+        WriteError::ResolveDataset { source, .. } => {
+            let mut contextual = ApiError::clone(source);
+            contextual.message = err.to_string();
+            to_py_err(contextual)
+        }
         WriteError::Upload(StagingError::Api(source)) => to_py_err(source.clone()),
         WriteError::Upload(_) => PyRuntimeError::new_err(err.to_string()),
     }

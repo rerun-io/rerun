@@ -1107,11 +1107,21 @@ class DatasetEntryInternal:
 
     # ---
 
-    def write_segment_bytes(
-        self, data: bytes, storage_prefix: str | None, layer: str, on_duplicate: str
+    def write_bytes(
+        self,
+        data: bytes,
+        storage_prefix: str | None,
+        kind: Literal["segment", "blueprint", "asset"],
+        layer: str,
+        on_duplicate: str,
     ) -> WriteOperationInternal: ...
-    def write_segment_path(
-        self, path: str, storage_prefix: str | None, layer: str, on_duplicate: str
+    def write_path(
+        self,
+        path: str,
+        storage_prefix: str | None,
+        kind: Literal["segment", "blueprint", "asset"],
+        layer: str,
+        on_duplicate: str,
     ) -> WriteOperationInternal: ...
     def register(
         self,
