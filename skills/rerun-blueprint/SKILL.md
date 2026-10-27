@@ -14,8 +14,8 @@ viewer MCP, read and write the blueprint with `rerun_get_blueprint` and
 `rerun_set_blueprint` rather than the low-level click tools.
 
 A blueprint decides how a recording is shown, and the recording decides what exists.
-Read the data, design a first layout, then **iterate from screenshots** until it
-reads at a glance. The constructors are discoverable (`dir(rrb)`,
+Read the data, design a first layout, then **verify state before assessing screenshots** until it reads at a glance.
+The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
 
@@ -35,6 +35,15 @@ Partial mode preserves omitted automatic options, even when changing the root.
 A write that would break a reference is rejected, and nothing is written.
 That covers a missing or unreferenced view, container, or visualizer instruction, and a loop of containers.
 So add a new view and the reference to it in the same call, and delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+
+After each write, check the views and their `reports` in `rerun_get_state`, plus logs appended to tool results.
+If the structure differs, inspect `rerun_get_blueprint` before retrying.
+Then check a screenshot for framing and readability before reporting completion.
+
+### Component overrides
+
+For component overrides like colors or colormaps, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables
 
