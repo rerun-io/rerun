@@ -345,6 +345,8 @@ impl AppState {
                 .update(&egui_ctx, blueprint);
         }
 
+        re_dataframe_ui::write_pending_upserts(&egui_ctx, connection_registry, runtime);
+
         let blueprint_query =
             self.blueprint_query_for_viewer(active_store_context.map(|ctx| ctx.blueprint));
 

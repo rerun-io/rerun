@@ -19,6 +19,7 @@ from .column_display_mode import (
 from .column_name import ColumnName, ColumnNameBatch
 from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, ColumnOrderLike
 from .column_share import ColumnShare, ColumnShareBatch
+from .column_type import ColumnType, ColumnTypeBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
@@ -49,7 +50,6 @@ from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .sort_by import SortBy, SortByBatch
 from .sql_filter_expression import SqlFilterExpression, SqlFilterExpressionBatch
-from .table_cell_kind import TableCellKind, TableCellKindArrayLike, TableCellKindBatch, TableCellKindLike
 from .table_layout_kind import TableLayoutKind, TableLayoutKindArrayLike, TableLayoutKindBatch, TableLayoutKindLike
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .text_log_column import TextLogColumn, TextLogColumnBatch
@@ -103,6 +103,8 @@ __all__ = [
     "ColumnOrderLike",
     "ColumnShare",
     "ColumnShareBatch",
+    "ColumnType",
+    "ColumnTypeBatch",
     "ComponentColumnSelector",
     "ComponentColumnSelectorBatch",
     "ContainerKind",
@@ -181,10 +183,6 @@ __all__ = [
     "SortByBatch",
     "SqlFilterExpression",
     "SqlFilterExpressionBatch",
-    "TableCellKind",
-    "TableCellKindArrayLike",
-    "TableCellKindBatch",
-    "TableCellKindLike",
     "TableLayoutKind",
     "TableLayoutKindArrayLike",
     "TableLayoutKindBatch",

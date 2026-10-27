@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/encodings/column_type.hpp"
 #include "blueprint/encodings/component_column_selector.hpp"
 #include "blueprint/encodings/component_source_kind.hpp"
 #include "blueprint/encodings/filter_by_range.hpp"

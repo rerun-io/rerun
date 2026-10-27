@@ -4,8 +4,8 @@ Configure table layouts and segment previews with Python blueprints.
 Creates a table from DROID episode properties and registers blueprints that
 show metadata and recording links in rows, or segment previews on cards.
 Both the catalog table and the dataset's segment table use these layouts.
-Also registers an editable-flag blueprint and a filtered blueprint without
-making them the default.
+Also registers an editable-flag blueprint, an editable-notes blueprint and a
+filtered blueprint without making them the default.
 
 Downloads and caches a recordings from rerun/droid_sample on
 Hugging Face and serves them through a temporary local catalog.
@@ -32,7 +32,7 @@ preview = rrb.table.Column(
     "recording_uri",
     name="Recording",  # Give the column a nicer name.
     # Show a 3D view for recordings in this row.
-    cell=rrb.table.PreviewCell(rrb.Spatial3DView()),
+    column_type=rrb.table.PreviewCell(rrb.Spatial3DView()),
 )
 # endregion: preview
 
@@ -60,7 +60,11 @@ blueprint = rrb.TableBlueprint(
 
 # region: flags
 # Edit the `reviewed` column through flag buttons.
-flag = rrb.table.Column("reviewed", editable=True, cell=rrb.table.FlagCell())
+flag = rrb.table.Column(
+    "reviewed",
+    editable=True,
+    column_type=rr.components.Flag,
+)
 flag_blueprint = rrb.TableBlueprint(
     table_layout=rrb.table.TableLayout(columns=[flag, *table_layout.columns]),
     card_layout=rrb.table.CardLayout(
@@ -71,6 +75,18 @@ flag_blueprint = rrb.TableBlueprint(
     previews_config=rrb.table.PreviewsConfig(timeline="real_time"),
 )
 # endregion: flags
+
+# region: text
+# Edit the `notes` column as text.
+notes = rrb.table.Column(
+    "notes",
+    editable=True,
+    column_type=rr.components.Text,
+)
+notes_blueprint = rrb.TableBlueprint(
+    table_layout=rrb.table.TableLayout(columns=[notes, *table_layout.columns]),
+)
+# endregion: text
 
 # region: filters
 filter_blueprint = replace(
@@ -106,7 +122,7 @@ def register_segments(client: rr.catalog.CatalogClient) -> None:
     preview = rrb.table.Column(
         # Use the recording links provided by the segment table.
         "recording link",
-        cell=rrb.table.PreviewCell(rrb.Spatial3DView()),
+        column_type=rrb.table.PreviewCell(rrb.Spatial3DView()),
     )
     blueprint = rrb.TableBlueprint(
         table_layout=rrb.table.TableLayout(
@@ -200,6 +216,7 @@ def run(
             pa.field("uuid", pa.string()),
             pa.field("current_task", pa.string()),
             pa.field("reviewed", pa.bool_()),
+            pa.field("notes", pa.string()),
         ])
         table = client.create_table("my_table", schema)
         table.append(
@@ -208,6 +225,7 @@ def run(
             uuid=[uuid[0] for uuid in uuids],
             current_task=[task[0] for task in tasks],
             reviewed=[index % 2 == 0 for index in range(len(segment_ids))],
+            notes=["" for _ in segment_ids],
         )
 
         register_table(server.url())
@@ -216,6 +234,10 @@ def run(
         flag_path = Path("flags.rbl").resolve()
         flag_blueprint.save("my_app", flag_path)
         table.register_blueprint(flag_path.as_uri(), set_default=False)
+
+        notes_path = Path("notes.rbl").resolve()
+        notes_blueprint.save("my_app", notes_path)
+        table.register_blueprint(notes_path.as_uri(), set_default=False)
 
         filter_path = Path("filters.rbl").resolve()
         filter_blueprint.save("my_app", filter_path)

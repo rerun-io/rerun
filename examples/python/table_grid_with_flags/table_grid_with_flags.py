@@ -67,7 +67,7 @@ def main() -> None:
             rrb.table.TableBlueprint(
                 card_layout=rrb.table.CardLayout(
                     title="name",
-                    fields=[rrb.table.Column("flagged", editable=True, cell=rrb.table.FlagCell())],
+                    fields=[rrb.table.Column("flagged", editable=True, column_type=rr.components.Flag)],
                 ),
             ).save("embedded", blueprint_path)
             table.register_blueprint(blueprint_path.absolute().as_uri())

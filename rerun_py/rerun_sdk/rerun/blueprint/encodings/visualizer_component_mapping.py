@@ -18,7 +18,6 @@ from ..._baseclasses import (
 from ..._converters import (
     str_or_none,
 )
-from .visualizer_component_mapping_ext import VisualizerComponentMappingExt
 
 if TYPE_CHECKING:
     from ...blueprint import encodings as blueprint_encodings
@@ -39,7 +38,7 @@ def _visualizer_component_mapping__target__special_field_converter_override(x: e
 
 
 @define(init=False)
-class VisualizerComponentMapping(VisualizerComponentMappingExt):
+class VisualizerComponentMapping:
     """
     **Encoding**: Associate components of an entity to components of a visualizer.
 
@@ -131,4 +130,22 @@ class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayL
 
     @staticmethod
     def _native_to_pa_array(data: VisualizerComponentMappingArrayLike, data_type: pa.DataType) -> pa.Array:
-        return VisualizerComponentMappingExt.native_to_pa_array_override(data, data_type)
+        from rerun.blueprint.encodings import ComponentSourceKindBatch
+        from rerun.encodings import Utf8Batch
+
+        typed_data: Sequence[VisualizerComponentMapping]
+
+        if isinstance(data, VisualizerComponentMapping):
+            typed_data = [data]
+        else:
+            typed_data = data
+
+        return pa.StructArray.from_arrays(
+            [
+                Utf8Batch([x.target for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ComponentSourceKindBatch([x.source_kind for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                pa.array([x.source_component for x in typed_data], type=pa.utf8()),
+                pa.array([x.selector for x in typed_data], type=pa.utf8()),
+            ],
+            fields=list(data_type),
+        )

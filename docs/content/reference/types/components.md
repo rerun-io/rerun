@@ -19,6 +19,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`Bool`](components/bool.md): A boolean value.
 * [`CellSize`](components/cell_size.md): The metric size of one grid cell in local scene units.
 * [`ChannelId`](components/channel_id.md): A 16-bit ID representing an MCAP channel.
 * [`ChannelMessageCounts`](components/channel_message_counts.md): A mapping of channel IDs to their respective message counts.
@@ -30,8 +31,10 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`EntityPath`](components/entity_path.md): A path to an entity, usually to reference some data that is part of the target entity.
+* [`EntryKind`](components/entry_kind.md): The kind of a catalog entry.
 * [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
+* [`Flag`](components/flag.md): Whether a record is flagged, e.g. for review.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
 * [`GeoLineString`](components/geo_line_string.md): A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 * [`GraphEdge`](components/graph_edge.md): An edge in a graph connecting two nodes.
@@ -84,6 +87,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`Thumbnail`](components/thumbnail.md): An encoded image, e.g. PNG or JPEG, shown as a thumbnail.
 * [`Timestamp`](components/timestamp.md): When the recording started.
 * [`TransformFrameId`](components/transform_frame_id.md): A string identifier for a transform frame.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
@@ -91,6 +95,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Unit`](components/unit.md): Unit of a measured value, e.g. `"Pa"`, `"lux"`, `"°C"`, `"m"`.
+* [`Url`](components/url.md): A URL to a catalog entry, dataset, or segment, as a Rerun URI.
 * [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Variance`](components/variance.md): Variance of a scalar measurement, i.e. σ², in the units of the value squared.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.

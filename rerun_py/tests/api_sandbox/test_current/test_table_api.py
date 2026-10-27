@@ -32,7 +32,7 @@ def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
 
         df = table.reader()
@@ -47,7 +47,7 @@ sorbet:version: '0.1.3'\
         assert str(df.sort("rerun_segment_id")) == inline_snapshot("""\
 ┌───────────────────────────────────┐
 │ METADATA:                         │
-│ * version: 0.1.3                  │
+│ * version: 0.1.4                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────┬────────────┐ │
 │ │ rerun_segment_id ┆ operator   │ │
@@ -69,7 +69,7 @@ sorbet:version: '0.1.3'\
         assert str(df.sort("rerun_segment_id")) == inline_snapshot("""\
 ┌───────────────────────────────────┐
 │ METADATA:                         │
-│ * version: 0.1.3                  │
+│ * version: 0.1.4                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────┬────────────┐ │
 │ │ rerun_segment_id ┆ operator   │ │

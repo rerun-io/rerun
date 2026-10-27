@@ -30,7 +30,7 @@ def test_entries_to_polars(tmp_path: Path) -> None:
             """\
 Schema([('id', Binary),
         ('name', String),
-        ('entry_kind', Int32),
+        ('entry_kind', UInt8),
         ('created_at', Datetime(time_unit='ns', time_zone=None)),
         ('updated_at', Datetime(time_unit='ns', time_zone=None))])\
 """
@@ -47,7 +47,7 @@ shape: (3, 2)
 ┌────────────┬────────────┐
 │ name       ┆ entry_kind │
 │ ---        ┆ ---        │
-│ str        ┆ i32        │
+│ str        ┆ u8         │
 ╞════════════╪════════════╡
 │ __entries  ┆ 3          │
 │ my_dataset ┆ 1          │

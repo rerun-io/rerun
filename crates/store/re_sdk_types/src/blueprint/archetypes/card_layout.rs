@@ -46,8 +46,8 @@ pub struct CardLayout {
     /// Unlisted fields are hidden unless their [`archetypes::TableColumn`][crate::blueprint::archetypes::TableColumn] visibility overrides the default.
     /// Each source column may appear at most once.
     ///
-    /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-    /// Card layouts currently support at most one flag field.
+    /// The first visible field of component type [`components::Flag`][crate::components::Flag] is shown in the card header
+    /// instead of the labeled-field list.
     pub field_order: Option<SerializedComponentBatch>,
 }
 
@@ -246,8 +246,8 @@ impl CardLayout {
     /// Unlisted fields are hidden unless their [`archetypes::TableColumn`][crate::blueprint::archetypes::TableColumn] visibility overrides the default.
     /// Each source column may appear at most once.
     ///
-    /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-    /// Card layouts currently support at most one flag field.
+    /// The first visible field of component type [`components::Flag`][crate::components::Flag] is shown in the card header
+    /// instead of the labeled-field list.
     #[inline]
     pub fn with_field_order(
         mut self,

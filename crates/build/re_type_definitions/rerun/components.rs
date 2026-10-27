@@ -10,6 +10,8 @@ mod annotation_context;
 mod axis_length;
 #[path = "components/blob.def.rs"]
 mod blob;
+#[path = "components/bool.def.rs"]
+mod bool;
 #[path = "components/cell_size.def.rs"]
 mod cell_size;
 #[path = "components/channel_id.def.rs"]
@@ -32,10 +34,14 @@ mod depth_meter;
 mod draw_order;
 #[path = "components/entity_path.def.rs"]
 mod entity_path;
+#[path = "components/entry_kind.def.rs"]
+mod entry_kind;
 #[path = "components/fill_mode.def.rs"]
 mod fill_mode;
 #[path = "components/fill_ratio.def.rs"]
 mod fill_ratio;
+#[path = "components/flag.def.rs"]
+mod flag;
 #[path = "components/gamma_correction.def.rs"]
 mod gamma_correction;
 #[path = "components/geo_line_string.def.rs"]
@@ -136,6 +142,8 @@ mod texcoord2d;
 mod text;
 #[path = "components/text_log_level.def.rs"]
 mod text_log_level;
+#[path = "components/thumbnail.def.rs"]
+mod thumbnail;
 #[path = "components/timestamp.def.rs"]
 mod timestamp;
 #[path = "components/transform_frame_id.def.rs"]
@@ -150,6 +158,8 @@ mod translation3d;
 mod triangle_indices;
 #[path = "components/unit.def.rs"]
 mod unit;
+#[path = "components/url.def.rs"]
+mod url;
 #[path = "components/value_range.def.rs"]
 mod value_range;
 #[path = "components/variance.def.rs"]
@@ -180,6 +190,7 @@ pub use self::albedo_factor::*;
 pub use self::annotation_context::*;
 pub use self::axis_length::*;
 pub use self::blob::*;
+pub use self::bool::*;
 pub use self::cell_size::*;
 pub use self::channel_id::*;
 pub use self::channel_message_counts::*;
@@ -191,8 +202,10 @@ pub use self::count::*;
 pub use self::depth_meter::*;
 pub use self::draw_order::*;
 pub use self::entity_path::*;
+pub use self::entry_kind::*;
 pub use self::fill_mode::*;
 pub use self::fill_ratio::*;
+pub use self::flag::*;
 pub use self::gamma_correction::*;
 pub use self::geo_line_string::*;
 pub use self::graph_edge::*;
@@ -243,6 +256,7 @@ pub use self::tensor_dimension_selection::*;
 pub use self::texcoord2d::*;
 pub use self::text::*;
 pub use self::text_log_level::*;
+pub use self::thumbnail::*;
 pub use self::timestamp::*;
 pub use self::transform_frame_id::*;
 pub use self::transform_mat3x3::*;
@@ -250,6 +264,7 @@ pub use self::transform_relation::*;
 pub use self::translation3d::*;
 pub use self::triangle_indices::*;
 pub use self::unit::*;
+pub use self::url::*;
 pub use self::value_range::*;
 pub use self::variance::*;
 pub use self::vector2d::*;

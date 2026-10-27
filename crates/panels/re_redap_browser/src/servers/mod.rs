@@ -7,7 +7,6 @@ use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::{AssetLayer, AssetRegistrationError};
-use re_dataframe_ui::TableCellKind;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -277,10 +276,6 @@ impl Server {
             // `name` column is redundant — hide it by default.
             if desc.display_name().as_str() == "name" {
                 column = column.with_default_visibility(false);
-            }
-
-            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
-                column = column.with_default_cell_kind(TableCellKind::Link);
             }
 
             column

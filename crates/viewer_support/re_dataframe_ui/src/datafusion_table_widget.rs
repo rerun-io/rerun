@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, BooleanArray};
+use arrow::array::Array as _;
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference as DataFusionTableReference;
@@ -14,10 +14,8 @@ use re_async::AsyncRuntimeHandle;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
-use re_protos::cloud::v1alpha1::ext;
-use re_sdk_types::blueprint::components::{
-    ColumnDisplayMode, ColumnName, TableCellKind, TableLayoutKind,
-};
+use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLayoutKind};
+use re_sdk_types::components::{Thumbnail, Url};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
@@ -25,11 +23,12 @@ use re_viewer_context::{
     AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, TableReference,
 };
 
+use re_types_core::Component as _;
 use re_types_core::reflection::Enum as _;
 
 use crate::DisplayRecordBatch;
 use crate::blueprint::{PreviewsConfig, ResolvedSortBy, TableBlueprint, TableColumn};
-use crate::cards_view::FlagChangeEvent;
+use crate::cards_view::CellChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
@@ -38,6 +37,7 @@ use crate::datafusion_adapter::{
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
+use crate::pending_upserts::{PendingUpsert, queue_upsert};
 use crate::re_table::{PreviewColumn, ReTable};
 use crate::re_table_utils::columns_edit_menu_ui;
 use crate::table_selection::TableSelectionState;
@@ -51,16 +51,16 @@ struct TableUiOutput {
     /// The (potentially modified) query state.
     query_data: DataFusionQueryData,
 
-    /// Resolved source information for flag mutation and write-back.
-    flag_columns: Vec<ResolvedFlagColumn>,
+    /// Resolved source information for editing columns and writing them back.
+    editable_columns: Vec<EditableColumn>,
 
-    /// Flag changes from either layout.
-    flag_changes: Vec<FlagChangeEvent>,
+    /// Cell changes from either layout.
+    cell_changes: Vec<CellChangeEvent>,
 }
 
-pub struct ResolvedFlagColumn {
+pub struct EditableColumn {
     pub physical_name: ColumnName,
-    flag_field: Arc<Field>,
+    value_field: Arc<Field>,
     index_field: Arc<Field>,
 }
 
@@ -451,7 +451,7 @@ impl<'a> DataFusionTableWidget<'a> {
     ///
     /// Unlike [`Self::refresh`], this does NOT clear the adapter state, so the current
     /// query results remain visible until a new query completes.
-    async fn invalidate_streaming_cache(
+    pub async fn invalidate_streaming_cache(
         session_ctx: &SessionContext,
         table_ref: &DataFusionTableReference,
     ) {
@@ -559,26 +559,24 @@ impl<'a> DataFusionTableWidget<'a> {
             .unwrap_or_default()
     }
 
-    fn resolve_flag_columns(
+    fn resolve_editable_columns(
         blueprint: &TableBlueprint<'_>,
         layout_kind: TableLayoutKind,
         columns: &DataColumns<'_>,
         original_schema: &arrow::datatypes::Schema,
         remote_table: Option<&re_uri::EntryUri>,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
-    ) -> Vec<ResolvedFlagColumn> {
+    ) -> Vec<EditableColumn> {
         blueprint
             .iter_columns(layout_kind)
-            .filter(|column| {
-                column.configured_cell_kind() == TableCellKind::Flag && column.editable()
-            })
-            .filter_map(|flag_column| {
-                let name = flag_column.physical_name();
+            .filter(|column| column.editable())
+            .filter_map(|column| {
+                let name = column.physical_name();
                 if columns.find_by_physical_name(name).is_none() {
-                    re_log::warn_once!("Flag column {name:?} does not exist in the table");
+                    re_log::warn_once!("Editable column {name:?} does not exist in the table");
                     return None;
                 }
-                Self::resolve_flag_column_source(
+                Self::resolve_editable_column_source(
                     name,
                     original_schema,
                     remote_table,
@@ -588,39 +586,35 @@ impl<'a> DataFusionTableWidget<'a> {
             .collect()
     }
 
-    fn resolve_flag_column_source(
+    fn resolve_editable_column_source(
         name: &ColumnName,
         original_schema: &arrow::datatypes::Schema,
         remote_table: Option<&re_uri::EntryUri>,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
-    ) -> Option<ResolvedFlagColumn> {
+    ) -> Option<EditableColumn> {
         let Some(remote_table) = remote_table else {
             re_log::warn_once!(
-                "Flag column {name:?} is not editable because the table is not a writable remote table"
+                "Column {name:?} is not editable because the table is not a writable remote table"
             );
             return None;
         };
-        let Some(flag_field) = original_schema
+        let Some(value_field) = original_schema
             .fields()
             .iter()
             .find(|field| field.name() == name.as_str())
         else {
-            re_log::warn_once!("Flag column {name:?} is missing from the original schema");
+            re_log::warn_once!("Editable column {name:?} is missing from the original schema");
             return None;
         };
-        if flag_field.data_type() != &arrow::datatypes::DataType::Boolean {
-            re_log::warn_once!("Flag column {name:?} is not boolean");
-            return None;
-        }
         let Some((_, index_field)) = table_index_column(original_schema) else {
             re_log::warn_once!(
-                "Flag column {name:?} is not editable because the table has no rerun:is_table_index column"
+                "Column {name:?} is not editable because the table has no rerun:is_table_index column"
             );
             return None;
         };
 
         // Check write permission on the token for the remote table's origin.
-        // `None` means unknown (e.g. stored credentials or no auth) — allow flagging.
+        // `None` means unknown (e.g. stored credentials or no auth) — allow editing.
         let has_write = connection_registry
             .credentials(&remote_table.origin)
             .and_then(|creds| creds.has_write_permission())
@@ -630,9 +624,9 @@ impl<'a> DataFusionTableWidget<'a> {
             return None;
         }
 
-        Some(ResolvedFlagColumn {
+        Some(EditableColumn {
             physical_name: name.clone(),
-            flag_field: Arc::clone(flag_field),
+            value_field: Arc::clone(value_field),
             index_field: Arc::clone(index_field),
         })
     }
@@ -725,8 +719,8 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let TableUiOutput {
             query_data,
-            flag_columns,
-            flag_changes,
+            editable_columns,
+            cell_changes,
         } = self.table_ui(
             app_ctx,
             runtime,
@@ -740,34 +734,36 @@ impl<'a> DataFusionTableWidget<'a> {
             view_states,
         );
 
-        if !flag_changes.is_empty() {
-            table_state.apply_flag_changes(ui, &flag_changes);
+        if !cell_changes.is_empty() {
+            table_state.apply_cell_changes(ui, &cell_changes);
 
-            if let Some(re_uri::RedapUri::Entry(entry_uri)) = &self.table_ref.url()
-                && let Some(Ok(results)) = &table_state.results
+            if let Some(Ok(results)) = &table_state.results
+                && let Some(re_uri::RedapUri::Entry(entry_uri)) = self.table_ref.url()
             {
-                for change in flag_changes {
-                    let Some(flag_column) = flag_columns
+                for change in cell_changes {
+                    let Some(column) = editable_columns
                         .iter()
                         .find(|column| column.physical_name == change.physical_column)
                     else {
-                        re_log::warn_once!(
-                            "Flag column {:?} is not editable",
-                            change.physical_column
-                        );
+                        re_log::warn_once!("Column {:?} is not editable", change.physical_column);
                         continue;
                     };
-                    upsert_flag_change(app_ctx, runtime, entry_uri, results, flag_column, &change);
+                    let Some(batch) = upsert_batch(results, column, change.row) else {
+                        continue;
+                    };
+                    queue_upsert(
+                        ui.ctx(),
+                        PendingUpsert {
+                            entry_uri: entry_uri.clone(),
+                            session_ctx: Arc::clone(&self.session_ctx),
+                            table_ref: self.datafusion_table_ref.clone(),
+                            row: change.row,
+                            physical_column: change.physical_column,
+                            batch,
+                        },
+                    );
                 }
             }
-
-            // Invalidate the streaming cache so the next re-query (e.g. filter/sort change)
-            // fetches fresh data from the server (which now has the upserted flags).
-            let session_ctx = Arc::clone(&self.session_ctx);
-            let table_ref = self.datafusion_table_ref.clone();
-            runtime.spawn_future(async move {
-                Self::invalidate_streaming_cache(&session_ctx, &table_ref).await;
-            });
         }
 
         if table_state.query_data() != &query_data {
@@ -1004,8 +1000,8 @@ impl<'a> DataFusionTableWidget<'a> {
                 ui.error_label(err.to_string());
                 return TableUiOutput {
                     query_data,
-                    flag_columns: Vec::new(),
-                    flag_changes: Vec::new(),
+                    editable_columns: Vec::new(),
+                    cell_changes: Vec::new(),
                 };
             }
         };
@@ -1013,7 +1009,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let blueprint_db = blueprint_ctx.current_blueprint();
         let view_renderers = blueprint
             .iter_visible_columns(layout_kind)
-            .filter(|column| column.configured_cell_kind() == TableCellKind::Preview)
+            .filter(|column| column.is_preview())
             .filter_map(|column| {
                 let data_column_index =
                     data_columns.index_by_physical_name(column.physical_name())?;
@@ -1145,10 +1141,10 @@ impl<'a> DataFusionTableWidget<'a> {
             re_uri::RedapUri::Entry(entry) => Some(entry),
             _ => None,
         });
-        let flag_columns = if should_show_loading_indicator {
+        let editable_columns = if should_show_loading_indicator {
             Vec::new()
         } else {
-            Self::resolve_flag_columns(
+            Self::resolve_editable_columns(
                 &blueprint,
                 layout_kind,
                 &data_columns,
@@ -1184,28 +1180,18 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         let content_rect = ui.available_rect_before_wrap();
-        let mut flag_changes = Vec::new();
+        let mut cell_changes = Vec::new();
         match layout_kind {
             TableLayoutKind::Table => {
                 let table_style = re_ui::TableStyle::Spacious;
 
                 let mut row_height = ctx.tokens().table_row_height(table_style);
 
-                let first_column_kind =
-                    blueprint
-                        .iter_visible_columns(layout_kind)
-                        .next()
-                        .map(|column| {
-                            let display_column = data_columns
-                                .index_by_physical_name(column.physical_name())
-                                .and_then(|index| {
-                                    display_record_batches.first()?.columns().get(index)
-                                });
-                            // Probe row 0 to determine the cell kind.
-                            // TODO(andreas): this is brittle! What if the first one is null and the next is a thumbnail.
-                            column.value_resolved_cell_kind(display_column, 0)
-                        });
-                if first_column_kind == Some(TableCellKind::Thumbnail) {
+                let first_column_type = blueprint
+                    .iter_visible_columns(layout_kind)
+                    .next()
+                    .and_then(|column| column.resolved_component_type());
+                if first_column_type == Some(Thumbnail::name()) {
                     row_height *= 3.0;
                 }
 
@@ -1251,8 +1237,8 @@ impl<'a> DataFusionTableWidget<'a> {
                     row_height,
                     view_renderers,
                     view_states,
-                    flag_columns: &flag_columns,
-                    flag_changes: &mut flag_changes,
+                    editable_columns: &editable_columns,
+                    cell_changes: &mut cell_changes,
                 };
 
                 // The table paints its own background rather than letting the page show through,
@@ -1284,7 +1270,7 @@ impl<'a> DataFusionTableWidget<'a> {
             }
             TableLayoutKind::Cards => {
                 if let Some(card_layout) = blueprint.card_layout {
-                    flag_changes = crate::cards_view::cards_ui(
+                    cell_changes = crate::cards_view::cards_ui(
                         ctx,
                         ui,
                         &data_columns,
@@ -1293,7 +1279,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         &view_renderers,
                         view_states,
                         num_rows,
-                        &flag_columns,
+                        &editable_columns,
                         &marked_rows,
                     );
                 } else {
@@ -1352,8 +1338,8 @@ impl<'a> DataFusionTableWidget<'a> {
 
         TableUiOutput {
             query_data,
-            flag_columns,
-            flag_changes,
+            editable_columns,
+            cell_changes,
         }
     }
 
@@ -1771,69 +1757,43 @@ fn table_index_column(schema: &arrow::datatypes::Schema) -> Option<(usize, &Arc<
     })
 }
 
-/// Asynchronously writes a flag change back to the remote server.
+/// Builds the batch that writes the edited value of a row back to the remote server.
 ///
-/// The update contains the table index and flag column only, so it can update the existing row
-/// without replacing its other values.
-fn upsert_flag_change(
-    ctx: &AppContext<'_>,
-    runtime: &AsyncRuntimeHandle,
-    remote: &re_uri::EntryUri,
+/// The batch contains the table index and the edited column only, so it can update the existing row
+/// without replacing its other values. The value is read from the in-memory results,
+/// which already have the edit applied.
+fn upsert_batch(
     results: &crate::datafusion_adapter::DataFusionQueryResult,
-    flag_column: &ResolvedFlagColumn,
-    change: &crate::cards_view::FlagChangeEvent,
-) {
-    let Some((batch, row_offset)) = results.find_row_batch(change.row) else {
-        return;
-    };
-    let Some((index_col_idx, _)) = table_index_column(batch.schema_ref()) else {
-        return;
-    };
+    column: &EditableColumn,
+    row: u64,
+) -> Option<arrow::array::RecordBatch> {
+    let value_col_idx = results
+        .original_schema
+        .index_of(column.physical_name.as_str())
+        .ok()?;
+    let (batch, row_offset) = results.find_row_batch(row)?;
+    let (index_col_idx, _) = table_index_column(batch.schema_ref())?;
 
     let index_array = batch.column(index_col_idx).slice(row_offset, 1);
-    let flag_array = Arc::new(BooleanArray::from(vec![change.new_value]));
+    let value_array = batch.column(value_col_idx).slice(row_offset, 1);
     let schema = arrow::datatypes::Schema::new_with_metadata(
-        vec![
-            flag_column.index_field.clone(),
-            flag_column.flag_field.clone(),
-        ],
+        vec![column.index_field.clone(), column.value_field.clone()],
         Default::default(),
     );
-    let Ok(upsert_batch) = arrow::array::RecordBatch::try_new_with_options(
+    match arrow::array::RecordBatch::try_new_with_options(
         Arc::new(schema),
-        vec![index_array, flag_array],
+        vec![index_array, value_array],
         &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
-    ) else {
-        re_log::warn_once!("Failed to build upsert RecordBatch for a flag change");
-        return;
-    };
-
-    let connection = ctx
-        .connection_registry
-        .connection_handle(remote.origin.clone());
-    let entry_id = remote.entry_id;
-    runtime.spawn_future(async move {
-        let result = async {
-            let mut client = connection.client().await?;
-            client
-                .write_table(
-                    futures::stream::once(async { upsert_batch }),
-                    entry_id,
-                    // `Update`: match existing rows on the table index and update only the
-                    // flag column. Unmatched source rows are dropped, which is correct here
-                    // since we only ever edit flags on rows that already exist.
-                    ext::TableInsertMode::Update,
-                )
-                .await
+    ) {
+        Ok(batch) => Some(batch),
+        Err(err) => {
+            re_log::warn_once!(
+                "Failed to build upsert RecordBatch for column {:?}: {err}",
+                column.physical_name
+            );
+            None
         }
-        .await;
-
-        if let Err(err) = result {
-            re_log::warn_once!("Failed to upsert flag changes: {err}");
-        } else {
-            re_log::debug!("Successfully upserted flag changes");
-        }
-    });
+    }
 }
 
 enum BottomBarAction {
@@ -1858,8 +1818,8 @@ struct DataFusionTableDelegate<'a> {
 
     /// Shared view states for segment preview views, persisted across frames.
     view_states: &'a mut re_viewer_context::ViewStates,
-    flag_columns: &'a [ResolvedFlagColumn],
-    flag_changes: &'a mut Vec<FlagChangeEvent>,
+    editable_columns: &'a [EditableColumn],
+    cell_changes: &'a mut Vec<CellChangeEvent>,
 }
 
 impl DataFusionTableDelegate<'_> {
@@ -2119,13 +2079,16 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
             ui.vertical(|ui| {
                 // Show link alongside the preview.
+                let url_descr = column
+                    .component_descriptor()
+                    .map(|descr| descr.clone().with_component_type(Url::name()));
                 column.data_ui(
                     self.ctx,
                     ui,
                     batch_index,
                     None,
                     UiLayout::List,
-                    TableCellKind::Link,
+                    url_descr.as_ref(),
                     false,
                 );
 
@@ -2149,21 +2112,18 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 return;
             };
             let editable = self
-                .flag_columns
+                .editable_columns
                 .iter()
                 .any(|column| column.physical_name == *data_column.physical_name());
-            let cell_kind = self
+            let component_descr = self
                 .blueprint
                 .column_by_physical_name(TableLayoutKind::Table, data_column.physical_name())
-                .map_or(TableCellKind::Auto, |table_column| {
-                    table_column.value_resolved_cell_kind(Some(column), batch_index)
+                .and_then(|table_column| {
+                    table_column.value_resolved_component_descriptor(column, batch_index)
                 });
 
-            if cell_kind == TableCellKind::Flag {
-                // The flag button fills the height the cell gives its content.
-                ui.spacing_mut().interact_size.y =
-                    ui.tokens().table_content_height(self.table_style);
-            }
+            // Widgets fill the height the cell gives its content.
+            ui.spacing_mut().interact_size.y = ui.tokens().table_content_height(self.table_style);
 
             let instance_index = None; // Only used in dataframe views.
             let edited = column.data_ui(
@@ -2172,20 +2132,16 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 batch_index,
                 instance_index,
                 UiLayout::List,
-                cell_kind,
+                component_descr.as_ref(),
                 editable,
             );
 
             // Create an edit event if any edit occurred.
-            if let Some(edited) = edited
-                && let Some(edited) = edited.downcast_array_ref::<arrow::array::BooleanArray>()
-                && !edited.is_empty()
-                && !edited.is_null(0)
-            {
-                self.flag_changes.push(FlagChangeEvent {
+            if let Some(new_value) = edited {
+                self.cell_changes.push(CellChangeEvent {
                     row: cell.row_nr,
                     physical_column: data_column.physical_name().clone(),
-                    new_value: edited.value(0),
+                    new_value,
                 });
             }
         }
@@ -2243,7 +2199,7 @@ mod tests {
     }
 
     #[test]
-    fn non_boolean_flag_is_rejected() {
+    fn string_column_with_table_index_is_editable() {
         let schema = arrow::datatypes::Schema::new_with_metadata(
             vec![
                 index_field(),
@@ -2252,18 +2208,18 @@ mod tests {
             Default::default(),
         );
         assert!(
-            DataFusionTableWidget::resolve_flag_column_source(
+            DataFusionTableWidget::resolve_editable_column_source(
                 &"value".into(),
                 &schema,
                 Some(&remote_table()),
                 &connection_registry(),
             )
-            .is_none()
+            .is_some()
         );
     }
 
     #[test]
-    fn flag_without_table_index_is_rejected() {
+    fn column_without_table_index_is_not_editable() {
         let schema = arrow::datatypes::Schema::new_with_metadata(
             vec![Field::new(
                 "value",
@@ -2273,7 +2229,7 @@ mod tests {
             Default::default(),
         );
         assert!(
-            DataFusionTableWidget::resolve_flag_column_source(
+            DataFusionTableWidget::resolve_editable_column_source(
                 &"value".into(),
                 &schema,
                 Some(&remote_table()),
@@ -2284,7 +2240,7 @@ mod tests {
     }
 
     #[test]
-    fn flag_with_table_index_is_resolved() {
+    fn bool_column_with_table_index_is_editable() {
         let schema = arrow::datatypes::Schema::new_with_metadata(
             vec![
                 index_field(),
@@ -2293,7 +2249,7 @@ mod tests {
             Default::default(),
         );
         assert!(
-            DataFusionTableWidget::resolve_flag_column_source(
+            DataFusionTableWidget::resolve_editable_column_source(
                 &"value".into(),
                 &schema,
                 Some(&remote_table()),

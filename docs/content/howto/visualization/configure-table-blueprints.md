@@ -24,7 +24,7 @@ For an introduction to catalog tables, see [Table entries](../../concepts/query-
 For creating and populating tables from query results, follow [Storing query results in catalog tables](../query-and-transform/catalog-tables.md).
 
 The example used here creates `my_table` with a `recording_uri` for each segment and `uuid` and `current_task` columns copied from DROID's episode properties.
-It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#adding-editable-flags).
+It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#editing-columns).
 (These are example-specific columns, not required table fields.)
 
 ## Configuring a catalog table
@@ -37,8 +37,12 @@ This only creates a column configuration — we'll add it to the card layout bel
 snippet: howto/visualization/configure_table_blueprints[preview]
 
 `Column` takes the source column's physical name; `name` overrides its display label.
+`column_type` overrides the component the column's values are shown as.
+It takes any component class, e.g. `rr.components.Url`, `rr.components.Thumbnail` or `rr.components.Color`.
+For the UI of one archetype field, pass its component descriptor, e.g. `rr.TextDocument.descriptor_text()`.
 
-`PreviewCell` is what renders the referenced recording using one or more views.
+Instead of a component, `column_type` also takes a `PreviewCell`, which is what we use here.
+`PreviewCell` renders the referenced recording using one or more views.
 You configure these views just as you would in a [recording blueprint](build-a-blueprint-programmatically.md), including their contents and view properties.
 Pass the views directly to `PreviewCell`, without the container layout tree (`Horizontal`, `Vertical`, `Tabs`, etc.) used to arrange a recording's viewport.
 Multiple views are shown side by side.
@@ -99,9 +103,13 @@ snippet: howto/visualization/configure_table_blueprints[register_table]
 > This local example requires the server to access the same file path.
 > For remote servers, see [Using remote storage](#using-remote-storage).
 
-### Adding editable flags
+### Editing columns
 
-To make an existing boolean `reviewed` column editable, configure it with `editable=True` and a `FlagCell`, then add it to the layout's `columns` or `fields` list:
+To make a column editable, configure it with `editable=True` and add it to the layout's `columns` or `fields` list.
+A cell can be edited when its component type has an editor in the Viewer.
+
+To edit the boolean `reviewed` column as flag buttons, use `column_type=rr.components.Flag`.
+Card layouts show the first flag field in the card header:
 
 snippet: howto/visualization/configure_table_blueprints[flags]
 
@@ -113,9 +121,13 @@ snippet: howto/visualization/configure_table_blueprints[flags]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/table_blueprint_cards_flags/afad289d2beba7827f6586da1fc568dfec2de87e/1200w.png">
 </picture>
 
+To edit a string `notes` column as text, use `column_type=rr.components.Text`:
+
+snippet: howto/visualization/configure_table_blueprints[text]
+
 Editing requires write access to a catalog table with a row-key column marked with `rr.SORBET_IS_TABLE_INDEX` metadata.
 The Viewer uses this key to persist edits. See [Update a table](../query-and-transform/catalog-tables.md#update-a-table) for details.
-Editing flags is currently not supported on dataset segment tables.
+Editing is currently not supported on dataset segment tables.
 
 ### Filtering rows
 
@@ -175,8 +187,8 @@ Each Python class maps to these entity paths and archetypes:
 
 In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
 `TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
-A column only shows as a preview when its `TableColumn.cell_kind` is `Preview`.
-`PreviewCell` sets this for you, but a blueprint written as entities, such as through the Viewer MCP server, sets it next to `TableColumnPreview`.
+A column with a `TableColumnPreview` shows as a preview.
+`TableColumn.column_type` holds the component identifier and component type set by `column_type`, e.g. `rerun.components.Flag`.
 
 ## Further examples
 
