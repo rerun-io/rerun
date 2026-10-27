@@ -472,11 +472,7 @@ impl Dataset {
             last_updated_at.push(source.last_updated_at().as_nanosecond() as i64);
             num_chunks.push(source.num_chunks());
             size_bytes.push(source.size_bytes());
-            schema_sha256s.push(
-                source
-                    .schema_sha256()
-                    .map_err(Error::failed_to_extract_properties)?,
-            );
+            schema_sha256s.push(source.schema_sha256());
 
             // Rejected sources are never stored, so every entry here is `Done`.
             registration_statuses.push(cloud_ext::LayerRegistrationStatus::Done.to_string());
@@ -633,7 +629,7 @@ impl Dataset {
             DataSourceKind::Rrd,
             storage_url,
             layer_info,
-        ));
+        )?);
 
         self.enforce_limits(&segment_id, &source)?;
 

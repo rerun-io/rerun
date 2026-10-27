@@ -337,6 +337,15 @@ message SegmentId {
   optional string id = 1;
 }
 
+// Identifies an Arrow schema by the SHA-256 of its canonical form: fields sorted,
+// top-level metadata dropped, encoded as Arrow IPC.
+//
+// Equal schemas have equal identifiers, whichever layer or dataset they come from.
+message SchemaId {
+  // The SHA-256 digest, exactly 32 bytes. Required.
+  optional bytes sha256 = 1;
+}
+
 // Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.
 message ComponentDescriptor {
   reserved 1;

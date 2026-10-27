@@ -1103,6 +1103,59 @@ impl ::prost::Name for GetDatasetSchemaResponse {
         "/rerun.cloud.v1alpha1.GetDatasetSchemaResponse".into()
     }
 }
+/// Request for `GetSchemas`.
+///
+/// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSchemasRequest {
+    /// The schemas to look up.
+    ///
+    /// Duplicates are ignored. Any invalid identifier fails the request with `InvalidArgument`.
+    /// An empty list yields an empty stream.
+    ///
+    /// At most 1024 identifiers, duplicates included; a longer list fails the request with `InvalidArgument`.
+    /// Servers may raise this limit but never lower it.
+    /// Clients with more identifiers split them across several requests.
+    #[prost(message, repeated, tag = "1")]
+    pub schema_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SchemaId>,
+}
+impl ::prost::Name for GetSchemasRequest {
+    const NAME: &'static str = "GetSchemasRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSchemasRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSchemasRequest".into()
+    }
+}
+/// One schema returned by `GetSchemas`.
+///
+/// Each requested identifier that the dataset holds yields exactly one message, in no particular order.
+/// Identifiers the dataset does not hold yield nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSchemasResponse {
+    /// The identifier this schema was looked up by. Required.
+    #[prost(message, optional, tag = "1")]
+    pub schema_id: ::core::option::Option<super::super::common::v1alpha1::SchemaId>,
+    /// The schema of the layers registered with this identifier. Required.
+    #[prost(message, optional, tag = "2")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
+}
+impl ::prost::Name for GetSchemasResponse {
+    const NAME: &'static str = "GetSchemasResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSchemasResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSchemasResponse".into()
+    }
+}
 /// Request for `GetRrdManifest`.
 ///
 /// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -4069,6 +4122,33 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Look up layer schemas by their `SchemaId`.
+        ///
+        /// The identifiers wrap the hashes reported in the `rerun_schema_sha256` column of `ScanDatasetManifest`.
+        /// Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        pub async fn get_schemas(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSchemasRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetSchemasResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSchemas",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetSchemas",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Get the RRD Footer manifest.
         ///
         /// This includes details about what chunks there are, and what kind of data they contain.
@@ -4780,6 +4860,21 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the GetSchemas method.
+        type GetSchemasStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetSchemasResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Look up layer schemas by their `SchemaId`.
+        ///
+        /// The identifiers wrap the hashes reported in the `rerun_schema_sha256` column of `ScanDatasetManifest`.
+        /// Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        async fn get_schemas(
+            &self,
+            request: tonic::Request<super::GetSchemasRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetSchemasStream>, tonic::Status>;
         /// Server streaming response type for the GetRrdManifest method.
         type GetRrdManifestStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::GetRrdManifestResponse, tonic::Status>,
@@ -6091,6 +6186,50 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSchemas" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSchemasSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::GetSchemasRequest>
+                        for GetSchemasSvc<T>
+                    {
+                        type Response = super::GetSchemasResponse;
+                        type ResponseStream = T::GetSchemasStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSchemasRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_schemas(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetSchemasSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

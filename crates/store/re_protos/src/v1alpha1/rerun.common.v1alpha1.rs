@@ -414,6 +414,26 @@ impl ::prost::Name for SegmentId {
         "/rerun.common.v1alpha1.SegmentId".into()
     }
 }
+/// Identifies an Arrow schema by the SHA-256 of its canonical form: fields sorted,
+/// top-level metadata dropped, encoded as Arrow IPC.
+///
+/// Equal schemas have equal identifiers, whichever layer or dataset they come from.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SchemaId {
+    /// The SHA-256 digest, exactly 32 bytes. Required.
+    #[prost(bytes = "bytes", optional, tag = "1")]
+    pub sha256: ::core::option::Option<::prost::bytes::Bytes>,
+}
+impl ::prost::Name for SchemaId {
+    const NAME: &'static str = "SchemaId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.SchemaId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.SchemaId".into()
+    }
+}
 /// Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ComponentDescriptor {

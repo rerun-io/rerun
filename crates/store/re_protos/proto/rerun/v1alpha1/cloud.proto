@@ -235,6 +235,14 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
+  // Look up layer schemas by their `SchemaId`.
+  //
+  // The identifiers wrap the hashes reported in the `rerun_schema_sha256` column of `ScanDatasetManifest`.
+  // Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
+  //
+  // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+  rpc GetSchemas(GetSchemasRequest) returns (stream GetSchemasResponse) {}
+
   // Get the RRD Footer manifest.
   //
   // This includes details about what chunks there are, and what kind of data they contain.
@@ -987,6 +995,35 @@ message GetDatasetSchemaResponse {
   // A dataset with no registered segments yields an empty schema rather than an error.
   rerun.common.v1alpha1.Schema schema = 1;
   // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
+}
+
+// Request for `GetSchemas`.
+//
+// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
+message GetSchemasRequest {
+  // The schemas to look up.
+  //
+  // Duplicates are ignored. Any invalid identifier fails the request with `InvalidArgument`.
+  // An empty list yields an empty stream.
+  //
+  // At most 1024 identifiers, duplicates included; a longer list fails the request with `InvalidArgument`.
+  // Servers may raise this limit but never lower it.
+  // Clients with more identifiers split them across several requests.
+  repeated rerun.common.v1alpha1.SchemaId schema_ids = 1;
+}
+
+// One schema returned by `GetSchemas`.
+//
+// Each requested identifier that the dataset holds yields exactly one message, in no particular order.
+// Identifiers the dataset does not hold yield nothing.
+message GetSchemasResponse {
+  // The identifier this schema was looked up by. Required.
+  rerun.common.v1alpha1.SchemaId schema_id = 1;
+  // The schema of the layers registered with this identifier. Required.
+  rerun.common.v1alpha1.Schema schema = 2;
+  // Dataset identity and revision for the entire stream.
+  // Set only on the first response message; omitted from subsequent messages.
   DatasetResponseMeta meta = 100;
 }
 

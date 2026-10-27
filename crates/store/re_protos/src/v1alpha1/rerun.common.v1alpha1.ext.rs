@@ -170,6 +170,64 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
     }
 }
 
+// --- SchemaId ---
+
+/// Identifies an Arrow schema by the SHA-256 of its canonical form.
+///
+/// See `rerun.common.v1alpha1.SchemaId` for the canonical form.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SchemaId([u8; 32]);
+
+impl SchemaId {
+    #[inline]
+    pub fn from_sha256(sha256: [u8; 32]) -> Self {
+        Self(sha256)
+    }
+
+    #[inline]
+    pub fn sha256(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for SchemaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
+    }
+}
+
+impl std::fmt::Debug for SchemaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SchemaId({self})")
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::SchemaId> for SchemaId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::SchemaId) -> Result<Self, Self::Error> {
+        let sha256 = value
+            .sha256
+            .ok_or(missing_field!(crate::common::v1alpha1::SchemaId, "sha256"))?;
+        let sha256 = <[u8; 32]>::try_from(sha256.as_ref()).map_err(|_err| {
+            invalid_field!(
+                crate::common::v1alpha1::SchemaId,
+                "sha256",
+                format!("expected 32 bytes, got {}", sha256.len())
+            )
+        })?;
+        Ok(Self(sha256))
+    }
+}
+
+impl From<SchemaId> for crate::common::v1alpha1::SchemaId {
+    fn from(value: SchemaId) -> Self {
+        Self {
+            sha256: Some(value.0.to_vec().into()),
+        }
+    }
+}
+
 // --- DatasetKind ---
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

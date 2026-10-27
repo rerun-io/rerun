@@ -26,15 +26,16 @@ use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
     EntryCreatedEvent, EntryDeletedEvent, EntryDetails, EntryKind, EventKind, FetchChunksRequest,
     GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetRrdManifestResponse, GetSegmentTableSchemaResponse, LayerNameFilter, QueryDatasetResponse,
-    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter,
-    WatchEventsResponse, layer_name_filter, segment_id_filter, watch_events_response,
+    GetRrdManifestResponse, GetSchemasRequest, GetSchemasResponse, GetSegmentTableSchemaResponse,
+    LayerNameFilter, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+    RegisterTableResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter, WatchEventsResponse,
+    layer_name_filter, segment_id_filter, watch_events_response,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, SchemaId, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -584,6 +585,7 @@ decl_stream!(FindChunksResponseStream<rerun_cloud:FindChunksResponse>);
 decl_stream!(GetAssetsForSegmentResponseStream<rerun_cloud:GetAssetsForSegmentResponse>);
 decl_stream!(GetSegmentPropertiesResponseStream<rerun_cloud:GetSegmentPropertiesResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
+decl_stream!(GetSchemasResponseStream<manifest:GetSchemasResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
 decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
@@ -1516,6 +1518,42 @@ impl RerunCloudService for RerunCloudHandler {
             })?),
             meta: None,
         }))
+    }
+
+    type GetSchemasStream = GetSchemasResponseStream;
+
+    async fn get_schemas(
+        &self,
+        request: tonic::Request<GetSchemasRequest>,
+    ) -> tonic::Result<tonic::Response<Self::GetSchemasStream>> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset = store.dataset(entry_id)?;
+
+        let ext::GetSchemasRequest {
+            schema_ids: mut remaining,
+        } = request.into_inner().try_into()?;
+        let mut responses = Vec::with_capacity(remaining.len());
+        for source in dataset.iter_sources() {
+            if remaining.is_empty() {
+                break;
+            }
+
+            let schema_id = SchemaId::from_sha256(source.schema_sha256());
+            if remaining.remove(&schema_id) {
+                let response = ext::GetSchemasResponse {
+                    schema_id,
+                    schema: source.schema(),
+                };
+                responses.push(Ok(GetSchemasResponse::try_from(response).map_err(
+                    |err| tonic::Status::internal(format!("Unable to serialize schema: {err:#}")),
+                )?));
+            }
+        }
+
+        Ok(tonic::Response::new(
+            Box::pin(futures::stream::iter(responses)) as Self::GetSchemasStream,
+        ))
     }
 
     type GetRrdManifestStream = GetRrdManifestResponseStream;

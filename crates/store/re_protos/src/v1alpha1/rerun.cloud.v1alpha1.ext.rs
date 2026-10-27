@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef, RecordBatch, StringArray};
@@ -18,7 +19,7 @@ use crate::cloud::v1alpha1::{
     UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SchemaId, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -1704,6 +1705,104 @@ impl GetDatasetSchemaResponse {
                 TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
             })?
             .try_into()?)
+    }
+}
+
+// --- GetSchemasRequest ---
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GetSchemasRequest {
+    pub schema_ids: BTreeSet<SchemaId>,
+}
+
+impl GetSchemasRequest {
+    /// The most identifiers one request may carry, duplicates included.
+    ///
+    /// Servers and clients are released independently, so a server may raise this limit but
+    /// never lower it. Clients with more identifiers split them across several requests.
+    pub const MAX_SCHEMA_IDS: usize = 1024;
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetSchemasRequest> for GetSchemasRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::GetSchemasRequest) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetSchemasRequest { schema_ids } = value;
+
+        if schema_ids.len() > Self::MAX_SCHEMA_IDS {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::GetSchemasRequest,
+                "schema_ids",
+                format!(
+                    "got {} identifiers, but at most {} are allowed",
+                    schema_ids.len(),
+                    Self::MAX_SCHEMA_IDS
+                )
+            ));
+        }
+
+        Ok(Self {
+            schema_ids: schema_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .try_collect()?,
+        })
+    }
+}
+
+impl From<GetSchemasRequest> for crate::cloud::v1alpha1::GetSchemasRequest {
+    fn from(value: GetSchemasRequest) -> Self {
+        Self {
+            schema_ids: value.schema_ids.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+// --- GetSchemasResponse ---
+
+/// One message of the `GetSchemas` stream, without its `meta`.
+#[derive(Debug, Clone)]
+pub struct GetSchemasResponse {
+    pub schema_id: SchemaId,
+    pub schema: Schema,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetSchemasResponse> for GetSchemasResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::GetSchemasResponse) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetSchemasResponse {
+            schema_id,
+            schema,
+            meta: _,
+        } = value;
+
+        Ok(Self {
+            schema_id: schema_id
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::GetSchemasResponse,
+                    "schema_id"
+                ))?
+                .try_into()?,
+            schema: schema
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::GetSchemasResponse,
+                    "schema"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl TryFrom<GetSchemasResponse> for crate::cloud::v1alpha1::GetSchemasResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: GetSchemasResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            schema_id: Some(value.schema_id.into()),
+            schema: Some((&value.schema).try_into()?),
+            meta: None,
+        })
     }
 }
 
