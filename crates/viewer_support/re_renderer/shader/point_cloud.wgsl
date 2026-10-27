@@ -5,6 +5,7 @@
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
 #import <./utils/depth_offset.wgsl>
+#import <./utils/srgb.wgsl>
 
 @group(1) @binding(0)
 var position_data_texture: texture_2d<f32>;
@@ -94,8 +95,13 @@ fn read_data(idx: u32) -> PointData {
          vec2u(idx % position_data_texture_size.x, idx / position_data_texture_size.x), 0);
 
     let color_texture_size = textureDimensions(color_texture);
-    let color = textureLoad(color_texture,
+    var color = textureLoad(color_texture,
          vec2u(idx % color_texture_size.x, idx / color_texture_size.x), 0);
+    if has_any_flag(batch.flags, FLAG_PREMULTIPLIED_ALPHA) && color.a > 0.0 && color.a < 1.0 {
+        // The sRGB texture decoded Color32's gamma-premultiplied RGB before removing alpha.
+        // Restore its stored gamma values, then premultiply in linear space for blending.
+        color = linear_from_srgba_premultiplied(srgba_from_linear(color));
+    }
 
     let picking_instance_id_texture_size = textureDimensions(picking_instance_id_texture);
     let picking_instance_id = textureLoad(picking_instance_id_texture,

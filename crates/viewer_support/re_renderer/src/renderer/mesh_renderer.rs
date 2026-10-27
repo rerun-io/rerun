@@ -119,6 +119,7 @@ pub struct MeshDrawData {
     // instance range on every instanced draw call!
     instance_buffer: Option<GpuBuffer>,
     batches: Vec<MeshBatch>,
+    sort_axis: Option<glam::Vec3A>,
 }
 
 impl DrawData for MeshDrawData {
@@ -130,10 +131,12 @@ impl DrawData for MeshDrawData {
         collector: &mut DrawableCollector<'_>,
     ) {
         for (batch_idx, batch) in self.batches.iter().enumerate() {
-            collector.add_drawable_for_phase(
-                batch.draw_phase,
-                DrawDataDrawable::from_world_position(view_info, batch.position, batch_idx as _),
-            );
+            let mut drawable =
+                DrawDataDrawable::from_world_position(view_info, batch.position, batch_idx as _);
+            if let Some(axis) = self.sort_axis {
+                drawable.distance_sort_key = batch.position.dot(axis);
+            }
+            collector.add_drawable_for_phase(batch.draw_phase, drawable);
         }
     }
 }
@@ -213,6 +216,16 @@ impl Ord for BatchKey {
 }
 
 impl MeshDrawData {
+    /// Sort batches along a world-space axis instead of by distance from the camera.
+    ///
+    /// Larger values are drawn first in the transparent phase.
+    /// Screen-space views can use this to preserve layer order independently of x/y positions.
+    /// This does not change depth testing or split instance batches.
+    pub fn with_sort_axis(mut self, axis: glam::Vec3A) -> Self {
+        self.sort_axis = Some(axis);
+        self
+    }
+
     #[inline]
     pub const fn gpu_instance_size_bytes() -> usize {
         std::mem::size_of::<gpu_data::InstanceData>()
@@ -233,6 +246,7 @@ impl MeshDrawData {
             return Ok(Self {
                 batches: Vec::new(),
                 instance_buffer: None,
+                sort_axis: None,
             });
         }
 
@@ -414,6 +428,7 @@ impl MeshDrawData {
         Ok(Self {
             batches,
             instance_buffer: Some(instance_buffer),
+            sort_axis: None,
         })
     }
 }
@@ -894,6 +909,97 @@ mod tests {
             picking_layer_id: PickingLayerId::default(),
             cull_mode: None,
         }
+    }
+
+    #[test]
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "Explicit alpha values are test input"
+    )]
+    fn screen_space_sorting_orders_meshes_lines_and_points_by_layer() {
+        let ctx = RenderContext::new_test();
+        let mesh = Arc::new(opaque_test_mesh(&ctx));
+        let instances = [
+            GpuMeshInstance {
+                world_from_mesh: glam::Affine3A::from_translation(glam::vec3(0.0, 0.0, 2.0)),
+                additive_tint: Color32::from_white_alpha(128),
+                ..mesh_instance(mesh.clone())
+            },
+            GpuMeshInstance {
+                world_from_mesh: glam::Affine3A::from_translation(glam::vec3(
+                    1_000.0, 1_000.0, 1.0,
+                )),
+                additive_tint: Color32::from_white_alpha(128),
+                ..mesh_instance(mesh)
+            },
+        ];
+        let meshes = MeshDrawData::new(&ctx, &instances).unwrap();
+        let mut default_order = DrawPhaseManager::new(EnumSet::all());
+        default_order
+            .add_draw_data(&ctx, meshes.clone().into(), &test_view_info())
+            .unwrap();
+        default_order.sort_drawables(ctx.renderers());
+        let default_keys: Vec<_> = default_order
+            .drawables_for_phase(DrawPhase::Transparent)
+            .iter()
+            .map(|drawable| drawable.distance_sort_key)
+            .collect();
+        assert_eq!(default_keys, [2_000_001.0, 4.0]);
+
+        let mut layers = DrawPhaseManager::new(EnumSet::all());
+        layers
+            .add_draw_data(
+                &ctx,
+                meshes.with_sort_axis(glam::Vec3A::Z).into(),
+                &test_view_info(),
+            )
+            .unwrap();
+        let mut lines = crate::LineDrawableBuilder::new(&ctx);
+        lines.enable_alpha_blending();
+        lines
+            .batch("screen-space line")
+            .add_strip_2d([glam::vec2(2_000.0, 2_000.0), glam::vec2(2_001.0, 2_001.0)].into_iter());
+        let lines = lines.into_draw_data().unwrap();
+        let mut default_lines = DrawPhaseManager::new(EnumSet::all());
+        default_lines
+            .add_draw_data(&ctx, lines.clone().into(), &test_view_info())
+            .unwrap();
+        assert_eq!(
+            default_lines.drawables_for_phase(DrawPhase::Transparent)[0].distance_sort_key,
+            f32::MAX
+        );
+        layers
+            .add_draw_data(&ctx, lines.with_sort_key(0.0).into(), &test_view_info())
+            .unwrap();
+
+        let mut points = crate::PointCloudBuilder::new(&ctx);
+        points
+            .batch("screen-space point")
+            .enable_alpha_blending(true)
+            .add_points_2d(
+                &[glam::vec3(3_000.0, 3_000.0, 0.0)],
+                &[crate::Size::ONE_UI_POINT],
+                &[Color32::WHITE],
+                &[crate::PickingLayerInstanceId(0)],
+            );
+        let points = points.into_draw_data().unwrap();
+        let mut default_points = DrawPhaseManager::new(EnumSet::all());
+        default_points
+            .add_draw_data(&ctx, points.clone().into(), &test_view_info())
+            .unwrap();
+        assert!(
+            default_points.drawables_for_phase(DrawPhase::Transparent)[0].distance_sort_key > 0.0
+        );
+        layers
+            .add_draw_data(&ctx, points.with_sort_key(-1.0).into(), &test_view_info())
+            .unwrap();
+        layers.sort_drawables(ctx.renderers());
+        let keys: Vec<_> = layers
+            .drawables_for_phase(DrawPhase::Transparent)
+            .iter()
+            .map(|drawable| drawable.distance_sort_key)
+            .collect();
+        assert_eq!(keys, [2.0, 1.0, 0.0, -1.0]);
     }
 
     #[test]

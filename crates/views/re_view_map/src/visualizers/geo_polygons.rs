@@ -324,7 +324,8 @@ impl GeoPolygonsOutput {
             }
         }
         let draw_data = MeshDrawData::new(render_ctx, &instances)
-            .map_err(|error| ViewSystemExecutionError::DrawDataCreationError(Arc::new(error)))?;
+            .map_err(|error| ViewSystemExecutionError::DrawDataCreationError(Arc::new(error)))?
+            .with_sort_axis(glam::Vec3A::Z);
         view_builder.queue_draw(render_ctx, draw_data)?;
         Ok(())
     }

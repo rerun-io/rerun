@@ -152,6 +152,7 @@ impl GeoLineStringsOutput {
         highlight: &ViewHighlights,
     ) -> Result<(), LineDrawDataError> {
         let mut lines = re_renderer::LineDrawableBuilder::new(render_ctx);
+        lines.enable_alpha_blending();
         lines.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -196,7 +197,7 @@ impl GeoLineStringsOutput {
             }
         }
 
-        view_builder.queue_draw(render_ctx, lines.into_draw_data()?)?;
+        view_builder.queue_draw(render_ctx, lines.into_draw_data()?.with_sort_key(0.0))?;
 
         Ok(())
     }

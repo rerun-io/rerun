@@ -266,6 +266,7 @@ impl ViewClass for MapView {
         if let Some(span) = &span {
             state.last_center_position = span.center();
         }
+        let has_geo_data = span.is_some();
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
@@ -314,7 +315,10 @@ impl ViewClass for MapView {
         // Save Blueprint
         //
 
-        if Some(map_memory.zoom()) != blueprint_zoom_level {
+        // Initial queries can be empty while data is still loading. Do not pin that temporary
+        // fallback zoom in the blueprint before we can fit the incoming geographic data.
+        let user_changed_zoom = map_memory.zoom() != zoom_level;
+        if Some(map_memory.zoom()) != blueprint_zoom_level && (has_geo_data || user_changed_zoom) {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
@@ -422,8 +426,8 @@ fn create_view_builder(
                 .any_outlines()
                 .then(|| re_view::outline_config(egui_ctx)),
 
-            // Make sure the map in the background is not completely overwritten
-            blend_with_background: re_renderer::BlendWithBackground::AlphaToCoverage,
+            // All map primitives use premultiplied alpha, including filled polygons.
+            blend_with_background: re_renderer::BlendWithBackground::Premultiplied,
 
             picking_config,
         },

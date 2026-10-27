@@ -40,10 +40,23 @@ impl GeoSpan {
     }
 
     pub fn center(&self) -> walkers::Position {
+        let projected_latitude = f64::midpoint(
+            Self::latitude_to_mercator(self.min_latitude),
+            Self::latitude_to_mercator(self.max_latitude),
+        );
+        let latitude = ((projected_latitude - 0.5) * std::f64::consts::TAU)
+            .sinh()
+            .atan()
+            .to_degrees();
         walkers::lat_lon(
-            f64::midpoint(self.min_latitude, self.max_latitude),
+            latitude,
             f64::midpoint(self.min_longitude, self.max_longitude),
         )
+    }
+
+    fn latitude_to_mercator(latitude: f64) -> f64 {
+        let latitude_rad = latitude.to_radians();
+        f64::midpoint(1.0, latitude_rad.tan().asinh() / std::f64::consts::PI).clamp(0.0, 1.0)
     }
 
     pub fn zoom_for_screen_size(&self, screen_size: egui::Vec2) -> Option<f64> {
@@ -56,15 +69,9 @@ impl GeoSpan {
         //TODO(ab): should use the actual tile size from the map provider (always 256 in practice)
         const TILE_SIZE: f64 = 256.0;
 
-        // Convert latitude to y coordinate in mercator projection (scaled to 0..1)
-        fn lat_to_y(lat: f64) -> f64 {
-            let lat_rad = lat.to_radians();
-            let y = f64::midpoint(1.0, lat_rad.tan().asinh() / std::f64::consts::PI);
-            y.clamp(0.0, 1.0)
-        }
-
         // Calculate ranges
-        let lat_range = lat_to_y(self.max_latitude) - lat_to_y(self.min_latitude);
+        let lat_range = Self::latitude_to_mercator(self.max_latitude)
+            - Self::latitude_to_mercator(self.min_latitude);
         let lon_range = (self.max_longitude - self.min_longitude) / 360.0;
 
         // Calculate the required number of tiles for both dimensions
@@ -115,6 +122,35 @@ pub fn radius_to_size(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn automatic_framing_contains_asymmetric_mercator_bounds() {
+        for (min_latitude, max_latitude) in [(0.0, 80.0), (-85.0, 83.6), (-70.0, -10.0)] {
+            let span = GeoSpan {
+                min_latitude,
+                max_latitude,
+                min_longitude: -10.0,
+                max_longitude: 10.0,
+            };
+            for size in [egui::vec2(1024.0, 500.0), egui::vec2(500.0, 900.0)] {
+                let rect = egui::Rect::from_min_size(egui::pos2(17.0, 23.0), size);
+                let mut memory = walkers::MapMemory::default();
+                memory
+                    .set_zoom(span.zoom_for_screen_size(size).unwrap())
+                    .unwrap();
+                let projector = walkers::Projector::new(rect, &memory, span.center());
+                for latitude in [span.min_latitude, span.max_latitude] {
+                    for longitude in [span.min_longitude, span.max_longitude] {
+                        let position = projector.project(walkers::lat_lon(latitude, longitude));
+                        assert!(
+                            rect.expand(0.01).contains(position.to_pos2()),
+                            "Automatic framing clipped ({latitude}, {longitude}) at {position:?}: {span:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_zoom_for_screen_size() {
