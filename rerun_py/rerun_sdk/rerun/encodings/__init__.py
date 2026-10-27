@@ -27,6 +27,7 @@ from .dvec2d import DVec2D, DVec2DArrayLike, DVec2DBatch, DVec2DLike
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like
+from .geo_polygon_data import GeoPolygonData, GeoPolygonDataArrayLike, GeoPolygonDataBatch, GeoPolygonDataLike
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike
 from .ivec3d import IVec3D, IVec3DArrayLike, IVec3DBatch, IVec3DLike
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike
@@ -151,6 +152,10 @@ __all__ = [
     "Float64ArrayLike",
     "Float64Batch",
     "Float64Like",
+    "GeoPolygonData",
+    "GeoPolygonDataArrayLike",
+    "GeoPolygonDataBatch",
+    "GeoPolygonDataLike",
     "IVec3D",
     "IVec3DArrayLike",
     "IVec3DBatch",

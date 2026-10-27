@@ -1,8 +1,11 @@
 mod geo_line_strings;
 mod geo_points;
+mod geo_polygons;
+mod polygon_geometry;
 
 pub use geo_line_strings::{GeoLineStringsOutput, GeoLineStringsVisualizer};
 pub use geo_points::{GeoPointsOutput, GeoPointsVisualizer};
+pub use geo_polygons::{GeoPolygonsDrawCache, GeoPolygonsOutput, GeoPolygonsVisualizer};
 
 /// Helper to track an area span in latitude and longitude.
 #[derive(Debug, Clone)]

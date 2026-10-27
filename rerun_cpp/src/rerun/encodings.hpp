@@ -17,6 +17,7 @@
 #include "encodings/entity_path.hpp"
 #include "encodings/float32.hpp"
 #include "encodings/float64.hpp"
+#include "encodings/geo_polygon_data.hpp"
 #include "encodings/image_format.hpp"
 #include "encodings/ivec3d.hpp"
 #include "encodings/keypoint_id.hpp"

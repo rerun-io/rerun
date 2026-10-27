@@ -37,6 +37,7 @@ from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike
 from .fill_ratio import FillRatio, FillRatioBatch
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch
 from .geo_line_string import GeoLineString, GeoLineStringArrayLike, GeoLineStringBatch, GeoLineStringLike
+from .geo_polygon import GeoPolygon, GeoPolygonBatch
 from .graph_edge import GraphEdge, GraphEdgeBatch
 from .graph_node import GraphNode, GraphNodeBatch
 from .graph_type import GraphType, GraphTypeArrayLike, GraphTypeBatch, GraphTypeLike
@@ -180,6 +181,8 @@ __all__ = [
     "GeoLineStringArrayLike",
     "GeoLineStringBatch",
     "GeoLineStringLike",
+    "GeoPolygon",
+    "GeoPolygonBatch",
     "GraphEdge",
     "GraphEdgeBatch",
     "GraphNode",

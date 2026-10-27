@@ -28,6 +28,8 @@ mod entity_path;
 mod float32;
 #[path = "encodings/float64.def.rs"]
 mod float64;
+#[path = "encodings/geo_polygon_data.def.rs"]
+mod geo_polygon_data;
 #[path = "encodings/image_format.def.rs"]
 mod image_format;
 #[path = "encodings/ivec3d.def.rs"]
@@ -113,6 +115,7 @@ pub use self::dvec2d::*;
 pub use self::entity_path::*;
 pub use self::float32::*;
 pub use self::float64::*;
+pub use self::geo_polygon_data::*;
 pub use self::image_format::*;
 pub use self::ivec3d::*;
 pub use self::keypoint_id::*;
