@@ -149,6 +149,17 @@ impl Route {
         }
     }
 
+    /// The recording the user is looking at, also through the settings page and the chunk store
+    /// browser, which return to it when closed.
+    pub fn shown_recording_id(&self) -> Option<&StoreId> {
+        match self {
+            Self::Settings { return_route } | Self::ChunkStoreBrowser { return_route, .. } => {
+                return_route.shown_recording_id()
+            }
+            route => route.recording_id(),
+        }
+    }
+
     /// The active recording [`StoreId`], if any.
     pub fn recording_id(&self) -> Option<&StoreId> {
         match self {

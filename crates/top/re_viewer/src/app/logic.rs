@@ -499,14 +499,13 @@ impl AppCore {
     ) {
         let mut open_behavior = channel_source.open_behavior();
         if open_behavior == RecordingOpenBehavior::OpenAndSelect
-            && store_id.kind() == StoreKind::Recording
-            && matches!(channel_source, LogSource::Sdk | LogSource::MessageProxy(_))
+            && channel_source.is_sdk_stream()
             && !self.app_options().switch_to_streamed_recordings
             && self
                 .state
                 .navigation
                 .current()
-                .recording_id()
+                .shown_recording_id()
                 .is_some_and(|id| id != store_id && store_hub.entity_db(id).is_some())
         {
             open_behavior = RecordingOpenBehavior::Open;
@@ -1065,5 +1064,67 @@ impl AppCore {
                 ..ChunkPrefetchOptions::default()
             },
         );
+    }
+}
+
+#[cfg(all(test, feature = "testing"))]
+mod tests {
+    use super::*;
+
+    /// Shows a recording on the route `showing` returns, then streams in another one from an SDK.
+    ///
+    /// Returns the route before and after, and whether the streamed recording was opened.
+    fn stream_in_while_showing(
+        switch_to_streamed_recordings: bool,
+        showing: impl FnOnce(&StoreId) -> Route,
+    ) -> (Route, Route, StoreId, bool) {
+        let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+        let egui_ctx = harness.ctx.clone();
+        let crate::App {
+            store_hub,
+            core: app,
+        } = harness.state_mut();
+        app.app_options_mut().switch_to_streamed_recordings = switch_to_streamed_recordings;
+
+        let shown = StoreId::random(StoreKind::Recording, "test_app");
+        store_hub.entity_db_entry(&shown);
+        let before = showing(&shown);
+        app.state.navigation.replace(before.clone());
+
+        let streamed = StoreId::random(StoreKind::Recording, "test_app");
+        store_hub.entity_db_entry(&streamed);
+        app.on_new_store(&egui_ctx, &streamed, &LogSource::Sdk, store_hub);
+
+        let after = app.state.navigation.current().clone();
+        let opened = store_hub.is_opened(&streamed);
+        (before, after, streamed, opened)
+    }
+
+    fn local_recording(recording_id: &StoreId) -> Route {
+        Route::LocalRecording {
+            recording_id: recording_id.clone(),
+        }
+    }
+
+    #[tokio::test]
+    async fn streamed_recording_is_shown_by_default() {
+        let (_, after, streamed, opened) = stream_in_while_showing(true, local_recording);
+        assert_eq!(after, local_recording(&streamed));
+        assert!(opened);
+    }
+
+    #[tokio::test]
+    async fn streamed_recording_stays_in_the_background_when_switching_is_off() {
+        let (before, after, _, opened) = stream_in_while_showing(false, local_recording);
+        assert_eq!(after, before);
+        assert!(opened);
+    }
+
+    #[tokio::test]
+    async fn streamed_recording_keeps_the_settings_open_when_switching_is_off() {
+        let (before, after, _, opened) =
+            stream_in_while_showing(false, |shown| Route::settings(&local_recording(shown)));
+        assert_eq!(after, before);
+        assert!(opened);
     }
 }
