@@ -231,8 +231,6 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 rerun-build-web-release = "python scripts/build_web_viewer.py --release"
 
 # Build a `re_renderer_examples` binary as Wasm and serve it on localhost.
-#
-# E.g. `pixi run re-renderer-web-example multiview`. Pass `--help` for options.
 re-renderer-web-example = "python scripts/run_re_renderer_web_example.py"
 
 # Run the `re_integration_test` suite against the real wasm web viewer in headless Chrome.
