@@ -2052,7 +2052,6 @@ def main() -> None:
         rerun("rerun_notebook/src/rerun_notebook/static"),
         rerun("rerun_py/.pytest_cache/"),
         rerun("rerun_py/site/"),  # is in `.gitignore` which this script doesn't fully respect
-        rerun("run_wasm/README.md"),  # Has a "2d" lowercase example in a code snippet
         rerun("scripts/lint.py"),  # we contain all the patterns we are linting against
         rerun("scripts/zombie_todos.py"),
         rerun("tests/assets/lerobot/apple_storage/README.md"),  # not ours
