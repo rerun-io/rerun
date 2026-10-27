@@ -152,6 +152,27 @@ impl VideoSampleDecoder {
     pub fn decode(&mut self, chunk: Chunk) -> Result<(), VideoPlayerError> {
         let sample_idx = chunk.sample_idx;
 
+        self.check_is_next_sample(sample_idx)?;
+
+        self.decoder.submit_chunk(chunk)?;
+
+        self.latest_sample_idx = Some(sample_idx);
+
+        Ok(())
+    }
+
+    /// Records `sample_idx` as the latest sample without submitting anything to the decoder.
+    ///
+    /// Used for samples without data, like clears.
+    pub fn skip(&mut self, sample_idx: crate::SampleIndex) -> Result<(), VideoPlayerError> {
+        self.check_is_next_sample(sample_idx)?;
+
+        self.latest_sample_idx = Some(sample_idx);
+
+        Ok(())
+    }
+
+    fn check_is_next_sample(&self, sample_idx: crate::SampleIndex) -> Result<(), VideoPlayerError> {
         if let Some(latest_sample_idx) = self.latest_sample_idx {
             // Some sanity checks:
             if latest_sample_idx + 1 == sample_idx {
@@ -164,10 +185,6 @@ impl VideoSampleDecoder {
                 return Err(super::InsufficientSampleDataError::OutOfOrderSampleIdx.into());
             }
         }
-
-        self.decoder.submit_chunk(chunk)?;
-
-        self.latest_sample_idx = Some(sample_idx);
 
         Ok(())
     }

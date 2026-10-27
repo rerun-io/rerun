@@ -58,6 +58,8 @@ namespace rerun::archetypes {
         /// never log this component as static data as this means that you loose all information of
         /// previous samples which may be required to decode an image.
         ///
+        /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
+        ///
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
 
@@ -170,6 +172,8 @@ namespace rerun::archetypes {
         /// Unless your stream consists entirely of key-frames (in which case you should consider `archetypes::EncodedImage`)
         /// never log this component as static data as this means that you loose all information of
         /// previous samples which may be required to decode an image.
+        ///
+        /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
         ///
         /// See `components::VideoCodec` for codec specific requirements.
         VideoStream with_sample(const rerun::components::VideoSample& _sample) && {
