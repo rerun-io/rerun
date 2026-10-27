@@ -1121,7 +1121,7 @@ async fn stream_manifest(
         };
 
         let part_nr = rrd_manifest_parts.len() + 1;
-        re_log::debug!(
+        re_log::trace!(
             "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
             re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
             start_time.elapsed().as_secs_f32(),
@@ -1153,7 +1153,7 @@ async fn stream_manifest(
     }
 
     let part_nr = rrd_manifest_parts.len();
-    re_log::debug!(
+    re_log::trace!(
         "Full RRD manifest loaded in {:.1}s in {}",
         start_time.elapsed().as_secs_f32(),
         re_format::format_plural_s(part_nr, "part")
@@ -1172,7 +1172,7 @@ async fn stream_manifest(
 
     match store_id.kind() {
         StoreKind::Recording if !options.force_full_download => {
-            re_log::debug!("Letting the viewer load chunks on-demand");
+            re_log::trace!("Letting the viewer load chunks on-demand");
             Ok(ManifestOutcome::Loaded)
         }
         StoreKind::Recording | StoreKind::Blueprint => {
