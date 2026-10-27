@@ -213,15 +213,34 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 }
 ```
 
-`rerun_set_blueprint` replaces the whole blueprint with JSON of the same form, and clears anything it leaves out.
-So an agent reads the blueprint, edits it, and sends all of it back.
+`rerun_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
+Full updates replace the whole blueprint and clear omitted fields and entities, so read the blueprint, edit it, and send all of it back.
+Partial updates write only supplied fields and preserve everything else; prefer them for small changes such as a view name, colormap, or column visibility.
+Arrays and struct-valued fields are replaced as a whole, not merged; preserve other entries when editing a component map or list of active visualizers.
+Set a field to `null` to clear it, or send an empty object for a no-op partial update.
 The write is a normal blueprint edit, so the user can undo it.
-An explicit `root_container` defaults omitted `auto_layout` and `auto_views` to `false` for recordings; set both to `false` if copying a blueprint that enables them.
+A write that would break a reference is rejected, and nothing is written.
+That covers a reference to a missing view, container, or visualizer instruction, a view, container, or instruction that nothing refers to, a loop of containers, and a view or container in two containers.
+So add a new view and the reference to it in the same call, and delete a view with a recursive `Clear` in the same call that takes it out of `contents`.
+For full recording updates, an explicit `root_container` defaults omitted `auto_layout` and `auto_views` to `false`; set both to `false` if copying a blueprint that enables them.
+View and container IDs can be reused across edits.
+Partial updates preserve automatic options unless supplied, even when changing the root container.
+
+For example, this call renames one view without resending its layout or other properties (substitute the actual view UUID):
+
+```json
+{
+  "recording": {},
+  "mode": "partial",
+  "json": "{\"/view/11111111-1111-4111-8111-111111111111\": {\"ViewBlueprint\": {\"display_name\": \"Navigation\"}}}"
+}
+```
 
 ### Table blueprints
 
 A table, such as a dataset's segment table or a catalog table, has a blueprint of its own with its row filters, layout, and column settings.
-`rerun_get_blueprint` and `rerun_set_blueprint` read and replace it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+`rerun_get_blueprint` and `rerun_set_blueprint` read and update it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+The same full and partial update modes apply to tables.
 Their answer names the recording or table it used, as `store_id` or `table_url`.
 Row filters are SQL expressions such as `"task" ILIKE '%pick%'`, and the `filters` docs of `TableBlueprint` list the forms the Viewer shows as editable filter widgets.
 A filter that does not fit the table's columns comes back as an error.

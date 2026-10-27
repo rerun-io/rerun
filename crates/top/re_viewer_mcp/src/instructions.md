@@ -16,6 +16,12 @@ Getting oriented:
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
 
+Editing blueprints:
+- `rerun_set_blueprint` takes `mode: "full"` (default) or `mode: "partial"` for either recordings or tables. Prefer partial for focused edits: omitted fields and entities stay untouched. Full replaces the blueprint and clears omitted fields.
+- Both modes replace arrays and struct-valued fields as a whole, including `component_map`, `instruction_ids`, and container contents; preserve entries you intend to keep. Set a field to `null` to clear it. An empty object in partial mode changes nothing.
+- A write that would break a reference is rejected, and nothing is written: a missing or unreferenced view, container, or visualizer instruction, or a loop of containers. Add a new view and the reference to it in the same call. Delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+- When supplying a deliberate recording layout, set `auto_layout` and `auto_views` to false. Full mode with an explicit root defaults omitted automatic options to false; partial mode preserves omitted options.
+
 Changing how a table looks:
 - `rerun_get_blueprint` and `rerun_set_blueprint` handle both regular blueprints (per-recording or per-segment views and layouts) and table blueprints (tables, card layouts, and preview cells).
   Use `{"recording": {}}` for regular blueprints or `{"table": {}}` for table blueprints.
@@ -24,7 +30,7 @@ Changing how a table looks:
 - The steps:
   1. `rerun_get_table_schema` for the real column names. `rerun_get_dataset_schema` names entities, not columns.
   2. `rerun_get_blueprint` with `{"table": {}}`.
-  3. `rerun_set_blueprint` with `{"table": {}}` and a `json` that keeps what step 2 returned. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. A column's `TableColumn` is at `/table/layouts/table/columns/<column name>`, with each `:` and space in the column name escaped as `\:` and `\ `. In the JSON string that backslash is doubled, e.g. `"/table/layouts/table/columns/property\\:episode\\:date"`. Row filters go in `filters` of `TableBlueprint` at `/table`.
+  3. `rerun_set_blueprint` with `{"table": {}, "mode": "partial"}` and a `json` containing the changed fields. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. A column's `TableColumn` is at `/table/layouts/table/columns/<column name>`, with each `:` and space in the column name escaped as `\:` and `\ `. In the JSON string that backslash is doubled, e.g. `"/table/layouts/table/columns/property\\:episode\\:date"`. Row filters go in `filters` of `TableBlueprint` at `/table`.
   4. One `rerun_save_screenshot` to check the result.
 
 Targeting widgets:

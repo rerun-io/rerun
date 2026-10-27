@@ -175,7 +175,13 @@ pub mod viewer_control_request {
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
         ///
-        /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
+        /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
+        /// partial updates write only supplied fields, preserving everything else. Prefer partial
+        /// updates for small edits such as a colormap or view name. Arrays and struct-valued fields
+        /// are replaced as a whole, not merged. Set a field to null to clear it.
+        /// A full recording update with an explicit root defaults omitted `auto_layout` and
+        /// `auto_views` to false. Partial updates preserve these options unless supplied.
+        /// A field holding a
         /// single value may be written as that value or as an array of one. Exactly one of
         /// `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
         /// response names which one it wrote.
@@ -199,6 +205,10 @@ pub mod viewer_control_request {
         /// `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
         /// against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
         /// `table` is set.
+        /// `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
+        /// reference to a missing view, container, or visualizer instruction, a view, container, or
+        /// instruction that nothing refers to, a loop of containers, or a view or container in two
+        /// containers. So add a view and the reference to it in the same call.
         /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
         /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "14")]
@@ -1829,10 +1839,14 @@ impl ::prost::Name for CaptureProfileTraceResponse {
 /// Request for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintRequest {
-    /// The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
-    /// returns it.
+    /// Blueprint JSON keyed by entity path, as `GetBlueprint` returns it.
+    /// In partial mode, include only the fields to change. Null clears a field;
+    /// an empty object makes no changes. Arrays replace the entire field.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
+    /// `full` (default) replaces the whole blueprint; `partial` preserves omitted fields.
+    #[prost(enumeration = "BlueprintUpdateMode", optional, tag = "5")]
+    pub mode: ::core::option::Option<i32>,
     /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
     #[prost(oneof = "set_blueprint_request::Target", tags = "3, 4")]
     pub target: ::core::option::Option<set_blueprint_request::Target>,
@@ -1931,6 +1945,10 @@ pub struct SetBlueprintResponse {
     /// only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
     #[prost(string, optional, tag = "3")]
     pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Entity paths the write added to the blueprint, sorted. A path here that was meant to
+    /// edit an existing entity is a typo: the write created a new, incomplete entity instead.
+    #[prost(string, repeated, tag = "4")]
+    pub created_entities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for SetBlueprintResponse {
     const NAME: &'static str = "SetBlueprintResponse";
@@ -2130,6 +2148,39 @@ impl ::prost::Name for SubmitFeedbackResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.SubmitFeedbackResponse".into()
+    }
+}
+/// How a blueprint write treats omitted fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum BlueprintUpdateMode {
+    /// Same as full, for callers that do not specify a mode.
+    Unspecified = 0,
+    /// Replace the whole blueprint, clearing omitted fields and entities.
+    Full = 1,
+    /// Write only supplied fields. Arrays and struct-valued fields replace the whole field.
+    Partial = 2,
+}
+impl BlueprintUpdateMode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "BLUEPRINT_UPDATE_MODE_UNSPECIFIED",
+            Self::Full => "BLUEPRINT_UPDATE_MODE_FULL",
+            Self::Partial => "BLUEPRINT_UPDATE_MODE_PARTIAL",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "BLUEPRINT_UPDATE_MODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "BLUEPRINT_UPDATE_MODE_FULL" => Some(Self::Full),
+            "BLUEPRINT_UPDATE_MODE_PARTIAL" => Some(Self::Partial),
+            _ => None,
+        }
     }
 }
 /// Whether a recording's time cursor moves.

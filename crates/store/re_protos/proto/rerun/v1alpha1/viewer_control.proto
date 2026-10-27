@@ -231,7 +231,13 @@ message ViewerControlRequest {
     // `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
     // Read the `table` input field's documentation for the table, card, and preview configuration interface.
     //
-    // The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
+    // `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
+    // partial updates write only supplied fields, preserving everything else. Prefer partial
+    // updates for small edits such as a colormap or view name. Arrays and struct-valued fields
+    // are replaced as a whole, not merged. Set a field to null to clear it.
+    // A full recording update with an explicit root defaults omitted `auto_layout` and
+    // `auto_views` to false. Partial updates preserve these options unless supplied.
+    // A field holding a
     // single value may be written as that value or as an array of one. Exactly one of
     // `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
     // response names which one it wrote.
@@ -255,6 +261,10 @@ message ViewerControlRequest {
     // `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
     // against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
     // `table` is set.
+    // `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
+    // reference to a missing view, container, or visualizer instruction, a view, container, or
+    // instruction that nothing refers to, a loop of containers, or a view or container in two
+    // containers. So add a view and the reference to it in the same call.
     // `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
     // recording is not open or the viewer does not know the table.
     SetBlueprintRequest set_blueprint = 14;
@@ -1253,14 +1263,28 @@ message CaptureProfileTraceResponse {
 // ----------------------------------------------------------------------------
 // SetBlueprint
 
+// How a blueprint write treats omitted fields.
+enum BlueprintUpdateMode {
+  // Same as full, for callers that do not specify a mode.
+  BLUEPRINT_UPDATE_MODE_UNSPECIFIED = 0;
+  // Replace the whole blueprint, clearing omitted fields and entities.
+  BLUEPRINT_UPDATE_MODE_FULL = 1;
+  // Write only supplied fields. Arrays and struct-valued fields replace the whole field.
+  BLUEPRINT_UPDATE_MODE_PARTIAL = 2;
+}
+
 // Request for `SetBlueprint`.
 message SetBlueprintRequest {
   reserved 1;
   reserved "store_id";
 
-  // The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
-  // returns it.
+  // Blueprint JSON keyed by entity path, as `GetBlueprint` returns it.
+  // In partial mode, include only the fields to change. Null clears a field;
+  // an empty object makes no changes. Arrays replace the entire field.
   string json = 2;
+
+  // `full` (default) replaces the whole blueprint; `partial` preserves omitted fields.
+  optional BlueprintUpdateMode mode = 5;
 
   // Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
   oneof target {
@@ -1341,6 +1365,10 @@ message SetBlueprintResponse {
   // The table whose blueprint was written, set when the blueprint is a table's. A table that
   // only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
   optional string table_url = 3;
+
+  // Entity paths the write added to the blueprint, sorted. A path here that was meant to
+  // edit an existing entity is a typo: the write created a new, incomplete entity instead.
+  repeated string created_entities = 4;
 }
 
 // ----------------------------------------------------------------------------

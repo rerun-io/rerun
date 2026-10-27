@@ -18,14 +18,14 @@ use re_log_types::{EntityPath, StoreId, StoreKind, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::PlayState as ProtoPlayState;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRequest, CloseResponse, DatasetAssetSchema, GetBlueprintRequest, GetBlueprintResponse,
-    GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse, GetDatasetSchemaRequest,
-    GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse, GetLogsRequest,
-    GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse, GetStateRequest,
-    GetStateResponse, GetTableSchemaRequest, GetTableSchemaResponse, HighlightRectRequest,
-    HighlightRectResponse, OpenRequest, OpenResponse, RecordingComponentSchema,
-    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect,
-    SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
+    BlueprintUpdateMode, CloseRequest, CloseResponse, DatasetAssetSchema, GetBlueprintRequest,
+    GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
+    GetLogsRequest, GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
+    GetStateRequest, GetStateResponse, GetTableSchemaRequest, GetTableSchemaResponse,
+    HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
+    RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
+    ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
     SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
     ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
     ViewerReport, ViewerServer, ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView,
@@ -143,6 +143,7 @@ enum PendingAnswer {
     SetBlueprint {
         target: BlueprintTarget,
         json: serde_json::Value,
+        mode: BlueprintUpdateMode,
     },
 }
 
@@ -243,9 +244,23 @@ impl AppCore {
 
         let sources = self.rx_log.sources();
         let now = web_time::Instant::now();
+        // A blueprint write is checked against the blueprint as it is, so a later read or write
+        // waits until the write queued before it has run.
+        let mut queued_blueprint_write = false;
         for PendingReply { on_done, answer } in
             std::mem::take(&mut self.viewer_control.pending_replies)
         {
+            if queued_blueprint_write
+                && matches!(
+                    answer,
+                    PendingAnswer::GetBlueprint { .. } | PendingAnswer::SetBlueprint { .. }
+                )
+            {
+                self.viewer_control
+                    .pending_replies
+                    .push(PendingReply { on_done, answer });
+                continue;
+            }
             match answer {
                 PendingAnswer::Ready(result) => on_done.call(result),
                 PendingAnswer::Open {
@@ -290,10 +305,11 @@ impl AppCore {
                         );
                     }
                 }
-                PendingAnswer::SetBlueprint { target, json } => {
-                    match self.apply_set_blueprint(store_hub, &target, &json) {
+                PendingAnswer::SetBlueprint { target, json, mode } => {
+                    match self.apply_set_blueprint(store_hub, &target, &json, mode) {
                         // The write is queued, so the answer waits for it to run.
                         Ok(response) => {
+                            queued_blueprint_write = true;
                             self.viewer_control.pending_replies.push(PendingReply {
                                 on_done,
                                 answer: PendingAnswer::Ready(Ok(response.into())),
@@ -545,7 +561,7 @@ impl AppCore {
 
             Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
 
-            Kind::SetBlueprint(SetBlueprintRequest { json, target }) => {
+            Kind::SetBlueprint(SetBlueprintRequest { json, target, mode }) => {
                 let parsed = serde_json::from_str(&json)
                     .map_err(|err| {
                         ViewerControlError::invalid_argument(format!(
@@ -553,17 +569,26 @@ impl AppCore {
                         ))
                     })
                     .and_then(|json| {
+                        let mode = mode
+                            .map(BlueprintUpdateMode::try_from)
+                            .transpose()
+                            .map_err(|err| {
+                                ViewerControlError::invalid_argument(format!(
+                                    "invalid blueprint update mode: {err}"
+                                ))
+                            })?
+                            .unwrap_or(BlueprintUpdateMode::Full);
                         let target = self.requested_blueprint_target(
                             store_hub,
                             target.map(RequestedBlueprint::from),
                         )?;
-                        Ok((target, json))
+                        Ok((target, json, mode))
                     });
                 match parsed {
-                    Ok((target, json)) => self.answer_after_blueprint(
+                    Ok((target, json, mode)) => self.answer_after_blueprint(
                         on_done,
                         target.ensure_blueprint_command(),
-                        PendingAnswer::SetBlueprint { target, json },
+                        PendingAnswer::SetBlueprint { target, json, mode },
                         egui_ctx,
                     ),
                     Err(err) => on_done.call(Err(err)),
@@ -1085,7 +1110,7 @@ impl AppCore {
         })
     }
 
-    /// Replace the active blueprint of a recording or a table with JSON, for the
+    /// Update the active blueprint of a recording or a table with JSON, for the
     /// `set_blueprint` operation.
     ///
     /// Only queues the write, so the caller must hold the answer back until it has run.
@@ -1094,6 +1119,7 @@ impl AppCore {
         store_hub: &StoreHub,
         target: &BlueprintTarget,
         json: &serde_json::Value,
+        mode: BlueprintUpdateMode,
     ) -> Result<SetBlueprintResponse, ViewerControlError> {
         re_tracing::profile_function!();
 
@@ -1101,12 +1127,19 @@ impl AppCore {
         let chunks = blueprint::chunks_from_json(
             blueprint_db,
             json,
+            mode,
             matches!(target, BlueprintTarget::Recording(_)),
             &self.registries.reflection.read(),
         )?;
         if let BlueprintTarget::Table(table) = target {
             self.check_table_filters(table, &chunks)?;
         }
+        blueprint::check_references(
+            blueprint_db,
+            self.state.blueprint_undo_state.get(blueprint_db.store_id()),
+            &chunks,
+        )?;
+        let created_entities = blueprint::created_entities(blueprint_db, &chunks);
         self.queue_blueprint_write(blueprint_db, chunks);
 
         let (store_id, table_url) = target.response_fields();
@@ -1114,6 +1147,7 @@ impl AppCore {
             blueprint_id: blueprint_db.store_id().to_string(),
             store_id,
             table_url,
+            created_entities,
         })
     }
 

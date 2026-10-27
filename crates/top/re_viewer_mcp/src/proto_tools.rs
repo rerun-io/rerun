@@ -18,7 +18,9 @@ use prost_reflect::{
 use rmcp::model::Tool;
 use serde_json::{Map, Value, json};
 
-use re_protos::viewer_control::v1alpha1::{ViewerControlRequest, ViewerControlResponse};
+use re_protos::viewer_control::v1alpha1::{
+    BlueprintUpdateMode, ViewerControlRequest, ViewerControlResponse,
+};
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
@@ -51,6 +53,9 @@ const REQUIRED_OPTIONAL_FIELDS: &[&str] =
 
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
+
+/// The blueprint operation, whose update modes use short names on the MCP surface.
+const SET_BLUEPRINT_OPERATION: &str = "set_blueprint";
 
 /// `max_size` for a screenshot request that sets none.
 ///
@@ -342,6 +347,15 @@ pub fn tools() -> Vec<Tool> {
             let mut visiting = HashSet::default();
             let schema = message_schema(&request, &mut visiting, 0);
             let mut schema = schema.as_object().cloned().unwrap_or_default();
+            if field.name() == SET_BLUEPRINT_OPERATION
+                && let Some(mode) = schema
+                    .get_mut("properties")
+                    .and_then(|properties| properties.get_mut("mode"))
+                    .and_then(Value::as_object_mut)
+            {
+                mode.insert("enum".to_owned(), json!(["full", "partial"]));
+                mode.insert("default".to_owned(), json!("full"));
+            }
             if field.name() == SCREENSHOT_OPERATION
                 && let Some(max_size) = schema
                     .get_mut("properties")
@@ -389,6 +403,25 @@ pub fn build_request(
     let mut arguments = arguments.unwrap_or_default();
     if name == SCREENSHOT_OPERATION {
         default_screenshot_max_size(&mut arguments);
+    }
+    if name == SET_BLUEPRINT_OPERATION
+        && let Some(value) = arguments.get_mut("mode")
+    {
+        // MCP uses short mode names; the protobuf decoder requires the wire enum names.
+        let mode = match value.as_str() {
+            Some("full") => Some(BlueprintUpdateMode::Full),
+            Some("partial") => Some(BlueprintUpdateMode::Partial),
+            _ if value.is_null() => None,
+            _ => {
+                return Err(
+                    "invalid arguments for `set_blueprint`: mode must be `full` or `partial`"
+                        .to_owned(),
+                );
+            }
+        };
+        if let Some(mode) = mode {
+            *value = json!(mode.as_str_name());
+        }
     }
     let arguments = Value::Object(arguments);
 
@@ -541,6 +574,48 @@ pub fn response_json(operation: &str, response: &ViewerControlResponse) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Checks the public mode names, the omitted default, and rejection of invalid modes.
+    #[test]
+    fn blueprint_update_modes_use_full_and_partial() {
+        use re_protos::viewer_control::v1alpha1::viewer_control_request;
+
+        // Advertise the short MCP names rather than the protobuf enum names.
+        let tool = tools()
+            .into_iter()
+            .find(|tool| tool.name == SET_BLUEPRINT_OPERATION)
+            .unwrap();
+        assert_eq!(
+            tool.input_schema["properties"]["mode"]["enum"],
+            json!(["full", "partial"])
+        );
+        assert_eq!(tool.input_schema["properties"]["mode"]["default"], "full");
+
+        // Translate explicit modes, leaving an omitted mode for the viewer to default.
+        for (input, expected) in [
+            (None, None),
+            (Some("full"), Some(BlueprintUpdateMode::Full as i32)),
+            (Some("partial"), Some(BlueprintUpdateMode::Partial as i32)),
+        ] {
+            let mut args = json!({"recording": {}, "json": "{}"})
+                .as_object()
+                .unwrap()
+                .clone();
+            if let Some(input) = input {
+                args.insert("mode".to_owned(), json!(input));
+            }
+            let request = build_request(SET_BLUEPRINT_OPERATION, Some(args)).unwrap();
+            let Some(viewer_control_request::Kind::SetBlueprint(request)) = request.kind else {
+                panic!("wrong request kind");
+            };
+            assert_eq!(request.mode, expected);
+        }
+        // Reject unsupported names and types instead of silently choosing full replacement.
+        for invalid in [json!("patch"), json!("FULL"), json!(2), json!(true)] {
+            let args = json!({"recording": {}, "json": "{}", "mode": invalid});
+            assert!(build_request(SET_BLUEPRINT_OPERATION, args.as_object().cloned()).is_err());
+        }
+    }
 
     #[test]
     fn offers_one_tool_per_visible_operation() {

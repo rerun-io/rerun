@@ -1812,7 +1812,7 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
         loader: Some(Box::new(load_blueprint_from_disk)),
         saver: Some(Box::new(save_blueprint_to_disk)),
         validator: Some(Box::new(move |blueprint| {
-            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
+            crate::blueprint::validate_blueprint(blueprint, &component_reflection)
         })),
         deleter: Some(Box::new(crate::saving::delete_blueprint)),
         table_blueprint_clearer: Some(Box::new(crate::saving::clear_table_blueprints)),
@@ -1826,7 +1826,7 @@ fn noop_blueprint_loader(
 ) -> BlueprintPersistence {
     BlueprintPersistence {
         validator: Some(Box::new(move |blueprint| {
-            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
+            crate::blueprint::validate_blueprint(blueprint, &component_reflection)
         })),
         ..Default::default()
     }
