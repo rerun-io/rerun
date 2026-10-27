@@ -75,7 +75,7 @@ def generate_pip_index(
 
     # Get the wheel files for the commit
     t0 = time.time()
-    wheel_blobs = list(wheels_bucket.list_blobs(prefix=dir))
+    wheel_blobs = list(wheels_bucket.list_blobs(prefix=f"{dir}/", delimiter="/"))
     list_duration = time.time() - t0
     wheels = [blob.name.split("/")[-1] for blob in wheel_blobs if blob.name.endswith(".whl")]
     non_wheel_blobs = [blob.name.split("/")[-1] for blob in wheel_blobs if not blob.name.endswith(".whl")]
