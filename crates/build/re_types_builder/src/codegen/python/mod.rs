@@ -2494,9 +2494,16 @@ fn quote_arrow_serialization(
                         code.push_indented(2, &field_fwd, 1);
                     }
 
+                    Type::Utf8 => {
+                        code.push_indented(
+                            2,
+                            format!("pa.array({field_array}, type=pa.utf8()),"),
+                            1,
+                        );
+                    }
+
                     Type::Atomic(_)
                     | Type::Binary
-                    | Type::Utf8
                     | Type::FixedSizeList { .. }
                     | Type::List { .. } => {
                         return Err(

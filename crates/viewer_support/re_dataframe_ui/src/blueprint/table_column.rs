@@ -1,10 +1,12 @@
 use re_log_types::{EntityPath, EntityPathPart};
+use re_sdk_types::archetypes::EncodedImage;
 use re_sdk_types::blueprint::components::{
-    ColumnName, Editable, IncludedContent, TableCellKind, TableLayoutKind,
+    ColumnName, ColumnType, Editable, IncludedContent, TableLayoutKind,
 };
-use re_sdk_types::{blueprint::archetypes, components::Visible};
+use re_sdk_types::components::{Bool, Flag, Scalar, Text, Thumbnail, Url, Visible};
+use re_sdk_types::{ComponentDescriptor, ComponentType, blueprint::archetypes};
 use re_sorbet::{BatchType, ColumnDescriptorRef};
-use re_types_core::Archetype as _;
+use re_types_core::{Archetype as _, Component as _, ComponentIdentifier};
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
 
 use crate::datafusion_table_widget::{DataColumns, TableColumnHeuristic};
@@ -36,10 +38,15 @@ pub struct TableColumn<'a> {
     /// When unset, the table kind and layout determine visibility.
     visible: Option<bool>,
 
-    /// How to render the column's values.
+    /// The component identifier the column's values are shown as.
     ///
-    /// This is [`TableCellKind::Auto`] when the blueprint does not configure the field.
-    cell_kind: TableCellKind,
+    /// This is `None` when the blueprint does not configure it.
+    component: Option<ComponentIdentifier>,
+
+    /// The component type the column's values are shown as.
+    ///
+    /// This is `None` when neither the blueprint nor a heuristic sets it.
+    column_type: Option<ComponentType>,
 
     /// Views rendered when this is a preview column, in display order.
     /// (extracted from [`archetypes::TableColumnPreview`])
@@ -64,7 +71,8 @@ pub fn resolve_columns<'a>(
         };
 
         column.sorbet_column_descriptor = Some(data_column.desc.clone());
-        *column = additional_column_heuristics(layout_kind, &data_column.desc, column.clone());
+        *column = additional_column_heuristics(layout_kind, &data_column.desc, column.clone())
+            .with_inferred_component_type();
         true
     });
 
@@ -83,7 +91,8 @@ pub fn resolve_columns<'a>(
         let mut column =
             TableColumn::load(data_column.physical_name().clone(), blueprint, layout_kind);
         column.sorbet_column_descriptor = Some(data_column.desc.clone()); // TODO(andreas): odd to fill this after the fact.
-        column = additional_column_heuristics(layout_kind, &data_column.desc, column);
+        column = additional_column_heuristics(layout_kind, &data_column.desc, column)
+            .with_inferred_component_type();
 
         let default_visibility = match layout_kind {
             TableLayoutKind::Table => true,
@@ -127,6 +136,13 @@ impl<'a> TableColumn<'a> {
             ),
         );
 
+        let column_type = results
+            .component_mono::<ColumnType>(
+                archetypes::TableColumn::descriptor_column_type().component,
+            )
+            .map(|column_type| column_type.0)
+            .unwrap_or_default();
+
         Self {
             source,
             sorbet_column_descriptor: None,
@@ -144,11 +160,12 @@ impl<'a> TableColumn<'a> {
             visible: results
                 .component_mono::<Visible>(archetypes::TableColumn::descriptor_visible().component)
                 .map(|visible| *visible.0),
-            cell_kind: results
-                .component_mono::<TableCellKind>(
-                    archetypes::TableColumn::descriptor_cell_kind().component,
-                )
-                .unwrap_or_default(),
+            component: column_type
+                .component
+                .and_then(|component| ComponentIdentifier::try_new(component.as_str()).ok()),
+            column_type: column_type
+                .component_type_name
+                .and_then(|component_type| ComponentType::try_new(component_type.as_str()).ok()),
             preview_views: results
                 .component_batch::<IncludedContent>(
                     archetypes::TableColumnPreview::descriptor_views().component,
@@ -168,9 +185,11 @@ impl<'a> TableColumn<'a> {
             sorbet_column_descriptor: Some(desc),
             editable: false,
             visible: None,
-            cell_kind: TableCellKind::Auto,
+            component: None,
+            column_type: None,
             preview_views: Vec::new(),
         }
+        .with_inferred_component_type()
     }
 
     /// Write a column's visibility to its layout-specific blueprint entity.
@@ -202,11 +221,9 @@ impl<'a> TableColumn<'a> {
         self
     }
 
-    /// Set the cell kind unless the stored blueprint configured a non-auto kind.
-    pub fn with_default_cell_kind(mut self, cell_kind: TableCellKind) -> Self {
-        if self.cell_kind == TableCellKind::Auto {
-            self.cell_kind = cell_kind;
-        }
+    /// Set the component type unless the stored blueprint configured one.
+    pub fn with_default_component_type(mut self, component_type: ComponentType) -> Self {
+        self.column_type.get_or_insert(component_type);
         self
     }
 
@@ -236,34 +253,89 @@ impl<'a> TableColumn<'a> {
         &self.source
     }
 
-    /// Resolves how cells of this column should be displayed based on the actual value in the data.
+    /// Set the component type inferred from the column descriptor, unless one is configured already.
     ///
-    /// Explicit blueprint configuration takes precedence over value-based inference.
-    pub fn value_resolved_cell_kind(
-        &self,
-        display_column: Option<&DisplayColumn>,
-        row: usize,
-    ) -> TableCellKind {
-        if self.cell_kind != TableCellKind::Auto {
-            return self.cell_kind;
-        }
+    /// The blob of an [`EncodedImage`] is shown as a [`Thumbnail`].
+    /// Columns without a component type are shown as [`Bool`] for booleans,
+    /// and as [`Text`] and [`Scalar`] for editable strings and 64-bit floats, which have editors.
+    fn with_inferred_component_type(self) -> Self {
+        let Some(ColumnDescriptorRef::Component(column)) = self.sorbet_column_descriptor else {
+            return self;
+        };
 
-        if let Some(ColumnDescriptorRef::Component(component)) = self.sorbet_column_descriptor
-            && component.component == "entry_kind"
-        {
-            TableCellKind::EntryKind
-        } else if let Some(DisplayColumn::Component(component)) = display_column
-            && component.is_image(row)
-        {
-            TableCellKind::Thumbnail
+        let inferred = if column.component == EncodedImage::descriptor_blob().component {
+            Some(Thumbnail::name())
+        } else if column.component_type.is_none() {
+            untyped_component_type(&column.store_datatype, self.editable)
         } else {
-            TableCellKind::Auto
+            None
+        };
+
+        match inferred {
+            Some(component_type) => self.with_default_component_type(component_type),
+            None => self,
         }
     }
 
-    /// Returns the cell kind before value-based inference.
-    pub fn configured_cell_kind(&self) -> TableCellKind {
-        self.cell_kind
+    /// Resolves the component descriptor the values of this column are shown with.
+    ///
+    /// This is the descriptor of the column itself, with the component identifier and component type
+    /// from the blueprint or the table's heuristics.
+    ///
+    /// Returns `None` for columns that are not component columns.
+    pub fn resolved_component_descriptor(&self) -> Option<ComponentDescriptor> {
+        let Some(ColumnDescriptorRef::Component(column)) = self.sorbet_column_descriptor else {
+            return None;
+        };
+
+        let mut descriptor = column.component_descriptor();
+        if let Some(component) = self.component {
+            descriptor.component = component;
+        }
+        descriptor.component_type = self.resolved_component_type();
+        Some(descriptor)
+    }
+
+    /// Resolves the component descriptor the value at `row` of `column` is shown with.
+    ///
+    /// This is [`Self::resolved_component_descriptor`], except that a string value which is a
+    /// Rerun URI is shown as a [`Url`] when the column has no component type.
+    pub fn value_resolved_component_descriptor(
+        &self,
+        column: &DisplayColumn,
+        row: usize,
+    ) -> Option<ComponentDescriptor> {
+        let descriptor = self.resolved_component_descriptor()?;
+        if descriptor.component_type.is_none()
+            && let DisplayColumn::Component(column) = column
+            && column.string_value_at(row).is_some_and(|value| {
+                value.contains("://") && value.parse::<re_uri::RedapUri>().is_ok()
+            })
+        {
+            return Some(descriptor.with_component_type(Url::name()));
+        }
+        Some(descriptor)
+    }
+
+    /// The component type the values of this column are shown as.
+    ///
+    /// This is the component type from the blueprint or the table's heuristics,
+    /// or else the component type of the column itself.
+    pub fn resolved_component_type(&self) -> Option<ComponentType> {
+        self.column_type.or(match self.sorbet_column_descriptor {
+            Some(ColumnDescriptorRef::Component(column)) => column.component_type,
+            _ => None,
+        })
+    }
+
+    /// Whether the column is shown as a [`Flag`].
+    pub fn is_flag(&self) -> bool {
+        self.resolved_component_type() == Some(Flag::name())
+    }
+
+    /// Whether this column shows previews, configured by [`archetypes::TableColumnPreview`].
+    pub fn is_preview(&self) -> bool {
+        !self.preview_views.is_empty()
     }
 
     /// Whether the blueprint requests editing for this column.
@@ -276,6 +348,27 @@ impl<'a> TableColumn<'a> {
     /// Blueprint paths at which the preview views for this column are configured.
     pub fn preview_views_blueprint_paths(&self) -> &[EntityPath] {
         &self.preview_views
+    }
+}
+
+/// The component type for a column without one, from its datatype or the datatype of its list items.
+///
+/// `Utf8` and `Float64` only get a component type when the column is editable.
+fn untyped_component_type(
+    datatype: &arrow::datatypes::DataType,
+    editable: bool,
+) -> Option<ComponentType> {
+    use arrow::datatypes::DataType;
+
+    let datatype = match datatype {
+        DataType::List(field) | DataType::LargeList(field) => field.data_type(),
+        datatype => datatype,
+    };
+    match datatype {
+        DataType::Boolean => Some(Bool::name()),
+        DataType::Utf8 if editable => Some(Text::name()),
+        DataType::Float64 if editable => Some(Scalar::name()),
+        _ => None,
     }
 }
 
@@ -306,5 +399,45 @@ mod tests {
             r"/table/layouts/table/columns/property\:episode\/task\ name\#value"
         );
         assert_eq!(EntityPath::parse_strict(&path.to_string()).unwrap(), path);
+    }
+
+    /// A string value of a column without a component type is shown as a `Url` when it is a
+    /// Rerun URI. Other strings stay untyped, and a configured component type is kept.
+    #[test]
+    fn rerun_uri_values_are_shown_as_urls() {
+        use std::sync::Arc;
+
+        use crate::display_record_batch::DisplayRecordBatch;
+
+        let field = arrow::datatypes::Field::new("link", arrow::datatypes::DataType::Utf8, false);
+        let descriptor =
+            re_sorbet::ComponentColumnDescriptor::from_arrow_field(None, &field).unwrap();
+        let values: arrow::array::ArrayRef = Arc::new(arrow::array::StringArray::from(vec![
+            "rerun+http://localhost:1234/entry/00000000000000000000000000000001",
+            "https://example.com",
+            "plain text",
+        ]));
+        let batch = DisplayRecordBatch::try_new(std::iter::once((
+            ColumnDescriptorRef::Component(&descriptor),
+            values,
+        )))
+        .unwrap();
+        let display_column = &batch.columns()[0];
+
+        let component_type = |column: &TableColumn<'_>, row| {
+            let descriptor = column.value_resolved_component_descriptor(display_column, row)?;
+            descriptor.component_type
+        };
+
+        let column = TableColumn::new_without_blueprint(
+            "link".into(),
+            ColumnDescriptorRef::Component(&descriptor),
+        );
+        assert_eq!(component_type(&column, 0), Some(Url::name()));
+        assert_eq!(component_type(&column, 1), None);
+        assert_eq!(component_type(&column, 2), None);
+
+        let text_column = column.with_default_component_type(Text::name());
+        assert_eq!(component_type(&text_column, 0), Some(Text::name()));
     }
 }

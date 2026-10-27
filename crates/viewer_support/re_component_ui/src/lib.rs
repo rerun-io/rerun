@@ -18,20 +18,17 @@ mod plane3d;
 mod radius;
 mod resolution;
 mod response_utils;
+mod table_cells;
 mod text_log_columns;
 mod time_range;
 mod timeline_columns;
 mod transform_frame_id;
 mod transforms;
-mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
 mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
-
-/// Variant used to render editable and read-only table flags.
-pub const TABLE_FLAG_VARIANT: &str = "table_flag";
 
 use encoding_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
@@ -47,28 +44,19 @@ use re_sdk_types::blueprint::components::{
     PointsDisplay, RootContainer, TooltipMode, ViewFit, ViewMaximized, Volume,
 };
 use re_sdk_types::components::{
-    AggregationPolicy, AlbedoFactor, AxisLength, CellSize, Color, DepthMeter, DrawOrder, FillMode,
-    FillRatio, GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode,
-    IsKeyframe, Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name,
-    Opacity, OpticalDensity, PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels,
-    SphericalHarmonicsDegree, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, Unit,
-    ValueRange, Vector3D, VideoCodec, Visible,
+    AggregationPolicy, AlbedoFactor, AxisLength, Bool, CellSize, Color, DepthMeter, DrawOrder,
+    EntryKind, FillMode, FillRatio, Flag, GammaCorrection, GraphType, HalfSize3D,
+    ImagePlaneDistance, InterpolationMode, IsKeyframe, Length, LinearSpeed, MagnificationFilter,
+    MarkerSize, MeshFaceRendering, Name, Opacity, OpticalDensity, PointShading, Position2D,
+    Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree, StrokeWidth, Text,
+    Thumbnail, Timestamp, TransformRelation, Translation3D, Unit, Url, ValueRange, Vector3D,
+    VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
-
-// ---
-
-pub const REDAP_URI_BUTTON_VARIANT: &str = "redap_uri";
-
-pub const REDAP_ENTRY_KIND_VARIANT: &str = "redap_entry_kind";
-
-pub const REDAP_THUMBNAIL_VARIANT: &str = "redap_thumbnail";
-
-// ----
 
 /// Crates a component ui registry and registers all editors of this crate to it.
 ///
@@ -104,6 +92,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
     registry.add_singleline_edit_or_view::<ForceStrength>(edit_f64_min_to_max_float);
+    registry.add_singleline_edit_or_view::<components::Scalar>(edit_f64_min_to_max_float);
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
@@ -150,6 +139,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MeshFaceRendering>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<EntryKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Eye3DKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
@@ -257,13 +247,13 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_array_edit_or_view(text_log_columns::edit_or_view_columns_multiline);
 
     // --------------------------------------------------------------------------------
-    // All variant UIs:
+    // Table cell components:
     // --------------------------------------------------------------------------------
 
-    registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
-    registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
-    registry.add_variant_ui(REDAP_THUMBNAIL_VARIANT, variant_uis::redap_thumbnail);
-    registry.add_edit_or_view_variant_ui(TABLE_FLAG_VARIANT, variant_uis::table_flag);
+    registry.add_singleline_view_raw::<Url>(table_cells::redap_uri_button);
+    registry.add_singleline_view_raw::<Thumbnail>(table_cells::redap_thumbnail);
+    registry.add_singleline_edit_or_view_raw::<Flag>(table_cells::table_flag);
+    registry.add_singleline_edit_or_view_raw::<Bool>(table_cells::checkbox);
 
     registry
 }

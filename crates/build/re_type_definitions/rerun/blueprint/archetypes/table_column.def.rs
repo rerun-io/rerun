@@ -19,7 +19,7 @@ pub struct TableColumn {
     ///
     /// If unset, editing is disabled.
     /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+    /// A column can only be edited when its component type has an editor in the Viewer.
     #[rerun(optional)]
     pub editable: Option<rerun::blueprint::components::Editable>,
 
@@ -31,9 +31,11 @@ pub struct TableColumn {
     #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
 
-    /// How to render the column's values.
+    /// Overrides the component the column's values are shown as.
     ///
-    /// If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
+    /// This picks the component UI for every value of the column.
+    /// The column's Arrow datatype must match the datatype of the component type.
+    /// If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
     #[rerun(optional)]
-    pub cell_kind: Option<rerun::blueprint::components::TableCellKind>,
+    pub column_type: Option<rerun::blueprint::components::ColumnType>,
 }

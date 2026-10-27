@@ -37,8 +37,8 @@ namespace rerun::blueprint::archetypes {
         /// Unlisted fields are hidden unless their `archetypes::TableColumn` visibility overrides the default.
         /// Each source column may appear at most once.
         ///
-        /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-        /// Card layouts currently support at most one flag field.
+        /// The first visible field of component type `components::Flag` is shown in the card header
+        /// instead of the labeled-field list.
         std::optional<ComponentBatch> field_order;
 
       public:
@@ -103,8 +103,8 @@ namespace rerun::blueprint::archetypes {
         /// Unlisted fields are hidden unless their `archetypes::TableColumn` visibility overrides the default.
         /// Each source column may appear at most once.
         ///
-        /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-        /// Card layouts currently support at most one flag field.
+        /// The first visible field of component type `components::Flag` is shown in the card header
+        /// instead of the labeled-field list.
         CardLayout with_field_order(
             const Collection<rerun::blueprint::components::ColumnName>& _field_order
         ) && {

@@ -269,8 +269,7 @@ In a column's entity path, `:` and spaces are escaped as `\:` and `\ `, which JS
 To show a column again, set `"visible": true` or leave its entry out.
 Calling `rerun_get_table_schema` again lists the columns in the new order, hidden ones included.
 
-A preview column needs both `"cell_kind": "Preview"` in its `TableColumn` and a `TableColumnPreview` that lists its views.
-Without the cell kind, the Viewer ignores `TableColumnPreview`.
+A column with a `TableColumnPreview` that lists views is a preview column.
 This shows a 3D view of `/my_scene` as a preview of the recording link on each card:
 
 ```json
@@ -279,7 +278,6 @@ This shows a 3D view of `/my_scene` as a preview of the recording link on each c
     "CardLayout": { "link": "recording link", "field_order": ["recording link"] }
   },
   "/table/layouts/cards/fields/recording\\ link": {
-    "TableColumn": { "cell_kind": "Preview" },
     "TableColumnPreview": { "views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d" }
   },
   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {

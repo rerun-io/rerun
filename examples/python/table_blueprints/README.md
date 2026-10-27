@@ -9,7 +9,7 @@ include_in_manifest = false
 Creates tables whose rows link to recording segment URIs.
 The viewer can load those recordings on demand and render row previews with a registered `.rbl` table blueprint.
 
-The example also adds a boolean `marker_flag` column and configures its `rrb.table.Column` with `editable=True` and `rrb.table.FlagCell()`.
+The example also adds a boolean `marker_flag` column and configures its `rrb.table.Column` with `editable=True` and `column_type=rr.components.Flag`.
 The `rrb.table.CardLayout` includes that column as a field alongside the `rrb.table.PreviewCell` field.
 The Viewer renders it as a clickable flag on each card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key.
 The column is still regular table data, so its saved values are what you get back when you query the table later.

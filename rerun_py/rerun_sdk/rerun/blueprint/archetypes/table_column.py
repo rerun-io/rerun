@@ -14,7 +14,7 @@ from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, encodings as blueprint_encodings
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["TableColumn"]
@@ -39,7 +39,7 @@ class TableColumn(Archetype):
         name: encodings.Utf8Like | None = None,
         editable: encodings.BoolLike | None = None,
         visible: encodings.BoolLike | None = None,
-        cell_kind: blueprint_components.TableCellKindLike | None = None,
+        column_type: blueprint_encodings.ColumnTypeLike | None = None,
     ) -> None:
         """
         Create a new instance of the TableColumn archetype.
@@ -55,23 +55,25 @@ class TableColumn(Archetype):
 
             If unset, editing is disabled.
             Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-            ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+            A column can only be edited when its component type has an editor in the Viewer.
         visible:
             Whether the column is visible in this layout.
 
             If unset, the enclosing layout determines visibility.
             Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
             Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
-        cell_kind:
-            How to render the column's values.
+        column_type:
+            Overrides the component the column's values are shown as.
 
-            If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
+            This picks the component UI for every value of the column.
+            The column's Arrow datatype must match the datatype of the component type.
+            If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
 
         """
 
         # You can define your own __init__ function as a member of TableColumnExt in table_column_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(name=name, editable=editable, visible=visible, cell_kind=cell_kind)
+            self.__attrs_init__(name=name, editable=editable, visible=visible, column_type=column_type)
             return
         self.__attrs_clear__()
 
@@ -81,7 +83,7 @@ class TableColumn(Archetype):
             name=None,
             editable=None,
             visible=None,
-            cell_kind=None,
+            column_type=None,
         )
 
     @classmethod
@@ -99,7 +101,7 @@ class TableColumn(Archetype):
         name: encodings.Utf8Like | None = None,
         editable: encodings.BoolLike | None = None,
         visible: encodings.BoolLike | None = None,
-        cell_kind: blueprint_components.TableCellKindLike | None = None,
+        column_type: blueprint_encodings.ColumnTypeLike | None = None,
     ) -> TableColumn:
         """
         Update only some specific fields of a `TableColumn`.
@@ -117,17 +119,19 @@ class TableColumn(Archetype):
 
             If unset, editing is disabled.
             Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-            ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+            A column can only be edited when its component type has an editor in the Viewer.
         visible:
             Whether the column is visible in this layout.
 
             If unset, the enclosing layout determines visibility.
             Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
             Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
-        cell_kind:
-            How to render the column's values.
+        column_type:
+            Overrides the component the column's values are shown as.
 
-            If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
+            This picks the component UI for every value of the column.
+            The column's Arrow datatype must match the datatype of the component type.
+            If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
 
         """
 
@@ -137,7 +141,7 @@ class TableColumn(Archetype):
                 "name": name,
                 "editable": editable,
                 "visible": visible,
-                "cell_kind": cell_kind,
+                "column_type": column_type,
             }
 
             if clear_unset:
@@ -179,11 +183,11 @@ class TableColumn(Archetype):
         )
 
     @staticmethod
-    def descriptor_cell_kind() -> ComponentDescriptor:
+    def descriptor_column_type() -> ComponentDescriptor:
         return ComponentDescriptor(
-            "TableColumn:cell_kind",
+            "TableColumn:column_type",
             archetype=TableColumn.NAME,
-            component_type=blueprint_components.TableCellKindBatch._COMPONENT_TYPE,
+            component_type=blueprint_components.ColumnTypeBatch._COMPONENT_TYPE,
         )
 
     name: components.NameBatch | None = field(
@@ -206,7 +210,7 @@ class TableColumn(Archetype):
     #
     # If unset, editing is disabled.
     # Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    # ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+    # A column can only be edited when its component type has an editor in the Viewer.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -223,14 +227,16 @@ class TableColumn(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    cell_kind: blueprint_components.TableCellKindBatch | None = field(
+    column_type: blueprint_components.ColumnTypeBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TableCellKindBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.ColumnTypeBatch._converter,  # type: ignore[misc]
     )
-    # How to render the column's values.
+    # Overrides the component the column's values are shown as.
     #
-    # If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
+    # This picks the component UI for every value of the column.
+    # The column's Arrow datatype must match the datatype of the component type.
+    # If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -15,8 +15,8 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.visible =
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
-        archetype.cell_kind =
-            ComponentBatch::empty<rerun::blueprint::components::TableCellKind>(Descriptor_cell_kind)
+        archetype.column_type =
+            ComponentBatch::empty<rerun::blueprint::components::ColumnType>(Descriptor_column_type)
                 .value_or_throw();
         return archetype;
     }
@@ -33,8 +33,8 @@ namespace rerun::blueprint::archetypes {
         if (visible.has_value()) {
             columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
-        if (cell_kind.has_value()) {
-            columns.push_back(cell_kind.value().partitioned(lengths_).value_or_throw());
+        if (column_type.has_value()) {
+            columns.push_back(column_type.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -49,8 +49,8 @@ namespace rerun::blueprint::archetypes {
         if (visible.has_value()) {
             return columns(std::vector<uint32_t>(visible.value().length(), 1));
         }
-        if (cell_kind.has_value()) {
-            return columns(std::vector<uint32_t>(cell_kind.value().length(), 1));
+        if (column_type.has_value()) {
+            return columns(std::vector<uint32_t>(column_type.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -74,8 +74,8 @@ namespace rerun {
         if (archetype.visible.has_value()) {
             cells.push_back(archetype.visible.value());
         }
-        if (archetype.cell_kind.has_value()) {
-            cells.push_back(archetype.cell_kind.value());
+        if (archetype.column_type.has_value()) {
+            cells.push_back(archetype.column_type.value());
         }
 
         return rerun::take_ownership(std::move(cells));

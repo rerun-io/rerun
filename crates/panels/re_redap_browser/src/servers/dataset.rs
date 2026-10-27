@@ -1,7 +1,7 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
 use re_catalog_client::{Asset, AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
-use re_dataframe_ui::{TableCellKind, TableLayoutKind};
+use re_dataframe_ui::TableLayoutKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
@@ -257,11 +257,6 @@ impl Server {
 
                 column = column.with_default_visibility(default_visible);
             }
-
-            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                column = column.with_default_cell_kind(TableCellKind::Link);
-            }
-
             column
         })
         .generate_segment_links(

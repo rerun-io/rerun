@@ -1304,7 +1304,7 @@ message SetBlueprintRequest {
     // {
     //   "/table": {"TableBlueprint": {"layout": "Cards"}},
     //   "/table/layouts/cards": {"CardLayout": {"title": "my_title", "link": "recording link", "field_order": ["recording link", "my_title"]}},
-    //   "/table/layouts/cards/fields/recording\\ link": {"TableColumn": {"cell_kind": "Preview"}, "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
+    //   "/table/layouts/cards/fields/recording\\ link": {"TableColumnPreview":{"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
     //   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {"ViewBlueprint": {"class_identifier": "3D", "space_origin": "/my_scene"}},
     //   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {"ViewContents": {"query": "+ /my_scene/**"}}
     // }

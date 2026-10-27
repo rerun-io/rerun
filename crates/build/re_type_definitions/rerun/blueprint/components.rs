@@ -24,6 +24,8 @@ mod column_name;
 mod column_order;
 #[path = "components/column_share.def.rs"]
 mod column_share;
+#[path = "components/column_type.def.rs"]
+mod column_type;
 #[path = "components/component_column_selector.def.rs"]
 mod component_column_selector;
 #[path = "components/container_kind.def.rs"]
@@ -84,8 +86,6 @@ mod selected_columns;
 mod sort_by;
 #[path = "components/sql_filter_expression.def.rs"]
 mod sql_filter_expression;
-#[path = "components/table_cell_kind.def.rs"]
-mod table_cell_kind;
 #[path = "components/table_layout_kind.def.rs"]
 mod table_layout_kind;
 #[path = "components/tensor_dimension_index_slider.def.rs"]
@@ -141,6 +141,7 @@ pub use self::column_display_mode::*;
 pub use self::column_name::*;
 pub use self::column_order::*;
 pub use self::column_share::*;
+pub use self::column_type::*;
 pub use self::component_column_selector::*;
 pub use self::container_kind::*;
 pub use self::corner2d::*;
@@ -171,7 +172,6 @@ pub use self::row_share::*;
 pub use self::selected_columns::*;
 pub use self::sort_by::*;
 pub use self::sql_filter_expression::*;
-pub use self::table_cell_kind::*;
 pub use self::table_layout_kind::*;
 pub use self::tensor_dimension_index_slider::*;
 pub use self::text_log_column::*;

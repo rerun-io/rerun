@@ -215,13 +215,31 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
             .as_ref()
             .ok_or_else(|| re_protos::missing_field!(Self, "data"))?;
 
+        let raw_sorbet_schema = re_sorbet::raw_schema_from_ipc(
+            sorbet_schema
+                .arrow_schema
+                .as_ref()
+                .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema.arrow_schema"))?,
+        )
+        .map_err(CodecError::ArrowDeserialization)?;
+        let migrated_sorbet_schema = std::sync::Arc::unwrap_or_clone(
+            re_sorbet::migrate_schema_ref(raw_sorbet_schema.clone()),
+        );
+
+        // When migration changes the schema fields, the hash is computed from the migrated schema.
+        let sorbet_schema_sha256 = if migrated_sorbet_schema.fields() == raw_sorbet_schema.fields()
+        {
+            sorbet_schema_sha256
+        } else {
+            RawRrdManifest::compute_sorbet_schema_sha256(&migrated_sorbet_schema)
+                .map_err(CodecError::ArrowDeserialization)?
+        };
+
         let rrd_manifest = Self::Output {
             store_id: store_id.clone().try_into()?,
-            sorbet_schema: sorbet_schema
-                .try_into()
-                .map_err(CodecError::ArrowDeserialization)?,
+            sorbet_schema: migrated_sorbet_schema,
             sorbet_schema_sha256,
-            data: data.try_into()?,
+            data: re_sorbet::migrate_rrd_manifest_data(&raw_sorbet_schema, data.try_into()?),
         };
 
         {

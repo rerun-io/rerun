@@ -17,7 +17,7 @@ def test_index_ranges(complex_dataset: DatasetEntry) -> None:
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                               │
-│ * version: 0.1.3                                                        │
+│ * version: 0.1.4                                                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:start        ┆ timeline:end          │ │
@@ -53,7 +53,7 @@ def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                               │
-│ * version: 0.1.3                                                        │
+│ * version: 0.1.4                                                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:start        ┆ timeline:end          │ │
@@ -82,7 +82,7 @@ def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                               │
-│ * version: 0.1.3                                                        │
+│ * version: 0.1.4                                                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:start        ┆ timeline:end          │ │

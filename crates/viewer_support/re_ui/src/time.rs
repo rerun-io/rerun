@@ -3,6 +3,8 @@ use std::ops::Sub as _;
 use re_format::format_plural_s;
 use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
 
+use crate::ContextExt as _;
+
 /// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
 ///
 /// 0-10 seconds: "just now"
@@ -68,7 +70,12 @@ pub fn short_duration_ui(
     };
     ui.request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
 
-    let text = short_duration_text(timestamp, format);
+    // Snapshot tests always show "just now", whatever the real age is.
+    let text = if ui.ctx().is_test() {
+        "just now".to_owned()
+    } else {
+        short_duration_text(timestamp, format)
+    };
     let exact = timestamp.format(format);
 
     // No hover when the label is already the exact timestamp. It would repeat what is on screen.

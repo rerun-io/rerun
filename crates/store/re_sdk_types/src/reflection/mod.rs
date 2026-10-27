@@ -256,6 +256,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ColumnType as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "Overrides the component a table column's values are shown as.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ColumnType::default().to_arrow()?),
+                datatype: ColumnType::arrow_data_type(),
+                encoding: Some("rerun.blueprint.encodings.ColumnType"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: ColumnType::verify_arrow_array,
+            },
+        ),
+        (
             <ComponentColumnSelector as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -767,44 +780,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TableCellKind as Component>::name(),
-            ComponentTypeReflection {
-                docstring_md: "How a table column value is rendered.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
-                deprecation_summary: None,
-                custom_placeholder: Some(TableCellKind::default().to_arrow()?),
-                datatype: TableCellKind::arrow_data_type(),
-                encoding: None,
-                enum_variants: Some(&[
-                    EnumVariantReflection {
-                        value: 1,
-                        name: "Auto",
-                    },
-                    EnumVariantReflection {
-                        value: 2,
-                        name: "Link",
-                    },
-                    EnumVariantReflection {
-                        value: 3,
-                        name: "Thumbnail",
-                    },
-                    EnumVariantReflection {
-                        value: 4,
-                        name: "Flag",
-                    },
-                    EnumVariantReflection {
-                        value: 5,
-                        name: "Preview",
-                    },
-                    EnumVariantReflection {
-                        value: 6,
-                        name: "EntryKind",
-                    },
-                ]),
-                own_chunk: false,
-                verify_arrow_array: TableCellKind::verify_arrow_array,
-            },
-        ),
-        (
             <TableLayoutKind as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "How table records are presented.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -1199,6 +1174,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Bool as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "A boolean value.\n\nThe Viewer shows it as a checkbox.\nBoolean table columns without a component type are shown with this component.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(Bool::default().to_arrow()?),
+                datatype: Bool::arrow_data_type(),
+                encoding: Some("rerun.encodings.Bool"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: Bool::verify_arrow_array,
+            },
+        ),
+        (
             <CellSize as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "The metric size of one grid cell in local scene units.\n\nE.g. for 2D grid maps, this is the physical size represented by a single pixel or cell.",
@@ -1391,6 +1379,44 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <EntryKind as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "The kind of a catalog entry.\n\nThe values match those of `rerun.cloud.v1alpha1.EntryKind`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: EntryKind::arrow_data_type(),
+                encoding: None,
+                enum_variants: Some(&[
+                    EnumVariantReflection {
+                        value: 1,
+                        name: "Dataset",
+                    },
+                    EnumVariantReflection {
+                        value: 2,
+                        name: "DatasetView",
+                    },
+                    EnumVariantReflection {
+                        value: 3,
+                        name: "Table",
+                    },
+                    EnumVariantReflection {
+                        value: 4,
+                        name: "TableView",
+                    },
+                    EnumVariantReflection {
+                        value: 5,
+                        name: "BlueprintDataset",
+                    },
+                    EnumVariantReflection {
+                        value: 6,
+                        name: "AssetDataset",
+                    },
+                ]),
+                own_chunk: false,
+                verify_arrow_array: EntryKind::verify_arrow_array,
+            },
+        ),
+        (
             <FillMode as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
@@ -1431,6 +1457,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 enum_variants: None,
                 own_chunk: false,
                 verify_arrow_array: FillRatio::verify_arrow_array,
+            },
+        ),
+        (
+            <Flag as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "Whether a record is flagged, e.g. for review.\n\nThe Viewer shows it as a flag button.\nTable card layouts show the first flag field in the card header.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(Flag::default().to_arrow()?),
+                datatype: Flag::arrow_data_type(),
+                encoding: Some("rerun.encodings.Bool"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: Flag::verify_arrow_array,
             },
         ),
         (
@@ -2212,6 +2251,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Thumbnail as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "An encoded image, e.g. PNG or JPEG, shown as a thumbnail.\n\nThe Viewer guesses the media type from the image data.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Thumbnail::arrow_data_type(),
+                encoding: Some("rerun.encodings.Blob"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: Thumbnail::verify_arrow_array,
+            },
+        ),
+        (
             <Timestamp as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
@@ -2309,6 +2361,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 enum_variants: None,
                 own_chunk: false,
                 verify_arrow_array: Unit::verify_arrow_array,
+            },
+        ),
+        (
+            <Url as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "A URL to a catalog entry, dataset, or segment, as a Rerun URI.\n\nThe Viewer shows it as a button that opens the URI.\nA relative path is resolved against the server of the table it is shown in.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(Url::default().to_arrow()?),
+                datatype: Url::arrow_data_type(),
+                encoding: Some("rerun.encodings.Utf8"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: Url::verify_arrow_array,
             },
         ),
         (
@@ -5134,7 +5199,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "field_order",
                         display_name: "Field order",
                         component_type: "rerun.blueprint.components.ColumnName".into(),
-                        docstring_md: "Source columns visible by default in each card, in display order.\n\nUnlisted fields are hidden unless their archetypes.TableColumn visibility overrides the default.\nEach source column may appear at most once.\n\nFields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.\nCard layouts currently support at most one flag field.",
+                        docstring_md: "Source columns visible by default in each card, in display order.\n\nUnlisted fields are hidden unless their archetypes.TableColumn visibility overrides the default.\nEach source column may appear at most once.\n\nThe first visible field of component type [`components.Flag`](https://rerun.io/docs/reference/types/components/flag) is shown in the card header\ninstead of the labeled-field list.",
                         flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -5837,7 +5902,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "editable",
                         display_name: "Editable",
                         component_type: "rerun.blueprint.components.Editable".into(),
-                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, editing is disabled.\nEdits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\n⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.",
+                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, editing is disabled.\nEdits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\nA column can only be edited when its component type has an editor in the Viewer.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -5848,10 +5913,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "cell_kind",
-                        display_name: "Cell kind",
-                        component_type: "rerun.blueprint.components.TableCellKind".into(),
-                        docstring_md: "How to render the column's values.\n\nIf unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.",
+                        name: "column_type",
+                        display_name: "Column type",
+                        component_type: "rerun.blueprint.components.ColumnType".into(),
+                        docstring_md: "Overrides the component the column's values are shown as.\n\nThis picks the component UI for every value of the column.\nThe column's Arrow datatype must match the datatype of the component type.\nIf unset, the component of the source column is used, or the Viewer infers one from the column's datatype.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
