@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import functools
 import http.server
 import os
+import sys
 import webbrowser
 
 from build_web_viewer import check_wasm_bindgen_cli, run, wasm_target_dir
@@ -80,7 +82,13 @@ def main() -> None:
 
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(out_dir))
     url = f"http://localhost:{args.port}"
-    with http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
+    try:
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler)
+    except OSError as err:
+        if err.errno == errno.EADDRINUSE:
+            sys.exit(f"Port {args.port} is already in use. Pass `--port` to pick another one.")
+        raise
+    with server:
         print(f"Serving at {url} (Ctrl-C to stop)", flush=True)
         webbrowser.open(url)
         try:
