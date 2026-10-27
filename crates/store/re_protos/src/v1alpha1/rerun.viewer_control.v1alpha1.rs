@@ -89,11 +89,11 @@ pub mod viewer_control_request {
         /// timeline, or play, pause, or follow it.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorRequest),
-        /// Report a recording's schema: its timelines, every entity, every component ever logged on
-        /// it, whether that component has a static value, and its Arrow datatype.
+        /// Report a recording's schema: its timelines, entities, and archetypes by default.
+        /// Set `with_components` to true for component names, static flags, and Arrow datatypes.
         ///
-        /// `paths_only` answers the cheaper question — which entities exist at all — for a recording
-        /// too large to describe in full.
+        /// Set both `with_archetypes` and `with_components` to false to list only entity paths
+        /// for a recording too large to describe in full.
         ///
         /// Read this before naming an entity path or a component anywhere else. A component name
         /// guessed from an archetype's documentation is often not the one the recording carries, and
@@ -1069,17 +1069,18 @@ pub struct GetRecordingSchemaRequest {
     pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
     /// How many entities to describe at most.
     ///
-    /// Defaults to 100, or to 10000 with `paths_only`, since a path costs a line where the
-    /// components on it cost many.
+    /// Defaults to 100, or to 10000 when both `with_archetypes` and `with_components` are false.
     #[prost(uint32, optional, tag = "3")]
     pub max_entities: ::core::option::Option<u32>,
-    /// Name the entities without describing what is logged on them.
-    ///
-    /// A whole recording's paths fit in one answer at a size worth reading, where its components
-    /// would not. Use this to see the shape of an unfamiliar recording, then call again with
-    /// `entity_path` for the components of the entities that turned out to matter.
-    #[prost(bool, optional, tag = "4")]
-    pub paths_only: ::core::option::Option<bool>,
+    /// Include each entity's sorted, unique archetype names. Defaults to true.
+    /// Entities without archetype metadata still appear, with no archetypes listed.
+    /// This describes what was logged, not visibility at the cursor.
+    #[prost(bool, optional, tag = "5")]
+    pub with_archetypes: ::core::option::Option<bool>,
+    /// Include component names, types, and metadata. Defaults to false.
+    /// Request these details with `entity_path` when inspecting specific entities.
+    #[prost(bool, optional, tag = "6")]
+    pub with_components: ::core::option::Option<bool>,
 }
 impl ::prost::Name for GetRecordingSchemaRequest {
     const NAME: &'static str = "GetRecordingSchemaRequest";
@@ -1106,8 +1107,8 @@ pub struct GetRecordingSchemaResponse {
     pub timelines: ::prost::alloc::vec::Vec<ViewerTimeline>,
     /// The matching entities in path order, each with the components logged on it.
     ///
-    /// With `paths_only` the components are left out, and an entity here names a path that has had
-    /// something logged on it, nothing more.
+    /// `with_archetypes` and `with_components` independently select the details to include.
+    /// With both false, only entity paths are returned.
     #[prost(message, repeated, tag = "2")]
     pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
     /// How many matching entities got left out because of `max_entities`.
@@ -1136,6 +1137,10 @@ pub struct RecordingEntitySchema {
     /// The components logged on this entity.
     #[prost(message, repeated, tag = "2")]
     pub components: ::prost::alloc::vec::Vec<RecordingComponentSchema>,
+    /// Sorted, unique fully-qualified archetype names, populated only in archetypes-only mode.
+    /// An empty list means no archetype metadata was recorded, not that the entity has no data.
+    #[prost(string, repeated, tag = "3")]
+    pub archetypes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for RecordingEntitySchema {
     const NAME: &'static str = "RecordingEntitySchema";

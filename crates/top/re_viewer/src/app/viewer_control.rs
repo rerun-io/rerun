@@ -4,7 +4,7 @@
 //!
 //! That file lists every place an operation has to be added.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::task::Poll;
 use std::time::Duration;
@@ -54,7 +54,7 @@ mod transform_graph;
 /// truncated rather than silently wrong.
 const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
 
-/// How many entities `get_recording_schema` names when the request asks for `paths_only`.
+/// How many entities `get_recording_schema` names when neither archetypes nor components are requested.
 ///
 /// Far higher than [`DEFAULT_MAX_SCHEMA_ENTITIES`], because a path costs one line where the
 /// components on it cost many — which is the whole reason to ask for paths alone.
@@ -1659,9 +1659,12 @@ impl AppCore {
             store_id,
             entity_path,
             max_entities,
-            paths_only,
+            with_archetypes,
+            with_components,
         } = request;
-        let paths_only = paths_only.unwrap_or(false);
+        let with_archetypes = with_archetypes.unwrap_or(true);
+        let with_components = with_components.unwrap_or(false);
+        let paths_only = !with_archetypes && !with_components;
 
         let store_id = store_id
             .map(|store_id| store_id.parse::<StoreId>())
@@ -1685,16 +1688,25 @@ impl AppCore {
             .schema()
             .all_column_metadata()
             .map(|(entity_path, entry)| {
-                let component = (!paths_only).then(|| RecordingComponentSchema {
-                    component: entry.descriptor.component.to_string(),
-                    archetype: entry.descriptor.archetype.map(|name| name.to_string()),
-                    component_type: entry
-                        .descriptor
-                        .component_type
-                        .map(|component_type| component_type.to_string()),
-                    datatype: entry.datatype.to_string(),
-                    has_static: Some(entry.metadata_state.is_static),
-                });
+                let component = if paths_only {
+                    None
+                } else if !with_components {
+                    Some(RecordingComponentSchema {
+                        archetype: entry.descriptor.archetype.map(|name| name.to_string()),
+                        ..Default::default()
+                    })
+                } else {
+                    Some(RecordingComponentSchema {
+                        component: entry.descriptor.component.to_string(),
+                        archetype: entry.descriptor.archetype.map(|name| name.to_string()),
+                        component_type: entry
+                            .descriptor
+                            .component_type
+                            .map(|component_type| component_type.to_string()),
+                        datatype: entry.datatype.to_string(),
+                        has_static: Some(entry.metadata_state.is_static),
+                    })
+                };
                 (entity_path, component)
             });
 
@@ -1703,11 +1715,19 @@ impl AppCore {
         } else {
             DEFAULT_MAX_SCHEMA_ENTITIES
         };
-        let (entities, omitted_entities) = group_schema_by_entity(
+        let (mut entities, omitted_entities) = group_schema_by_entity(
             columns,
             root.as_ref(),
             max_entities.unwrap_or(default_max) as usize,
         );
+        if with_archetypes {
+            collect_archetypes(&mut entities);
+        }
+        if !with_components {
+            for entity in &mut entities {
+                entity.components.clear();
+            }
+        }
 
         // An empty answer to a filtered request reads as "this recording holds no such data",
         // when what actually happened is that the caller named a path the recording never had.
@@ -2040,11 +2060,25 @@ fn group_schema_by_entity<'a>(
             RecordingEntitySchema {
                 entity_path: entity_path.to_string(),
                 components,
+                archetypes: Vec::new(),
             }
         })
         .collect();
 
     (entities, omitted_entities)
+}
+
+/// Collect distinct archetype names without removing component details or untyped entities.
+fn collect_archetypes(entities: &mut [RecordingEntitySchema]) {
+    for entity in entities {
+        entity.archetypes = entity
+            .components
+            .iter()
+            .filter_map(|component| component.archetype.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+    }
 }
 
 /// The `entity_path` of a schema request, which limits the answer to that entity and below it.
@@ -2879,6 +2913,49 @@ mod tests {
         assert_eq!(paths, ["/world", "/world/robot"]);
         assert!(entities.iter().all(|e| e.components.is_empty()));
         assert_eq!(omitted, 0);
+    }
+
+    /// Checks that compact summaries retain untyped entities and respect subtree limits.
+    #[test]
+    fn archetype_summary_is_unique_and_keeps_untyped_entities_and_limits() {
+        let root = EntityPath::from("/world");
+        let typed = EntityPath::from("/world/a");
+        let untyped = EntityPath::from("/world/b");
+        let omitted = EntityPath::from("/world/c");
+        let outside = EntityPath::from("/world2");
+        let columns = [
+            (&typed, Some("rerun.archetypes.Points3D")),
+            (&typed, Some("rerun.archetypes.Points3D")),
+            (&typed, Some("rerun.archetypes.CoordinateFrame")),
+            (&untyped, None),
+            (&omitted, Some("rerun.archetypes.Image")),
+            (&outside, Some("rerun.archetypes.TextLog")),
+        ];
+        let (mut entities, omitted_count) = group_schema_by_entity(
+            columns.into_iter().map(|(path, archetype)| {
+                let (_, mut component) = column(path, "component");
+                component.archetype = archetype.map(str::to_owned);
+                (path, Some(component))
+            }),
+            Some(&root),
+            2,
+        );
+        // Archetype collection preserves component details for callers requesting both.
+        collect_archetypes(&mut entities);
+        assert_eq!(omitted_count, 1);
+        assert_eq!(entities.len(), 2);
+        assert_eq!(entities[0].entity_path, "/world/a");
+        assert_eq!(
+            entities[0].archetypes,
+            [
+                "rerun.archetypes.CoordinateFrame",
+                "rerun.archetypes.Points3D"
+            ]
+        );
+        assert_eq!(entities[1].entity_path, "/world/b");
+        assert!(entities[1].archetypes.is_empty());
+        assert_eq!(entities[0].components.len(), 3);
+        assert_eq!(entities[1].components.len(), 1);
     }
 
     #[test]

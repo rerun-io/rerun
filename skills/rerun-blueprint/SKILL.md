@@ -67,6 +67,10 @@ and segment previews, see
 
 ## 1. Read the data
 
+With viewer MCP, start with `rerun_get_recording_schema` for compact entity → archetype lists (the default).
+Check `omitted_entities`; narrow with `entity_path` or raise `max_entities` to cover the remaining entities.
+Request detailed schema only for entities that need it, by setting `with_components: true` and `entity_path`.
+
 Enumerate every `(entity_path, archetype)` pair first — the archetype picks the
 view, the entity path scopes it. For a dataset (see `rerun-catalog-queries`):
 

@@ -104,6 +104,10 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 It works for any open recording, whatever it was loaded from.
 Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
+For blueprint planning, call `rerun_get_recording_schema` to get each entity's sorted, unique `archetypes` by default.
+It uses the same subtree filtering, limit (100 by default), and `omitted_entities` count; entities without archetype metadata still appear with no archetypes listed.
+To inspect component names and types, call again with `entity_path` and `with_components: true`.
+`with_archetypes` (default `true`) and `with_components` (default `false`) independently select the details to return; set both to `false` for paths only.
 `rerun_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
 Without a `dataset_url` it describes the dataset on screen, or the dataset of the segment on screen.
 It names the dataset's [assets](../../concepts/query-and-transform/catalog-object-model.md#assets) by id, and `rerun_get_dataset_assets_schema` describes each asset in the same form.

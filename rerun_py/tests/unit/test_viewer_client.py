@@ -267,13 +267,16 @@ def test_take_screenshot_asks_for_png_bytes(monkeypatch: pytest.MonkeyPatch) -> 
     assert requests == [{"save_screenshot": {"max_size": 64}}]
 
 
-def test_schema_reads_omitted_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("paths_only", [None, False, True])
+def test_schema_reads_omitted_defaults(monkeypatch: pytest.MonkeyPatch, paths_only: bool | None) -> None:
     """Canonical protobuf JSON leaves out `false` and `0`, which must not read as missing."""
-    viewer, _requests = _controlling_viewer(
+    viewer, requests = _controlling_viewer(
         monkeypatch,
         {"get_recording_schema": {"entities": [{"entity_path": "/points", "components": [{"component": "c"}]}]}},
     )
-    schema = viewer.get_recording_schema()
+    schema = viewer.get_recording_schema(paths_only=paths_only)
+
+    assert requests == [{"get_recording_schema": {"with_archetypes": False, "with_components": not paths_only}}]
 
     assert schema.omitted_entities == 0
     assert schema.entities[0].components[0].has_static is False

@@ -145,11 +145,11 @@ message ViewerControlRequest {
     // timeline, or play, pause, or follow it.
     SetTimeCursorRequest set_time_cursor = 6;
 
-    // Report a recording's schema: its timelines, every entity, every component ever logged on
-    // it, whether that component has a static value, and its Arrow datatype.
+    // Report a recording's schema: its timelines, entities, and archetypes by default.
+    // Set `with_components` to true for component names, static flags, and Arrow datatypes.
     //
-    // `paths_only` answers the cheaper question — which entities exist at all — for a recording
-    // too large to describe in full.
+    // Set both `with_archetypes` and `with_components` to false to list only entity paths
+    // for a recording too large to describe in full.
     //
     // Read this before naming an entity path or a component anywhere else. A component name
     // guessed from an archetype's documentation is often not the one the recording carries, and
@@ -789,16 +789,21 @@ message GetRecordingSchemaRequest {
 
   // How many entities to describe at most.
   //
-  // Defaults to 100, or to 10000 with `paths_only`, since a path costs a line where the
-  // components on it cost many.
+  // Defaults to 100, or to 10000 when both `with_archetypes` and `with_components` are false.
   optional uint32 max_entities = 3;
 
-  // Name the entities without describing what is logged on them.
-  //
-  // A whole recording's paths fit in one answer at a size worth reading, where its components
-  // would not. Use this to see the shape of an unfamiliar recording, then call again with
-  // `entity_path` for the components of the entities that turned out to matter.
-  optional bool paths_only = 4;
+  // Removed: paths_only. Set both with_archetypes and with_components to false instead.
+  reserved 4;
+  reserved "paths_only";
+
+  // Include each entity's sorted, unique archetype names. Defaults to true.
+  // Entities without archetype metadata still appear, with no archetypes listed.
+  // This describes what was logged, not visibility at the cursor.
+  optional bool with_archetypes = 5;
+
+  // Include component names, types, and metadata. Defaults to false.
+  // Request these details with `entity_path` when inspecting specific entities.
+  optional bool with_components = 6;
 }
 
 // Response for `GetRecordingSchema`: the recording's entities and the components on them.
@@ -815,8 +820,8 @@ message GetRecordingSchemaResponse {
 
   // The matching entities in path order, each with the components logged on it.
   //
-  // With `paths_only` the components are left out, and an entity here names a path that has had
-  // something logged on it, nothing more.
+  // `with_archetypes` and `with_components` independently select the details to include.
+  // With both false, only entity paths are returned.
   repeated RecordingEntitySchema entities = 2;
 
   // How many matching entities got left out because of `max_entities`.
@@ -833,6 +838,10 @@ message RecordingEntitySchema {
 
   // The components logged on this entity.
   repeated RecordingComponentSchema components = 2;
+
+  // Sorted, unique fully-qualified archetype names, populated only in archetypes-only mode.
+  // An empty list means no archetype metadata was recorded, not that the entity has no data.
+  repeated string archetypes = 3;
 }
 
 // One component column of a recording.

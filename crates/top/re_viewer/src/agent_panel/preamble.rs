@@ -69,6 +69,17 @@ impl Preamble<'_> {
              configuration, with tools as `rerun_*`.\n",
         );
 
+        text.push_str(
+            "- Before calling a tool, inspect its input schema; don't infer argument names or types \
+             from the tool name. If discovery is needed, fetch the schema first.\n",
+        );
+
+        text.push_str(
+            "- When working with blueprints, use these tools to understand the context and edit \
+             the blueprint: `rerun_get_state`, `rerun_get_recording_schema`, \
+             `rerun_get_blueprint`, and `rerun_set_blueprint`.\n",
+        );
+
         if let Some(agent_dir) = *agent_dir {
             writeln!(
                 text,

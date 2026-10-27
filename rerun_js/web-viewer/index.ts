@@ -2012,7 +2012,10 @@ export class WebViewer {
   async get_recording_schema(options: RecordingSchemaOptions = {}): Promise<RecordingSchema> {
     const response = await this.#viewer_control("getRecordingSchema", {
       storeId: options.recording,
-      ...schema_request_of(options),
+      entityPath: options.entity_path,
+      maxEntities: options.max_entities,
+      withArchetypes: false,
+      withComponents: !options.paths_only,
     });
     return {
       recording: response.storeId as RecordingStoreId,
