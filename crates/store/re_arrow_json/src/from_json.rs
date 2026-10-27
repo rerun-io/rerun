@@ -161,7 +161,24 @@ pub fn chunks_from_json(
             .or_insert_with(|| (entry.descriptor.clone(), new_empty_array(&entry.datatype)));
     }
 
-    rows.into_iter()
+    // Even an empty Clear batch shadows components with the same (time, row id).
+    // Reset tombstones before writing replacement data, including data below cleared parents.
+    let clear_component = re_sdk_types::archetypes::Clear::descriptor_is_recursive().component;
+    let mut tombstone_resets = BTreeMap::new();
+    for (entity_path, row) in &mut rows {
+        if row
+            .get(&clear_component)
+            .is_some_and(|(_, batch)| batch.is_empty())
+            && let Some(clear) = row.remove(&clear_component)
+        {
+            tombstone_resets.insert(
+                entity_path.clone(),
+                BTreeMap::from([(clear_component, clear)]),
+            );
+        }
+    }
+
+    std::iter::chain(tombstone_resets, rows)
         .filter(|(_, components)| !components.is_empty())
         .map(|(entity_path, components)| {
             Chunk::builder(entity_path.clone())
@@ -390,6 +407,85 @@ mod tests {
         write(&mut blueprint, &json);
 
         assert_eq!(read(&blueprint), json);
+    }
+
+    /// Checks that cleared container IDs and descendants can be reused across repeated writes.
+    #[test]
+    fn replacing_a_cleared_entity_restores_its_components() {
+        use re_sdk_types::blueprint::archetypes::ContainerBlueprint;
+        use re_sdk_types::blueprint::components::ContainerKind;
+
+        // Include a child to cover the effect of recursive clears on descendants.
+        let mut blueprint = empty_blueprint();
+        let path = EntityPath::from("/container/aaaaaaaa-0000-4000-8000-000000000001");
+        let child = EntityPath::from(format!("{path}/child").as_str());
+        let replacement = json!({
+            path.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}},
+            child.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}
+        });
+        let timeline = TimelineName::from_static_str("blueprint");
+
+        // Restore both paths repeatedly, then restore each alone after a recursive clear.
+        for (time, json, visible) in [
+            (1, replacement.clone(), [true, true]),
+            (
+                2,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (3, replacement.clone(), [true, true]),
+            (4, replacement.clone(), [true, true]),
+            (
+                5,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (
+                6,
+                json!({path.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}}),
+                [true, false],
+            ),
+            (7, replacement, [true, true]),
+            (
+                8,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (
+                9,
+                json!({child.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}}),
+                [false, true],
+            ),
+        ] {
+            // Apply each full JSON replacement through the normal conversion path.
+            let chunks = chunks_from_json(
+                &json,
+                blueprint.storage_engine().store(),
+                &TimePoint::from([(timeline, re_log_types::TimeCell::from_sequence(time))]),
+                re_sdk_types::reflection::reflection(),
+            )
+            .unwrap();
+            for chunk in chunks {
+                blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+
+            // Restoring one path must not revive omitted components on the other.
+            for (entity, visible) in std::iter::zip([&path, &child], visible) {
+                let results = blueprint.storage_engine().cache().latest_at(
+                    re_chunk_store::ChunkTrackingMode::Report,
+                    &LatestAtQuery::latest(timeline),
+                    entity,
+                    [ContainerBlueprint::descriptor_container_kind().component],
+                );
+                assert_eq!(
+                    results.component_mono::<ContainerKind>(
+                        ContainerBlueprint::descriptor_container_kind().component
+                    ),
+                    visible.then_some(ContainerKind::Horizontal),
+                    "replacement at time {time}: {entity}"
+                );
+            }
+        }
     }
 
     /// Every field of every blueprint archetype survives JSON and back, so a new one cannot
