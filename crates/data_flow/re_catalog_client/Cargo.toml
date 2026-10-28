@@ -19,12 +19,19 @@ workspace = true
 all-features = true
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_crypto/crypto-ring", "re_redap_client/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_crypto/crypto-aws-lc-rs", "re_redap_client/crypto-aws-lc-rs"]
+
+default = ["crypto-ring"]
 
 [dependencies]
 re_async.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true
+re_crypto.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true

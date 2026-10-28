@@ -19,7 +19,13 @@ workspace = true
 all-features = true
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_ui/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_ui/crypto-aws-lc-rs"]
+
+default = ["crypto-ring"]
 
 ## Hooks for feeding an `AgentSession` without a running agent, used by the snapshot tests.
 testing = ["re_agent/testing"]

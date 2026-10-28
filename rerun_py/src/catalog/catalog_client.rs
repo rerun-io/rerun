@@ -178,7 +178,7 @@ impl PyCatalogClientInternal {
         // anything tries to do anything TLS-related.
         // This used to be implicitly done by `object_store`, just by virtue of depending on it,
         // but we removed that unused dependency, so now we must do it ourselves.
-        _ = rustls::crypto::ring::default_provider().install_default();
+        re_crypto::init();
 
         let origin = url.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 

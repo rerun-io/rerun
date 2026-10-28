@@ -15,7 +15,13 @@ name = "custom_callback_app"
 path = "src/app.rs"
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = ["rerun/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["rerun/crypto-aws-lc-rs"]
+
+default = ["crypto-ring"]
 
 # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
 analytics = ["rerun/analytics"]

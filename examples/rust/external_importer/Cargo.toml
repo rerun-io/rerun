@@ -6,6 +6,15 @@ rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 publish = false
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = ["rerun/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["rerun/crypto-aws-lc-rs"]
+
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = ["sdk"] }
 

@@ -32,7 +32,7 @@ jobs:
     uses: ./.github/workflows/contrib_rerun_py.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
+      MATURIN_FEATURE_FLAGS: "--no-default-features --features crypto-ring,lance,extension-module"
 
   check-doc-redirects:
     name: "Check Doc Redirects"

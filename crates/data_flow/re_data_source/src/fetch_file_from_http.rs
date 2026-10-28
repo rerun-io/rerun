@@ -12,6 +12,7 @@ use re_log_types::RecordingId;
 ///
 /// This works for all file types supported by the importers (MCAP, images, 3D models, etc.).
 pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
+    re_crypto::init();
     let url_string = url.to_string();
 
     let filename = url

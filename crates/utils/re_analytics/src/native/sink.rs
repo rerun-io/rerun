@@ -62,6 +62,7 @@ impl PostHogSink {
             Err(err) => return on_done(Err(err.to_string())),
         };
         re_log::trace!("Sending analytics: {json}");
+        re_crypto::init();
         ehttp::fetch(ehttp::Request::post(Self::URL, json.into_bytes()), on_done);
     }
 }

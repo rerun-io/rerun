@@ -6,6 +6,7 @@ use url::Url;
 use super::ingest::Document;
 
 pub fn connect(url: &str, master_key: &str) -> anyhow::Result<SearchClient> {
+    re_crypto::init();
     SearchClient::connect(url, master_key)
 }
 

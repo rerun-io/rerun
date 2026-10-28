@@ -81,7 +81,9 @@ deny = [
   ], reason = "Pulls in a GPL-3.0 crate so may only ever be used in tests." },
 
   { name = "cgmath", reason = "We use glam" },
-  { name = "cmake", reason = "Never again" },
+  { name = "cmake", wrappers = [
+    "aws-lc-sys",
+  ], reason = "Required by the opt-in AWS-LC crypto backend; Ring remains the default." },
   { name = "derive_more", wrappers = [
     "agent-client-protocol-schema",
   ], reason = "Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316. Only allowed via the ACP schema crate, which we do not control." },
@@ -132,6 +134,7 @@ skip = [
   { name = "rustix" }, # tantivy uses an old version.
   { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+  { name = "untrusted", version = "0.7.1" }, # AWS-LC uses 0.7; Ring and rustls-webpki use 0.9.
   { name = "wasm-streams" }, # `walkers` uses 0.5 via reqwest 0.13, `ehttp` (via egui_extras) uses 0.4.
 
   # Duplicated by `headless_chrome`, pulled in only by the `browser` feature of the

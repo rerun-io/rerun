@@ -18,6 +18,15 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_viewer_context/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_viewer_context/crypto-aws-lc-rs"]
+
 [dependencies]
 re_log_types.workspace = true
 re_rvl.workspace = true

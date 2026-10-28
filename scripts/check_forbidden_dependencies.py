@@ -26,6 +26,10 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk", {"datafusion", "egui", "lance"}),
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
     ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
+    ("rerun --no-default-features --features sdk,native_viewer,map_view,crypto-aws-lc-rs", {"ring"}),
+    ("re_sdk --no-default-features --features crypto-aws-lc-rs", {"ring"}),
+    ("rerun_py --no-default-features --features extension-module,crypto-aws-lc-rs", {"ring"}),
+    ("rerun --no-default-features --features sdk,native_viewer,map_view,crypto-ring", {"aws-lc-rs"}),
 ]
 
 # Setting `RUSTFLAGS` disables `re_workspace_hack`, which depends on everything.

@@ -20,7 +20,13 @@ all-features = true
 
 
 [features]
-default = ["analytics"]
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_analytics?/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_analytics?/crypto-aws-lc-rs"]
+
+default = ["crypto-ring", "analytics"]
 
 ## Send analytics to Rerun on crashes
 analytics = ["dep:re_analytics"]

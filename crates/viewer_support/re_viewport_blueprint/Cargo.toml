@@ -18,6 +18,25 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_chunk_store/crypto-ring",
+  "re_entity_db/crypto-ring",
+  "re_ui/crypto-ring",
+  "re_viewer_context/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_entity_db/crypto-aws-lc-rs",
+  "re_ui/crypto-aws-lc-rs",
+  "re_viewer_context/crypto-aws-lc-rs",
+]
+
 [dependencies]
 re_byte_size.workspace = true
 re_chunk.workspace = true

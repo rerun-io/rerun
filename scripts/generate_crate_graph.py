@@ -179,7 +179,7 @@ def cargo_metadata() -> Metadata:
 
 
 def layer_of(manifest_path: Path, workspace_root: Path, name: str) -> str | None:
-    directory = str(manifest_path.parent.relative_to(workspace_root).parent)
+    directory = manifest_path.parent.relative_to(workspace_root).parent.as_posix()
     if any(directory == layer for layer, _, _ in FOLDERS):
         return directory
     return EXTRA_CRATES.get(name)
@@ -686,7 +686,7 @@ def crate_tables(metadata: Metadata) -> str:
     for package in metadata["packages"]:
         if package["id"] not in members or package["name"] in DEPRECATED_CRATES:
             continue
-        directory = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
+        directory = Path(package["manifest_path"]).parent.relative_to(workspace_root).parent.as_posix()
         folder = directory if directory in folders else EXTRA_CRATES.get(package["name"], "")
         if folder:
             described[package["name"]] = (folder, (package.get("description") or "").strip())
@@ -719,7 +719,7 @@ def matches(path: Path, wanted: str) -> bool:
     """
     if not path.exists():
         return False
-    found = path.read_text()
+    found = path.read_text(encoding="utf-8")
     if found == wanted:
         return True
     if path.suffix != ".svg":
@@ -742,7 +742,7 @@ def drift_report(path: Path, wanted: str) -> str:
     """
     if path.suffix != ".svg" or not path.exists():
         return ""
-    found = NUMBER.findall(path.read_text())
+    found = NUMBER.findall(path.read_text(encoding="utf-8"))
     generated = NUMBER.findall(wanted)
     if len(found) != len(generated):
         return f"The file holds {len(found)} numbers, the generated one {len(generated)}.\n"
@@ -804,10 +804,10 @@ def main() -> None:
 
     composed = compose(bands, deps)
     if args.dot:
-        args.dot.write_text(composed)
+        args.dot.write_text(composed, encoding="utf-8")
 
     svg = render_svg(composed, bands)
-    architecture = architecture_with_tables(ARCHITECTURE.read_text(), crate_tables(metadata))
+    architecture = architecture_with_tables(ARCHITECTURE.read_text(encoding="utf-8"), crate_tables(metadata))
 
     wanted = {args.output: svg, ARCHITECTURE: architecture}
 
@@ -820,7 +820,7 @@ def main() -> None:
                 sys.stderr.write(f"\nFirst differences in {path.name}:\n")
                 sys.stderr.write(drift_report(path, wanted[path]))
                 diff = difflib.unified_diff(
-                    path.read_text().splitlines() if path.exists() else [],
+                    path.read_text(encoding="utf-8").splitlines() if path.exists() else [],
                     wanted[path].splitlines(),
                     fromfile="committed",
                     tofile="generated",
@@ -833,7 +833,7 @@ def main() -> None:
         return
 
     for path, content in wanted.items():
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
     print(f"Wrote {args.output.name} and the crate tables in {ARCHITECTURE.name} ({len(layers)} crates)")
 
 

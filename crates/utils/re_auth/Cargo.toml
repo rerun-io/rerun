@@ -22,9 +22,17 @@ version.workspace = true
 workspace = true
 
 [features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = ["dep:ring", "re_analytics/crypto-ring", "re_crypto/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["dep:aws-lc-rs", "re_analytics/crypto-aws-lc-rs", "re_crypto/crypto-aws-lc-rs"]
+
 cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
-oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:ring", "dep:tiny_http", "dep:uuid"]
+oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:tiny_http", "dep:uuid"]
 
 [package.metadata.cargo-shear]
 ignored = [
@@ -36,6 +44,7 @@ ignored = [
 [dependencies]
 re_analytics.workspace = true
 re_byte_size.workspace = true
+re_crypto.workspace = true
 re_log.workspace = true
 re_int.workspace = true
 
@@ -45,7 +54,6 @@ http.workspace = true
 jiff = { workspace = true, features = ["serde"] }
 hmac.workspace = true
 jsonwebtoken.workspace = true
-ring = { workspace = true, optional = true }
 parking_lot.workspace = true
 sha2.workspace = true
 signature.workspace = true
@@ -65,6 +73,8 @@ webbrowser = { workspace = true, optional = true }
 
 # Native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+aws-lc-rs = { workspace = true, optional = true }
+ring = { workspace = true, optional = true }
 directories = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 rand = { workspace = true, features = ["std", "std_rng", "os_rng"] }

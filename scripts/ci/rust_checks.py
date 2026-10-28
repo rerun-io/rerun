@@ -232,6 +232,14 @@ def base_checks(results: list[Result]) -> None:
 
 
 def sdk_variations(results: list[Result]) -> None:
+    for backend in ("crypto-ring", "crypto-aws-lc-rs"):
+        results.append(
+            run_cargo(
+                "nextest",
+                f"run -p re_auth -p re_crypto --no-default-features "
+                f"--features re_auth/cli,re_auth/{backend},re_crypto/{backend} --no-fail-fast",
+            )
+        )
     results.extend([
         # Check a few important permutations of the feature flags for our `rerun` library:
         run_cargo("check", "-p rerun --no-default-features"),

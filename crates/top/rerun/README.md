@@ -40,6 +40,30 @@ You can add the `rerun` crate to your project with `cargo add rerun`.
 
 To get started, see [the examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust).
 
+## Native cryptographic provider
+
+Rerun uses Ring by default for TLS and OAuth token verification.
+To use AWS-LC instead, disable default features and select `crypto-aws-lc-rs` alongside the capabilities your application needs:
+
+```toml
+rerun = { version = "0.41", default-features = false, features = ["sdk", "native_viewer", "crypto-aws-lc-rs"] }
+```
+
+The same `crypto-ring` and `crypto-aws-lc-rs` features are available on `re_sdk`, `re_viewer`, `re_auth`, `rerun-cli`, and `rerun_py`.
+Rerun initializes TLS before making requests and preserves a provider already installed by the embedding application.
+If Cargo enables both provider features, AWS-LC is used for RSA verification and for TLS unless the application has already installed a provider.
+Neither provider is built for browser targets.
+Native OAuth RS256 verification requires one of the provider features; without either, RS256 verification returns an error.
+
+AWS-LC has additional native build requirements; see its [installation documentation](https://aws.github.io/aws-lc-rs/requirements/).
+Other dependencies in your application can still select Ring independently.
+In particular, Lance currently does so: build `rerun_py` without its default `lance` feature to omit Ring, for example with `--no-default-features --features extension-module,crypto-aws-lc-rs`.
+This configuration does not support Lance-backed local tables.
+Standard Python wheels and CLI releases retain Ring and Lance support.
+
+For source builds inside this repository, the ehttp patch in the workspace manifest is required until the upstream provider-selection change is released.
+Cargo patches are not inherited by downstream workspaces; consumers testing this branch must also copy that patch into their workspace manifest.
+
 ## Binary
 You can install the binary with `cargo install rerun-cli --locked --features nasm`.
 

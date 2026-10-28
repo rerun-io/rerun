@@ -66,7 +66,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -132,10 +132,9 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls-native-roots", "rustls-tls-webpki-roots-no-provider", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
+rustls-pki-types = { version = "1", features = ["std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
@@ -227,7 +226,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -293,10 +292,9 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls-native-roots", "rustls-tls-webpki-roots-no-provider", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
+rustls-pki-types = { version = "1", features = ["std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
@@ -356,7 +354,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -402,7 +400,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -448,7 +446,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -492,7 +490,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -536,7 +534,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -582,7 +580,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -628,7 +626,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -659,10 +657,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
 windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -673,7 +671,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -704,10 +702,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
 windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -718,7 +716,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -762,7 +760,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { version = "0.7", default-features = false, features = ["json"] }
+ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }

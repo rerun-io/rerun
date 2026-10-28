@@ -135,6 +135,7 @@ const DIRECT_FETCH_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 ///
 /// Cloning is a cheap `Arc` bump that shares the same pool.
 pub static DIRECT_FETCH_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    re_crypto::init();
     reqwest::Client::builder()
         .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
         .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
