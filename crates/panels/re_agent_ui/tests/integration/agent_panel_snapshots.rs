@@ -63,7 +63,9 @@ fn panel() -> AgentPanel {
             }
         })
         .collect();
-    AgentPanel::with_agents(settings(), agents)
+    let mut panel = AgentPanel::with_agents(settings(), agents);
+    panel.set_example_prompts(crate::example_prompts());
+    panel
 }
 
 fn text(text: &str) -> ContentBlock {

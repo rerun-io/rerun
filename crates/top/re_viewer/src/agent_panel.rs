@@ -25,6 +25,20 @@ const SKILLS_SUBDIR: &str = "agent_context/skills";
 /// Where the documentation and snippets are unpacked inside the agent directory.
 const DOCS_SUBDIR: &str = "agent_context/docs";
 
+/// Offered in an empty conversation while a recording is open.
+const RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
+    "Set up a blueprint for this recording",
+    "Help me fix the errors in this recording",
+    "Summarize what is in this recording",
+];
+
+/// Offered in an empty conversation while no recording is open.
+const NO_RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
+    "Help me open a dataset in Rerun",
+    "Help me log my own data to Rerun",
+    "Show me an example recording",
+];
+
 /// The skills and docs from the repository, embedded by `build.rs`.
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/agent_files.rs"));
@@ -38,6 +52,9 @@ pub struct ViewerAgentPanel {
 
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
+
+    /// The example prompts last handed to [`Self::panel`].
+    example_prompts: &'static [&'static str],
 
     /// Prompts waiting for the agent panel to be created — for example, prompts from
     /// the command palette submitted before the agent panel has been opened.
@@ -133,6 +150,7 @@ impl ViewerAgentPanel {
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
+        recording: Option<&re_entity_db::EntityDb>,
     ) {
         let was_open = *open;
         if *open && self.panel.is_none() {
@@ -147,10 +165,20 @@ impl ViewerAgentPanel {
         let Self {
             panel,
             focus_input,
+            example_prompts,
             pending_prompts,
             ..
         } = self;
         if let Some(panel) = panel.as_mut() {
+            let prompts: &'static [&'static str] = if recording.is_some() {
+                &RECORDING_EXAMPLE_PROMPTS
+            } else {
+                &NO_RECORDING_EXAMPLE_PROMPTS
+            };
+            if *example_prompts != prompts {
+                panel.set_example_prompts(prompts.iter().copied().map(str::to_owned).collect());
+                *example_prompts = prompts;
+            }
             for prompt in pending_prompts.drain(..) {
                 panel.queue_prompt(prompt);
             }

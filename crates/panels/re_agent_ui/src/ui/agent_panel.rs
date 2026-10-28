@@ -172,6 +172,9 @@ pub struct AgentPanel {
     view: View,
     auto_approve: bool,
 
+    /// Offered in an empty conversation. Set by the host.
+    example_prompts: Vec<String>,
+
     /// Set by the host. Shows "Self-improve" in the options menu.
     self_improve_available: bool,
 
@@ -215,6 +218,7 @@ impl AgentPanel {
             user_opened_draft_setup: false,
             view: View::List,
             auto_approve: false,
+            example_prompts: Vec::new(),
             self_improve_available: false,
             self_improve_requested: false,
             feedback_enabled: false,
@@ -226,6 +230,12 @@ impl AgentPanel {
     /// What every new session is told about the host. Applies to sessions started from now on.
     pub fn set_context(&mut self, context: SessionContext) {
         self.context = context;
+    }
+
+    /// The prompts an empty conversation offers to start from, e.g. depending on what the host
+    /// is showing.
+    pub fn set_example_prompts(&mut self, prompts: Vec<String>) {
+        self.example_prompts = prompts;
     }
 
     /// Shows "Self-improve" in the options menu, marked as a developer feature. Off by default.
@@ -494,6 +504,7 @@ impl AgentPanel {
             draft,
             user_opened_draft_setup,
             view,
+            example_prompts,
             ..
         } = self;
         match *view {
@@ -503,7 +514,7 @@ impl AgentPanel {
                     .find(|conversation| conversation.id == id)
                 {
                     ui.push_id(id, |ui| {
-                        conversation.ui(ui, settings, context, agents, None);
+                        conversation.ui(ui, settings, context, agents, example_prompts, None);
                     });
                     // Its setup screen hides the transcript.
                     if conversation.screen == Screen::Chat {
@@ -514,7 +525,9 @@ impl AgentPanel {
                 }
             }
             View::List if conversations.is_empty() => {
-                ui.push_id(draft.id, |ui| draft.ui(ui, settings, context, agents, None));
+                ui.push_id(draft.id, |ui| {
+                    draft.ui(ui, settings, context, agents, example_prompts, None);
+                });
             }
             View::List => {
                 let rows = conversation_rows(conversations, settings, agents);
@@ -536,7 +549,14 @@ impl AgentPanel {
                     egui::CentralPanel::default().show(ui, |ui| home_ui(ui));
                 } else {
                     ui.push_id(draft.id, |ui| {
-                        draft.ui(ui, settings, context, agents, Some(&mut home_ui));
+                        draft.ui(
+                            ui,
+                            settings,
+                            context,
+                            agents,
+                            example_prompts,
+                            Some(&mut home_ui),
+                        );
                     });
                 }
                 action = action.or(list_action);

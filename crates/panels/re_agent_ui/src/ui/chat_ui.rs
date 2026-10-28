@@ -27,12 +27,6 @@ const PREVIEW_HEIGHT: f32 = 48.0;
 
 const EMPTY_STATE_WIDTH: f32 = 240.0;
 
-const EXAMPLE_PROMPTS: [&str; 3] = [
-    "Set up a blueprint for this recording",
-    "Help me fix the errors in this recording",
-    "Help me open a dataset in Rerun",
-];
-
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
 pub struct ChatInput {
@@ -181,6 +175,7 @@ pub fn chat_ui(
     preferred_model: &mut Option<SessionConfigValueId>,
     show_thoughts: bool,
     login_hint: Option<&str>,
+    example_prompts: &[String],
     home_ui: Option<&mut dyn FnMut(&mut egui::Ui)>,
 ) {
     if session.is_ready() && !input.was_ready {
@@ -216,7 +211,7 @@ pub fn chat_ui(
             if session.transcript().items.is_empty()
                 && !matches!(session.phase(), Phase::Connecting { .. })
             {
-                empty_state_ui(ui, input);
+                empty_state_ui(ui, input, example_prompts);
                 return;
             }
 
@@ -236,18 +231,18 @@ pub fn chat_ui(
         });
 }
 
-fn empty_state_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
+fn empty_state_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prompts: &[String]) {
     let content_height = ui
         .new_child(egui::UiBuilder::new().sizing_pass().invisible())
-        .vertical_centered(|ui| empty_state_content_ui(ui, input))
+        .vertical_centered(|ui| empty_state_content_ui(ui, input, example_prompts))
         .response
         .rect
         .height();
     ui.add_space(((ui.available_height() - content_height) / 2.0).max(0.0));
-    ui.vertical_centered(|ui| empty_state_content_ui(ui, input));
+    ui.vertical_centered(|ui| empty_state_content_ui(ui, input, example_prompts));
 }
 
-fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
+fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prompts: &[String]) {
     ui.set_max_width(EMPTY_STATE_WIDTH);
     ui.add(
         egui::Label::new(
@@ -273,9 +268,9 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
 
     ui.add_space(ui.spacing().item_spacing.y);
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-    for prompt in EXAMPLE_PROMPTS {
+    for prompt in example_prompts {
         if ui.add(ReButton::new(prompt).outlined().small()).clicked() {
-            input.example_prompt_clicked = Some(prompt.to_owned());
+            input.example_prompt_clicked = Some(prompt.clone());
         }
     }
 }

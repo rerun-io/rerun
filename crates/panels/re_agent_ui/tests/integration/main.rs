@@ -9,6 +9,17 @@ mod new_conversation_shortcut;
 mod pasted_images;
 mod self_improve;
 
+/// Offered by an empty conversation in the test panels.
+fn example_prompts() -> Vec<String> {
+    [
+        "Example prompt one",
+        "Example prompt two",
+        "Example prompt three",
+    ]
+    .map(str::to_owned)
+    .to_vec()
+}
+
 /// Shows hover timestamps in UTC, so snapshots do not depend on where they run.
 ///
 /// Call it first in the test: setting an env var is only sound while no other thread is running.
