@@ -262,6 +262,13 @@ impl SpatialView2D {
         };
         let scene_from_ui = ui_from_scene.inverse();
 
+        // Visualizers already ran this frame, so they only see a new scale on the next one.
+        let pixels_per_scene_unit = ui.ctx().pixels_per_point() * ui_from_scene.scale().max_elem();
+        if state.pixels_per_scene_unit_2d != Some(pixels_per_scene_unit) {
+            state.pixels_per_scene_unit_2d = Some(pixels_per_scene_unit);
+            ui.request_repaint();
+        }
+
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(

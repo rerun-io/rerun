@@ -70,6 +70,9 @@ pub struct SpatialViewState {
     pub pinhole_at_origin: Option<Pinhole>,
 
     pub visual_bounds_2d: Option<VisualBounds2D>,
+
+    /// Physical pixels per scene unit in last frame's 2D view. `None` for 3D views.
+    pub pixels_per_scene_unit_2d: Option<f32>,
 }
 
 impl Clone for SpatialViewState {
@@ -84,6 +87,7 @@ impl Clone for SpatialViewState {
             state_3d: self.state_3d.clone(),
             pinhole_at_origin: self.pinhole_at_origin,
             visual_bounds_2d: self.visual_bounds_2d,
+            pixels_per_scene_unit_2d: self.pixels_per_scene_unit_2d,
         }
     }
 }

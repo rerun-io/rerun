@@ -6,21 +6,51 @@ use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{clamped_or, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::{LabeledBatch, process_labels};
 use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::SpatialViewState;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::UiLabelTarget;
 
 // ---
 
-/// Number of segments used to tessellate each ellipse outline.
+/// Number of segments used to tessellate each ellipse outline when its size on screen is unknown.
 ///
-/// The polyline closes, so we emit `ELLIPSE_SEGMENTS + 1` vertices per ellipse.
+/// The polyline closes, so we emit `segments + 1` vertices per ellipse.
 const ELLIPSE_SEGMENTS: usize = 64;
+
+const MIN_ELLIPSE_SEGMENTS: usize = 16;
+const MAX_ELLIPSE_SEGMENTS: usize = 512;
+
+/// Largest allowed distance between the tessellated outline and the true ellipse.
+const MAX_OUTLINE_ERROR_IN_PIXELS: f32 = 0.25;
+
+/// Number of segments for an ellipse whose largest radius covers `radius_in_pixels` on screen.
+///
+/// Picks the fewest segments that keep the outline within [`MAX_OUTLINE_ERROR_IN_PIXELS`]
+/// of the true curve, rounded up to a multiple of 4 so the outline stays symmetric.
+fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
+    if radius_in_pixels.is_nan() || radius_in_pixels <= 0.0 {
+        return MIN_ELLIPSE_SEGMENTS;
+    }
+
+    // A chord spanning `TAU / n` deviates from the arc by at most
+    // `r * (1 - cos(PI / n)) = 2 * r * sin²(PI / 2n)`.
+    // Solving with `asin` stays precise for large radii, unlike `acos` near 1.
+    let half_angle = 2.0
+        * (MAX_OUTLINE_ERROR_IN_PIXELS / (2.0 * radius_in_pixels))
+            .sqrt()
+            .min(1.0)
+            .asin();
+    let segments = (std::f32::consts::PI / half_angle).ceil();
+    (segments as usize)
+        .clamp(MIN_ELLIPSE_SEGMENTS, MAX_ELLIPSE_SEGMENTS)
+        .next_multiple_of(4)
+}
 
 /// Extra padding added around the tight ellipse extents when computing the scene bounding box,
 /// so auto-fit views don't clip the outline at the edges.
@@ -37,6 +67,7 @@ impl Ellipses2DVisualizer {
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
+        pixels_per_scene_unit: Option<f32>,
         data: impl Iterator<Item = Ellipses2DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -65,6 +96,14 @@ impl Ellipses2DVisualizer {
                 .transform_info
                 .single_transform_required_for_entity(entity_path, Ellipses2D::name())
                 .as_affine3a();
+            let pixels_per_obj_unit = pixels_per_scene_unit.map(|pixels_per_scene_unit| {
+                let obj_scale = world_from_obj
+                    .matrix3
+                    .x_axis
+                    .length()
+                    .max(world_from_obj.matrix3.y_axis.length());
+                obj_scale * pixels_per_scene_unit
+            });
 
             let mut line_batch = line_builder
                 .batch("ellipses2d")
@@ -90,9 +129,13 @@ impl Ellipses2DVisualizer {
                 obj_space_bounding_box.extend((bbox_center - padded_half).extend(0.0));
                 obj_space_bounding_box.extend((bbox_center + padded_half).extend(0.0));
 
-                let delta = std::f32::consts::TAU / ELLIPSE_SEGMENTS as f32;
+                let segments =
+                    pixels_per_obj_unit.map_or(ELLIPSE_SEGMENTS, |pixels_per_obj_unit| {
+                        ellipse_segment_count(rx.abs().max(ry.abs()) * pixels_per_obj_unit)
+                    });
+                let delta = std::f32::consts::TAU / segments as f32;
                 #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
-                let points = (0..ELLIPSE_SEGMENTS + 1).map(|n| {
+                let points = (0..segments + 1).map(|n| {
                     let theta = n as f32 * delta;
                     glam::vec2(cx + rx * theta.cos(), cy + ry * theta.sin())
                 });
@@ -190,6 +233,12 @@ impl VisualizerSystem for Ellipses2DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let pixels_per_scene_unit = ctx
+            .view_state
+            .downcast_ref::<SpatialViewState>()
+            .ok()
+            .and_then(|state| state.pixels_per_scene_unit_2d);
+
         let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -221,7 +270,8 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     return Ok(());
                 }
 
-                // Each ellipse is one closed strip with `ELLIPSE_SEGMENTS + 1` vertices.
+                // Each ellipse is one closed strip with `segments + 1` vertices.
+                // The count varies with screen size, so this is only an estimate.
                 line_builder.reserve_strips(num_ellipses)?;
                 line_builder.reserve_vertices(num_ellipses * (ELLIPSE_SEGMENTS + 1))?;
 
@@ -262,6 +312,7 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     ctx,
                     &mut line_builder,
                     spatial_ctx,
+                    pixels_per_scene_unit,
                     results_iter,
                 );
 
@@ -272,5 +323,52 @@ impl VisualizerSystem for Ellipses2DVisualizer {
         Ok(output
             .with_draw_data([(line_builder.into_draw_data()?.into())])
             .with_visualizer_data(view_data))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Largest distance between the tessellated outline and the true circle.
+    fn max_error_in_pixels(radius_in_pixels: f32, segments: usize) -> f64 {
+        f64::from(radius_in_pixels) * (1.0 - (std::f64::consts::PI / segments as f64).cos())
+    }
+
+    #[test]
+    fn small_ellipses_use_minimum_segment_count() {
+        assert_eq!(ellipse_segment_count(0.0), 16);
+        assert_eq!(ellipse_segment_count(0.5), 16);
+        assert_eq!(ellipse_segment_count(-3.0), 16);
+        assert_eq!(ellipse_segment_count(f32::NAN), 16);
+    }
+
+    #[test]
+    fn huge_ellipses_use_maximum_segment_count() {
+        assert_eq!(ellipse_segment_count(1e9), 512);
+        assert_eq!(ellipse_segment_count(f32::INFINITY), 512);
+    }
+
+    #[test]
+    fn segment_count_follows_screen_size() {
+        // π / acos(1 - 0.25 / 100) ≈ 44.4, rounded up to a multiple of 4.
+        assert_eq!(ellipse_segment_count(100.0), 48);
+    }
+
+    #[test]
+    fn outline_stays_within_error_bound() {
+        let mut previous = 0;
+        for radius in (1..20_000).map(|r| r as f32 * 0.5) {
+            let segments = ellipse_segment_count(radius);
+            assert_eq!(segments % 4, 0, "radius {radius}: {segments} segments");
+            assert!(segments >= previous, "radius {radius}: count went down");
+            if segments < 512 {
+                assert!(
+                    max_error_in_pixels(radius, segments) <= 0.25,
+                    "radius {radius}: {segments} segments is too coarse"
+                );
+            }
+            previous = segments;
+        }
     }
 }
