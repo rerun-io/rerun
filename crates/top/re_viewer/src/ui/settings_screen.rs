@@ -98,6 +98,7 @@ fn settings_screen_ui_impl(
         check_for_updates_on_startup,
         custom_window_decorations,
         enable_welcome_screen,
+        switch_to_streamed_recordings,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
         blueprint_gc: _,               // not yet exposed
@@ -142,6 +143,16 @@ fn settings_screen_ui_impl(
         ui.re_checkbox(enable_welcome_screen, "Enable welcome screen")
             .on_hover_text("Show the Rerun examples when no data is loaded.");
     }
+
+    ui.re_checkbox(
+        switch_to_streamed_recordings,
+        "Switch to newly streamed recordings",
+    )
+    .on_hover_text(
+        "Show a recording as soon as it starts streaming in from an SDK. \
+        When disabled, it is only added to the recordings panel while \
+        another recording is being shown.",
+    );
 
     ui.re_checkbox(
         visualizer_limits_enabled,
