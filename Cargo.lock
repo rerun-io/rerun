@@ -12078,6 +12078,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_viewer_control_tools"
+version = "0.41.0-alpha.1+dev"
+dependencies = [
+ "prost",
+ "prost-reflect",
+ "re_log",
+ "re_protos",
+ "re_workspace_hack",
+ "serde_json",
+]
+
+[[package]]
 name = "re_viewer_mcp"
 version = "0.41.0-alpha.1+dev"
 dependencies = [
@@ -12086,10 +12098,9 @@ dependencies = [
  "egui_mcp",
  "insta",
  "parking_lot",
- "prost",
- "prost-reflect",
  "re_log",
  "re_protos",
+ "re_viewer_control_tools",
  "re_workspace_hack",
  "rmcp",
  "schemars 1.2.2",

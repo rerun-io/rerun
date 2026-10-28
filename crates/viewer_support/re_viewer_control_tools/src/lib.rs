@@ -1,4 +1,6 @@
-//! The MCP tool surface for `ViewerControlService`, derived from the protobuf descriptors.
+//! The agent tool surface for `ViewerControlService`, derived from the protobuf descriptors.
+//!
+//! Independent of how the tools reach the agent, e.g. over MCP (`re_viewer_mcp`).
 //!
 //! Every operation of the service is a variant of `ViewerControlRequest.kind`, so the tool list,
 //! the input schemas, and the descriptions an agent reads can all come from the descriptor set
@@ -7,20 +9,31 @@
 //! The descriptor set retains `SourceCodeInfo`, which is where the descriptions come from:
 //! the `.proto` comments are the agent-facing documentation.
 
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 
 use prost::Message as _;
 use prost_reflect::{
     DeserializeOptions, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor,
 };
-use rmcp::model::Tool;
 use serde_json::{Map, Value, json};
 
 use re_protos::viewer_control::v1alpha1::{
     BlueprintUpdateMode, ViewerControlRequest, ViewerControlResponse,
 };
+
+/// One tool an agent can call: one operation of the service.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolDefinition {
+    /// The operation's name, e.g. `set_time_cursor`. Also the name of its `oneof` arm.
+    pub name: String,
+
+    /// What the operation does, taken from the `.proto` comments.
+    pub description: String,
+
+    /// JSON Schema of the arguments, as [`build_request`] takes them.
+    pub input_schema: Map<String, Value>,
+}
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
@@ -44,33 +57,49 @@ const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
 const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
 
-/// Fully-qualified names of the fields an agent must set, although the `.proto` marks them `optional`.
-///
-/// Without a `file_path`, a screenshot comes back as PNG bytes, which would land in the agent's
-/// context as base64.
-const REQUIRED_OPTIONAL_FIELDS: &[&str] =
-    &["rerun.viewer_control.v1alpha1.SaveScreenshotRequest.file_path"];
-
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
 
-/// The blueprint operation, whose update modes use short names on the MCP surface.
+/// Where `save_screenshot` writes the image, when it is given one.
+const SCREENSHOT_FILE_PATH: &str = "file_path";
+
+/// How `save_screenshot` hands the image to the agent, which decides whether it takes a
+/// `file_path`.
+///
+/// Both work on any agent that can see images. They differ in whether the image reaches the model
+/// as an image or as text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenshotDelivery {
+    /// The agent must pass a `file_path`, and the viewer writes the image there.
+    ///
+    /// For coding agents that reach the viewer over MCP (`re_viewer_mcp`). That server returns
+    /// every response as JSON text, where a PNG would be a base64 string that fills the context
+    /// window. With a path, the agent opens the file only if it needs to, with its own
+    /// file-reading tool, which shows the model an image.
+    File,
+
+    /// The agent may not pass a `file_path`, and the PNG comes back in the tool result.
+    ///
+    /// For agents that call a model API directly, and send the PNG as an image block in the tool
+    /// result, which the model sees as an image. They have no file-reading tool of their own, and
+    /// in the web viewer there is no file system to write to.
+    Inline,
+}
+
+/// The blueprint operation, whose update modes use short names on the agent surface.
 const SET_BLUEPRINT_OPERATION: &str = "set_blueprint";
 
 /// `max_size` for a screenshot request that sets none.
 ///
 /// The proto leaves an unset `max_size` at full resolution, which on a large display is several
 /// hundred kilobytes of image an agent reads back into its context. SDK callers keep that
-/// default; only the MCP surface changes it.
+/// default; only the agent surface changes it.
 const DEFAULT_SCREENSHOT_MAX_SIZE: u64 = 1024;
 
 /// Replaces the proto's description of `max_size` in the screenshot tool's schema.
 const SCREENSHOT_MAX_SIZE_DESCRIPTION: &str = "Longest side of the saved image, in pixels. \
     A larger screenshot is scaled down to fit, keeping its aspect ratio. \
     Defaults to 1024. Pass 0 for full resolution.";
-
-/// Appended to every generated description, since the tools share one connection.
-const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
 
 /// How deep to expand nested message fields before emitting an opaque object.
 ///
@@ -152,14 +181,12 @@ fn message_comment(message: &MessageDescriptor) -> Option<&'static str> {
 ///
 /// Proto3 message fields always track presence, so presence alone says nothing. The `optional`
 /// keyword does: it is the only way a `.proto` author marks a field as omittable, and a field in
-/// a `oneof` or a repeated field is omittable by construction. [`REQUIRED_OPTIONAL_FIELDS`]
-/// overrides it.
+/// a `oneof` or a repeated field is omittable by construction.
 fn is_required(field: &FieldDescriptor) -> bool {
-    REQUIRED_OPTIONAL_FIELDS.contains(&field.full_name())
-        || (!field.field_descriptor_proto().proto3_optional()
-            && !field.is_list()
-            && !field.is_map()
-            && field.containing_oneof().is_none())
+    !field.field_descriptor_proto().proto3_optional()
+        && !field.is_list()
+        && !field.is_map()
+        && field.containing_oneof().is_none()
 }
 
 /// Whether this field is one arm of a `oneof` the author actually wrote.
@@ -320,7 +347,7 @@ fn message_schema(
 }
 
 /// The tools this service offers, one per operation, in `.proto` order.
-pub fn tools() -> Vec<Tool> {
+pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
     operation_oneof()
         .fields()
         .filter(|field| !HIDDEN_OPERATIONS.contains(&field.name()))
@@ -332,16 +359,16 @@ pub fn tools() -> Vec<Tool> {
                     "operation `{}` is not a message, so it cannot carry a request",
                     field.name()
                 );
-                return Tool::new(
-                    Cow::Owned(field.name().to_owned()),
-                    Cow::Borrowed("Unsupported operation"),
-                    Arc::new(Map::new()),
-                );
+                return ToolDefinition {
+                    name: field.name().to_owned(),
+                    description: "Unsupported operation".to_owned(),
+                    input_schema: Map::new(),
+                };
             };
 
             let description = field_comment(&field).map_or_else(
                 || format!("The `{}` viewer-control operation.", field.name()),
-                |comment| format!("{comment}{REQUIRES_CONNECT}"),
+                ToOwned::to_owned,
             );
 
             let mut visiting = HashSet::default();
@@ -356,25 +383,44 @@ pub fn tools() -> Vec<Tool> {
                 mode.insert("enum".to_owned(), json!(["full", "partial"]));
                 mode.insert("default".to_owned(), json!("full"));
             }
-            if field.name() == SCREENSHOT_OPERATION
-                && let Some(max_size) = schema
-                    .get_mut("properties")
-                    .and_then(|properties| properties.get_mut("max_size"))
-                    .and_then(Value::as_object_mut)
-            {
-                max_size.insert(
-                    "description".to_owned(),
-                    json!(SCREENSHOT_MAX_SIZE_DESCRIPTION),
-                );
+            if field.name() == SCREENSHOT_OPERATION {
+                screenshot_schema(&mut schema, screenshot);
             }
 
-            Tool::new(
-                Cow::Owned(field.name().to_owned()),
-                Cow::Owned(description),
-                Arc::new(schema),
-            )
+            ToolDefinition {
+                name: field.name().to_owned(),
+                description,
+                input_schema: schema,
+            }
         })
         .collect()
+}
+
+/// Adjusts the screenshot tool's schema: the `max_size` default this crate applies, and the
+/// `file_path` that `screenshot` requires or removes.
+fn screenshot_schema(schema: &mut Map<String, Value>, screenshot: ScreenshotDelivery) {
+    if let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) {
+        if let Some(max_size) = properties
+            .get_mut("max_size")
+            .and_then(Value::as_object_mut)
+        {
+            max_size.insert(
+                "description".to_owned(),
+                json!(SCREENSHOT_MAX_SIZE_DESCRIPTION),
+            );
+        }
+        if screenshot == ScreenshotDelivery::Inline {
+            properties.remove(SCREENSHOT_FILE_PATH);
+        }
+    }
+    if screenshot == ScreenshotDelivery::File {
+        // Where the schema generator puts `required`: just before the description.
+        let index = schema
+            .keys()
+            .position(|key| key == "description")
+            .unwrap_or(schema.len());
+        schema.shift_insert(index, "required".to_owned(), json!([SCREENSHOT_FILE_PATH]));
+    }
 }
 
 /// Whether `name` is one of the generated operations.
@@ -384,13 +430,14 @@ pub fn is_operation(name: &str) -> bool {
         .any(|field| field.name() == name && !HIDDEN_OPERATIONS.contains(&field.name()))
 }
 
-/// Build the request envelope for `name` from the JSON arguments an MCP client sent.
+/// Build the request envelope for `name` from the JSON arguments an agent sent.
 ///
 /// The arguments are parsed against the operation's own descriptor, so the `.proto` is what
 /// validates them, and the result is re-encoded into the generated type the gRPC client wants.
 pub fn build_request(
     name: &str,
     arguments: Option<Map<String, Value>>,
+    screenshot: ScreenshotDelivery,
 ) -> Result<ViewerControlRequest, String> {
     let field = operation_oneof()
         .fields()
@@ -402,12 +449,29 @@ pub fn build_request(
 
     let mut arguments = arguments.unwrap_or_default();
     if name == SCREENSHOT_OPERATION {
+        let has_file_path = [SCREENSHOT_FILE_PATH, "filePath"]
+            .into_iter()
+            .any(|key| arguments.get(key).is_some_and(|value| !value.is_null()));
+        match (screenshot, has_file_path) {
+            (ScreenshotDelivery::File, false) => {
+                return Err(format!(
+                    "invalid arguments for `{name}`: missing required field `{SCREENSHOT_FILE_PATH}`"
+                ));
+            }
+            (ScreenshotDelivery::Inline, true) => {
+                return Err(format!(
+                    "invalid arguments for `{name}`: `{SCREENSHOT_FILE_PATH}` is not taken here, \
+                     the image comes back in the result"
+                ));
+            }
+            (ScreenshotDelivery::File, true) | (ScreenshotDelivery::Inline, false) => {}
+        }
         default_screenshot_max_size(&mut arguments);
     }
     if name == SET_BLUEPRINT_OPERATION
         && let Some(value) = arguments.get_mut("mode")
     {
-        // MCP uses short mode names; the protobuf decoder requires the wire enum names.
+        // Agents use short mode names; the protobuf decoder requires the wire enum names.
         let mode = match value.as_str() {
             Some("full") => Some(BlueprintUpdateMode::Full),
             Some("partial") => Some(BlueprintUpdateMode::Partial),
@@ -580,8 +644,8 @@ mod tests {
     fn blueprint_update_modes_use_full_and_partial() {
         use re_protos::viewer_control::v1alpha1::viewer_control_request;
 
-        // Advertise the short MCP names rather than the protobuf enum names.
-        let tool = tools()
+        // Advertise the short names rather than the protobuf enum names.
+        let tool = tools(ScreenshotDelivery::File)
             .into_iter()
             .find(|tool| tool.name == SET_BLUEPRINT_OPERATION)
             .unwrap();
@@ -604,7 +668,12 @@ mod tests {
             if let Some(input) = input {
                 args.insert("mode".to_owned(), json!(input));
             }
-            let request = build_request(SET_BLUEPRINT_OPERATION, Some(args)).unwrap();
+            let request = build_request(
+                SET_BLUEPRINT_OPERATION,
+                Some(args),
+                ScreenshotDelivery::File,
+            )
+            .unwrap();
             let Some(viewer_control_request::Kind::SetBlueprint(request)) = request.kind else {
                 panic!("wrong request kind");
             };
@@ -613,13 +682,23 @@ mod tests {
         // Reject unsupported names and types instead of silently choosing full replacement.
         for invalid in [json!("patch"), json!("FULL"), json!(2), json!(true)] {
             let args = json!({"recording": {}, "json": "{}", "mode": invalid});
-            assert!(build_request(SET_BLUEPRINT_OPERATION, args.as_object().cloned()).is_err());
+            assert!(
+                build_request(
+                    SET_BLUEPRINT_OPERATION,
+                    args.as_object().cloned(),
+                    ScreenshotDelivery::File,
+                )
+                .is_err()
+            );
         }
     }
 
     #[test]
     fn offers_one_tool_per_visible_operation() {
-        let names: Vec<String> = tools().iter().map(|tool| tool.name.to_string()).collect();
+        let names: Vec<String> = tools(ScreenshotDelivery::File)
+            .into_iter()
+            .map(|tool| tool.name)
+            .collect();
 
         assert!(names.contains(&"set_time_cursor".to_owned()));
         assert!(names.contains(&"get_state".to_owned()));
@@ -631,21 +710,14 @@ mod tests {
 
     #[test]
     fn carries_the_proto_comments_into_the_descriptions() {
-        let tools = tools();
+        let tools = tools(ScreenshotDelivery::File);
         let open_url = tools
             .iter()
             .find(|tool| tool.name == "open")
             .expect("open is an operation");
 
-        let description = open_url
-            .description
-            .as_ref()
-            .expect("generated description");
+        let description = &open_url.description;
         assert!(description.contains("rerun://"), "{description}");
-        assert!(
-            description.ends_with("Requires `rerun_connect`."),
-            "{description}"
-        );
 
         let url = &open_url.input_schema["properties"]["url"];
         assert_eq!(url["type"], "string");
@@ -658,7 +730,7 @@ mod tests {
 
     #[test]
     fn marks_only_the_fields_the_proto_leaves_unoptional_as_required() {
-        let tools = tools();
+        let tools = tools(ScreenshotDelivery::File);
         let required = |name: &str| -> Vec<String> {
             let tool = tools
                 .iter()
@@ -706,7 +778,7 @@ mod tests {
 
     #[test]
     fn carries_store_ids_as_documented_strings() {
-        let tools = tools();
+        let tools = tools(ScreenshotDelivery::File);
         let close = tools
             .iter()
             .find(|tool| tool.name == "close")
@@ -730,7 +802,8 @@ mod tests {
             .cloned()
             .expect("an object");
 
-        let request = build_request("open", Some(arguments)).expect("valid arguments");
+        let request = build_request("open", Some(arguments), ScreenshotDelivery::File)
+            .expect("valid arguments");
 
         match request.kind {
             Some(re_protos::viewer_control::v1alpha1::viewer_control_request::Kind::Open(open)) => {
@@ -742,7 +815,11 @@ mod tests {
 
     /// Build a request from a JSON literal, for the validation tests.
     fn build(name: &str, arguments: &Value) -> Result<ViewerControlRequest, String> {
-        build_request(name, arguments.as_object().cloned())
+        build_request(
+            name,
+            arguments.as_object().cloned(),
+            ScreenshotDelivery::File,
+        )
     }
 
     #[test]
@@ -757,6 +834,62 @@ mod tests {
         let err = build("set_time_cursor", &json!({ "time": {} }))
             .expect_err("`time` is optional, but a given `time` needs its own required fields");
         assert!(err.contains("time.time"), "{err}");
+    }
+
+    #[test]
+    fn screenshot_delivery_controls_file_paths() -> Result<(), String> {
+        use re_protos::viewer_control::v1alpha1::viewer_control_request;
+
+        for delivery in [ScreenshotDelivery::Inline, ScreenshotDelivery::File] {
+            let tool = tools(delivery)
+                .into_iter()
+                .find(|tool| tool.name == SCREENSHOT_OPERATION)
+                .ok_or("missing screenshot tool")?;
+            let writes_file = delivery == ScreenshotDelivery::File;
+            assert_eq!(
+                tool.input_schema["properties"]
+                    .get(SCREENSHOT_FILE_PATH)
+                    .is_some(),
+                writes_file
+            );
+            assert_eq!(
+                tool.input_schema.get("required"),
+                writes_file.then(|| json!([SCREENSHOT_FILE_PATH])).as_ref()
+            );
+
+            for arguments in [
+                None,
+                Some(Map::new()),
+                json!({"file_path": null}).as_object().cloned(),
+            ] {
+                let request = build_request(SCREENSHOT_OPERATION, arguments, delivery);
+                if writes_file {
+                    assert!(request.is_err(), "file delivery requires a path");
+                } else {
+                    let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
+                    else {
+                        return Err("expected a screenshot request".to_owned());
+                    };
+                    assert_eq!(request.file_path, None);
+                    assert_eq!(request.max_size, Some(1024));
+                }
+            }
+
+            for key in ["file_path", "filePath"] {
+                let arguments = Map::from_iter([(key.to_owned(), json!("a.png"))]);
+                let request = build_request(SCREENSHOT_OPERATION, Some(arguments), delivery);
+                if writes_file {
+                    let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
+                    else {
+                        return Err("expected a screenshot request".to_owned());
+                    };
+                    assert_eq!(request.file_path.as_deref(), Some("a.png"));
+                } else {
+                    assert!(request.is_err(), "inline delivery must reject {key}");
+                }
+            }
+        }
+        Ok(())
     }
 
     #[test]
@@ -838,7 +971,7 @@ mod tests {
 
     #[test]
     fn constrains_oneof_selectors_to_true() {
-        let tools = tools();
+        let tools = tools(ScreenshotDelivery::File);
         let close = tools
             .iter()
             .find(|tool| tool.name == "close")
@@ -891,6 +1024,7 @@ mod tests {
             .cloned()
             .expect("an object");
 
-        build_request("open", Some(arguments)).expect_err("a number is not a URL");
+        build_request("open", Some(arguments), ScreenshotDelivery::File)
+            .expect_err("a number is not a URL");
     }
 }

@@ -193,23 +193,24 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/viewer_support`](./crates/viewer_support) — the UI and rendering machinery the views are built on.
 
-| Crate                  | Description                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
-| re_component_fallbacks | Handles registering various component fallbacks to `FallbackProviderRegistry`.                             |
-| re_component_ui        | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry. |
-| re_context_menu        | Support crate for context menu and actions.                                                                |
-| re_data_ui             | Provides ui elements for Rerun component data for the Rerun Viewer.                                        |
-| re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
-| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                               |
-| re_plot                | Shared utilities for plot-based views.                                                                     |
-| re_renderer            | A wgpu based renderer for all your visualization needs.                                                    |
-| re_renderer_examples   | Examples for the re_renderer crate.                                                                        |
-| re_time_ruler          | Time ruler widget shared by the time panel and time-aware views.                                           |
-| re_ui                  | Rerun GUI theme and helpers, built around egui                                                             |
-| re_view                | Types & utilities for defining view classes and communicating with the viewport.                           |
-| re_viewer_context      | Rerun viewer state that is shared with the viewer's code components.                                       |
-| re_viewport_blueprint  | The data model describing the layout of the viewport.                                                      |
+| Crate                   | Description                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| re_arrow_ui             | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
+| re_component_fallbacks  | Handles registering various component fallbacks to `FallbackProviderRegistry`.                             |
+| re_component_ui         | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry. |
+| re_context_menu         | Support crate for context menu and actions.                                                                |
+| re_data_ui              | Provides ui elements for Rerun component data for the Rerun Viewer.                                        |
+| re_dataframe_ui         | Rich table widget over DataFusion.                                                                         |
+| re_gamepad              | Gamepad input handling for the Rerun viewer.                                                               |
+| re_plot                 | Shared utilities for plot-based views.                                                                     |
+| re_renderer             | A wgpu based renderer for all your visualization needs.                                                    |
+| re_renderer_examples    | Examples for the re_renderer crate.                                                                        |
+| re_time_ruler           | Time ruler widget shared by the time panel and time-aware views.                                           |
+| re_ui                   | Rerun GUI theme and helpers, built around egui                                                             |
+| re_view                 | Types & utilities for defining view classes and communicating with the viewport.                           |
+| re_viewer_context       | Rerun viewer state that is shared with the viewer's code components.                                       |
+| re_viewer_control_tools | The Rerun Viewer's control API as tools for LLM agents.                                                    |
+| re_viewport_blueprint   | The data model describing the layout of the viewport.                                                      |
 
 ### Application-level store
 
