@@ -253,6 +253,7 @@ walkers = { package = "re_walkers", version = "0.63.1", default-features = false
 
 # All of our direct external dependencies should be found here:
 agent-client-protocol = "2.1"
+agent-client-protocol-schema = "1.9.1" # The version `agent-client-protocol` pins, so that both name the same types.
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent_ui::acp::LineDirection;
+use re_agent_ui::LineDirection;
 use re_agent_ui::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
     PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use agent_client_protocol::schema::v1::{ContentBlock, ToolCallContent};
+use agent_client_protocol_schema::v1::{ContentBlock, ToolCallContent};
 
 use crate::transcript::ToolCallState;
 

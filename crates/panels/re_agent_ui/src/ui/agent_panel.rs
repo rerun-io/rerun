@@ -10,8 +10,8 @@ use super::conversation_list::{ConversationRow, ConversationStatus, conversation
 use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
+use re_agent::{AgentHarnessConfig, AgentSettings, SessionContext};
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
-use re_agent::{AgentSettings, LaunchConfig, SessionContext};
 
 /// How wide a host should make the panel.
 ///
@@ -354,8 +354,11 @@ impl AgentPanel {
 
     /// What the current settings would launch, for hosts that run side sessions with the same
     /// agent.
-    pub fn launch_config(&self, context: &SessionContext) -> Result<LaunchConfig, String> {
-        self.settings.launch_config(&self.agents, context)
+    pub fn agent_harness_config(
+        &self,
+        context: &SessionContext,
+    ) -> Result<AgentHarnessConfig, String> {
+        self.settings.agent_harness_config(&self.agents, context)
     }
 
     /// Drains the reports of the turns finished in every conversation since the last call.
