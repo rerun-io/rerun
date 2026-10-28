@@ -53,10 +53,12 @@ pub struct ConversationRow {
 
 /// Returns what the user picked: a conversation to open, or one to close.
 pub fn conversation_list_ui(ui: &mut egui::Ui, rows: &[ConversationRow]) -> Option<PanelAction> {
+    ui.weak("Conversations");
+
     let mut action = None;
     egui::ScrollArea::vertical()
         .id_salt("conversation_list")
-        .auto_shrink(false)
+        .auto_shrink([false, true])
         .show(ui, |ui| {
             re_ui::list_item::list_item_scope(ui, "conversations", |ui| {
                 for row in rows {
@@ -86,6 +88,7 @@ pub fn conversation_list_ui(ui: &mut egui::Ui, rows: &[ConversationRow]) -> Opti
                 }
             });
         });
+    ui.separator();
     action
 }
 
