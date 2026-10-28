@@ -208,7 +208,6 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
   "/container/4a8c…": { "ContainerBlueprint": { "container_kind": "Horizontal", "contents": ["/view/1f2e…", "/view/9b3d…"] } },
   "/view/1f2e…": { "ViewBlueprint": { "class_identifier": "3D", "space_origin": "/world" } },
   "/view/1f2e…/ViewContents": { "ViewContents": { "query": "+ /world/**" } },
-  "/view/1f2e…/ViewContents/overrides/world/points": { "Points3D": { "colors": "#ff0010" } },
   "/viewport": { "ViewportBlueprint": { "root_container": "4a8c…" } }
 }
 ```
@@ -235,6 +234,44 @@ For example, this call renames one view without resending its layout or other pr
   "json": "{\"/view/11111111-1111-4111-8111-111111111111\": {\"ViewBlueprint\": {\"display_name\": \"Navigation\"}}}"
 }
 ```
+
+### Component overrides
+
+Store component overrides beside their `VisualizerInstruction` at `/view/<view UUID>/ViewContents/overrides/<entity path>/visualizers/<instruction UUID>`.
+For example, writing `Points3D.colors` directly at `overrides/<entity path>` does not configure the visualizer.
+
+For example, these entries make `/world/points` red and give `/map` the Turbo colormap in one view.
+Note that IDs are dummy placeholders in the following example; replace them with full UUIDs, reusing existing IDs where possible.
+
+```json
+{
+  "/view/<view UUID>/ViewContents/overrides/world/points/visualizers": {
+    "ActiveVisualizers": {"instruction_ids": ["<points instruction UUID>"]}
+  },
+  "/view/<view UUID>/ViewContents/overrides/world/points/visualizers/<points instruction UUID>": {
+    "VisualizerInstruction": {
+      "visualizer_type": "Points3D",
+      "component_map": [{"target": "Points3D:colors", "source_kind": 2}]
+    },
+    "Points3D": {"colors": "#ff0010"}
+  },
+  "/view/<view UUID>/ViewContents/overrides/map/visualizers": {
+    "ActiveVisualizers": {"instruction_ids": ["<map instruction UUID>"]}
+  },
+  "/view/<view UUID>/ViewContents/overrides/map/visualizers/<map instruction UUID>": {
+    "VisualizerInstruction": {
+      "visualizer_type": "GridMap",
+      "component_map": [{"target": "GridMap:colormap", "source_kind": 2}]
+    },
+    "GridMap": {"colormap": "Turbo"}
+  }
+}
+```
+
+Send these entries with `mode: "partial"` using the recording's entity paths, preserving other component mappings and active instruction IDs.
+`source_kind: 2` selects the override value; `ActiveVisualizers.instruction_ids` selects which instructions run instead of relying on viewer heuristics.
+
+Verify the effective value in the selection panel's Visualizers section and check a screenshot: blueprint readback alone only confirms storage.
 
 ### Table blueprints
 

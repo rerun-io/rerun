@@ -84,7 +84,6 @@ getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-f
 glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
-hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 icu_locale_core = { version = "2", default-features = false, features = ["alloc", "zerovec"] }
@@ -115,7 +114,6 @@ parking_lot = { version = "0.12", features = ["arc_lock", "serde"] }
 peg-runtime = { version = "0.8", default-features = false, features = ["std"] }
 percent-encoding = { version = "2" }
 petgraph = { version = "0.8" }
-pico-args = { version = "0.5", features = ["eq-separator"] }
 potential_utf = { version = "0.1", default-features = false, features = ["alloc", "zerovec"] }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
@@ -147,7 +145,7 @@ simd-adler32 = { version = "0.3" }
 similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
-stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
@@ -245,7 +243,6 @@ getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-f
 glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
-hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 icu_locale_core = { version = "2", default-features = false, features = ["alloc", "zerovec"] }
@@ -276,7 +273,6 @@ parking_lot = { version = "0.12", features = ["arc_lock", "serde"] }
 peg-runtime = { version = "0.8", default-features = false, features = ["std"] }
 percent-encoding = { version = "2" }
 petgraph = { version = "0.8" }
-pico-args = { version = "0.5", features = ["eq-separator"] }
 potential_utf = { version = "0.1", default-features = false, features = ["alloc", "zerovec"] }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
@@ -309,7 +305,7 @@ simd-adler32 = { version = "0.3" }
 similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
-stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
@@ -362,7 +358,6 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
@@ -408,7 +403,6 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
@@ -455,7 +449,6 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
@@ -499,7 +492,6 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
@@ -542,7 +534,6 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
@@ -588,7 +579,6 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
@@ -725,7 +715,6 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
@@ -769,7 +758,6 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
