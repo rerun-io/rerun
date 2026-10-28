@@ -19,34 +19,27 @@ use crate::visualizers::UiLabelTarget;
 
 // ---
 
-/// Number of segments used to tessellate each ellipse outline when it doesn't need more:
-/// it is small or off screen, or its size on screen is unknown.
+/// Minimum number of segments used to tessellate each ellipse outline.
 ///
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
 const ELLIPSE_SEGMENTS: usize = 64;
 
-/// Caps the vertex count of a single ellipse at extreme zoom, at 8× [`ELLIPSE_SEGMENTS`].
-///
-/// This is reached at a radius of about 13 000 pixels, far beyond the size of a screen.
+/// Only reached at a radius of about 13 000 pixels, so it just bounds the cost of extreme zoom.
 const MAX_ELLIPSE_SEGMENTS: usize = 512;
 
-/// Largest allowed distance between the tessellated outline and the true ellipse.
-///
-/// A quarter of a pixel is below what anti-aliased lines make visible.
+/// Largest distance between outline and true ellipse.
+/// A quarter pixel is invisible when anti-aliased.
 const MAX_OUTLINE_ERROR_IN_PIXELS: f32 = 0.25;
 
-/// Number of segments for an ellipse whose largest radius covers `radius_in_pixels` on screen.
-///
-/// Picks the fewest segments that keep the outline within [`MAX_OUTLINE_ERROR_IN_PIXELS`]
-/// of the true curve, rounded up to a multiple of 4 so the outline stays symmetric.
+/// Fewest segments, as a multiple of 4, that keep an outline with largest radius
+/// `radius_in_pixels` within [`MAX_OUTLINE_ERROR_IN_PIXELS`].
 fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
     if radius_in_pixels.is_nan() || radius_in_pixels <= 0.0 {
         return ELLIPSE_SEGMENTS;
     }
 
-    // A chord spanning `TAU / n` deviates from the arc by at most
-    // `r * (1 - cos(PI / n)) = 2 * r * sin²(PI / 2n)`.
-    // Solving with `asin` stays precise for large radii, unlike `acos` near 1.
+    // Chord error is `r * (1 - cos(PI / n)) = 2 * r * sin²(PI / 2n)`.
+    // `asin` stays precise for large radii, unlike `acos` near 1.
     let half_angle = 2.0
         * (MAX_OUTLINE_ERROR_IN_PIXELS / (2.0 * radius_in_pixels))
             .sqrt()
@@ -58,10 +51,8 @@ fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
         .next_multiple_of(4)
 }
 
-/// Number of segments for one ellipse, given what last frame's 2D view showed.
-///
-/// Ellipses outside the visible part of the scene keep [`ELLIPSE_SEGMENTS`], so zooming in
-/// doesn't multiply the vertex count of everything off screen.
+/// Like [`ellipse_segment_count`],
+/// but ellipses outside last frame's view keep [`ELLIPSE_SEGMENTS`].
 fn ellipse_segment_count_in_view(
     screen_space: Option<&ScreenSpace2D>,
     world_from_obj: &glam::Affine3A,
@@ -76,7 +67,6 @@ fn ellipse_segment_count_in_view(
         return ELLIPSE_SEGMENTS;
     };
 
-    // Same margin as the scene bounding box, so a thin outline just outside the view still counts.
     let padded_half_size = half_size.abs() * BOUNDING_BOX_PADDING_FACTOR;
     let bbox_in_scene = egui::Rect::from_points(
         &[
@@ -314,8 +304,7 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     return Ok(());
                 }
 
-                // Each ellipse is one closed strip with `segments + 1` vertices.
-                // The count varies with screen size, so this is only an estimate.
+                // Each ellipse is one closed strip with at least `ELLIPSE_SEGMENTS + 1` vertices.
                 line_builder.reserve_strips(num_ellipses)?;
                 line_builder.reserve_vertices(num_ellipses * (ELLIPSE_SEGMENTS + 1))?;
 
@@ -424,7 +413,7 @@ mod tests {
 
         // Radius 100 at 10 px per unit is 1000 px.
         assert_eq!(segments(glam::Affine3A::IDENTITY, glam::Vec2::ZERO), 144);
-        // Only partly visible, straddling the right edge.
+        // Straddling the right edge.
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(140.0, 0.0)),
             144
@@ -459,7 +448,7 @@ mod tests {
             segments(glam::Affine3A::IDENTITY, glam::vec2(0.0, -1000.0)),
             ELLIPSE_SEGMENTS
         );
-        // Centered in object space, but moved off screen by the entity transform.
+        // Moved off screen by the entity transform.
         assert_eq!(
             segments(
                 glam::Affine3A::from_translation(glam::vec3(1000.0, 0.0, 0.0)),

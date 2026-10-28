@@ -75,7 +75,7 @@ pub struct SpatialViewState {
     pub screen_space_2d: Option<ScreenSpace2D>,
 }
 
-/// Last frame's 2D view, for visualizers that adapt their detail to the zoom level.
+/// Scale and visible area of last frame's 2D view.
 #[derive(Clone, Copy, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct ScreenSpace2D {
     /// Physical pixels per scene unit.
