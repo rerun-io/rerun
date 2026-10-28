@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
     ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
     PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
@@ -16,11 +16,12 @@ use agent_client_protocol::schema::v1::{
     SessionConfigId, SessionConfigValueId, SessionModeId, SessionModeState, SessionUpdate,
     StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
-use agent_client_protocol::{LineDirection, Responder};
 
-use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
+use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
@@ -94,10 +95,7 @@ pub struct PendingPermission {
 }
 
 impl PendingPermission {
-    fn answer(
-        self,
-        option_id: Option<PermissionOptionId>,
-    ) -> Result<(), agent_client_protocol::Error> {
+    fn answer(self, option_id: Option<PermissionOptionId>) -> Result<(), AgentStoppedWaiting> {
         let outcome = match option_id {
             Some(option_id) => {
                 RequestPermissionOutcome::Selected(SelectedPermissionOutcome::new(option_id))
@@ -126,10 +124,7 @@ pub struct PendingElicitation {
 }
 
 impl PendingElicitation {
-    fn answer(
-        mut self,
-        response: CreateElicitationResponse,
-    ) -> Result<(), agent_client_protocol::Error> {
+    fn answer(mut self, response: CreateElicitationResponse) -> Result<(), AgentStoppedWaiting> {
         // Consume the responder before sending so that Drop cannot send a second response on error.
         match self.responder.take() {
             Some(responder) => responder.respond(response),
@@ -231,7 +226,7 @@ pub struct AgentSession {
 
 impl AgentSession {
     /// Spawns the agent. `wake` is called whenever new events arrive, so the UI can repaint.
-    pub fn start(&mut self, config: LaunchConfig, wake: impl Fn() + Send + Sync + 'static) {
+    pub fn start(&mut self, config: AgentHarnessConfig, wake: impl Fn() + Send + Sync + 'static) {
         self.stop();
         *self = Self {
             phase: Phase::Connecting {
@@ -247,7 +242,19 @@ impl AgentSession {
             next_elicitation_id: self.next_elicitation_id,
             ..Default::default()
         };
-        self.connection = Some(AgentConnection::spawn(config, wake));
+        cfg_select! {
+            agent_harness_backend => {
+                self.connection = Some(crate::agent_harness_backend::spawn(config, wake));
+            }
+            _ => {
+                drop((config, wake));
+                let reason = "Agent subprocesses are not supported on this platform";
+                self.report_error(reason);
+                self.phase = Phase::Disconnected {
+                    reason: reason.to_owned(),
+                };
+            }
+        }
     }
 
     /// Shuts the agent down. Pending permission and elicitation requests are cancelled.
@@ -733,7 +740,7 @@ impl AgentSession {
             pending
                 .responder
                 .as_ref()
-                .is_none_or(|responder| !responder.cancellation().is_cancelled())
+                .is_none_or(|responder| !responder.is_cancelled())
         });
         let Some(connection) = &self.connection else {
             return;
@@ -1092,13 +1099,14 @@ fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCall
 mod tests {
     use std::assert_matches;
 
-    use agent_client_protocol::schema::v1::{
+    use agent_client_protocol_schema::v1::{
         ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
         ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
     };
 
     use super::*;
 
+    #[cfg(agent_harness_backend)]
     #[test]
     fn question_answers_and_cancellation_reach_the_agent() {
         use agent_client_protocol::{Agent, Channel, Client, ConnectionTo};
@@ -1109,7 +1117,10 @@ mod tests {
             let client = Client
                 .builder()
                 .on_receive_request(
-                    async |request: CreateElicitationRequest, responder, _cx| {
+                    async |request: CreateElicitationRequest, acp_responder, cx| {
+                        let (responder, task) =
+                            crate::agent_harness_backend::forward_answer(acp_responder);
+                        cx.spawn(task)?;
                         let cancel = request.message == "Cancel this question";
                         let mut session = AgentSession::default();
                         session.handle_event(AgentEvent::ElicitationRequest { request, responder });

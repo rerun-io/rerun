@@ -6,8 +6,8 @@
 mod ui;
 
 pub use re_agent::{
-    AgentCommand, AgentConnection, AgentEntry, AgentEvent, AgentProfile, AgentProfileId,
-    AgentSession, AgentSettings, AuthPrompt, LaunchConfig, LogLine, McpServerConfig,
+    AgentCommand, AgentEntry, AgentEvent, AgentHarnessConfig, AgentProfile, AgentProfileId,
+    AgentSession, AgentSettings, AuthPrompt, LineDirection, LogLine, McpServerConfig,
     McpStdioServer, PendingElicitation, PendingPermission, Phase, Prompt, PromptImage,
     SessionContext, ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnOutcome,
     TurnReport, acp, find_executable, message_text, truncate_bytes,

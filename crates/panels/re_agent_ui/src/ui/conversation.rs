@@ -80,7 +80,7 @@ impl Conversation {
         agents: &[AgentEntry],
     ) {
         let context = self.context.as_ref().unwrap_or(context);
-        match settings.launch_config(agents, context) {
+        match settings.agent_harness_config(agents, context) {
             Ok(config) => {
                 self.profile_id.clone_from(&settings.profile_id);
                 let ctx = ctx.clone();

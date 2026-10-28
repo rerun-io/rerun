@@ -104,7 +104,7 @@ impl ViewerAgentPanel {
             match self
                 .panel
                 .as_ref()
-                .map(|panel| panel.launch_config(&SessionContext::default()))
+                .map(|panel| panel.agent_harness_config(&SessionContext::default()))
             {
                 Some(Ok(config)) => Some(config),
                 Some(Err(err)) => {
@@ -222,7 +222,7 @@ impl ViewerAgentPanel {
             .as_ref()
             .filter(|panel| panel.feedback_requested())
         {
-            let config = panel.launch_config(&SessionContext::default()).ok();
+            let config = panel.agent_harness_config(&SessionContext::default()).ok();
             self.feedback.open(panel.session(), config);
         }
         self.feedback.ui(ui.ctx());
@@ -377,7 +377,7 @@ impl ViewerAgentPanel {
                 // event it prepares would be dropped anyway.
                 let share_redacted_prompts = share_redacted_prompts && re_analytics::is_enabled();
                 let config = if share_redacted_prompts && !turns.is_empty() {
-                    panel.launch_config(&SessionContext::default()).ok()
+                    panel.agent_harness_config(&SessionContext::default()).ok()
                 } else {
                     None
                 };
