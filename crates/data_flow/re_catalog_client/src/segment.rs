@@ -422,6 +422,28 @@ impl CatalogClient {
         Ok(segment_ids)
     }
 
+    /// The union of the schemas of `layer` in every segment that has it registered.
+    ///
+    /// A layer that no segment has registered is not found.
+    /// The order of the fields is unspecified.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_layer_schema(
+        &self,
+        dataset_id: EntryId,
+        layer: LayerName,
+    ) -> ApiResult<ArrowSchema> {
+        self.client()
+            .await?
+            .get_layer_schema(dataset_id, &layer)
+            .await?
+            .ok_or_else(|| {
+                ApiError::not_found(
+                    self.origin(),
+                    format!("layer '{layer}' not found in dataset {dataset_id}"),
+                )
+            })
+    }
+
     /// Unregister exactly one segment/layer pair without deleting its source objects.
     ///
     /// Missing segments or layers are a no-op. Returns the request trace ID and task IDs;

@@ -32,9 +32,10 @@ use re_protos::cloud::v1alpha1::{
     GetAssetsForSegmentResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
     GetDatasetSchemaRequest, GetRrdManifestResponse, GetSchemasRequest,
     GetSegmentPropertiesRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
-    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RrdManifestKey, ScanDatasetManifestRequest, ScanSegmentTableRequest,
-    SegmentIdFilter, SegmentIdList, VersionRequest, WriteTableRequest, segment_id_filter,
+    LayerNameFilter, LayerNameList, QueryTasksOnCompletionResponse, QueryTasksResponse,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey, ScanDatasetManifestRequest,
+    ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList, VersionRequest, WriteTableRequest,
+    layer_name_filter, segment_id_filter,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SchemaId, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -1172,18 +1173,25 @@ where
 
     /// Scan a dataset's manifest, keeping only the given columns.
     ///
-    /// `segment_ids` is only a hint to the server; callers must filter the rows locally.
+    /// `segment_ids` and `layer_names` are only hints to the server; callers must filter the rows
+    /// locally.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn scan_dataset_manifest(
         &mut self,
         entry_id: EntryId,
         columns: impl IntoIterator<Item = impl Into<String>>,
         segment_ids: Option<&BTreeSet<SegmentId>>,
+        layer_names: Option<&BTreeSet<LayerName>>,
     ) -> ApiResult<DatasetManifest> {
         let mut request = ScanDatasetManifestRequest::with_columns(columns);
         request.segment_id_filter = segment_ids.map(|segment_ids| SegmentIdFilter {
             strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
                 segment_ids: segment_ids.iter().cloned().map(Into::into).collect(),
+            })),
+        });
+        request.layer_name_filter = layer_names.map(|layer_names| LayerNameFilter {
+            strategy: Some(layer_name_filter::Strategy::ScanOnly(LayerNameList {
+                layer_names: layer_names.iter().map(ToString::to_string).collect(),
             })),
         });
         let client = self.inner().clone();
