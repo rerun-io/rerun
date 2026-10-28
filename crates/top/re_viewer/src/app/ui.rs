@@ -66,7 +66,7 @@ impl AppCore {
                 );
 
                 #[cfg(agent_panel)]
-                self.agent_panel_ui(ui);
+                self.agent_panel_ui(ui, active_store_context);
 
                 self.dev_panel_ui(
                     ui,
@@ -232,7 +232,11 @@ impl AppCore {
 
     /// The rightmost panel: a chat with a coding agent that drives this viewer.
     #[cfg(agent_panel)]
-    fn agent_panel_ui(&mut self, ui: &mut egui::Ui) {
+    fn agent_panel_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
+    ) {
         if !self.app_options().experimental.agent_panel {
             return;
         }
@@ -243,6 +247,9 @@ impl AppCore {
             .internal_origin()
             .map(|origin| origin.as_url());
         let cache_dir = self.app_options().cache_directory.clone();
+        let recording = active_store_context
+            .map(|context| context.recording)
+            .filter(|recording| !recording.store_id().is_empty_recording());
 
         let Self {
             agent_panel,
@@ -258,6 +265,7 @@ impl AppCore {
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
+            recording,
         );
     }
 
