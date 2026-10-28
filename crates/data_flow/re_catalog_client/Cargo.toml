@@ -22,6 +22,7 @@ all-features = true
 default = []
 
 [dependencies]
+re_arrow_util.workspace = true
 re_async.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true

@@ -314,13 +314,13 @@ impl CatalogClient {
     /// Scan an asset dataset's manifest, one [`Asset`] per asset, sorted by asset id.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn scan_asset_dataset(&self, asset_dataset: EntryId) -> ApiResult<Vec<Asset>> {
-        let batches = self
+        let manifest = self
             .client()
             .await?
-            .scan_dataset_manifest(asset_dataset, ASSET_COLUMNS)
+            .scan_dataset_manifest(asset_dataset, ASSET_COLUMNS, None)
             .await?;
 
-        assets_from_manifest(self.origin(), &batches)
+        assets_from_manifest(self.origin(), &manifest.batches)
     }
 
     /// Register an existing `.rrd` that the server can reach as an asset of `dataset_id`, and wait

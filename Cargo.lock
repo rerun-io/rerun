@@ -9309,6 +9309,7 @@ dependencies = [
  "futures",
  "itertools 0.15.0",
  "jiff",
+ "re_arrow_util",
  "re_async",
  "re_chunk",
  "re_chunk_index",

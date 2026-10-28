@@ -30,18 +30,20 @@ use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
     FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentRequest,
     GetAssetsForSegmentResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentPropertiesRequest,
-    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryTasksOnCompletionResponse,
-    QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey,
-    ScanSegmentTableRequest, VersionRequest, WriteTableRequest,
+    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSchemasRequest,
+    GetSegmentPropertiesRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
+    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
+    ReadTableEntryRequest, RrdManifestKey, ScanDatasetManifestRequest, ScanSegmentTableRequest,
+    SegmentIdFilter, SegmentIdList, VersionRequest, WriteTableRequest, segment_id_filter,
 };
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SchemaId, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::missing_field;
 use re_types_core::LayerName;
 use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -56,6 +58,7 @@ use crate::{
 };
 
 mod segment_properties;
+mod segments_schema;
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -328,6 +331,31 @@ pub struct DatasetSchema {
     ///
     /// `None` if the server does not report revisions, or if the dataset has no promoted revision
     /// yet (which the server reports as zero).
+    pub revision: Option<NonZeroU64>,
+}
+
+/// Rows of a dataset's manifest, as returned by `/ScanDatasetManifest`.
+#[derive(Debug)]
+pub struct DatasetManifest {
+    /// One row per (layer, segment), spread over as many batches as the server sends.
+    ///
+    /// See `ScanDatasetManifestDataframe` for the columns.
+    pub batches: Vec<RecordBatch>,
+
+    /// The dataset revision the rows describe, with the same caveats as [`DatasetSchema::revision`].
+    pub revision: Option<NonZeroU64>,
+}
+
+/// Layer schemas looked up by ID, as returned by `/GetSchemas`.
+#[derive(Debug)]
+pub struct LayerSchemas {
+    /// Only IDs the dataset holds are present.
+    pub schemas: BTreeMap<SchemaId, ArrowSchema>,
+
+    /// The dataset revision the lookup ran against, with the same caveats as
+    /// [`DatasetSchema::revision`].
+    ///
+    /// `None` if the lookup took several calls and they did not all see the same revision.
     pub revision: Option<NonZeroU64>,
 }
 
@@ -1144,15 +1172,20 @@ where
 
     /// Scan a dataset's manifest, keeping only the given columns.
     ///
-    /// One row per (layer, segment), spread over as many batches as the server sends; see
-    /// `ScanDatasetManifestDataframe` for the columns.
+    /// `segment_ids` is only a hint to the server; callers must filter the rows locally.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn scan_dataset_manifest(
         &mut self,
         entry_id: EntryId,
         columns: impl IntoIterator<Item = impl Into<String>>,
-    ) -> ApiResult<Vec<RecordBatch>> {
-        let request = re_protos::cloud::v1alpha1::ScanDatasetManifestRequest::with_columns(columns);
+        segment_ids: Option<&BTreeSet<SegmentId>>,
+    ) -> ApiResult<DatasetManifest> {
+        let mut request = ScanDatasetManifestRequest::with_columns(columns);
+        request.segment_id_filter = segment_ids.map(|segment_ids| SegmentIdFilter {
+            strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: segment_ids.iter().cloned().map(Into::into).collect(),
+            })),
+        });
         let client = self.inner().clone();
         let response = crate::rpc_retry::retry(|| {
             let mut client = client.clone();
@@ -1182,9 +1215,15 @@ where
         let trace_id = stream.trace_id();
 
         let mut batches = Vec::new();
+        let mut revision = None;
 
         while let Some(response) = stream.next().await {
-            let batch: RecordBatch = response?
+            let response = response?;
+            if let Some(meta) = &response.meta {
+                revision = NonZeroU64::new(meta.dataset_revision);
+            }
+
+            let batch: RecordBatch = response
                 .data()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
@@ -1207,7 +1246,109 @@ where
             batches.push(batch);
         }
 
-        Ok(batches)
+        Ok(DatasetManifest { batches, revision })
+    }
+
+    /// Look up the schemas of a dataset's layers by ID, as found in its manifest.
+    ///
+    /// IDs the dataset does not hold are absent from the result.
+    /// Any number of IDs may be requested: they are split across as many `/GetSchemas` calls as
+    /// [`cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS`] requires.
+    /// Servers without `/GetSchemas` fail with [`ApiErrorKind::Unimplemented`].
+    #[tracing::instrument(level = "info", skip_all, fields(num_requested = schema_ids.len()))]
+    pub async fn get_schemas(
+        &mut self,
+        entry_id: EntryId,
+        schema_ids: &BTreeSet<SchemaId>,
+    ) -> ApiResult<LayerSchemas> {
+        let schema_ids: Vec<SchemaId> = schema_ids.iter().copied().collect();
+
+        let mut schemas = BTreeMap::new();
+        let mut revisions = Vec::new();
+        for chunk in schema_ids.chunks(cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS) {
+            let layer_schemas = self
+                .get_schemas_single_request(entry_id, chunk.iter().copied().collect())
+                .await?;
+            schemas.extend(layer_schemas.schemas);
+            revisions.push(layer_schemas.revision);
+        }
+
+        let revision = revisions.iter().all_equal_value().ok().copied().flatten();
+
+        Ok(LayerSchemas { schemas, revision })
+    }
+
+    /// One `/GetSchemas` call, for at most [`cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS`] IDs.
+    async fn get_schemas_single_request(
+        &mut self,
+        entry_id: EntryId,
+        schema_ids: BTreeSet<SchemaId>,
+    ) -> ApiResult<LayerSchemas> {
+        let request = GetSchemasRequest::from(cloud_ext::GetSchemasRequest {
+            schema_ids: schema_ids.clone(),
+        });
+        let client = self.inner().clone();
+        let origin = &self.origin;
+
+        // Retry only the open: admission control rejects the call before the stream exists.
+        let response = crate::with_retry_resource_exhausted("/GetSchemas", || {
+            let client = client.clone();
+            let request = request.clone();
+            async move {
+                crate::rpc_retry::retry(|| {
+                    let mut client = client.clone();
+                    let request = request.clone();
+                    async move {
+                        crate::rpc_retry::open_stream(
+                            client
+                                .get_schemas(tonic::Request::new(request).with_entry_id(entry_id))
+                                .await?,
+                        )
+                        .await
+                    }
+                })
+                .await
+                .map_err(|err| ApiError::tonic(origin, err, "/GetSchemas"))
+            }
+        })
+        .await?;
+
+        let mut stream =
+            ApiResponseStream::from_tonic_response(self.origin.clone(), response, "/GetSchemas")
+                .inspect_first(|response| {
+                    crate::dataset_revisions().observe_meta(response.meta.as_ref());
+                });
+        let trace_id = stream.trace_id();
+
+        let mut schemas = BTreeMap::new();
+        let mut revision = None;
+
+        while let Some(response) = stream.next().await {
+            let response = response?;
+            if let Some(meta) = &response.meta {
+                revision = NonZeroU64::new(meta.dataset_revision);
+            }
+
+            let cloud_ext::GetSchemasResponse { schema_id, schema } =
+                response.try_into().map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "failed decoding item from /GetSchemas stream",
+                    )
+                })?;
+            if !schema_ids.contains(&schema_id) {
+                return Err(ApiError::deserialization(
+                    &self.origin,
+                    trace_id,
+                    format!("/GetSchemas returned schema {schema_id}, which was not requested"),
+                ));
+            }
+            schemas.insert(schema_id, schema);
+        }
+
+        Ok(LayerSchemas { schemas, revision })
     }
 
     /// Get the asset dataset that applies to a dataset, and the asset segments within it.
@@ -1216,15 +1357,16 @@ where
     /// asset's mode and segment list. When it is `None`, the per-asset defaults apply with no
     /// segment-specific opt-out/opt-in overrides.
     ///
-    /// Returns `None` if the dataset has no asset dataset, which means no assets were ever
-    /// registered for it.
+    /// Returns `None` if the dataset cannot have assets: it has no asset dataset (no assets were
+    /// ever registered for it), it is not a recording dataset, or the server has no
+    /// `/GetAssetsForSegment`.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_assets_for_segment(
         &mut self,
         dataset_id: EntryId,
         segment_id: Option<SegmentId>,
     ) -> ApiResult<Option<(EntryId, Vec<SegmentId>)>> {
-        let response = self
+        let response = match self
             .inner()
             .get_assets_for_segment(
                 tonic::Request::new(GetAssetsForSegmentRequest {
@@ -1233,7 +1375,19 @@ where
                 .with_entry_id(dataset_id),
             )
             .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetAssetsForSegment"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetAssetsForSegment"))
+        {
+            Ok(response) => response,
+            Err(err)
+                if matches!(
+                    err.kind,
+                    ApiErrorKind::InvalidArguments | ApiErrorKind::Unimplemented
+                ) =>
+            {
+                return Ok(None);
+            }
+            Err(err) => return Err(err),
+        };
 
         let stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),

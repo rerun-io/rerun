@@ -293,7 +293,8 @@ impl Dataset {
         }
 
         // Recompute schema
-        let schema = Schema::try_merge(self.iter_sources().map(|source| source.schema()))?;
+        let schema =
+            re_arrow_util::merge_schema_fields(self.iter_sources().map(|source| source.schema()))?;
         let schema_arc = Arc::new(schema.clone());
         *cache = Some((updated_at, Arc::clone(&schema_arc)));
 

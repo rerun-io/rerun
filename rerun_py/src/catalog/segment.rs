@@ -85,7 +85,8 @@ impl PySegmentInternal {
         )
     }
 
-    fn schema(&self, py: Python<'_>) -> PyResult<PySchemaInternal> {
+    #[pyo3(signature = (*, include_assets = false))]
+    fn schema(&self, py: Python<'_>, include_assets: bool) -> PyResult<PySchemaInternal> {
         let _span = read_trace_context_from_python(py, "Segment.schema").entered();
         let Self {
             dataset,
@@ -101,7 +102,7 @@ impl PySegmentInternal {
         let schema = wait_for_future(py, async {
             connection
                 .inner()
-                .get_segment_schema(dataset_id, segment_id.clone())
+                .get_segment_schema(dataset_id, segment_id.clone(), include_assets)
                 .await
                 .map_err(to_py_err)
         })?;
