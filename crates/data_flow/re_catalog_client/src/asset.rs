@@ -317,7 +317,7 @@ impl CatalogClient {
         let manifest = self
             .client()
             .await?
-            .scan_dataset_manifest(asset_dataset, ASSET_COLUMNS, None)
+            .scan_dataset_manifest(asset_dataset, ASSET_COLUMNS, None, None)
             .await?;
 
         assets_from_manifest(self.origin(), &manifest.batches)

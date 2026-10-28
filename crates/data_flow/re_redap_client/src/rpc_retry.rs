@@ -336,7 +336,7 @@ mod tests {
                 None,
             );
             let Err(err) = client
-                .scan_dataset_manifest(EntryId::new(), COLUMNS, None)
+                .scan_dataset_manifest(EntryId::new(), COLUMNS, None, None)
                 .await
             else {
                 panic!("expected an early stream error");
@@ -448,7 +448,7 @@ mod tests {
                 crate::grpc::boxed_redap_grpc_client(service),
                 None,
             );
-            let result = client.scan_dataset_manifest(id, COLUMNS, None).await;
+            let result = client.scan_dataset_manifest(id, COLUMNS, None, None).await;
             if committed {
                 let err = result.expect_err(
                     "an error after data arrived must surface instead of restarting the stream",

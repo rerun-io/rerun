@@ -23,6 +23,7 @@ async fn get_schemas_splits_ids_over_the_request_limit() {
             dataset_id,
             [ScanDatasetManifestDataframe::COLUMN_RERUN_SCHEMA_SHA256_NAME],
             None,
+            None,
         )
         .await
         .expect("Failed to scan the dataset manifest");

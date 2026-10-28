@@ -7,6 +7,7 @@ use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{LayerRegistrationStatus, ScanDatasetManifestDataframe};
 use re_protos::common::v1alpha1::ext::{SchemaId, SegmentId};
 use re_protos::external::prost::bytes::Bytes;
+use re_types_core::LayerName;
 use tonic::codegen::{Body, StdError};
 
 use super::RedapClient;
@@ -34,12 +35,49 @@ where
             return Ok(None);
         }
 
+        self.get_registered_layers_schema(
+            dataset_id,
+            LayerRows {
+                segment_ids: Some(segment_ids),
+                layer_name: None,
+            },
+        )
+        .await
+    }
+
+    /// The union of the schemas of `layer` in every segment that has it registered, or `None` if
+    /// none has.
+    ///
+    /// The order of the fields is unspecified.
+    ///
+    /// Servers without `/GetSchemas` fail with [`ApiErrorKind::Unimplemented`].
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_layer_schema(
+        &mut self,
+        dataset_id: EntryId,
+        layer: &LayerName,
+    ) -> ApiResult<Option<ArrowSchema>> {
+        self.get_registered_layers_schema(
+            dataset_id,
+            LayerRows {
+                segment_ids: None,
+                layer_name: Some(layer),
+            },
+        )
+        .await
+    }
+
+    async fn get_registered_layers_schema(
+        &mut self,
+        dataset_id: EntryId,
+        rows: LayerRows<'_>,
+    ) -> ApiResult<Option<ArrowSchema>> {
         // A layer unregistered between the manifest scan and the lookup can take its schema with
         // it. A missing schema is a server bug if both calls saw the same revision, and a possible
         // race otherwise, which gets one retry.
         let mut retried = false;
         loop {
-            let manifest = self.layer_schema_ids(dataset_id, segment_ids).await?;
+            let manifest = self.layer_schema_ids(dataset_id, rows).await?;
             if manifest.segment_ids.is_empty() {
                 return Ok(None);
             }
@@ -47,6 +85,16 @@ where
             let schemas = match self.get_schemas(dataset_id, &manifest.schema_ids).await {
                 Ok(schemas) => schemas,
                 Err(err) if err.kind == ApiErrorKind::Unimplemented => {
+                    // An RRD manifest merges all of a segment's layers.
+                    if let Some(layer_name) = rows.layer_name {
+                        return Err(ApiError::unimplemented(
+                            &self.origin,
+                            format!(
+                                "the schema of layer '{layer_name}' requires a server running \
+                                 Rerun 0.41 or Rerun Hub 0.20 or later"
+                            ),
+                        ));
+                    }
                     return self
                         .get_segments_schema_from_rrd_manifests(dataset_id, &manifest.segment_ids)
                         .await
@@ -92,19 +140,23 @@ where
         }
     }
 
-    /// The schema IDs of the registered layers of `segment_ids`, from the dataset manifest.
+    /// The schema IDs of the registered layers selected by `rows`, from the dataset manifest.
     async fn layer_schema_ids(
         &mut self,
         dataset_id: EntryId,
-        segment_ids: &BTreeSet<SegmentId>,
+        rows: LayerRows<'_>,
     ) -> ApiResult<LayerSchemaIds> {
         let columns = [
             ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME_NAME,
             ScanDatasetManifestDataframe::COLUMN_RERUN_SCHEMA_SHA256_NAME,
             ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS_NAME,
         ];
+        let layer_names = rows
+            .layer_name
+            .map(|layer_name| BTreeSet::from([layer_name.clone()]));
         let manifest = self
-            .scan_dataset_manifest(dataset_id, columns, Some(segment_ids))
+            .scan_dataset_manifest(dataset_id, columns, rows.segment_ids, layer_names.as_ref())
             .await?;
 
         let decode_failed = |err| {
@@ -120,6 +172,9 @@ where
             let ids = ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID
                 .extract(batch)
                 .map_err(decode_failed)?;
+            let layer_names = ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+                .extract(batch)
+                .map_err(decode_failed)?;
             let schema_sha256s = ScanDatasetManifestDataframe::COLUMN_RERUN_SCHEMA_SHA256
                 .extract(batch)
                 .map_err(decode_failed)?;
@@ -127,14 +182,15 @@ where
                 .extract(batch)
                 .map_err(decode_failed)?;
 
-            let rows = itertools::izip!(
+            let batch_rows = itertools::izip!(
                 ids.iter_owned(),
+                layer_names.iter_owned(),
                 schema_sha256s.iter_owned(),
                 statuses.iter_owned()
             );
-            for (segment_id, schema_sha256, status) in rows {
-                // Servers may ignore the filter hint, and errored registrations stay listed.
-                if !segment_ids.contains(&segment_id)
+            for (segment_id, layer_name, schema_sha256, status) in batch_rows {
+                // Servers may ignore the filter hints, and errored registrations stay listed.
+                if !rows.contains(&segment_id, &layer_name)
                     || status != LayerRegistrationStatus::Done.as_str()
                 {
                     continue;
@@ -189,11 +245,26 @@ where
     }
 }
 
-/// What the dataset manifest says about the registered layers of some segments.
+/// Which rows of the dataset manifest to take the schemas of; `None` keeps every value.
+#[derive(Clone, Copy)]
+struct LayerRows<'a> {
+    segment_ids: Option<&'a BTreeSet<SegmentId>>,
+    layer_name: Option<&'a LayerName>,
+}
+
+impl LayerRows<'_> {
+    fn contains(&self, segment_id: &SegmentId, layer_name: &LayerName) -> bool {
+        self.segment_ids
+            .is_none_or(|segment_ids| segment_ids.contains(segment_id))
+            && self.layer_name.is_none_or(|layer| layer == layer_name)
+    }
+}
+
+/// What the dataset manifest says about some registered layers.
 struct LayerSchemaIds {
     schema_ids: BTreeSet<SchemaId>,
 
-    /// The requested segments that have at least one registered layer.
+    /// The segments that have at least one of the selected layers registered.
     segment_ids: BTreeSet<SegmentId>,
 
     revision: Option<NonZeroU64>,

@@ -68,14 +68,12 @@ pub fn top_panel(
             let title_bar_response = ui.interact(
                 ui.max_rect(),
                 ui.make_persistent_id("background"),
-                egui::Sense::click(),
+                egui::Sense::click_and_drag(),
             );
             if title_bar_response.double_clicked() {
                 let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
                 ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-            } else if title_bar_response.is_pointer_button_down_on() {
-                // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
-                // see https://github.com/emilk/egui/pull/4656
+            } else if title_bar_response.drag_started_by(egui::PointerButton::Primary) {
                 ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
         }
