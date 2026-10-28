@@ -429,7 +429,7 @@ prost-types = "0.14.4"
 protoc-bin-vendored = "=3.2.0"
 puffin = "0.20.0"
 puffin_http = "0.17.0"
-pulldown-cmark = { version = "0.13", default-features = false }
+pulldown-cmark = { version = "0.13.5", default-features = false }
 pyo3 = "0.28.3"
 pyo3-build-config = "0.28.3"
 quote = "1.0"
