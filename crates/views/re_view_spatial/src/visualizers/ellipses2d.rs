@@ -14,19 +14,25 @@ use super::utilities::{LabeledBatch, process_labels};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::SpatialViewState;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::ui::ScreenSpace2D;
 use crate::visualizers::UiLabelTarget;
 
 // ---
 
-/// Number of segments used to tessellate each ellipse outline when its size on screen is unknown.
+/// Number of segments used to tessellate each ellipse outline when it doesn't need more:
+/// it is small or off screen, or its size on screen is unknown.
 ///
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
 const ELLIPSE_SEGMENTS: usize = 64;
 
-const MIN_ELLIPSE_SEGMENTS: usize = 16;
+/// Caps the vertex count of a single ellipse at extreme zoom, at 8× [`ELLIPSE_SEGMENTS`].
+///
+/// This is reached at a radius of about 13 000 pixels, far beyond the size of a screen.
 const MAX_ELLIPSE_SEGMENTS: usize = 512;
 
 /// Largest allowed distance between the tessellated outline and the true ellipse.
+///
+/// A quarter of a pixel is below what anti-aliased lines make visible.
 const MAX_OUTLINE_ERROR_IN_PIXELS: f32 = 0.25;
 
 /// Number of segments for an ellipse whose largest radius covers `radius_in_pixels` on screen.
@@ -35,7 +41,7 @@ const MAX_OUTLINE_ERROR_IN_PIXELS: f32 = 0.25;
 /// of the true curve, rounded up to a multiple of 4 so the outline stays symmetric.
 fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
     if radius_in_pixels.is_nan() || radius_in_pixels <= 0.0 {
-        return MIN_ELLIPSE_SEGMENTS;
+        return ELLIPSE_SEGMENTS;
     }
 
     // A chord spanning `TAU / n` deviates from the arc by at most
@@ -48,8 +54,52 @@ fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
             .asin();
     let segments = (std::f32::consts::PI / half_angle).ceil();
     (segments as usize)
-        .clamp(MIN_ELLIPSE_SEGMENTS, MAX_ELLIPSE_SEGMENTS)
+        .clamp(ELLIPSE_SEGMENTS, MAX_ELLIPSE_SEGMENTS)
         .next_multiple_of(4)
+}
+
+/// Number of segments for one ellipse, given what last frame's 2D view showed.
+///
+/// Ellipses outside the visible part of the scene keep [`ELLIPSE_SEGMENTS`], so zooming in
+/// doesn't multiply the vertex count of everything off screen.
+fn ellipse_segment_count_in_view(
+    screen_space: Option<&ScreenSpace2D>,
+    world_from_obj: &glam::Affine3A,
+    center: glam::Vec2,
+    half_size: glam::Vec2,
+) -> usize {
+    let Some(ScreenSpace2D {
+        pixels_per_scene_unit,
+        visible_scene_rect,
+    }) = screen_space
+    else {
+        return ELLIPSE_SEGMENTS;
+    };
+
+    // Same margin as the scene bounding box, so a thin outline just outside the view still counts.
+    let padded_half_size = half_size.abs() * BOUNDING_BOX_PADDING_FACTOR;
+    let bbox_in_scene = egui::Rect::from_points(
+        &[
+            center - padded_half_size,
+            center + glam::vec2(padded_half_size.x, -padded_half_size.y),
+            center + padded_half_size,
+            center + glam::vec2(-padded_half_size.x, padded_half_size.y),
+        ]
+        .map(|corner| {
+            let corner = world_from_obj.transform_point3(corner.extend(0.0));
+            egui::pos2(corner.x, corner.y)
+        }),
+    );
+    if !visible_scene_rect.intersects(bbox_in_scene) {
+        return ELLIPSE_SEGMENTS;
+    }
+
+    let obj_scale = world_from_obj
+        .matrix3
+        .x_axis
+        .length()
+        .max(world_from_obj.matrix3.y_axis.length());
+    ellipse_segment_count(half_size.abs().max_element() * obj_scale * pixels_per_scene_unit)
 }
 
 /// Extra padding added around the tight ellipse extents when computing the scene bounding box,
@@ -67,7 +117,7 @@ impl Ellipses2DVisualizer {
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-        pixels_per_scene_unit: Option<f32>,
+        screen_space: Option<&ScreenSpace2D>,
         data: impl Iterator<Item = Ellipses2DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -96,14 +146,6 @@ impl Ellipses2DVisualizer {
                 .transform_info
                 .single_transform_required_for_entity(entity_path, Ellipses2D::name())
                 .as_affine3a();
-            let pixels_per_obj_unit = pixels_per_scene_unit.map(|pixels_per_scene_unit| {
-                let obj_scale = world_from_obj
-                    .matrix3
-                    .x_axis
-                    .length()
-                    .max(world_from_obj.matrix3.y_axis.length());
-                obj_scale * pixels_per_scene_unit
-            });
 
             let mut line_batch = line_builder
                 .batch("ellipses2d")
@@ -129,10 +171,12 @@ impl Ellipses2DVisualizer {
                 obj_space_bounding_box.extend((bbox_center - padded_half).extend(0.0));
                 obj_space_bounding_box.extend((bbox_center + padded_half).extend(0.0));
 
-                let segments =
-                    pixels_per_obj_unit.map_or(ELLIPSE_SEGMENTS, |pixels_per_obj_unit| {
-                        ellipse_segment_count(rx.abs().max(ry.abs()) * pixels_per_obj_unit)
-                    });
+                let segments = ellipse_segment_count_in_view(
+                    screen_space,
+                    &world_from_obj,
+                    bbox_center,
+                    glam::vec2(rx, ry),
+                );
                 let delta = std::f32::consts::TAU / segments as f32;
                 #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
                 let points = (0..segments + 1).map(|n| {
@@ -233,11 +277,11 @@ impl VisualizerSystem for Ellipses2DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let pixels_per_scene_unit = ctx
+        let screen_space = ctx
             .view_state
             .downcast_ref::<SpatialViewState>()
             .ok()
-            .and_then(|state| state.pixels_per_scene_unit_2d);
+            .and_then(|state| state.screen_space_2d);
 
         let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
@@ -312,7 +356,7 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     ctx,
                     &mut line_builder,
                     spatial_ctx,
-                    pixels_per_scene_unit,
+                    screen_space.as_ref(),
                     results_iter,
                 );
 
@@ -335,12 +379,94 @@ mod tests {
         f64::from(radius_in_pixels) * (1.0 - (std::f64::consts::PI / segments as f64).cos())
     }
 
+    /// A 2D view showing scene coordinates -50..50 on both axes, at 10 pixels per unit.
+    fn screen_space() -> ScreenSpace2D {
+        ScreenSpace2D {
+            pixels_per_scene_unit: 10.0,
+            visible_scene_rect: egui::Rect::from_min_max(
+                egui::pos2(-50.0, -50.0),
+                egui::pos2(50.0, 50.0),
+            ),
+        }
+    }
+
     #[test]
-    fn small_ellipses_use_minimum_segment_count() {
-        assert_eq!(ellipse_segment_count(0.0), 16);
-        assert_eq!(ellipse_segment_count(0.5), 16);
-        assert_eq!(ellipse_segment_count(-3.0), 16);
-        assert_eq!(ellipse_segment_count(f32::NAN), 16);
+    fn small_ellipses_never_use_fewer_segments_than_before() {
+        assert_eq!(ellipse_segment_count(0.0), 64);
+        assert_eq!(ellipse_segment_count(0.5), 64);
+        assert_eq!(ellipse_segment_count(100.0), 64);
+        assert_eq!(ellipse_segment_count(-3.0), 64);
+        assert_eq!(ellipse_segment_count(f32::NAN), 64);
+    }
+
+    #[test]
+    fn without_a_2d_view_use_the_default_count() {
+        let segments = ellipse_segment_count_in_view(
+            None,
+            &glam::Affine3A::IDENTITY,
+            glam::Vec2::ZERO,
+            glam::vec2(100.0, 100.0),
+        );
+        assert_eq!(segments, ELLIPSE_SEGMENTS);
+    }
+
+    #[test]
+    fn visible_ellipses_follow_screen_size() {
+        let screen_space = screen_space();
+        let segments = |world_from_obj: glam::Affine3A, center: glam::Vec2| {
+            ellipse_segment_count_in_view(
+                Some(&screen_space),
+                &world_from_obj,
+                center,
+                glam::vec2(100.0, 50.0),
+            )
+        };
+
+        // Radius 100 at 10 px per unit is 1000 px.
+        assert_eq!(segments(glam::Affine3A::IDENTITY, glam::Vec2::ZERO), 144);
+        // Only partly visible, straddling the right edge.
+        assert_eq!(
+            segments(glam::Affine3A::IDENTITY, glam::vec2(140.0, 0.0)),
+            144
+        );
+        // The entity transform scales the radius to 2000 px.
+        assert_eq!(
+            segments(
+                glam::Affine3A::from_scale(glam::vec3(2.0, 2.0, 1.0)),
+                glam::Vec2::ZERO
+            ),
+            200
+        );
+    }
+
+    #[test]
+    fn off_screen_ellipses_use_the_default_count() {
+        let screen_space = screen_space();
+        let segments = |world_from_obj: glam::Affine3A, center: glam::Vec2| {
+            ellipse_segment_count_in_view(
+                Some(&screen_space),
+                &world_from_obj,
+                center,
+                glam::vec2(100.0, 50.0),
+            )
+        };
+
+        assert_eq!(
+            segments(glam::Affine3A::IDENTITY, glam::vec2(1000.0, 0.0)),
+            ELLIPSE_SEGMENTS
+        );
+        assert_eq!(
+            segments(glam::Affine3A::IDENTITY, glam::vec2(0.0, -1000.0)),
+            ELLIPSE_SEGMENTS
+        );
+        // Centered in object space, but moved off screen by the entity transform.
+        assert_eq!(
+            segments(
+                glam::Affine3A::from_translation(glam::vec3(1000.0, 0.0, 0.0)),
+                glam::Vec2::ZERO
+            ),
+            ELLIPSE_SEGMENTS
+        );
     }
 
     #[test]
@@ -351,8 +477,8 @@ mod tests {
 
     #[test]
     fn segment_count_follows_screen_size() {
-        // π / acos(1 - 0.25 / 100) ≈ 44.4, rounded up to a multiple of 4.
-        assert_eq!(ellipse_segment_count(100.0), 48);
+        // π / acos(1 - 0.25 / 1000) ≈ 140.5, rounded up to a multiple of 4.
+        assert_eq!(ellipse_segment_count(1000.0), 144);
     }
 
     #[test]
