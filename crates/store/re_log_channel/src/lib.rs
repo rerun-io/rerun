@@ -137,19 +137,6 @@ impl LogSource {
         }
     }
 
-    /// Is this where recordings logged by an SDK arrive?
-    pub fn is_sdk_stream(&self) -> bool {
-        match self {
-            Self::Sdk | Self::MessageProxy { .. } => true,
-            Self::File { .. }
-            | Self::HttpStream { .. }
-            | Self::RrdWebEvent
-            | Self::JsChannel { .. }
-            | Self::Stdin
-            | Self::RedapGrpcStream { .. } => false,
-        }
-    }
-
     pub fn is_network(&self) -> bool {
         match self {
             Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,

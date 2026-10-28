@@ -46,7 +46,7 @@ pub struct AppOptions {
     )]
     pub enable_welcome_screen: bool,
 
-    /// Switch to a recording as soon as it starts streaming in from an SDK?
+    /// Switch to a recording as soon as it starts streaming in from an SDK.
     ///
     /// If false, such a recording is only added to the recordings panel while another
     /// recording is being shown.
