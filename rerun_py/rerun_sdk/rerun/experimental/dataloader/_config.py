@@ -14,6 +14,73 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class TimeAlignedSampling:
+    """
+    Sample aligned fields on a shared integer frame grid using exact-index reads.
+
+    Data requirements:
+
+    1. **An integer timeline.** The selected timeline uses integer frame numbers.
+    2. **Dense, zero-based indices.** Every selected field (scalars, state, actions,
+       video) has one value or frame at each index `0, 1, 2, …`, with no gaps or null values.
+    3. **Known video keyframes.** With `keyframe_interval=K`, frames `0, K, 2K, …`
+       are valid decode starting points; for `K=10`, frame 27 decodes from frame 20.
+    4. **A shared frame-number reference.** The same index refers to the same
+       physical instant across fields. The declared keyframe schedule applies
+       to every selected video and recording.
+    5. **Integer field-window offsets.** Windows use whole-frame steps, such as `(-2, -1, 0)`.
+
+    Decode starts are calculated from the declared interval without an upfront keyframe scan.
+    Keyframe markers are fetched with the video data and checked at each expected decode start.
+    A missing or false marker leaves that sample's video field unresolved; live iterable datasets
+    apply their incomplete-sample skip policy, while map-dataset consumers receive `None`.
+
+    Parameters
+    ----------
+    keyframe_interval
+        Positive number of frames between video keyframes.
+
+    Examples
+    --------
+    ```python
+    dataset = RerunIterableDataset(
+        source,
+        index="frame_nr",
+        fields=fields,
+        timeline_sampling=TimeAlignedSampling(keyframe_interval=10),
+    )
+    ```
+
+    """
+
+    keyframe_interval: int
+
+    def __post_init__(self) -> None:
+        if isinstance(self.keyframe_interval, bool) or not isinstance(self.keyframe_interval, int):
+            raise ValueError("TimeAlignedSampling.keyframe_interval must be a positive integer")
+        if self.keyframe_interval <= 0:
+            raise ValueError("TimeAlignedSampling.keyframe_interval must be a positive integer")
+
+
+@dataclass(frozen=True)
+class FixedRateSampling:
+    """
+    Sample a timestamp or duration timeline on a fixed grid at `rate_hz` samples per second.
+
+    Grid spacing is rounded to nanoseconds. Samples use the latest available
+    values at or before each requested time; field windows remain in seconds.
+    """
+
+    rate_hz: float
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.rate_hz) or not 0 < self.rate_hz <= 1e9:
+            raise ValueError(
+                "FixedRateSampling.rate_hz must be finite, positive, and at most 1e9 (nanosecond resolution)"
+            )
+
+
+@dataclass(frozen=True)
 class Field:
     """
     Declarative spec for one field of a training sample.

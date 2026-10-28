@@ -1,6 +1,6 @@
 use re_agent_ui::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
 use re_agent_ui::{
-    AgentSession, LaunchConfig, ToolCallState, Transcript, TranscriptItem, message_text,
+    AgentHarnessConfig, AgentSession, ToolCallState, Transcript, TranscriptItem, message_text,
     truncate_bytes,
 };
 #[cfg(feature = "analytics")]
@@ -37,7 +37,7 @@ pub struct FeedbackModal {
     trajectory: Option<Trajectory>,
     text: String,
 
-    config: Option<LaunchConfig>,
+    config: Option<AgentHarnessConfig>,
 
     #[cfg(feature = "analytics")]
     redactor: crate::agent_analytics::Redactor,
@@ -46,7 +46,7 @@ pub struct FeedbackModal {
 impl FeedbackModal {
     /// Takes a copy of the conversation as it is at this call.
     /// Later turns are not part of the feedback.
-    pub fn open(&mut self, session: &AgentSession, config: Option<LaunchConfig>) {
+    pub fn open(&mut self, session: &AgentSession, config: Option<AgentHarnessConfig>) {
         self.trajectory = Some(Trajectory::new(session.transcript(), session.agent_name()));
         self.config = config;
         self.text.clear();
@@ -99,7 +99,7 @@ impl FeedbackModal {
         not(feature = "analytics"),
         expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)
     )]
-    fn send(&mut self, trajectory: Trajectory, config: Option<LaunchConfig>) {
+    fn send(&mut self, trajectory: Trajectory, config: Option<AgentHarnessConfig>) {
         cfg_select! {
             feature = "analytics" => {
                 let Some(config) = config else {

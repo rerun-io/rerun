@@ -7,7 +7,7 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use re_agent_ui::acp::LineDirection;
+use re_agent_ui::LineDirection;
 use re_agent_ui::{AgentSession, SessionContext};
 
 /// Linear issue the agents keep their own wish list in.

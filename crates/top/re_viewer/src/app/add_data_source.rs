@@ -18,7 +18,7 @@ use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 
-use crate::catalog_handle::CatalogHandle;
+use crate::catalog_handle::InternalCatalog;
 use crate::registrations_in_flight::InFlightRegistration;
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
@@ -452,7 +452,7 @@ impl AppCore {
         let assets = assets.to_vec();
         #[cfg(not(target_arch = "wasm32"))]
         let registered_files = self.connections.registered_files.clone();
-        let catalog = CatalogHandle::internal(&connection_registry);
+        let catalog = InternalCatalog::new(&connection_registry);
         // Count it before spawning, so that whatever checks for it right after cannot miss it.
         let registration_guard = catalog.as_ref().map(|catalog| {
             self.connections
@@ -564,9 +564,9 @@ fn record_catalog_load_analytics(
 ///
 /// Staging lets the internal catalog read the original file in place on native, or a copy in
 /// OPFS in the browser. Only the OPFS path reuses an existing copy based on its fingerprint
-/// and size; remote uploads follow the server's existing-key policy.
+/// and size.
 async fn register_file(
-    catalog: &CatalogHandle,
+    catalog: &InternalCatalog,
     path: &Path,
     #[cfg(target_arch = "wasm32")] file: web_sys::File,
 ) -> anyhow::Result<RegistrationTarget> {
@@ -604,15 +604,10 @@ async fn register_file(
         .file_name()
         .unwrap_or(path.as_os_str())
         .to_string_lossy();
-    let layer = catalog
-        .is_internal()
-        .then(|| {
-            LayerName::try_new(format!(
-                "{filename}-{}",
-                re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
-            ))
-        })
-        .transpose()?;
+    let layer = LayerName::try_new(format!(
+        "{filename}-{}",
+        re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
+    ))?;
 
     let file_url = catalog
         .stage_file(
@@ -659,7 +654,7 @@ async fn register_rrd_file_url(
     catalog_client: &CatalogClient,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
-    layer: Option<LayerName>,
+    layer: LayerName,
 ) -> anyhow::Result<RegistrationTarget> {
     let application_id = rrd_metadata
         .store_ids
@@ -681,9 +676,7 @@ async fn register_rrd_file_url(
     // The hidden blueprint dataset keeps its base layer; only recordings get per-file layers.
     let blueprint_data_source = DataSource::new_rrd_url(file_url.clone(), None);
     let mut data_source = DataSource::new_rrd_url(file_url, None);
-    if let Some(layer) = layer {
-        data_source.layer = layer;
-    }
+    data_source.layer = layer;
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
 
     // If there are recordings in the file, register them with the dataset.

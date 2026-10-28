@@ -5,7 +5,7 @@
 //! - **Agent ↔ this server: MCP.** MCP is JSON-RPC over stdio: the agent's harness spawns this
 //!   process and exchanges JSON messages on stdin/stdout. The agent sees only JSON — the tool
 //!   list with JSON Schemas for their arguments, the `INSTRUCTIONS` prose, and JSON or text
-//!   results. It never sees gRPC, but it does read the `.proto` documentation: `proto_tools`
+//!   results. It never sees gRPC, but it does read the `.proto` documentation: `re_viewer_control_tools`
 //!   derives each viewer-control tool's schema and description from the descriptor set, which
 //!   carries the comments.
 //! - **This server ↔ the viewer: gRPC.** Every tool call becomes one call on the viewer's
@@ -43,7 +43,6 @@ use rmcp::{
     service::{RequestContext, RoleServer},
     tool, tool_router, transport,
 };
-mod proto_tools;
 
 use serde::Deserialize;
 use tonic::transport::Channel;
@@ -55,8 +54,15 @@ use re_protos::viewer_control::v1alpha1::{
     EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
+use re_viewer_control_tools::ScreenshotDelivery;
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
+const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
+
+/// Appended to the description of every viewer-control tool, since they share one connection.
+const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
 
 /// Deadline for one viewer-control operation.
 ///
@@ -311,7 +317,23 @@ impl ViewerMcpServer {
     /// disconnected.
     fn all_tools(&self) -> Vec<Tool> {
         let mut tools = self.tool_router.list_all();
-        tools.extend(proto_tools::tools());
+        tools.extend(
+            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
+                .into_iter()
+                .map(
+                    |re_viewer_control_tools::ToolDefinition {
+                         name,
+                         description,
+                         input_schema,
+                     }| {
+                        Tool::new(
+                            name,
+                            format!("{description}{REQUIRES_CONNECT}"),
+                            Arc::new(input_schema),
+                        )
+                    },
+                ),
+        );
         for tool in &mut tools {
             tool.name = std::borrow::Cow::Owned(format!("{RERUN_PREFIX}{}", tool.name));
         }
@@ -331,14 +353,14 @@ impl ViewerMcpServer {
         name: &str,
         arguments: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> ToolResult<CallToolResult> {
-        let request = proto_tools::build_request(name, arguments)?;
+        let request = re_viewer_control_tools::build_request(name, arguments, SCREENSHOT_DELIVERY)?;
         let mut client = self.client()?;
         let response = client
             .viewer_control(request)
             .await
             .map_err(|err| format!("{name} failed: {err}"))?
             .into_inner();
-        let json = proto_tools::response_json(name, &response)
+        let json = re_viewer_control_tools::response_json(name, &response)
             .map_err(|err| format!("{name} failed: {err}"))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(
             json.to_string(),
@@ -506,7 +528,9 @@ impl ServerHandler for ViewerMcpServer {
         let ours = name
             .strip_prefix(RERUN_PREFIX)
             .map(ToOwned::to_owned)
-            .filter(|name| self.tool_router.has_route(name) || proto_tools::is_operation(name));
+            .filter(|name| {
+                self.tool_router.has_route(name) || re_viewer_control_tools::is_operation(name)
+            });
 
         let mut result = if let Some(ours) = ours {
             if self.tool_router.has_route(&ours) {

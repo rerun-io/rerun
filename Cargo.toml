@@ -117,6 +117,7 @@ re_time_ruler = { path = "crates/viewer_support/re_time_ruler", version = "=0.41
 re_ui = { path = "crates/viewer_support/re_ui", version = "=0.41.0-alpha.1", default-features = false }
 re_view = { path = "crates/viewer_support/re_view", version = "=0.41.0-alpha.1", default-features = false }
 re_viewer_context = { path = "crates/viewer_support/re_viewer_context", version = "=0.41.0-alpha.1", default-features = false }
+re_viewer_control_tools = { path = "crates/viewer_support/re_viewer_control_tools", version = "=0.41.0-alpha.1", default-features = false }
 re_viewport_blueprint = { path = "crates/viewer_support/re_viewport_blueprint", version = "=0.41.0-alpha.1", default-features = false }
 
 # crates/store_app:
@@ -252,6 +253,7 @@ walkers = { package = "re_walkers", version = "0.63.1", default-features = false
 
 # All of our direct external dependencies should be found here:
 agent-client-protocol = "2.1"
+agent-client-protocol-schema = "1.9.1" # The version `agent-client-protocol` pins, so that both name the same types.
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"

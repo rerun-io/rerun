@@ -3,7 +3,7 @@
 
 mod redactor;
 
-use re_agent_ui::{LaunchConfig, TurnReport};
+use re_agent_ui::{AgentHarnessConfig, TurnReport};
 
 use self::redactor::RedactionError;
 pub use self::redactor::Redactor;
@@ -58,7 +58,7 @@ impl TurnAnalytics {
     /// replaced by the reason when the redactor could not produce any. `config` is the panel's
     /// own launch config, or `None` when the panel could not produce one, which is itself one
     /// of those reasons.
-    pub fn queue(&mut self, report: TurnReport, config: Option<LaunchConfig>) {
+    pub fn queue(&mut self, report: TurnReport, config: Option<AgentHarnessConfig>) {
         let Some(config) = config else {
             record(&report, RedactableText::failed("no redactor"));
             return;

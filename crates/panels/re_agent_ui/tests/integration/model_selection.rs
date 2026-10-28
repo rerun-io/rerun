@@ -69,7 +69,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     assert_eq!(
         harness
             .state()
-            .launch_config(&SessionContext::default())
+            .agent_harness_config(&SessionContext::default())
             .expect("launch config")
             .preferred_model,
         Some(SessionConfigValueId::new("opus-fast"))
@@ -101,7 +101,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     assert_eq!(
         harness
             .state()
-            .launch_config(&SessionContext::default())
+            .agent_harness_config(&SessionContext::default())
             .expect("new conversation launch config")
             .preferred_model,
         Some(SessionConfigValueId::new("gpt-5.6-high"))
@@ -118,7 +118,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     let mut reopened = AgentPanel::with_agents(restored, agents);
     assert_eq!(
         reopened
-            .launch_config(&SessionContext::default())
+            .agent_harness_config(&SessionContext::default())
             .expect("reopened launch config")
             .preferred_model,
         Some(SessionConfigValueId::new("gpt-5.6-high"))
@@ -126,7 +126,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     reopened.settings_mut().profile_id = AgentProfileId::new("claude");
     assert_eq!(
         reopened
-            .launch_config(&SessionContext::default())
+            .agent_harness_config(&SessionContext::default())
             .expect("Claude launch config")
             .preferred_model,
         Some(SessionConfigValueId::new("opus-thinking"))
