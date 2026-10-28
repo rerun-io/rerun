@@ -335,7 +335,10 @@ mod tests {
                 crate::grpc::boxed_redap_grpc_client(service),
                 None,
             );
-            let Err(err) = client.scan_dataset_manifest(EntryId::new(), COLUMNS).await else {
+            let Err(err) = client
+                .scan_dataset_manifest(EntryId::new(), COLUMNS, None, None)
+                .await
+            else {
                 panic!("expected an early stream error");
             };
             assert_eq!(err.kind, crate::ApiErrorKind::NotFound);
@@ -445,14 +448,14 @@ mod tests {
                 crate::grpc::boxed_redap_grpc_client(service),
                 None,
             );
-            let result = client.scan_dataset_manifest(id, COLUMNS).await;
+            let result = client.scan_dataset_manifest(id, COLUMNS, None, None).await;
             if committed {
                 let err = result.expect_err(
                     "an error after data arrived must surface instead of restarting the stream",
                 );
                 assert_eq!(err.kind, crate::ApiErrorKind::FailedPrecondition, "{err}");
             } else {
-                let batches = result.expect("the scan succeeds");
+                let batches = result.expect("the scan succeeds").batches;
                 let [batch] = batches.as_slice() else {
                     panic!("expected the one data item, got {} batches", batches.len());
                 };

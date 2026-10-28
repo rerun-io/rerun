@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     ContentBlock, SessionUpdate, ToolCallContent, ToolCallStatus,
 };
 

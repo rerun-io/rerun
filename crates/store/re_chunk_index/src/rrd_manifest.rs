@@ -426,18 +426,15 @@ impl RrdManifest {
             .first()
             .ok_or_else(|| ChunkIndexError::Merge("No manifests to concatenate".to_owned()))?;
 
-        // Merge the fields into the first schema instead of using `Schema::try_merge`: that one
-        // also merges the schema metadata and errors when two schemas disagree on a key. The
-        // metadata comes from the first manifest.
-        let mut builder = arrow::datatypes::SchemaBuilder::from(&first.sorbet_schema);
-        for manifest in &manifests[1..] {
-            for field in manifest.sorbet_schema.fields() {
-                builder.try_merge(field).map_err(|err| {
-                    ChunkIndexError::Merge(format!("Failed to merge manifest schemas: {err}"))
-                })?;
-            }
+        let mut merger = re_arrow_util::SchemaFieldsMerger::default();
+        for manifest in manifests {
+            merger = merger.try_merge(&manifest.sorbet_schema).map_err(|err| {
+                ChunkIndexError::Merge(format!("Failed to merge manifest schemas: {err}"))
+            })?;
         }
-        let sorbet_schema = builder.finish();
+        let sorbet_schema = merger
+            .finish()
+            .with_metadata(first.sorbet_schema.metadata.clone());
 
         let sorbet_schema_sha256 = RawRrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
             .map_err(ChunkIndexError::ArrowSerialization)?;

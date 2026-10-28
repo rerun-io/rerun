@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use agent_client_protocol::schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
 
-use crate::connection::{LaunchConfig, McpStdioServer};
+use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, AgentProfileId, find_executable};
 
 /// Fast models to select, best first, unless the user has picked a model for the profile.
@@ -118,11 +118,11 @@ pub struct AgentSettings {
 
 impl AgentSettings {
     /// Resolves these settings into something that can be spawned.
-    pub fn launch_config(
+    pub fn agent_harness_config(
         &self,
         agents: &[AgentEntry],
         context: &SessionContext,
-    ) -> Result<LaunchConfig, String> {
+    ) -> Result<AgentHarnessConfig, String> {
         let (command, args, env) = if self.profile_id == AgentProfileId::CUSTOM {
             let mut parts = shell_words::split(&self.custom_command_line)
                 .map_err(|err| format!("Invalid agent command line: {err}"))?;
@@ -182,7 +182,7 @@ impl AgentSettings {
             });
         }
 
-        Ok(LaunchConfig {
+        Ok(AgentHarnessConfig {
             command,
             args,
             env,
@@ -273,7 +273,7 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
 mod tests {
     use std::path::PathBuf;
 
-    use agent_client_protocol::schema::v1::SessionConfigValueId;
+    use agent_client_protocol_schema::v1::SessionConfigValueId;
 
     use super::{
         AgentProfileId, AgentSettings, SessionContext, parse_env_vars, take_leading_env_vars,
@@ -293,7 +293,7 @@ mod tests {
                 ..Default::default()
             };
             settings
-                .launch_config(&[], &context)
+                .agent_harness_config(&[], &context)
                 .map(|config| config.cwd)
         };
 

@@ -1,7 +1,7 @@
 //! Feedback that an agent sends about Rerun, through the `submit_feedback` viewer control
 //! operation, which `re_viewer_mcp` offers agents as an MCP tool.
 
-use re_agent_ui::LaunchConfig;
+use re_agent_ui::AgentHarnessConfig;
 use re_analytics::event::{
     Feedback, FeedbackAbout, FeedbackAuthor, FeedbackCategory, FeedbackSeverity,
     ProductFeedbackContent,
@@ -25,7 +25,11 @@ pub struct ProductFeedback {
 }
 
 impl ProductFeedback {
-    pub fn submit(&mut self, request: SubmitFeedbackRequest, redact_with: Option<LaunchConfig>) {
+    pub fn submit(
+        &mut self,
+        request: SubmitFeedbackRequest,
+        redact_with: Option<AgentHarnessConfig>,
+    ) {
         let (unsent, text) = Unsent::from_request(request);
 
         let Some(config) = redact_with else {

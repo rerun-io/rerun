@@ -10,8 +10,8 @@ use super::conversation_list::{ConversationRow, ConversationStatus, conversation
 use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
+use re_agent::{AgentHarnessConfig, AgentSettings, SessionContext};
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
-use re_agent::{AgentSettings, LaunchConfig, SessionContext};
 
 /// How wide a host should make the panel.
 ///
@@ -172,6 +172,9 @@ pub struct AgentPanel {
     view: View,
     auto_approve: bool,
 
+    /// Offered in an empty conversation. Set by the host.
+    example_prompts: Vec<String>,
+
     /// Set by the host. Shows "Self-improve" in the options menu.
     self_improve_available: bool,
 
@@ -215,6 +218,7 @@ impl AgentPanel {
             user_opened_draft_setup: false,
             view: View::List,
             auto_approve: false,
+            example_prompts: Vec::new(),
             self_improve_available: false,
             self_improve_requested: false,
             feedback_enabled: false,
@@ -226,6 +230,12 @@ impl AgentPanel {
     /// What every new session is told about the host. Applies to sessions started from now on.
     pub fn set_context(&mut self, context: SessionContext) {
         self.context = context;
+    }
+
+    /// The prompts an empty conversation offers to start from, e.g. depending on what the host
+    /// is showing.
+    pub fn set_example_prompts(&mut self, prompts: Vec<String>) {
+        self.example_prompts = prompts;
     }
 
     /// Shows "Self-improve" in the options menu, marked as a developer feature. Off by default.
@@ -344,8 +354,11 @@ impl AgentPanel {
 
     /// What the current settings would launch, for hosts that run side sessions with the same
     /// agent.
-    pub fn launch_config(&self, context: &SessionContext) -> Result<LaunchConfig, String> {
-        self.settings.launch_config(&self.agents, context)
+    pub fn agent_harness_config(
+        &self,
+        context: &SessionContext,
+    ) -> Result<AgentHarnessConfig, String> {
+        self.settings.agent_harness_config(&self.agents, context)
     }
 
     /// Drains the reports of the turns finished in every conversation since the last call.
@@ -494,6 +507,7 @@ impl AgentPanel {
             draft,
             user_opened_draft_setup,
             view,
+            example_prompts,
             ..
         } = self;
         match *view {
@@ -503,7 +517,7 @@ impl AgentPanel {
                     .find(|conversation| conversation.id == id)
                 {
                     ui.push_id(id, |ui| {
-                        conversation.ui(ui, settings, context, agents, None);
+                        conversation.ui(ui, settings, context, agents, example_prompts, None);
                     });
                     // Its setup screen hides the transcript.
                     if conversation.screen == Screen::Chat {
@@ -514,7 +528,9 @@ impl AgentPanel {
                 }
             }
             View::List if conversations.is_empty() => {
-                ui.push_id(draft.id, |ui| draft.ui(ui, settings, context, agents, None));
+                ui.push_id(draft.id, |ui| {
+                    draft.ui(ui, settings, context, agents, example_prompts, None);
+                });
             }
             View::List => {
                 let rows = conversation_rows(conversations, settings, agents);
@@ -536,7 +552,14 @@ impl AgentPanel {
                     egui::CentralPanel::default().show(ui, |ui| home_ui(ui));
                 } else {
                     ui.push_id(draft.id, |ui| {
-                        draft.ui(ui, settings, context, agents, Some(&mut home_ui));
+                        draft.ui(
+                            ui,
+                            settings,
+                            context,
+                            agents,
+                            example_prompts,
+                            Some(&mut home_ui),
+                        );
                     });
                 }
                 action = action.or(list_action);

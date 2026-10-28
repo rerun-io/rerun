@@ -1,6 +1,7 @@
 //! Talk to a coding agent over the Agent Client Protocol (ACP).
 //!
-//! The agent runs as a subprocess spawned by [`AgentConnection`].
+//! The agent runs behind a backend, e.g. one that runs an agent harness (an agent program such as
+//! Claude Code or Codex) as a subprocess.
 //! [`AgentSession`] turns its events into a [`Transcript`] and tracks what the agent is waiting
 //! for. Nothing here depends on a UI toolkit: a host polls the session and renders it however it
 //! likes, or drives it headless.
@@ -18,22 +19,31 @@
 //! [`McpServerConfig`]s are handed over as additional MCP servers when the session opens.
 //! Neither removes anything the agent would otherwise have.
 //! Unless the user has picked a model, the session also switches to a fast one if the agent
-//! offers it (see [`LaunchConfig::model_preferences`]).
+//! offers it (see [`AgentHarnessConfig::model_preferences`]).
 
-mod connection;
+#[cfg(agent_harness_backend)]
+mod agent_harness_backend;
+mod agent_harness_config;
+mod backend;
 mod elicitation;
 mod error;
 mod profiles;
+mod responder;
 mod session;
 mod settings;
 mod transcript;
 mod turn;
 
-pub use agent_client_protocol as acp;
+/// The Agent Client Protocol vocabulary that every backend speaks.
+pub mod acp {
+    pub use agent_client_protocol_schema as schema;
+}
 
-pub use connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+pub use agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
 pub use profiles::{AgentEntry, AgentProfile, AgentProfileId, find_executable};
+pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
     PromptImage,

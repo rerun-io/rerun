@@ -80,7 +80,7 @@ impl Conversation {
         agents: &[AgentEntry],
     ) {
         let context = self.context.as_ref().unwrap_or(context);
-        match settings.launch_config(agents, context) {
+        match settings.agent_harness_config(agents, context) {
             Ok(config) => {
                 self.profile_id.clone_from(&settings.profile_id);
                 let ctx = ctx.clone();
@@ -185,6 +185,7 @@ impl Conversation {
         settings: &mut AgentSettings,
         context: &SessionContext,
         agents: &mut [AgentEntry],
+        example_prompts: &[String],
         home_ui: Option<&mut dyn FnMut(&mut egui::Ui)>,
     ) {
         if self.screen == Screen::Chat && *self.session.phase() == Phase::Idle {
@@ -210,6 +211,7 @@ impl Conversation {
             &mut preferred_model,
             settings.show_thoughts,
             login_hint,
+            example_prompts,
             home_ui,
         );
         if let Some(model) = preferred_model {

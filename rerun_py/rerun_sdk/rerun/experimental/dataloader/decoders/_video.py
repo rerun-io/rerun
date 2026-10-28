@@ -178,15 +178,17 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
     """
     Compressed video random access via keyframe-aware fetching.
 
-    Anchors the decode window at the prior keyframe by consulting the sibling
+    The loader finds the preceding keyframe in the required sibling
     `is_keyframe` component on the `VideoStream` archetype, derived from
     `Field.path` (e.g. `/cam:VideoStream:sample` pairs with
-    `/cam:VideoStream:is_keyframe`). The marker is populated by the user or by
-    `LazyChunkStream.collect(optimize=…)`, and lives in dedicated chunks
-    separate from the video sample, so the lookup is cheap.
+    `/cam:VideoStream:is_keyframe`). Populate these markers when logging or
+    with `LazyChunkStream.collect(optimize=…)`.
 
-    The sibling `is_keyframe` column is required. This makes every decode range
-    deterministic rather than relying on an estimated GOP length.
+    When all selected fields share a dense, zero-based integer frame grid and
+    videos have regularly spaced keyframes, pass
+    `timeline_sampling=TimeAlignedSampling(keyframe_interval=…)` to the dataset to calculate
+    decode starts using the declared interval. See
+    [`TimeAlignedSampling`][rerun.experimental.dataloader.TimeAlignedSampling] for the data requirements.
 
     Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
     the format is detected automatically per sample.
@@ -202,12 +204,10 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
     `output_format="yuv420p"`, it returns a [`Yuv420Frame`][rerun.experimental.dataloader.Yuv420Frame] whose Y and UV
     planes remain in YUV form until collation and device transfer.
 
-    Returns `None` when a request's resolved window contains no decodable
-    keyframe: the target precedes the entity's first frame in a multi-modal
-    segment, or the first row was user-logged `is_keyframe=true` on a sample
-    that isn't actually a codec keyframe (run optimize with
-    `fix_keyframe=True` to re-derive markers from the encoded samples).
-    Consumers must filter these out in their collate function before stacking.
+    Returns `None` when the resolved window does not start with a decodable
+    keyframe, for example before the video's first frame or with incorrect
+    keyframe markers. Map-dataset consumers must handle `None` before
+    stacking.
     """
 
     @overload
@@ -407,8 +407,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         )
         if not samples:
             return
-        # Explicit keyframe metadata guarantees that the range starts at a
-        # bootstrap packet. Validate the marker when this codec has a detector.
+        # Validate the starting packet when this codec has a keyframe detector.
         if self._is_keyframe(samples[0]) is False:
             return
 

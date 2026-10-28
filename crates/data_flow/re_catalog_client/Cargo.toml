@@ -28,6 +28,7 @@ crypto-aws-lc-rs = ["re_crypto/crypto-aws-lc-rs", "re_redap_client/crypto-aws-lc
 default = ["crypto-ring"]
 
 [dependencies]
+re_arrow_util.workspace = true
 re_async.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true

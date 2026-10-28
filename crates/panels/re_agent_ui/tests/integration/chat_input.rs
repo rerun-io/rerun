@@ -75,6 +75,7 @@ pub fn ready_panel() -> AgentPanel {
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, agents);
+    panel.set_example_prompts(crate::example_prompts());
     panel.show_chat();
 
     let session = panel.session_mut();
@@ -323,9 +324,7 @@ fn clicking_an_example_prompt_sends_it() {
     input.type_text("draft");
     harness.run_steps(2);
 
-    harness
-        .get_by_label("Set up a blueprint for this recording")
-        .click();
+    harness.get_by_label("Example prompt one").click();
     harness.run_steps(3);
 
     let session = harness.state().session();
@@ -335,7 +334,7 @@ fn clicking_an_example_prompt_sends_it() {
             .iter()
             .map(|prompt| prompt.text.as_str())
             .collect::<Vec<_>>(),
-        ["Set up a blueprint for this recording"]
+        ["Example prompt one"]
     );
     let input = harness.get_by_role(Role::MultilineTextInput);
     assert_eq!(input.accesskit_node().value(), Some("draft".into()));

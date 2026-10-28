@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent_ui::acp::LineDirection;
+use re_agent_ui::LineDirection;
 use re_agent_ui::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
     PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
@@ -63,7 +63,9 @@ fn panel() -> AgentPanel {
             }
         })
         .collect();
-    AgentPanel::with_agents(settings(), agents)
+    let mut panel = AgentPanel::with_agents(settings(), agents);
+    panel.set_example_prompts(crate::example_prompts());
+    panel
 }
 
 fn text(text: &str) -> ContentBlock {

@@ -1,244 +1,102 @@
-use std::path::PathBuf;
-use std::sync::Arc;
+//! The backend for an agent harness: a subprocess that speaks ACP over stdio.
 
-use agent_client_protocol::schema::ProtocolVersion;
-use agent_client_protocol::schema::v1::{
-    AgentCapabilities, AuthMethod, AuthMethodId, AuthenticateRequest, CancelNotification,
-    ClientCapabilities, ConfigOptionUpdate, ContentBlock, CreateElicitationRequest,
-    CreateElicitationResponse, CurrentModeUpdate, ElicitationCapabilities,
-    ElicitationFormCapabilities, Implementation, InitializeRequest, McpServer, McpServerStdio,
-    NewSessionRequest, PromptRequest, RequestPermissionRequest, RequestPermissionResponse,
-    SessionConfigId, SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory,
-    SessionConfigSelectOption, SessionConfigSelectOptions, SessionConfigValueId, SessionId,
-    SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
-    SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
-};
 use agent_client_protocol::{
-    AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, LineDirection, Responder,
+    AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, JsonRpcResponse,
+};
+use agent_client_protocol_schema::ProtocolVersion;
+use agent_client_protocol_schema::v1::{
+    AuthMethod, AuthenticateRequest, CancelNotification, ClientCapabilities, ConfigOptionUpdate,
+    CreateElicitationRequest, CurrentModeUpdate, ElicitationCapabilities,
+    ElicitationFormCapabilities, Implementation, InitializeRequest, McpServer, McpServerStdio,
+    NewSessionRequest, PromptRequest, RequestPermissionRequest, SessionConfigId, SessionConfigKind,
+    SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
+    SessionConfigSelectOptions, SessionConfigValueId, SessionId, SessionModeId, SessionModeState,
+    SessionNotification, SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest,
+    StopReason,
 };
 use futures::StreamExt as _;
-use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+use futures::channel::mpsc::UnboundedReceiver;
 
-/// An MCP server the agent spawns itself over stdio.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct McpStdioServer {
-    /// The name the agent sees the server under.
-    pub name: String,
+use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
+use crate::{LineDirection, Responder};
 
-    /// Executable the agent runs to start the server.
-    pub command: PathBuf,
-
-    /// Arguments passed to [`Self::command`].
-    pub args: Vec<String>,
-}
-
-/// Everything needed to spawn an agent and open a session with it.
-#[derive(Clone, Debug)]
-pub struct LaunchConfig {
-    /// The agent executable, or an adapter such as `npx`.
-    pub command: PathBuf,
-
-    /// Arguments passed to [`Self::command`].
-    pub args: Vec<String>,
-
-    /// Environment variables set for the agent process, on top of the inherited ones.
-    pub env: Vec<(String, String)>,
-
-    /// Working directory of the agent process and of the session.
-    pub cwd: PathBuf,
-
-    /// Extra directories the agent may read and edit, e.g. one holding skills.
-    /// Read-only tool calls that stay inside them are allowed without asking the user.
-    pub additional_directories: Vec<PathBuf>,
-
-    /// Directories the preamble asks the agent to stay out of, only checked after the fact.
-    /// See [`crate::SessionContext::off_limits_directories`].
-    pub off_limits_directories: Vec<PathBuf>,
-
-    /// MCP servers the agent spawns and connects to when the session opens.
-    pub mcp_servers: Vec<McpStdioServer>,
-
-    /// Forward every JSON-RPC line as [`AgentEvent::Log`]. Stderr is always forwarded.
-    pub log_protocol: bool,
-
-    /// Markdown sent together with the first prompt of the session.
-    pub preamble: Option<String>,
-
-    /// Models to prefer for this session, best first.
-    ///
-    /// Each entry is matched, case-insensitively, as a substring of the id and the name of every
-    /// model the agent offers over ACP; the first hit is selected before the session takes its
-    /// first prompt. An agent that offers no model selector, or nothing that matches, keeps
-    /// whatever model it would use on its own.
-    pub model_preferences: Vec<String>,
-
-    /// Exact saved model ID, restored only if the agent still offers it.
-    pub preferred_model: Option<SessionConfigValueId>,
-
-    /// Exact session mode id to restore when the agent offers it.
-    pub preferred_mode: Option<SessionModeId>,
-}
-
-/// Something the UI wants the agent to do.
-#[derive(Debug)]
-pub enum AgentCommand {
-    Prompt(Vec<ContentBlock>),
-    Cancel,
-    SetMode(SessionModeId),
-    SetConfigOption {
-        config_id: SessionConfigId,
-        value: SessionConfigValueId,
-    },
-    Authenticate(AuthMethodId),
-    Shutdown,
-}
-
-/// Something that happened on the agent side, delivered to the UI thread.
-#[derive(Debug)]
-pub enum AgentEvent {
-    /// Human-readable progress while connecting.
-    Status(String),
-
-    Initialized {
-        agent_info: Option<Implementation>,
-        capabilities: Box<AgentCapabilities>,
-        auth_methods: Vec<AuthMethod>,
-    },
-
-    SessionStarted {
-        session_id: SessionId,
-        modes: Option<SessionModeState>,
-
-        /// The agent's initial configuration, e.g. which model it is about to use.
-        config_options: Vec<SessionConfigOption>,
-    },
-
-    /// The agent requires authentication to start a session or continue a prompt.
-    AuthRequired {
-        methods: Vec<AuthMethod>,
-        message: String,
-    },
-
-    Update(SessionUpdate),
-
-    /// The agent wants the user to pick one of the options.
-    /// The UI must answer via the responder, or the agent stays blocked.
-    PermissionRequest {
-        request: RequestPermissionRequest,
-        responder: Responder<RequestPermissionResponse>,
-    },
-
-    /// Structured user input requested by the agent, separate from tool approval.
-    ///
-    /// The responder must receive an answer, decline, or cancellation to unblock the agent.
-    ElicitationRequest {
-        request: CreateElicitationRequest,
-        responder: Responder<CreateElicitationResponse>,
-    },
-
-    TurnFinished(Result<StopReason, String>),
-
-    Log {
-        direction: LineDirection,
-        line: String,
-    },
-
-    Error(String),
-
-    /// The agent process is gone. No more events will follow.
-    Disconnected,
-}
-
-/// Queues events for the UI thread and wakes it.
-#[derive(Clone)]
-struct EventSender {
-    tx: std::sync::mpsc::Sender<AgentEvent>,
-    wake: Arc<dyn Fn() + Send + Sync>,
-}
-
-impl EventSender {
-    /// Reports the completed turn.
-    ///
-    /// If authentication failed, requests login _after_ reporting turn completion so that
-    /// completion cannot overwrite the waiting-for-login state.
-    fn finish_turn(&self, result: Result<StopReason, Error>, auth_methods: Vec<AuthMethod>) {
-        let auth_error = result
-            .as_ref()
-            .err()
-            .filter(|err| err.code == Error::auth_required().code)
-            .map(describe_error);
-        // Finish the turn before entering the login state: finishing resets the session phase.
-        self.send(AgentEvent::TurnFinished(
-            result.map_err(|err| describe_error(&err)),
-        ));
-        if let Some(message) = auth_error {
-            self.send(AgentEvent::AuthRequired {
-                methods: auth_methods,
-                message,
-            });
-        }
-    }
-
-    fn send(&self, event: AgentEvent) {
-        if self.tx.send(event).is_ok() {
-            (self.wake)();
-        }
-    }
-}
-
-/// A running agent subprocess plus the ACP connection to it.
+/// Spawns an agent subprocess and connects to it over ACP.
 ///
-/// All protocol work happens on a dedicated thread. Dropping this asks the agent to shut down.
-pub struct AgentConnection {
-    command_tx: UnboundedSender<AgentCommand>,
-    event_rx: std::sync::mpsc::Receiver<AgentEvent>,
+/// All protocol work happens on a dedicated thread. `wake` is called after every event so the UI
+/// can repaint.
+pub fn spawn(
+    config: AgentHarnessConfig,
+    wake: impl Fn() + Send + Sync + 'static,
+) -> AgentConnection {
+    let (connection, command_rx, events) = AgentConnection::new(wake);
+    let spawned = std::thread::Builder::new()
+        .name("re_agent_ui-acp".to_owned())
+        .spawn(move || run(config, command_rx, &events));
+    if let Err(err) = spawned {
+        re_log::error!("Failed to spawn agent thread: {err}");
+    }
+    connection
 }
 
-impl AgentConnection {
-    /// Spawns the agent. `wake` is called after every event so the UI can repaint.
-    pub fn spawn(config: LaunchConfig, wake: impl Fn() + Send + Sync + 'static) -> Self {
-        let (command_tx, command_rx) = futures::channel::mpsc::unbounded();
-        // Unbounded on purpose: events are small, the UI drains them every frame, and blocking
-        // the protocol thread would also stall permission responders the agent is waiting on.
-        #[expect(clippy::disallowed_methods)]
-        let (event_tx, event_rx) = std::sync::mpsc::channel();
-        let events = EventSender {
-            tx: event_tx,
-            wake: Arc::new(wake),
-        };
-
-        let spawned = std::thread::Builder::new()
-            .name("re_agent_ui-acp".to_owned())
-            .spawn(move || run(config, command_rx, &events));
-        if let Err(err) = spawned {
-            re_log::error!("Failed to spawn agent thread: {err}");
-        }
-
-        Self {
-            command_tx,
-            event_rx,
-        }
-    }
-
-    pub fn send(&self, command: AgentCommand) {
-        if self.command_tx.unbounded_send(command).is_err() {
-            re_log::debug!("Agent is gone; dropping command");
-        }
-    }
-
-    /// Drains all events that arrived since the last call.
-    pub fn poll_events(&self) -> impl Iterator<Item = AgentEvent> + '_ {
-        self.event_rx.try_iter()
-    }
-}
-
-impl Drop for AgentConnection {
-    fn drop(&mut self) {
-        self.command_tx.unbounded_send(AgentCommand::Shutdown).ok();
+/// Reports the completed turn.
+///
+/// If authentication failed, requests login _after_ reporting turn completion so that
+/// completion cannot overwrite the waiting-for-login state.
+fn finish_turn(
+    events: &EventSender,
+    result: Result<StopReason, Error>,
+    auth_methods: Vec<AuthMethod>,
+) {
+    let auth_error = result
+        .as_ref()
+        .err()
+        .filter(|err| err.code == Error::auth_required().code)
+        .map(describe_error);
+    // Finish the turn before entering the login state: finishing resets the session phase.
+    events.send(AgentEvent::TurnFinished(
+        result.map_err(|err| describe_error(&err)),
+    ));
+    if let Some(message) = auth_error {
+        events.send(AgentEvent::AuthRequired {
+            methods: auth_methods,
+            message,
+        });
     }
 }
 
-fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events: &EventSender) {
+/// Hands out a [`Responder`] whose answer the returned task forwards to the agent.
+///
+/// The task must run on the ACP connection. If the agent cancels the request first, the task
+/// drops the receiver, which [`Responder::is_cancelled`] then reports.
+/// The task never fails, since a failed task shuts the whole connection down.
+pub fn forward_answer<T: JsonRpcResponse + Send + 'static>(
+    acp_responder: agent_client_protocol::Responder<T>,
+) -> (
+    Responder<T>,
+    impl Future<Output = Result<(), Error>> + Send + 'static,
+) {
+    let (responder, answer) = Responder::channel();
+    let task = async move {
+        let cancellation = acp_responder.cancellation();
+        let cancelled = std::pin::pin!(cancellation.cancelled());
+        // An answer that never comes, or comes after cancellation, leaves the request unanswered.
+        if let futures::future::Either::Left((Ok(response), _)) =
+            futures::future::select(answer, cancelled).await
+            && let Err(err) = acp_responder.respond(response)
+        {
+            re_log::debug!("Failed to answer the agent: {}", describe_error(&err));
+        }
+        Ok(())
+    };
+    (responder, task)
+}
+
+fn run(
+    config: AgentHarnessConfig,
+    command_rx: UnboundedReceiver<AgentCommand>,
+    events: &EventSender,
+) {
     let agent_config = AcpAgentConfig::new(config.command.clone())
         .args(config.args.iter().cloned())
         .envs(config.env.iter().cloned());
@@ -246,6 +104,11 @@ fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events
     let log_protocol = config.log_protocol;
     let log_events = events.clone();
     let agent = AcpAgent::new(agent_config).with_debug(move |line, direction| {
+        let direction = match direction {
+            agent_client_protocol::LineDirection::Stdin => LineDirection::Stdin,
+            agent_client_protocol::LineDirection::Stdout => LineDirection::Stdout,
+            agent_client_protocol::LineDirection::Stderr => LineDirection::Stderr,
+        };
         if log_protocol || direction == LineDirection::Stderr {
             log_events.send(AgentEvent::Log {
                 direction,
@@ -271,16 +134,18 @@ fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events
                 agent_client_protocol::on_receive_notification!(),
             )
             .on_receive_request(
-                async move |request: RequestPermissionRequest, responder, _cx| {
+                async move |request: RequestPermissionRequest, acp_responder, cx| {
+                    let (responder, task) = forward_answer(acp_responder);
                     permission_events.send(AgentEvent::PermissionRequest { request, responder });
-                    Ok(())
+                    cx.spawn(task)
                 },
                 agent_client_protocol::on_receive_request!(),
             )
             .on_receive_request(
-                async move |request: CreateElicitationRequest, responder, _cx| {
+                async move |request: CreateElicitationRequest, acp_responder, cx| {
+                    let (responder, task) = forward_answer(acp_responder);
                     elicitation_events.send(AgentEvent::ElicitationRequest { request, responder });
-                    Ok(())
+                    cx.spawn(task)
                 },
                 agent_client_protocol::on_receive_request!(),
             )
@@ -301,7 +166,7 @@ fn run(config: LaunchConfig, command_rx: UnboundedReceiver<AgentCommand>, events
 /// The foreground of the connection: initialize, open a session, then serve UI commands.
 async fn drive(
     cx: ConnectionTo<Agent>,
-    config: LaunchConfig,
+    config: AgentHarnessConfig,
     mut command_rx: UnboundedReceiver<AgentCommand>,
     events: EventSender,
 ) -> Result<(), Error> {
@@ -338,8 +203,11 @@ async fn drive(
                 let auth_methods = init.auth_methods.clone();
                 cx.send_request(PromptRequest::new(session_id.clone(), prompt))
                     .on_receiving_result(move |result| async move {
-                        events
-                            .finish_turn(result.map(|response| response.stop_reason), auth_methods);
+                        finish_turn(
+                            &events,
+                            result.map(|response| response.stop_reason),
+                            auth_methods,
+                        );
                         Ok(())
                     })?;
             }
@@ -425,7 +293,7 @@ async fn drive(
 
 async fn start_session(
     cx: &ConnectionTo<Agent>,
-    config: &LaunchConfig,
+    config: &AgentHarnessConfig,
     events: &EventSender,
     auth_methods: &[AuthMethod],
 ) -> Option<SessionId> {
@@ -627,7 +495,7 @@ fn describe_error(err: &Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use agent_client_protocol::schema::v1::{
+    use agent_client_protocol_schema::v1::{
         SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
     };
 
@@ -637,15 +505,10 @@ mod tests {
     /// while successful turns finish without requesting login.
     #[test]
     fn prompt_auth_failure_finishes_turn_before_requesting_login() {
-        #[expect(clippy::disallowed_methods)]
-        let (tx, rx) = std::sync::mpsc::channel();
-        let events = EventSender {
-            tx,
-            wake: Arc::new(|| {}),
-        };
+        let (events, rx) = EventSender::new(|| {});
 
         // Authentication failure must finish the turn before requesting login.
-        events.finish_turn(Err(Error::auth_required()), Vec::new());
+        finish_turn(&events, Err(Error::auth_required()), Vec::new());
 
         assert!(matches!(
             rx.try_recv().unwrap(),
@@ -658,7 +521,7 @@ mod tests {
         assert!(rx.try_recv().is_err());
 
         // A successful turn must not request login.
-        events.finish_turn(Ok(StopReason::EndTurn), Vec::new());
+        finish_turn(&events, Ok(StopReason::EndTurn), Vec::new());
         assert!(matches!(
             rx.try_recv().unwrap(),
             AgentEvent::TurnFinished(Ok(_))

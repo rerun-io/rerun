@@ -1,6 +1,6 @@
 //! Catalog dataset, segment, and layer operations.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
@@ -184,20 +184,60 @@ impl CatalogClient {
         self.client().await?.get_dataset_schema(dataset_id).await
     }
 
-    /// The union of the schemas of a segment's registered layers, without referenced assets.
+    /// The union of the schemas of a segment's registered layers.
+    ///
+    /// With `include_assets`, the schemas of the assets that apply to the segment are merged in.
+    ///
+    /// The order of the fields is unspecified.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_schema(
         &self,
         dataset_id: EntryId,
         segment_id: SegmentId,
+        include_assets: bool,
     ) -> ApiResult<ArrowSchema> {
-        // TODO(RR-5928): Fetch the segment schema without the full chunk manifest.
-        let manifest = self
-            .client()
+        let mut client = self.client().await?;
+
+        let Some(segment_schema) = client
+            .get_segments_schema(dataset_id, &BTreeSet::from([segment_id.clone()]))
             .await?
-            .get_rrd_manifest(dataset_id, segment_id)
-            .await?;
-        Ok(manifest.sorbet_schema)
+        else {
+            return Err(ApiError::not_found(
+                self.origin(),
+                format!("segment '{segment_id}' not found in dataset {dataset_id}"),
+            ));
+        };
+        if !include_assets {
+            return Ok(segment_schema);
+        }
+
+        let Some((asset_dataset, asset_ids)) = client
+            .get_assets_for_segment(dataset_id, Some(segment_id))
+            .await?
+        else {
+            return Ok(segment_schema);
+        };
+        let asset_ids: BTreeSet<_> = asset_ids.into_iter().collect();
+        if asset_ids.is_empty() {
+            return Ok(segment_schema);
+        }
+
+        let Some(asset_schema) = client
+            .get_segments_schema(asset_dataset, &asset_ids)
+            .await?
+        else {
+            return Ok(segment_schema);
+        };
+
+        re_arrow_util::merge_schema_fields([segment_schema, without_properties(asset_schema)])
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    self.origin(),
+                    None,
+                    err,
+                    "failed merging segment and asset schemas",
+                )
+            })
     }
 
     /// Validate that a segment exists without fetching its layer metadata.
@@ -382,6 +422,28 @@ impl CatalogClient {
         Ok(segment_ids)
     }
 
+    /// The union of the schemas of `layer` in every segment that has it registered.
+    ///
+    /// A layer that no segment has registered is not found.
+    /// The order of the fields is unspecified.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_layer_schema(
+        &self,
+        dataset_id: EntryId,
+        layer: LayerName,
+    ) -> ApiResult<ArrowSchema> {
+        self.client()
+            .await?
+            .get_layer_schema(dataset_id, &layer)
+            .await?
+            .ok_or_else(|| {
+                ApiError::not_found(
+                    self.origin(),
+                    format!("layer '{layer}' not found in dataset {dataset_id}"),
+                )
+            })
+    }
+
     /// Unregister exactly one segment/layer pair without deleting its source objects.
     ///
     /// Missing segments or layers are a no-op. Returns the request trace ID and task IDs;
@@ -398,4 +460,20 @@ impl CatalogClient {
             .unregister_from_dataset(dataset_id, vec![segment_id], vec![layer], false)
             .await
     }
+}
+
+/// `schema` without the columns of property entities.
+fn without_properties(schema: ArrowSchema) -> ArrowSchema {
+    let fields: Vec<_> = schema
+        .fields()
+        .iter()
+        .filter(|field| {
+            let entity_path = re_sorbet::ColumnDescriptor::try_from_arrow_field(None, field)
+                .ok()
+                .and_then(|column| column.entity_path().cloned());
+            !entity_path.is_some_and(|entity_path| entity_path.is_property())
+        })
+        .cloned()
+        .collect();
+    ArrowSchema::new_with_metadata(fields, schema.metadata)
 }
