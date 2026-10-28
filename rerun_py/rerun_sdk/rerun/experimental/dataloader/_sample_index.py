@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -10,6 +9,8 @@ import numpy as np
 import pyarrow as pa
 
 from rerun._tracing import tracing_scope, with_tracing
+
+from ._config import FixedRateSampling, TimeAlignedSampling
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -52,19 +53,6 @@ def _index_value_to_int(value: IndexValue) -> int:
 
 
 @dataclass(frozen=True)
-class FixedRateSampling:
-    """
-    Sample timestamp or duration timelines at a fixed nominal rate.
-
-    Indices are drawn on an algebraic grid
-    `seg.index_start + k * ns_per_sample`. The server's
-    `fill_latest_at` absorbs any drift from real-row positions.
-    """
-
-    rate_hz: float
-
-
-@dataclass(frozen=True)
 class SegmentMetadata:
     """Per-segment metadata for sampling."""
 
@@ -72,6 +60,8 @@ class SegmentMetadata:
     index_start: int
     index_end: int
     num_samples: int
+    index_min: int | None = None
+    """Untrimmed timeline minimum; preceding keyframes may lie before `index_start`."""
 
 
 class SampleIndex:
@@ -216,7 +206,7 @@ class SampleIndex:
         index: str,
         fields: dict[str, Field],
         *,
-        timeline_sampling: FixedRateSampling | None = None,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
     ) -> SampleIndex:
         """
         Build a [`SampleIndex`][rerun.experimental.dataloader.SampleIndex] from lightweight metadata queries.
@@ -230,18 +220,34 @@ class SampleIndex:
         fields
             Field definitions, used for window-trim calculation.
         timeline_sampling
-            Required for timestamp and duration indices; ignored for integer indices.
-            Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] for a regular grid.
+            [`TimeAlignedSampling`][rerun.experimental.dataloader.TimeAlignedSampling] for aligned integer fields,
+            or [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] for timestamps and durations.
+            `None` uses ordinary integer sampling.
 
         """
         return _build(source, index, fields, timeline_sampling=timeline_sampling)
 
 
 def _ns_per_sample(rate_hz: float) -> int:
-    if rate_hz <= 0:
-        raise ValueError(f"FixedRateSampling.rate_hz must be > 0, got {rate_hz}")
-
     return round(1e9 / rate_hz)
+
+
+def _validate_timeline_sampling(
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None, sample_index: SampleIndex
+) -> None:
+    """Require an explicit sampling mode to match the recorded sample grid."""
+    if timeline_sampling is None:
+        return
+    if isinstance(timeline_sampling, TimeAlignedSampling):
+        if sample_index.ns_dtype is not None or sample_index.ns_per_sample is not None:
+            raise ValueError("TimeAlignedSampling requires an integer timeline")
+    elif isinstance(timeline_sampling, FixedRateSampling):
+        if sample_index.ns_dtype is None or sample_index.ns_per_sample is None:
+            raise ValueError("FixedRateSampling requires a timestamp or duration timeline")
+        if _ns_per_sample(timeline_sampling.rate_hz) != sample_index.ns_per_sample:
+            raise ValueError("The sampling rate must match the manifest's recorded sample grid")
+    else:
+        raise TypeError("timeline_sampling must be TimeAlignedSampling, FixedRateSampling, or None")
 
 
 @dataclass(frozen=True)
@@ -301,7 +307,7 @@ def _build(
     index: str,
     fields: dict[str, Field],
     *,
-    timeline_sampling: FixedRateSampling | None,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None,
 ) -> SampleIndex:
     """Build a SampleIndex from a DataSource."""
     dataset = source.dataset
@@ -335,19 +341,18 @@ def _build(
         kind = "timestamp" if is_timestamp else "duration"
         if timeline_sampling is None:
             raise TypeError(
-                f"Index {index!r} is a {kind} timeline; you must pass "
-                "timeline_sampling=FixedRateSampling(rate_hz=…) so the "
-                "dataloader knows how to draw sample indices."
+                f"Index {index!r} is a {kind} timeline; pass timeline_sampling=FixedRateSampling(rate_hz=…)"
             )
+        if isinstance(timeline_sampling, TimeAlignedSampling):
+            raise ValueError("TimeAlignedSampling requires an integer timeline")
+        if not isinstance(timeline_sampling, FixedRateSampling):
+            raise TypeError("timeline_sampling must be TimeAlignedSampling, FixedRateSampling, or None")
         ns_dtype = "datetime64[ns]" if is_timestamp else "timedelta64[ns]"
         return _build_fixed_rate(ctx, _ns_per_sample(timeline_sampling.rate_hz), ns_dtype=ns_dtype)
 
-    if timeline_sampling is not None:
-        warnings.warn(
-            f"timeline_sampling={timeline_sampling!r} ignored: index {index!r} is not a timestamp or duration timeline",
-            stacklevel=3,
-        )
-    return _build_integer(ctx)
+    sample_index = _build_integer(ctx)
+    _validate_timeline_sampling(timeline_sampling, sample_index)
+    return sample_index
 
 
 def _build_integer(ctx: _RangesCtx) -> SampleIndex:
@@ -381,6 +386,7 @@ def _build_integer(ctx: _RangesCtx) -> SampleIndex:
                 index_start=effective_min,
                 index_end=effective_max,
                 num_samples=num_samples,
+                index_min=int(seg_min),
             )
         )
 
@@ -421,6 +427,7 @@ def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int, *, ns_dtype: str) -> 
                 index_start=lo,
                 index_end=lo + (n - 1) * ns_per_sample,
                 num_samples=int(n),
+                index_min=int(seg_min),
             )
         )
 
