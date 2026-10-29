@@ -372,6 +372,34 @@ fn tool_calls_fold_when_turn_ended() {
     }
 }
 
+/// Clicking the title of a tool call expands it, not just the triangle.
+#[test]
+fn tool_call_expands_on_title_click() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    session
+        .transcript_mut()
+        .push_user("Check the recording".into());
+    session.begin_test_turn();
+    let call = ToolCall::new("schema-1", "Read recording schema")
+        .status(ToolCallStatus::Completed)
+        .raw_input(serde_json::json!({ "entity": "/world" }));
+    session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(call)));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    assert!(
+        harness.query_by_label("Input").is_none(),
+        "a completed tool call starts collapsed"
+    );
+
+    harness.get_by_label("Read recording schema").click();
+    harness.run_steps(2);
+    harness.get_by_label("Input");
+}
+
 /// Hovering an entry shows when it was created.
 #[test]
 fn chat_hover_timestamp() {
