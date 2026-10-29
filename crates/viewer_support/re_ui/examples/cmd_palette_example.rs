@@ -1,9 +1,9 @@
 //! `cargo r -p re_ui --example cmd_palette_example`
 
-use re_log_types::EntityPath;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
     CmdRow, CommandPalette, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-    SyntaxHighlighting as _, UICommand, UiExt as _,
+    UICommand, UiExt as _,
 };
 use url::Url;
 
@@ -149,7 +149,7 @@ impl CommandPaletteProvider<Command> for CommandProvider {
         };
 
         let job = if let Command::SelectEntityPath(ent_path) = &matched.command {
-            let mut job = EntityPath::parse_forgiving(ent_path).syntax_highlighted(ui.style());
+            let mut job = path_job(ent_path, ui.style());
             if selected {
                 // The syntax colors clash with the selection background, so recolor the
                 // whole path to the selection text color (keeping the font/size).
@@ -259,4 +259,13 @@ impl State {
 
         self.latest_command = Some(command);
     }
+}
+
+/// Highlights a `/a/b` path.
+fn path_job(path: &str, style: &egui::Style) -> egui::text::LayoutJob {
+    let mut builder = SyntaxHighlightedBuilder::new();
+    for part in path.split('/').filter(|part| !part.is_empty()) {
+        builder.append_syntax("/").append_identifier(part);
+    }
+    builder.to_job(style)
 }
