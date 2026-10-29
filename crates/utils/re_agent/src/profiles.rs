@@ -3,6 +3,16 @@ use std::path::{Path, PathBuf};
 
 use crate::ModelApiProvider;
 
+/// The two ways the agent panel reaches a model.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AgentKind {
+    /// A coding agent installed on this machine, or a custom command, driven over ACP.
+    AgentHarness,
+
+    /// A model API, called directly with the user's key.
+    ModelApi,
+}
+
 /// Short machine-readable identifier of an agent profile, such as `claude`, `codex`, `openai-api`, etc.
 #[derive(
     Clone,
@@ -43,15 +53,20 @@ impl AgentProfileId {
         self.0.is_empty()
     }
 
+    /// Whether this profile runs an agent harness or calls a model API.
+    pub fn kind(&self) -> AgentKind {
+        if self.model_api_provider().is_some() {
+            AgentKind::ModelApi
+        } else {
+            AgentKind::AgentHarness
+        }
+    }
+
     /// The provider whose API this profile calls directly, if it is not an agent subprocess.
     pub fn model_api_provider(&self) -> Option<ModelApiProvider> {
-        if *self == Self::ANTHROPIC_API {
-            Some(ModelApiProvider::Anthropic)
-        } else if *self == Self::OPENAI_API {
-            Some(ModelApiProvider::OpenAi)
-        } else {
-            None
-        }
+        ModelApiProvider::ALL
+            .into_iter()
+            .find(|provider| provider.profile_id() == *self)
     }
 }
 

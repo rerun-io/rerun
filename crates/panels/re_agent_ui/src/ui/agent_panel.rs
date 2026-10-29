@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use re_agent::AgentToolbox;
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::AsyncRuntimeHandle;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
@@ -166,6 +166,9 @@ pub struct AgentPanel {
     /// Set by the host. The tools model-API agents get.
     toolbox: Option<Arc<dyn AgentToolbox>>,
 
+    /// The model-API providers whose key was found in the environment.
+    available_model_apis: Vec<ModelApiProvider>,
+
     context: SessionContext,
     agents: Vec<AgentEntry>,
 
@@ -209,31 +212,48 @@ impl AgentPanel {
     ///
     /// Model-API agents, such as the `anthropic-api` profile, run on `async_runtime`.
     pub fn new(settings: AgentSettings, async_runtime: AsyncRuntimeHandle) -> Self {
-        Self::with_agents(settings, Some(async_runtime), AgentEntry::detect_all())
+        let available_model_apis = ModelApiProvider::ALL
+            .into_iter()
+            .filter(|provider| provider.api_key_from_env().is_some())
+            .collect();
+        Self::with_agents(
+            settings,
+            Some(async_runtime),
+            AgentEntry::detect_all(),
+            available_model_apis,
+        )
     }
 
-    /// Like [`Self::new`], but with an explicit list of agents instead of probing the machine.
+    /// Like [`Self::new`], but with explicit lists of agents and model APIs with a key, instead
+    /// of probing the machine.
     ///
     /// The first run shows the setup screen with an installed agent preselected, so the user
     /// sees which of their local agent CLIs the panel is about to run before it starts.
+    /// With no agent installed, a model API is preselected instead, one with a key if there is
+    /// one, so the setup screen says what is missing.
     ///
     /// Without an `async_runtime`, model-API agents fail to start.
     pub fn with_agents(
         mut settings: AgentSettings,
         async_runtime: Option<AsyncRuntimeHandle>,
         agents: Vec<AgentEntry>,
+        available_model_apis: Vec<ModelApiProvider>,
     ) -> Self {
-        if settings.profile_id.is_empty()
-            && let Some(agent) = AgentEntry::pick_default(&agents).or_else(|| agents.first())
-        {
-            settings.profile_id = agent.profile.id.clone();
+        if settings.profile_id.is_empty() {
+            settings.profile_id = match AgentEntry::pick_default(&agents) {
+                Some(agent) => agent.profile.id.clone(),
+                None => super::setup_ui::default_model_api(&available_model_apis).profile_id(),
+            };
         }
 
-        let draft = Conversation::new(&settings, async_runtime.clone(), ConversationId(0), false);
+        let mut draft =
+            Conversation::new(&settings, async_runtime.clone(), ConversationId(0), false);
+        draft.available_model_apis.clone_from(&available_model_apis);
         Self {
             settings,
             async_runtime,
             toolbox: None,
+            available_model_apis,
             context: SessionContext::default(),
             agents,
             conversations: Vec::new(),
@@ -471,6 +491,9 @@ impl AgentPanel {
         );
         conversation.toolbox.clone_from(&self.toolbox);
         conversation
+            .available_model_apis
+            .clone_from(&self.available_model_apis);
+        conversation
     }
 
     /// Once the draft has a prompt, it becomes a conversation of its own, and is shown.
@@ -509,7 +532,8 @@ impl AgentPanel {
             && *self.draft.session.phase() != Phase::Idle
             && !self.draft.has_started()
             && !self.user_opened_draft_setup
-            && selected_agent_ready(&self.settings, &self.agents).is_ok();
+            && selected_agent_ready(&self.settings, &self.agents, &self.available_model_apis)
+                .is_ok();
         if outdated {
             let next = self.fresh_conversation();
             let mut outdated = std::mem::replace(&mut self.draft, next);
@@ -845,7 +869,8 @@ mod tests {
     /// Checks that prompts from the host join the busy session's queue before later chat prompts.
     #[test]
     fn host_prompts_join_busy_session_queue() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
         let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
@@ -871,7 +896,8 @@ mod tests {
     /// Checks that prompts survive setup and remain attached to the conversation they were sent to.
     #[test]
     fn host_prompts_survive_setup_and_stay_with_their_conversation() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
         panel.queue_prompt("First prompt".to_owned());
         panel.queue_prompt("Second prompt".to_owned());
         panel.queue_prompt("   ".to_owned());
@@ -917,7 +943,7 @@ mod tests {
             profile_id: AgentProfileId::new("claude"),
             ..Default::default()
         };
-        let mut panel = AgentPanel::with_agents(settings, None, agents);
+        let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
         panel
             .draft
             .session
@@ -947,7 +973,8 @@ mod tests {
     /// Setup finished in another conversation, e.g. one the host opened, applies to the draft.
     #[test]
     fn draft_skips_setup_once_another_conversation_finished_it() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Setup, "setup is not done yet");
 
@@ -963,7 +990,8 @@ mod tests {
 
     #[test]
     fn draft_becomes_a_conversation_once_it_has_a_prompt() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
         panel.poll_events();
         assert!(panel.conversations.is_empty());
         assert_eq!(panel.view, View::List);

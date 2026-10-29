@@ -27,6 +27,7 @@ use rig_core::message::{
 use rig_core::operation::Completion;
 use rig_core::streaming::{Item, StreamEvent};
 
+use crate::AgentProfileId;
 use crate::Responder;
 use crate::agent_toolbox::{AgentToolbox, ToolOutput};
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
@@ -130,6 +131,17 @@ pub enum ModelApiProvider {
 }
 
 impl ModelApiProvider {
+    /// Every provider, in the order the setup screen lists them.
+    pub const ALL: [Self; 2] = [Self::Anthropic, Self::OpenAi];
+
+    /// The agent profile that calls this provider's API.
+    pub fn profile_id(self) -> AgentProfileId {
+        match self {
+            Self::Anthropic => AgentProfileId::ANTHROPIC_API,
+            Self::OpenAi => AgentProfileId::OPENAI_API,
+        }
+    }
+
     /// The API key from [`Self::api_key_env_var`], or `None` if it is unset or blank.
     pub fn api_key_from_env(self) -> Option<String> {
         std::env::var(self.api_key_env_var())

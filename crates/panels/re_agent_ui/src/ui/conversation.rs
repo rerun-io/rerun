@@ -5,8 +5,8 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 
 use re_agent::{
-    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox, Phase,
-    Prompt, SessionContext,
+    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox,
+    ModelApiProvider, Phase, Prompt, SessionContext,
 };
 use re_async::AsyncRuntimeHandle;
 use web_time::SystemTime;
@@ -15,7 +15,7 @@ use super::Screen;
 use super::agent_panel::ConversationId;
 use super::chat_ui::{ChatInput, chat_ui};
 use super::conversation_list::ConversationStatus;
-use super::setup_ui::setup_ui;
+use super::setup_ui::{selected_agent_name, setup_ui};
 
 /// One chat with one agent: a row in the conversation list.
 pub struct Conversation {
@@ -27,6 +27,9 @@ pub struct Conversation {
 
     /// The tools a model-API agent gets. See [`super::AgentPanel::set_toolbox`].
     pub toolbox: Option<Arc<dyn AgentToolbox>>,
+
+    /// The model-API providers whose key was found, offered on the setup screen.
+    pub available_model_apis: Vec<ModelApiProvider>,
 
     /// When the conversation was opened, for sorting until it has any messages.
     created_at: SystemTime,
@@ -70,6 +73,7 @@ impl Conversation {
             id,
             async_runtime,
             toolbox: None,
+            available_model_apis: Vec::new(),
             created_at: SystemTime::now(),
             seen_finished_items: 0,
             session,
@@ -134,12 +138,7 @@ impl Conversation {
                 Some(prompt.text.lines().next().unwrap_or_default().to_owned())
             })
             .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
-            .or_else(|| {
-                agents
-                    .iter()
-                    .find(|agent| agent.profile.id == settings.profile_id)
-                    .map(|agent| agent.profile.name.clone())
-            })
+            .or_else(|| selected_agent_name(settings, agents))
             .unwrap_or_else(|| "New chat".to_owned())
     }
 
@@ -285,7 +284,9 @@ impl Conversation {
             && ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
         let next_screen = egui::CentralPanel::default()
             .frame(egui::Frame::new())
-            .show(ui, |ui| setup_ui(ui, settings, agents))
+            .show(ui, |ui| {
+                setup_ui(ui, settings, agents, &self.available_model_apis)
+            })
             .inner;
 
         if next_screen == Screen::Chat {

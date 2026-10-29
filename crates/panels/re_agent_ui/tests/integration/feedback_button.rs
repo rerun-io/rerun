@@ -28,7 +28,7 @@ fn panel(feedback_enabled: bool) -> AgentPanel {
         profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
-    let mut panel = AgentPanel::with_agents(settings, None, agents);
+    let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
     panel.set_feedback_enabled(feedback_enabled);
     panel.show_chat();
 

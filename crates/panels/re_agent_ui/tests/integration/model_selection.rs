@@ -115,7 +115,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
             executable: None,
         })
         .collect();
-    let mut reopened = AgentPanel::with_agents(restored, None, agents);
+    let mut reopened = AgentPanel::with_agents(restored, None, agents, Vec::new());
     assert_eq!(
         reopened
             .agent_harness_config(&SessionContext::default())

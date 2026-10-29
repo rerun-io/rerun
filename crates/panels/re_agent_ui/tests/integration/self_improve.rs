@@ -30,7 +30,7 @@ fn panel(self_improve_available: bool) -> AgentPanel {
         profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
-    let mut panel = AgentPanel::with_agents(settings, None, agents);
+    let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
     panel.set_self_improve_available(self_improve_available);
     panel.show_chat();
     // Self-improve reviews the shown conversation, so the list does not offer it.

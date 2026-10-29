@@ -7,7 +7,7 @@ use re_ui::{ReButton, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{AgentProfileId, AgentSettings, McpServerConfig};
+use re_agent::{AgentKind, AgentProfileId, AgentSettings, McpServerConfig, ModelApiProvider};
 
 /// What prompt sharing actually does, behind the checkbox and the "Details" link.
 const ANALYTICS_DETAILS: &str = "Prompts and the agent's answers go to Rerun only after a second \
@@ -18,11 +18,14 @@ const ANALYTICS_DETAILS: &str = "Prompts and the agent's answers go to Rerun onl
      Content-free usage statistics are sent whether or not this is on. `rerun analytics disable` turns off all analytics.";
 
 /// Returns [`Screen::Chat`] when the user clicked "OK", so the caller should start the agent.
+///
+/// `available_model_apis` are the providers whose API key was found.
 #[must_use]
 pub fn setup_ui(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
     agents: &mut [AgentEntry],
+    available_model_apis: &[ModelApiProvider],
 ) -> Screen {
     let mut next_screen = Screen::Setup;
 
@@ -30,7 +33,7 @@ pub fn setup_ui(
         .auto_shrink(false)
         .show(ui, |ui| {
             egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                next_screen = setup_ui_inner(ui, settings, agents);
+                next_screen = setup_ui_inner(ui, settings, agents, available_model_apis);
             });
         });
 
@@ -41,6 +44,7 @@ fn setup_ui_inner(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
     agents: &mut [AgentEntry],
+    available_model_apis: &[ModelApiProvider],
 ) -> Screen {
     let mut next_screen = Screen::Setup;
 
@@ -50,29 +54,42 @@ fn setup_ui_inner(
 
     ui.add_space(8.0);
     ui.label(RichText::new("Choose your agent").strong().size(15.0));
-    ui.label(
-        "Rerun agent uses your own subscription and a locally installed chat agent. \
-         Which agent do you want to use?",
+
+    let kind = settings.profile_id.kind();
+
+    let local_selected = kind == AgentKind::AgentHarness;
+    let picked_local = choice_card_ui(
+        ui,
+        local_selected,
+        "A coding agent on this machine",
+        "Uses your existing subscription. Can read local files and run tools.",
+        |ui| local_agents_ui(ui, settings, agents),
     );
+    if picked_local && !local_selected {
+        settings.profile_id = default_local_agent(agents);
+    }
+
+    let model_api_selected = kind == AgentKind::ModelApi;
+    let picked_model_api = choice_card_ui(
+        ui,
+        model_api_selected,
+        "A model API with your own key",
+        "Nothing to install. Pay per token. Reads the key from your environment.",
+        |ui| model_api_list_ui(ui, settings, available_model_apis),
+    );
+    if picked_model_api && !model_api_selected {
+        settings.profile_id = default_model_api(available_model_apis).profile_id();
+    }
 
     ui.add_space(8.0);
-    agent_list_ui(ui, settings, agents);
-    ui.horizontal(|ui| {
-        ui.weak("Installed something new?");
-        if ui.link("Re-check").clicked() {
-            for agent in agents.iter_mut() {
-                agent.refresh();
-            }
-        }
-    });
-
-    ui.add_space(8.0);
-    ui.separator();
     prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
 
     ui.add_space(8.0);
-    let ready = selected_agent_ready(settings, agents);
-    let label = format!("Start {}", selected_agent_name(settings, agents));
+    let ready = selected_agent_ready(settings, agents, available_model_apis);
+    let label = format!(
+        "Start {}",
+        selected_agent_name(settings, agents).unwrap_or_else(|| "agent".to_owned())
+    );
     let button = ReButton::new((label, icons::ARROW_RIGHT)).primary();
     let clicked = ui
         .add_enabled_ui(ready.is_ok(), |ui| {
@@ -86,7 +103,7 @@ fn setup_ui_inner(
         ui.error_label(problem);
         if let Some(provider) = settings.profile_id.model_api_provider() {
             ui.hyperlink_to(
-                format!("Create a {} API key", provider.name()),
+                format!("Get an API key from {}", provider.name()),
                 provider.api_key_url(),
             );
         }
@@ -132,12 +149,52 @@ fn setup_ui_inner(
     next_screen
 }
 
-/// One radio button per known agent, plus one for a custom command.
+/// A selectable card: a radio button with a title and a description.
 ///
-/// Installed agents are tagged "Installed"; the others are disabled.
-fn agent_list_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &[AgentEntry]) {
+/// The body is only shown while the card is selected.
+/// Returns `true` if the radio button was clicked.
+fn choice_card_ui(
+    ui: &mut egui::Ui,
+    selected: bool,
+    title: &str,
+    description: &str,
+    add_body: impl FnOnce(&mut egui::Ui),
+) -> bool {
+    let stroke = if selected {
+        ui.visuals().selection.stroke
+    } else {
+        ui.visuals().widgets.noninteractive.bg_stroke
+    };
+
+    egui::Frame::new()
+        .stroke(stroke)
+        .corner_radius(ui.tokens().normal_corner_radius())
+        .inner_margin(10)
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.spacing_mut().item_spacing.y = 4.0;
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+            let clicked = ui.radio(selected, RichText::new(title).strong()).clicked();
+            ui.horizontal(|ui| {
+                ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
+                ui.weak(description);
+            });
+
+            if selected {
+                ui.add_space(4.0);
+                ui.indent(title, add_body);
+            }
+
+            clicked
+        })
+        .inner
+}
+
+/// The installed agents, with the others and a custom command behind a collapsing header.
+fn local_agents_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &mut [AgentEntry]) {
     let mut picked = None;
-    for agent in agents {
+    for agent in agents.iter().filter(|agent| agent.executable.is_some()) {
         let selected = agent.profile.id == settings.profile_id;
         if agent_row_ui(ui, agent, selected).clicked() {
             picked = Some(agent.profile.id.clone());
@@ -145,13 +202,53 @@ fn agent_list_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &[Agen
     }
 
     let custom_selected = settings.profile_id == AgentProfileId::CUSTOM;
-    if custom_agent_ui(ui, settings, custom_selected) {
-        picked = Some(AgentProfileId::CUSTOM);
-    }
+    let any_installed = agents.iter().any(|agent| agent.executable.is_some());
+    ui.collapsing_header(
+        "Other agents and custom command",
+        custom_selected || !any_installed,
+        |ui| {
+            for agent in agents.iter().filter(|agent| agent.executable.is_none()) {
+                let selected = agent.profile.id == settings.profile_id;
+                if agent_row_ui(ui, agent, selected).clicked() {
+                    picked = Some(agent.profile.id.clone());
+                }
+            }
+            if custom_agent_ui(ui, settings, custom_selected) {
+                picked = Some(AgentProfileId::CUSTOM);
+            }
+        },
+    );
 
     if let Some(profile_id) = picked {
         settings.profile_id = profile_id;
     }
+
+    ui.horizontal(|ui| {
+        ui.weak("Installed something new?");
+        if ui.link("Re-check").clicked() {
+            for agent in agents.iter_mut() {
+                agent.refresh();
+            }
+        }
+    });
+}
+
+/// What picking the local card selects: the first installed agent, else a custom command.
+fn default_local_agent(agents: &[AgentEntry]) -> AgentProfileId {
+    agents
+        .iter()
+        .find(|agent| agent.executable.is_some())
+        .map_or(AgentProfileId::CUSTOM, |agent| agent.profile.id.clone())
+}
+
+/// What picking the model-API card selects: the first provider whose key was found.
+///
+/// With no key found it still picks one, so the start button can say which variable to set.
+pub fn default_model_api(available_model_apis: &[ModelApiProvider]) -> ModelApiProvider {
+    available_model_apis
+        .first()
+        .copied()
+        .unwrap_or(ModelApiProvider::ALL[0])
 }
 
 /// Returns the response of the radio button.
@@ -169,17 +266,61 @@ fn agent_row_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> egui::
             )
             .on_disabled_hover_text("Not installed");
         if let Some(path) = executable {
-            installed_tag_ui(ui).on_hover_text(path.display().to_string());
+            tag_ui(ui, "Installed").on_hover_text(path.display().to_string());
         }
         radio
     })
     .inner
 }
 
-/// The small "Installed" pill next to an agent that was found on this machine.
-fn installed_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+/// One radio button per model-API provider.
+///
+/// `available_model_apis` are the ones whose key was found.
+fn model_api_list_ui(
+    ui: &mut egui::Ui,
+    settings: &mut AgentSettings,
+    available_model_apis: &[ModelApiProvider],
+) {
+    for provider in ModelApiProvider::ALL {
+        let selected = provider.profile_id() == settings.profile_id;
+        if model_api_row_ui(ui, provider, available_model_apis, selected).clicked() {
+            settings.profile_id = provider.profile_id();
+        }
+    }
+}
+
+/// Returns the response of the radio button, which is disabled until the API key is set.
+fn model_api_row_ui(
+    ui: &mut egui::Ui,
+    provider: ModelApiProvider,
+    available_model_apis: &[ModelApiProvider],
+    selected: bool,
+) -> egui::Response {
+    let key_var = provider.api_key_env_var();
+    let has_key = available_model_apis.contains(&provider);
+    ui.horizontal(|ui| {
+        let radio = ui
+            .add_enabled(
+                has_key,
+                egui::RadioButton::new(selected, format!("{} API", provider.name())),
+            )
+            .on_disabled_hover_text(format!(
+                "Set {key_var} in the environment the viewer starts from, then restart it"
+            ));
+        if has_key {
+            tag_ui(ui, "Key found").on_hover_text(format!("Read from {key_var}"));
+        } else {
+            ui.weak(format!("needs {key_var}"));
+        }
+        radio
+    })
+    .inner
+}
+
+/// A small pill next to an option, saying that it is ready to use.
+fn tag_ui(ui: &mut egui::Ui, text: &str) -> egui::Response {
     let tokens = ui.tokens();
-    egui::WidgetAtom::new(RichText::new("Installed").small())
+    egui::WidgetAtom::new(RichText::new(text).small())
         .frame(
             egui::Frame::new()
                 .fill(tokens.example_tag_bg_fill)
@@ -289,19 +430,25 @@ fn analytics_details_ui(ui: &mut egui::Ui) {
     ui.label(ANALYTICS_DETAILS);
 }
 
-/// What the start button calls the selected agent.
-fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> String {
+/// The name of the selected agent, e.g. "Claude Code" or "Anthropic API".
+pub fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> Option<String> {
     if let Some(provider) = settings.profile_id.model_api_provider() {
-        return format!("{} API", provider.name());
+        return Some(format!("{} API", provider.name()));
     }
     agents
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
-        .map_or_else(|| "agent".to_owned(), |agent| agent.profile.name.clone())
+        .map(|agent| agent.profile.name.clone())
 }
 
 /// Whether the selected agent can be started, or why not.
-pub fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> Result<(), String> {
+///
+/// `available_model_apis` are the providers whose API key was found.
+pub fn selected_agent_ready(
+    settings: &AgentSettings,
+    agents: &[AgentEntry],
+    available_model_apis: &[ModelApiProvider],
+) -> Result<(), String> {
     if settings.profile_id == AgentProfileId::CUSTOM {
         if settings.custom_command_line.trim().is_empty() {
             return Err("Enter the command that starts your agent".to_owned());
@@ -310,9 +457,10 @@ pub fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> 
     }
 
     if let Some(provider) = settings.profile_id.model_api_provider() {
-        return match provider.api_key_from_env() {
-            Some(_) => Ok(()),
-            None => Err(re_agent::AgentLaunchError::MissingApiKey { provider }.to_string()),
+        return if available_model_apis.contains(&provider) {
+            Ok(())
+        } else {
+            Err(re_agent::AgentLaunchError::MissingApiKey { provider }.to_string())
         };
     }
 

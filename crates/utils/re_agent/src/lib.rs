@@ -55,7 +55,7 @@ pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
 pub use model_api_backend::{ModelApiConfig, ModelApiError, ModelApiProvider};
-pub use profiles::{AgentEntry, AgentProfile, AgentProfileId, find_executable};
+pub use profiles::{AgentEntry, AgentKind, AgentProfile, AgentProfileId, find_executable};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use egui::Vec2;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent_ui::LineDirection;
 use re_agent_ui::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
@@ -15,7 +15,7 @@ use re_agent_ui::acp::schema::v1::{
 };
 use re_agent_ui::{
     AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
-    McpServerConfig, Prompt, PromptImage, RECOMMENDED_WIDTH,
+    McpServerConfig, ModelApiProvider, Prompt, PromptImage, RECOMMENDED_WIDTH,
 };
 
 /// As wide as a host is meant to make the panel, so the snapshots show what users see.
@@ -63,7 +63,7 @@ fn panel() -> AgentPanel {
             }
         })
         .collect();
-    let mut panel = AgentPanel::with_agents(settings(), None, agents);
+    let mut panel = AgentPanel::with_agents(settings(), None, agents, Vec::new());
     panel.set_example_prompts(crate::example_prompts());
     panel
 }
@@ -103,12 +103,85 @@ fn clicking_the_custom_command_selects_it() {
         AgentProfileId::new("claude")
     );
 
+    harness
+        .get_by_label("Other agents and custom command")
+        .click();
+    harness.run_steps(4);
     harness.get_by_role(egui::Role::TextInput).click();
     harness.run_steps(2);
     assert_eq!(
         harness.state().settings().profile_id,
         AgentProfileId::CUSTOM
     );
+}
+
+/// A first run on a machine with none of the agents installed, and keys for `model_apis`.
+fn first_run_without_agents(available_model_apis: Vec<ModelApiProvider>) -> AgentPanel {
+    let agents = AgentProfile::builtin()
+        .into_iter()
+        .map(|profile| AgentEntry {
+            profile,
+            executable: None,
+        })
+        .collect();
+    let settings = AgentSettings {
+        profile_id: AgentProfileId::default(),
+        ..settings()
+    };
+    AgentPanel::with_agents(settings, None, agents, available_model_apis)
+}
+
+/// With no agent and no key, a model API is preselected, and the screen says how to get a key.
+#[test]
+fn setup_screen_without_agents_or_keys() {
+    let mut harness = harness(first_run_without_agents(Vec::new()));
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        ModelApiProvider::Anthropic.profile_id()
+    );
+    assert!(
+        harness
+            .get_by_label_contains("Start ")
+            .accesskit_node()
+            .is_disabled()
+    );
+    harness.snapshot("setup_screen_without_agents_or_keys");
+}
+
+/// With no agent but a key, the model API with the key is preselected, ready to start.
+#[test]
+fn setup_screen_without_agents_with_a_key() {
+    let mut harness = harness(first_run_without_agents(vec![ModelApiProvider::OpenAi]));
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        ModelApiProvider::OpenAi.profile_id()
+    );
+    assert!(
+        !harness
+            .get_by_label_contains("Start ")
+            .accesskit_node()
+            .is_disabled()
+    );
+}
+
+/// Picking the model-API card selects a provider even without a key, so the screen can say
+/// which variable to set.
+#[test]
+fn picking_the_model_api_card_without_a_key() {
+    let mut harness = harness(panel());
+    harness.run_steps(2);
+
+    harness
+        .get_by_label("A model API with your own key")
+        .click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        ModelApiProvider::Anthropic.profile_id()
+    );
+    harness.snapshot("setup_screen_model_api");
 }
 
 #[test]
@@ -126,6 +199,7 @@ fn setup_screen_advanced() {
     harness.snapshot("setup_screen_advanced");
 
     harness.get_by_label("MCP servers").scroll_to_me();
+    harness.remove_cursor();
     harness.run_steps(4);
     harness.snapshot("setup_screen_advanced_scrolled");
 }
