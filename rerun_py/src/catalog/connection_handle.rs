@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
 
-use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle};
+use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle, StageOpt};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::EntryFilter;
@@ -22,6 +22,17 @@ use re_types_core::LayerName;
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
+
+fn stage_options(method: &str) -> PyResult<StageOpt> {
+    match method {
+        "auto" => Ok(StageOpt::default()),
+        "single" => Ok(StageOpt::single()),
+        "multipart" => Ok(StageOpt::multipart()),
+        _ => Err(PyValueError::new_err(
+            "upload_method must be 'auto', 'single', or 'multipart'",
+        )),
+    }
+}
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]
@@ -49,6 +60,7 @@ impl PyConnectionHandle {
     }
 }
 
+// TODO(RR-6055): Pass object_store_config through both staging paths to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -56,8 +68,10 @@ impl PyConnectionHandle {
         py: Python<'_>,
         path: std::path::PathBuf,
         key: String,
+        upload_method: &str,
     ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
 
         wait_for_future(py, async move {
             let file = std::fs::File::open(&path).map_err(|err| {
@@ -66,18 +80,33 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self.inner.stage(key, file).await.map_err(to_py_err)?;
+            let url = self
+                .inner
+                .stage_opt(key, file, opt)
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn stage_bytes(&self, py: Python<'_>, bytes: &[u8], key: String) -> PyResult<String> {
+    pub fn stage_bytes(
+        &self,
+        py: Python<'_>,
+        bytes: &[u8],
+        key: String,
+        upload_method: &str,
+    ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self.inner.stage(key, bytes).await.map_err(to_py_err)?;
+            let url = self
+                .inner
+                .stage_opt(key, bytes, opt)
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }

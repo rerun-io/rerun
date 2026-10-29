@@ -17,46 +17,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> ScalarAxis::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (range.has_value()) {
-            columns.push_back(range.value().partitioned(lengths_).value_or_throw());
-        }
-        if (zoom_lock.has_value()) {
-            columns.push_back(zoom_lock.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> ScalarAxis::columns() {
-        if (range.has_value()) {
-            return columns(std::vector<uint32_t>(range.value().length(), 1));
-        }
-        if (zoom_lock.has_value()) {
-            return columns(std::vector<uint32_t>(zoom_lock.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<blueprint::archetypes::ScalarAxis>::as_batches(
-        const blueprint::archetypes::ScalarAxis& archetype
-    ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.range.has_value()) {
-            cells.push_back(archetype.range.value());
-        }
-        if (archetype.zoom_lock.has_value()) {
-            cells.push_back(archetype.zoom_lock.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

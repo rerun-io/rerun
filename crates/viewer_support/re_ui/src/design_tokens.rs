@@ -270,6 +270,18 @@ pub struct DesignTokens {
     /// Outline for compact controls that need more definition than a divider.
     pub control_stroke: Stroke,
 
+    /// Background of controls whose fill is all that sets them apart from the panel,
+    /// like checkboxes and radio buttons.
+    ///
+    /// Unlike buttons, these have no text or icon on them to make them visible.
+    pub control_fill: Color32,
+
+    /// [`Self::control_fill`] when hovered.
+    pub control_fill_hovered: Color32,
+
+    /// [`Self::control_fill`] when pressed.
+    pub control_fill_pressed: Color32,
+
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub viewport_tab_selected_text_color: Color32,
@@ -576,6 +588,17 @@ const HEADING_3_TYPOGRAPHY_NAME: &str = "Heading 3";
 const HEADING_4_TYPOGRAPHY_NAME: &str = "Heading 4";
 const EYEBROW_TYPOGRAPHY_NAME: &str = "Eyebrow";
 
+/// Minimum contrast ratio for UI components against adjacent colors.
+///
+/// WCAG 2.1 SC 1.4.11 (Non-text Contrast) recommends 3:1, but that makes filled checkboxes
+/// too heavy, so we settle for less.
+const MIN_NON_TEXT_CONTRAST_RATIO: f32 = 1.5;
+
+/// Minimum contrast ratio of a hover highlight against the panel.
+///
+/// WCAG sets no number for hover states; but below this the highlight is hard to see.
+const MIN_HOVER_CONTRAST_RATIO: f32 = 1.2;
+
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
@@ -636,6 +659,9 @@ impl DesignTokens {
             bottom_bar_color: get_color("bottom_bar_color"),
             divider_stroke,
             control_stroke,
+            control_fill: get_color("control_fill"),
+            control_fill_hovered: get_color("control_fill_hovered"),
+            control_fill_pressed: get_color("control_fill_pressed"),
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
@@ -833,6 +859,7 @@ impl DesignTokens {
         self.set_text_styles(style);
         self.set_spacing(style);
         self.set_colors(style);
+        self.check_contrast(&style.visuals);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -962,6 +989,45 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
+    /// Warn (in debug builds) if interactive widgets don't stand out from the panel behind them.
+    fn check_contrast(&self, visuals: &egui::Visuals) {
+        let panel = self.panel_bg_color;
+
+        // Checkboxes and radio buttons stand out by either their fill or their outline.
+        let inactive = &visuals.widgets.inactive;
+        let fill_contrast = contrast_ratio(self.control_fill, panel);
+        let outline_contrast = if 1.0 <= inactive.bg_stroke.width {
+            contrast_ratio(inactive.bg_stroke.color, panel)
+        } else {
+            1.0
+        };
+        if fill_contrast.max(outline_contrast) < MIN_NON_TEXT_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "Checkboxes and radio buttons have fill contrast {fill_contrast:.2} and outline contrast {outline_contrast:.2} against panel_bg_color; one should be at least {MIN_NON_TEXT_CONTRAST_RATIO}"
+            );
+        }
+
+        let resting = contrast_ratio(self.control_fill, panel);
+        for (name, color) in [
+            ("control_fill_hovered", self.control_fill_hovered),
+            ("control_fill_pressed", self.control_fill_pressed),
+        ] {
+            let contrast = contrast_ratio(color, panel);
+            if contrast < resting {
+                re_log::debug_warn_once!(
+                    "{name:?} has contrast {contrast:.2} against panel_bg_color, less than control_fill ({resting:.2})"
+                );
+            }
+        }
+
+        let hovered = contrast_ratio(self.widget_hovered_color, panel);
+        if hovered < MIN_HOVER_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "widget_hovered_color has contrast {hovered:.2} against panel_bg_color; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+            );
+        }
+    }
+
     fn set_colors(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
@@ -976,7 +1042,6 @@ impl DesignTokens {
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
-        // Fill of unchecked radio buttons, checkboxes, etc.
         egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
         egui_style.visuals.disabled_alpha = self.disabled_opacity;
 
@@ -1346,6 +1411,18 @@ impl RonExt for ron::Value {
             _ => None,
         }
     }
+}
+
+/// WCAG 2.1 contrast ratio between two opaque colors, in `[1, 21]`.
+///
+/// See <https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio>.
+fn contrast_ratio(a: Color32, b: Color32) -> f32 {
+    let luminance = |color: Color32| {
+        let rgba = egui::Rgba::from(color);
+        0.2126 * rgba.r() + 0.7152 * rgba.g() + 0.0722 * rgba.b()
+    };
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
 /// Build the [`ColorTable`] based on the content of `design_token.ron`

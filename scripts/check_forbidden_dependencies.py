@@ -9,14 +9,19 @@ then verifies that none of the forbidden crates appear.
 Each entry in FORBIDDEN_DEPENDENCIES is a tuple of:
   - A crate spec: the workspace crate name, optionally followed by
     `--all-features` or `--no-default-features`
-  - A set of crate names that must NOT appear in the dependency tree
+  - A set of crate names that must NOT appear in the dependency tree.
+    An entry containing a `/` is a glob over workspace crate folders, relative to `rerun/`,
+    e.g. `crates/store_app/*` forbids every crate in that folder.
 """
 
 from __future__ import annotations
 
+import fnmatch
+import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 # (crate_spec, forbidden_deps)
 #
@@ -26,10 +31,40 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk", {"datafusion", "egui", "lance"}),
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
     ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
+    # UI toolkit crates must not depend on the store (`crates/store_app`):
+    ("re_ui", {"crates/store_app/*"}),
+    ("re_ui --all-features", {"crates/store_app/*"}),
 ]
 
 # Setting `RUSTFLAGS` disables `re_workspace_hack`, which depends on everything.
 CARGO_ENV = {**os.environ, "RUSTFLAGS": os.environ.get("RUSTFLAGS", "")}
+
+
+def workspace_crate_folders() -> dict[str, str]:
+    """Map each workspace crate name to its folder, relative to `rerun/`."""
+    cmd = ["cargo", "metadata", "--no-deps", "--format-version", "1"]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=CARGO_ENV, check=True)
+    metadata = json.loads(result.stdout)
+    root = Path(metadata["workspace_root"])
+    return {
+        package["name"]: Path(package["manifest_path"]).parent.relative_to(root).as_posix()
+        for package in metadata["packages"]
+    }
+
+
+def expand_forbidden(forbidden: set[str], crate_folders: dict[str, str]) -> set[str]:
+    """Replace folder globs like `crates/store_app/*` with the names of the crates they match."""
+    expanded: set[str] = set()
+    for entry in forbidden:
+        if "/" in entry:
+            matches = {name for name, folder in crate_folders.items() if fnmatch.fnmatch(folder, entry)}
+            if not matches:
+                print(f"ERROR: `{entry}` matches no workspace crate", file=sys.stderr)
+                sys.exit(1)
+            expanded |= matches
+        else:
+            expanded.add(entry)
+    return expanded
 
 
 def get_dependencies(crate_spec: str) -> set[str]:
@@ -132,9 +167,11 @@ def get_dependency_path(crate_spec: str, forbidden_dep: str) -> str:
 
 def main() -> int:
     errors: list[str] = []
+    crate_folders = workspace_crate_folders()
 
-    for crate_spec, forbidden in FORBIDDEN_DEPENDENCIES:
+    for crate_spec, forbidden_patterns in FORBIDDEN_DEPENDENCIES:
         print(f"Checking {crate_spec}…")
+        forbidden = expand_forbidden(forbidden_patterns, crate_folders)
         deps = get_dependencies(crate_spec)
 
         for forbidden_dep in sorted(forbidden):

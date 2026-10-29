@@ -474,7 +474,7 @@ impl RegisterAssetModal {
                             },
                             |ui| {
                                 if stores_coverage {
-                                    ui.re_checkbox(
+                                    ui.checkbox(
                                         &mut state.keep_coverage,
                                         "Keep current coverage",
                                     )

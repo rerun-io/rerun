@@ -11,7 +11,7 @@
 //
 //   crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.ext.rs
 //     One line in the `viewer_control_ops!` table, pairing the request with its response.
-//   crates/top/re_viewer/src/app/viewer_control.rs
+//   crates/top/re_viewer/src/app/viewer_control/mod.rs
 //     A match arm in `serve_viewer_control`, and what the operation does to the viewer.
 //   rerun_py/rerun_sdk/rerun/experimental/_viewer_client.py
 //     The public `ViewerClient` method, with keyword arguments and a docstring. It sends the

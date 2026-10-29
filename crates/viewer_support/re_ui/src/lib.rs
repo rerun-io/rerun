@@ -42,6 +42,7 @@ mod url_decorator;
 mod wayland;
 
 mod button;
+mod checkbox;
 mod combo_item;
 pub mod re_form;
 #[cfg(feature = "testing")]
@@ -263,7 +264,8 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     });
 
     set_themes(egui_ctx);
-    // Replaces egui's own text edit theme, which `Context::default` registers.
+    // Replaces egui's own themes, which `Context::default` registers.
+    egui_ctx.replace_widget_theme(checkbox::CheckboxTheme);
     egui_ctx.replace_widget_theme(text_edit::TextEditTheme);
     egui_ctx.replace_widget_theme(text_edit::CompletionButtonTheme);
 

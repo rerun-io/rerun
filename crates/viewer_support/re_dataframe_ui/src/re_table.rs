@@ -94,7 +94,7 @@ impl<'a> ReTable<'a> {
         name: &str,
     ) -> egui::Response {
         Self::add_row_number_content(ui, |ui| {
-            ui.checkbox_indeterminate(checked, (), intermediate)
+            ui.add(egui::Checkbox::new(checked, ()).indeterminate(intermediate))
                 .accessible_name(name)
         })
     }

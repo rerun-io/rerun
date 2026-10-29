@@ -10,11 +10,12 @@ use re_log_types::{ApplicationId, EntityPath, TimeInt, TimeType, TimelineName};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
-    AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewId, ViewerContext,
+    AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route,
+    StoreSyntaxHighlighting as _, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    TimeControlCommand, UiLayout, ViewId, ViewerContext,
 };
 
 use crate::AppUi as _;

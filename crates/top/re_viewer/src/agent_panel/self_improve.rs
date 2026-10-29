@@ -82,7 +82,7 @@ did not say.
 These paths are relative to `{workspace}`.
 
 - `crates/top/re_viewer_mcp/` — the MCP tools the agent drives the viewer with.
-- `crates/top/re_viewer/src/app/viewer_control.rs` — what the viewer can be asked to do at all.
+- `crates/top/re_viewer/src/app/viewer_control/mod.rs` — what the viewer can be asked to do at all.
 - `crates/top/re_viewer/src/agent_panel/preamble.rs` — what every panel session is told up front.
 - `skills/` — the skills the agent reads before answering.
 - `docs/content/` — the documentation it greps.

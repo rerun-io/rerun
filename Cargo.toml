@@ -332,6 +332,7 @@ hexasphere = "19.0" # Update in tandem with glam
 hmac = "0.12.1" # pinned by `jsonwebtoken` (RustCrypto family); bump once jsonwebtoken moves to hmac 0.13/sha2 0.11/signature 3.
 http = "1.5"
 http-body = "1.1"
+http-body-util = "0.1.4"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
 indent = "0.1.1"
 indexmap = { version = "2.14", features = [
@@ -586,7 +587,7 @@ wgpu = { version = "30.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 xxhash-rust = { version = "0.8.18", features = ["xxh32", "xxh64"] }
-zip = { version = "9.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 # ---------------------------------------------------------------------------------
 [profile]
@@ -884,6 +885,7 @@ rc_mutex = "warn"
 redundant_type_annotations = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 return_and_then = "warn"
+self_named_module_files = "warn"
 set_contains_or_insert = "warn"
 single_option_map = "warn"
 str_to_string = "warn"
@@ -909,9 +911,6 @@ unwrap_used = "warn"
 use_self = "warn"
 useless_let_if_seq = "warn"
 verbose_file_reads = "warn"
-
-# Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
-#self_named_module_files = "warn"
 
 # Pedantic lints we opt out of, with the number of hits at the time we enabled `pedantic`:
 assigning_clones = "allow" # `clone_into` reads backwards
@@ -953,7 +952,6 @@ too_many_arguments = "allow" # yes, we should avoid too many arguments, but enfo
 clone_on_ref_ptr = "allow" # Might be too much with this enabled
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
-self_named_module_files = "allow" # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 
 [patch.crates-io]

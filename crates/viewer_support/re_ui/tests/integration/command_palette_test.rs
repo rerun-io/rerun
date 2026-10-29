@@ -2,8 +2,8 @@
 //! enabled vs. disabled (grayed-out) commands, and long paths that wrap to several lines.
 
 use egui::Vec2;
-use re_log_types::EntityPath;
-use re_ui::{CmdRow, FuzzyQuery, RowState, SyntaxHighlighting as _, paint_command_row};
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{CmdRow, FuzzyQuery, RowState, paint_command_row};
 
 /// Builds a plain command row, highlighting the characters matched by `query`.
 #[expect(clippy::fn_params_excessive_bools)] // test helper 🤷
@@ -108,7 +108,7 @@ fn command_palette_wraps_long_paths() {
                     ];
 
                     for (path, selected) in rows {
-                        let mut job = EntityPath::from(path).syntax_highlighted(ui.style());
+                        let mut job = path_job(path, ui.style());
                         if selected {
                             for section in &mut job.sections {
                                 section.format.color = ui.visuals().selection.stroke.color;
@@ -282,4 +282,13 @@ fn command_palette_agent_mode_preserves_query_and_resets_on_reopen() {
     harness.run();
     harness.get_by_label("Search commands");
     harness.get_by_label("First group command 0");
+}
+
+/// Highlights a `/a/b` path.
+fn path_job(path: &str, style: &egui::Style) -> egui::text::LayoutJob {
+    let mut builder = SyntaxHighlightedBuilder::new();
+    for part in path.split('/').filter(|part| !part.is_empty()) {
+        builder.append_syntax("/").append_identifier(part);
+    }
+    builder.to_job(style)
 }

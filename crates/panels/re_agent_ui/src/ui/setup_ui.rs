@@ -116,8 +116,8 @@ fn setup_ui_inner(
 
         ui.add_space(8.0);
         ui.label(RichText::new("Options").strong());
-        ui.re_checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
-        ui.re_checkbox(
+        ui.checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
+        ui.checkbox(
             &mut settings.log_protocol,
             "Log every protocol message (for debugging)",
         );
@@ -233,7 +233,7 @@ fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
         // The explanation belongs to the checkbox above it, closer than the panel's rhythm.
         ui.spacing_mut().item_spacing.y = 2.0;
 
-        ui.re_checkbox(
+        ui.checkbox(
             share_redacted_prompts,
             "Share anonymized prompts with Rerun",
         )
@@ -339,7 +339,7 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
             ui.set_min_height(re_ui::DesignTokens::list_item_height());
 
             let response = ui
-                .re_checkbox(&mut server.enabled, "")
+                .checkbox(&mut server.enabled, "")
                 .on_hover_text("Give this server to the agent");
             let enabled = server.enabled;
             response.widget_info(|| {

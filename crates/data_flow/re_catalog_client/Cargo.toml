@@ -24,9 +24,11 @@ default = []
 [dependencies]
 re_arrow_util.workspace = true
 re_async.workspace = true
+re_backoff.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true
 re_error.workspace = true
+re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true

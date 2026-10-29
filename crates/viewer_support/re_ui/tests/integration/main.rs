@@ -1,3 +1,4 @@
+mod checkbox_test;
 mod command_palette_test;
 mod filter_widget_test;
 mod help_ui_test;
