@@ -1,7 +1,6 @@
 use arrow::array::{Array as _, BooleanArray};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::{ComponentIdentifier, RowId};
-use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, MaybeMutRef};
 
 /// Show a scalar boolean as a checkbox and return its toggled value.
@@ -28,7 +27,7 @@ pub fn checkbox(
     let enabled = value.as_mut().is_some();
     let response = ui
         .add_enabled_ui(enabled, |ui| {
-            ui.checkbox_indeterminate(&mut checked, "", is_null)
+            ui.add(egui::Checkbox::new(&mut checked, "").indeterminate(is_null))
         })
         .inner;
     response.widget_info(|| {

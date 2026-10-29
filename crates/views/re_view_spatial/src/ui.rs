@@ -519,7 +519,7 @@ pub fn paint_loading_indicators(
 pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &SpatialViewState) {
     let mut show_smoothed_bbox = state.show_smoothed_bbox.load(Relaxed);
     if ui
-        .re_checkbox(&mut show_smoothed_bbox, "Smoothed bbox")
+        .checkbox(&mut show_smoothed_bbox, "Smoothed bbox")
         .changed()
     {
         state.show_smoothed_bbox.store(show_smoothed_bbox, Relaxed);
@@ -529,7 +529,7 @@ pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &SpatialViewState) {
 
     let mut show_per_entity_bbox = state.show_per_entity_bbox.load(Relaxed);
     if ui
-        .re_checkbox(&mut show_per_entity_bbox, "Per-entity bboxes")
+        .checkbox(&mut show_per_entity_bbox, "Per-entity bboxes")
         .changed()
     {
         state

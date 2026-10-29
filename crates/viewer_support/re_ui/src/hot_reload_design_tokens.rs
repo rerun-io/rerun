@@ -35,16 +35,21 @@ impl DesignTokensPerTheme {
         )
         .context("Failed to find the design-token data directory")?;
 
+        let color_table = std::fs::read_to_string(data_path.join("color_table.ron"))
+            .context("Failed to read color_table.ron")?;
+
         Ok(Self {
-            dark: DesignTokens::load(
+            dark: DesignTokens::load_with_color_table(
                 egui::Theme::Dark,
                 &std::fs::read_to_string(data_path.join("dark_theme.ron"))
                     .context("Failed to read the dark theme file")?,
+                &color_table,
             )?,
-            light: DesignTokens::load(
+            light: DesignTokens::load_with_color_table(
                 egui::Theme::Light,
                 &std::fs::read_to_string(data_path.join("light_theme.ron"))
                     .context("Failed to read the light theme file")?,
+                &color_table,
             )?,
         })
     }

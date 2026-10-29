@@ -264,7 +264,7 @@ fn field_ui(
             ));
         }
         (FieldInput::Boolean(value), _) => {
-            ui.re_checkbox(value, label);
+            ui.checkbox(value, label);
         }
         (FieldInput::Choices(values), ElicitationPropertySchema::Array(schema)) => {
             if let Some(options) = array_options(&schema.items) {
@@ -275,7 +275,7 @@ fn field_ui(
                 } in options
                 {
                     let mut selected = values.iter().any(|selected| selected == value);
-                    let response = ui.re_checkbox(&mut selected, title);
+                    let response = ui.checkbox(&mut selected, title);
                     if response.changed() {
                         if selected {
                             values.push(value.to_owned());

@@ -3,7 +3,7 @@
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
     CmdRow, CommandPalette, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-    UICommand, UiExt as _,
+    UICommand,
 };
 use url::Url;
 
@@ -206,7 +206,7 @@ impl State {
         egui::CentralPanel::default().show(ui, |ui| {
             ui.heading("Press cmd-K");
 
-            ui.re_checkbox(&mut self.has_recording, "Pretend to have a recording");
+            ui.checkbox(&mut self.has_recording, "Pretend to have a recording");
         });
 
         let mut cmd_provider = CommandProvider {

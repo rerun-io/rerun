@@ -49,6 +49,17 @@
       "color": "#434242",
       "width": 1
     },
+    // Background of controls whose fill is all that sets them apart from the panel:
+    // checkboxes, radio buttons, etc.
+    "control_fill": {
+      "color": "{Gray.350}"
+    },
+    "control_fill_hovered": {
+      "color": "{Gray.400}"
+    },
+    "control_fill_pressed": {
+      "color": "{Gray.450}"
+    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 77
@@ -279,7 +290,7 @@
       "color": "{Gray.300}"
     },
     "widget_hovered_color": {
-      "color": "{Gray.150}"
+      "color": "{Gray.250}"
     },
     // Text in a field the user cannot edit: reads as a value, not as something
     // to type into.
