@@ -55,9 +55,17 @@ impl McpServerConfig {
 /// Not persisted: it describes the host, not the user's choices.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SessionContext {
-    /// Markdown sent to the agent together with its first prompt,
+    /// Markdown sent to an agent harness together with its first prompt,
     /// e.g. "You are running inside the Rerun Viewer. …".
-    pub preamble: Option<String>,
+    ///
+    /// A model-API agent never gets it: see [`Self::model_api_preamble`].
+    pub agent_harness_preamble: Option<String>,
+
+    /// System prompt for a model-API agent, sent with every request.
+    ///
+    /// Separate from [`Self::agent_harness_preamble`], since the two have different tools: a
+    /// harness reaches the viewer over MCP and can read files, a model-API agent cannot.
+    pub model_api_preamble: Option<String>,
 
     /// Directories the agent may read besides the working directory.
     /// Claude Code loads skills from `.claude/skills/` inside these.
@@ -192,7 +200,7 @@ impl AgentSettings {
             provider,
             api_key,
             model,
-            system_prompt: context.preamble.clone(),
+            system_prompt: context.model_api_preamble.clone(),
             toolbox: None,
         }))
     }
@@ -273,7 +281,7 @@ impl AgentSettings {
             off_limits_directories: context.off_limits_directories.clone(),
             mcp_servers,
             log_protocol: self.log_protocol,
-            preamble: context.preamble.clone(),
+            preamble: context.agent_harness_preamble.clone(),
             model_preferences: DEFAULT_MODEL_PREFERENCES
                 .iter()
                 .map(|&model| model.to_owned())

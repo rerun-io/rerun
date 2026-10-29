@@ -1,5 +1,8 @@
 //! The agent panel: the conversation list, or one conversation.
 
+use std::sync::Arc;
+
+use re_agent::AgentToolbox;
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
 use re_async::AsyncRuntimeHandle;
 use re_ui::alert::Alert;
@@ -160,6 +163,9 @@ pub struct AgentPanel {
     /// Without it they fail to start; subprocess agents need none.
     async_runtime: Option<AsyncRuntimeHandle>,
 
+    /// Set by the host. The tools model-API agents get.
+    toolbox: Option<Arc<dyn AgentToolbox>>,
+
     context: SessionContext,
     agents: Vec<AgentEntry>,
 
@@ -227,6 +233,7 @@ impl AgentPanel {
         Self {
             settings,
             async_runtime,
+            toolbox: None,
             context: SessionContext::default(),
             agents,
             conversations: Vec::new(),
@@ -241,6 +248,15 @@ impl AgentPanel {
             feedback_requested: false,
             next_conversation_id: ConversationId(1),
         }
+    }
+
+    /// The tools that model-API agents, such as the `anthropic-api` profile, may call.
+    /// Applies to sessions started from now on. Agent harnesses get their tools from MCP servers.
+    pub fn set_toolbox(&mut self, toolbox: Arc<dyn AgentToolbox>) {
+        for conversation in self.all_conversations_mut() {
+            conversation.toolbox = Some(Arc::clone(&toolbox));
+        }
+        self.toolbox = Some(toolbox);
     }
 
     /// What every new session is told about the host. Applies to sessions started from now on.
@@ -447,12 +463,14 @@ impl AgentPanel {
     fn fresh_conversation(&mut self) -> Conversation {
         let id = self.next_conversation_id;
         self.next_conversation_id = ConversationId(id.0 + 1);
-        Conversation::new(
+        let mut conversation = Conversation::new(
             &self.settings,
             self.async_runtime.clone(),
             id,
             self.auto_approve,
-        )
+        );
+        conversation.toolbox.clone_from(&self.toolbox);
+        conversation
     }
 
     /// Once the draft has a prompt, it becomes a conversation of its own, and is shown.

@@ -379,6 +379,9 @@ message ViewerControlRequest {
     // The text is only sent when the user has agreed to share redacted prompts with Rerun.
     // Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
     SubmitFeedbackRequest submit_feedback = 22;
+
+    // When adding an operation, decide whether agents may run it without asking the user:
+    // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
   }
 }
 

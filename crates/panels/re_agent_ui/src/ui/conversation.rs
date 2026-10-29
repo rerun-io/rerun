@@ -2,9 +2,11 @@
 //! setup screen.
 
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use re_agent::{
-    AgentEntry, AgentProfileId, AgentSession, AgentSettings, Phase, Prompt, SessionContext,
+    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox, Phase,
+    Prompt, SessionContext,
 };
 use re_async::AsyncRuntimeHandle;
 use web_time::SystemTime;
@@ -22,6 +24,9 @@ pub struct Conversation {
 
     /// Where a model-API agent runs. Without it, a model-API agent fails to start.
     pub async_runtime: Option<AsyncRuntimeHandle>,
+
+    /// The tools a model-API agent gets. See [`super::AgentPanel::set_toolbox`].
+    pub toolbox: Option<Arc<dyn AgentToolbox>>,
 
     /// When the conversation was opened, for sorting until it has any messages.
     created_at: SystemTime,
@@ -64,6 +69,7 @@ impl Conversation {
         Self {
             id,
             async_runtime,
+            toolbox: None,
             created_at: SystemTime::now(),
             seen_finished_items: 0,
             session,
@@ -91,7 +97,10 @@ impl Conversation {
     ) {
         let context = self.context.as_ref().unwrap_or(context);
         match settings.launch(agents, context) {
-            Ok(launch) => {
+            Ok(mut launch) => {
+                if let AgentLaunch::ModelApi(config) = &mut launch {
+                    config.toolbox.clone_from(&self.toolbox);
+                }
                 self.profile_id.clone_from(&settings.profile_id);
                 let ctx = ctx.clone();
                 self.session

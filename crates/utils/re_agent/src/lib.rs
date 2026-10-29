@@ -17,14 +17,14 @@
 //! MCP servers configured there; Codex reads `AGENTS.md` and its config, and so on.
 //!
 //! What the host adds comes on top of that:
-//! [`SessionContext::preamble`] is sent as an extra text block with the first prompt, and
+//! [`SessionContext::agent_harness_preamble`] is sent as an extra text block with the first prompt, and
 //! [`McpServerConfig`]s are handed over as additional MCP servers when the session opens.
 //! Neither removes anything the agent would otherwise have.
 //! Unless the user has picked a model, the session also switches to a fast one if the agent
 //! offers it (see [`AgentHarnessConfig::model_preferences`]).
 //!
 //! The model-API backend has none of that: no skills or configuration of the user's, only the
-//! model, [`SessionContext::preamble`] as its system prompt, and the tools of the host's
+//! model, [`SessionContext::model_api_preamble`] as its system prompt, and the tools of the host's
 //! [`AgentToolbox`].
 
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.

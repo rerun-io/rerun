@@ -7,10 +7,10 @@ mod ui;
 
 pub use re_agent::{
     AgentCommand, AgentEntry, AgentEvent, AgentHarnessConfig, AgentLaunch, AgentProfile,
-    AgentProfileId, AgentSession, AgentSettings, AuthPrompt, LineDirection, LogLine,
+    AgentProfileId, AgentSession, AgentSettings, AgentToolbox, AuthPrompt, LineDirection, LogLine,
     McpServerConfig, McpStdioServer, ModelApiConfig, ModelApiProvider, PendingElicitation,
-    PendingPermission, Phase, Prompt, PromptImage, SessionContext, ToolCallState, Transcript,
-    TranscriptEntry, TranscriptItem, TurnOutcome, TurnReport, acp, find_executable, message_text,
-    truncate_bytes,
+    PendingPermission, Phase, Prompt, PromptImage, SessionContext, ToolCallState, ToolDefinition,
+    ToolOutput, Transcript, TranscriptEntry, TranscriptItem, TurnOutcome, TurnReport, acp,
+    find_executable, message_text, truncate_bytes,
 };
 pub use ui::{AgentPanel, RECOMMENDED_WIDTH};

@@ -13,6 +13,9 @@ mod preamble;
 #[cfg(feature = "analytics")]
 mod product_feedback;
 mod self_improve;
+mod viewer_toolbox;
+
+pub use viewer_toolbox::ViewerControlCall;
 
 /// The MCP server name the agent sees the viewer under. Tools show up as `mcp__rerun__<tool>`.
 const MCP_SERVER_NAME: &str = "rerun";
@@ -89,9 +92,26 @@ pub struct ViewerAgentPanel {
 
     #[cfg(feature = "analytics")]
     analytics: crate::agent_analytics::TurnAnalytics,
+
+    /// Viewer-control operations that a model-API agent asked for, to be run on the UI thread.
+    /// Set up with the panel.
+    viewer_control_calls: Option<crossbeam::channel::Receiver<viewer_toolbox::QueuedCall>>,
 }
 
 impl ViewerAgentPanel {
+    /// Takes the viewer-control operations that the agent asked for since the last call.
+    pub fn take_viewer_control_calls(&self) -> Vec<ViewerControlCall> {
+        self.viewer_control_calls
+            .as_ref()
+            .map(|calls| {
+                calls
+                    .try_iter()
+                    .filter_map(viewer_toolbox::QueuedCall::into_call)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Queue feedback that an agent sent about Rerun, to be sent.
     ///
     /// Its text is only sent when `share_text` is set, after the panel's agent has redacted it.
@@ -157,6 +177,7 @@ impl ViewerAgentPanel {
         let was_open = *open;
         if *open && self.panel.is_none() {
             self.initialize(
+                ui.ctx(),
                 settings.clone(),
                 async_runtime,
                 viewer_endpoint,
@@ -296,12 +317,13 @@ impl ViewerAgentPanel {
 
     /// Initialize the inner panel.
     ///
-    /// `async_runtime` runs model-API agents.
+    /// `async_runtime` runs model-API agents, and `egui_ctx` is woken for their tool calls.
     /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun viewer-mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
     /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     fn initialize(
         &mut self,
+        egui_ctx: &egui::Context,
         mut settings: AgentSettings,
         async_runtime: &AsyncRuntimeHandle,
         viewer_endpoint: Option<&str>,
@@ -348,10 +370,16 @@ impl ViewerAgentPanel {
         let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
 
         let mut panel = AgentPanel::new(settings, async_runtime.clone());
+        let (calls_tx, calls_rx) = crossbeam::channel::bounded(viewer_toolbox::MAX_WAITING_CALLS);
+        self.viewer_control_calls = Some(calls_rx);
+        panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(
+            calls_tx,
+            egui_ctx.clone(),
+        ));
         panel.set_feedback_enabled(true);
         panel.set_self_improve_available(rerun_workspace.is_some());
         panel.set_context(SessionContext {
-            preamble: Some(
+            agent_harness_preamble: Some(
                 preamble::Preamble {
                     viewer_endpoint,
                     agent_dir: agent_dir.as_deref(),
@@ -359,6 +387,7 @@ impl ViewerAgentPanel {
                 }
                 .text(),
             ),
+            model_api_preamble: Some(preamble::model_api_text()),
             additional_directories: agent_dir.iter().cloned().collect(),
             default_cwd: self
                 .scratch_cwd

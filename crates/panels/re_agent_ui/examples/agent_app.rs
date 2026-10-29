@@ -198,7 +198,8 @@ impl App {
     fn new(settings: AgentSettings, async_runtime: re_async::AsyncRuntimeHandle) -> Self {
         let mut panel = AgentPanel::new(settings, async_runtime);
         panel.set_context(SessionContext {
-            preamble: Some(PREAMBLE.to_owned()),
+            agent_harness_preamble: Some(PREAMBLE.to_owned()),
+            model_api_preamble: Some(PREAMBLE.to_owned()),
             additional_directories: Vec::new(),
             default_cwd: None,
             off_limits_directories: Vec::new(),
