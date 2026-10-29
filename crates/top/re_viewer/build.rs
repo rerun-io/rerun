@@ -13,12 +13,14 @@ const AGENT_SOURCE_FILTER: &[&str] = &[
 fn main() {
     cfg_aliases::cfg_aliases! {
         agent_panel: { not(target_arch = "wasm32") },
+        // Agent harnesses (Claude Code, Codex, …) are subprocesses, so only the desktop viewer has them.
+        agent_harness_backend: { not(target_arch = "wasm32") },
     }
 
     re_build_tools::export_build_info_vars_for_crate("re_viewer");
 
-    // The context is a couple of megabytes of documentation, and the web viewer has no
-    // agent panel to hand it to.
+    // The context is a couple of megabytes of documentation, and only agent harnesses read it,
+    // which the web viewer cannot run.
     let embed = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "wasm32"
         && std::env::var_os("CARGO_FEATURE_AGENT_CONTEXT").is_some();
     embed_agent_files(embed);

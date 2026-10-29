@@ -157,7 +157,7 @@ pub struct AgentEntry {
 impl AgentEntry {
     /// Every built-in profile, with installation checked.
     #[cfg(agent_harness_backend)]
-    pub fn detect_all() -> Vec<Self> {
+    pub fn detect_installed() -> Vec<Self> {
         AgentProfile::builtin()
             .into_iter()
             .map(|profile| Self {

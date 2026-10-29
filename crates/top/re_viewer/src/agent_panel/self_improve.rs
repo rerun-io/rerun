@@ -2,7 +2,7 @@
 //! and fixes the MCP tools, skills, docs, and instructions that let it down.
 //!
 //! Only offered in our own development builds, where the Rerun source tree is on disk for the
-//! agent to edit. See [`super::ViewerAgentPanel::start_self_improvement`].
+//! agent to edit. See [`super::harness::Harness`].
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};

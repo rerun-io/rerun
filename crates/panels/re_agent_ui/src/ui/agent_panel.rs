@@ -14,8 +14,10 @@ use super::conversation_list::{ConversationRow, ConversationStatus, conversation
 use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
-use re_agent::{AgentHarnessConfig, AgentLaunchError, AgentSettings, SessionContext};
+#[cfg(agent_harness_backend)]
+use re_agent::{AgentHarnessConfig, AgentLaunchError};
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
+use re_agent::{AgentSettings, SessionContext};
 
 /// How wide a host should make the panel.
 ///
@@ -212,16 +214,15 @@ impl AgentPanel {
     ///
     /// Model-API agents, such as the `anthropic-api` profile, run on `async_runtime`.
     pub fn new(settings: AgentSettings, async_runtime: AsyncRuntimeHandle) -> Self {
+        let agents = cfg_select! {
+            agent_harness_backend => AgentEntry::detect_installed(),
+            _ => Vec::new(),
+        };
         let available_model_apis = ModelApiProvider::ALL
             .into_iter()
             .filter(|provider| provider.api_key_from_env().is_some())
             .collect();
-        Self::with_agents(
-            settings,
-            Some(async_runtime),
-            AgentEntry::detect_all(),
-            available_model_apis,
-        )
+        Self::with_agents(settings, Some(async_runtime), agents, available_model_apis)
     }
 
     /// Like [`Self::new`], but with explicit lists of agents and model APIs with a key, instead
@@ -406,6 +407,7 @@ impl AgentPanel {
 
     /// What the current settings would launch, for hosts that run side sessions with the same
     /// agent.
+    #[cfg(agent_harness_backend)]
     pub fn agent_harness_config(
         &self,
         context: &SessionContext,
