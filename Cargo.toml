@@ -259,7 +259,7 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"
 arrayvec = "0.7.8"
 array-init = "2.1"
-arrow = { version = "58.3", default-features = false, features = [
+arrow = { version = "58.4.1", default-features = false, features = [
   # NOTE: Similar to `datafusion`, we enable many features on a workspace level
   # to avoid re-compilation when changing compile targets.
   "ffi",
@@ -409,7 +409,7 @@ opentelemetry-proto = { version = "0.32.0", default-features = false }
 opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio"] }
 ordered-float = "5.3"
 parking_lot = { version = "0.12.5", features = ["serde"] }
-parquet = { version = "58.3", default-features = false }
+parquet = { version = "58.4.1", default-features = false }
 paste = "1.0"
 pathdiff = "0.2.3"
 percent-encoding = "2.3"
