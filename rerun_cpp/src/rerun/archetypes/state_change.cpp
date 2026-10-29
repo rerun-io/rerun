@@ -12,37 +12,4 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Text>(Descriptor_state).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> StateChange::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (state.has_value()) {
-            columns.push_back(state.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> StateChange::columns() {
-        if (state.has_value()) {
-            return columns(std::vector<uint32_t>(state.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::StateChange>::as_batches(
-        const archetypes::StateChange& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.state.has_value()) {
-            cells.push_back(archetype.state.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

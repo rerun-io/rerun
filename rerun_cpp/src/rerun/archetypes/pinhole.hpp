@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
@@ -499,13 +500,36 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&image_from_camera,
+                        &resolution,
+                        &camera_xyz,
+                        &child_frame,
+                        &parent_frame,
+                        &image_plane_distance,
+                        &color,
+                        &line_width},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&image_from_camera,
+                                                             &resolution,
+                                                             &camera_xyz,
+                                                             &child_frame,
+                                                             &parent_frame,
+                                                             &image_plane_distance,
+                                                             &color,
+                                                             &line_width})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -519,6 +543,17 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Pinhole& archetype);
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Pinhole& archetype) {
+            return detail::collect_batches(
+                {&archetype.image_from_camera,
+                 &archetype.resolution,
+                 &archetype.camera_xyz,
+                 &archetype.child_frame,
+                 &archetype.parent_frame,
+                 &archetype.image_plane_distance,
+                 &archetype.color,
+                 &archetype.line_width}
+            );
+        }
     };
 } // namespace rerun

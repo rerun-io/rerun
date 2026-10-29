@@ -20,48 +20,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> VisualizerInstruction::columns(const Collection<uint32_t>& lengths_
-    ) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (visualizer_type.has_value()) {
-            columns.push_back(visualizer_type.value().partitioned(lengths_).value_or_throw());
-        }
-        if (component_map.has_value()) {
-            columns.push_back(component_map.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> VisualizerInstruction::columns() {
-        if (visualizer_type.has_value()) {
-            return columns(std::vector<uint32_t>(visualizer_type.value().length(), 1));
-        }
-        if (component_map.has_value()) {
-            return columns(std::vector<uint32_t>(component_map.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::VisualizerInstruction>::as_batches(
-            const blueprint::archetypes::VisualizerInstruction& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.visualizer_type.has_value()) {
-            cells.push_back(archetype.visualizer_type.value());
-        }
-        if (archetype.component_map.has_value()) {
-            cells.push_back(archetype.component_map.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun
