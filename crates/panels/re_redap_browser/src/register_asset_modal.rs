@@ -121,8 +121,8 @@ impl AssetSourcesCapabilities {
 /// this machine.
 ///
 /// The frame is drawn here rather than by the [`egui::TextEdit`], so that the picker sits inside
-/// it. Its stroke follows the field the way `re_ui`'s search field does, which keeps
-/// [`re_ui::UiExt::style_invalid_field`] working.
+/// it. Its stroke follows the field's state, and [`re_ui::text_edit::TextEditTheme::focus_stroke`] while focused,
+/// which keeps [`re_ui::UiExt::style_invalid_field`] working.
 fn source_uri_field(
     ui: &mut egui::Ui,
     source_uri: &mut String,
@@ -140,14 +140,13 @@ fn source_uri_field(
         .map(|response| ui.style().interact(response))
         .unwrap_or_else(|| &ui.visuals().widgets.inactive);
 
-    let selection_stroke = ui.visuals().selection.stroke;
-    let stroke = if response.is_some_and(|response| response.has_focus()) {
-        selection_stroke
+    let width = ui.visuals().selection.stroke.width;
+    let mut stroke = if response.is_some_and(|response| response.has_focus()) {
+        re_ui::text_edit::TextEditTheme::focus_stroke(ui.visuals())
     } else {
-        let mut stroke = visuals.bg_stroke;
-        stroke.width = selection_stroke.width;
-        stroke
+        visuals.bg_stroke
     };
+    stroke.width = width;
 
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(12, 9))

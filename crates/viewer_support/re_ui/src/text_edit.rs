@@ -58,9 +58,8 @@ impl TextEditVariant {
         style.visuals.widgets.hovered.bg_stroke = *stroke_hovered;
         style.visuals.widgets.active.weak_bg_fill = *fill_focused;
         style.visuals.widgets.active.bg_fill = *fill_focused;
+        // Outlines the focused frame, see `TextEditTheme::focus_stroke`:
         style.visuals.widgets.active.bg_stroke = *stroke_focused;
-
-        style.visuals.selection.stroke = *stroke_focused;
 
         // The hint text (placeholder) is painted with the weak text color:
         style.visuals.weak_text_color = Some(*text_placeholder);
@@ -370,11 +369,30 @@ impl egui::theme::StyleProvider<ButtonStyle> for CompletionButtonTheme {
 ///
 /// egui derives a text edit's margin from `button_padding`, which Rerun sets to almost nothing so
 /// that the blueprint panel's icons align (see `DesignTokens`), leaving the text cramped.
+///
+/// A focused text edit is outlined with [`Self::focus_stroke`].
 pub struct TextEditTheme;
 
 impl TextEditTheme {
     /// The space between a text edit's frame and its text.
     const MARGIN: egui::Margin = egui::Margin::symmetric(4, 2);
+
+    /// The outline of a focused text field.
+    ///
+    /// egui outlines it with `selection.stroke`, whose color is also painted onto selected glyphs.
+    /// So a scope recolors the outline through `widgets.active.bg_stroke` instead (see
+    /// [`TextEditVariant`] and [`crate::UiExt::style_invalid_field`]), which this prefers when set,
+    /// leaving selected text in the global selection colors.
+    ///
+    /// Fields that draw their own frame must use this too, to follow those scopes.
+    pub fn focus_stroke(visuals: &egui::Visuals) -> egui::Stroke {
+        let stroke = visuals.widgets.active.bg_stroke;
+        if stroke.is_empty() {
+            visuals.selection.stroke
+        } else {
+            stroke
+        }
+    }
 }
 
 impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
@@ -386,6 +404,16 @@ impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
         let frame = &mut style.atom_layout.frame;
         frame.inner_margin = frame.inner_margin + Self::MARGIN
             - egui::Margin::from(args.style.spacing.button_padding);
+
+        if args.state == egui::widget_style::WidgetState::Active
+            && !args.classes.has_class(&TextEdit::CLASS_READ_ONLY)
+        {
+            // Zero expansion: only the stroke and the margin compensating its width change.
+            *frame = frame.apply_stroke_and_expansion_without_layout_shift(
+                Self::focus_stroke(&args.style.visuals),
+                0.0,
+            );
+        }
 
         style
     }
