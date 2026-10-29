@@ -42,6 +42,8 @@ mod gaussian_splats3d;
 mod geo_line_strings;
 #[path = "archetypes/geo_points.def.rs"]
 mod geo_points;
+#[path = "archetypes/geo_polygons.def.rs"]
+mod geo_polygons;
 #[path = "archetypes/graph_edges.def.rs"]
 mod graph_edges;
 #[path = "archetypes/graph_nodes.def.rs"]
@@ -130,6 +132,7 @@ pub use self::encoded_image::*;
 pub use self::gaussian_splats3d::*;
 pub use self::geo_line_strings::*;
 pub use self::geo_points::*;
+pub use self::geo_polygons::*;
 pub use self::graph_edges::*;
 pub use self::graph_nodes::*;
 pub use self::grid_map::*;

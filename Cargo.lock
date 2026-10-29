@@ -3425,6 +3425,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "earcut"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f03dd5350900133e14471c90d513eb5ba264004cd833adecab7dfa5fb5a2974"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "ecolor"
 version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11660,6 +11669,7 @@ name = "re_view_map"
 version = "0.41.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
+ "earcut",
  "egui",
  "glam",
  "itertools 0.15.0",
@@ -11674,6 +11684,7 @@ dependencies = [
  "re_sdk_types",
  "re_span",
  "re_test_context",
+ "re_test_viewport",
  "re_tracing",
  "re_ui",
  "re_view",
@@ -11681,6 +11692,7 @@ dependencies = [
  "re_viewport_blueprint",
  "re_walkers",
  "re_workspace_hack",
+ "rustls",
 ]
 
 [[package]]

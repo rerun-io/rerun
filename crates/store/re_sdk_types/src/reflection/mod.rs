@@ -1499,6 +1499,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GeoPolygon as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "A geospatial polygon with an exterior ring and optional interior rings (holes).\n\nPositions use [EPSG:4326](https://epsg.io/4326) latitude and longitude in North/East-positive degrees.\nRings may be open or closed and may have either winding order.\nThe first ring is the exterior; subsequent rings are holes.\n\nRings must describe a valid polygon with non-intersecting boundaries and holes inside the exterior.\nSplit rings crossing the antimeridian into separate polygons before logging.\nThe map clamps polar positions to the Web Mercator latitude limit.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(GeoPolygon::default().to_arrow()?),
+                datatype: GeoPolygon::arrow_data_type(),
+                encoding: Some("rerun.encodings.GeoPolygonData"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: GeoPolygon::verify_arrow_array,
+            },
+        ),
+        (
             <GraphEdge as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
@@ -3610,6 +3623,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Class ids",
                         component_type: "rerun.components.ClassId".into(),
                         docstring_md: "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors if not specified explicitly.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.archetypes.GeoPolygons"),
+            ArchetypeReflection {
+                display_name: "Geo polygons",
+                deprecation_summary: None,
+                scope: None,
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "polygons",
+                        display_name: "Polygons",
+                        component_type: "rerun.components.GeoPolygon".into(),
+                        docstring_md: "Polygons with exterior and interior rings.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "Optional fill colors, one per polygon instance.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -6433,6 +6470,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 applicability: ViewApplicability::Archetypes(vec![
                     ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
                     ArchetypeName::from("rerun.archetypes.GeoPoints"),
+                    ArchetypeName::from("rerun.archetypes.GeoPolygons"),
                 ]),
                 property_archetypes: vec![
                     ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),

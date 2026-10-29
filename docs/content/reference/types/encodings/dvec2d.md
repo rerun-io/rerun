@@ -20,4 +20,5 @@ FixedSizeList(2 x non-null Float64)
 ## Used by
 
 * [`GeoLineString`](../components/geo_line_string.md)
+* [`GeoPolygonData`](../encodings/geo_polygon_data.md)
 * [`LatLon`](../components/lat_lon.md)

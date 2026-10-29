@@ -24,6 +24,7 @@ fill_ratio.md linguist-generated=true
 flag.md linguist-generated=true
 gamma_correction.md linguist-generated=true
 geo_line_string.md linguist-generated=true
+geo_polygon.md linguist-generated=true
 graph_edge.md linguist-generated=true
 graph_node.md linguist-generated=true
 graph_type.md linguist-generated=true

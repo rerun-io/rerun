@@ -178,6 +178,7 @@ pub struct PointCloudDrawData {
     /// Appended during drawable collection so each view retains its own sorted lookup texture.
     /// Entries from the previous frame are discarded when this draw data is reused.
     drawables: Arc<Mutex<SortedDrawables>>,
+    sort_key: Option<f32>,
 }
 
 impl DrawData for PointCloudDrawData {
@@ -232,14 +233,15 @@ impl DrawData for PointCloudDrawData {
                 },
             );
 
-            collector.add_drawable(
-                batch.active_phases,
-                DrawDataDrawable::from_world_position(
-                    view_info,
-                    batch.center_world_position.into(),
-                    drawable_index as _,
-                ),
+            let mut drawable = DrawDataDrawable::from_world_position(
+                view_info,
+                batch.center_world_position.into(),
+                drawable_index as _,
             );
+            if let Some(sort_key) = self.sort_key {
+                drawable.distance_sort_key = sort_key;
+            }
+            collector.add_drawable(batch.active_phases, drawable);
         }
     }
 }
@@ -327,6 +329,15 @@ pub enum PointCloudDrawDataError {
 }
 
 impl PointCloudDrawData {
+    /// Give all batches a fixed sorting key instead of their distance from the camera.
+    ///
+    /// Larger values are drawn first in the transparent phase.
+    /// This controls ordering against other draw data; per-point sorting is unchanged.
+    pub fn with_sort_key(mut self, sort_key: f32) -> Self {
+        self.sort_key = Some(sort_key);
+        self
+    }
+
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
@@ -354,6 +365,7 @@ impl PointCloudDrawData {
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
                 drawables: Arc::new(Mutex::new(SortedDrawables::default())),
+                sort_key: None,
             });
         }
 
@@ -597,6 +609,7 @@ impl PointCloudDrawData {
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
             drawables: Arc::new(Mutex::new(SortedDrawables::default())),
+            sort_key: None,
         })
     }
 }
