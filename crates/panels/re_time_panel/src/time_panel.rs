@@ -865,6 +865,7 @@ impl TimePanel {
                     store_ctx.egui_ctx,
                     &entity_data.label,
                     entity_data.highlight_sections.iter().cloned(),
+                    &egui::TextStyle::Body,
                     None,
                 ))
                 .with_icon(re_data_ui::item_ui::instance_path_icon(

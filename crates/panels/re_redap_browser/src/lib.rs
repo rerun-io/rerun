@@ -5,6 +5,7 @@ mod asset_coverage_modal;
 mod asset_registration;
 mod asset_source_modal;
 mod context;
+mod dataset_schema;
 mod entries;
 mod entry_meta;
 mod folder_card_ui;

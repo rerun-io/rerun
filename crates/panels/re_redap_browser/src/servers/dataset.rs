@@ -162,7 +162,8 @@ impl Server {
             let mut new_resource = resource;
             TabBar::new(ui)
                 .selectable_value(&mut new_resource, DatasetResource::Segments, "Segments")
-                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets");
+                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets")
+                .selectable_value(&mut new_resource, DatasetResource::Schema, "Schema");
 
             if new_resource != resource {
                 app_ctx
@@ -182,6 +183,12 @@ impl Server {
                 }
                 DatasetResource::Assets => {
                     self.assets_ui(ui, app_ctx, ctx, dataset, &asset_sources);
+                }
+                DatasetResource::Schema => {
+                    let schema = dataset
+                        .requests()
+                        .schema(self.entry_meta_query(ui.ctx(), dataset));
+                    crate::dataset_schema::schema_ui(ui, &schema);
                 }
             }
         });

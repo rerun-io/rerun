@@ -615,50 +615,32 @@ pub fn format_matching_text(
     ctx: &egui::Context,
     text: &str,
     match_iter: impl Iterator<Item = Range<usize>>,
+    text_style: &egui::TextStyle,
     text_color: Option<egui::Color32>,
 ) -> egui::WidgetText {
     let mut current = 0;
     let mut job = egui::text::LayoutJob::default();
 
-    let color = text_color.unwrap_or(Color32::PLACEHOLDER);
+    let format = egui::TextFormat {
+        font_id: text_style.resolve(&ctx.global_style()),
+        color: text_color.unwrap_or(Color32::PLACEHOLDER),
+        ..Default::default()
+    };
+    let match_format = egui::TextFormat {
+        background: ctx.tokens().search_match_bg_fill,
+        ..format.clone()
+    };
 
     for Range { start, end } in match_iter {
         if current < start {
-            job.append(
-                &text[current..start],
-                0.0,
-                egui::TextFormat {
-                    font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                    color,
-                    ..Default::default()
-                },
-            );
+            job.append(&text[current..start], 0.0, format.clone());
         }
-
-        job.append(
-            &text[start..end],
-            0.0,
-            egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                color,
-                background: ctx.tokens().search_match_bg_fill,
-                ..Default::default()
-            },
-        );
-
+        job.append(&text[start..end], 0.0, match_format.clone());
         current = end;
     }
 
     if current < text.len() {
-        job.append(
-            &text[current..],
-            0.0,
-            egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                color,
-                ..Default::default()
-            },
-        );
+        job.append(&text[current..], 0.0, format);
     }
 
     job.into()

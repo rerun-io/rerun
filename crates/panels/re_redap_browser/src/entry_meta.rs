@@ -12,6 +12,8 @@ use re_protos::cloud::v1alpha1::ext::AssetMode;
 use re_redap_client::{ApiError, ApiErrorKind, ApiResult, ConnectionHandle};
 use re_ui::{RequestedObject, ServerValue};
 
+use crate::dataset_schema::DatasetSchema;
+
 /// Summary of a catalog entry, as reported by the server hosting it.
 ///
 /// Each part is fetched in the background, see [`DatasetRequests`].
@@ -136,6 +138,9 @@ struct Requests {
     assets: RequestedObject<AssetsRef, ApiError>,
 
     asset_coverage: BTreeMap<SegmentId, RequestedObject<Arc<StoredCoverage>, ApiError>>,
+
+    /// The combined schema of all layers in the dataset.
+    schema: RequestedObject<Arc<DatasetSchema>, ApiError>,
 }
 
 impl DatasetRequests {
@@ -219,6 +224,20 @@ impl DatasetRequests {
             })
     }
 
+    /// The combined schema of all layers in the dataset.
+    pub fn schema(&self, query: EntryMetaQuery<'_>) -> ServerValue<Arc<DatasetSchema>, ApiError> {
+        self.0
+            .lock()
+            .schema
+            .request_value(query.runtime, query.egui_ctx, || {
+                warn_on_failure(
+                    "dataset schema",
+                    query.dataset_id,
+                    schema(query.connection.clone(), query.dataset_id),
+                )
+            })
+    }
+
     /// Fetch everything again, keeping what we have until the new values arrive.
     pub fn refresh(&self) {
         let mut guard = self.0.lock();
@@ -227,6 +246,7 @@ impl DatasetRequests {
             segment_ids,
             assets,
             asset_coverage,
+            schema,
         } = &mut *guard;
         segment_count.refresh();
         segment_ids.refresh();
@@ -234,6 +254,7 @@ impl DatasetRequests {
         for coverage in asset_coverage.values_mut() {
             coverage.refresh();
         }
+        schema.refresh();
     }
 
     /// Forget the assets we fetched, so the next access fetches them again.
@@ -311,6 +332,21 @@ async fn segment_ids(connection: ConnectionHandle, entry_id: EntryId) -> ApiResu
             .get_dataset_segment_ids(entry_id)
             .await?,
     )))
+}
+
+async fn schema(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<Arc<DatasetSchema>> {
+    let mut client = connection.client().await?;
+    let schema = client.get_dataset_schema(entry_id).await?;
+
+    let schema = DatasetSchema::from_arrow(&schema.schema).map_err(|err| {
+        ApiError::deserialization(
+            connection.origin(),
+            None,
+            format!("Invalid dataset schema: {err}"),
+        )
+    })?;
+
+    Ok(Arc::new(schema))
 }
 
 async fn assets(connection: ConnectionHandle, asset_dataset: EntryId) -> ApiResult<AssetsRef> {

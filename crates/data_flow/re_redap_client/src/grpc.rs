@@ -854,6 +854,13 @@ pub async fn stream_blueprint_and_segment_from_server(
 
             (asset_dataset, DatasetKind::Asset)
         }
+
+        re_uri::DatasetResource::Schema => {
+            return Err(ApiError::invalid_arguments(
+                client.origin(),
+                format!("Cannot stream a dataset schema\nUri: {uri}"),
+            ));
+        }
     };
 
     // An asset shows something else entirely than the dataset's own segments, so the dataset's

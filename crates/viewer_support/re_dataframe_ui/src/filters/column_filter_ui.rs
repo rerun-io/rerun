@@ -235,6 +235,7 @@ fn column_picker_ui(
                         ui.ctx(),
                         &column.display_name,
                         ranges.remove(0).into_iter().flatten(),
+                        &egui::TextStyle::Body,
                         None,
                     );
                     let filter = &column.column_filter;
