@@ -37,6 +37,23 @@ By default, the embedded viewer follows the user's OS theme (`prefers-color-sche
 
 This is useful for sites whose theme can differ from the OS preference — without it, a user on a light-mode OS visiting your dark-mode page would see a bright viewer panel against a dark background.
 
+### Disabling analytics
+
+To disable usage analytics for an embedded Web Viewer, add `analytics=0` to its iframe URL:
+
+```html
+<iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&analytics=0"></iframe>
+```
+
+When using the JavaScript package, pass `analytics: false` to `viewer.start` instead:
+
+```js
+await viewer.start(rrdUrl, parentElement, { analytics: false });
+```
+
+The host opt-out also disables identity-linking analytics and Hub query usage statistics.
+It does not change saved native analytics preferences.
+
 ## Using the JavaScript package
 
 We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the Viewer but requires a JavaScript web application setup with a bundler.
@@ -167,4 +184,3 @@ viewer.on("selection_change", (event) => {
   }
 });
 ```
-

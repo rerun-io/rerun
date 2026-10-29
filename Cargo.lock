@@ -10696,6 +10696,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-proto",
  "quiver",
+ "re_analytics",
  "re_arrow_util",
  "re_async",
  "re_auth",

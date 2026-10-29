@@ -50,6 +50,10 @@ impl ConnectionAnalyticsExporter {
         request: ExportTraceServiceRequest,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
+        if !re_analytics::is_enabled_by_host() {
+            return Ok(());
+        }
+
         let mut grpc = tonic::client::Grpc::new(self.service.clone());
 
         let mut request = tonic::Request::new(request);

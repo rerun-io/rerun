@@ -989,6 +989,9 @@ export interface LoginOptions {
 //       - Should this option be exposed?
 //       - Should changing this option result in the viewer being restarted?
 export interface WebViewerOptions {
+  /** Allow usage analytics. Defaults to `true`. */
+  analytics?: boolean;
+
   /** Url to the example manifest. Unused if `hide_welcome_screen` is set to `true`. */
   manifest_url?: string;
 
