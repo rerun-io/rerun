@@ -13,6 +13,7 @@ use re_log_msg::LogMsg;
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{StoreId, StoreKind, TimeInt, TimeType, Timeline, entity_path};
 const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
+const PROTOBUF_UNCOMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_UNCOMPRESSED;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
@@ -21,9 +22,13 @@ cfg_select! {
     debug_assertions => {
         // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
         const NUM_POINTS: usize = 1;
+        const NUM_BLOBS: usize = 1;
+        const BLOB_SIZE_BYTES: usize = 4 * 1024;
     }
     _ => {
         const NUM_POINTS: usize = 10_000;
+        const NUM_BLOBS: usize = 16;
+        const BLOB_SIZE_BYTES: usize = 1024 * 1024;
     }
 }
 
@@ -32,6 +37,7 @@ criterion_group!(
     mono_points_arrow,
     mono_points_arrow_batched,
     batch_points_arrow,
+    video_like_blobs,
 );
 criterion_main!(benches);
 
@@ -287,6 +293,67 @@ fn batch_points_arrow(c: &mut Criterion) {
                 b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
             });
         }
+    }
+}
+
+/// Chunks carrying incompressible blobs, like encoded video samples.
+///
+/// Encoding with the LZ4 request shows what an attempt that gets discarded costs over writing
+/// the bytes as-is, and decoding shows what skipping the decompression pass gains.
+fn video_like_blobs(c: &mut Criterion) {
+    fn incompressible_bytes(len: usize, seed: u64) -> Vec<u8> {
+        let mut state = seed | 1;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                (state >> 56) as u8
+            })
+            .collect()
+    }
+
+    fn generate_chunks() -> Vec<Chunk> {
+        (0..NUM_BLOBS)
+            .map(|i| {
+                let frame_nr = i64::try_from(i).unwrap();
+                Chunk::builder(entity_path!("video"))
+                    .with_archetype(
+                        RowId::ZERO,
+                        [build_frame_nr(TimeInt::new_temporal(frame_nr))],
+                        &re_sdk_types::archetypes::AssetVideo::from_file_contents(
+                            incompressible_bytes(BLOB_SIZE_BYTES, i as u64),
+                            Some(re_sdk_types::components::MediaType::mp4()),
+                        ),
+                    )
+                    .build()
+                    .unwrap()
+            })
+            .collect()
+    }
+
+    let store_id = StoreId::random(StoreKind::Recording, "test_app");
+    let mut group = c.benchmark_group("video_like_blobs");
+    group.throughput(criterion::Throughput::Bytes(
+        (NUM_BLOBS * BLOB_SIZE_BYTES) as u64,
+    ));
+    let messages = generate_messages(&store_id, &generate_chunks());
+
+    for (label, options) in [
+        ("lz4_requested", PROTOBUF_COMPRESSED),
+        ("uncompressed", PROTOBUF_UNCOMPRESSED),
+    ] {
+        group.bench_function(format!("encode_log_msg({label})"), |b| {
+            b.iter(|| encode_log_msgs(&messages, options));
+        });
+        let encoded = encode_log_msgs(&messages, options);
+        group.bench_function(format!("decode_log_msg({label})"), |b| {
+            b.iter(|| {
+                let decoded = decode_log_msgs(&encoded);
+                assert_eq!(decoded.len(), messages.len());
+                decoded
+            });
+        });
     }
 }
 

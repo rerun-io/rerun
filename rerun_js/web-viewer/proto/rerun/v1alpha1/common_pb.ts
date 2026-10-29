@@ -420,11 +420,10 @@ export type DataframePart = Message<"rerun.common.v1alpha1.DataframePart"> & {
   /**
    * How large is the uncompressed data?
    *
-   * The value is undefined if `self.compression == Off`.
-   *
-   * This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
-   * in many real world recordings out there (which is fine, because they are all implicitly
-   * using `Compression::Off`).
+   * Encoders always write it, and it equals the payload length when the payload is not
+   * compressed. Readers must treat the payload length as authoritative for uncompressed parts,
+   * because this was introduced late in `DataframePart`'s lifetime and old recordings left it
+   * unset (which is fine, because they are all implicitly using `Compression::Off`).
    *
    * @generated from field: uint64 uncompressed_size = 4;
    */
@@ -885,6 +884,9 @@ export enum Compression {
 
   /**
    * LZ4 block compression.
+   *
+   * Encoders only use this where it saves enough bytes; a payload that compresses poorly is
+   * written as `COMPRESSION_NONE` even when LZ4 was requested.
    *
    * @generated from enum value: COMPRESSION_LZ4 = 2;
    */

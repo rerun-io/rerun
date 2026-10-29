@@ -30,6 +30,10 @@ impl EncodingOptions {
 }
 
 impl EncodingOptions {
+    /// Requests LZ4 for every message, which the encoder applies only where it saves enough bytes.
+    ///
+    /// The compression actually used is recorded in each message, which is what decoders read;
+    /// see [`Compression::LZ4`].
     pub const PROTOBUF_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
