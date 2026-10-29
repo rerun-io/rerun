@@ -339,14 +339,16 @@ impl RegisterAssetModal {
     pub fn open(
         &mut self,
         target: AssetTarget,
-        connection_registry: ConnectionRegistryHandle,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
     ) {
         self.state = Some(State {
             edit_state: AssetEditState {
+                client: CatalogClient::new(
+                    connection_registry.connection_handle(target.origin.clone()),
+                    runtime,
+                ),
                 target,
-                connection_registry,
-                runtime,
                 coverage: Default::default(),
             },
             source_uri: String::new(),
@@ -388,7 +390,7 @@ impl RegisterAssetModal {
             |ui| {
                 // Read every frame, so the modal keeps up with a connection made while it is open.
                 let sources = AssetSourcesCapabilities::new(
-                    &state.edit_state.connection_registry,
+                    state.edit_state.client.connection().connection_registry(),
                     &state.edit_state.target.origin,
                 );
 
@@ -541,8 +543,7 @@ impl RegisterAssetModal {
                             {
                                 let AssetTarget { origin, dataset_id } =
                                     state.edit_state.target.clone();
-                                let connection_registry =
-                                    state.edit_state.connection_registry.clone();
+                                let client = state.edit_state.client.clone();
                                 let coverage =
                                     (!keep_coverage).then(|| state.edit_state.coverage.coverage());
                                 let source_uri = std::mem::take(&mut state.source_uri);
@@ -559,10 +560,9 @@ impl RegisterAssetModal {
                                 )
                                 .ok();
 
-                                state.edit_state.runtime.spawn_future(async move {
+                                state.edit_state.client.runtime().spawn_future(async move {
                                     let result = register_asset(
-                                        connection_registry,
-                                        origin.clone(),
+                                        client,
                                         dataset_id,
                                         &source_uri,
                                         coverage.as_ref(),
@@ -604,13 +604,12 @@ impl RegisterAssetModal {
 /// Registers what `source_uri` points at as an asset of a dataset, covering the segments the user
 /// picked.
 async fn register_asset(
-    connection_registry: ConnectionRegistryHandle,
-    origin: re_uri::Origin,
+    client: CatalogClient,
     dataset_id: EntryId,
     source_uri: &str,
     coverage: Option<&AssetCoverage>,
 ) -> Result<(), AssetRegistrationError> {
-    match CatalogClient::new(connection_registry.connection_handle(origin))
+    match client
         .register_asset(dataset_id, source_uri, coverage, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
     {

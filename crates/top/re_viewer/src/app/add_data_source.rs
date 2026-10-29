@@ -445,14 +445,13 @@ impl AppCore {
         #[cfg(not(target_arch = "wasm32"))] assets: &[std::path::PathBuf],
         #[cfg(target_arch = "wasm32")] file: web_sys::File,
     ) {
-        let connection_registry = self.connections.registry.clone();
         let sender = self.command_sender.clone();
         let path = path.to_owned();
         #[cfg(not(target_arch = "wasm32"))]
         let assets = assets.to_vec();
         #[cfg(not(target_arch = "wasm32"))]
         let registered_files = self.connections.registered_files.clone();
-        let catalog = InternalCatalog::new(&connection_registry);
+        let catalog = InternalCatalog::new(&self.connections.registry, self.async_runtime.clone());
         // Count it before spawning, so that whatever checks for it right after cannot miss it.
         let registration_guard = catalog.as_ref().map(|catalog| {
             self.connections
@@ -463,10 +462,10 @@ impl AppCore {
                 })
         });
         self.async_runtime.spawn_future(async move {
-            let registration = match catalog {
+            let registration = match &catalog {
                 Some(catalog) => {
                     register_file(
-                        &catalog,
+                        catalog,
                         &path,
                         #[cfg(target_arch = "wasm32")]
                         file,
@@ -479,9 +478,8 @@ impl AppCore {
             // Register the assets before opening the segment, so the segment streams with its
             // asset layers.
             #[cfg(not(target_arch = "wasm32"))]
-            if let Ok(target) = &registration {
-                super::assets::register_assets(&connection_registry, &sender, target, &assets)
-                    .await;
+            if let (Some(catalog), Ok(target)) = (&catalog, &registration) {
+                super::assets::register_assets(catalog.client(), &sender, target, &assets).await;
             }
 
             match registration {
@@ -509,7 +507,8 @@ impl AppCore {
                 }
                 Ok(RegistrationTarget::Entry(entry_id)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
-                    if let Some(origin) = connection_registry.internal_origin() {
+                    if let Some(catalog) = &catalog {
+                        let origin = catalog.client().origin().clone();
                         sender.send_system(SystemCommand::RefreshRedapEntry {
                             origin: origin.clone(),
                             entry_id,

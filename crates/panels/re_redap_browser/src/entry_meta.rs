@@ -3,13 +3,13 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
-use re_async::{AsyncRuntimeHandle, WasmNotSend};
+use re_async::WasmNotSend;
 use re_catalog_client::{Asset, AssetCoverage, CatalogClient};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_mutex::Mutex;
 use re_protos::cloud::v1alpha1::ext::AssetMode;
-use re_redap_client::{ApiError, ApiErrorKind, ApiResult, ConnectionHandle};
+use re_redap_client::{ApiError, ApiErrorKind, ApiResult};
 use re_ui::{RequestedObject, ServerValue};
 
 use crate::dataset_schema::DatasetSchema;
@@ -26,9 +26,8 @@ pub struct EntryMeta {
 /// Where to fetch a dataset's metadata from.
 #[derive(Clone, Copy)]
 pub struct EntryMetaQuery<'a> {
-    pub runtime: &'a AsyncRuntimeHandle,
+    pub client: &'a CatalogClient,
     pub egui_ctx: &'a egui::Context,
-    pub connection: &'a ConnectionHandle,
     pub dataset_id: EntryId,
 }
 
@@ -146,17 +145,17 @@ struct Requests {
 impl DatasetRequests {
     /// Everything we know about the dataset, asking for whatever hasn't been asked for yet.
     pub fn meta(&self, query: EntryMetaQuery<'_>) -> EntryMeta {
-        let segments =
-            self.0
-                .lock()
-                .segment_count
-                .request_value(query.runtime, query.egui_ctx, || {
-                    warn_on_failure(
-                        "dataset segment count",
-                        query.dataset_id,
-                        segment_count(query.connection.clone(), query.dataset_id),
-                    )
-                });
+        let segments = self.0.lock().segment_count.request_value(
+            query.client.runtime(),
+            query.egui_ctx,
+            || {
+                warn_on_failure(
+                    "dataset segment count",
+                    query.dataset_id,
+                    segment_count(query.client.clone(), query.dataset_id),
+                )
+            },
+        );
 
         EntryMeta { segments }
     }
@@ -166,11 +165,11 @@ impl DatasetRequests {
         self.0
             .lock()
             .segment_ids
-            .request_value(query.runtime, query.egui_ctx, || {
+            .request_value(query.client.runtime(), query.egui_ctx, || {
                 warn_on_failure(
                     "dataset segment ids",
                     query.dataset_id,
-                    segment_ids(query.connection.clone(), query.dataset_id),
+                    segment_ids(query.client.clone(), query.dataset_id),
                 )
             })
     }
@@ -189,11 +188,11 @@ impl DatasetRequests {
         self.0
             .lock()
             .assets
-            .request_value(query.runtime, query.egui_ctx, || {
+            .request_value(query.client.runtime(), query.egui_ctx, || {
                 warn_on_failure(
                     "dataset assets",
                     query.dataset_id,
-                    assets(query.connection.clone(), asset_dataset),
+                    assets(query.client.clone(), asset_dataset),
                 )
             })
     }
@@ -209,17 +208,12 @@ impl DatasetRequests {
             .asset_coverage
             .entry(asset_id.clone())
             .or_default()
-            .request_value(query.runtime, query.egui_ctx, || {
-                let connection = query.connection.clone();
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                let client = query.client.clone();
                 let dataset_id = query.dataset_id;
                 let asset_id = asset_id.clone();
                 warn_on_failure("asset coverage", dataset_id, async move {
-                    stored_coverage(
-                        CatalogClient::new(connection)
-                            .asset_coverage(dataset_id, asset_id)
-                            .await,
-                    )
-                    .map(Arc::new)
+                    stored_coverage(client.asset_coverage(dataset_id, asset_id).await).map(Arc::new)
                 })
             })
     }
@@ -229,11 +223,11 @@ impl DatasetRequests {
         self.0
             .lock()
             .schema
-            .request_value(query.runtime, query.egui_ctx, || {
+            .request_value(query.client.runtime(), query.egui_ctx, || {
                 warn_on_failure(
                     "dataset schema",
                     query.dataset_id,
-                    schema(query.connection.clone(), query.dataset_id),
+                    schema(query.client.clone(), query.dataset_id),
                 )
             })
     }
@@ -319,28 +313,23 @@ fn stored_coverage(response: ApiResult<(AssetCoverage, u64)>) -> ApiResult<Store
 /// How many segments a dataset holds.
 ///
 /// The server has no count endpoint, so this counts the rows of the segment table, one per segment.
-async fn segment_count(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<usize> {
-    CatalogClient::new(connection)
-        .get_dataset_segment_count(entry_id)
-        .await
+async fn segment_count(client: CatalogClient, entry_id: EntryId) -> ApiResult<usize> {
+    client.get_dataset_segment_count(entry_id).await
 }
 
 /// The id of each segment a dataset holds, read from its segment table.
-async fn segment_ids(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<SegmentIdsRef> {
+async fn segment_ids(client: CatalogClient, entry_id: EntryId) -> ApiResult<SegmentIdsRef> {
     Ok(Arc::new(SegmentIds::new(
-        CatalogClient::new(connection)
-            .get_dataset_segment_ids(entry_id)
-            .await?,
+        client.get_dataset_segment_ids(entry_id).await?,
     )))
 }
 
-async fn schema(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<Arc<DatasetSchema>> {
-    let mut client = connection.client().await?;
+async fn schema(client: CatalogClient, entry_id: EntryId) -> ApiResult<Arc<DatasetSchema>> {
     let schema = client.get_dataset_schema(entry_id).await?;
 
     let schema = DatasetSchema::from_arrow(&schema.schema).map_err(|err| {
         ApiError::deserialization(
-            connection.origin(),
+            client.origin(),
             None,
             format!("Invalid dataset schema: {err}"),
         )
@@ -349,10 +338,8 @@ async fn schema(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<Ar
     Ok(Arc::new(schema))
 }
 
-async fn assets(connection: ConnectionHandle, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
-    let assets = CatalogClient::new(connection)
-        .scan_asset_dataset(asset_dataset)
-        .await?;
+async fn assets(client: CatalogClient, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
+    let assets = client.scan_asset_dataset(asset_dataset).await?;
 
     Ok(Arc::new(assets))
 }

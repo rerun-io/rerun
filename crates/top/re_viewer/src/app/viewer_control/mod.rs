@@ -1552,6 +1552,7 @@ impl AppCore {
             self.connections
                 .registry
                 .connection_handle(entry.origin.clone()),
+            self.async_runtime.clone(),
         );
         Ok((entry, root, catalog))
     }

@@ -12890,6 +12890,7 @@ dependencies = [
  "pyo3-build-config",
  "rand 0.9.5",
  "re_arrow_util",
+ "re_async",
  "re_auth",
  "re_build_info",
  "re_build_tools",

@@ -24,6 +24,7 @@ pub use viewer_section::ViewerSection;
 
 pub struct TestServer {
     server_handle: Option<ServerHandle>,
+    runtime: re_viewer::AsyncRuntimeHandle,
     port: u16,
 }
 
@@ -44,6 +45,8 @@ impl TestServer {
 
         Self {
             server_handle: Some(server_handle),
+            runtime: re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                .expect("test runtime is running"),
             port,
         }
     }
@@ -122,6 +125,7 @@ impl TestServer {
         };
         CatalogClient::new(
             ConnectionRegistry::new_without_stored_credentials().connection_handle(origin),
+            self.runtime.clone(),
         )
     }
 

@@ -7,7 +7,7 @@ use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, ConnectionHandle};
+use re_redap_client::ApiError;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
@@ -77,9 +77,8 @@ impl Server {
         dataset: &'a Dataset,
     ) -> EntryMetaQuery<'a> {
         EntryMetaQuery {
-            runtime: &self.runtime,
+            client: &self.client,
             egui_ctx,
-            connection: &self.connection,
             dataset_id: dataset.id(),
         }
     }
@@ -263,7 +262,13 @@ impl Server {
             self.origin().clone(),
             dataset.id(),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     /// Lists the assets of a dataset, or says why there is nothing to list.
@@ -1533,12 +1538,12 @@ fn register_asset_button(
 ///
 /// Returns whether the server dropped it.
 pub(crate) async fn unregister_asset(
-    connection: ConnectionHandle,
+    client: CatalogClient,
     dataset_id: EntryId,
     asset_id: SegmentId,
     has_failed: bool,
 ) -> bool {
-    match CatalogClient::new(connection)
+    match client
         .unregister_asset(
             dataset_id,
             asset_id.clone(),
