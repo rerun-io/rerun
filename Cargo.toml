@@ -884,6 +884,7 @@ rc_mutex = "warn"
 redundant_type_annotations = "warn"
 rest_pat_in_fully_bound_structs = "warn"
 return_and_then = "warn"
+self_named_module_files = "warn"
 set_contains_or_insert = "warn"
 single_option_map = "warn"
 str_to_string = "warn"
@@ -909,9 +910,6 @@ unwrap_used = "warn"
 use_self = "warn"
 useless_let_if_seq = "warn"
 verbose_file_reads = "warn"
-
-# Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
-#self_named_module_files = "warn"
 
 # Pedantic lints we opt out of, with the number of hits at the time we enabled `pedantic`:
 assigning_clones = "allow" # `clone_into` reads backwards
@@ -953,7 +951,6 @@ too_many_arguments = "allow" # yes, we should avoid too many arguments, but enfo
 clone_on_ref_ptr = "allow" # Might be too much with this enabled
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
-self_named_module_files = "allow" # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 
 [patch.crates-io]
