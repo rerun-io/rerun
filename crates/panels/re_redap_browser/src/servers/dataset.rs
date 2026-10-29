@@ -108,11 +108,7 @@ impl Server {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             let name = dataset.name();
-
-            let path = name
-                .as_str()
-                .split(re_uri::DATASET_HIERARCHY_SEPARATOR)
-                .collect::<Vec<_>>();
+            let leaf_name = re_uri::dataset_hierarchy_leaf_name(name.as_str());
 
             ui.horizontal(|ui| {
                 ui.add_space(PADDING);
@@ -121,39 +117,34 @@ impl Server {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     ui.add_space(PADDING);
 
-                    if path.len() > 1 {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            for (idx, part) in path.iter().enumerate() {
-                                let last = idx == path.len() - 1;
-                                if last {
-                                    ui.strong(*part);
-                                } else {
-                                    ui.label(format!("{part} / "));
-                                }
-                            }
-                        });
+                    if leaf_name != name.as_str() {
+                        crate::breadcrumbs::hierarchy_breadcrumbs_ui(
+                            ui,
+                            &dataset.origin,
+                            name.as_str(),
+                            app_ctx.command_sender(),
+                        );
                         ui.add_space(BREADCRUMB_TO_NAME_SPACE);
                     }
 
-                    if let Some(name) = path.last() {
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(ui.available_width(), HEADER_HEIGHT),
-                            egui::Layout::left_to_right(egui::Align::Center),
-                            |ui| {
-                                ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
-                                ui.label(
-                                    egui::RichText::new(*name).size(HEADER_FONT_SIZE).strong(),
-                                );
-                                refresh_button_ui(
-                                    ui,
-                                    app_ctx,
-                                    dataset,
-                                    self.segments_queried_at(ui, dataset),
-                                );
-                            },
-                        );
-                    }
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), HEADER_HEIGHT),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
+                            ui.label(
+                                egui::RichText::new(leaf_name)
+                                    .size(HEADER_FONT_SIZE)
+                                    .strong(),
+                            );
+                            refresh_button_ui(
+                                ui,
+                                app_ctx,
+                                dataset,
+                                self.segments_queried_at(ui, dataset),
+                            );
+                        },
+                    );
 
                     ui.add_space(NAME_TO_TABS_SPACE);
                 });

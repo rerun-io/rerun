@@ -17,7 +17,6 @@ use re_redap_client::{
 };
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
-use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
     AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
@@ -303,38 +302,11 @@ impl Server {
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
-        use re_viewer_context::{Route, SystemCommand, SystemCommandSender as _};
-
-        let command_sender = app_ctx.command_sender().clone();
+        let command_sender = app_ctx.command_sender();
 
         Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Navigate up one level.
-                if ui
-                    .small_icon_button(&icons::ARROW_UP, "Go to parent folder")
-                    .on_hover_text("Go to parent folder")
-                    .clicked()
-                {
-                    let parent_route = if let Some((parent, _)) =
-                        path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
-                    {
-                        Route::RedapFolder {
-                            origin: origin.clone(),
-                            path: parent.to_owned(),
-                        }
-                    } else {
-                        Route::RedapServer(origin.clone())
-                    };
-                    if let Some(parent_item) = parent_route.item() {
-                        command_sender.send_system(SystemCommand::set_selection(parent_item));
-                    }
-                    command_sender.send_system(SystemCommand::SetRoute(parent_route));
-                }
-
-                ui.horizontal_centered(|ui| {
-                    ui.heading(RichText::new(path_prefix.to_owned()).strong());
-                });
-            });
+            crate::breadcrumbs::hierarchy_breadcrumbs_ui(ui, origin, path_prefix, command_sender);
+            ui.heading(RichText::new(re_uri::dataset_hierarchy_leaf_name(path_prefix)).strong());
 
             ui.add_space(12.0);
 
@@ -355,7 +327,7 @@ impl Server {
                         origin,
                         entries,
                         path_prefix,
-                        &command_sender,
+                        command_sender,
                     );
                 }
             }
