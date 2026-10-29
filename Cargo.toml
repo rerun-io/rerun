@@ -972,6 +972,10 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
 re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
+# Remove once released. Both are needed so that only one `wasm-streams` is linked into the web viewer.
+ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main" } # https://github.com/emilk/ehttp/pull/87
+rerun-tonic-web-wasm-client = { git = "https://github.com/rerun-io/tonic-web-wasm-client.git", branch = "patch-0.8.2" } # https://github.com/rerun-io/tonic-web-wasm-client/pull/2
+
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 # datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
