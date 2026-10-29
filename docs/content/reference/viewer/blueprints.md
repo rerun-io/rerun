@@ -42,6 +42,15 @@ Hovering over any item reveals controls for:
 
 Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer/navigating-the-viewer.md#interactive-configuration) for details on all interactive operations.
 
+### Cloning a container
+
+Right-click a container in the Blueprint Panel and choose **Clone** to copy its layout, views, and nested containers.
+The copy preserves settings such as panel sizes, visibility, and the selected tab, and appears next to the original.
+Cloning the root container places the original and the copy in a new tab container.
+
+You can change the copied layout and view settings independently of the original.
+Both dashboards use the same recorded data; cloning does not duplicate that data.
+
 ### Data blueprints
 
 Entities shown in the blueprint panel refer to their *data blueprints* — the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.

@@ -7,7 +7,8 @@ The complete assignment, including the separate GRASP refactoring and AI Use Log
 
 **Selected issue:** [#7923: Add clone for view containers](https://github.com/rerun-io/rerun/issues/7923).
 **Implementation branch:** `fix-7923-clone-view-containers`.
-**Implementation commit:** `84b6da8994` — `A8: Apply Prototype to ContainerBlueprint` (local; the source branch has not been pushed).
+**Implementation commit:** [`84b6da8994`](https://github.com/donnyboy72/rerun/commit/84b6da89946a7826625f038fd3c805622d9a3c92) — `A8: Apply Prototype to ContainerBlueprint`.
+The implementation and follow-up fixes are published on the fork; no pull request has been opened.
 This replaces the abandoned table-cell Strategy proposal; that implementation was reverted on `a8-design-patterns`.
 
 ### What problem exists today
@@ -77,7 +78,7 @@ The proposal supplies this missing responsibility in the model and avoids introd
 
 **Implemented and verified locally.**
 Commit: `84b6da8994` — `A8: Apply Prototype to ContainerBlueprint`.
-No PR was opened, and the source branch has not been pushed.
+The source branch is published on the fork; no PR has been opened.
 The original assignment branch `a8-design-patterns` remains available with the separate Part 4 commit.
 
 ### Before
@@ -165,7 +166,7 @@ The copy is activated when necessary so it is visible inside a tab parent.
 ### Review follow-up: command ordering and helper visibility
 
 The original implementation commit is `84b6da8994`.
-The separate local review follow-up fixes command ordering and broadens regression coverage; neither source commit has been pushed.
+The separate review follow-up fixes command ordering and broadens regression coverage; both source commits are published on the fork.
 
 **Rule:** Clone includes earlier layout commands in the same queue and excludes later commands.
 For example, changing a dashboard from Grid to Horizontal and then cloning it produces a Horizontal copy.
@@ -253,6 +254,7 @@ Users can also reuse a configured dashboard without manually rebuilding its hier
 ### Validation
 
 - All 21 tests passed across `re_viewport_blueprint` and `re_context_menu`, using `cargo nextest run --all-features --no-fail-fast`.
+- On October 29, the same crates passed all 23 cases with `--all-targets --all-features --no-fail-fast`, including two benchmark cases.
 - Twelve cloning regression tests now cover the original four scenarios plus eight review-follow-up scenarios: queue order, moved children, sizing and tab changes, newly added views and containers, every parent layout, independent view overrides, and replaced trees with temporary tabs.
 - The nested test checks all four container kinds, an empty hidden container, fresh identifiers, names, visibility, row and column shares, grid column count, remapped active tabs, view origins, entity filters, title-bar settings, and copied stored entity overrides.
 - A persisted rename and visibility change on the copied container leaves the original unchanged.
