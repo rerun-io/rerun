@@ -19,7 +19,7 @@ pub use self::asset::{
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
 pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};
-pub use self::staging::StagingError;
+pub use self::staging::{StageOpt, StagingError};
 pub use self::write::{WriteError, WriteHandle};
 
 /// High-level catalog operations backed by a short-lived protocol client per request.
