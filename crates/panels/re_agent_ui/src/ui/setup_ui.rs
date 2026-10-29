@@ -84,6 +84,12 @@ fn setup_ui_inner(
     }
     if let Err(problem) = ready {
         ui.error_label(problem);
+        if let Some(provider) = settings.profile_id.model_api_provider() {
+            ui.hyperlink_to(
+                format!("Create a {} API key", provider.name()),
+                provider.api_key_url(),
+            );
+        }
     }
 
     ui.add_space(8.0);
@@ -285,6 +291,9 @@ fn analytics_details_ui(ui: &mut egui::Ui) {
 
 /// What the start button calls the selected agent.
 fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> String {
+    if let Some(provider) = settings.profile_id.model_api_provider() {
+        return format!("{} API", provider.name());
+    }
     agents
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
@@ -298,6 +307,13 @@ pub fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> 
             return Err("Enter the command that starts your agent".to_owned());
         }
         return Ok(());
+    }
+
+    if let Some(provider) = settings.profile_id.model_api_provider() {
+        return match provider.api_key_from_env() {
+            Some(_) => Ok(()),
+            None => Err(re_agent::AgentLaunchError::MissingApiKey { provider }.to_string()),
+        };
     }
 
     let Some(agent) = agents

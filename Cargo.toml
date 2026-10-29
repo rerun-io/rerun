@@ -448,9 +448,16 @@ re_math = "0.33.0"
 regex-lite = "0.1.9"
 reqwest = { version = "0.12.28", default-features = false, features = [
   "rustls-tls",
-] } # 0.13 blocked: `lance` still depends on reqwest 0.12. Bump once it moves to reqwest 0.13 (also unblocks tower-http 0.7).
+] } # 0.13 blocked: `lance` still depends on reqwest 0.12 (via `lance-namespace-reqwest-client`). Bump once it moves to reqwest 0.13 (also unblocks tower-http 0.7).
+reqwest013 = { package = "reqwest", version = "0.13.5", default-features = false, features = [
+  "charset",
+  "http2",
+  "rustls-no-provider",
+] } # `rig-reqwest` only wraps a reqwest 0.13 client. Merge with `reqwest` once that can move to 0.13 too.
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
+rig-core = { version = "0.45.0", default-features = false }
+rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it pulls in aws-lc-rs and the banned `cmake`. TLS goes through `reqwest013` with ring.
 rmcp = { version = "3.4", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.

@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-/// Short machine-readable identifier of an agent profile, such as `claude` or `codex`.
+use crate::ModelApiProvider;
+
+/// Short machine-readable identifier of an agent profile, such as `claude`, `codex`, `openai-api`, etc.
 #[derive(
     Clone,
     Debug,
@@ -21,6 +23,12 @@ impl AgentProfileId {
     /// A command line typed in by the user, stored in [`crate::AgentSettings::custom_command_line`].
     pub const CUSTOM: Self = Self::new("custom");
 
+    /// The Anthropic API, called directly with the key in `ANTHROPIC_API_KEY`.
+    pub const ANTHROPIC_API: Self = Self::new("anthropic-api");
+
+    /// The `OpenAI` API, called directly with the key in `OPENAI_API_KEY`.
+    pub const OPENAI_API: Self = Self::new("openai-api");
+
     /// For ids known at compile time. Use [`From<String>`] for others.
     pub const fn new(id: &'static str) -> Self {
         Self(Cow::Borrowed(id))
@@ -33,6 +41,17 @@ impl AgentProfileId {
     /// No profile chosen yet.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// The provider whose API this profile calls directly, if it is not an agent subprocess.
+    pub fn model_api_provider(&self) -> Option<ModelApiProvider> {
+        if *self == Self::ANTHROPIC_API {
+            Some(ModelApiProvider::Anthropic)
+        } else if *self == Self::OPENAI_API {
+            Some(ModelApiProvider::OpenAi)
+        } else {
+            None
+        }
     }
 }
 

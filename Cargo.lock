@@ -4317,6 +4317,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd"
 
 [[package]]
+name = "futures-timer"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af43fadb8a98512d547e37b4e92e0ced13e205c061b87b4623eff01d918d6968"
+dependencies = [
+ "gloo-timers",
+ "send_wrapper",
+]
+
+[[package]]
 name = "futures-util"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4525,6 +4535,18 @@ dependencies = [
  "log",
  "regex-automata",
  "regex-syntax",
+]
+
+[[package]]
+name = "gloo-timers"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "482ce8a491a501da4cd806bd190275363d674f2845005c6ddbd5d3e1dd54495d"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "js-sys",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -8994,8 +9016,14 @@ dependencies = [
  "base64 0.23.1",
  "cfg_aliases",
  "futures",
+ "http",
+ "re_async",
  "re_log",
  "re_workspace_hack",
+ "reqwest 0.13.5",
+ "rig-core",
+ "rig-reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "shell-words",
@@ -9017,6 +9045,7 @@ dependencies = [
  "jiff",
  "pulldown-cmark",
  "re_agent",
+ "re_async",
  "re_format",
  "re_log",
  "re_log_types",
@@ -9024,6 +9053,7 @@ dependencies = [
  "re_ui",
  "re_workspace_hack",
  "serde_json",
+ "tokio",
  "web-time",
 ]
 
@@ -12318,6 +12348,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "http",
  "httparse",
+ "hyper",
  "hyper-rustls",
  "hyper-util",
  "icu_locale_core",
@@ -12335,6 +12366,7 @@ dependencies = [
  "lz4_flex",
  "matrixmultiply",
  "memchr",
+ "mime_guess",
  "mime_guess2",
  "miniz_oxide",
  "mio",
@@ -12379,7 +12411,10 @@ dependencies = [
  "regex-automata",
  "regex-syntax",
  "reqwest 0.12.28",
+ "reqwest 0.13.5",
  "rfd",
+ "rig-core",
+ "rig-http",
  "rustix 1.1.4",
  "rustls",
  "rustls-webpki",
@@ -12625,8 +12660,10 @@ checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
  "base64 0.23.1",
  "bytes",
+ "encoding_rs",
  "futures-core",
  "futures-util",
+ "h2",
  "http",
  "http-body",
  "http-body-util",
@@ -12635,11 +12672,15 @@ dependencies = [
  "hyper-util",
  "js-sys",
  "log",
+ "mime",
+ "mime_guess",
  "percent-encoding",
  "pin-project-lite",
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
+ "serde",
+ "serde_json",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -12954,6 +12995,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a457e416a0f90d246a4c3288bd7a25b2304ca727f253f95be383dd17af56be8f"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "rig-core"
+version = "0.45.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d07ae8e85415d83f620eb4f519d03126227178ac67971b08368c087ce8f9052"
+dependencies = [
+ "async-stream",
+ "base64 0.22.1",
+ "bytes",
+ "fastrand",
+ "futures",
+ "glob",
+ "http",
+ "httpdate",
+ "indexmap 2.14.0",
+ "mime",
+ "mime_guess",
+ "ordered-float 5.3.0",
+ "rig-http",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "sha2 0.10.9",
+ "thiserror 2.0.19",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "web-time",
+]
+
+[[package]]
+name = "rig-http"
+version = "0.45.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "817c761f9949151fd099ec78e2fbacf7174f24c066ced84c9d28807a6b9d4cee"
+dependencies = [
+ "bytes",
+ "futures",
+ "futures-timer",
+ "http",
+ "mime",
+ "thiserror 2.0.19",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "rig-reqwest"
+version = "0.45.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9f13e51c8cbe597ab4ed79f4a1211dab83ac3d9ceaa3826d69b5c770274b9fa"
+dependencies = [
+ "bytes",
+ "futures",
+ "http",
+ "reqwest 0.13.5",
+ "rig-http",
+ "thiserror 2.0.19",
+ "url",
 ]
 
 [[package]]

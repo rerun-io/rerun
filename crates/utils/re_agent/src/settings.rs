@@ -4,12 +4,13 @@ use std::path::{Path, PathBuf};
 use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
 
 use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use crate::model_api_backend::{ModelApiConfig, ModelApiProvider};
 use crate::profiles::{AgentEntry, AgentProfileId, find_executable};
 
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
 /// The agent panel should feel fast, and flagship models are often too slow for that.
-const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
+pub const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
     "sonnet", // Anthropic: Claude
     "flash",  // Google: Gemini
     "luna",   // OpenAI: Codex
@@ -116,19 +117,97 @@ pub struct AgentSettings {
     pub setup_done: bool,
 }
 
+/// Why [`AgentSettings`] could not be resolved into an agent to start.
+#[derive(Debug, thiserror::Error)]
+pub enum AgentLaunchError {
+    /// The current directory, used when no working directory is set, could not be read.
+    #[error("Failed to get current dir: {err}")]
+    CurrentDir { err: std::io::Error },
+
+    /// The custom agent's command line has no command.
+    #[error("Enter a command for the custom agent")]
+    EmptyCommandLine,
+
+    /// The custom agent's command line could not be split into words.
+    #[error("Invalid agent command line: {err}")]
+    InvalidCommandLine { err: shell_words::ParseError },
+
+    /// A line of the environment variables is not `NAME=value`.
+    #[error("Invalid environment variable line: {line:?}. Expected NAME=value")]
+    InvalidEnvVarLine { line: String },
+
+    /// The command line of an enabled MCP server could not be split into words.
+    #[error("Invalid MCP server command line for {server_name}: {err}")]
+    InvalidMcpCommandLine {
+        server_name: String,
+        err: shell_words::ParseError,
+    },
+
+    /// The environment variable that holds the provider's API key is unset or blank.
+    #[error(
+        "Set {} in the environment the viewer starts from, then restart it",
+        .provider.api_key_env_var()
+    )]
+    MissingApiKey { provider: ModelApiProvider },
+
+    /// The working directory does not exist.
+    #[error("Working directory does not exist: {}", .cwd.display())]
+    MissingWorkingDirectory { cwd: PathBuf },
+
+    /// No installed agent has the selected profile.
+    #[error("Unknown agent profile: {profile_id}")]
+    UnknownProfile { profile_id: AgentProfileId },
+}
+
+/// What to start: an agent subprocess, or an agent loop that calls a provider's API directly.
+#[derive(Debug)]
+pub enum AgentLaunch {
+    /// Spawn an agent (Claude Code, Codex, …) and talk to it over the Agent Client Protocol.
+    AgentHarness(AgentHarnessConfig),
+
+    /// Run the agent loop ourselves, calling the model provider's API directly.
+    ModelApi(ModelApiConfig),
+}
+
 impl AgentSettings {
-    /// Resolves these settings into something that can be spawned.
+    /// Resolves these settings into an agent to start.
+    pub fn launch(
+        &self,
+        agents: &[AgentEntry],
+        context: &SessionContext,
+    ) -> Result<AgentLaunch, AgentLaunchError> {
+        let Some(provider) = self.profile_id.model_api_provider() else {
+            return self
+                .agent_harness_config(agents, context)
+                .map(AgentLaunch::AgentHarness);
+        };
+        let api_key = provider
+            .api_key_from_env()
+            .ok_or(AgentLaunchError::MissingApiKey { provider })?;
+        let model = self.preferred_models.get(&self.profile_id).map_or_else(
+            || provider.default_model().to_owned(),
+            |model| model.0.to_string(),
+        );
+        Ok(AgentLaunch::ModelApi(ModelApiConfig {
+            provider,
+            api_key,
+            model,
+            system_prompt: context.preamble.clone(),
+        }))
+    }
+
+    /// Resolves these settings into an agent subprocess that can be spawned.
     pub fn agent_harness_config(
         &self,
         agents: &[AgentEntry],
         context: &SessionContext,
-    ) -> Result<AgentHarnessConfig, String> {
+    ) -> Result<AgentHarnessConfig, AgentLaunchError> {
         let (command, args, env) = if self.profile_id == AgentProfileId::CUSTOM {
             let mut parts = shell_words::split(&self.custom_command_line)
-                .map_err(|err| format!("Invalid agent command line: {err}"))?;
+                .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
             let env = take_leading_env_vars(&mut parts);
             if parts.is_empty() {
-                return Err("Enter a command for the custom agent".to_owned());
+                return Err(AgentLaunchError::EmptyCommandLine);
             }
             let command = parts.remove(0);
             (command, parts, env)
@@ -136,7 +215,9 @@ impl AgentSettings {
             let agent = agents
                 .iter()
                 .find(|agent| agent.profile.id == self.profile_id)
-                .ok_or_else(|| format!("Unknown agent profile: {}", self.profile_id))?;
+                .ok_or_else(|| AgentLaunchError::UnknownProfile {
+                    profile_id: self.profile_id.clone(),
+                })?;
             let profile = &agent.profile;
             (
                 profile.command.clone(),
@@ -156,19 +237,19 @@ impl AgentSettings {
         } else if let Some(cwd) = context.default_cwd.clone() {
             cwd
         } else {
-            std::env::current_dir().map_err(|err| format!("Failed to get current dir: {err}"))?
+            std::env::current_dir().map_err(|err| AgentLaunchError::CurrentDir { err })?
         };
         if !cwd.is_dir() {
-            return Err(format!(
-                "Working directory does not exist: {}",
-                cwd.display()
-            ));
+            return Err(AgentLaunchError::MissingWorkingDirectory { cwd });
         }
 
         let mut mcp_servers = Vec::new();
         for server in self.mcp_servers.iter().filter(|s| s.enabled) {
             let mut parts = shell_words::split(&server.command_line).map_err(|err| {
-                format!("Invalid MCP server command line for {}: {err}", server.name)
+                AgentLaunchError::InvalidMcpCommandLine {
+                    server_name: server.name.clone(),
+                    err,
+                }
             })?;
             if parts.is_empty() {
                 continue;
@@ -225,7 +306,7 @@ fn is_env_name(name: &str) -> bool {
 }
 
 /// Parses one `NAME=value` per line. Blank lines and `#` comments are skipped.
-fn parse_env_vars(text: &str) -> Result<Vec<(String, String)>, String> {
+fn parse_env_vars(text: &str) -> Result<Vec<(String, String)>, AgentLaunchError> {
     text.lines()
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
@@ -233,8 +314,8 @@ fn parse_env_vars(text: &str) -> Result<Vec<(String, String)>, String> {
             let (name, value) = line
                 .split_once('=')
                 .filter(|(name, _)| is_env_name(name))
-                .ok_or_else(|| {
-                    format!("Invalid environment variable line: {line:?}. Expected NAME=value")
+                .ok_or_else(|| AgentLaunchError::InvalidEnvVarLine {
+                    line: line.to_owned(),
                 })?;
             Ok((name.to_owned(), expand_home(value)))
         })
@@ -295,6 +376,7 @@ mod tests {
             settings
                 .agent_harness_config(&[], &context)
                 .map(|config| config.cwd)
+                .ok()
         };
 
         let here = std::env::current_dir().expect("a current directory");
@@ -302,16 +384,16 @@ mod tests {
         let parent_str = parent.to_str().expect("a printable parent directory");
 
         // The host's default only applies when the user has not chosen a directory.
-        assert_eq!(cwd("", Some(parent_str)).as_deref(), Ok(parent));
-        assert_eq!(cwd(parent_str, None).as_deref(), Ok(parent));
-        assert_eq!(cwd("", None).as_deref(), Ok(here.as_path()));
+        assert_eq!(cwd("", Some(parent_str)).as_deref(), Some(parent));
+        assert_eq!(cwd(parent_str, None).as_deref(), Some(parent));
+        assert_eq!(cwd("", None).as_deref(), Some(here.as_path()));
 
         // A user setting of only whitespace is no setting at all.
-        assert_eq!(cwd("  ", Some(parent_str)).as_deref(), Ok(parent));
+        assert_eq!(cwd("  ", Some(parent_str)).as_deref(), Some(parent));
 
         // Neither source may name a directory that does not exist.
-        assert!(cwd(&here.join("nope").display().to_string(), None).is_err());
-        assert!(cwd("", Some(&here.join("nope").display().to_string())).is_err());
+        assert!(cwd(&here.join("nope").display().to_string(), None).is_none());
+        assert!(cwd("", Some(&here.join("nope").display().to_string())).is_none());
     }
 
     #[test]
@@ -347,10 +429,10 @@ mod tests {
 
     #[test]
     fn env_var_lines() {
-        assert_eq!(parse_env_vars(""), Ok(vec![]));
+        assert_eq!(parse_env_vars("").ok(), Some(vec![]));
         assert_eq!(
-            parse_env_vars(" A=1 \n\n# comment\nB_2==x=y\n"),
-            Ok(vec![
+            parse_env_vars(" A=1 \n\n# comment\nB_2==x=y\n").ok(),
+            Some(vec![
                 ("A".to_owned(), "1".to_owned()),
                 ("B_2".to_owned(), "=x=y".to_owned()),
             ])
@@ -358,8 +440,8 @@ mod tests {
         let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"));
         if let Ok(home) = home {
             assert_eq!(
-                parse_env_vars("A=~/x\nB=~\nC=a~/b"),
-                Ok(vec![
+                parse_env_vars("A=~/x\nB=~\nC=a~/b").ok(),
+                Some(vec![
                     ("A".to_owned(), format!("{home}/x")),
                     ("B".to_owned(), home.clone()),
                     ("C".to_owned(), "a~/b".to_owned()),

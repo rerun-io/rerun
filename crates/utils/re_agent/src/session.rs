@@ -17,15 +17,32 @@ use agent_client_protocol_schema::v1::{
     StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
 
-use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use re_async::AsyncRuntimeHandle;
+
+use crate::agent_harness_config::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
 use crate::responder::{AgentStoppedWaiting, Responder};
+use crate::settings::AgentLaunch;
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// Why [`AgentSession::start`] could not start an agent.
+#[derive(Debug, thiserror::Error)]
+enum StartError {
+    #[cfg(not(agent_harness_backend))]
+    #[error("Agent subprocesses are not supported on this platform")]
+    HarnessUnsupported,
+
+    #[error(transparent)]
+    ModelApi(crate::ModelApiError),
+
+    #[error("This host cannot run a model-API agent: it has no async runtime")]
+    NoAsyncRuntime,
+}
 
 /// An image the user attached to a prompt, already encoded as `mime_type`.
 #[derive(Clone, Debug)]
@@ -225,34 +242,63 @@ pub struct AgentSession {
 }
 
 impl AgentSession {
-    /// Spawns the agent. `wake` is called whenever new events arrive, so the UI can repaint.
-    pub fn start(&mut self, config: AgentHarnessConfig, wake: impl Fn() + Send + Sync + 'static) {
+    /// Starts whichever kind of agent `launch` describes.
+    ///
+    /// A model-API agent runs on `async_runtime`, and fails to start without one.
+    /// `wake` is called from a background thread whenever new events arrive, so that the UI can
+    /// call [`Self::poll_events`], e.g. via `egui::Context::request_repaint`.
+    pub fn start(
+        &mut self,
+        launch: AgentLaunch,
+        async_runtime: Option<&AsyncRuntimeHandle>,
+        wake: impl Fn() + Send + Sync + 'static,
+    ) {
         self.stop();
-        *self = Self {
-            phase: Phase::Connecting {
-                status: format!("Starting {}…", config.command.display()),
-            },
+        let mut fresh = Self {
             auto_approve: self.auto_approve,
-            requested_mcp_servers: config.mcp_servers.clone(),
-            preamble: config.preamble.clone(),
-            readable_directories: config.additional_directories.clone(),
-            off_limits_directories: config.off_limits_directories.clone(),
-            cwd: config.cwd.clone(),
             finished_turns: std::mem::take(&mut self.finished_turns),
             next_elicitation_id: self.next_elicitation_id,
             ..Default::default()
         };
-        cfg_select! {
-            agent_harness_backend => {
-                self.connection = Some(crate::agent_harness_backend::spawn(config, wake));
-            }
-            _ => {
-                drop((config, wake));
-                let reason = "Agent subprocesses are not supported on this platform";
-                self.report_error(reason);
-                self.phase = Phase::Disconnected {
-                    reason: reason.to_owned(),
+        let connection = match launch {
+            AgentLaunch::AgentHarness(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Starting {}…", config.command.display()),
                 };
+                fresh.requested_mcp_servers = config.mcp_servers.clone();
+                fresh.preamble = config.preamble.clone();
+                fresh.readable_directories = config.additional_directories.clone();
+                fresh.off_limits_directories = config.off_limits_directories.clone();
+                fresh.cwd = config.cwd.clone();
+                *self = fresh;
+                cfg_select! {
+                    agent_harness_backend => Ok(crate::agent_harness_backend::spawn(config, wake)),
+                    _ => {{
+                        drop((config, wake));
+                        Err(StartError::HarnessUnsupported)
+                    }}
+                }
+            }
+            AgentLaunch::ModelApi(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Connecting to {}…", config.model),
+                };
+                *self = fresh;
+                match async_runtime {
+                    Some(async_runtime) => {
+                        crate::model_api_backend::spawn(config, async_runtime, wake)
+                            .map_err(StartError::ModelApi)
+                    }
+                    None => Err(StartError::NoAsyncRuntime),
+                }
+            }
+        };
+        match connection {
+            Ok(connection) => self.connection = Some(connection),
+            Err(err) => {
+                let reason = err.to_string();
+                self.report_error(reason.clone());
+                self.phase = Phase::Disconnected { reason };
             }
         }
     }

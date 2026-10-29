@@ -1,6 +1,4 @@
-#[cfg(agent_harness_backend)]
-use std::sync::Arc;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 
 use agent_client_protocol_schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest,
@@ -9,9 +7,7 @@ use agent_client_protocol_schema::v1::{
     SessionModeState, SessionUpdate, StopReason,
 };
 
-#[cfg(agent_harness_backend)]
-use futures::channel::mpsc::UnboundedReceiver;
-use futures::channel::mpsc::UnboundedSender;
+use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::Responder;
 
@@ -29,7 +25,6 @@ impl AgentConnection {
     /// A connection, and the agent's end of it: the commands to serve, and where to send events.
     ///
     /// `wake` is called after every event so the UI can repaint.
-    #[cfg(agent_harness_backend)]
     pub fn new(
         wake: impl Fn() + Send + Sync + 'static,
     ) -> (Self, UnboundedReceiver<AgentCommand>, EventSender) {
@@ -144,14 +139,12 @@ pub enum LineDirection {
 }
 
 /// Queues events for the UI thread and wakes it.
-#[cfg(agent_harness_backend)]
 #[derive(Clone)]
 pub struct EventSender {
     tx: mpsc::Sender<AgentEvent>,
     wake: Arc<dyn Fn() + Send + Sync>,
 }
 
-#[cfg(agent_harness_backend)]
 impl EventSender {
     /// An event sender, and the receiver the UI thread drains.
     ///

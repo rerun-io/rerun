@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use std::path::Path;
 
 use re_agent_ui::{AgentPanel, AgentSettings, McpServerConfig, SessionContext};
+use re_async::AsyncRuntimeHandle;
 use re_ui::UiExt as _;
 
 mod feedback;
@@ -147,6 +148,7 @@ impl ViewerAgentPanel {
         ui: &mut egui::Ui,
         open: &mut bool,
         settings: &mut AgentSettings,
+        async_runtime: &AsyncRuntimeHandle,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
@@ -156,6 +158,7 @@ impl ViewerAgentPanel {
         if *open && self.panel.is_none() {
             self.initialize(
                 settings.clone(),
+                async_runtime,
                 viewer_endpoint,
                 cache_dir,
                 is_in_rerun_workspace,
@@ -293,12 +296,14 @@ impl ViewerAgentPanel {
 
     /// Initialize the inner panel.
     ///
+    /// `async_runtime` runs model-API agents.
     /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun viewer-mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
     /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     fn initialize(
         &mut self,
         mut settings: AgentSettings,
+        async_runtime: &AsyncRuntimeHandle,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
@@ -342,7 +347,7 @@ impl ViewerAgentPanel {
         self.rerun_workspace.clone_from(&rerun_workspace);
         let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
 
-        let mut panel = AgentPanel::new(settings);
+        let mut panel = AgentPanel::new(settings, async_runtime.clone());
         panel.set_feedback_enabled(true);
         panel.set_self_improve_available(rerun_workspace.is_some());
         panel.set_context(SessionContext {

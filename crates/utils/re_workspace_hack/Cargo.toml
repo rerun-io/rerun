@@ -99,6 +99,7 @@ log = { version = "0.4", default-features = false, features = ["release_max_leve
 lz4_flex = { version = "0.13" }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
+mime_guess = { version = "2" }
 mime_guess2 = { version = "2" }
 miniz_oxide = { version = "0.8", features = ["simd"] }
 ndarray = { version = "0.16", features = ["matrixmultiply-threading"] }
@@ -130,15 +131,18 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest-594e8ee84c453af0 = { package = "reqwest", version = "0.13", default-features = false, features = ["charset", "http2", "json", "multipart", "rustls-no-provider", "stream", "system-proxy"] }
+reqwest-5ef9efb8ec2df382 = { package = "reqwest", version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
+rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
+rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value", "unbounded_depth"] }
+serde_json = { version = "1", features = ["alloc", "float_roundtrip", "preserve_order", "raw_value", "unbounded_depth"] }
 serde_spanned = { version = "1", default-features = false, features = ["serde", "std"] }
 serde_with = { version = "3", features = ["json", "schemars_1"] }
 simd-adler32 = { version = "0.3" }
@@ -258,6 +262,7 @@ log = { version = "0.4", default-features = false, features = ["release_max_leve
 lz4_flex = { version = "0.13" }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
+mime_guess = { version = "2" }
 mime_guess2 = { version = "2" }
 miniz_oxide = { version = "0.8", features = ["simd"] }
 ndarray = { version = "0.16", features = ["matrixmultiply-threading"] }
@@ -289,15 +294,18 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest-594e8ee84c453af0 = { package = "reqwest", version = "0.13", default-features = false, features = ["charset", "http2", "json", "multipart", "rustls-no-provider", "stream", "system-proxy"] }
+reqwest-5ef9efb8ec2df382 = { package = "reqwest", version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
+rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
+rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value", "unbounded_depth"] }
+serde_json = { version = "1", features = ["alloc", "float_roundtrip", "preserve_order", "raw_value", "unbounded_depth"] }
 serde_spanned = { version = "1", default-features = false, features = ["serde", "std"] }
 serde_with = { version = "3", features = ["json", "schemars_1"] }
 serde_with_macros = { version = "3", default-features = false, features = ["schemars_1"] }
@@ -359,6 +367,7 @@ event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -373,6 +382,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -404,6 +414,7 @@ event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -418,6 +429,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -451,6 +463,7 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -460,6 +473,7 @@ naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -494,6 +508,7 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -503,6 +518,7 @@ naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -535,6 +551,7 @@ event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -549,6 +566,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -580,6 +598,7 @@ event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -594,6 +613,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -625,11 +645,13 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -670,11 +692,13 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -717,6 +741,7 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -726,6 +751,7 @@ naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -760,6 +786,7 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -769,6 +796,7 @@ naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
 quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }

@@ -1,6 +1,7 @@
 //! The agent panel: the conversation list, or one conversation.
 
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_async::AsyncRuntimeHandle;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 
@@ -10,7 +11,7 @@ use super::conversation_list::{ConversationRow, ConversationStatus, conversation
 use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
-use re_agent::{AgentHarnessConfig, AgentSettings, SessionContext};
+use re_agent::{AgentHarnessConfig, AgentLaunchError, AgentSettings, SessionContext};
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
 
 /// How wide a host should make the panel.
@@ -153,6 +154,12 @@ impl OptionsMenu {
 /// The complete agent UI: a list of conversations. Owns the sessions and the shared settings.
 pub struct AgentPanel {
     settings: AgentSettings,
+
+    /// Where model-API agents, such as the `anthropic-api` profile, run.
+    ///
+    /// Without it they fail to start; subprocess agents need none.
+    async_runtime: Option<AsyncRuntimeHandle>,
+
     context: SessionContext,
     agents: Vec<AgentEntry>,
 
@@ -193,24 +200,33 @@ pub struct AgentPanel {
 
 impl AgentPanel {
     /// A panel for the agents installed on this machine.
-    pub fn new(settings: AgentSettings) -> Self {
-        Self::with_agents(settings, AgentEntry::detect_all())
+    ///
+    /// Model-API agents, such as the `anthropic-api` profile, run on `async_runtime`.
+    pub fn new(settings: AgentSettings, async_runtime: AsyncRuntimeHandle) -> Self {
+        Self::with_agents(settings, Some(async_runtime), AgentEntry::detect_all())
     }
 
     /// Like [`Self::new`], but with an explicit list of agents instead of probing the machine.
     ///
     /// The first run shows the setup screen with an installed agent preselected, so the user
     /// sees which of their local agent CLIs the panel is about to run before it starts.
-    pub fn with_agents(mut settings: AgentSettings, agents: Vec<AgentEntry>) -> Self {
+    ///
+    /// Without an `async_runtime`, model-API agents fail to start.
+    pub fn with_agents(
+        mut settings: AgentSettings,
+        async_runtime: Option<AsyncRuntimeHandle>,
+        agents: Vec<AgentEntry>,
+    ) -> Self {
         if settings.profile_id.is_empty()
             && let Some(agent) = AgentEntry::pick_default(&agents).or_else(|| agents.first())
         {
             settings.profile_id = agent.profile.id.clone();
         }
 
-        let draft = Conversation::new(ConversationId(0), &settings, false);
+        let draft = Conversation::new(&settings, async_runtime.clone(), ConversationId(0), false);
         Self {
             settings,
+            async_runtime,
             context: SessionContext::default(),
             agents,
             conversations: Vec::new(),
@@ -357,7 +373,7 @@ impl AgentPanel {
     pub fn agent_harness_config(
         &self,
         context: &SessionContext,
-    ) -> Result<AgentHarnessConfig, String> {
+    ) -> Result<AgentHarnessConfig, AgentLaunchError> {
         self.settings.agent_harness_config(&self.agents, context)
     }
 
@@ -431,7 +447,12 @@ impl AgentPanel {
     fn fresh_conversation(&mut self) -> Conversation {
         let id = self.next_conversation_id;
         self.next_conversation_id = ConversationId(id.0 + 1);
-        Conversation::new(id, &self.settings, self.auto_approve)
+        Conversation::new(
+            &self.settings,
+            self.async_runtime.clone(),
+            id,
+            self.auto_approve,
+        )
     }
 
     /// Once the draft has a prompt, it becomes a conversation of its own, and is shown.
@@ -783,7 +804,7 @@ mod tests {
     #[test]
     fn turn_that_ends_unseen_is_a_notification() {
         let mut conversation =
-            Conversation::new(ConversationId(0), &AgentSettings::default(), false);
+            Conversation::new(&AgentSettings::default(), None, ConversationId(0), false);
         conversation
             .session
             .transcript_mut()
@@ -806,7 +827,7 @@ mod tests {
     /// Checks that prompts from the host join the busy session's queue before later chat prompts.
     #[test]
     fn host_prompts_join_busy_session_queue() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
         let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
@@ -832,7 +853,7 @@ mod tests {
     /// Checks that prompts survive setup and remain attached to the conversation they were sent to.
     #[test]
     fn host_prompts_survive_setup_and_stay_with_their_conversation() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
         panel.queue_prompt("First prompt".to_owned());
         panel.queue_prompt("Second prompt".to_owned());
         panel.queue_prompt("   ".to_owned());
@@ -878,7 +899,7 @@ mod tests {
             profile_id: AgentProfileId::new("claude"),
             ..Default::default()
         };
-        let mut panel = AgentPanel::with_agents(settings, agents);
+        let mut panel = AgentPanel::with_agents(settings, None, agents);
         panel
             .draft
             .session
@@ -908,7 +929,7 @@ mod tests {
     /// Setup finished in another conversation, e.g. one the host opened, applies to the draft.
     #[test]
     fn draft_skips_setup_once_another_conversation_finished_it() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Setup, "setup is not done yet");
 
@@ -917,14 +938,14 @@ mod tests {
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Setup, "its own start failed");
 
-        panel.draft = Conversation::new(ConversationId(99), &AgentSettings::default(), false);
+        panel.draft = Conversation::new(&AgentSettings::default(), None, ConversationId(99), false);
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Chat);
     }
 
     #[test]
     fn draft_becomes_a_conversation_once_it_has_a_prompt() {
-        let mut panel = AgentPanel::with_agents(AgentSettings::default(), Vec::new());
+        let mut panel = AgentPanel::with_agents(AgentSettings::default(), None, Vec::new());
         panel.poll_events();
         assert!(panel.conversations.is_empty());
         assert_eq!(panel.view, View::List);
