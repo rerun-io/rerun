@@ -23,8 +23,9 @@
 //! Unless the user has picked a model, the session also switches to a fast one if the agent
 //! offers it (see [`AgentHarnessConfig::model_preferences`]).
 //!
-//! The model-API backend has none of that: no tools, skills, or configuration of the user's, only
-//! the model and [`SessionContext::preamble`] as its system prompt.
+//! The model-API backend has none of that: no skills or configuration of the user's, only the
+//! model, [`SessionContext::preamble`] as its system prompt, and the tools of the host's
+//! [`AgentToolbox`].
 
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.
 extern crate reqwest013 as reqwest;
@@ -32,6 +33,7 @@ extern crate reqwest013 as reqwest;
 #[cfg(agent_harness_backend)]
 mod agent_harness_backend;
 mod agent_harness_config;
+mod agent_toolbox;
 mod backend;
 mod elicitation;
 mod error;
@@ -49,6 +51,7 @@ pub mod acp {
 }
 
 pub use agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
 pub use model_api_backend::{ModelApiConfig, ModelApiError, ModelApiProvider};

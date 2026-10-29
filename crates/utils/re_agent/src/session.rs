@@ -782,6 +782,12 @@ impl AgentSession {
 
     /// Applies everything the agent sent since the last call. Call once per frame.
     pub fn poll_events(&mut self) {
+        self.pending_permissions.retain(|pending| {
+            pending
+                .responder
+                .as_ref()
+                .is_none_or(|responder| !responder.is_cancelled())
+        });
         self.pending_elicitations.retain(|pending| {
             pending
                 .responder
@@ -884,6 +890,10 @@ impl AgentSession {
                     request,
                     responder: Some(responder),
                 };
+                if self.cancel_requested {
+                    pending.answer(None).ok();
+                    return;
+                }
                 let is_harmless_read = self
                     .transcript
                     .tool_call(&pending.request.tool_call.tool_call_id)
@@ -1147,7 +1157,8 @@ mod tests {
 
     use agent_client_protocol_schema::v1::{
         ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
-        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
+        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
+        ToolCallUpdateFields,
     };
 
     use super::*;
@@ -1281,6 +1292,49 @@ mod tests {
         assert!(session.pending_elicitations().is_empty());
         session.push_elicitation(form_question(), None);
         assert!(session.pending_elicitations().is_empty());
+    }
+
+    fn permission_request() -> RequestPermissionRequest {
+        RequestPermissionRequest::new(
+            "test-session",
+            ToolCallUpdate::new("call", ToolCallUpdateFields::new()),
+            vec![PermissionOption::new(
+                "allow",
+                "Allow",
+                PermissionOptionKind::AllowOnce,
+            )],
+        )
+    }
+
+    #[test]
+    fn cancelling_rejects_late_permission_requests() {
+        let mut session = AgentSession::default();
+        session.cancel();
+        let (responder, mut answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert!(session.pending_permissions().is_empty());
+        let answer = answer.try_recv().expect("answered").expect("answered");
+        assert!(matches!(
+            answer.outcome,
+            RequestPermissionOutcome::Cancelled
+        ));
+    }
+
+    #[test]
+    fn permission_requests_the_agent_gave_up_on_are_dropped() {
+        let mut session = AgentSession::default();
+        let (responder, answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert_eq!(session.pending_permissions().len(), 1);
+        drop(answer);
+        session.poll_events();
+        assert!(session.pending_permissions().is_empty());
     }
 
     #[test]

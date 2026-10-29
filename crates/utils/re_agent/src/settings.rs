@@ -193,6 +193,7 @@ impl AgentSettings {
             api_key,
             model,
             system_prompt: context.preamble.clone(),
+            toolbox: None,
         }))
     }
 

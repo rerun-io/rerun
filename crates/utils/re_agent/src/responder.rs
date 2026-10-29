@@ -2,8 +2,8 @@ use futures::channel::oneshot;
 
 /// Answers one request that the agent is blocked on.
 ///
-/// Dropping it unanswered never unblocks the agent: the request then stays open until the
-/// agent cancels it or the backend shuts down.
+/// Dropping it unanswered cancels the receiver. The backend decides whether to leave the
+/// request open or treat it as declined.
 #[must_use]
 pub struct Responder<T> {
     tx: oneshot::Sender<T>,
