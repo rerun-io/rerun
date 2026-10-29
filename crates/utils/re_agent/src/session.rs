@@ -6,7 +6,6 @@
 use std::collections::{BTreeSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
 
 use agent_client_protocol_schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
@@ -18,8 +17,9 @@ use agent_client_protocol_schema::v1::{
 };
 
 use re_async::AsyncRuntimeHandle;
+use web_time::Instant;
 
-use crate::agent_harness_config::McpStdioServer;
+use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
@@ -218,9 +218,11 @@ pub struct AgentSession {
 
     /// Holds the images written out for an agent that cannot take them inline. Deleting it with
     /// the session is the point: the files are only meant to outlive the prompt that names them.
+    #[cfg(agent_harness_backend)]
     image_dir: Option<tempfile::TempDir>,
 
     /// Images written to [`Self::image_dir`] so far, so their file names stay unique.
+    #[cfg(agent_harness_backend)]
     images_written: usize,
 
     /// The turn started by the last prompt, until the agent finishes it.
@@ -245,7 +247,7 @@ impl AgentSession {
     /// Starts whichever kind of agent `launch` describes.
     ///
     /// A model-API agent runs on `async_runtime`, and fails to start without one.
-    /// `wake` is called from a background thread whenever new events arrive, so that the UI can
+    /// `wake` is called whenever new events arrive, so that the UI can
     /// call [`Self::poll_events`], e.g. via `egui::Context::request_repaint`.
     pub fn start(
         &mut self,
@@ -272,7 +274,7 @@ impl AgentSession {
                 fresh.cwd = config.cwd.clone();
                 *self = fresh;
                 cfg_select! {
-                    agent_harness_backend => Ok(crate::agent_harness_backend::spawn(config, wake)),
+                    agent_harness_backend => Ok(crate::agent_harness::spawn(config, wake)),
                     _ => {{
                         drop((config, wake));
                         Err(StartError::HarnessUnsupported)
@@ -486,6 +488,13 @@ impl AgentSession {
 
     /// Turns `images` into what the prompt carries: the text to send, the blocks to append, and
     /// how many images never reached the agent because they could not be written to disk.
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(
+            clippy::needless_pass_by_ref_mut,
+            reason = "only an agent harness takes images as files, which needs `&mut self`"
+        )
+    )]
     fn attach_images(
         &mut self,
         text: &str,
@@ -495,8 +504,7 @@ impl AgentSession {
 
         let mut prompt_text = text.to_owned();
         let mut blocks = Vec::new();
-        let mut paths = Vec::new();
-        let mut unsaved = 0;
+        let mut for_files = Vec::new();
 
         for image in images {
             if self.prompt_capabilities.image {
@@ -508,12 +516,26 @@ impl AgentSession {
                     data,
                     image.mime_type.clone(),
                 )));
-            } else if let Some(path) = self.write_image(image) {
-                paths.push(path);
             } else {
-                unsaved += 1;
+                for_files.push(image);
             }
         }
+
+        let (paths, unsaved) = cfg_select! {
+            agent_harness_backend => {{
+                let mut paths = Vec::new();
+                let mut unsaved = 0;
+                for image in for_files {
+                    match self.write_image(image) {
+                        Some(path) => paths.push(path),
+                        None => unsaved += 1,
+                    }
+                }
+                (paths, unsaved)
+            }}
+            // The web has no file system to hand images over through.
+            _ => (Vec::<PathBuf>::new(), for_files.len()),
+        };
 
         if !paths.is_empty() {
             prompt_text
@@ -530,6 +552,7 @@ impl AgentSession {
     ///
     /// The directory is added to the readable ones, so reading back what the user just pasted
     /// does not raise a permission prompt.
+    #[cfg(agent_harness_backend)]
     fn write_image(&mut self, image: &PromptImage) -> Option<PathBuf> {
         if self.image_dir.is_none() {
             match tempfile::Builder::new()
@@ -1156,9 +1179,8 @@ mod tests {
     use std::assert_matches;
 
     use agent_client_protocol_schema::v1::{
-        ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
-        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-        ToolCallUpdateFields,
+        ContentChunk, SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation,
+        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;
@@ -1167,6 +1189,7 @@ mod tests {
     #[test]
     fn question_answers_and_cancellation_reach_the_agent() {
         use agent_client_protocol::{Agent, Channel, Client, ConnectionTo};
+        use agent_client_protocol_schema::v1::{ElicitationAcceptAction, ElicitationContentValue};
 
         let (client_channel, agent_channel) = Channel::duplex();
         let (done_tx, done_rx) = futures::channel::oneshot::channel();
@@ -1175,8 +1198,7 @@ mod tests {
                 .builder()
                 .on_receive_request(
                     async |request: CreateElicitationRequest, acp_responder, cx| {
-                        let (responder, task) =
-                            crate::agent_harness_backend::forward_answer(acp_responder);
+                        let (responder, task) = crate::agent_harness::forward_answer(acp_responder);
                         cx.spawn(task)?;
                         let cancel = request.message == "Cancel this question";
                         let mut session = AgentSession::default();

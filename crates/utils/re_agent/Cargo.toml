@@ -34,12 +34,11 @@ futures.workspace = true
 reqwest013.workspace = true
 rig-core.workspace = true
 rig-reqwest.workspace = true
-rustls = { workspace = true, features = ["ring", "std"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 shell-words.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 [dev-dependencies]
 http.workspace = true
@@ -47,6 +46,8 @@ rig-core = { workspace = true, features = ["test-utils"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agent-client-protocol.workspace = true
+rustls = { workspace = true, features = ["ring", "std"] }
+tempfile.workspace = true
 
 [build-dependencies]
 cfg_aliases.workspace = true

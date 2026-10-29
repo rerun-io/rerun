@@ -1,7 +1,9 @@
 //! Reports describing completed agent turns.
 
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use web_time::Instant;
 
 use agent_client_protocol_schema::v1::{ContentBlock, ToolCallContent};
 

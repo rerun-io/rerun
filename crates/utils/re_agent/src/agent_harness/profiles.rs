@@ -1,5 +1,7 @@
 use std::borrow::Cow;
-use std::path::{Path, PathBuf};
+#[cfg(agent_harness_backend)]
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::ModelApiProvider;
 
@@ -128,6 +130,7 @@ pub struct AgentProfile {
 
 impl AgentProfile {
     /// Returns the resolved path of [`Self::command`], or `None` if it is not installed.
+    #[cfg(agent_harness_backend)]
     pub fn find_executable(&self) -> Option<PathBuf> {
         find_executable(&self.command)
     }
@@ -153,6 +156,7 @@ pub struct AgentEntry {
 
 impl AgentEntry {
     /// Every built-in profile, with installation checked.
+    #[cfg(agent_harness_backend)]
     pub fn detect_all() -> Vec<Self> {
         AgentProfile::builtin()
             .into_iter()
@@ -163,6 +167,8 @@ impl AgentEntry {
             .collect()
     }
 
+    /// Checks again whether the agent is installed, e.g. after the user installed it.
+    #[cfg(agent_harness_backend)]
     pub fn refresh(&mut self) {
         self.executable = self.profile.find_executable();
     }
@@ -285,6 +291,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
 
 /// Looks for an executable on `PATH`, plus a few directories that installers use
 /// but that are often missing from the `PATH` of a GUI app.
+#[cfg(agent_harness_backend)]
 pub fn find_executable(command: &str) -> Option<PathBuf> {
     let command = Path::new(command);
 
@@ -324,6 +331,7 @@ pub fn find_executable(command: &str) -> Option<PathBuf> {
         .find(|path| is_executable(path))
 }
 
+#[cfg(agent_harness_backend)]
 fn is_executable(path: &Path) -> bool {
     let Ok(metadata) = std::fs::metadata(path) else {
         return false;

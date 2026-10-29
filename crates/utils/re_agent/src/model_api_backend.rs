@@ -263,13 +263,29 @@ impl ModelApiConfig {
     }
 }
 
-/// The HTTP client every model of a session sends through, with ring as the TLS provider.
+/// The HTTP client every model of a session sends through.
+///
+/// Natively it uses ring as the TLS provider. In the browser it goes through `fetch`, and
+/// Anthropic only answers a browser that says it knows the key is exposed to the page.
 fn http_client() -> Result<reqwest::Client, ModelApiError> {
-    // Fails harmlessly when the host already installed a provider.
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .ok();
-    reqwest::Client::builder()
+    let builder = cfg_select! {
+        target_arch = "wasm32" => {{
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                "anthropic-dangerous-direct-browser-access",
+                reqwest::header::HeaderValue::from_static("true"),
+            );
+            reqwest::Client::builder().default_headers(headers)
+        }}
+        _ => {{
+            // Fails harmlessly when the host already installed a provider.
+            rustls::crypto::ring::default_provider()
+                .install_default()
+                .ok();
+            reqwest::Client::builder()
+        }}
+    };
+    builder
         .build()
         .map_err(|err| ModelApiError::HttpClient { err })
 }
@@ -1056,6 +1072,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(agent_harness_backend)]
     fn default_models_are_the_preferred_fast_ones() {
         for provider in [ModelApiProvider::Anthropic, ModelApiProvider::OpenAi] {
             let model = provider.default_model();

@@ -30,15 +30,12 @@
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.
 extern crate reqwest013 as reqwest;
 
-#[cfg(agent_harness_backend)]
-mod agent_harness_backend;
-mod agent_harness_config;
+mod agent_harness;
 mod agent_toolbox;
 mod backend;
 mod elicitation;
 mod error;
 mod model_api_backend;
-mod profiles;
 mod responder;
 mod session;
 mod settings;
@@ -50,12 +47,15 @@ pub mod acp {
     pub use agent_client_protocol_schema as schema;
 }
 
-pub use agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+#[cfg(agent_harness_backend)]
+pub use agent_harness::find_executable;
+pub use agent_harness::{
+    AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
+};
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
 pub use model_api_backend::{ModelApiConfig, ModelApiError, ModelApiProvider};
-pub use profiles::{AgentEntry, AgentKind, AgentProfile, AgentProfileId, find_executable};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,

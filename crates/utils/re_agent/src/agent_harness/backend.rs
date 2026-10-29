@@ -17,7 +17,7 @@ use agent_client_protocol_schema::v1::{
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
 
-use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
 use crate::{LineDirection, Responder};
 

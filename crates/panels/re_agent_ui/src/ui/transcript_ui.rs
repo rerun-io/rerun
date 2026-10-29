@@ -315,7 +315,7 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
 
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.
 fn format_timestamp(time: SystemTime) -> String {
-    let Ok(timestamp) = jiff::Timestamp::try_from(time) else {
+    let Ok(timestamp) = Timestamp::try_from(time).map(jiff::Timestamp::from) else {
         return "unknown time".to_owned();
     };
     let zoned = timestamp.to_zoned(jiff::tz::TimeZone::system());
