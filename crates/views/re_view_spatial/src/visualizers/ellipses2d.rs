@@ -24,8 +24,10 @@ use crate::visualizers::UiLabelTarget;
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
 const MIN_ELLIPSE_SEGMENTS: usize = 32;
 
-/// Only reached at a radius of about 13 000 pixels, so it just bounds the cost of extreme zoom.
-const MAX_ELLIPSE_SEGMENTS: usize = 512;
+/// Reached at a radius of about 3300 pixels.
+/// Beyond that the outline error grows, to one pixel at a radius of 13 000 pixels,
+/// in exchange for bounding the cost of many large ellipses crossing the view.
+const MAX_ELLIPSE_SEGMENTS: usize = 256;
 
 /// Largest distance between outline and true ellipse.
 /// A quarter pixel is invisible when anti-aliased.
@@ -81,6 +83,26 @@ fn ellipse_segment_count_in_view(
         }),
     );
     if !visible_scene_rect.intersects(bbox_in_scene) {
+        return MIN_ELLIPSE_SEGMENTS;
+    }
+
+    // The ellipse is convex, so if all view corners are inside it, its outline is off screen.
+    // Shrink it by the padding so thick outlines near a corner still count as visible.
+    let shrunk_half_size = half_size.abs() / BOUNDING_BOX_PADDING_FACTOR;
+    let obj_from_world = world_from_obj.inverse();
+    let view_is_inside_ellipse = [
+        visible_scene_rect.left_top(),
+        visible_scene_rect.right_top(),
+        visible_scene_rect.right_bottom(),
+        visible_scene_rect.left_bottom(),
+    ]
+    .iter()
+    .all(|corner| {
+        let corner = obj_from_world.transform_point3(glam::vec3(corner.x, corner.y, 0.0));
+        let corner_in_unit_circle = (corner.truncate() - center) / shrunk_half_size;
+        corner_in_unit_circle.length_squared() < 1.0
+    });
+    if view_is_inside_ellipse {
         return MIN_ELLIPSE_SEGMENTS;
     }
 
@@ -430,10 +452,11 @@ mod tests {
             144
         );
         // The entity transform scales the radius to 2000 px.
+        // Straddling the right edge like above (center 70 * 2 = 140).
         assert_eq!(
             segments(
                 glam::Affine3A::from_scale(glam::vec3(2.0, 2.0, 1.0)),
-                glam::Vec2::ZERO
+                glam::vec2(70.0, 0.0)
             ),
             200
         );
@@ -470,11 +493,39 @@ mod tests {
     }
 
     #[test]
+    fn ellipses_around_the_view_use_the_default_count() {
+        let screen_space = screen_space();
+        let segments = |world_from_obj: glam::Affine3A, half_size: glam::Vec2| {
+            ellipse_segment_count_in_view(
+                Some(&screen_space),
+                &world_from_obj,
+                glam::Vec2::ZERO,
+                half_size,
+            )
+        };
+
+        assert_eq!(
+            segments(glam::Affine3A::IDENTITY, glam::vec2(1000.0, 500.0)),
+            MIN_ELLIPSE_SEGMENTS
+        );
+        // Enlarged around the view by the entity transform.
+        assert_eq!(
+            segments(
+                glam::Affine3A::from_scale(glam::vec3(10.0, 10.0, 1.0)),
+                glam::vec2(100.0, 50.0)
+            ),
+            MIN_ELLIPSE_SEGMENTS
+        );
+        // The outline passes just outside the view's corners, where a thick line still shows.
+        assert!(segments(glam::Affine3A::IDENTITY, glam::vec2(72.0, 72.0)) > MIN_ELLIPSE_SEGMENTS);
+    }
+
+    #[test]
     fn huge_ellipses_use_maximum_segment_count() {
-        assert_eq!(ellipse_segment_count(1e9), 512);
-        assert_eq!(ellipse_segment_count(1e30), 512);
-        assert_eq!(ellipse_segment_count(f32::MAX), 512);
-        assert_eq!(ellipse_segment_count(f32::INFINITY), 512);
+        assert_eq!(ellipse_segment_count(1e9), MAX_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(1e30), MAX_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(f32::MAX), MAX_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(f32::INFINITY), MAX_ELLIPSE_SEGMENTS);
     }
 
     #[test]
@@ -490,7 +541,7 @@ mod tests {
             let segments = ellipse_segment_count(radius);
             assert_eq!(segments % 4, 0, "radius {radius}: {segments} segments");
             assert!(segments >= previous, "radius {radius}: count went down");
-            if segments < 512 {
+            if segments < MAX_ELLIPSE_SEGMENTS {
                 assert!(
                     max_error_in_pixels(radius, segments) <= 0.25,
                     "radius {radius}: {segments} segments is too coarse"
