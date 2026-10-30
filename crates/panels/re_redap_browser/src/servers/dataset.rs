@@ -11,15 +11,13 @@ use re_redap_client::ApiError;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{
-    DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
-    TableCommandSender as _, UiExt as _, icons,
-};
+use re_ui::{DesignTokens, ReButton, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
     ViewStates,
 };
+use re_viewer_context::{TableCommand, TableCommandKind, TableCommandSender as _};
 
 use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};

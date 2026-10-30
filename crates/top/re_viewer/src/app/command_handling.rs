@@ -4,11 +4,13 @@ use re_entity_db::{EntityDb, LogSource};
 use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
-use re_ui::{RecordingCommand, UICommand};
+use re_ui::UICommand;
+use re_viewer_context::RecordingCommand;
 use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
-    ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, Route, StorageContext, StoreHub,
-    SystemCommand, viewer_url::combine_with_base_url,
+    ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, RedapServerCommandKind, Route,
+    StorageContext, StoreHub, SystemCommand, TableCommand, TableCommandKind,
+    viewer_url::combine_with_base_url,
 };
 use re_viewer_context::{
     RecordingOrLocalTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
@@ -72,13 +74,13 @@ impl AppCore {
 
     fn run_table_command(
         &mut self,
-        command: re_ui::TableCommand,
+        command: TableCommand,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
     ) {
-        let re_ui::TableCommand { table, kind } = command;
+        let TableCommand { table, kind } = command;
         match kind {
-            re_ui::TableCommandKind::Refresh => {
+            TableCommandKind::Refresh => {
                 if let re_uri::TableReference::RedapEntry { origin, entry_id } = &table {
                     self.state
                         .redap_servers
@@ -90,13 +92,13 @@ impl AppCore {
                     );
                 }
             }
-            re_ui::TableCommandKind::ResetBlueprintToDefault => {
+            TableCommandKind::ResetBlueprintToDefault => {
                 if let Err(err) = self.table_blueprints.reset(&table, store_hub) {
                     re_log::warn!("Failed to reset table blueprint: {err}");
                 }
                 egui_ctx.request_repaint();
             }
-            re_ui::TableCommandKind::UndoBlueprintEdit => {
+            TableCommandKind::UndoBlueprintEdit => {
                 if let Some(blueprint_id) = self.table_blueprints.active_id(&table) {
                     self.command_sender
                         .send_system(SystemCommand::UndoBlueprint {
@@ -104,7 +106,7 @@ impl AppCore {
                         });
                 }
             }
-            re_ui::TableCommandKind::RedoBlueprintEdit => {
+            TableCommandKind::RedoBlueprintEdit => {
                 if let Some(blueprint_id) = self.table_blueprints.active_id(&table) {
                     self.command_sender
                         .send_system(SystemCommand::RedoBlueprint {
@@ -516,24 +518,24 @@ impl AppCore {
             }
 
             SystemCommand::RedapServer(command) => {
-                let re_ui::RedapServerCommand { origin, kind } = command;
+                let re_viewer_context::RedapServerCommand { origin, kind } = command;
                 match kind {
-                    re_ui::RedapServerCommandKind::Refresh => {
+                    RedapServerCommandKind::Refresh => {
                         self.command_sender
                             .send_system(SystemCommand::RefreshRedapServer(origin));
                     }
-                    re_ui::RedapServerCommandKind::OpenEditDialog => {
+                    RedapServerCommandKind::OpenEditDialog => {
                         self.command_sender
                             .send_system(SystemCommand::EditRedapServerModal(
                                 re_viewer_context::EditRedapServerModalCommand::new(origin),
                             ));
                     }
-                    re_ui::RedapServerCommandKind::CopyUrlToClipboard => {
+                    RedapServerCommandKind::CopyUrlToClipboard => {
                         let url = origin.to_string();
                         re_log::info!("Copied {url:?} to clipboard");
                         egui_ctx.copy_text(url);
                     }
-                    re_ui::RedapServerCommandKind::Remove => {
+                    RedapServerCommandKind::Remove => {
                         self.command_sender
                             .send_system(SystemCommand::RemoveRedapServer(origin));
                     }
@@ -1297,7 +1299,7 @@ impl AppCore {
         store_context: Option<&ActiveStoreContext<'_>>,
         cmd: RecordingCommand,
     ) {
-        use re_ui::RecordingCommandKind;
+        use re_viewer_context::RecordingCommandKind;
 
         let RecordingCommand { recording_id, kind } = cmd;
 

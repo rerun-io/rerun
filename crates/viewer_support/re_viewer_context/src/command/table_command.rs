@@ -149,6 +149,6 @@ impl TableCommandKind {
     /// The primary keyboard shortcut, nicely formatted.
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
         self.primary_kb_shortcut(egui_ctx.os())
-            .map(|shortcut| crate::format_shortcut(egui_ctx, &shortcut))
+            .map(|shortcut| re_ui::format_shortcut(egui_ctx, &shortcut))
     }
 }

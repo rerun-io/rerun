@@ -9,11 +9,9 @@ use std::task::Poll;
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
-use re_ui::{
-    BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-};
-use re_viewer_context::StoreSyntaxHighlighting as _;
+use re_ui::{CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd};
 use re_viewer_context::viewer_url::ViewerUrl;
+use re_viewer_context::{BoundCommand, StoreSyntaxHighlighting as _};
 
 use crate::command_catalog::{CommandContext, catalog_commands};
 use crate::viewer_url_description::ViewerUrlDescription;

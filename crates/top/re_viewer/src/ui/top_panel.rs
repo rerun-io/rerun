@@ -5,7 +5,9 @@ use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
-use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    ActiveStoreContext, RecordingCommandKind, StoreHub, SystemCommand, SystemCommandSender as _,
+};
 
 use crate::AppCore;
 use crate::app_blueprint::AppBlueprint;
@@ -720,7 +722,7 @@ fn panel_buttons_r2l(
                     "Time panel toggle",
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| re_ui::RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
+                .on_hover_ui(|ui| RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
                 .clicked()
             {
                 app_blueprint.toggle_time_panel(&app.command_sender);

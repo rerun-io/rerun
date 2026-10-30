@@ -435,7 +435,7 @@ impl UICommand {
 
     /// Listen for keyboard shortcuts of [`UICommand`]s only.
     ///
-    /// The viewer should use [`super::listen_for_kb_shortcuts`] instead,
+    /// The viewer should use `re_viewer_context::listen_for_kb_shortcuts` instead,
     /// which also matches recording commands.
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
         use strum::IntoEnumIterator as _;

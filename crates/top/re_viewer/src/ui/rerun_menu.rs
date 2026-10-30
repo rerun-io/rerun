@@ -1,7 +1,8 @@
 //! The Rerun menu used on platforms without a native application menu.
 
 use egui::containers::menu::{MenuButton, MenuConfig};
-use re_ui::{CommandKind, UICommand, UiExt as _, icons};
+use re_ui::{UICommand, UiExt as _, icons};
+use re_viewer_context::CommandKind;
 use re_viewer_context::{ActiveStoreContext, CommandSender, StoreHub};
 
 use crate::AppCore;

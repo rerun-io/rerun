@@ -11489,7 +11489,6 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "getrandom 0.3.4",
- "insta",
  "itertools 0.15.0",
  "jiff",
  "notify",
@@ -11523,7 +11522,6 @@ dependencies = [
  "url",
  "wayland-client",
  "wayland-protocols",
- "web-time",
 ]
 
 [[package]]
@@ -12100,6 +12098,7 @@ dependencies = [
  "half",
  "image",
  "indexmap 2.14.0",
+ "insta",
  "itertools 0.15.0",
  "linked-hash-map",
  "ndarray",
@@ -12149,12 +12148,14 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
+ "strum 0.26.3",
  "strum_macros 0.26.4",
  "thiserror 2.0.19",
  "tiff",
  "tokio",
  "uuid",
  "vec1",
+ "web-time",
  "wgpu",
 ]
 

@@ -1387,7 +1387,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                         |ui| {
                             ui.set_height(height);
-                            let refresh_tooltip = match re_ui::TableCommandKind::Refresh
+                            let refresh_tooltip = match re_viewer_context::TableCommandKind::Refresh
                                 .formatted_kb_shortcut(ui.ctx())
                             {
                                 Some(shortcut) => format!("Refresh table ({shortcut})"),

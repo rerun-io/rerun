@@ -1,5 +1,5 @@
 ---
-source: crates/viewer_support/re_ui/src/command/command_kind.rs
+source: crates/viewer_support/re_viewer_context/src/command/command_kind.rs
 expression: listing
 ---
 recording.close: Close the current recording (unsaved data will be lost)

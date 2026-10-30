@@ -1,9 +1,9 @@
 use egui::KeyboardShortcut;
 use egui::os::OperatingSystem;
+use re_ui::{ContextExt as _, Icon};
 use smallvec::{SmallVec, smallvec};
 
 use super::CommandEnvironment;
-use crate::context_ext::ContextExt as _;
 
 /// Interface for sending [`RedapServerCommand`] messages.
 pub trait RedapServerCommandSender {
@@ -12,7 +12,7 @@ pub trait RedapServerCommandSender {
 
 /// A command that acts on a specific Redap server.
 ///
-/// Unlike [`super::UICommand`], these carry the [`re_uri::Origin`] of the server they act on,
+/// Unlike [`re_ui::UICommand`], these carry the [`re_uri::Origin`] of the server they act on,
 /// so they can be used both from the command palette (acting on the selected server)
 /// and from server context menus (acting on that specific server).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -68,7 +68,7 @@ impl RedapServerCommand {
         self.kind.tooltip()
     }
 
-    pub fn icon(&self) -> &'static crate::Icon {
+    pub fn icon(&self) -> &'static Icon {
         self.kind.icon()
     }
 
@@ -160,15 +160,15 @@ impl RedapServerCommandKind {
     /// The primary keyboard shortcut, nicely formatted.
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
         self.primary_kb_shortcut(egui_ctx.os())
-            .map(|shortcut| crate::format_shortcut(egui_ctx, &shortcut))
+            .map(|shortcut| re_ui::format_shortcut(egui_ctx, &shortcut))
     }
 
-    pub fn icon(self) -> &'static crate::Icon {
+    pub fn icon(self) -> &'static Icon {
         match self {
-            Self::Refresh => &crate::icons::RESET,
-            Self::OpenEditDialog => &crate::icons::SETTINGS,
-            Self::CopyUrlToClipboard => &crate::icons::COPY,
-            Self::Remove => &crate::icons::TRASH,
+            Self::Refresh => &re_ui::icons::RESET,
+            Self::OpenEditDialog => &re_ui::icons::SETTINGS,
+            Self::CopyUrlToClipboard => &re_ui::icons::COPY,
+            Self::Remove => &re_ui::icons::TRASH,
         }
     }
 }

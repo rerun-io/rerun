@@ -1,10 +1,11 @@
 use egui::KeyboardShortcut;
 use egui::os::OperatingSystem;
+use re_ui::UICommand;
 use smallvec::SmallVec;
 
 use super::{
     BoundCommand, CommandEnvironment, RecordingCommandKind, RedapServerCommandKind,
-    TableCommandKind, UICommand,
+    TableCommandKind,
 };
 
 /// What a command acts on, which decides where its target comes from.

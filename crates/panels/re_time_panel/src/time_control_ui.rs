@@ -3,9 +3,8 @@ use re_entity_db::EntityDb;
 use re_log_types::TimeType;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::menu::menu_style;
-use re_ui::{
-    ComboItem, ReButton, RecordingCommandKind, Size, UiExt as _, Variant, icons, list_item,
-};
+use re_ui::{ComboItem, ReButton, Size, UiExt as _, Variant, icons, list_item};
+use re_viewer_context::RecordingCommandKind;
 use re_viewer_context::{TimeControl, TimeControlCommand};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]

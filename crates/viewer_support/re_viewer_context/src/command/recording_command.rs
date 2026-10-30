@@ -1,10 +1,10 @@
 use egui::os::OperatingSystem;
 use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use re_log_types::StoreId;
+use re_ui::ContextExt as _;
 use smallvec::{SmallVec, smallvec};
 
 use super::CommandEnvironment;
-use crate::context_ext::ContextExt as _;
 
 /// Interface for sending [`RecordingCommand`] messages.
 pub trait RecordingCommandSender {
@@ -22,7 +22,7 @@ impl Default for SetPlaybackSpeed {
 
 /// A command that acts on a specific recording.
 ///
-/// Unlike [`super::UICommand`], these carry the [`StoreId`] of the recording they act on,
+/// Unlike [`re_ui::UICommand`], these carry the [`StoreId`] of the recording they act on,
 /// so they can be used both from the command palette (acting on the active recording)
 /// and from menus and buttons (acting on a specific recording).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -270,11 +270,11 @@ impl RecordingCommandKind {
         }
     }
 
-    pub fn icon(self) -> Option<&'static crate::Icon> {
+    pub fn icon(self) -> Option<&'static re_ui::Icon> {
         match self {
-            Self::OpenAddViewOrContainerDialog => Some(&crate::icons::ADD),
+            Self::OpenAddViewOrContainerDialog => Some(&re_ui::icons::ADD),
             Self::ResetBlueprintToDefault | Self::ResetBlueprintToHeuristic => {
-                Some(&crate::icons::RESET)
+                Some(&re_ui::icons::RESET)
             }
             _ => None,
         }
@@ -359,7 +359,7 @@ impl RecordingCommandKind {
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
-            .map(|shortcut| crate::format_shortcut(egui_ctx, &shortcut))
+            .map(|shortcut| re_ui::format_shortcut(egui_ctx, &shortcut))
     }
 
     /// Show this command as a menu-button.
@@ -406,7 +406,7 @@ impl RecordingCommandKind {
                     if self.is_debug_only() {
                         egui::Button::new((
                             self.text(),
-                            crate::debug_only::debug_only_rich_text(&egui_ctx.global_style()),
+                            re_ui::debug_only::debug_only_rich_text(&egui_ctx.global_style()),
                         ))
                     } else {
                         egui::Button::new(self.text())
@@ -431,8 +431,8 @@ impl RecordingCommandKind {
         ui.label(self.tooltip());
 
         if let Some(shortcut) = self.primary_kb_shortcut(os) {
-            crate::Help::new_without_title()
-                .control("", crate::IconText::from_keyboard_shortcut(os, shortcut))
+            re_ui::Help::new_without_title()
+                .control("", re_ui::IconText::from_keyboard_shortcut(os, shortcut))
                 .ui(ui);
         }
     }

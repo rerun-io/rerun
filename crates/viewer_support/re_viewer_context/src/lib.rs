@@ -20,6 +20,7 @@ mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
 mod collapsed_id;
+mod command;
 mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
@@ -87,6 +88,13 @@ pub use self::cache::{
     VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, filter_blob_removed_events,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
+pub use self::command::{
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
+    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
+    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
+    consume_timeline_shortcut, listen_for_kb_shortcuts, redo_shortcuts, refresh_shortcuts,
+    undo_shortcuts,
+};
 pub use self::command_sender::{
     CommandReceiver, CommandSender, DownloadAction, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender, command_channel,
