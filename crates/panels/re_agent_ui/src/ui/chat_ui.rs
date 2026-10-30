@@ -6,7 +6,7 @@ use std::sync::Arc;
 use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
-use re_agent::acp::LineDirection;
+use re_agent::LineDirection;
 use re_agent::acp::schema::v1::{
     AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
     SessionConfigValueId, SessionMode, SessionModeId,

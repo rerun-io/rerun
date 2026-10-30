@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use crossbeam::channel::{Receiver, RecvTimeoutError, Sender, TrySendError};
-use re_agent_ui::{AgentSession, LaunchConfig};
+use re_agent_ui::{AgentHarnessConfig, AgentSession};
 use serde_json::Value;
 use tempfile::TempDir;
 
@@ -99,7 +99,7 @@ struct InFlight {
 /// Work sent to the redaction thread.
 struct RedactionRequest {
     json: Value,
-    config: LaunchConfig,
+    config: AgentHarnessConfig,
     on_redacted: OnRedacted,
 }
 
@@ -128,7 +128,7 @@ impl Redactor {
     /// reason there is none. It runs on the redaction thread, or right away when the redaction
     /// cannot start, and never for a request that [`Self::discard_pending`] dropped.
     /// `config` is the launch config of the agent to redact with.
-    pub fn redact(&mut self, json: Value, config: LaunchConfig, on_redacted: OnRedacted) {
+    pub fn redact(&mut self, json: Value, config: AgentHarnessConfig, on_redacted: OnRedacted) {
         let Some(config) = self.redactor_config(config) else {
             on_redacted(Err(RedactionError::NoScratchDirectory));
             return;
@@ -175,7 +175,7 @@ impl Redactor {
     /// so it has nothing but the prompt.
     ///
     /// `None` when there is no scratch directory to run it in.
-    fn redactor_config(&mut self, mut config: LaunchConfig) -> Option<LaunchConfig> {
+    fn redactor_config(&mut self, mut config: AgentHarnessConfig) -> Option<AgentHarnessConfig> {
         if self.scratch.is_none() {
             match TempDir::with_prefix("rerun-redaction-") {
                 Ok(dir) => self.scratch = Some(dir),
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn the_redactor_runs_outside_the_users_project() {
-        let config = LaunchConfig {
+        let config = AgentHarnessConfig {
             command: PathBuf::from("agent"),
             args: Vec::new(),
             env: Vec::new(),

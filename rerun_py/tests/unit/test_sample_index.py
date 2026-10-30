@@ -8,7 +8,7 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from datafusion import SessionContext
-from rerun.experimental.dataloader import DataSource, Field, FixedRateSampling
+from rerun.experimental.dataloader import DataSource, Field, FixedRateSampling, TimeAlignedSampling
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
 from rerun.experimental.dataloader.decoders import NumericDecoder
 
@@ -46,7 +46,7 @@ class _DatasetWithIndexRanges:
 def _build_sample_index(
     ranges_table: pa.Table,
     *,
-    timeline_sampling: FixedRateSampling | None = None,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
 ) -> SampleIndex:
     dataset = cast("DatasetEntry", _DatasetWithIndexRanges(ranges_table))
     return SampleIndex.build(
@@ -102,6 +102,29 @@ def test_build_does_not_fetch_all_segment_ids() -> None:
     assert dataset.segment_ids_call_count == 0
 
 
+@pytest.mark.parametrize("index_type", [pa.int64(), pa.timestamp("ns"), pa.duration("ns")])
+def test_window_trim_preserves_the_raw_segment_minimum(index_type: pa.DataType) -> None:
+    temporal = not pa.types.is_integer(index_type)
+    table = pa.table({
+        "rerun_segment_id": ["segment-a"],
+        "frame:start": pa.array([10], type=index_type),
+        "frame:end": pa.array([30], type=index_type),
+    })
+    source = DataSource(dataset=cast("DatasetEntry", _DatasetWithIndexRanges(table)))
+    field = Field("/state:Scalars:scalars", decode=NumericDecoder(), window=(-2e-9 if temporal else -2, 0))
+
+    sample_index = SampleIndex.build(
+        source,
+        index="frame",
+        fields={"state": field},
+        timeline_sampling=FixedRateSampling(rate_hz=1e9) if temporal else None,
+    )
+
+    (segment,) = sample_index.segments
+    assert segment.index_start == 12
+    assert segment.index_min == 10
+
+
 def test_build_empty_dataset_without_index_columns() -> None:
     ranges_table = pa.table({"rerun_segment_id": pa.array([], type=pa.string())})
 
@@ -111,7 +134,8 @@ def test_build_empty_dataset_without_index_columns() -> None:
     assert sample_index.segments == []
 
 
-def test_build_integer_mapping_is_independent_of_range_row_order() -> None:
+@pytest.mark.parametrize("timeline_sampling", [None, TimeAlignedSampling(keyframe_interval=10)])
+def test_build_integer_mapping_is_independent_of_range_row_order(timeline_sampling: TimeAlignedSampling | None) -> None:
     ranges_table = pa.table({
         "rerun_segment_id": ["segment-a", "segment-b"],
         "frame:start": pa.array([10, 20], type=pa.int64()),
@@ -126,8 +150,42 @@ def test_build_integer_mapping_is_independent_of_range_row_order() -> None:
         ("segment-b", 22),
     ]
 
-    assert _global_mapping(_build_sample_index(ranges_table)) == expected_mapping
-    assert _global_mapping(_build_sample_index(reversed_ranges_table)) == expected_mapping
+    assert _global_mapping(_build_sample_index(ranges_table, timeline_sampling=timeline_sampling)) == expected_mapping
+    assert (
+        _global_mapping(_build_sample_index(reversed_ranges_table, timeline_sampling=timeline_sampling))
+        == expected_mapping
+    )
+
+
+@pytest.mark.parametrize(
+    ("index_type", "timeline_sampling", "error", "message"),
+    [
+        (pa.int64(), FixedRateSampling(rate_hz=1), ValueError, "timestamp or duration"),
+        (pa.timestamp("ns"), TimeAlignedSampling(keyframe_interval=10), ValueError, "integer timeline"),
+        (pa.duration("ns"), TimeAlignedSampling(keyframe_interval=10), ValueError, "integer timeline"),
+        (pa.timestamp("ns"), None, TypeError, "timeline_sampling=FixedRateSampling"),
+    ],
+)
+def test_build_rejects_sampling_for_the_wrong_timeline(
+    index_type: pa.DataType,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None,
+    error: type[Exception],
+    message: str,
+) -> None:
+    ranges_table = pa.table({
+        "rerun_segment_id": ["segment-a"],
+        "frame:start": pa.array([0], type=index_type),
+        "frame:end": pa.array([1_000_000_000], type=index_type),
+    })
+
+    with pytest.raises(error, match=message):
+        _build_sample_index(ranges_table, timeline_sampling=timeline_sampling)
+
+
+@pytest.mark.parametrize("rate_hz", [0, -1, float("inf"), float("nan"), 1_000_000_001])
+def test_fixed_rate_sampling_rejects_invalid_rates(rate_hz: float) -> None:
+    with pytest.raises(ValueError, match="rate_hz"):
+        FixedRateSampling(rate_hz=rate_hz)
 
 
 def test_build_fixed_rate_mapping_is_independent_of_range_row_order() -> None:
@@ -145,9 +203,12 @@ def test_build_fixed_rate_mapping_is_independent_of_range_row_order() -> None:
         ("segment-b", np.datetime64(22_000_000_000, "ns")),
     ]
 
-    sampling = FixedRateSampling(rate_hz=1.0)
-    assert _global_mapping(_build_sample_index(ranges_table, timeline_sampling=sampling)) == expected_mapping
-    assert _global_mapping(_build_sample_index(reversed_ranges_table, timeline_sampling=sampling)) == expected_mapping
+    timeline_sampling = FixedRateSampling(rate_hz=1.0)
+    assert _global_mapping(_build_sample_index(ranges_table, timeline_sampling=timeline_sampling)) == expected_mapping
+    assert (
+        _global_mapping(_build_sample_index(reversed_ranges_table, timeline_sampling=timeline_sampling))
+        == expected_mapping
+    )
 
 
 def test_global_to_local_integer_single_segment() -> None:
