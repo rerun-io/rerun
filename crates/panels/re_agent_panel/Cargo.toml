@@ -40,13 +40,10 @@ default = []
 ## Costs a couple of megabytes of binary size, and does nothing on the web.
 agent_context = []
 
-## Send agent feedback and anonymized agent usage using our analytics SDK.
-analytics = ["dep:re_analytics"]
-
 [dependencies]
 re_agent.workspace = true
 re_agent_ui.workspace = true
-re_analytics = { workspace = true, optional = true }
+re_analytics.workspace = true
 re_async.workspace = true
 re_entity_db.workspace = true
 re_log.workspace = true

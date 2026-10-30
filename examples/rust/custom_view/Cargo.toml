@@ -6,12 +6,6 @@ rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 publish = false
 
-[features]
-default = []
-
-# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["rerun/analytics"]
-
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",

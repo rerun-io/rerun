@@ -3,7 +3,6 @@ use re_agent_ui::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus
 use re_agent_ui::{
     AgentSession, ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes,
 };
-#[cfg(feature = "analytics")]
 use re_sdk_types::external::uuid::Uuid;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use serde::Serialize;
@@ -22,11 +21,9 @@ const MAX_OBSERVATION_BYTES: usize = 10_000;
 /// Largest trajectory JSON sent with the analytics event.
 ///
 /// `PostHog` drops events larger than about 1 MB. This leaves room for the other event properties.
-#[cfg(feature = "analytics")]
 const MAX_TRAJECTORY_BYTES: usize = 900_000;
 
 /// Where this feedback comes from, as the `source` of the analytics event.
-#[cfg(feature = "analytics")]
 const FEEDBACK_SOURCE: &str = "viewer_panel";
 
 /// Asks the user for feedback on one agent conversation,
@@ -39,7 +36,6 @@ pub struct FeedbackModal {
 
     agent: Option<RedactionAgent>,
 
-    #[cfg(feature = "analytics")]
     redactor: re_agent::Redactor,
 }
 
@@ -69,7 +65,7 @@ impl FeedbackModal {
                         .desired_rows(5)
                         .desired_width(f32::INFINITY),
                 );
-                let can_send = can_send();
+                let can_send = re_analytics::is_enabled();
                 ui.weak(if can_send {
                     "Your feedback is sent to Rerun together with the agent trace: \
                      your prompts, the agent's answers, and its tool calls. \
@@ -96,58 +92,40 @@ impl FeedbackModal {
         }
     }
 
-    #[cfg_attr(
-        not(feature = "analytics"),
-        expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)
-    )]
     fn send(&mut self, trajectory: Trajectory, redact_with: Option<RedactionAgent>) {
-        cfg_select! {
-            feature = "analytics" => {
-                let Some(redact_with) = redact_with else {
-                    re_log::warn!(
-                        "Your feedback was not sent: no agent is available to remove sensitive data from it."
-                    );
-                    return;
-                };
-                let json = match serde_json::to_value(&trajectory) {
-                    Ok(json) => json,
-                    Err(err) => {
-                        re_log::error!("Your feedback was not sent: {err}");
-                        return;
-                    }
-                };
-                let agent = trajectory.agent.name;
-                let image_count = trajectory.image_count;
-                re_log::info!("Removing sensitive data from your feedback. It is sent after that.");
-                self.redactor.redact(
-                    json,
-                    redact_with,
-                    Box::new(move |redacted| match redacted {
-                        Ok(mut json) => {
-                            // Added after redaction, because the redactor replaces ids with `<id>`.
-                            let feedback_id = Uuid::new_v4();
-                            re_analytics::record(|| {
-                                feedback_event(&mut json, feedback_id, agent, image_count)
-                            });
-                            re_log::info!("Thank you for your feedback.");
-                        }
-                        Err(err) => re_log::warn!(
-                            "Your feedback was not sent: the sensitive data could not be removed ({err})."
-                        ),
-                    }),
-                );
+        let Some(redact_with) = redact_with else {
+            re_log::warn!(
+                "Your feedback was not sent: no agent is available to remove sensitive data from it."
+            );
+            return;
+        };
+        let json = match serde_json::to_value(&trajectory) {
+            Ok(json) => json,
+            Err(err) => {
+                re_log::error!("Your feedback was not sent: {err}");
+                return;
             }
-            _ => {
-                let _ = (trajectory.image_count, redact_with);
-            }
-        }
-    }
-}
-
-fn can_send() -> bool {
-    cfg_select! {
-        feature = "analytics" => re_analytics::is_enabled(),
-        _ => false,
+        };
+        let agent = trajectory.agent.name;
+        let image_count = trajectory.image_count;
+        re_log::info!("Removing sensitive data from your feedback. It is sent after that.");
+        self.redactor.redact(
+            json,
+            redact_with,
+            Box::new(move |redacted| match redacted {
+                Ok(mut json) => {
+                    // Added after redaction, because the redactor replaces ids with `<id>`.
+                    let feedback_id = Uuid::new_v4();
+                    re_analytics::record(|| {
+                        feedback_event(&mut json, feedback_id, agent, image_count)
+                    });
+                    re_log::info!("Thank you for your feedback.");
+                }
+                Err(err) => re_log::warn!(
+                    "Your feedback was not sent: the sensitive data could not be removed ({err})."
+                ),
+            }),
+        );
     }
 }
 
@@ -155,7 +133,6 @@ fn can_send() -> bool {
 ///
 /// Also writes `feedback_id` into the trajectory's `extra`, so the event and the trajectory can be
 /// joined wherever the trajectory is stored.
-#[cfg(feature = "analytics")]
 fn feedback_event(
     trajectory: &mut serde_json::Value,
     feedback_id: Uuid,
@@ -487,7 +464,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "analytics")]
     fn session(event: re_analytics::event::Feedback) -> re_analytics::event::SessionFeedback {
         match event.about {
             re_analytics::event::FeedbackAbout::Session(session) => session,
@@ -496,7 +472,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "analytics")]
     fn a_trajectory_too_large_to_send_is_left_out() {
         let mut transcript = Transcript::default();
         for _ in 0..=(MAX_TRAJECTORY_BYTES / MAX_OBSERVATION_BYTES) {
@@ -534,7 +509,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "analytics")]
     fn the_event_and_the_trajectory_share_the_feedback_id() {
         let mut json =
             serde_json::to_value(Trajectory::new(&Transcript::default(), None)).expect("serialize");

@@ -13,20 +13,19 @@ use re_agent_ui::{AgentPanel, AgentSettings};
 use re_async::AsyncRuntimeHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
-#[cfg(all(agent_harness_backend, feature = "analytics"))]
+#[cfg(agent_harness_backend)]
 mod agent_analytics;
 #[cfg(agent_harness_backend)]
 mod feedback;
 #[cfg(agent_harness_backend)]
 mod harness;
 mod preamble;
-#[cfg(feature = "analytics")]
 mod product_feedback;
 #[cfg(agent_harness_backend)]
 mod self_improve;
 mod viewer_toolbox;
 
-#[cfg(all(not(agent_harness_backend), feature = "analytics"))]
+#[cfg(not(agent_harness_backend))]
 pub use product_feedback::record_without_text as record_feedback_without_text;
 pub use viewer_toolbox::ViewerControlCall;
 
@@ -95,7 +94,7 @@ impl ViewerAgentPanel {
     /// Queue feedback that an agent sent about Rerun, to be sent.
     ///
     /// Its text is only sent when `share_text` is set, after the panel's agent has redacted it.
-    #[cfg(all(agent_harness_backend, feature = "analytics"))]
+    #[cfg(agent_harness_backend)]
     pub fn submit_product_feedback(
         &mut self,
         request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,

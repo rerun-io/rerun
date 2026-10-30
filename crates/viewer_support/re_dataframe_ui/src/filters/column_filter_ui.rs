@@ -774,18 +774,15 @@ fn custom_filter_ui(
     custom_filter: &CustomFilter,
     error: Option<&str>,
 ) -> DisplayFilterUiResult {
-    #[cfg(feature = "analytics")]
-    {
-        let has_shown_custom_filter_id = egui::Id::unique("has_shown_custom_table_filter");
-        let has_shown_custom_filter = ui.data_mut(|data| {
-            mem::replace(
-                data.get_temp_mut_or_default::<bool>(has_shown_custom_filter_id),
-                true,
-            )
-        });
-        if !has_shown_custom_filter {
-            re_analytics::record(|| re_analytics::event::CustomTableFilterShown {});
-        }
+    let has_shown_custom_filter_id = egui::Id::unique("has_shown_custom_table_filter");
+    let has_shown_custom_filter = ui.data_mut(|data| {
+        mem::replace(
+            data.get_temp_mut_or_default::<bool>(has_shown_custom_filter_id),
+            true,
+        )
+    });
+    if !has_shown_custom_filter {
+        re_analytics::record(|| re_analytics::event::CustomTableFilterShown {});
     }
 
     let layout_job = match (&custom_filter.column, error) {

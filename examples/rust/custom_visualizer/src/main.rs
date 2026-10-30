@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
-    // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
+    // them to Rerun analytics (if the `analytics` feature of `rerun` is on).
     re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let startup_options = re_viewer::StartupOptions::default();
 
-    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+    // This is used for analytics, if the `analytics` feature of `rerun` is on
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
     println!("This example starts a custom Rerun Viewer with a built-in recording.");

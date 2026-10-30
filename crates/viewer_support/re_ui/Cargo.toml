@@ -34,14 +34,11 @@ all-features = true
 [features]
 default = []
 
-## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
-
 ## Enable helpers for testing
 testing = ["dep:egui_kittest", "re_analytics/testing"]
 
 [dependencies]
-re_analytics = { workspace = true, optional = true }
+re_analytics.workspace = true
 re_async.workspace = true # to run the fetch behind a `RequestedObject`
 re_error.workspace = true
 re_format.workspace = true

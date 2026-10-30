@@ -1117,7 +1117,6 @@ pub trait UiExt {
                                 d.insert_persisted(has_shown_help_id, true);
                             });
 
-                            #[cfg(feature = "analytics")]
                             re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }

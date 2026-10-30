@@ -14,12 +14,6 @@ path = "src/viewer.rs"
 name = "custom_callback_app"
 path = "src/app.rs"
 
-[features]
-default = []
-
-# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["rerun/analytics"]
-
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",

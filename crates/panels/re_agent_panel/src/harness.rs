@@ -45,10 +45,8 @@ pub struct Harness {
     feedback: feedback::FeedbackModal,
 
     /// Feedback that agents send about Rerun through the `submit_feedback` viewer control operation.
-    #[cfg(feature = "analytics")]
     product_feedback: super::product_feedback::ProductFeedback,
 
-    #[cfg(feature = "analytics")]
     analytics: crate::agent_analytics::TurnAnalytics,
 }
 
@@ -202,7 +200,6 @@ impl Harness {
     /// Queue feedback that an agent sent about Rerun, to be sent.
     ///
     /// Its text is only sent when `share_text` is set, after `panel`'s agent has redacted it.
-    #[cfg(feature = "analytics")]
     pub fn submit_product_feedback(
         &mut self,
         panel: Option<&AgentPanel>,
@@ -226,26 +223,19 @@ impl Harness {
 
     /// Record non-content usage for every turn and, when enabled, share its redacted text.
     pub fn record_finished_turns(&mut self, panel: &AgentPanel, turns: Vec<TurnReport>) {
-        cfg_select! {
-            feature = "analytics" => {
-                // Redaction spawns an agent session per turn, so it must not run when the
-                // event it prepares would be dropped anyway.
-                let share_redacted_prompts =
-                    panel.settings().share_redacted_prompts && re_analytics::is_enabled();
-                for turn in turns {
-                    crate::agent_analytics::record_usage(&turn);
-                    if share_redacted_prompts {
-                        self.analytics.queue(turn, panel.redaction_agent().ok());
-                    }
-                }
-                if !share_redacted_prompts {
-                    // The user may have just unticked the box: drop what is still queued.
-                    self.analytics.discard_pending();
-                }
+        // Redaction spawns an agent session per turn, so it must not run when the
+        // event it prepares would be dropped anyway.
+        let share_redacted_prompts =
+            panel.settings().share_redacted_prompts && re_analytics::is_enabled();
+        for turn in turns {
+            crate::agent_analytics::record_usage(&turn);
+            if share_redacted_prompts {
+                self.analytics.queue(turn, panel.redaction_agent().ok());
             }
-            _ => {
-                let _ = (panel, turns);
-            }
+        }
+        if !share_redacted_prompts {
+            // The user may have just unticked the box: drop what is still queued.
+            self.analytics.discard_pending();
         }
     }
 
