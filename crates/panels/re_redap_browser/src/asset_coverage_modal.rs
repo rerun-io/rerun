@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crossbeam::channel::Receiver;
 use egui::AtomExt as _;
 
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_catalog_client::{AssetCoverage, CatalogClient};
 use re_format::{format_plural_s, format_uint};
 use re_log_types::EntryId;
@@ -627,7 +627,7 @@ struct State {
 
 impl State {
     /// Starts writing the edited coverage to the server.
-    fn save(&mut self, ctx: &Context<'_>, egui_ctx: egui::Context) {
+    fn save(&mut self, ctx: &Context<'_>, waker: UiWaker) {
         let Some(revision) = self.stored.as_ref().map(|stored| stored.revision) else {
             return;
         };
@@ -669,7 +669,7 @@ impl State {
             }
 
             send_crossbeam(&tx, result).ok();
-            egui_ctx.request_repaint();
+            waker.wake();
         });
     }
 }
@@ -811,7 +811,7 @@ impl AssetCoverageModal {
                 });
 
                 if footer.inner.1 {
-                    state.save(ctx, ui.ctx().clone());
+                    state.save(ctx, ui.ui_waker());
                 }
 
                 remember_footer_height(ui, footer_id, footer.response.rect);

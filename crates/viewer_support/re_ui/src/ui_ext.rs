@@ -39,6 +39,11 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
+    /// A [`re_async::UiWaker`] that requests a repaint of this ui's context.
+    fn ui_waker(&self) -> re_async::UiWaker {
+        self.ui().ctx().ui_waker()
+    }
+
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ui().theme())
     }

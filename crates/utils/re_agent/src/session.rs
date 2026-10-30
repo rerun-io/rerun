@@ -16,7 +16,7 @@ use agent_client_protocol_schema::v1::{
     StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
 
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use web_time::Instant;
 
 use crate::agent_harness::McpStdioServer;
@@ -247,13 +247,13 @@ impl AgentSession {
     /// Starts whichever kind of agent `launch` describes.
     ///
     /// A model-API agent runs on `async_runtime`, and fails to start without one.
-    /// `wake` is called whenever new events arrive, so that the UI can
-    /// call [`Self::poll_events`], e.g. via `egui::Context::request_repaint`.
+    /// `waker` is woken whenever new events arrive, so that the UI can
+    /// call [`Self::poll_events`].
     pub fn start(
         &mut self,
         launch: AgentLaunch,
         async_runtime: Option<&AsyncRuntimeHandle>,
-        wake: impl Fn() + Send + Sync + 'static,
+        waker: UiWaker,
     ) {
         self.stop();
         let mut fresh = Self {
@@ -274,9 +274,9 @@ impl AgentSession {
                 fresh.cwd = config.cwd.clone();
                 *self = fresh;
                 cfg_select! {
-                    agent_harness_backend => Ok(crate::agent_harness::spawn(config, wake)),
+                    agent_harness_backend => Ok(crate::agent_harness::spawn(config, waker)),
                     _ => {{
-                        drop((config, wake));
+                        drop((config, waker));
                         Err(StartError::HarnessUnsupported)
                     }}
                 }
@@ -288,7 +288,7 @@ impl AgentSession {
                 *self = fresh;
                 match async_runtime {
                     Some(async_runtime) => {
-                        crate::model_api_backend::spawn(config, async_runtime, wake)
+                        crate::model_api_backend::spawn(config, async_runtime, waker)
                             .map_err(StartError::ModelApi)
                     }
                     None => Err(StartError::NoAsyncRuntime),

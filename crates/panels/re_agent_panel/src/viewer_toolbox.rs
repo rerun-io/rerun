@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use futures::future::BoxFuture;
 use re_agent_ui::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
     ViewerControlRequest, ViewerControlResponse, viewer_control_response,
@@ -100,21 +101,18 @@ impl QueuedCall {
 /// Offers the viewer-control operations as tools, and queues every call for the UI thread.
 pub struct ViewerToolbox {
     calls_tx: crossbeam::channel::Sender<QueuedCall>,
-    egui_ctx: egui::Context,
+    waker: UiWaker,
 
     /// Built once: every tool, as the service describes it.
     tools: Vec<re_viewer_control_tools::ToolDefinition>,
 }
 
 impl ViewerToolbox {
-    /// Calls go to `calls_tx`. `egui_ctx` is woken for each, so the viewer runs it promptly.
-    pub fn new(
-        calls_tx: crossbeam::channel::Sender<QueuedCall>,
-        egui_ctx: egui::Context,
-    ) -> Arc<Self> {
+    /// Calls go to `calls_tx`. `waker` is woken for each, so the viewer runs it promptly.
+    pub fn new(calls_tx: crossbeam::channel::Sender<QueuedCall>, waker: UiWaker) -> Arc<Self> {
         Arc::new(Self {
             calls_tx,
-            egui_ctx,
+            waker,
             tools: re_viewer_control_tools::tools(SCREENSHOT_DELIVERY),
         })
     }
@@ -135,7 +133,7 @@ impl ViewerToolbox {
             crossbeam::channel::TrySendError::Full(_) => ViewerToolError::Busy,
             crossbeam::channel::TrySendError::Disconnected(_) => ViewerToolError::Stopped,
         })?;
-        self.egui_ctx.request_repaint();
+        self.waker.wake();
         Ok(reply_rx)
     }
 }
@@ -211,7 +209,7 @@ mod tests {
     #[test]
     fn calls_the_agent_stopped_waiting_for_do_not_run() {
         let (calls_tx, calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
-        let toolbox = ViewerToolbox::new(calls_tx, egui::Context::default());
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
 
         let _waiting = toolbox.send("get_state", Map::new());
         let timed_out = toolbox.send("get_state", Map::new());
@@ -227,7 +225,7 @@ mod tests {
     #[test]
     fn screenshots_cannot_be_written_to_disk() {
         let (calls_tx, calls_rx) = calls_channel();
-        let toolbox = ViewerToolbox::new(calls_tx, egui::Context::default());
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
 
         let schema = toolbox
             .definitions()

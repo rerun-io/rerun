@@ -31,14 +31,14 @@ impl AppCore {
             .retain(|source, _| !source.is_same_ignoring_uri_fragments(rx.source()));
 
         // Make sure we wake up when a new message is available:
-        rx.set_waker({
+        rx.set_waker(re_async::UiWaker::new({
             let egui_ctx = self.egui_ctx.clone();
             move || {
                 // Spend a few more milliseconds decoding incoming messages,
                 // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             }
-        });
+        }));
 
         // Add unknown redap servers.
         //

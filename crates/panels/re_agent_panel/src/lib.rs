@@ -11,7 +11,7 @@ use std::path::Path;
 
 use re_agent_ui::{AgentPanel, AgentSettings};
 use re_async::AsyncRuntimeHandle;
-use re_ui::UiExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 
 #[cfg(all(agent_harness_backend, feature = "analytics"))]
 mod agent_analytics;
@@ -255,7 +255,7 @@ impl ViewerAgentPanel {
         self.viewer_control_calls = Some(calls_rx);
         panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(
             calls_tx,
-            egui_ctx.clone(),
+            egui_ctx.ui_waker(),
         ));
 
         self.panel = Some(panel);

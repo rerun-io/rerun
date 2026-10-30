@@ -4,7 +4,7 @@
 
 use crate::GamepadNavigation;
 
-pub fn set_event_waker(_wake_callback: impl Fn() + Send + Sync + 'static) {}
+pub fn set_event_waker(_waker: re_async::UiWaker) {}
 
 pub fn clear_event_waker() {}
 

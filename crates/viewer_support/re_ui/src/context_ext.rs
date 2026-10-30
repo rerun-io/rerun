@@ -17,6 +17,12 @@ fn test_marker_id() -> egui::Id {
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
+    /// A [`re_async::UiWaker`] that requests a repaint of this context.
+    fn ui_waker(&self) -> re_async::UiWaker {
+        let egui_ctx = self.ctx().clone();
+        re_async::UiWaker::new(move || egui_ctx.request_repaint())
+    }
+
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
     }

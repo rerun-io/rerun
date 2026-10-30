@@ -15,7 +15,7 @@ use base64::Engine as _;
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::future::Either;
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use rig_core::DynModel;
 use rig_core::completion::{
     AssistantContent, CompletionRequest, CompletionResponse, FinishReason, Message,
@@ -430,15 +430,15 @@ fn http_client() -> Result<reqwest::Client, ModelApiError> {
 
 /// Starts an agent loop on `async_runtime` that calls the provider's API directly.
 ///
-/// `wake` is called after every event so the UI can repaint. Dropping the connection stops the
+/// `waker` is woken after every event so the UI can repaint. Dropping the connection stops the
 /// loop, cancelling any turn in progress.
 pub fn spawn(
     config: ModelApiConfig,
     async_runtime: &AsyncRuntimeHandle,
-    wake: impl Fn() + Send + Sync + 'static,
+    waker: UiWaker,
 ) -> Result<AgentConnection, ModelApiError> {
     let http = http_client()?;
-    let (connection, command_rx, events) = AgentConnection::new(wake);
+    let (connection, command_rx, events) = AgentConnection::new(waker);
 
     let provider_config = config.clone();
     let make_model = move |model: &str| provider_config.model(&http, model);
@@ -1201,7 +1201,7 @@ mod tests {
             toolbox,
         };
         let (command_tx, command_rx) = futures::channel::mpsc::unbounded();
-        let (events, event_rx) = EventSender::new(|| {});
+        let (events, event_rx) = EventSender::new(UiWaker::noop());
 
         let mut pool = LocalPool::new();
         let model = model.clone();
@@ -1338,7 +1338,7 @@ mod tests {
             MockStreamEvent::tool_call("call-2", "delete", serde_json::json!({})),
             MockStreamEvent::final_response_with_default_usage(),
         ]]);
-        let (events, event_rx) = EventSender::new(|| {});
+        let (events, event_rx) = EventSender::new(UiWaker::noop());
         let mut history = vec![Message::user("Go")];
 
         assert!(

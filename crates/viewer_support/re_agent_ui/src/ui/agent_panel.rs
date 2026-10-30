@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
 use re_agent::{AgentToolbox, ModelApiProvider};
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::alert::Alert;
-use re_ui::{UiExt as _, icons};
+use re_ui::{ContextExt as _, UiExt as _, icons};
 
 use super::Screen;
 use super::conversation::Conversation;
@@ -427,12 +427,12 @@ impl AgentPanel {
     }
 
     /// Starts (or restarts) the agent of the shown conversation with the current settings.
-    pub fn start(&mut self, ctx: &egui::Context) {
-        self.start_conversation(ctx, self.active_conversation().id);
+    pub fn start(&mut self, waker: UiWaker) {
+        self.start_conversation(waker, self.active_conversation().id);
     }
 
     /// Starts (or restarts) the agent of any conversation, including the draft.
-    fn start_conversation(&mut self, ctx: &egui::Context, id: ConversationId) {
+    fn start_conversation(&mut self, waker: UiWaker, id: ConversationId) {
         let Self {
             settings,
             context,
@@ -445,7 +445,7 @@ impl AgentPanel {
             std::iter::chain(conversations.iter_mut(), std::iter::once(draft))
                 .find(|conversation| conversation.id == id)
         {
-            conversation.start(ctx, settings, context, agents);
+            conversation.start(waker, settings, context, agents);
         }
     }
 
@@ -745,7 +745,7 @@ impl AgentPanel {
                     conversation.screen = Screen::Chat;
                 }
             }
-            PanelAction::Restart(id) => self.start_conversation(ctx, id),
+            PanelAction::Restart(id) => self.start_conversation(ctx.ui_waker(), id),
             PanelAction::SendFeedback => self.feedback_requested = true,
             PanelAction::SelfImprove => self.self_improve_requested = true,
         }

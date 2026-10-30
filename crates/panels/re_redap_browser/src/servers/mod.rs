@@ -5,7 +5,7 @@ use std::task::Poll;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_catalog_client::{AssetLayer, AssetRegistrationError, CatalogClient};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
@@ -16,7 +16,7 @@ use re_redap_client::{
     Credentials,
 };
 use re_ui::alert::Alert;
-use re_ui::{UiExt as _, icons};
+use re_ui::{ContextExt as _, UiExt as _, icons};
 use re_viewer_context::{
     AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
@@ -65,14 +65,14 @@ impl Server {
     fn new_remote(
         connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         Self::new(
             connection,
             ServerKind::Remote,
             runtime,
-            egui_ctx,
+            waker,
             command_sender,
         )
     }
@@ -80,14 +80,14 @@ impl Server {
     fn new_internal(
         connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         Self::new(
             connection,
             ServerKind::Internal,
             runtime,
-            egui_ctx,
+            waker,
             command_sender,
         )
     }
@@ -96,7 +96,7 @@ impl Server {
         connection: ConnectionHandle,
         kind: ServerKind,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
@@ -104,7 +104,7 @@ impl Server {
         let entries = Entries::default();
 
         let (cancel_tx, cancel_rx) = futures::channel::oneshot::channel();
-        let listener = watch_events_loop(connection.clone(), command_sender, egui_ctx.clone());
+        let listener = watch_events_loop(connection.clone(), command_sender, waker);
         runtime.spawn_future(async move {
             futures::pin_mut!(listener);
             futures::future::select(listener, cancel_rx).await;
@@ -846,7 +846,7 @@ impl RedapServers {
             Server::new_internal(
                 connection_registry.connection_handle(origin),
                 runtime.clone(),
-                egui_ctx,
+                egui_ctx.ui_waker(),
                 self.command_sender.clone(),
             ),
         );
@@ -1123,7 +1123,7 @@ impl RedapServers {
 
                 let client = server.client.clone();
                 let command_sender = self.command_sender.clone();
-                let egui_ctx = egui_ctx.clone();
+                let waker = egui_ctx.ui_waker();
 
                 send_crossbeam(
                     &command_sender,
@@ -1154,7 +1154,7 @@ impl RedapServers {
                         },
                     )
                     .ok();
-                    egui_ctx.request_repaint();
+                    waker.wake();
                 });
             }
 
@@ -1303,7 +1303,7 @@ impl RedapServers {
                         Server::new_remote(
                             connection_registry.connection_handle(origin.clone()),
                             runtime.clone(),
-                            egui_ctx,
+                            egui_ctx.ui_waker(),
                             self.command_sender.clone(),
                         ),
                     );
@@ -1527,7 +1527,7 @@ impl RedapServers {
 async fn watch_events_loop(
     connection: ConnectionHandle,
     command_sender: crossbeam::channel::Sender<Command>,
-    egui_ctx: egui::Context,
+    waker: UiWaker,
 ) {
     let mut backoff = re_backoff::BackoffGenerator::new(
         std::time::Duration::from_secs(1),
@@ -1536,7 +1536,7 @@ async fn watch_events_loop(
     .expect("valid backoff range");
 
     loop {
-        match run_event_listener(&connection, &command_sender, &egui_ctx, &mut backoff).await {
+        match run_event_listener(&connection, &command_sender, &waker, &mut backoff).await {
             Ok(()) => {}
             Err(err) if err.kind == re_redap_client::ApiErrorKind::Unimplemented => {
                 // Permanent condition (e.g. an older server), so don't keep reconnecting.
@@ -1569,7 +1569,7 @@ async fn watch_events_loop(
 async fn run_event_listener(
     connection: &ConnectionHandle,
     command_sender: &crossbeam::channel::Sender<Command>,
-    egui_ctx: &egui::Context,
+    waker: &UiWaker,
     backoff: &mut re_backoff::BackoffGenerator,
 ) -> re_redap_client::ApiResult<()> {
     use futures::StreamExt as _;
@@ -1587,7 +1587,7 @@ async fn run_event_listener(
             Command::RefreshCollection(connection.origin().clone()),
         )
         .ok();
-        egui_ctx.request_repaint();
+        waker.wake();
     }
 
     Ok(())

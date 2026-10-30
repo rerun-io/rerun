@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc};
+use std::sync::mpsc;
 
 use agent_client_protocol_schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest,
@@ -8,6 +8,7 @@ use agent_client_protocol_schema::v1::{
 };
 
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+use re_async::UiWaker;
 
 use crate::Responder;
 
@@ -24,12 +25,10 @@ pub struct AgentConnection {
 impl AgentConnection {
     /// A connection, and the agent's end of it: the commands to serve, and where to send events.
     ///
-    /// `wake` is called after every event so the UI can repaint.
-    pub fn new(
-        wake: impl Fn() + Send + Sync + 'static,
-    ) -> (Self, UnboundedReceiver<AgentCommand>, EventSender) {
+    /// `waker` is woken after every event so the UI can repaint.
+    pub fn new(waker: UiWaker) -> (Self, UnboundedReceiver<AgentCommand>, EventSender) {
         let (command_tx, command_rx) = futures::channel::mpsc::unbounded();
-        let (events, event_rx) = EventSender::new(wake);
+        let (events, event_rx) = EventSender::new(waker);
         let connection = Self {
             command_tx,
             event_rx,
@@ -142,28 +141,25 @@ pub enum LineDirection {
 #[derive(Clone)]
 pub struct EventSender {
     tx: mpsc::Sender<AgentEvent>,
-    wake: Arc<dyn Fn() + Send + Sync>,
+    waker: UiWaker,
 }
 
 impl EventSender {
     /// An event sender, and the receiver the UI thread drains.
     ///
-    /// `wake` is called after every event so the UI can repaint.
-    pub fn new(wake: impl Fn() + Send + Sync + 'static) -> (Self, mpsc::Receiver<AgentEvent>) {
+    /// `waker` is woken after every event so the UI can repaint.
+    pub fn new(waker: UiWaker) -> (Self, mpsc::Receiver<AgentEvent>) {
         // Unbounded on purpose: events are small, the UI drains them every frame, and blocking
         // the agent side would also stall responders the agent is waiting on.
         #[expect(clippy::disallowed_methods)]
         let (tx, rx) = mpsc::channel();
-        let sender = Self {
-            tx,
-            wake: Arc::new(wake),
-        };
+        let sender = Self { tx, waker };
         (sender, rx)
     }
 
     pub fn send(&self, event: AgentEvent) {
         if self.tx.send(event).is_ok() {
-            (self.wake)();
+            self.waker.wake();
         }
     }
 }

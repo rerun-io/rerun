@@ -8,7 +8,8 @@ use re_agent::{
     AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox,
     ModelApiProvider, Phase, Prompt, SessionContext,
 };
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
+use re_ui::UiExt as _;
 use web_time::SystemTime;
 
 use super::Screen;
@@ -94,7 +95,7 @@ impl Conversation {
     /// Marks setup as done in `settings` on success.
     pub fn start(
         &mut self,
-        ctx: &egui::Context,
+        waker: UiWaker,
         settings: &mut AgentSettings,
         context: &SessionContext,
         agents: &[AgentEntry],
@@ -106,11 +107,8 @@ impl Conversation {
                     config.toolbox.clone_from(&self.toolbox);
                 }
                 self.profile_id.clone_from(&settings.profile_id);
-                let ctx = ctx.clone();
                 self.session
-                    .start(launch, self.async_runtime.as_ref(), move || {
-                        ctx.request_repaint();
-                    });
+                    .start(launch, self.async_runtime.as_ref(), waker);
                 self.seen_finished_items = 0;
                 self.input.reset_keeping_prompt();
                 self.screen = Screen::Chat;
@@ -210,7 +208,7 @@ impl Conversation {
         home_ui: Option<&mut dyn FnMut(&mut egui::Ui)>,
     ) {
         if self.screen == Screen::Chat && *self.session.phase() == Phase::Idle {
-            self.start(ui.ctx(), settings, context, agents);
+            self.start(ui.ui_waker(), settings, context, agents);
         }
 
         if self.screen == Screen::Setup {
@@ -257,7 +255,7 @@ impl Conversation {
                 self.pending_prompts.push_front(prompt);
             }
             settings.profile_id.clone_from(&self.profile_id);
-            self.start(ui.ctx(), settings, context, agents);
+            self.start(ui.ui_waker(), settings, context, agents);
         }
     }
 
@@ -290,7 +288,7 @@ impl Conversation {
             .inner;
 
         if next_screen == Screen::Chat {
-            self.start(ui.ctx(), settings, context, agents);
+            self.start(ui.ui_waker(), settings, context, agents);
         } else if back {
             self.screen = Screen::Chat;
         }

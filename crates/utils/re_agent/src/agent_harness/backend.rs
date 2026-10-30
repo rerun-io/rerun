@@ -16,6 +16,7 @@ use agent_client_protocol_schema::v1::{
 };
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
+use re_async::UiWaker;
 
 use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
@@ -23,13 +24,10 @@ use crate::{LineDirection, Responder};
 
 /// Spawns an agent subprocess and connects to it over ACP.
 ///
-/// All protocol work happens on a dedicated thread. `wake` is called after every event so the UI
+/// All protocol work happens on a dedicated thread. `waker` is woken after every event so the UI
 /// can repaint.
-pub fn spawn(
-    config: AgentHarnessConfig,
-    wake: impl Fn() + Send + Sync + 'static,
-) -> AgentConnection {
-    let (connection, command_rx, events) = AgentConnection::new(wake);
+pub fn spawn(config: AgentHarnessConfig, waker: UiWaker) -> AgentConnection {
+    let (connection, command_rx, events) = AgentConnection::new(waker);
     let spawned = std::thread::Builder::new()
         .name("re_agent_ui-acp".to_owned())
         .spawn(move || run(config, command_rx, &events));
@@ -505,7 +503,7 @@ mod tests {
     /// while successful turns finish without requesting login.
     #[test]
     fn prompt_auth_failure_finishes_turn_before_requesting_login() {
-        let (events, rx) = EventSender::new(|| {});
+        let (events, rx) = EventSender::new(UiWaker::noop());
 
         // Authentication failure must finish the turn before requesting login.
         finish_turn(&events, Err(Error::auth_required()), Vec::new());

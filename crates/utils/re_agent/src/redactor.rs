@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use crossbeam::channel::{Receiver, RecvTimeoutError, Sender, TrySendError};
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use serde_json::Value;
 use tempfile::TempDir;
 
@@ -283,7 +283,7 @@ fn redaction_thread(requests: &Receiver<RedactionRequest>) {
                 async_runtime,
             } = agent;
             let mut redactor = AgentSession::default();
-            redactor.start(launch, async_runtime.as_ref(), || {});
+            redactor.start(launch, async_runtime.as_ref(), UiWaker::noop());
             in_flight = Some(InFlight {
                 redactor,
                 json,

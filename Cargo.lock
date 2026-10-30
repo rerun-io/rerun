@@ -9955,6 +9955,7 @@ dependencies = [
  "gilrs",
  "glam",
  "parking_lot",
+ "re_async",
  "re_log",
  "re_workspace_hack",
 ]
@@ -10253,6 +10254,7 @@ version = "0.42.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
+ "re_async",
  "re_byte_size",
  "re_chunk_index",
  "re_log_msg",
