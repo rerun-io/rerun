@@ -385,6 +385,10 @@ mod tests {
         assert_eq!(ellipse_segment_count(0.5), 64);
         assert_eq!(ellipse_segment_count(100.0), 64);
         assert_eq!(ellipse_segment_count(-3.0), 64);
+        assert_eq!(ellipse_segment_count(f32::MIN), 64);
+        assert_eq!(ellipse_segment_count(f32::NEG_INFINITY), 64);
+        assert_eq!(ellipse_segment_count(f32::MIN_POSITIVE), 64);
+        assert_eq!(ellipse_segment_count(1e-30), 64);
         assert_eq!(ellipse_segment_count(f32::NAN), 64);
     }
 
@@ -461,6 +465,8 @@ mod tests {
     #[test]
     fn huge_ellipses_use_maximum_segment_count() {
         assert_eq!(ellipse_segment_count(1e9), 512);
+        assert_eq!(ellipse_segment_count(1e30), 512);
+        assert_eq!(ellipse_segment_count(f32::MAX), 512);
         assert_eq!(ellipse_segment_count(f32::INFINITY), 512);
     }
 
