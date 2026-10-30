@@ -4,9 +4,11 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use crossbeam::channel::{Receiver, RecvTimeoutError, Sender, TrySendError};
-use re_agent_ui::{AgentHarnessConfig, AgentSession};
+use re_async::AsyncRuntimeHandle;
 use serde_json::Value;
 use tempfile::TempDir;
+
+use crate::{AgentHarnessConfig, AgentLaunch, AgentSession, HostedTools};
 
 /// How long the redacting agent gets before the redaction fails.
 const REDACTION_TIMEOUT: Duration = Duration::from_mins(2);
@@ -87,6 +89,16 @@ impl std::fmt::Display for RedactionError {
 /// Called once with the redacted JSON, or with the reason there is none.
 pub type OnRedacted = Box<dyn FnOnce(Result<Value, RedactionError>) + Send>;
 
+/// The agent to redact with, as the user's own agent would launch: either an agent harness or
+/// a model API.
+pub struct RedactionAgent {
+    /// How to start the agent, before the redactor takes away its tools.
+    pub launch: AgentLaunch,
+
+    /// Model-API agents run on this. Without it, they fail to start.
+    pub async_runtime: Option<AsyncRuntimeHandle>,
+}
+
 /// JSON waiting on the redacting agent.
 struct InFlight {
     redactor: AgentSession,
@@ -99,7 +111,7 @@ struct InFlight {
 /// Work sent to the redaction thread.
 struct RedactionRequest {
     json: Value,
-    config: AgentHarnessConfig,
+    agent: RedactionAgent,
     on_redacted: OnRedacted,
 }
 
@@ -127,15 +139,14 @@ impl Redactor {
     /// `on_redacted` gets `json` with its sensitive data replaced, in the same shape, or the
     /// reason there is none. It runs on the redaction thread, or right away when the redaction
     /// cannot start, and never for a request that [`Self::discard_pending`] dropped.
-    /// `config` is the launch config of the agent to redact with.
-    pub fn redact(&mut self, json: Value, config: AgentHarnessConfig, on_redacted: OnRedacted) {
-        let Some(config) = self.redactor_config(config) else {
+    pub fn redact(&mut self, json: Value, agent: RedactionAgent, on_redacted: OnRedacted) {
+        let Some(agent) = self.redacting_agent(agent) else {
             on_redacted(Err(RedactionError::NoScratchDirectory));
             return;
         };
         let request = RedactionRequest {
             json,
-            config,
+            agent,
             on_redacted,
         };
         let Some(requests) = self.requests() else {
@@ -171,11 +182,37 @@ impl Redactor {
         self.requests.as_ref()
     }
 
-    /// A config for the redacting session: the same agent as the panel, but without MCP servers,
-    /// so it has nothing but the prompt.
+    /// The redacting session: the same agent as the panel, but without any tools, so it has
+    /// nothing but the prompt.
+    ///
+    /// `None` when an agent harness has no scratch directory to run in.
+    fn redacting_agent(&mut self, agent: RedactionAgent) -> Option<RedactionAgent> {
+        let RedactionAgent {
+            launch,
+            async_runtime,
+        } = agent;
+        let launch = match launch {
+            AgentLaunch::AgentHarness(config) => {
+                AgentLaunch::AgentHarness(self.harness_config(config)?)
+            }
+            AgentLaunch::ModelApi(mut config) => {
+                config.hosted_tools = HostedTools::NONE;
+                config.model = config.provider.default_model().to_owned();
+                config.system_prompt = None;
+                config.toolbox = None;
+                AgentLaunch::ModelApi(config)
+            }
+        };
+        Some(RedactionAgent {
+            launch,
+            async_runtime,
+        })
+    }
+
+    /// The agent harness to redact with, without MCP servers and in an empty directory.
     ///
     /// `None` when there is no scratch directory to run it in.
-    fn redactor_config(&mut self, mut config: AgentHarnessConfig) -> Option<AgentHarnessConfig> {
+    fn harness_config(&mut self, mut config: AgentHarnessConfig) -> Option<AgentHarnessConfig> {
         if self.scratch.is_none() {
             match TempDir::with_prefix("rerun-redaction-") {
                 Ok(dir) => self.scratch = Some(dir),
@@ -237,12 +274,16 @@ fn redaction_thread(requests: &Receiver<RedactionRequest>) {
         if in_flight.is_none()
             && let Some(RedactionRequest {
                 json,
-                config,
+                agent,
                 on_redacted,
             }) = queue.pop_front()
         {
+            let RedactionAgent {
+                launch,
+                async_runtime,
+            } = agent;
             let mut redactor = AgentSession::default();
-            redactor.start(re_agent_ui::AgentLaunch::AgentHarness(config), None, || {});
+            redactor.start(launch, async_runtime.as_ref(), || {});
             in_flight = Some(InFlight {
                 redactor,
                 json,
@@ -395,7 +436,7 @@ mod tests {
             cwd: std::env::current_dir().expect("cwd"),
             additional_directories: Vec::new(),
             off_limits_directories: Vec::new(),
-            mcp_servers: vec![re_agent_ui::McpStdioServer {
+            mcp_servers: vec![crate::McpStdioServer {
                 name: "rerun".to_owned(),
                 command: PathBuf::from("rerun"),
                 args: vec!["viewer-mcp".to_owned()],
@@ -403,14 +444,12 @@ mod tests {
             log_protocol: false,
             preamble: None,
             model_preferences: Vec::new(),
-            preferred_model: Some(re_agent_ui::acp::schema::v1::SessionConfigValueId::new(
-                "opus",
-            )),
+            preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
             preferred_mode: None,
         };
         let mut redactor = Redactor::default();
         let config = redactor
-            .redactor_config(config)
+            .harness_config(config)
             .expect("a scratch directory");
         assert!(config.mcp_servers.is_empty());
         assert!(config.preferred_model.is_none());
@@ -421,5 +460,32 @@ mod tests {
         assert_ne!(config.cwd, std::env::current_dir().expect("cwd"));
         assert!(config.cwd.is_dir());
         assert_eq!(std::fs::read_dir(&config.cwd).expect("read_dir").count(), 0);
+    }
+
+    #[test]
+    fn a_model_api_redactor_has_no_tools_and_the_fast_model() {
+        let provider = crate::ModelApiProvider::Anthropic;
+        let config = crate::ModelApiConfig {
+            provider,
+            api_key: crate::ApiKey::new("key").expect("a key"),
+            model: "opus".to_owned(),
+            system_prompt: Some("Drive the viewer".to_owned()),
+            hosted_tools: HostedTools::default(),
+            toolbox: None,
+        };
+        let agent = RedactionAgent {
+            launch: AgentLaunch::ModelApi(config),
+            async_runtime: None,
+        };
+        let Some(RedactionAgent {
+            launch: AgentLaunch::ModelApi(config),
+            ..
+        }) = Redactor::default().redacting_agent(agent)
+        else {
+            panic!("a model-API agent redacts with a model-API agent");
+        };
+        assert_eq!(config.hosted_tools, HostedTools::NONE);
+        assert_eq!(config.model, provider.default_model());
+        assert!(config.system_prompt.is_none());
     }
 }

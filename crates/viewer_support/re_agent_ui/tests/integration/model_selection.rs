@@ -5,10 +5,19 @@ use re_agent_ui::acp::schema::v1::{
     SessionConfigSelectOption, SessionConfigValueId, SessionUpdate,
 };
 use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings, SessionContext,
+    AgentEntry, AgentEvent, AgentLaunch, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+    SessionContext,
 };
 
 use super::chat_input::ready_panel;
+
+/// The model that `panel`'s agent harness would be started with.
+fn launched_model(panel: &AgentPanel) -> Option<SessionConfigValueId> {
+    match panel.agent_launch(&SessionContext::default()) {
+        Ok(AgentLaunch::AgentHarness(config)) => config.preferred_model,
+        other => panic!("expected an agent harness, got {other:?}"),
+    }
+}
 
 #[test]
 fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload() {
@@ -67,11 +76,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         Some(&SessionConfigValueId::new("opus-fast"))
     );
     assert_eq!(
-        harness
-            .state()
-            .agent_harness_config(&SessionContext::default())
-            .expect("launch config")
-            .preferred_model,
+        launched_model(harness.state()),
         Some(SessionConfigValueId::new("opus-fast"))
     );
 
@@ -99,11 +104,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
 
     harness.state_mut().new_conversation();
     assert_eq!(
-        harness
-            .state()
-            .agent_harness_config(&SessionContext::default())
-            .expect("new conversation launch config")
-            .preferred_model,
+        launched_model(harness.state()),
         Some(SessionConfigValueId::new("gpt-5.6-high"))
     );
     let saved = serde_json::to_string(harness.state().settings()).expect("save settings");
@@ -117,18 +118,12 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         .collect();
     let mut reopened = AgentPanel::with_agents(restored, None, agents, Vec::new());
     assert_eq!(
-        reopened
-            .agent_harness_config(&SessionContext::default())
-            .expect("reopened launch config")
-            .preferred_model,
+        launched_model(&reopened),
         Some(SessionConfigValueId::new("gpt-5.6-high"))
     );
     reopened.settings_mut().profile_id = AgentProfileId::new("claude");
     assert_eq!(
-        reopened
-            .agent_harness_config(&SessionContext::default())
-            .expect("Claude launch config")
-            .preferred_model,
+        launched_model(&reopened),
         Some(SessionConfigValueId::new("opus-thinking"))
     );
 }

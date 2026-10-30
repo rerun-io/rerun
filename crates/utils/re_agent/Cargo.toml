@@ -46,6 +46,7 @@ rig-core = { workspace = true, features = ["test-utils"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agent-client-protocol.workspace = true
+crossbeam.workspace = true
 rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 

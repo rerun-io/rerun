@@ -1,7 +1,7 @@
+use re_agent::RedactionAgent;
 use re_agent_ui::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
 use re_agent_ui::{
-    AgentHarnessConfig, AgentSession, ToolCallState, Transcript, TranscriptItem, message_text,
-    truncate_bytes,
+    AgentSession, ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes,
 };
 #[cfg(feature = "analytics")]
 use re_sdk_types::external::uuid::Uuid;
@@ -37,18 +37,19 @@ pub struct FeedbackModal {
     trajectory: Option<Trajectory>,
     text: String,
 
-    config: Option<AgentHarnessConfig>,
+    agent: Option<RedactionAgent>,
 
     #[cfg(feature = "analytics")]
-    redactor: crate::agent_analytics::Redactor,
+    redactor: re_agent::Redactor,
 }
 
 impl FeedbackModal {
     /// Takes a copy of the conversation as it is at this call.
     /// Later turns are not part of the feedback.
-    pub fn open(&mut self, session: &AgentSession, config: Option<AgentHarnessConfig>) {
+    /// `agent` is the agent to redact the feedback with.
+    pub fn open(&mut self, session: &AgentSession, agent: Option<RedactionAgent>) {
         self.trajectory = Some(Trajectory::new(session.transcript(), session.agent_name()));
-        self.config = config;
+        self.agent = agent;
         self.text.clear();
         self.modal.open();
     }
@@ -89,8 +90,8 @@ impl FeedbackModal {
             && let Some(mut trajectory) = self.trajectory.take()
         {
             trajectory.extra.feedback = std::mem::take(&mut self.text);
-            let config = self.config.take();
-            self.send(trajectory, config);
+            let agent = self.agent.take();
+            self.send(trajectory, agent);
             self.modal.close();
         }
     }
@@ -99,10 +100,10 @@ impl FeedbackModal {
         not(feature = "analytics"),
         expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)
     )]
-    fn send(&mut self, trajectory: Trajectory, config: Option<AgentHarnessConfig>) {
+    fn send(&mut self, trajectory: Trajectory, redact_with: Option<RedactionAgent>) {
         cfg_select! {
             feature = "analytics" => {
-                let Some(config) = config else {
+                let Some(redact_with) = redact_with else {
                     re_log::warn!(
                         "Your feedback was not sent: no agent is available to remove sensitive data from it."
                     );
@@ -120,7 +121,7 @@ impl FeedbackModal {
                 re_log::info!("Removing sensitive data from your feedback. It is sent after that.");
                 self.redactor.redact(
                     json,
-                    config,
+                    redact_with,
                     Box::new(move |redacted| match redacted {
                         Ok(mut json) => {
                             // Added after redaction, because the redactor replaces ids with `<id>`.
@@ -137,7 +138,7 @@ impl FeedbackModal {
                 );
             }
             _ => {
-                let _ = (trajectory.image_count, config);
+                let _ = (trajectory.image_count, redact_with);
             }
         }
     }

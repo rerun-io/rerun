@@ -1,12 +1,8 @@
 //! Sends finished agent turns as analytics, after a fresh agent session has removed
 //! sensitive data from them.
 
-mod redactor;
-
-use re_agent_ui::{AgentHarnessConfig, TurnReport};
-
-use self::redactor::RedactionError;
-pub use self::redactor::Redactor;
+use re_agent::{RedactionAgent, RedactionError, Redactor};
+use re_agent_ui::TurnReport;
 
 /// Used for text that could not be redacted. The reason follows the colon.
 const REDACTION_FAILED: &str = "<redaction failed";
@@ -55,11 +51,11 @@ impl TurnAnalytics {
     /// Queue a turn whose text the user has agreed to share.
     ///
     /// Only call this while sharing is on: a queued turn is always recorded, with the text
-    /// replaced by the reason when the redactor could not produce any. `config` is the panel's
-    /// own launch config, or `None` when the panel could not produce one, which is itself one
-    /// of those reasons.
-    pub fn queue(&mut self, report: TurnReport, config: Option<AgentHarnessConfig>) {
-        let Some(config) = config else {
+    /// replaced by the reason when the redactor could not produce any. `agent` is the panel's
+    /// own agent, or `None` when the panel could not produce one, which is itself one of those
+    /// reasons.
+    pub fn queue(&mut self, report: TurnReport, agent: Option<RedactionAgent>) {
+        let Some(agent) = agent else {
             record(&report, RedactableText::failed("no redactor"));
             return;
         };
@@ -69,7 +65,7 @@ impl TurnAnalytics {
         };
         self.redactor.redact(
             json,
-            config,
+            agent,
             Box::new(move |redacted| {
                 let text = redacted
                     .and_then(|json| {

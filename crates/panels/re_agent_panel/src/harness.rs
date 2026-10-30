@@ -1,7 +1,7 @@
 //! The parts of the agent panel that only exist where agent harnesses (Claude Code, Codex, …)
 //! can run: the `rerun viewer-mcp` server they drive the viewer through, the skills and docs we
 //! unpack for them, self-improvement, and feedback and prompt sharing, which redact with a second
-//! harness session.
+//! session of the panel's agent.
 
 use std::path::Path;
 
@@ -133,8 +133,8 @@ impl Harness {
             self.start_self_improvement(panel);
         }
         if panel.feedback_requested() {
-            let config = panel.agent_harness_config(&SessionContext::default()).ok();
-            self.feedback.open(panel.session(), config);
+            let agent = panel.redaction_agent().ok();
+            self.feedback.open(panel.session(), agent);
         }
         self.feedback.ui(ui.ctx());
     }
@@ -210,8 +210,8 @@ impl Harness {
         share_text: bool,
     ) {
         let redact_with = if share_text {
-            match panel.map(|panel| panel.agent_harness_config(&SessionContext::default())) {
-                Some(Ok(config)) => Some(config),
+            match panel.map(AgentPanel::redaction_agent) {
+                Some(Ok(agent)) => Some(agent),
                 Some(Err(err)) => {
                     re_log::warn!("The text of an agent's feedback on Rerun is not sent: {err}");
                     None
@@ -232,15 +232,10 @@ impl Harness {
                 // event it prepares would be dropped anyway.
                 let share_redacted_prompts =
                     panel.settings().share_redacted_prompts && re_analytics::is_enabled();
-                let config = if share_redacted_prompts && !turns.is_empty() {
-                    panel.agent_harness_config(&SessionContext::default()).ok()
-                } else {
-                    None
-                };
                 for turn in turns {
                     crate::agent_analytics::record_usage(&turn);
                     if share_redacted_prompts {
-                        self.analytics.queue(turn, config.clone());
+                        self.analytics.queue(turn, panel.redaction_agent().ok());
                     }
                 }
                 if !share_redacted_prompts {

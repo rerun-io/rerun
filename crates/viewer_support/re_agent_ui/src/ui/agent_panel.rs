@@ -14,8 +14,7 @@ use super::conversation_list::{ConversationRow, ConversationStatus, conversation
 use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
-#[cfg(agent_harness_backend)]
-use re_agent::{AgentHarnessConfig, AgentLaunchError};
+use re_agent::{AgentLaunch, AgentLaunchError};
 use re_agent::{AgentSession, Phase, Prompt, TurnReport};
 use re_agent::{AgentSettings, SessionContext};
 
@@ -407,12 +406,17 @@ impl AgentPanel {
 
     /// What the current settings would launch, for hosts that run side sessions with the same
     /// agent.
+    pub fn agent_launch(&self, context: &SessionContext) -> Result<AgentLaunch, AgentLaunchError> {
+        self.settings.launch(&self.agents, context)
+    }
+
+    /// The agent that the current settings would launch, to redact with.
     #[cfg(agent_harness_backend)]
-    pub fn agent_harness_config(
-        &self,
-        context: &SessionContext,
-    ) -> Result<AgentHarnessConfig, AgentLaunchError> {
-        self.settings.agent_harness_config(&self.agents, context)
+    pub fn redaction_agent(&self) -> Result<re_agent::RedactionAgent, AgentLaunchError> {
+        Ok(re_agent::RedactionAgent {
+            launch: self.agent_launch(&SessionContext::default())?,
+            async_runtime: self.async_runtime.clone(),
+        })
     }
 
     /// Drains the reports of the turns finished in every conversation since the last call.

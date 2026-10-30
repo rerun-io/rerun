@@ -44,6 +44,7 @@ agent_context = []
 analytics = ["dep:re_analytics"]
 
 [dependencies]
+re_agent.workspace = true
 re_agent_ui.workspace = true
 re_analytics = { workspace = true, optional = true }
 re_async.workspace = true
