@@ -802,7 +802,7 @@ impl ConnectionRegistryHandle {
         });
     }
 
-    /// Clears all chunk caches.
+    /// Clears the chunk and schema caches of every connection.
     pub fn purge_memory(&self) {
         wrap_blocking_lock(|| {
             // Each cache has its own lock, so purging them only needs a read lock on the registry.
@@ -811,9 +811,7 @@ impl ConnectionRegistryHandle {
             #[expect(clippy::iter_over_hash_type)]
             // Every cache is purged, so order isn't important.
             for connection in inner.remote_connections.values() {
-                if let Some(cache) = connection.client.chunk_cache() {
-                    cache.write().purge_memory();
-                }
+                connection.client.purge_memory();
             }
         });
     }

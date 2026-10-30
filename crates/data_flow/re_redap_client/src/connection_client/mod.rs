@@ -342,22 +342,6 @@ pub struct DatasetManifest {
     ///
     /// See `ScanDatasetManifestDataframe` for the columns.
     pub batches: Vec<RecordBatch>,
-
-    /// The dataset revision the rows describe, with the same caveats as [`DatasetSchema::revision`].
-    pub revision: Option<NonZeroU64>,
-}
-
-/// Layer schemas looked up by ID, as returned by `/GetSchemas`.
-#[derive(Debug)]
-pub struct LayerSchemas {
-    /// Only IDs the dataset holds are present.
-    pub schemas: BTreeMap<SchemaId, ArrowSchema>,
-
-    /// The dataset revision the lookup ran against, with the same caveats as
-    /// [`DatasetSchema::revision`].
-    ///
-    /// `None` if the lookup took several calls and they did not all see the same revision.
-    pub revision: Option<NonZeroU64>,
 }
 
 /// Low-level API over the gRPC client.
@@ -389,6 +373,9 @@ pub struct RedapClient<T> {
     ///
     /// `None` disables chunk caching.
     chunk_cache: Option<crate::ChunkCacheHandle>,
+
+    /// Layer schemas looked up by [`Self::get_schemas`].
+    schema_cache: crate::schema_cache::SchemaCacheHandle,
 }
 
 impl<T> re_byte_size::SizeBytes for RedapClient<T> {
@@ -398,11 +385,13 @@ impl<T> re_byte_size::SizeBytes for RedapClient<T> {
             inner: _,
             features,
             chunk_cache,
+            schema_cache,
         } = self;
 
         origin.heap_size_bytes()
             + features.get().map(|v| v.heap_size_bytes()).unwrap_or(0)
             + chunk_cache.heap_size_bytes()
+            + schema_cache.heap_size_bytes()
     }
 }
 
@@ -424,6 +413,7 @@ impl<T> RedapClient<T> {
             inner: client,
             features: Arc::new(OnceCell::new()),
             chunk_cache,
+            schema_cache: Default::default(),
         }
     }
 
@@ -448,6 +438,14 @@ impl<T> RedapClient<T> {
         if let Some(chunk_cache) = &self.chunk_cache {
             chunk_cache.write().mark_chunks_cacheable(chunk_ids);
         }
+    }
+
+    /// Drops the cached chunks and schemas, which are fetched again when next needed.
+    pub fn purge_memory(&self) {
+        if let Some(chunk_cache) = &self.chunk_cache {
+            chunk_cache.write().purge_memory();
+        }
+        self.schema_cache.purge_memory();
     }
 }
 
@@ -1223,13 +1221,9 @@ where
         let trace_id = stream.trace_id();
 
         let mut batches = Vec::new();
-        let mut revision = None;
 
         while let Some(response) = stream.next().await {
             let response = response?;
-            if let Some(meta) = &response.meta {
-                revision = NonZeroU64::new(meta.dataset_revision);
-            }
 
             let batch: RecordBatch = response
                 .data()
@@ -1254,36 +1248,54 @@ where
             batches.push(batch);
         }
 
-        Ok(DatasetManifest { batches, revision })
+        Ok(DatasetManifest { batches })
     }
 
     /// Look up the schemas of a dataset's layers by ID, as found in its manifest.
     ///
-    /// IDs the dataset does not hold are absent from the result.
-    /// Any number of IDs may be requested: they are split across as many `/GetSchemas` calls as
+    /// IDs the dataset does not hold are absent from the result, unless an earlier lookup on this
+    /// connection, for any dataset, already returned them.
+    ///
+    /// Schemas are cached for the lifetime of the connection to this server, since an ID is the
+    /// hash of its schema.
+    /// Only IDs not looked up before reach the server, split across as many `/GetSchemas` calls as
     /// [`cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS`] requires.
+    ///
     /// Servers without `/GetSchemas` fail with [`ApiErrorKind::Unimplemented`].
     #[tracing::instrument(level = "info", skip_all, fields(num_requested = schema_ids.len()))]
     pub async fn get_schemas(
         &mut self,
         entry_id: EntryId,
         schema_ids: &BTreeSet<SchemaId>,
-    ) -> ApiResult<LayerSchemas> {
-        let schema_ids: Vec<SchemaId> = schema_ids.iter().copied().collect();
-
-        let mut schemas = BTreeMap::new();
-        let mut revisions = Vec::new();
-        for chunk in schema_ids.chunks(cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS) {
-            let layer_schemas = self
-                .get_schemas_single_request(entry_id, chunk.iter().copied().collect())
-                .await?;
-            schemas.extend(layer_schemas.schemas);
-            revisions.push(layer_schemas.revision);
+    ) -> ApiResult<BTreeMap<SchemaId, Arc<ArrowSchema>>> {
+        if self.schema_cache.get_schemas_unimplemented() {
+            return Err(ApiError::unimplemented(
+                &self.origin,
+                "the server does not implement /GetSchemas",
+            ));
         }
 
-        let revision = revisions.iter().all_equal_value().ok().copied().flatten();
+        let (mut schemas, missing) = self.schema_cache.split_cached(schema_ids);
+        let missing: Vec<SchemaId> = missing.into_iter().collect();
 
-        Ok(LayerSchemas { schemas, revision })
+        for chunk in missing.chunks(cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS) {
+            let fetched = match self
+                .get_schemas_single_request(entry_id, chunk.iter().copied().collect())
+                .await
+            {
+                Ok(fetched) => fetched,
+                Err(err) => {
+                    if err.kind == ApiErrorKind::Unimplemented {
+                        self.schema_cache.set_get_schemas_unimplemented();
+                    }
+                    return Err(err);
+                }
+            };
+            self.schema_cache.insert(&fetched);
+            schemas.extend(fetched);
+        }
+
+        Ok(schemas)
     }
 
     /// One `/GetSchemas` call, for at most [`cloud_ext::GetSchemasRequest::MAX_SCHEMA_IDS`] IDs.
@@ -1291,7 +1303,7 @@ where
         &mut self,
         entry_id: EntryId,
         schema_ids: BTreeSet<SchemaId>,
-    ) -> ApiResult<LayerSchemas> {
+    ) -> ApiResult<BTreeMap<SchemaId, Arc<ArrowSchema>>> {
         let request = GetSchemasRequest::from(cloud_ext::GetSchemasRequest {
             schema_ids: schema_ids.clone(),
         });
@@ -1329,13 +1341,9 @@ where
         let trace_id = stream.trace_id();
 
         let mut schemas = BTreeMap::new();
-        let mut revision = None;
 
         while let Some(response) = stream.next().await {
             let response = response?;
-            if let Some(meta) = &response.meta {
-                revision = NonZeroU64::new(meta.dataset_revision);
-            }
 
             let cloud_ext::GetSchemasResponse { schema_id, schema } =
                 response.try_into().map_err(|err| {
@@ -1353,10 +1361,10 @@ where
                     format!("/GetSchemas returned schema {schema_id}, which was not requested"),
                 ));
             }
-            schemas.insert(schema_id, schema);
+            schemas.insert(schema_id, Arc::new(schema));
         }
 
-        Ok(LayerSchemas { schemas, revision })
+        Ok(schemas)
     }
 
     /// Get the asset dataset that applies to a dataset, and the asset segments within it.
@@ -2530,5 +2538,57 @@ mod tests {
                 .await
                 .unwrap()
         );
+    }
+
+    /// The client points at an unrouteable address, so any `/GetSchemas` call would fail.
+    fn client_without_server() -> RedapClient<tonic::transport::Channel> {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        RedapClient::new(
+            re_uri::Origin::test(),
+            RerunCloudServiceClient::new(channel),
+            None,
+        )
+    }
+
+    #[tokio::test]
+    async fn get_schemas_serves_cached_ids_without_the_server() {
+        let client = client_without_server();
+        let schema_id = SchemaId::from_sha256([1; 32]);
+        let schema = Arc::new(ArrowSchema::new_with_metadata(
+            vec![arrow::datatypes::Field::new(
+                "a",
+                arrow::datatypes::DataType::Int64,
+                true,
+            )],
+            Default::default(),
+        ));
+        client
+            .schema_cache
+            .insert(&BTreeMap::from([(schema_id, Arc::clone(&schema))]));
+
+        // A clone shares the cache, as the clients handed out for one connection do.
+        let schemas = client
+            .clone()
+            .get_schemas(EntryId::new(), &BTreeSet::from([schema_id]))
+            .await
+            .unwrap();
+
+        assert_eq!(schemas, BTreeMap::from([(schema_id, schema)]));
+    }
+
+    #[tokio::test]
+    async fn get_schemas_fails_without_the_server_once_unimplemented() {
+        let mut client = client_without_server();
+        client.schema_cache.set_get_schemas_unimplemented();
+
+        let err = client
+            .get_schemas(
+                EntryId::new(),
+                &BTreeSet::from([SchemaId::from_sha256([1; 32])]),
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.kind, ApiErrorKind::Unimplemented);
     }
 }

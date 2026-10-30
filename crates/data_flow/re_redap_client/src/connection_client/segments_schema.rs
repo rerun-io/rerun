@@ -1,5 +1,5 @@
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
-use std::num::NonZeroU64;
 
 use arrow::datatypes::Schema as ArrowSchema;
 use itertools::Itertools as _;
@@ -73,8 +73,7 @@ where
         rows: LayerRows<'_>,
     ) -> ApiResult<Option<ArrowSchema>> {
         // A layer unregistered between the manifest scan and the lookup can take its schema with
-        // it. A missing schema is a server bug if both calls saw the same revision, and a possible
-        // race otherwise, which gets one retry.
+        // it, so a missing schema gets one retry against a fresh manifest.
         let mut retried = false;
         loop {
             let manifest = self.layer_schema_ids(dataset_id, rows).await?;
@@ -106,26 +105,12 @@ where
             let missing: Vec<_> = manifest
                 .schema_ids
                 .iter()
-                .filter(|schema_id| !schemas.schemas.contains_key(schema_id))
+                .filter(|schema_id| !schemas.contains_key(schema_id))
                 .collect();
             if missing.is_empty() {
-                return self
-                    .merge_schema_fields(schemas.schemas.into_values())
-                    .map(Some);
+                return self.merge_schema_fields(schemas.into_values()).map(Some);
             }
 
-            let same_revision =
-                manifest.revision.is_some() && manifest.revision == schemas.revision;
-            if same_revision {
-                return Err(ApiError::internal(
-                    &self.origin,
-                    format!(
-                        "/GetSchemas did not return schemas listed in the manifest of dataset \
-                         {dataset_id}: {}",
-                        missing.iter().join(", ")
-                    ),
-                ));
-            }
             if retried {
                 return Err(ApiError::failed_precondition(
                     &self.origin,
@@ -165,7 +150,6 @@ where
         let mut layer_schema_ids = LayerSchemaIds {
             schema_ids: BTreeSet::new(),
             segment_ids: BTreeSet::new(),
-            revision: manifest.revision,
         };
 
         for batch in &manifest.batches {
@@ -232,7 +216,7 @@ where
 
     fn merge_schema_fields(
         &self,
-        schemas: impl IntoIterator<Item = ArrowSchema>,
+        schemas: impl IntoIterator<Item = impl Borrow<ArrowSchema>>,
     ) -> ApiResult<ArrowSchema> {
         re_arrow_util::merge_schema_fields(schemas).map_err(|err| {
             ApiError::deserialization_with_source(
@@ -266,6 +250,4 @@ struct LayerSchemaIds {
 
     /// The segments that have at least one of the selected layers registered.
     segment_ids: BTreeSet<SegmentId>,
-
-    revision: Option<NonZeroU64>,
 }

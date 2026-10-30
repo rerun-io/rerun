@@ -57,8 +57,5 @@ async fn get_schemas_splits_ids_over_the_request_limit() {
         .await
         .expect("Failed to get schemas");
 
-    assert_eq!(
-        schemas.schemas.keys().copied().collect::<BTreeSet<_>>(),
-        registered
-    );
+    assert_eq!(schemas.keys().copied().collect::<BTreeSet<_>>(), registered);
 }
