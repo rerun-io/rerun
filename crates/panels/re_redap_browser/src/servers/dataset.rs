@@ -874,21 +874,27 @@ fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
 
-        short_duration_ui(ui, asset.registered_at, date_format, |ui, registered_at| {
-            ui.label(format!("Registered {registered_at}"))
-        });
+        short_duration_ui(
+            ui,
+            asset.registered_at.into(),
+            date_format,
+            |ui, registered_at| ui.label(format!("Registered {registered_at}")),
+        );
 
         // Registering an asset sets both timestamps, and the manifest rows of one asset can be
         // written a few milliseconds apart, so the two differ slightly even for an asset that was
         // never updated. Comparing the formatted text instead of the raw timestamps keeps the line
         // from showing the same moment twice. A re-registration is seconds or more later, see
         // `CatalogClient::register_asset`.
-        if short_duration_text(asset.last_updated_at, date_format)
-            != short_duration_text(asset.registered_at, date_format)
+        if short_duration_text(asset.last_updated_at.into(), date_format)
+            != short_duration_text(asset.registered_at.into(), date_format)
         {
-            short_duration_ui(ui, asset.last_updated_at, date_format, |ui, updated_at| {
-                ui.label(format!(" · Updated {updated_at}"))
-            });
+            short_duration_ui(
+                ui,
+                asset.last_updated_at.into(),
+                date_format,
+                |ui, updated_at| ui.label(format!(" · Updated {updated_at}")),
+            );
         }
     });
 }
@@ -1590,7 +1596,7 @@ fn refresh_button_ui(
             if let Some(queried_at) = queried_at {
                 ui.horizontal(|ui| {
                     ui.label("Last updated:");
-                    short_duration_ui(ui, queried_at, timestamp_format, egui::Ui::strong);
+                    short_duration_ui(ui, queried_at.into(), timestamp_format, egui::Ui::strong);
                 });
             }
         })

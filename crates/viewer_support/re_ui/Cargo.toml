@@ -43,7 +43,6 @@ re_async.workspace = true # to run the fetch behind a `RequestedObject`
 re_error.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
-re_log_types.workspace = true # time widgets
 re_mutex.workspace = true
 re_quota_channel.workspace = true
 re_span.workspace = true

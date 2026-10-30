@@ -250,7 +250,7 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: S
         if hovered && let Ok(answered_at) = Timestamp::try_from(answered_at) {
             re_ui::time::short_duration_ui(
                 ui,
-                answered_at,
+                answered_at.into(),
                 TimestampFormat::local_timezone()
                     .with_short(true)
                     .with_date_visibility(DateVisibility::ShowDate),
