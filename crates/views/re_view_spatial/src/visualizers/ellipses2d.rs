@@ -22,7 +22,7 @@ use crate::visualizers::UiLabelTarget;
 /// Minimum number of segments used to tessellate each ellipse outline.
 ///
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
-const MIN_ELLIPSE_SEGMENTS: usize = 32;
+const MIN_ELLIPSE_SEGMENTS: usize = 16;
 
 /// Used outside a 2D view (e.g. in 3D views), where the on-screen size is unknown.
 const FIXED_ELLIPSE_SEGMENTS_IN_3D: usize = 64;

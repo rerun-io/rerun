@@ -61,7 +61,7 @@ fn run_and_get_state(test_context: &TestContext, view_id: ViewId) -> SpatialView
         .clone()
 }
 
-/// Zoomed in on the right edge of the circle, where a fixed 32-gon would show its corners.
+/// Zoomed in on the right edge of the circle, where the previous fixed number of segments would show its corners.
 #[test]
 fn test_ellipses2d_zoomed_in() {
     let (test_context, view_id) = setup(Range2D {
