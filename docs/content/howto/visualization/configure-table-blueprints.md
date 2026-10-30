@@ -107,6 +107,8 @@ snippet: howto/visualization/configure_table_blueprints[register_table]
 
 To make a column editable, configure it with `editable=True` and add it to the layout's `columns` or `fields` list.
 A cell can be edited when its component type has an editor in the Viewer.
+A column is also editable without a blueprint when its field in the table schema is created with `editable=True`, e.g. `rr.components.Flag.table_field("reviewed", editable=True)`.
+See [Give columns semantic meaning](../query-and-transform/catalog-tables.md#give-columns-semantic-meaning).
 
 To edit the boolean `reviewed` column as flag buttons, use `column_type=rr.components.Flag`.
 Card layouts show the first flag field in the card header:
