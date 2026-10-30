@@ -3,16 +3,16 @@ use std::collections::BTreeMap;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
-use re_log_types::{ComponentPath, EntityPath};
+use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use vec1::Vec1;
 
 use super::{ViewContext, ViewerDiagnostic};
 use crate::{
-    DragAndDropFeedback, IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings,
-    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
-    VisualizableReason,
+    DragAndDropFeedback, DragAndDropPayload, IndicatedEntities, PerVisualizerType, QueryRange,
+    RecommendedMappings, SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+    ViewerContext, VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -351,34 +351,29 @@ pub trait ViewClass: Send + Sync {
         Ok(())
     }
 
-    /// By default, views accept any drag-and-dropped entity that a visualizer can show. That might
-    /// be too loose for some views. In that case, this method can be overridden to reject entities
-    /// before visualizability is checked.
-    fn reject_entity_drop_reason(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _entity_path: &EntityPath,
-    ) -> Option<&'static str> {
-        None
-    }
-
-    /// Handle components being dragged over a view of this class.
+    /// Handle a payload dragged over this view.
     ///
-    /// This is the component-drop counterpart to the generic entity-drop handling done by the
-    /// viewport. The viewport calls this for every view tile hovered by a `Components` payload,
-    /// then uses the returned [`DragAndDropFeedback`] to drive the cursor and drop-target frame —
-    /// just like it does for entities. Implementors only decide acceptability and, when
-    /// `released` is `true`, perform the actual mutation.
+    /// The viewport calls this every frame while a payload hovers the view.
+    /// Only mutate the blueprint when `released` is true.
+    /// The viewport clears the drag payload and selects this view when a released drop returns
+    /// [`DragAndDropFeedback::Accept`].
     ///
-    /// The default implementation ignores components (most views don't accept them).
-    fn handle_component_drop(
+    /// By default, entities are handled by [`crate::default_view_entity_drop`], which overrides can
+    /// call too, and all other payloads are ignored.
+    fn handle_drop(
         &self,
-        _ctx: &ViewerContext<'_>,
-        _view_id: ViewId,
-        _component_paths: &[ComponentPath],
-        _released: bool,
+        ctx: &ViewContext<'_>,
+        payload: &DragAndDropPayload,
+        released: bool,
     ) -> DragAndDropFeedback {
-        DragAndDropFeedback::Ignore
+        match payload {
+            DragAndDropPayload::Entities { entities } => {
+                crate::default_view_entity_drop(ctx, entities, released, |_| None)
+            }
+            DragAndDropPayload::Components { .. }
+            | DragAndDropPayload::Contents { .. }
+            | DragAndDropPayload::Invalid => DragAndDropFeedback::Ignore,
+        }
     }
 
     /// Draws the ui for this view class and handles ui events.

@@ -8,9 +8,9 @@ use re_sdk_types::components::Visible;
 use re_sdk_types::{ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{ButtonExt as _, Help, UiExt as _};
 use re_viewer_context::{
-    SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewSystemExecutionError, ViewerContext,
+    DragAndDropFeedback, DragAndDropPayload, Item, SystemCommand, SystemCommandSender as _,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -39,6 +39,52 @@ pub struct RawDataView;
 impl ViewClass for RawDataView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
+    }
+
+    fn handle_drop(
+        &self,
+        ctx: &ViewContext<'_>,
+        payload: &DragAndDropPayload,
+        released: bool,
+    ) -> DragAndDropFeedback {
+        let (entity, components) = match payload {
+            DragAndDropPayload::Entities { entities } => {
+                let [entity] = entities.as_slice() else {
+                    return DragAndDropFeedback::Reject(Some("Drop exactly one entity"));
+                };
+                (entity, None)
+            }
+            DragAndDropPayload::Components { component_paths } => {
+                let first = component_paths.first();
+                if component_paths
+                    .iter()
+                    .any(|path| path.entity_path != first.entity_path)
+                {
+                    return DragAndDropFeedback::Reject(Some(
+                        "Drop components from a single entity",
+                    ));
+                }
+                let components = component_paths
+                    .iter()
+                    .map(|path| path.component)
+                    .unique()
+                    .collect::<Vec<_>>();
+                (&first.entity_path, Some(components))
+            }
+            DragAndDropPayload::Contents { .. } | DragAndDropPayload::Invalid => {
+                return DragAndDropFeedback::Ignore;
+            }
+        };
+        if released {
+            if let Some(components) = components.as_deref()
+                && displayed_entity(ctx.viewer_ctx, ctx.view_id).as_ref() == Some(entity)
+            {
+                crate::properties::add_data_rows(ctx, components);
+            } else {
+                crate::properties::show_entity(ctx, entity, components.as_deref());
+            }
+        }
+        DragAndDropFeedback::Accept
     }
 
     fn recommendation_order(&self) -> i32 {
@@ -141,9 +187,7 @@ skipping events of components that are hidden.",
         );
         if background.clicked() {
             ctx.command_sender()
-                .send_system(re_viewer_context::SystemCommand::set_selection(
-                    re_viewer_context::Item::View(query.view_id),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         let Some(entity_path) = displayed_entity(ctx, query.view_id) else {
