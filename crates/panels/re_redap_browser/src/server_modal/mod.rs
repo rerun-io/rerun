@@ -5,7 +5,8 @@ use egui_extras::{Size, StripBuilder};
 use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{ReButton, UiExt as _};
+use re_ui::text_edit::TextEditExt as _;
+use re_ui::{ButtonExt as _, UiExt as _};
 use re_uri::Scheme;
 use re_viewer_context::{
     AppContext, EditRedapServerModalCommand, Route, SystemCommand, SystemCommandSender as _,
@@ -194,7 +195,7 @@ impl ServerModal {
 
                 egui::Sides::new()
                     .shrink_left()
-                    .height(ui.spacing().interact_size.y)
+                    .height(re_ui::Size::inherited(ui).height())
                     .show(
                         ui,
                         |ui| {
@@ -217,21 +218,17 @@ impl ServerModal {
                                     );
                                 });
 
-                            re_ui::text_edit::text_edit_scope(ui, |ui| {
-                                ui.scope(|ui| {
-                                    // make field red if host is invalid
-                                    if url::Host::parse(&self.host).is_err() {
-                                        ui.style_invalid_field();
-                                    }
-                                    ui.add(
-                                        egui::TextEdit::singleline(&mut self.host)
-                                            .lock_focus(false)
-                                            .hint_text("Host name")
-                                            .desired_width(ui.available_width()),
-                                    )
-                                    .labelled_by(label.id);
-                                    self.host = self.host.trim().to_owned();
-                                })
+                            ui.scope(|ui| {
+                                let host_is_invalid = url::Host::parse(&self.host).is_err();
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.host)
+                                        .lock_focus(false)
+                                        .hint_text("Host name")
+                                        .desired_width(ui.available_width())
+                                        .invalid(host_is_invalid),
+                                )
+                                .labelled_by(label.id);
+                                self.host = self.host.trim().to_owned();
                             });
                         },
                         |ui| {
@@ -349,8 +346,8 @@ impl ServerModal {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let enabled = origin.is_ok() && credentials.is_ok();
-                    let save_button_response =
-                        ui.add_enabled(enabled, ReButton::new(save_text).primary().small());
+                    let save_button_response = ui
+                        .add_enabled(enabled, egui::Button::new(save_text).primary().size_small());
 
                     if let Ok(origin) = origin
                         && let Ok(credentials) = credentials
@@ -398,7 +395,7 @@ impl ServerModal {
                         .ok();
                     }
 
-                    let cancel_button_response = ui.add(ReButton::new("Cancel").small());
+                    let cancel_button_response = ui.add(egui::Button::new("Cancel").size_small());
                     if cancel_button_response.clicked() {
                         self.auth = Authentication::new(AuthKind::RerunAccount(None));
                         self.auth.reset_login_flow();
@@ -463,23 +460,16 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
         AuthKind::Token(token) => {
             ui.label("Access token (will be stored in plain text)");
 
-            re_ui::text_edit::text_edit_scope(ui, |ui| {
-                ui.scope(|ui| {
-                    let jwt = (!token.is_empty())
-                        .then(|| Jwt::try_from(token.clone()))
-                        .transpose();
+            let jwt = (!token.is_empty())
+                .then(|| Jwt::try_from(token.clone()))
+                .transpose();
 
-                    if jwt.is_err() {
-                        ui.style_invalid_field();
-                    }
-
-                    ui.add(
-                        egui::TextEdit::singleline(token)
-                            .code_editor()
-                            .desired_width(f32::INFINITY),
-                    );
-                })
-            });
+            ui.add(
+                egui::TextEdit::singleline(token)
+                    .code_editor()
+                    .desired_width(f32::INFINITY)
+                    .invalid(jwt.is_err()),
+            );
         }
 
         AuthKind::None => {

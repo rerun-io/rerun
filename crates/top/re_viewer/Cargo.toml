@@ -15,14 +15,6 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**/*.cpp",
-  "agent_context/**/*.in",
-  "agent_context/**/*.md",
-  "agent_context/**/*.py",
-  "agent_context/**/*.rs",
-  "agent_context/**/*.toml",
-  "agent_context/**/*.txt",
-  "agent_context/**/*.yaml",
   "Cargo.toml",
   "data/**/*.cpp",
   "data/**/*.jpg",
@@ -57,10 +49,10 @@ default_web = ["audio", "map_view"]
 ## Embed the Rerun skills and documentation for the agent panel to hand its agent.
 ##
 ## Costs a couple of megabytes of binary size, and does nothing on the web.
-agent_context = []
+agent_context = ["re_agent_panel/agent_context"]
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_dataframe_ui/analytics", "re_ui/analytics"]
+analytics = []
 
 ## Enable the audio view and audio playback.
 audio = ["re_audio/output", "dep:re_view_audio"]
@@ -83,6 +75,9 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_agent.workspace = true
+re_agent_panel.workspace = true
+re_analytics.workspace = true
 re_arrow_json.workspace = true
 re_async.workspace = true
 re_audio = { workspace = true, default-features = false }
@@ -138,6 +133,7 @@ re_view.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
 re_view_graph.workspace = true
+re_view_raw_data.workspace = true
 re_view_spatial.workspace = true
 re_view_state_timeline.workspace = true
 re_view_tensor.workspace = true
@@ -149,7 +145,6 @@ re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
 
 # Internal (optional):
-re_analytics = { workspace = true, optional = true }
 re_view_audio = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
@@ -203,7 +198,6 @@ wgpu.workspace = true
 axum.workspace = true
 egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
-re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
 rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true

@@ -2,9 +2,9 @@
 
 use std::fmt::Write as _;
 
-#[cfg(debug_assertions)]
-use re_ui::RecordingCommandKind;
 use re_viewer_context::CommandSender;
+#[cfg(debug_assertions)]
+use re_viewer_context::RecordingCommandKind;
 
 const SPACING: f32 = 12.0;
 

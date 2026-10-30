@@ -185,9 +185,7 @@ impl TimeCell {
                 crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
             }
 
-            TimeType::TimestampNs => {
-                crate::Timestamp::from_nanos_since_epoch(value.into()).format(timestamp_format)
-            }
+            TimeType::TimestampNs => timestamp_format.format_nanos(value.into()),
 
             TimeType::Sequence => typ.format(value, timestamp_format),
         }

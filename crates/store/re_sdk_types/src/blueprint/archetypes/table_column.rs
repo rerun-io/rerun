@@ -39,7 +39,7 @@ pub struct TableColumn {
 
     /// Whether the column's values can be edited.
     ///
-    /// If unset, editing is disabled.
+    /// If unset, the column is editable if its field in the table schema has `rerun:is_editable` metadata.
     /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
     /// A column can only be edited when its component type has an editor in the Viewer.
     pub editable: Option<SerializedComponentBatch>,
@@ -285,7 +285,7 @@ impl TableColumn {
 
     /// Whether the column's values can be edited.
     ///
-    /// If unset, editing is disabled.
+    /// If unset, the column is editable if its field in the table schema has `rerun:is_editable` metadata.
     /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
     /// A column can only be edited when its component type has an editor in the Viewer.
     #[inline]

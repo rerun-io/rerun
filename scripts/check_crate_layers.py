@@ -39,6 +39,10 @@ LAYERS = [
 ]
 
 FORBIDDEN_DEPENDENCIES = [
+    # re_agent_ui is a generic chat UI for coding agents; everything that ties it to the
+    # Rerun Viewer belongs in re_agent_panel. See the README of either crate.
+    ("re_agent_ui", "re_viewer_context"),
+    ("re_agent_ui", "re_viewer_control_tools"),
     # The generated types describe how we encode data as Arrow;
     # it should not need to understand our Sorbet spec.
     ("re_sdk_types", "re_sorbet"),

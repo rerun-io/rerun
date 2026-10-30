@@ -4,7 +4,7 @@ use egui::{Color32, Frame, IdSalt, Label, Link, PopupCloseBehavior, RichText, St
 use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLayoutKind};
 use re_ui::menu::menu_style;
 use re_ui::text_edit::{ReTextEdit, TextEditVariant};
-use re_ui::{ReButton, Size, UiExt as _, design_tokens_of, icons};
+use re_ui::{ButtonExt as _, Size, UiExt as _, design_tokens_of, icons};
 use re_viewer_context::AppBlueprintCtx;
 
 use crate::blueprint::TableBlueprint;
@@ -192,7 +192,7 @@ impl UiTableConfig<'_> {
             && ui
                 .place(
                     rect,
-                    ReButton::icon(icons::CLOSE, "Clear filter")
+                    egui::Button::icon(icons::CLOSE, "Clear filter")
                         .size(button_size)
                         .ghost(),
                 )
@@ -325,8 +325,8 @@ pub fn columns_edit_menu_ui<'a>(
 ) {
     let popup_id = ui.make_persistent_id(("columns_menu", layout_kind));
     let response = ui.add(
-        ReButton::new((icons::TABLE_COLUMNS, "Columns"))
-            .small()
+        egui::Button::new((icons::TABLE_COLUMNS, "Columns"))
+            .size_small()
             .highlighted(egui::Popup::is_id_open(ui.ctx(), popup_id)),
     );
     egui::Popup::menu(&response)

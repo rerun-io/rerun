@@ -36,7 +36,7 @@ pub mod item_ui;
 pub use self::component_ui_registry::{add_to_registry, register_component_uis};
 pub use self::entity_path_edit_ui::entity_path_edit_ui;
 pub use self::image_ui::image_preview_ui;
-pub use self::instance_path_ui::archetype_label_list_item_ui;
+pub use self::instance_path_ui::{ComponentUiOptions, archetype_label_list_item_ui, component_ui};
 pub use self::latest_all_instance_ui::LatestAllInstanceResult;
 pub use self::latest_at_instance_ui::LatestAtInstanceResult;
 pub use self::tensor_ui::tensor_summary_ui_grid_contents;

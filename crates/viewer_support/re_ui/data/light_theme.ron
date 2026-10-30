@@ -370,6 +370,12 @@
     "list_item_active_bg": {
       "color": "{Gray.950}"
     },
+    "list_item_button_hovered_bg": {
+      "color": "{Gray.900}"
+    },
+    "list_item_button_pressed_bg": {
+      "color": "{Gray.850}"
+    },
     "list_item_collapse_default": {
       "color": "{Gray.550}"
     },
@@ -435,18 +441,6 @@
       "color": "{Gray.500}"
     },
 
-    "bg_fill_inverse": {
-      "color": "{Gray.250}"
-    },
-    "bg_fill_inverse-hover": {
-      "color": "{Gray.150}"
-    },
-    "text_inverse": {
-      "color": "{Gray.1000}"
-    },
-    "icon_inverse": {
-      "color": "{Gray.1000}"
-    },
 
     "preview_timeline_track_color": {
       "color": "{Gray.0}",

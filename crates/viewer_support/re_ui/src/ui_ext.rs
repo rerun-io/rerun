@@ -1,4 +1,5 @@
 use egui::Role;
+use egui::class::HasClasses as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
     UiBuilder, WidgetInfo, WidgetText, pos2,
@@ -6,11 +7,12 @@ use egui::{
 use egui::{CornerRadius, emath::GuiRounding as _};
 
 use crate::alert::Alert;
-use crate::button::ReButton;
+use crate::button::{ButtonExt as _, with_hover_icon_button};
 use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
+pub static RESIZABLE_CONTAINER_TAG: &str = "rerun_resizable_container";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
@@ -18,7 +20,7 @@ fn error_label_bg_color(fg_color: Color32) -> Color32 {
 
 /// Style the scope for radio buttons.
 ///
-/// Checkboxes get the same fills from [`crate::checkbox::CheckboxTheme`].
+/// Checkboxes get the same fills from [`crate::ReTheme`].
 fn set_radio_button_visuals(ui: &mut egui::Ui) {
     let tokens = ui.tokens();
     let widgets = &mut ui.visuals_mut().widgets;
@@ -37,6 +39,11 @@ fn set_radio_button_visuals(ui: &mut egui::Ui) {
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    /// A [`re_async::UiWaker`] that requests a repaint of this ui's context.
+    fn ui_waker(&self) -> re_async::UiWaker {
+        self.ui().ctx().ui_waker()
+    }
 
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ui().theme())
@@ -177,12 +184,12 @@ pub trait UiExt {
             ),
             None,
         )
-        .image_tint_follows_text_color(true)
+        .icon_button()
     }
 
     /// A button showing an image you styled yourself, e.g. resized or tinted.
     ///
-    /// Reach for [`Self::small_icon_button`] or [`crate::ReButton::icon`] where a plain icon
+    /// Reach for [`Self::small_icon_button`] or [`crate::ButtonExt::icon`] where a plain icon
     /// will do; this is the escape hatch that still guarantees an accessible name.
     ///
     /// `alt_text` is the button's accessible name: what a screen reader announces, what
@@ -226,12 +233,15 @@ pub trait UiExt {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
         let alt_text = alt_text.into();
-        let mut response = self.ui_mut().add(egui::Button::new(
-            icon.as_image()
-                .fit_to_exact_size(size_points)
-                .alt_text(alt_text.clone())
-                .tint(tint),
-        ));
+        let mut response = self.ui_mut().add(
+            egui::Button::new(
+                icon.as_image()
+                    .fit_to_exact_size(size_points)
+                    .alt_text(alt_text.clone())
+                    .tint(tint),
+            )
+            .icon_button(),
+        );
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
@@ -257,7 +267,7 @@ pub trait UiExt {
         let response = ui
             .add(
                 icon.as_button(alt_text.clone())
-                    .image_tint_follows_text_color(true)
+                    .icon_button()
                     .selected(selected),
             )
             .on_hover_text(&alt_text);
@@ -268,11 +278,13 @@ pub trait UiExt {
     }
 
     fn primary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
-        self.ui_mut().add(ReButton::new(atoms).primary())
+        self.ui_mut()
+            .add(egui::Button::new(atoms).primary().size_small())
     }
 
     fn secondary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
-        self.ui_mut().add(ReButton::new(atoms).secondary())
+        self.ui_mut()
+            .add(egui::Button::new(atoms).secondary().size_small())
     }
 
     #[expect(clippy::disallowed_methods)]
@@ -674,7 +686,8 @@ pub trait UiExt {
         let raw_text = text.text().to_owned();
 
         let button = || {
-            ReButton::from_button(egui::Button::new((icon, text.clone())).selected(selected))
+            egui::Button::new((icon, text.clone()))
+                .selected(selected)
                 .size(Size::Tiny)
                 .variant(Variant::Ghost)
         };
@@ -686,8 +699,12 @@ pub trait UiExt {
             return button().atom_ui(ui).response;
         }
 
-        let (response, copy_response) =
-            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY, "Copy"), button);
+        let (response, copy_response) = with_hover_icon_button(
+            ui,
+            egui::Button::icon(icons::COPY, "Copy"),
+            button,
+            Size::Tiny,
+        );
         if copy_response.is_some_and(|resp| resp.clicked()) {
             re_log::info!("Copied {raw_text:?}");
             ui.copy_text(raw_text);
@@ -1111,7 +1128,6 @@ pub trait UiExt {
                                 d.insert_persisted(has_shown_help_id, true);
                             });
 
-                            #[cfg(feature = "analytics")]
                             re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
@@ -1121,17 +1137,15 @@ pub trait UiExt {
             if let Some(where_to_paint_background) = where_to_paint_background
                 && !button_response.hovered()
             {
-                let mut bg_rect = button_response.rect.expand(2.0);
-
-                // Hack: ensure we don't paint outside the lines on the Y-axis.
-                // Yes, we only do so for the Y axis, because if we do it for the X axis too
-                // then the background won't be centered behind the help icon.
-                bg_rect.min.y = bg_rect.min.y.max(ui.max_rect().min.y);
-                bg_rect.max.y = bg_rect.max.y.min(ui.max_rect().max.y);
-
+                // The same footprint the button's own hover fill has, so the two read as one
+                // button rather than two sizes of it.
                 ui.painter().set(
                     where_to_paint_background,
-                    egui::Shape::rect_filled(bg_rect, 4.0, ui.tokens().highlight_color),
+                    egui::Shape::rect_filled(
+                        button_response.rect,
+                        ui.tokens().normal_corner_radius(),
+                        ui.tokens().highlight_color,
+                    ),
                 );
             }
 
@@ -1145,6 +1159,18 @@ pub trait UiExt {
     }
 
     /// Show some markdown
+    /// Show UI built by a crate we don't control, such as `egui_commonmark`.
+    ///
+    /// See [`crate::theme::class::UNCONTROLLED_EXTERNAL_UI`].
+    fn uncontrolled_external_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut()
+            .scope_builder(
+                egui::UiBuilder::new().with_class(crate::theme::class::UNCONTROLLED_EXTERNAL_UI),
+                add_contents,
+            )
+            .inner
+    }
+
     fn markdown_ui(&mut self, markdown: &str) {
         use std::sync::Arc;
 
@@ -1158,7 +1184,13 @@ pub trait UiExt {
             .clone()
         });
 
-        egui_commonmark::CommonMarkViewer::new().show(ui, &mut commonmark_cache.lock(), markdown);
+        ui.uncontrolled_external_ui(|ui| {
+            egui_commonmark::CommonMarkViewer::new().show(
+                ui,
+                &mut commonmark_cache.lock(),
+                markdown,
+            );
+        });
     }
 
     /// A drop-down menu with a list of options.
@@ -1181,6 +1213,21 @@ pub trait UiExt {
                 });
             });
         response.response
+    }
+
+    /// Declare that the user can make this content wider, e.g. by dragging a splitter.
+    ///
+    /// List items inside truncate long values to the width they are given, instead of asking for
+    /// the width their content wants.
+    fn resizable_container_scope<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut()
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(RESIZABLE_CONTAINER_TAG, true),
+                ),
+                content,
+            )
+            .inner
     }
 
     /// Use the provided range as full span for the nested content.
@@ -1243,22 +1290,9 @@ pub trait UiExt {
         &mut self,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
-        self.selectable_toggle_sized(None, content)
-    }
-
-    /// [`Self::selectable_toggle`], with the whole widget fitted into `height`.
-    ///
-    /// The outline and the margin sit inside `height`, so the values take what is left. Without
-    /// a height the values keep the size they have anywhere else.
-    fn selectable_toggle_sized<R>(
-        &mut self,
-        height: Option<f32>,
-        content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
         let margin = 3;
-        let stroke_width = ui.visuals().widgets.noninteractive.bg_stroke.width;
 
         egui::Frame {
             inner_margin: Margin::same(margin),
@@ -1268,30 +1302,22 @@ pub trait UiExt {
             ..Default::default()
         }
         .show(ui, |ui| {
-            ui.visuals_mut().widgets.hovered.expansion = 0.0;
-            ui.visuals_mut().widgets.active.expansion = 0.0;
-            ui.visuals_mut().widgets.inactive.expansion = 0.0;
+            // The active segment is a neutral pill, not an accent-blue one: the frame around the
+            // group is what says these buttons belong together, so the accent would read as one
+            // odd button rather than as the current choice. The segments are built by the caller,
+            // so the classes go on the `Ui` they sit in and they inherit them, including a size
+            // that keeps the segments the same wherever the toggle is placed.
+            ui.scope_builder(
+                UiBuilder::new()
+                    .with_class(crate::theme::class::SELECTED_NEUTRAL)
+                    .with_class(Size::Tiny.class_name()),
+                |ui| {
+                    ui.spacing_mut().item_spacing.x = 3.0;
 
-            ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
-            ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
-            ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-
-            ui.visuals_mut().widgets.hovered.fg_stroke.color =
-                ui.visuals().widgets.inactive.fg_stroke.color;
-            ui.visuals_mut().widgets.active.fg_stroke.color =
-                ui.visuals().widgets.inactive.fg_stroke.color;
-            ui.visuals_mut().widgets.inactive.fg_stroke.color =
-                ui.visuals().widgets.noninteractive.fg_stroke.color;
-
-            ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
-            ui.spacing_mut().item_spacing.x = 3.0;
-
-            if let Some(height) = height {
-                ui.spacing_mut().interact_size.y = height - 2.0 * (margin as f32 + stroke_width);
-                ui.spacing_mut().button_padding.y = 0.0;
-            }
-
-            ui.horizontal(content).inner
+                    ui.horizontal(content).inner
+                },
+            )
+            .inner
         })
     }
 
@@ -1354,18 +1380,6 @@ pub trait UiExt {
                 .fit_to_exact_size(tokens.small_icon_size),
             text,
         ))
-    }
-
-    /// Set the current style for a text field that has invalid content.
-    fn style_invalid_field(&mut self) {
-        let ui = self.ui_mut();
-        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
-        ui.visuals_mut().widgets.active.bg_stroke =
-            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-        ui.visuals_mut().widgets.hovered.bg_stroke =
-            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-        ui.visuals_mut().widgets.inactive.bg_stroke =
-            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
 
     /// Show `contents` as one wrapping unit inside a [`egui::Ui::horizontal_wrapped`] layout.

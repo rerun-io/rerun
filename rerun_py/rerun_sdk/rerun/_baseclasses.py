@@ -11,6 +11,7 @@ from attrs import define, fields
 
 from rerun_bindings import ComponentDescriptor
 
+from ._send_dataframe import SORBET_COMPONENT_TYPE, SORBET_IS_EDITABLE
 from .error_utils import catch_and_log_exceptions
 
 T = TypeVar("T")
@@ -514,6 +515,40 @@ class ComponentMixin(ComponentBatchLike):
         Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return cls._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
+
+    @classmethod
+    def table_field(cls, name: str, *, editable: bool = False, nullable: bool = True) -> pa.Field:
+        """
+        Returns a catalog table schema field for this component.
+
+        The field has the component's Arrow datatype and component type, which gives the column semantic meaning.
+        The Viewer uses it to pick the UI for the column.
+
+        ```python
+        schema = pa.schema([
+            pa.field("id", pa.int64(), metadata={rr.SORBET_IS_TABLE_INDEX: "true"}),
+            rr.components.Url.table_field("link"),
+            rr.components.Flag.table_field("reviewed", editable=True),
+        ])
+        ```
+
+        Parameters
+        ----------
+        name:
+            The name of the column.
+        editable:
+            Allow editing the column's values in the Viewer.
+            Requires write permission on a remote table with a column marked by `rerun:is_table_index` metadata.
+            A cell can be edited when the component has an editor in the Viewer.
+            A table blueprint column that sets `editable` takes precedence.
+        nullable:
+            Whether the column can contain nulls.
+
+        """
+        metadata = {SORBET_COMPONENT_TYPE: cls.component_type()}
+        if editable:
+            metadata[SORBET_IS_EDITABLE] = "true"
+        return pa.field(name, cls.arrow_type(), nullable=nullable, metadata=metadata)
 
     def as_arrow_array(self) -> pa.Array:
         """

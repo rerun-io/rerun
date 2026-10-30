@@ -5,9 +5,18 @@ use crate::list_item::navigation::ListItemNavigation;
 use crate::list_item::{
     CollapseButtonPlacement, ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent,
 };
-use crate::{DesignTokens, UiExt as _, design_tokens_of};
+use crate::{DesignTokens, Size, UiExt as _, design_tokens_of};
+use egui::class::HasClasses as _;
 use egui::emath::GuiRounding as _;
-use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
+use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui, UiBuilder};
+
+/// The [`Ui`] a list item's row is drawn in.
+///
+/// A list item is a dense, one-line thing, so everything in it is [`Size::Tiny`]. Stating it once
+/// here means a button inside a row comes out the right size without every call site saying so.
+fn list_item_builder() -> UiBuilder {
+    UiBuilder::new().with_class(Size::Tiny.class_name())
+}
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -52,7 +61,8 @@ pub struct ListItem {
     pub force_hovered: bool,
     force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
-    height: f32,
+    toggle_on_click: bool,
+    density: Option<crate::ListItemDensity>,
     y_offset: f32,
     render_offscreen: bool,
     corner_radius: Option<egui::CornerRadius>,
@@ -72,7 +82,8 @@ impl Default for ListItem {
             force_hovered: false,
             force_background: None,
             collapse_openness: None,
-            height: DesignTokens::list_item_height(),
+            toggle_on_click: false,
+            density: None,
             y_offset: 0.0,
             render_offscreen: true,
             corner_radius: None,
@@ -287,10 +298,11 @@ impl ListItem {
         self
     }
 
-    /// Add padding above the item's content without changing its background or interaction area.
+    /// Add padding above the item's content, increasing its total height beyond the density's row height.
+    /// The background and interaction area include this padding.
     #[inline]
-    pub fn with_content_top_padding(mut self, content_top_padding: f32) -> Self {
-        self.content_top_padding = content_top_padding;
+    pub fn with_top_padding(mut self, top_padding: f32) -> Self {
+        self.content_top_padding = top_padding;
         self
     }
 
@@ -304,13 +316,17 @@ impl ListItem {
         self
     }
 
-    /// Set the item height.
-    ///
-    /// The default is provided by [`DesignTokens::list_item_height`] and is suitable for hierarchical
-    /// lists.
+    /// Toggle a collapsible item when its row is clicked rather than double-clicked.
     #[inline]
-    pub fn with_height(mut self, height: f32) -> Self {
-        self.height = height;
+    pub fn toggle_on_click(mut self, toggle_on_click: bool) -> Self {
+        self.toggle_on_click = toggle_on_click;
+        self
+    }
+
+    /// Override the scope's [`super::ListItemStyle::density`] for this item.
+    #[inline]
+    pub fn with_density(mut self, density: crate::ListItemDensity) -> Self {
+        self.density = Some(density);
         self
     }
 
@@ -364,9 +380,11 @@ impl ListItem {
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         ui.sanity_check();
-        ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
-            .inner
-            .response
+        ui.scope_builder(list_item_builder(), |ui| {
+            self.ui(ui, None, 0.0, Box::new(content))
+        })
+        .inner
+        .response
     }
 
     /// Draw the item as a leaf node from a hierarchical list.
@@ -374,7 +392,7 @@ impl ListItem {
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
-        ui.scope(|ui| {
+        ui.scope_builder(list_item_builder(), |ui| {
             let tokens = ui.tokens();
             let style = LayoutInfoStack::top(ui.ctx()).style;
             let default_indent = tokens.small_icon_size.x + tokens.text_to_icon_padding();
@@ -469,16 +487,23 @@ impl ListItem {
         self.collapse_openness = Some(openness);
 
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
+        let toggle_on_click = self.toggle_on_click;
         let response = ui
-            .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
+            .scope_builder(list_item_builder(), |ui| {
+                self.ui(ui, Some(id), 0.0, Box::new(content))
+            })
             .inner;
 
-        if let Some(collapse_response) = response.collapse_response
-            && collapse_response.clicked()
-        {
-            state.toggle(ui);
-        }
-        if response.response.double_clicked() {
+        let collapse_clicked = response
+            .collapse_response
+            .as_ref()
+            .is_some_and(egui::Response::clicked);
+        let row_clicked = if toggle_on_click {
+            response.response.clicked()
+        } else {
+            response.response.double_clicked()
+        };
+        if collapse_clicked || row_clicked {
             state.toggle(ui);
         }
 
@@ -525,7 +550,8 @@ impl ListItem {
             force_hovered,
             force_background,
             collapse_openness,
-            mut height,
+            toggle_on_click: _,
+            density,
             y_offset,
             render_offscreen,
             corner_radius,
@@ -537,6 +563,9 @@ impl ListItem {
         let tokens = ui.tokens();
         let is_first_item = LayoutInfoStack::take_is_first_item(ui.ctx());
         let layout_info = LayoutInfoStack::top(ui.ctx());
+        let mut height =
+            DesignTokens::list_item_height(density.unwrap_or(layout_info.style.density))
+                + content_top_padding;
 
         if y_offset != 0.0 && !is_first_item {
             ui.add_space(y_offset);

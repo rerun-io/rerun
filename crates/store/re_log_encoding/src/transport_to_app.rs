@@ -426,7 +426,7 @@ fn arrow_msg_app_to_transport(
     Ok(re_protos::log_msg::v1alpha1::ArrowMsg {
         store_id: Some(store_id.into()),
         chunk_id: Some(batch.chunk_id().as_tuid().into()),
-        compression: re_protos::common::v1alpha1::Compression::from(compression) as i32,
+        compression: re_protos::common::v1alpha1::Compression::from(payload.compression) as i32,
         uncompressed_size: payload.uncompressed_size,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),
@@ -437,11 +437,21 @@ fn arrow_msg_app_to_transport(
 // ---
 
 struct EncodedArrowRecordBatch {
+    /// Size of the IPC bytes before compression, which is `data.len()` if `compression` is off.
     uncompressed_size: u64,
+
+    /// The compression actually applied to `data`.
+    ///
+    /// This may be [`Compression::Off`] even though LZ4 was requested, see
+    /// [`re_protos::common::v1alpha1::ext::compress_lz4_if_worthwhile`].
+    ///
+    /// [`Compression::Off`]: crate::rrd::Compression::Off
+    compression: crate::rrd::Compression,
+
     data: Vec<u8>,
 }
 
-/// Encodes a native `RecordBatch` to an IPC payload, optionally compressed.
+/// Encodes a native `RecordBatch` to an IPC payload, compressed if requested and worthwhile.
 #[tracing::instrument(level = "debug", skip_all)]
 fn encode_arrow(
     batch: &arrow::array::RecordBatch,
@@ -480,17 +490,16 @@ fn encode_arrow(
         });
     }
 
-    let data = match compression {
-        crate::rrd::Compression::Off => uncompressed,
+    let (data, compression) = match compression {
+        crate::rrd::Compression::Off => (uncompressed, crate::rrd::Compression::Off),
         crate::rrd::Compression::LZ4 => {
-            re_tracing::profile_scope!("lz4::compress");
-            let _span = tracing::trace_span!("lz4::compress").entered();
-            lz4_flex::block::compress(&uncompressed)
+            re_protos::common::v1alpha1::ext::compress_lz4_if_worthwhile(uncompressed)
         }
     };
 
     Ok(EncodedArrowRecordBatch {
         uncompressed_size,
+        compression,
         data,
     })
 }
@@ -544,7 +553,11 @@ fn decode_arrow(
 mod tests {
     use std::assert_matches;
 
+    use re_protos::common::v1alpha1::Compression as ProtoCompression;
+
     use super::CodecError;
+    use crate::rrd::Compression;
+    use crate::rrd::test_util::{make_compressible_chunk, make_incompressible_chunk};
 
     #[test]
     fn tiny_compressed_payload_cannot_request_a_large_allocation() {
@@ -553,8 +566,7 @@ mod tests {
             crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES,
             u64::MAX,
         ] {
-            let mut arrow_msg =
-                arrow_msg_with_compression(re_protos::common::v1alpha1::Compression::Lz4 as i32);
+            let mut arrow_msg = arrow_msg_with_compression(ProtoCompression::Lz4 as i32);
             arrow_msg.payload = vec![0].into();
             arrow_msg.uncompressed_size = declared;
 
@@ -573,6 +585,90 @@ mod tests {
             payload: Default::default(),
             is_static: None,
         }
+    }
+
+    fn to_transport_requesting_lz4(
+        chunk: &re_chunk::Chunk,
+    ) -> re_protos::log_msg::v1alpha1::ArrowMsg {
+        let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test");
+        super::arrow_msg_app_to_transport(
+            &chunk.to_arrow_msg().unwrap(),
+            store_id,
+            Compression::LZ4,
+        )
+        .unwrap()
+    }
+
+    /// Requesting LZ4 on a chunk that does not compress stores it uncompressed, and the message
+    /// records that, so readers never run LZ4 on it.
+    #[test]
+    fn lz4_request_falls_back_to_uncompressed_when_it_does_not_pay_off() {
+        let chunk = make_incompressible_chunk(64 * 1024);
+        let batch = chunk.to_arrow_msg().unwrap().batch.clone();
+
+        let msg = to_transport_requesting_lz4(&chunk);
+        assert_eq!(msg.compression, ProtoCompression::None as i32);
+        assert_eq!(msg.uncompressed_size, msg.payload.len() as u64);
+        let plain = super::encode_arrow(&batch, Compression::Off).unwrap();
+        assert_eq!(msg.payload, plain.data);
+
+        let decoded = super::arrow_msg_transport_to_app(&msg).unwrap();
+        assert_eq!(*decoded.batch, *batch);
+    }
+
+    /// A chunk that compresses well is still stored as LZ4.
+    #[test]
+    fn lz4_request_is_honored_when_it_pays_off() {
+        let chunk = make_compressible_chunk(64 * 1024);
+        let batch = chunk.to_arrow_msg().unwrap().batch.clone();
+
+        let msg = to_transport_requesting_lz4(&chunk);
+        assert_eq!(msg.compression, ProtoCompression::Lz4 as i32);
+        let max_percent = re_protos::common::v1alpha1::ext::MAX_LZ4_COMPRESSED_FRACTION_PERCENT;
+        assert!(
+            (msg.payload.len() as u64) * 100 <= msg.uncompressed_size * max_percent,
+            "a kept LZ4 payload must be at most {max_percent}% of the {} uncompressed bytes, got {}",
+            msg.uncompressed_size,
+            msg.payload.len()
+        );
+
+        let decoded = super::arrow_msg_transport_to_app(&msg).unwrap();
+        assert_eq!(*decoded.batch, *batch);
+    }
+
+    /// One stream encoded with a single LZ4 request ends up with both compressed and
+    /// uncompressed messages, and decodes back to the same messages.
+    #[test]
+    fn stream_mixing_compressed_and_uncompressed_messages_roundtrips() {
+        use re_log_msg::LogMsg;
+
+        let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test");
+        let messages: Vec<LogMsg> = [
+            make_incompressible_chunk(64 * 1024),
+            make_compressible_chunk(64 * 1024),
+            make_incompressible_chunk(64 * 1024),
+            make_compressible_chunk(64 * 1024),
+        ]
+        .iter()
+        .map(|chunk| LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg().unwrap()))
+        .collect();
+
+        let encoded = crate::Encoder::encode(messages.iter().map(Ok)).unwrap();
+
+        let compressions: Vec<i32> = crate::DecoderTransport::decode_lazy(encoded.as_slice())
+            .map(|msg| match msg.unwrap() {
+                re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg) => msg.compression,
+                _ => unreachable!(),
+            })
+            .collect();
+        let none = ProtoCompression::None as i32;
+        let lz4 = ProtoCompression::Lz4 as i32;
+        assert_eq!(compressions, vec![none, lz4, none, lz4]);
+
+        let decoded: Vec<LogMsg> = crate::DecoderApp::decode_lazy(encoded.as_slice())
+            .map(Result::unwrap)
+            .collect();
+        similar_asserts::assert_eq!(decoded, messages);
     }
 
     #[test]

@@ -57,6 +57,7 @@ web_viewer = ["re_sdk/web_viewer", "dep:re_web_viewer_server", "dep:re_grpc_serv
 
 [dependencies]
 re_arrow_util.workspace = true
+re_async.workspace = true
 re_auth.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true

@@ -41,7 +41,7 @@ use re_sdk_types::ColormapSelection;
 use re_sdk_types::blueprint::components::{
     AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
     ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
-    PointsDisplay, RootContainer, TooltipMode, ViewFit, ViewMaximized, Volume,
+    PointsDisplay, RootContainer, TooltipMode, ViewDensity, ViewFit, ViewMaximized, Volume,
 };
 use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Bool, CellSize, Color, DepthMeter, DrawOrder,
@@ -156,6 +156,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     );
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ViewDensity>(edit_view_enum);
     registry.add_singleline_edit_or_view::<VideoCodec>(|ctx, ui, value| {
         // Hack to make this field never editable.
         // Editing the codec rarely makes sense and isn't supported by the visualizer.

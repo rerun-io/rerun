@@ -7,8 +7,8 @@ Uses `cargo tree` to resolve the full dependency tree for each entry,
 then verifies that none of the forbidden crates appear.
 
 Each entry in FORBIDDEN_DEPENDENCIES is a tuple of:
-  - A crate spec: the workspace crate name, optionally followed by
-    `--all-features` or `--no-default-features`
+  - A crate spec: the workspace crate name, optionally followed by extra `cargo tree`
+    arguments, such as `--all-features`, `--no-default-features`, or `--edges normal`
   - A set of crate names that must NOT appear in the dependency tree.
     An entry containing a `/` is a glob over workspace crate folders, relative to `rerun/`,
     e.g. `crates/store_app/*` forbids every crate in that folder.
@@ -25,8 +25,8 @@ from pathlib import Path
 
 # (crate_spec, forbidden_deps)
 #
-# crate_spec is the workspace crate name, optionally followed by
-# `--all-features` or `--no-default-features`.
+# crate_spec is the workspace crate name, optionally followed by extra `cargo tree` arguments,
+# such as `--all-features`, `--no-default-features`, or `--edges normal` (to ignore dev-dependencies).
 FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk", {"datafusion", "egui", "lance"}),
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
@@ -34,6 +34,9 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     # UI toolkit crates must not depend on the store (`crates/store_app`):
     ("re_ui", {"crates/store_app/*"}),
     ("re_ui --all-features", {"crates/store_app/*"}),
+    # `re_ui` only uses `re_uri` in its tests.
+    ("re_ui --edges normal", {"re_uri"}),
+    ("re_ui --all-features --edges normal", {"re_uri"}),
 ]
 
 # Setting `RUSTFLAGS` disables `re_workspace_hack`, which depends on everything.

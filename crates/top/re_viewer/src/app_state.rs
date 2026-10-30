@@ -54,13 +54,10 @@ pub struct AppState {
 
     /// Settings shared by all conversations in the agent panel.
     ///
-    /// This stays in `re_viewer` so `re_viewer_context` does not depend on the native-only
-    /// agent UI.
-    #[cfg(agent_panel)]
-    pub(crate) agent_settings: re_agent_ui::AgentSettings,
+    /// This stays in `re_viewer` so `re_viewer_context` does not depend on the agent UI.
+    pub(crate) agent_settings: re_agent::AgentSettings,
 
     /// Whether the agent panel is open. Persisted, so it comes back on the next run.
-    #[cfg(agent_panel)]
     pub(crate) agent_panel_open: bool,
 
     /// The time control for each recording (found in [`EntityDb`]).
@@ -172,9 +169,7 @@ impl Default for AppState {
         Self {
             app_options: Default::default(),
             audio_output: Default::default(),
-            #[cfg(agent_panel)]
             agent_settings: Default::default(),
-            #[cfg(agent_panel)]
             agent_panel_open: false,
             time_controls: Default::default(),
             app_caches: Default::default(),

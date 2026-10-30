@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
-    // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
+    // them to Rerun analytics (if the `analytics` feature of `rerun` is on).
     re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Connect to the external application in the background, retrying until it is up.
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .viewport
         .with_app_id("rerun_example_custom_callback");
 
-    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+    // This is used for analytics, if the `analytics` feature of `rerun` is on
     let app_env = re_viewer::AppEnvironment::Custom("My Custom Callback".to_owned());
 
     let startup_options = re_viewer::StartupOptions::default();

@@ -299,6 +299,7 @@ impl eframe::App for ExampleApp {
                             ui.ctx(),
                             name,
                             hierarchy_ranges.remove(0).into_iter().flatten(),
+                            &egui::TextStyle::Body,
                             None,
                         );
                         ui.list_item_flat_noninteractive(list_item::LabelContent::new(widget_text));

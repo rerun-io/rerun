@@ -31,15 +31,17 @@ pub fn list_item_ranges(ui: &mut Ui, range: Span<usize>, item_fn: &mut dyn FnMut
         let chunk_end = usize::min(current + chunk_size, range.end());
         let chunk_range = Span::from_start_end(current, chunk_end);
         let id = ui.unique_id().with(chunk_range);
-        ui.list_item().show_hierarchical_with_children(
-            ui,
-            id,
-            false,
-            LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end() - 1)),
-            |ui| {
-                list_item_ranges(ui, chunk_range, item_fn);
-            },
-        );
+        ui.list_item()
+            .toggle_on_click(true)
+            .show_hierarchical_with_children(
+                ui,
+                id,
+                false,
+                LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end() - 1)),
+                |ui| {
+                    list_item_ranges(ui, chunk_range, item_fn);
+                },
+            );
         current = chunk_end;
     }
 }

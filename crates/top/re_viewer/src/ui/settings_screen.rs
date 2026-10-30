@@ -216,14 +216,14 @@ fn settings_screen_ui_impl(
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
+        ui.checkbox(agent_panel, "Agent panel").on_hover_text(
+            "Experimental: chat with an AI agent that can drive the viewer, in a panel on the right.",
+        );
         cfg_select! {
             target_arch = "wasm32" => {
-                let _ = (agent_panel, gamepad_navigation);
+                let _ = gamepad_navigation;
             }
             _ => {
-                ui.checkbox(agent_panel, "Agent panel").on_hover_text(
-                    "Experimental: chat with your own coding agent in a panel on the right.",
-                );
                 let gamepad_navigation_response = ui
                     .checkbox(gamepad_navigation, "Gamepad navigation")
                     .on_hover_text("Enable gamepad navigation in 3D spatial views.");
@@ -454,10 +454,8 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
             );
         });
 
-        re_ui::text_edit::text_edit_scope(ui, |ui| {
-            ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
-                .labelled_by(label.id)
-        });
+        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
+            .labelled_by(label.id);
     });
 }
 

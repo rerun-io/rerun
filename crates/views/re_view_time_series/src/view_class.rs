@@ -6,7 +6,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
-use re_log_types::{AbsoluteTimeRange, ComponentPath, EntityPath};
+use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_sdk_types::archetypes::{Measurements, Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{
     PlotBackground, PlotInteraction, PlotLegend, ScalarAxis, TimeAxis,
@@ -23,11 +23,12 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
     BlueprintContext as _, ComponentMatch, DataResultInteractionAddress, DragAndDropFeedback,
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
-    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
+    DragAndDropPayload, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType,
+    QueryRange, RecommendedMappings, RecommendedView, RecommendedVisualizers,
+    SingleRequiredComponentMatch, SystemExecutionOutput, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewContext, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableReason, VisualizerComponentSource, default_view_entity_drop,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -361,35 +362,46 @@ impl ViewClass for TimeSeriesView {
     }
 
     /// Prefer semantic and heuristic mappings for dropped components, falling back to scalar lines.
-    fn handle_component_drop(
+    fn handle_drop(
         &self,
-        ctx: &ViewerContext<'_>,
-        view_id: ViewId,
-        component_paths: &[ComponentPath],
+        ctx: &ViewContext<'_>,
+        payload: &DragAndDropPayload,
         released: bool,
     ) -> DragAndDropFeedback {
-        match re_view::handle_component_drop(
-            ctx,
-            view_id,
-            component_paths,
-            released,
-            &[
-                (
-                    SeriesLinesSystem::identifier(),
-                    Scalars::descriptor_scalars().component,
-                ),
-                (
-                    MeasurementsSeriesSystem::identifier(),
-                    Measurements::descriptor_values().component,
-                ),
-            ],
-        ) {
-            re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
-            re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
-                DragAndDropFeedback::Reject(Some("Already visualized"))
+        match payload {
+            DragAndDropPayload::Entities { entities } => {
+                default_view_entity_drop(ctx, entities, released, |_| None)
             }
-            re_view::ComponentDropResult::Incompatible => {
-                DragAndDropFeedback::Reject(Some("Not a scalar component"))
+
+            DragAndDropPayload::Components { component_paths } => {
+                match re_view::handle_component_drop(
+                    ctx.viewer_ctx,
+                    ctx.view_id,
+                    component_paths,
+                    released,
+                    &[
+                        (
+                            SeriesLinesSystem::identifier(),
+                            Scalars::descriptor_scalars().component,
+                        ),
+                        (
+                            MeasurementsSeriesSystem::identifier(),
+                            Measurements::descriptor_values().component,
+                        ),
+                    ],
+                ) {
+                    re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
+                    re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
+                        DragAndDropFeedback::Reject(Some("Already visualized"))
+                    }
+                    re_view::ComponentDropResult::Incompatible => {
+                        DragAndDropFeedback::Reject(Some("Not a scalar component"))
+                    }
+                }
+            }
+
+            DragAndDropPayload::Contents { .. } | DragAndDropPayload::Invalid => {
+                DragAndDropFeedback::Ignore
             }
         }
     }

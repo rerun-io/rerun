@@ -21,7 +21,7 @@ use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 fn stage_options(method: &str) -> PyResult<StageOpt> {
     match method {
@@ -43,7 +43,10 @@ pub(crate) struct PyConnectionHandle {
 impl PyConnectionHandle {
     pub fn new(connection_registry: ConnectionRegistryHandle, origin: re_uri::Origin) -> Self {
         Self {
-            inner: CatalogClient::new(connection_registry.connection_handle(origin)),
+            inner: CatalogClient::new(
+                connection_registry.connection_handle(origin),
+                re_async::AsyncRuntimeHandle::new_native(get_tokio_runtime().handle().clone()),
+            ),
         }
     }
 

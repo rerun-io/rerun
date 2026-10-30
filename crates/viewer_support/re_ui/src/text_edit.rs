@@ -1,7 +1,8 @@
-use crate::{ContextExt as _, DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
-use egui::class::HasClasses as _;
-use egui::widget_style::{ButtonStyle, StyleArgs, TextEditStyle};
-use egui::{Align2, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
+use crate::theme::class;
+use crate::theme::class::ClassesExt as _;
+use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, Variant};
+use egui::class::{Classes, HasClasses as _};
+use egui::{Align2, Atoms, IntoAtoms, Response, TextBuffer, TextEdit, Ui, Vec2, Widget};
 
 /// Wrapper around eguis [`TextEdit`] that applies reruns styling
 pub struct ReTextEdit<'a> {
@@ -12,11 +13,15 @@ pub struct ReTextEdit<'a> {
     suffix: Atoms<'static>,
 }
 
-// The visual variant of the text edit.
-#[derive(Debug, Clone, Copy)]
+/// The visual variant of the text edit.
+///
+/// Applied to an [`egui::TextEdit`] as a class name that [`crate::ReTheme`] resolves back into
+/// colors from the design tokens, the same way [`crate::Variant`] works for buttons.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum TextEditVariant {
     /// No bg fill and an outline stroke. Use when the textedit is standalone and doesn't edit a
     /// value (e.g. search bar).
+    #[default]
     Outlined,
 
     /// Filled to look similar to buttons and other widgets. Use in forms or when editing some
@@ -25,59 +30,42 @@ pub enum TextEditVariant {
 }
 
 impl TextEditVariant {
-    fn visuals<'a>(&self, tokens: &'a DesignTokens) -> &'a TextEditVisuals {
+    pub const CLASS_OUTLINED: &'static str = "rerun::text_edit::outlined";
+    pub const CLASS_FILLED: &'static str = "rerun::text_edit::filled";
+
+    pub const fn class_name(self) -> &'static str {
+        match self {
+            Self::Outlined => Self::CLASS_OUTLINED,
+            Self::Filled => Self::CLASS_FILLED,
+        }
+    }
+
+    fn from_class_name(name: &str) -> Option<Self> {
+        // An `egui::DragValue` forwards its classes to the text edit it turns into while being
+        // typed into, so the button variants are accepted too and map onto their closest text edit
+        // twin. That is what keeps an outlined drag value outlined while it is being edited.
+        match name {
+            Self::CLASS_OUTLINED | Variant::CLASS_OUTLINED => Some(Self::Outlined),
+            Self::CLASS_FILLED
+            | Variant::CLASS_PRIMARY
+            | Variant::CLASS_SECONDARY
+            | Variant::CLASS_GHOST
+            | Variant::CLASS_OPENED => Some(Self::Filled),
+            _ => None,
+        }
+    }
+
+    /// The variant a text edit asks for, if any. The last variant class wins.
+    pub fn from_classes(classes: &Classes) -> Option<Self> {
+        classes.last_class(Self::from_class_name)
+    }
+
+    pub fn visuals(self, tokens: &DesignTokens) -> &TextEditVisuals {
         match self {
             Self::Outlined => &tokens.text_edit_outlined,
             Self::Filled => &tokens.text_edit_filled,
         }
     }
-
-    fn apply(&self, style: &mut Style, tokens: &DesignTokens) {
-        let TextEditVisuals {
-            fill,
-            fill_hovered,
-            fill_focused,
-            text,
-            text_placeholder,
-            stroke,
-            stroke_hovered,
-            stroke_focused,
-        } = self.visuals(tokens);
-
-        style.visuals.text_edit_bg_color = Some(*fill);
-        all_visuals(style, |vis| {
-            vis.expansion = 0.0;
-            vis.bg_fill = *fill;
-            vis.weak_bg_fill = *fill;
-            vis.bg_stroke = *stroke;
-            vis.fg_stroke.color = *text;
-        });
-
-        style.visuals.widgets.hovered.weak_bg_fill = *fill_hovered;
-        style.visuals.widgets.hovered.bg_fill = *fill_hovered;
-        style.visuals.widgets.hovered.bg_stroke = *stroke_hovered;
-        style.visuals.widgets.active.weak_bg_fill = *fill_focused;
-        style.visuals.widgets.active.bg_fill = *fill_focused;
-        style.visuals.widgets.active.bg_stroke = *stroke_focused;
-
-        style.visuals.selection.stroke = *stroke_focused;
-
-        // The hint text (placeholder) is painted with the weak text color:
-        style.visuals.weak_text_color = Some(*text_placeholder);
-    }
-}
-
-/// Apply the standard outlined text-edit visuals to a raw egui text edit.
-///
-/// Prefer [`ReTextEdit`] when its API is sufficient; use this adapter when callers need access to
-/// advanced [`TextEdit`] configuration.
-pub fn text_edit_scope<R>(ui: &mut Ui, content: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.scope(|ui| {
-        let tokens = ui.tokens();
-        TextEditVariant::Outlined.apply(ui.style_mut(), tokens);
-        content(ui)
-    })
-    .inner
 }
 
 impl ReTextEdit<'_> {
@@ -120,6 +108,12 @@ impl ReTextEdit<'_> {
         self
     }
 
+    /// Show each character as a dot, e.g. for a password or an API key.
+    pub fn password(mut self, password: bool) -> Self {
+        self.text_edit = self.text_edit.password(password);
+        self
+    }
+
     pub fn variant(mut self, variant: TextEditVariant) -> Self {
         self.variant = variant;
         self
@@ -140,6 +134,12 @@ impl ReTextEdit<'_> {
         self
     }
 
+    /// Outline the field in the error color, to show that its content is invalid.
+    pub fn invalid(mut self, invalid: bool) -> Self {
+        self.text_edit = self.text_edit.invalid(invalid);
+        self
+    }
+
     pub fn atom_ui(self, ui: &mut Ui) -> egui::WidgetAtomResponse {
         let Self {
             mut text_edit,
@@ -148,11 +148,11 @@ impl ReTextEdit<'_> {
             mut prefix,
             mut suffix,
         } = self;
-        let previous_style = ui.style().clone();
         let tokens = ui.tokens();
-        let style = ui.style_mut();
-        size.apply(style, false);
-        variant.apply(style, tokens);
+
+        text_edit = text_edit
+            .with_class(variant.class_name())
+            .with_class(size.class_name());
 
         if !prefix.is_empty() {
             prefix.map_images(|i| i.tint(tokens.text_strong));
@@ -163,19 +163,34 @@ impl ReTextEdit<'_> {
             text_edit = text_edit.suffix(suffix);
         }
 
-        text_edit = text_edit.min_size(Vec2::new(0.0, size.height()));
+        // The class already carries the size to the theme, which is what sizes the field.
+        // `Custom` is the exception: it borrows the class of the nearest standard size, so its
+        // exact height has to travel on the widget.
+        if let Size::Custom { .. } = size {
+            text_edit = text_edit.min_size(Vec2::new(0.0, size.height()));
+        }
 
-        let response = text_edit.show(ui).response;
-
-        ui.set_style(previous_style);
-
-        response
+        text_edit.show(ui).response
     }
 }
 
 impl Widget for ReTextEdit<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         self.atom_ui(ui).response
+    }
+}
+
+/// Rerun's styling, as extensions to [`egui::TextEdit`].
+pub trait TextEditExt: Sized {
+    /// Outline the field in the error color, to show that its content is invalid.
+    ///
+    /// Validating the content is up to the caller.
+    fn invalid(self, invalid: bool) -> Self;
+}
+
+impl TextEditExt for TextEdit<'_> {
+    fn invalid(self, invalid: bool) -> Self {
+        self.with_class_if(class::INVALID, invalid)
     }
 }
 
@@ -206,17 +221,12 @@ pub fn autocomplete_text_edit(
         text_edit = text_edit.hint_text(hint);
     }
 
-    let mut response = text_edit_scope(ui, |ui| {
-        ui.scope(|ui| {
-            if invalid_hint_text.is_some() {
-                ui.style_invalid_field();
-                text_edit = text_edit.text_color(ui.visuals().error_fg_color);
-            }
+    let invalid = invalid_hint_text.is_some();
+    if invalid {
+        text_edit = text_edit.text_color(ui.visuals().error_fg_color);
+    }
 
-            ui.add(text_edit)
-        })
-        .inner
-    });
+    let mut response = ui.add(text_edit.invalid(invalid));
 
     // Filter suggestions based on current text input.
     let filtered_suggestions: Vec<_> = suggestions
@@ -321,7 +331,6 @@ pub fn autocomplete_text_edit(
     };
 
     egui::Popup::from_response(&response)
-        .style(crate::menu::menu_style())
         .open(suggestions_open)
         .show(|ui: &mut egui::Ui| {
             ui.set_width(width);
@@ -345,48 +354,4 @@ pub fn autocomplete_text_edit(
     }
 
     response
-}
-
-/// Completion navigation uses hover styling rather than persistent-selection styling.
-pub struct CompletionButtonTheme;
-
-impl egui::theme::StyleProvider<ButtonStyle> for CompletionButtonTheme {
-    fn style(&mut self, args: &StyleArgs<'_>) -> ButtonStyle {
-        let mut style: ButtonStyle = egui::theme::DefaultStyle.style(args);
-        if args
-            .classes
-            .has_class(&egui::CompletionPopup::CLASS_SUGGESTION)
-            && args.classes.has_class(&egui::Button::CLASS_SELECTED)
-        {
-            let tokens = args.ctx.tokens();
-            style.atom_layout.frame.fill = tokens.list_item_hovered_bg;
-            style.atom_layout.text_style.color = tokens.text_default;
-        }
-        style
-    }
-}
-
-/// Rerun's style for every [`TextEdit`]: egui's default, with room between the frame and the text.
-///
-/// egui derives a text edit's margin from `button_padding`, which Rerun sets to almost nothing so
-/// that the blueprint panel's icons align (see `DesignTokens`), leaving the text cramped.
-pub struct TextEditTheme;
-
-impl TextEditTheme {
-    /// The space between a text edit's frame and its text.
-    const MARGIN: egui::Margin = egui::Margin::symmetric(4, 2);
-}
-
-impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
-    fn style(&mut self, args: &StyleArgs<'_>) -> TextEditStyle {
-        let mut style: TextEditStyle = egui::theme::DefaultStyle.style(args);
-
-        // The default margin is `button_padding` with room for the stroke taken out of it, so
-        // swapping in our margin by the difference keeps the stroke accounted for.
-        let frame = &mut style.atom_layout.frame;
-        frame.inner_margin = frame.inner_margin + Self::MARGIN
-            - egui::Margin::from(args.style.spacing.button_padding);
-
-        style
-    }
 }

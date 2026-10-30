@@ -42,6 +42,10 @@ mod plot_interaction;
 mod plot_legend;
 #[path = "previews_config.def.rs"]
 mod previews_config;
+#[path = "raw_data_rows.def.rs"]
+mod raw_data_rows;
+#[path = "raw_data_view_format.def.rs"]
+mod raw_data_view_format;
 #[path = "scalar_axis.def.rs"]
 mod scalar_axis;
 #[path = "spatial_information.def.rs"]
@@ -104,6 +108,8 @@ pub use self::panel_blueprint::*;
 pub use self::plot_interaction::*;
 pub use self::plot_legend::*;
 pub use self::previews_config::*;
+pub use self::raw_data_rows::*;
+pub use self::raw_data_view_format::*;
 pub use self::scalar_axis::*;
 pub use self::spatial_information::*;
 pub use self::table_blueprint::*;

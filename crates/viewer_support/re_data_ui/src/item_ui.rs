@@ -61,53 +61,6 @@ pub fn entity_path_button(
     )
 }
 
-/// Show the different parts of an entity path and make them selectable.
-pub fn entity_path_parts_buttons(
-    ctx: &StoreViewContext<'_>,
-    ui: &mut egui::Ui,
-    view_id: Option<ViewId>,
-    entity_path: &EntityPath,
-) -> egui::Response {
-    let with_individual_icons = false; // too much noise with icons in a path
-
-    ui.horizontal(|ui| {
-        {
-            ui.spacing_mut().item_spacing.x = 2.0;
-
-            // The last part points to the selected entity, but that's ugly, so remove the highlight:
-            let visuals = ui.visuals_mut();
-            visuals.selection.bg_fill = egui::Color32::TRANSPARENT;
-            visuals.selection.stroke = visuals.widgets.inactive.fg_stroke;
-        }
-
-        if !with_individual_icons {
-            // Show one single icon up-front instead:
-            let instance_path = InstancePath::entity_all(entity_path.clone());
-            ui.add(instance_path_icon(ctx, &instance_path).as_image());
-        }
-
-        if entity_path.is_root() {
-            ui.strong("/");
-        } else {
-            let mut accumulated = Vec::new();
-            for part in entity_path.iter() {
-                accumulated.push(part.clone());
-
-                ui.strong("/");
-                instance_path_button_to_ex(
-                    ctx,
-                    ui,
-                    view_id,
-                    &InstancePath::entity_all(accumulated.clone()),
-                    part.syntax_highlighted(ui.style()),
-                    with_individual_icons,
-                );
-            }
-        }
-    })
-    .response
-}
-
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
     ctx: &StoreViewContext<'_>,
@@ -191,18 +144,6 @@ pub fn instance_path_button_to(
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
-    instance_path_button_to_ex(ctx, ui, view_id, instance_path, text, true)
-}
-
-/// Show an instance id and make it selectable.
-fn instance_path_button_to_ex(
-    ctx: &StoreViewContext<'_>,
-    ui: &mut egui::Ui,
-    view_id: Option<ViewId>,
-    instance_path: &InstancePath,
-    text: impl Into<egui::WidgetText>,
-    with_icon: bool,
-) -> egui::Response {
     let item = if let Some(view_id) = view_id {
         Item::DataResult(DataResultInteractionAddress {
             view_id,
@@ -213,20 +154,16 @@ fn instance_path_button_to_ex(
         Item::InstancePath(instance_path.clone())
     };
 
-    let response = if with_icon {
-        ui.selectable_label_with_icon(
+    let response = ui
+        .selectable_label_with_icon(
             instance_path_icon(ctx, instance_path),
             text,
             ctx.is_selected_or_loading(&item),
         )
-    } else {
-        ui.selectable_label(ctx.is_selected_or_loading(&item), text)
-    };
-
-    let response = response.on_hover_ui(|ui| {
-        let include_subtree = false;
-        instance_hover_card_ui(ui, ctx, instance_path, include_subtree);
-    });
+        .on_hover_ui(|ui| {
+            let include_subtree = false;
+            instance_hover_card_ui(ui, ctx, instance_path, include_subtree);
+        });
 
     cursor_interact_with_selectable(ctx, response, item)
 }

@@ -28,6 +28,8 @@ mod column_share;
 mod column_type;
 #[path = "component_column_selector.def.rs"]
 mod component_column_selector;
+#[path = "component_identifier.def.rs"]
+mod component_identifier;
 #[path = "container_kind.def.rs"]
 mod container_kind;
 #[path = "corner2d.def.rs"]
@@ -106,6 +108,8 @@ mod timeline_name;
 mod tooltip_mode;
 #[path = "view_class.def.rs"]
 mod view_class;
+#[path = "view_density.def.rs"]
+mod view_density;
 #[path = "view_fit.def.rs"]
 mod view_fit;
 #[path = "view_maximized.def.rs"]
@@ -143,6 +147,7 @@ pub use self::column_order::*;
 pub use self::column_share::*;
 pub use self::column_type::*;
 pub use self::component_column_selector::*;
+pub use self::component_identifier::*;
 pub use self::container_kind::*;
 pub use self::corner2d::*;
 pub use self::editable::*;
@@ -182,6 +187,7 @@ pub use self::timeline_fraction::*;
 pub use self::timeline_name::*;
 pub use self::tooltip_mode::*;
 pub use self::view_class::*;
+pub use self::view_density::*;
 pub use self::view_fit::*;
 pub use self::view_maximized::*;
 pub use self::view_origin::*;

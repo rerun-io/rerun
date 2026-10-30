@@ -17,7 +17,9 @@ mod segment;
 mod staging;
 mod table;
 mod write;
+mod write_operation;
 
+use re_async::AsyncRuntimeHandle;
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle};
 
 pub use self::asset::{
@@ -29,22 +31,35 @@ pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
 pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};
 pub use self::staging::{StageOpt, StagingError};
 pub use self::write::{WriteError, WriteHandle};
+pub use self::write_operation::{WriteOperation, WriteOperationError, WriteResult, WriteStatus};
 
 /// High-level catalog operations backed by a short-lived protocol client per request.
 #[derive(Clone, Debug)]
 pub struct CatalogClient {
     connection: ConnectionHandle,
+    runtime: AsyncRuntimeHandle,
 }
 
 impl CatalogClient {
     /// A client for the catalog at the origin of `connection`.
-    pub fn new(connection: ConnectionHandle) -> Self {
-        Self { connection }
+    ///
+    /// The application must keep `runtime` running for background writes and cancellation cleanup.
+    /// Ordinary async methods run on the caller's executor.
+    pub fn new(connection: ConnectionHandle, runtime: AsyncRuntimeHandle) -> Self {
+        Self {
+            connection,
+            runtime,
+        }
     }
 
     /// Access low-level RPCs and shared connection state for this catalog's origin.
     pub fn connection(&self) -> &ConnectionHandle {
         &self.connection
+    }
+
+    /// The application-supplied executor for background tasks.
+    pub fn runtime(&self) -> &AsyncRuntimeHandle {
+        &self.runtime
     }
 
     /// The server this client talks to.

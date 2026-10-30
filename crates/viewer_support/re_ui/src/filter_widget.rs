@@ -162,20 +162,10 @@ impl FilterState {
                 if let Some(inner_state) = self.inner_state.as_mut() {
                     ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
 
-                    // TODO(ab): ideally _all_ text edits would be styled this way, but we
-                    // require egui support for that (https://github.com/emilk/egui/issues/3284)
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.open.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
-                    ui.visuals_mut().selection.stroke.width = 1.0;
-
-                    let response = crate::text_edit::text_edit_scope(ui, |ui| {
-                        egui::TextEdit::singleline(&mut inner_state.filter_query)
-                            .lock_focus(true)
-                            .ui(ui)
-                            .accessible_name("Filter")
-                    });
+                    let response = egui::TextEdit::singleline(&mut inner_state.filter_query)
+                        .lock_focus(true)
+                        .ui(ui)
+                        .accessible_name("Filter");
 
                     if self.request_focus {
                         self.request_focus = false;
@@ -196,8 +186,8 @@ impl FilterState {
             ui.list_item()
                 .interactive(false)
                 .force_background(ui.tokens().section_header_color)
-                .with_height(ui.tokens().section_header_height())
-                .with_content_top_padding(ui.tokens().section_header_top_padding())
+                .with_density(crate::ListItemDensity::Spacious)
+                .with_top_padding(ui.tokens().section_header_top_padding())
                 .show_flat(
                     ui,
                     content.action_button(
@@ -615,50 +605,32 @@ pub fn format_matching_text(
     ctx: &egui::Context,
     text: &str,
     match_iter: impl Iterator<Item = Range<usize>>,
+    text_style: &egui::TextStyle,
     text_color: Option<egui::Color32>,
 ) -> egui::WidgetText {
     let mut current = 0;
     let mut job = egui::text::LayoutJob::default();
 
-    let color = text_color.unwrap_or(Color32::PLACEHOLDER);
+    let format = egui::TextFormat {
+        font_id: text_style.resolve(&ctx.global_style()),
+        color: text_color.unwrap_or(Color32::PLACEHOLDER),
+        ..Default::default()
+    };
+    let match_format = egui::TextFormat {
+        background: ctx.tokens().search_match_bg_fill,
+        ..format.clone()
+    };
 
     for Range { start, end } in match_iter {
         if current < start {
-            job.append(
-                &text[current..start],
-                0.0,
-                egui::TextFormat {
-                    font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                    color,
-                    ..Default::default()
-                },
-            );
+            job.append(&text[current..start], 0.0, format.clone());
         }
-
-        job.append(
-            &text[start..end],
-            0.0,
-            egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                color,
-                background: ctx.tokens().search_match_bg_fill,
-                ..Default::default()
-            },
-        );
-
+        job.append(&text[start..end], 0.0, match_format.clone());
         current = end;
     }
 
     if current < text.len() {
-        job.append(
-            &text[current..],
-            0.0,
-            egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
-                color,
-                ..Default::default()
-            },
-        );
+        job.append(&text[current..], 0.0, format);
     }
 
     job.into()

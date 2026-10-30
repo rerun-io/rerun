@@ -116,7 +116,7 @@ impl MetaLineVisuals {
 }
 
 /// Colors for a single button [`crate::Variant`].
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ButtonVisuals {
     /// Background fill when resting.
     pub fill: Color32,
@@ -241,6 +241,17 @@ pub enum TableStyle {
 
     /// Used when we want to fit big, clickable buttons in the table cells.
     Spacious,
+}
+
+/// Row spacing for list items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ListItemDensity {
+    /// Present content with more spacing and visual structure.
+    #[default]
+    Spacious,
+
+    /// Present content using less space.
+    Compact,
 }
 
 /// The look and feel of the UI.
@@ -458,6 +469,11 @@ pub struct DesignTokens {
     pub button_blue: ButtonVisuals,
     pub button_opened: ButtonVisuals,
 
+    /// The selection surface as button colors, for buttons marked selected.
+    ///
+    /// Flat like egui's own selection: the same fill whether resting, hovered or pressed.
+    pub selection: ButtonVisuals,
+
     pub text_edit_outlined: TextEditVisuals,
     pub text_edit_filled: TextEditVisuals,
 
@@ -490,6 +506,13 @@ pub struct DesignTokens {
     pub list_item_default_icon: Color32,
     pub list_item_hovered_bg: Color32,
     pub list_item_active_bg: Color32,
+
+    /// Fill of a hovered button on a hovered or active list item.
+    pub list_item_button_hovered_bg: Color32,
+
+    /// Fill of a pressed button on a hovered or active list item.
+    pub list_item_button_pressed_bg: Color32,
+
     pub list_item_collapse_default: Color32,
 
     pub color_swatch_size: f32,
@@ -562,11 +585,6 @@ pub struct DesignTokens {
     pub flag_untoggled_bg_hover: Color32,
     pub flag_untoggled_icon: Color32,
     pub flag_untoggled_icon_hover: Color32,
-
-    pub bg_fill_inverse: Color32,
-    pub bg_fill_inverse_hover: Color32,
-    pub text_inverse: Color32,
-    pub icon_inverse: Color32,
 
     /// Background of the small timeline scrubber shown under preview thumbnails.
     pub preview_timeline_track_color: Color32,
@@ -765,7 +783,13 @@ impl DesignTokens {
             button_outlined,
             button_blue: ButtonVisuals::get(&colors, &theme_value, "button_blue"),
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
-
+            selection: ButtonVisuals {
+                fill: selection_bg_fill,
+                fill_hovered: selection_bg_fill,
+                fill_pressed: selection_bg_fill,
+                text: get_color("selection_stroke_color"),
+                stroke: Stroke::NONE,
+            },
             text_edit_outlined,
             text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
 
@@ -795,6 +819,8 @@ impl DesignTokens {
             list_item_default_icon: get_color("list_item_default_icon"),
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
+            list_item_button_hovered_bg: get_color("list_item_button_hovered_bg"),
+            list_item_button_pressed_bg: get_color("list_item_button_pressed_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
             color_swatch_size: get_scalar("color_swatch_size")?,
@@ -840,11 +866,6 @@ impl DesignTokens {
             flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
             flag_untoggled_icon: get_color("flag_untoggled_icon"),
             flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
-
-            bg_fill_inverse: get_color("bg_fill_inverse"),
-            bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
-            text_inverse: get_color("text_inverse"),
-            icon_inverse: get_color("icon_inverse"),
 
             preview_timeline_track_color: get_color("preview_timeline_track_color"),
             preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
@@ -965,7 +986,9 @@ impl DesignTokens {
         // Add stripes to grids and tables?
         egui_style.visuals.striped = false;
         egui_style.visuals.indent_has_left_vline = false;
-        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+        // Rerun's own buttons are sized by the theme; this is what is left for the egui widgets
+        // that still read it, such as checkboxes and collapsing headers.
+        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0);
         egui_style.spacing.indent = 14.0; // From figma
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
@@ -1049,7 +1072,7 @@ impl DesignTokens {
             // Background colors for buttons (menu buttons, blueprint buttons, etc)
             // when hovered or pressed. The pressed color is a step stronger, so
             // clicking gives visual feedback (reusing the `button_ghost` pressed fill).
-            let hovered_color = self.widget_hovered_color;
+            let hovered_color = self.button_ghost.fill_hovered;
             let pressed_color = self.button_ghost.fill_pressed;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
@@ -1231,7 +1254,7 @@ impl DesignTokens {
 
     /// Space between adjacent action buttons in a list item.
     pub fn list_item_button_spacing(&self) -> f32 {
-        6.0
+        2.0
     }
 
     /// Space between a label and a collapse button placed after it.
@@ -1259,12 +1282,11 @@ impl DesignTokens {
         4.0
     }
 
-    pub fn section_header_height(&self) -> f32 {
-        Self::list_item_height() + self.section_header_top_padding()
-    }
-
-    pub fn list_item_height() -> f32 {
-        24.0
+    pub fn list_item_height(density: ListItemDensity) -> f32 {
+        match density {
+            ListItemDensity::Spacious => 24.0,
+            ListItemDensity::Compact => 20.0,
+        }
     }
 
     pub fn list_header_vertical_offset() -> f32 {

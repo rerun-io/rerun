@@ -259,6 +259,66 @@ mod tests {
         assert!(groups.is_empty());
     }
 
+    /// The footer's byte spans must point at whatever was actually written, whether or not the
+    /// LZ4 request was honored for a given chunk, so random access works on a mixed file.
+    #[test]
+    fn test_read_chunks_mixed_compression() {
+        let chunks = vec![
+            crate::rrd::test_util::make_incompressible_chunk(64 * 1024),
+            crate::rrd::test_util::make_compressible_chunk(64 * 1024),
+        ];
+        let rrd = tempfile::NamedTempFile::new().unwrap();
+
+        let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test");
+        encode_test_rrd_to_file_with_options(
+            rrd.path(),
+            &chunks,
+            &store_id,
+            true,
+            crate::EncodingOptions::PROTOBUF_COMPRESSED,
+        );
+
+        let footer_file = File::open(rrd.path()).unwrap();
+        let footer = futures::executor::block_on(crate::read_rrd_footer(&footer_file))
+            .unwrap()
+            .unwrap();
+        let manifest = RrdManifest::try_new(&footer.manifests[&store_id]).unwrap();
+
+        let stored = manifest.col_chunk_byte_size();
+        let ipc = manifest.col_chunk_byte_size_uncompressed();
+        let index_of = |chunk: &Chunk| {
+            manifest
+                .col_chunk_ids()
+                .iter()
+                .position(|id| *id == chunk.id())
+                .unwrap()
+        };
+        let incompressible = index_of(&chunks[0]);
+        let compressible = index_of(&chunks[1]);
+        assert!(
+            stored[incompressible] >= ipc[incompressible],
+            "an incompressible chunk is stored as-is, so its span ({}) holds the IPC bytes ({}) plus the protobuf envelope",
+            stored[incompressible],
+            ipc[incompressible]
+        );
+        assert!(
+            stored[compressible] * 10 < ipc[compressible],
+            "a compressible chunk is stored as LZ4, so its span ({}) is far below its IPC size ({})",
+            stored[compressible],
+            ipc[compressible]
+        );
+
+        let file = File::open(rrd.path()).unwrap();
+        let loaded =
+            futures::executor::block_on(read_chunks(&file, &manifest, manifest.col_chunk_ids()))
+                .unwrap();
+        assert_eq!(loaded.len(), chunks.len());
+        for (loaded_chunk, chunk) in std::iter::zip(&loaded, &chunks) {
+            assert_eq!(loaded_chunk.id(), chunk.id());
+            assert_eq!(loaded_chunk.num_rows(), chunk.num_rows());
+        }
+    }
+
     #[test]
     fn test_read_chunks_uncompressed() {
         let chunks = make_test_chunks(3);

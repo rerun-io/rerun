@@ -25,7 +25,7 @@ use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
 use itertools::Itertools as _;
-use re_log_types::TimestampFormat;
+use re_format::TimestampFormat;
 use re_span::Span;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -61,7 +61,7 @@ pub struct DisplayOptions<'a> {
 
     /// Where should strings ([`arrow::array::StringArray`] etc.) be truncated?
     ///
-    /// [`usize::MAX`] by default, will be set to [`Self::max_nested_string_chars`] by [`DisplayOptions::nested`].
+    /// [`usize::MAX`] by default; nested items use [`Self::max_nested_string_chars`] instead.
     pub max_string_chars: usize,
 
     /// Where should strings inside nested items be truncated?
@@ -493,7 +493,7 @@ macro_rules! timestamp_primitive_display {
                     #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
                         .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
-                    f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));
+                    f.append_primitive(&state.format(timestamp));
                 }
 
                 Ok(())

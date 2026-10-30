@@ -10,6 +10,8 @@ mod dataframe;
 mod graph;
 #[path = "map.def.rs"]
 mod map;
+#[path = "raw_data.def.rs"]
+mod raw_data;
 #[path = "spatial2d.def.rs"]
 mod spatial2d;
 #[path = "spatial3d.def.rs"]
@@ -30,6 +32,7 @@ pub use self::bar_chart::*;
 pub use self::dataframe::*;
 pub use self::graph::*;
 pub use self::map::*;
+pub use self::raw_data::*;
 pub use self::spatial2d::*;
 pub use self::spatial3d::*;
 pub use self::state_timeline::*;

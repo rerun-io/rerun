@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
-use re_ui::UiExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use uuid::Uuid;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::prelude::Closure;
@@ -120,14 +120,14 @@ impl State {
             let result = Rc::clone(&result);
             let pkce = pkce.clone();
             let stored_state = state.clone();
-            let egui_ctx = egui_ctx.clone();
+            let waker = egui_ctx.ui_waker();
             move |e: web_sys::StorageEvent| {
                 AsyncRuntimeHandle::new_web().spawn_future(try_handle_storage_event(
                     e,
                     pkce.clone(),
                     stored_state.clone(),
                     result.clone(),
-                    egui_ctx.clone(),
+                    waker.clone(),
                 ));
             }
         }) as Box<StorageEventCallback>);
@@ -152,7 +152,7 @@ async fn try_handle_storage_event(
     pkce: Rc<Pkce>,
     stored_state: String,
     result: Rc<RefCell<Option<Result<Credentials, String>>>>,
-    egui_ctx: egui::Context,
+    waker: UiWaker,
 ) {
     macro_rules! bail {
         ($err:expr) => {{
@@ -234,5 +234,5 @@ async fn try_handle_storage_event(
 
     // And then notify the UI that the login succeeded:
     *result.borrow_mut() = Some(Ok(credentials));
-    egui_ctx.request_repaint();
+    waker.wake();
 }

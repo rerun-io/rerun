@@ -116,6 +116,7 @@ EXPLICIT_DOC_EXCLUDES: Final[dict[str, set[str]]] = {
         "SORBET_COMPONENT_TYPE",
         "SORBET_ENTITY_PATH",
         "SORBET_INDEX_NAME",
+        "SORBET_IS_EDITABLE",
         "SORBET_IS_TABLE_INDEX",
         # Per-developer profiling; opt-in via env var.
         "tracing_session",
@@ -566,6 +567,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
+| 0.41              | Oct. 28, 2026    | 3.11+                        |
 | 0.40              | Oct. 21, 2026    | 3.11+                        |
 | 0.39              | Oct. 12, 2026    | 3.10+                        |
 | 0.38              | Sep. 16, 2026    | 3.10+                        |

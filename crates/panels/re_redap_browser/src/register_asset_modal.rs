@@ -12,7 +12,7 @@ use re_protos::common::v1alpha1::ext::{DatasetKind, DatasetLimits};
 use re_quota_channel::send_crossbeam;
 use re_redap_client::ConnectionRegistryHandle;
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{ReButton, UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use crate::asset_coverage_modal::{
     AssetEditState, AssetTarget, COVERAGE_MODAL_WIDTH, COVERAGE_NOT_STORED, assets_docs_link,
@@ -121,13 +121,12 @@ impl AssetSourcesCapabilities {
 /// this machine.
 ///
 /// The frame is drawn here rather than by the [`egui::TextEdit`], so that the picker sits inside
-/// it. Its stroke follows the field the way `re_ui`'s search field does, which keeps
-/// [`re_ui::UiExt::style_invalid_field`] working.
+/// it. An `invalid` source is outlined in the error color, whatever the field's state.
 fn source_uri_field(
     ui: &mut egui::Ui,
     source_uri: &mut String,
-    hint_text: &str,
-    with_picker: bool,
+    sources: &AssetSourcesCapabilities,
+    invalid: bool,
 ) -> egui::Response {
     /// Tall enough for the picker, so the field does not change height with it.
     const FIELD_HEIGHT: f32 = 19.0;
@@ -141,7 +140,9 @@ fn source_uri_field(
         .unwrap_or_else(|| &ui.visuals().widgets.inactive);
 
     let selection_stroke = ui.visuals().selection.stroke;
-    let stroke = if response.is_some_and(|response| response.has_focus()) {
+    let stroke = if invalid {
+        egui::Stroke::new(selection_stroke.width, ui.visuals().error_fg_color)
+    } else if response.is_some_and(|response| response.has_focus()) {
         selection_stroke
     } else {
         let mut stroke = visuals.bg_stroke;
@@ -159,7 +160,9 @@ fn source_uri_field(
                 ui.set_height(FIELD_HEIGHT);
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if with_picker && let Some(picked) = pick_asset_file(ui) {
+                    if sources.show_file_picker()
+                        && let Some(picked) = pick_asset_file(ui)
+                    {
                         *source_uri = picked;
                     }
 
@@ -168,7 +171,7 @@ fn source_uri_field(
                             .id(textedit_id)
                             .font(egui::TextStyle::Monospace)
                             .frame(egui::Frame::new())
-                            .hint_text(hint_text)
+                            .hint_text(sources.source_example())
                             .desired_width(ui.available_width()),
                     )
                 })
@@ -340,14 +343,16 @@ impl RegisterAssetModal {
     pub fn open(
         &mut self,
         target: AssetTarget,
-        connection_registry: ConnectionRegistryHandle,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
     ) {
         self.state = Some(State {
             edit_state: AssetEditState {
+                client: CatalogClient::new(
+                    connection_registry.connection_handle(target.origin.clone()),
+                    runtime,
+                ),
                 target,
-                connection_registry,
-                runtime,
                 coverage: Default::default(),
             },
             source_uri: String::new(),
@@ -389,12 +394,12 @@ impl RegisterAssetModal {
             |ui| {
                 // Read every frame, so the modal keeps up with a connection made while it is open.
                 let sources = AssetSourcesCapabilities::new(
-                    &state.edit_state.connection_registry,
+                    state.edit_state.client.connection().connection_registry(),
                     &state.edit_state.target.origin,
                 );
 
-                // `style_invalid_field` has to be applied before the field is added, so the outline
-                // lags the text by one frame.
+                // The field is outlined from the text it had before this frame's edits, so the
+                // outline lags the text by one frame.
                 let previous_source_is_invalid =
                     match asset_data_source(&state.edit_state.target.origin, &state.source_uri) {
                         Ok(source) => sources
@@ -415,23 +420,15 @@ impl RegisterAssetModal {
                             ui.weak(egui::RichText::new("SOURCE URI").monospace().size(10.0));
                         ui.add_space(4.0);
 
-                        ui.scope(|ui| {
-                            if previous_source_is_invalid && !state.source_uri.is_empty() {
-                                ui.style_invalid_field();
-                            }
+                        let show_invalid =
+                            previous_source_is_invalid && !state.source_uri.is_empty();
+                        let field =
+                            source_uri_field(ui, &mut state.source_uri, &sources, show_invalid)
+                                .labelled_by(label.id);
 
-                            let field = source_uri_field(
-                                ui,
-                                &mut state.source_uri,
-                                &sources.source_example(),
-                                sources.show_file_picker(),
-                            )
-                            .labelled_by(label.id);
-
-                            if just_opened {
-                                field.request_focus();
-                            }
-                        });
+                        if just_opened {
+                            field.request_focus();
+                        }
 
                         // Parsed after the field, so the register button and what it sends both
                         // use the text the user sees.
@@ -533,8 +530,10 @@ impl RegisterAssetModal {
                                 && no_room_reason.is_none()
                                 && !already_registering;
 
-                            let register_response =
-                                ui.add_enabled(can_register, ReButton::new("Register").blue());
+                            let register_response = ui.add_enabled(
+                                can_register,
+                                egui::Button::new("Register").blue().size_small(),
+                            );
 
                             if can_register
                                 && (register_response.clicked()
@@ -542,8 +541,7 @@ impl RegisterAssetModal {
                             {
                                 let AssetTarget { origin, dataset_id } =
                                     state.edit_state.target.clone();
-                                let connection_registry =
-                                    state.edit_state.connection_registry.clone();
+                                let client = state.edit_state.client.clone();
                                 let coverage =
                                     (!keep_coverage).then(|| state.edit_state.coverage.coverage());
                                 let source_uri = std::mem::take(&mut state.source_uri);
@@ -560,10 +558,9 @@ impl RegisterAssetModal {
                                 )
                                 .ok();
 
-                                state.edit_state.runtime.spawn_future(async move {
+                                state.edit_state.client.runtime().spawn_future(async move {
                                     let result = register_asset(
-                                        connection_registry,
-                                        origin.clone(),
+                                        client,
                                         dataset_id,
                                         &source_uri,
                                         coverage.as_ref(),
@@ -586,7 +583,7 @@ impl RegisterAssetModal {
                                 ui.close();
                             }
 
-                            if ui.add(ReButton::new("Cancel")).clicked() {
+                            if ui.add(egui::Button::new("Cancel").size_small()).clicked() {
                                 ui.close();
                             }
                         },
@@ -605,13 +602,12 @@ impl RegisterAssetModal {
 /// Registers what `source_uri` points at as an asset of a dataset, covering the segments the user
 /// picked.
 async fn register_asset(
-    connection_registry: ConnectionRegistryHandle,
-    origin: re_uri::Origin,
+    client: CatalogClient,
     dataset_id: EntryId,
     source_uri: &str,
     coverage: Option<&AssetCoverage>,
 ) -> Result<(), AssetRegistrationError> {
-    match CatalogClient::new(connection_registry.connection_handle(origin))
+    match client
         .register_asset(dataset_id, source_uri, coverage, DEFAULT_ASSET_TASK_TIMEOUT)
         .await
     {

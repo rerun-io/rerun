@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.41.0-alpha.1+dev"
-__version_info__ = (0, 41, 0, "alpha.1")
+__version__ = "0.42.0-alpha.1+dev"
+__version_info__ = (0, 42, 0, "alpha.1")
 
 if sys.version_info < (3, 11):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.11 or later.")
@@ -86,6 +86,7 @@ from ._send_dataframe import (
     SORBET_COMPONENT_TYPE as SORBET_COMPONENT_TYPE,
     SORBET_ENTITY_PATH as SORBET_ENTITY_PATH,
     SORBET_INDEX_NAME as SORBET_INDEX_NAME,
+    SORBET_IS_EDITABLE as SORBET_IS_EDITABLE,
     SORBET_IS_TABLE_INDEX as SORBET_IS_TABLE_INDEX,
     send_dataframe as send_dataframe,
     send_record_batch as send_record_batch,

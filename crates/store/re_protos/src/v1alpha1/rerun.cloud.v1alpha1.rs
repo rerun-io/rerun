@@ -1047,6 +1047,10 @@ pub struct ScanDatasetManifestResponse {
     /// The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch,
     /// with the columns pinned by
     /// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
+    ///
+    /// Per-timeline `{timeline}:start` / `{timeline}:end` columns hold the index range of each row's layer.
+    /// Servers older than Rerun 0.42 / Rerun Hub 0.20 don't send them.
+    /// A null means the layer has no data on that timeline.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
     /// Dataset identity and revision for the entire stream.

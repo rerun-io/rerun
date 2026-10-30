@@ -21,6 +21,7 @@ from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, C
 from .column_share import ColumnShare, ColumnShareBatch
 from .column_type import ColumnType, ColumnTypeBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
+from .component_identifier import ComponentIdentifier, ComponentIdentifierBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .editable import Editable, EditableBatch
@@ -60,6 +61,7 @@ from .timeline_fraction import TimelineFraction, TimelineFractionBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .tooltip_mode import TooltipMode, TooltipModeArrayLike, TooltipModeBatch, TooltipModeLike
 from .view_class import ViewClass, ViewClassBatch
+from .view_density import ViewDensity, ViewDensityArrayLike, ViewDensityBatch, ViewDensityLike
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .view_maximized import ViewMaximized, ViewMaximizedBatch
 from .view_origin import ViewOrigin, ViewOriginBatch
@@ -107,6 +109,8 @@ __all__ = [
     "ColumnTypeBatch",
     "ComponentColumnSelector",
     "ComponentColumnSelectorBatch",
+    "ComponentIdentifier",
+    "ComponentIdentifierBatch",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
@@ -207,6 +211,10 @@ __all__ = [
     "TooltipModeLike",
     "ViewClass",
     "ViewClassBatch",
+    "ViewDensity",
+    "ViewDensityArrayLike",
+    "ViewDensityBatch",
+    "ViewDensityLike",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

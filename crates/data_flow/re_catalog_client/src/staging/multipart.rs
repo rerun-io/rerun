@@ -204,9 +204,6 @@ fn should_retry(err: &StagingError, attempts: u32) -> bool {
 struct AbortUploadGuard<'a> {
     client: &'a CatalogClient,
     token: Option<Bytes>,
-    // Cancellation may drop the upload outside the runtime that polled it.
-    // TODO(grtlr): Consider requiring an AsyncRuntimeHandle on CatalogClient for cancellation cleanup.
-    runtime: Option<AsyncRuntimeHandle>,
 }
 
 impl<'a> AbortUploadGuard<'a> {
@@ -214,7 +211,6 @@ impl<'a> AbortUploadGuard<'a> {
         Self {
             client,
             token: Some(token),
-            runtime: AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().ok(),
         }
     }
 
@@ -222,47 +218,35 @@ impl<'a> AbortUploadGuard<'a> {
         let Some(token) = self.token.clone() else {
             return;
         };
-        let request = async {
-            self.client
-                .client()
-                .await?
-                .abort_multipart_upload(token)
-                .await
-        };
-        match re_async::timeout(Duration::from_secs(5), request).await {
-            Ok(Ok(())) => {}
-            Ok(Err(err)) => re_log::warn!("Failed to abort multipart upload: {err}"),
-            Err(_) => re_log::warn!("Multipart abort timed out"),
-        }
+        abort_upload(self.client, token).await;
         self.token = None;
     }
 }
 
 impl Drop for AbortUploadGuard<'_> {
     fn drop(&mut self) {
-        let Self {
-            client,
-            token,
-            runtime,
-        } = self;
+        let Self { client, token } = self;
         let Some(token) = token.take() else {
             return;
         };
-        let Some(runtime) = runtime else {
-            re_log::warn!("Cannot abort multipart upload without an async runtime");
-            return;
-        };
-        let client = CatalogClient::clone(client);
+        let cleanup_client = CatalogClient::clone(client);
+        // The client's runtime may no longer be driven when another runtime cancels the upload.
+        let current_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen();
+        let runtime = current_runtime.as_ref().unwrap_or(&client.runtime);
         // In-flight HTTP requests can outlive cancellation. Bucket lifecycle rules must
         // also remove parts that arrive after this best-effort abort.
         runtime.spawn_future(async move {
-            let mut abort = AbortUploadGuard {
-                client: &client,
-                token: Some(token),
-                runtime: None,
-            };
-            abort.abort().await;
+            abort_upload(&cleanup_client, token).await;
         });
+    }
+}
+
+async fn abort_upload(client: &CatalogClient, token: Bytes) {
+    let request = async { client.client().await?.abort_multipart_upload(token).await };
+    match re_async::timeout(Duration::from_secs(5), request).await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => re_log::warn!("Failed to abort multipart upload: {err}"),
+        Err(_) => re_log::warn!("Multipart abort timed out"),
     }
 }
 

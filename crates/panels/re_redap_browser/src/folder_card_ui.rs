@@ -49,7 +49,7 @@ pub fn folder_cards_ui(
         .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
 
-    egui::ScrollArea::vertical()
+    let clicked = egui::ScrollArea::vertical()
         .auto_shrink(false)
         .content_margin(egui::Margin::same(card_spacing as i8))
         .show(ui, |ui| {
@@ -59,35 +59,25 @@ pub fn folder_cards_ui(
                 .all_rows_use_available_width(false)
                 .hover_fill(tokens.card_hover_fill)
                 .hover_stroke(tokens.card_hover_stroke)
+                .clickable()
                 .show(ui, |ui, index, _hovered| {
                     let Some(child) = children.get(index) else {
                         return;
                     };
 
-                    let route = match child {
+                    match child {
                         FolderChildCard::Subfolder {
-                            name,
-                            path_prefix,
-                            entry_count,
+                            name, entry_count, ..
                         } => {
-                            ui.strong(name);
+                            card_title_ui(ui, &icons::FOLDER, "Folder", name);
                             let label = if *entry_count == 1 {
                                 "1 entry".to_owned()
                             } else {
                                 format!("{entry_count} entries")
                             };
                             ui.label(label);
-
-                            Route::RedapFolder {
-                                origin: origin.clone(),
-                                path: path_prefix.clone(),
-                            }
                         }
-                        FolderChildCard::Entry {
-                            name,
-                            entry_id,
-                            kind,
-                        } => {
+                        FolderChildCard::Entry { name, kind, .. } => {
                             let (icon, tooltip) = match kind {
                                 EntryKind::Dataset
                                 | EntryKind::DatasetView
@@ -96,27 +86,43 @@ pub fn folder_cards_ui(
                                 EntryKind::Table | EntryKind::TableView => (&icons::TABLE, "Table"),
                                 EntryKind::Unspecified => (&icons::VIEW_UNKNOWN, "Entry"),
                             };
-                            ui.horizontal(|ui| {
-                                ui.small_icon_button(icon, tooltip);
-                                ui.strong(name);
-                            });
-
-                            Route::RedapEntry {
-                                origin: origin.clone(),
-                                entry_id: *entry_id,
-                                kind: crate::entries::route_entry_kind(*kind),
-                            }
+                            card_title_ui(ui, icon, tooltip, name);
                         }
-                    };
-
-                    if ui.response().interact(egui::Sense::click()).clicked() {
-                        if let Some(item) = route.item() {
-                            command_sender.send_system(SystemCommand::set_selection(item));
-                        }
-                        command_sender.send_system(SystemCommand::SetRoute(route));
                     }
-                });
-        });
+                })
+        })
+        .inner;
+
+    if let Some(child) = clicked.and_then(|index| children.get(index)) {
+        let route = match child {
+            FolderChildCard::Subfolder { path_prefix, .. } => Route::RedapFolder {
+                origin: origin.clone(),
+                path: path_prefix.clone(),
+            },
+            FolderChildCard::Entry { entry_id, kind, .. } => Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id: *entry_id,
+                kind: crate::entries::route_entry_kind(*kind),
+            },
+        };
+
+        if let Some(item) = route.item() {
+            command_sender.send_system(SystemCommand::set_selection(item));
+        }
+        command_sender.send_system(SystemCommand::SetRoute(route));
+    }
+}
+
+fn card_title_ui(ui: &mut egui::Ui, icon: &icons::Icon, kind_name: &str, name: &str) {
+    ui.horizontal(|ui| {
+        ui.add(
+            icon.as_image()
+                .fit_to_exact_size(ui.tokens().small_icon_size)
+                .tint(ui.visuals().text_color()),
+        )
+        .on_hover_text(kind_name);
+        ui.strong(name);
+    });
 }
 
 fn collect_cards(
