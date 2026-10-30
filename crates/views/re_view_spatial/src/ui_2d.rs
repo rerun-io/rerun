@@ -23,10 +23,26 @@ use super::eye::Eye;
 use super::ui::{create_labels, draw_bounding_boxes, draw_origin_axes};
 use crate::SpaceKind;
 use crate::contexts::TransformTreeContext;
-use crate::ui::SpatialViewState;
+use crate::ui::{ScreenSpace2D, SpatialViewState};
 use crate::visualizers::{Axes, collect_ui_labels};
 use crate::{Pinhole, SpatialView2D};
 // ---
+
+/// Stores what the view shows for next frame's visualizers. Returns whether it changed.
+fn store_screen_space_2d(state: &mut SpatialViewState, screen_space: ScreenSpace2D) -> bool {
+    let ScreenSpace2D {
+        pixels_per_scene_unit,
+        visible_scene_rect,
+    } = screen_space;
+    // Degenerate visual bounds give NaN, which never equals itself and would repaint forever.
+    let screen_space = (pixels_per_scene_unit.is_finite() && visible_scene_rect.is_finite())
+        .then_some(screen_space);
+    if state.screen_space_2d == screen_space {
+        return false;
+    }
+    state.screen_space_2d = screen_space;
+    true
+}
 
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
@@ -261,6 +277,15 @@ impl SpatialView2D {
             ui_from_scene
         };
         let scene_from_ui = ui_from_scene.inverse();
+
+        // Visualizers already ran this frame, so a change needs another frame.
+        let screen_space = ScreenSpace2D {
+            pixels_per_scene_unit: ui.ctx().pixels_per_point() * ui_from_scene.scale().max_elem(),
+            visible_scene_rect: scene_from_ui.transform_rect(response.rect),
+        };
+        if store_screen_space_2d(state, screen_space) {
+            ui.request_repaint();
+        }
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
