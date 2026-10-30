@@ -609,7 +609,7 @@ impl AppCore {
                                         self.state.agent_settings.share_redacted_prompts;
                                     self.agent_panel.submit_product_feedback(request, share_text);
                                 }
-                                _ => crate::agent_panel::record_feedback_without_text(request),
+                                _ => re_agent_panel::record_feedback_without_text(request),
                             }
                             on_done.call(Ok(SubmitFeedbackResponse {}.into()));
                         }

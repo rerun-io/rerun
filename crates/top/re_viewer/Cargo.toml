@@ -15,14 +15,6 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**/*.cpp",
-  "agent_context/**/*.in",
-  "agent_context/**/*.md",
-  "agent_context/**/*.py",
-  "agent_context/**/*.rs",
-  "agent_context/**/*.toml",
-  "agent_context/**/*.txt",
-  "agent_context/**/*.yaml",
   "Cargo.toml",
   "data/**/*.cpp",
   "data/**/*.jpg",
@@ -57,10 +49,15 @@ default_web = ["audio", "map_view"]
 ## Embed the Rerun skills and documentation for the agent panel to hand its agent.
 ##
 ## Costs a couple of megabytes of binary size, and does nothing on the web.
-agent_context = []
+agent_context = ["re_agent_panel/agent_context"]
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_dataframe_ui/analytics", "re_ui/analytics"]
+analytics = [
+  "dep:re_analytics",
+  "re_agent_panel/analytics",
+  "re_dataframe_ui/analytics",
+  "re_ui/analytics",
+]
 
 ## Enable the audio view and audio playback.
 audio = ["re_audio/output", "dep:re_view_audio"]
@@ -83,6 +80,7 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_agent_panel.workspace = true
 re_agent_ui.workspace = true
 re_arrow_json.workspace = true
 re_async.workspace = true
@@ -146,7 +144,6 @@ re_view_text_document.workspace = true
 re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 re_viewer_context.workspace = true
-re_viewer_control_tools.workspace = true
 re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
 

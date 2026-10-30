@@ -21,7 +21,7 @@ const TRANSCRIPT_PREFIX: &str = "session";
 /// The crate this very panel is built from, so finding it means the agent is being pointed at the
 /// source of the session it is reviewing, rather than at whatever directory the viewer happened
 /// to be started in.
-const CHECKOUT_MARKER: &str = "crates/top/re_viewer/Cargo.toml";
+const CHECKOUT_MARKER: &str = "crates/panels/re_agent_panel/Cargo.toml";
 
 /// The `rerun` checkout inside `dir`, or `None` if there is none.
 ///
@@ -83,7 +83,7 @@ These paths are relative to `{workspace}`.
 
 - `crates/top/re_viewer_mcp/` — the MCP tools the agent drives the viewer with.
 - `crates/top/re_viewer/src/app/viewer_control/mod.rs` — what the viewer can be asked to do at all.
-- `crates/top/re_viewer/src/agent_panel/preamble.rs` — what every panel session is told up front.
+- `crates/panels/re_agent_panel/src/preamble.rs` — what every panel session is told up front.
 - `skills/` — the skills the agent reads before answering.
 - `docs/content/` — the documentation it greps.
 
@@ -227,7 +227,7 @@ mod tests {
         assert_eq!(
             checkout.join(CHECKOUT_MARKER),
             manifest_dir.join("Cargo.toml"),
-            "{CHECKOUT_MARKER} no longer names this crate; update it to wherever re_viewer moved"
+            "{CHECKOUT_MARKER} no longer names this crate; update it to wherever re_agent_panel moved"
         );
     }
 

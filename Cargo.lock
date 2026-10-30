@@ -9042,6 +9042,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_agent_panel"
+version = "0.42.0-alpha.1+dev"
+dependencies = [
+ "cfg_aliases",
+ "crossbeam",
+ "egui",
+ "futures",
+ "insta",
+ "jiff",
+ "re_agent_ui",
+ "re_analytics",
+ "re_async",
+ "re_build_tools",
+ "re_entity_db",
+ "re_log",
+ "re_log_channel",
+ "re_protos",
+ "re_sdk_types",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_control_tools",
+ "re_workspace_hack",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "re_agent_ui"
 version = "0.42.0-alpha.1+dev"
 dependencies = [
@@ -11953,6 +11982,7 @@ dependencies = [
  "parking_lot",
  "poll-promise",
  "rand 0.9.5",
+ "re_agent_panel",
  "re_agent_ui",
  "re_analytics",
  "re_arrow_json",
@@ -12021,7 +12051,6 @@ dependencies = [
  "re_view_text_log",
  "re_view_time_series",
  "re_viewer_context",
- "re_viewer_control_tools",
  "re_viewport",
  "re_viewport_blueprint",
  "re_web",

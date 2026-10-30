@@ -11,6 +11,12 @@ The agent (Claude Code, Codex, Gemini CLI, …) runs as a subprocess and speaks 
 Any MCP servers configured in the panel are handed to the agent when the session starts,
 so the agent can drive the Rerun Viewer through `rerun viewer-mcp`.
 
+## What goes here, and what does not
+
+This crate is a generic chat UI for coding agents: sessions, the transcript, the setup screen, and the prompt input.
+It could live in any egui app, and must not know about the Rerun Viewer.
+Anything that ties the agent to the Rerun Viewer goes in [`re_agent_panel`](../../panels/re_agent_panel) instead.
+
 ## Embedding
 
 Hosts create an `AgentPanel` and call `ui()` every frame.

@@ -160,7 +160,7 @@ pub struct AppCore {
 
     dev_panel: crate::dev_panel::DevPanel,
 
-    agent_panel: crate::agent_panel::ViewerAgentPanel,
+    agent_panel: re_agent_panel::ViewerAgentPanel,
 
     pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
 

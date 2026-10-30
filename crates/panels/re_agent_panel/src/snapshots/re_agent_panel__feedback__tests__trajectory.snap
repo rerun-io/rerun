@@ -1,5 +1,5 @@
 ---
-source: crates/top/re_viewer/src/agent_panel/feedback.rs
+source: crates/panels/re_agent_panel/src/feedback.rs
 expression: "serde_json::to_string_pretty(&trajectory).expect(\"serialize\")"
 ---
 {

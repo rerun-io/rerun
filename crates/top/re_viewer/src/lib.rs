@@ -25,9 +25,6 @@
 //!
 //! See [`re_viewer_context::VisualizerInstructionReport`] for how these break down further.
 
-#[cfg(all(agent_harness_backend, feature = "analytics"))]
-mod agent_analytics;
-mod agent_panel;
 mod app;
 mod app_blueprint;
 mod app_state;

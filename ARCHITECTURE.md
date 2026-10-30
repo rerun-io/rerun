@@ -179,7 +179,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate              | Description                                                                               |
 | ------------------ | ----------------------------------------------------------------------------------------- |
-| re_agent_ui        | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol |
+| re_agent_panel     | The Rerun Viewer's agent panel: a coding agent that runs next to the viewer and drives it |
 | re_blueprint_tree  | The UI for the blueprint tree in the left panel.                                          |
 | re_chunk_store_ui  | Display the contents of chunk stores.                                                     |
 | re_memory_view     | Flamegraph visualization for memory usage trees                                           |
@@ -195,6 +195,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate                   | Description                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| re_agent_ui             | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol                  |
 | re_arrow_ui             | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_component_fallbacks  | Handles registering various component fallbacks to `FallbackProviderRegistry`.                             |
 | re_component_ui         | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry. |

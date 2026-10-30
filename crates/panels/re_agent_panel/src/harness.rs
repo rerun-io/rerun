@@ -404,7 +404,11 @@ mod tests {
                 .starts_with(&workspace),
             "{workspace:?} must contain the directory the viewer was started from"
         );
-        assert!(workspace.join("crates/top/re_viewer/Cargo.toml").is_file());
+        assert!(
+            workspace
+                .join("crates/panels/re_agent_panel/Cargo.toml")
+                .is_file()
+        );
 
         let scratch = harness
             .scratch_cwd

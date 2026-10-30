@@ -1,6 +1,10 @@
 //! The agent panel: a chat with an agent that runs next to the viewer and drives it, through
 //! `rerun viewer-mcp` for an agent harness, or through the viewer-control tools for a model-API
 //! agent.
+//!
+//! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the
+//! viewer-control toolbox, the harness setup, the embedded skills and docs, feedback, and
+//! analytics. Chat UI that any egui app could use goes in [`re_agent_ui`] instead.
 
 use std::collections::VecDeque;
 use std::path::Path;
@@ -9,6 +13,8 @@ use re_agent_ui::{AgentPanel, AgentSettings};
 use re_async::AsyncRuntimeHandle;
 use re_ui::UiExt as _;
 
+#[cfg(all(agent_harness_backend, feature = "analytics"))]
+mod agent_analytics;
 #[cfg(agent_harness_backend)]
 mod feedback;
 #[cfg(agent_harness_backend)]
